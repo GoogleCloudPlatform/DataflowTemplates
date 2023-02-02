@@ -15,26 +15,20 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.templates.constants.TestConstants.cbtQualifier;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.colFamily;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.colFamily2;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.colQualifier;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.colQualifier2;
-import static com.google.cloud.teleport.v2.templates.constants.TestConstants.hbaseQualifier;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.rowKey;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.rowKey2;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.timeT;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.value;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.value2;
 
-import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
-import com.google.cloud.teleport.v2.templates.transforms.ConvertChangeStream;
 import com.google.cloud.teleport.v2.templates.transforms.HbaseRowMutationIO;
 import com.google.cloud.teleport.v2.templates.utils.HbaseUtils;
-import com.google.cloud.teleport.v2.templates.utils.MutationBuilderUtils.ChangeStreamMutationBuilder;
 import com.google.cloud.teleport.v2.templates.utils.MutationBuilderUtils.HbaseMutationBuilder;
 import com.google.cloud.teleport.v2.templates.utils.RowMutationsCoder;
-import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -203,92 +197,5 @@ public class HbaseRowMutationIOTest {
     pipeline.run().waitUntilFinish();
 
     Assert.assertEquals(value2, HbaseUtils.getCell(table, rowKey, colFamily, colQualifier));
-  }
-
-  // TODO: move this to its own test file.
-  //  Spinning up 2 HbaseTestingUtils in 2 test files causes competition, so
-  //  all such tests are in one file right now.
-  @Test
-  public void pipelineWritesToHbase() throws IOException {
-
-    Table table = HbaseUtils.createTable(hbaseTestingUtil);
-
-    ChangeStreamMutation rowMutation =
-        new ChangeStreamMutationBuilder(rowKey, timeT * 1000)
-            .setCell(colFamily, colQualifier, value, timeT * 1000)
-            .build();
-
-    ChangeStreamMutation rowMutation2 =
-        new ChangeStreamMutationBuilder(rowKey, (timeT + 1) * 1000)
-            .deleteCells(colFamily, colQualifier, 0L, (timeT + 1) * 1000)
-            .build();
-
-    ChangeStreamMutation rowMutation3 =
-        new ChangeStreamMutationBuilder(rowKey, (timeT + 2) * 1000)
-            .setCell(colFamily, colQualifier, value2, (timeT + 2) * 1000)
-            .build();
-
-    pipeline
-        // TODO swap in bigtableToHbasePipeline fn after CDC GA
-        .apply(
-            "Create change stream mutations",
-            Create.of(
-                KV.of(ByteString.copyFromUtf8(rowKey), rowMutation),
-                KV.of(ByteString.copyFromUtf8(rowKey), rowMutation2),
-                KV.of(ByteString.copyFromUtf8(rowKey), rowMutation3)))
-        .apply(
-            "Convert change stream mutations to hbase mutations",
-            ConvertChangeStream.convertChangeStreamMutation())
-        .apply(
-            "Write to hbase",
-            HbaseRowMutationIO.writeRowMutations()
-                .withConfiguration(hbaseTestingUtil.getConfiguration())
-                .withTableId(table.getName().getNameAsString()));
-
-    pipeline.run().waitUntilFinish();
-    Assert.assertEquals(1, HbaseUtils.getRowResult(table, rowKey).size());
-    Assert.assertEquals(value2, HbaseUtils.getCell(table, rowKey, colFamily, colQualifier));
-  }
-
-  //
-  // TODO: move this to its own test file.
-  //  Spinning up 2 HbaseTestingUtils in 2 test files causes competition, so
-  //  all such tests are in one file right now.
-  @Test
-  public void pipelineWritesToHbaseWithTwoWayReplication() throws IOException {
-
-    Table table = HbaseUtils.createTable(hbaseTestingUtil);
-
-    ChangeStreamMutation shouldBeFilteredOut =
-        new ChangeStreamMutationBuilder(rowKey, timeT * 1000)
-            .setCell(colFamily, colQualifier, value, timeT * 1000)
-            .deleteCells(colFamily, hbaseQualifier, 0L, 0L)
-            .build();
-
-    ChangeStreamMutation rowMutation =
-        new ChangeStreamMutationBuilder(rowKey, timeT * 1000)
-            .setCell(colFamily2, colQualifier2, value2, timeT * 1000)
-            .build();
-
-    pipeline
-        // TODO swap in bigtableToHbasePipeline fn after CDC GA
-        .apply(
-            "Create change stream mutations",
-            Create.of(
-                KV.of(ByteString.copyFromUtf8(rowKey), shouldBeFilteredOut),
-                KV.of(ByteString.copyFromUtf8(rowKey), rowMutation)))
-        .apply(
-            "Convert change stream mutations to hbase mutations",
-            ConvertChangeStream.convertChangeStreamMutation()
-                .withTwoWayReplication(true, cbtQualifier, hbaseQualifier))
-        .apply(
-            "Write to hbase",
-            HbaseRowMutationIO.writeRowMutations()
-                .withConfiguration(hbaseTestingUtil.getConfiguration())
-                .withTableId(table.getName().getNameAsString()));
-
-    pipeline.run().waitUntilFinish();
-    Assert.assertEquals(1, HbaseUtils.getRowResult(table, rowKey).size());
-    Assert.assertEquals(value2, HbaseUtils.getCell(table, rowKey, colFamily2, colQualifier2));
   }
 }

@@ -188,7 +188,11 @@ public class BigtableToHbasePipeline {
             ? Timestamp.MAX_VALUE
             : Timestamp.parseTimestamp(pipelineOptions.getEndTimestamp());
 
-    LOG.info("BigtableToHbasePipeline pipeline.", startTimestamp.toString(), "to", endTimestamp.toString());
+    LOG.info(
+        "BigtableToHbasePipeline pipeline.",
+        startTimestamp.toString(),
+        "to",
+        endTimestamp.toString());
 
     pipeline
         .apply(

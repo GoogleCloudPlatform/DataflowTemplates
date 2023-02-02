@@ -1,8 +1,3 @@
-# TODO
-
-- pom conflict between running in prod and running in test due to serialization proxy
-
-
 # Bigtable CDC to Hbase Dataflow Template
 
 The [BigtableToHBase](src/main/java/com/google/cloud/teleport/v2/templates/BigtableToHbasePipeline.java) pipeline reads from a Bigtable change stream, applies a mutation converter to convert change stream mutations to HBase mutations, and writes the mutations to a specified Hbase instance.
@@ -13,7 +8,7 @@ The [BigtableToHBase](src/main/java/com/google/cloud/teleport/v2/templates/Bigta
 * Bigtable table with change streams enabled
 * Hbase instance
 
-## Building and Running This Template 
+## Building and Running This Template
 This is a Flex Template meaning that the pipeline code will be containerized and the container will be
 used to launch the Dataflow pipeline.
 
@@ -43,8 +38,8 @@ export CBT_QUALIFIER=SOURCE_CBT
 export HBASE_QUALIFIER=SOURCE_HBASE
 ```
 
-* Stage and run template in Dataflow: 
-* 
+* Stage and run template in Dataflow:
+*
 ```shell
 mvn clean package -PtemplatesRun \
   -Dcheckstyle.skip \
@@ -54,9 +49,9 @@ mvn clean package -PtemplatesRun \
   -Dregion=$REGION \
   -DtemplateName="bigtable-cdc-to-hbase" \
   -Dparameters="bigtableProjectId=$PROJECT,instanceId=$INSTANCE,tableId=$TABLE,appProfileId=$APP_PROFILE,hbaseZookeeperQuorum=$ZOOKEEPER_QUORUM,hbaseRootDir=$HBASE_ROOT_DIR,hbaseClusterDistributed=$HBASE_DISTRIBUTED,twoWayReplicationEnabled=$TWO_WAY_REPLICATION,cbtQualifier=$CBT_QUALIFIER,hbaseQualifier=$HBASE_QUALIFIER" \
-  -pl v2/bigtable-cdc-to-hbase 
+  -pl v2/bigtable-cdc-to-hbase
 ```
-### Testing Template 
+### Testing Template
 
 To run unit tests:
 
@@ -76,5 +71,5 @@ mvn clean verify -PtemplatesIntegrationTests \
   -pl v2/bigtable-cdc-to-hbase \
   -Dproject=$PROJECT \
   -DstageBucket=$GCS_BUCKET_NAME \
-  -DdirectRunnerTest 
+  -DdirectRunnerTest
 ```

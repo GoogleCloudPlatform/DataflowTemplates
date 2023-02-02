@@ -52,10 +52,8 @@
   <artifactId>bigtable-cdc-to-hbase</artifactId>
 
   <properties>
-<!--    <beam.version>2.43</beam.version>-->
-<!--    <slf4j.version>1.7.30</slf4j.version>-->
+    <hadoop.version>3.3.4</hadoop.version>
   </properties>
-
 
   <build>
     <extensions>
@@ -94,25 +92,26 @@
       <artifactId>beam-sdks-java-io-hbase</artifactId>
       <version>${beam.version}</version>
     </dependency>
-    <!--Most Hbase Items-->
+    <!--Most Hbase dependencies -->
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-shaded-client</artifactId>
-      <!--      <version>1.2.6</version>-->
       <version>2.3.6</version>
     </dependency>
+    <!--  Hbase test dependencies  -->
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-shaded-testing-util</artifactId>
       <version>2.3.6</version>
       <scope>test</scope>
     </dependency>
-    <!--TODO: Somehow prod needs this but test will fail if this is around...-->
-<!--    <dependency>-->
-<!--      <groupId>org.apache.hadoop</groupId>-->
-<!--      <artifactId>hadoop-mapreduce-client-core</artifactId>-->
-<!--      <version>3.3.4</version>-->
-<!--    </dependency>-->
+    <!-- Needed for hbase test cluster -->
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>1.2.17</version>
+    </dependency>
+
 
     <dependency>
       <groupId>com.google.auto.service</groupId>
@@ -120,23 +119,22 @@
       <version>1.0-rc6</version>
     </dependency>
 
-    <!--    Needed for apache test cluster -->
-    <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
-      <version>1.2.17</version>
-    </dependency>
 
-    <!--  Override 2.x client because dataflowTemplates doesn't recognize major versions...  -->
+    <!-- Override 2.x client because dataflowTemplates doesn't recognize major versions -->
     <dependency>
       <groupId>com.google.api-client</groupId>
       <artifactId>google-api-client</artifactId>
       <version>1.35.2</version>
     </dependency>
+    <!-- Provide hadoop library to other modules in prod runs, prod fails if this is not included -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <version>2.10.2</version>
+    </dependency>
 
 
-
-  <!--  grpc requirements  -->
+    <!--  grpc requirements  -->
     <dependency>
       <groupId>com.google.api.grpc</groupId>
       <artifactId>proto-google-cloud-bigtable-admin-v2</artifactId>

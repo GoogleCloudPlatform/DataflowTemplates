@@ -43,11 +43,10 @@ public class HbaseUtils {
   public static Table createTable(HBaseTestingUtility hbaseTestingUtil) throws IOException {
     return createTable(hbaseTestingUtil, UUID.randomUUID().toString());
   }
+
   public static Table createTable(HBaseTestingUtility hbaseTestingUtil, String name)
       throws IOException {
     TableName tableName = TableName.valueOf(name);
     return hbaseTestingUtil.createTable(tableName, new String[] {colFamily, colFamily2});
   }
-
-
 }

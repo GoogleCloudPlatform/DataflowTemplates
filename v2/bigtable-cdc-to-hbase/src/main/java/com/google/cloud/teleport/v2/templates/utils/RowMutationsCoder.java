@@ -31,8 +31,8 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.MutationType;
 
 /**
- * TODO: move this somewhere nice Lifted from the below.
- * https://github.com/apache/beam/blob/master/sdks/java/io/hbase/src/main/java/org/apache/beam/sdk/io/hbase/HBaseMutationCoder.java
+ * Row mutations coder to provide serialization support for Hbase RowMutations object, which isn't
+ * natively serializable.
  */
 public class RowMutationsCoder extends AtomicCoder<RowMutations> implements Serializable {
   // Code stub for use in registrar.
@@ -48,7 +48,8 @@ public class RowMutationsCoder extends AtomicCoder<RowMutations> implements Seri
   @Override
   public void encode(RowMutations value, OutputStream outStream)
       throws CoderException, IOException {
-    // TODO: figure out neater way to encode byte[] rowKey
+
+    // encode row key
     byte[] rowKey = value.getRow();
     int rowKeyLen = rowKey.length;
 
@@ -89,7 +90,6 @@ public class RowMutationsCoder extends AtomicCoder<RowMutations> implements Seri
       Mutation m = ProtobufUtil.toMutation(MutationProto.parseDelimitedFrom(inStream));
       MutationType type = getType(m);
 
-      // TODO: verify if force casting works here
       if (type == MutationType.PUT) {
         rowMutations.add((Put) m);
       } else if (type == MutationType.DELETE) {
