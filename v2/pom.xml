@@ -714,6 +714,7 @@
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
+        <module>bigtable-cdc-to-hbase</module>
     </modules>
 
 </project>
