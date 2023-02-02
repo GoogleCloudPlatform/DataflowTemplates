@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.colFamily;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.colQualifier;
+import static com.google.cloud.teleport.v2.templates.constants.TestConstants.colQualifier2;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.rowKey;
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.value;
 
@@ -35,7 +36,6 @@ import java.util.Map;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.util.Time;
 import org.junit.After;
@@ -47,12 +47,15 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** End to end table that runs the pipeline from Bigtable to Hbase. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableToHbasePipeline.class)
 @RunWith(JUnit4.class)
 public class BigtableToHbasePipelineIT extends TemplateTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(BigtableToHbasePipelineIT.class);
 
   // private static StaticBigtableResourceManager bigtableResourceManager;
   private static BigtableToHbasePipelineOptions pipelineOptions;
@@ -132,9 +135,12 @@ public class BigtableToHbasePipelineIT extends TemplateTestBase {
 
     // Clear hbase table
     long now = Time.now();
-    Delete deleteHbaseFamilies =
-        MutationBuilderUtils.HbaseMutationBuilder.createDeleteFamily(rowKey, colFamily, now);
-    hbaseTable.delete(deleteHbaseFamilies);
+    hbaseTable.delete(
+        MutationBuilderUtils.HbaseMutationBuilder.createDelete(
+            rowKey, colFamily, colQualifier, now));
+    hbaseTable.delete(
+        MutationBuilderUtils.HbaseMutationBuilder.createDelete(
+            rowKey, colFamily, colQualifier2, now));
   }
 
   @Test

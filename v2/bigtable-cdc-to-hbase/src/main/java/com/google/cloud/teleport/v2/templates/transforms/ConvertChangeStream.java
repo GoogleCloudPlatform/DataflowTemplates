@@ -215,10 +215,18 @@ public class ConvertChangeStream {
           hbaseMutations.add(put);
 
         } else if (entry instanceof DeleteCells) {
-
           DeleteCells deleteCells = (DeleteCells) entry;
-          Delete delete = new Delete(hbaseRowKey, deleteCells.getTimestampRange().getEnd() / 1000);
-          delete.addColumn(
+
+          long ts = 0;
+          if (deleteCells.getTimestampRange().getEnd() / 1000 == 0) {
+            ts = Time.now();
+          } else {
+            ts = deleteCells.getTimestampRange().getEnd() / 1000;
+          }
+
+          Delete delete = new Delete(hbaseRowKey, ts);
+          // Delete all versions of this column, which corresponds to Bigtable delete behavior.
+          delete.addColumns(
               convertUtf8String(deleteCells.getFamilyName()),
               deleteCells.getQualifier().toByteArray());
           hbaseMutations.add(delete);
