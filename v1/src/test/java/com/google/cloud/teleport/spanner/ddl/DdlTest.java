@@ -70,6 +70,12 @@ public class DdlTest {
         .int64()
         .notNull()
         .endColumn()
+        .column("gen_id")
+        .int64()
+        .notNull()
+        .generatedAs("MOD(id+1, 64)")
+        .stored()
+        .endColumn()
         .column("first_name")
         .string()
         .size(10)
@@ -87,6 +93,7 @@ public class DdlTest {
         .endColumn()
         .primaryKey()
         .asc("id")
+        .asc("gen_id")
         .end()
         .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
         .foreignKeys(
@@ -112,11 +119,12 @@ public class DdlTest {
             "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"
                 + " CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
+                + " `gen_id` INT64 NOT NULL AS (MOD(id+1, 64)) STORED,"
                 + " `first_name` STRING(10) DEFAULT ('John'),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
-                + " ) PRIMARY KEY (`id` ASC)"
+                + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                 + " REFERENCES `AllowedNames` (`first_name`)"));
@@ -127,11 +135,12 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             " CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
+                + " `gen_id` INT64 NOT NULL AS (MOD(id+1, 64)) STORED,"
                 + " `first_name` STRING(10) DEFAULT ('John'),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
-                + " ) PRIMARY KEY (`id` ASC)"));
+                + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"));
     assertThat(
         statements.get(1),
         equalToCompressingWhiteSpace(" CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"));
@@ -156,6 +165,12 @@ public class DdlTest {
         .pgInt8()
         .notNull()
         .endColumn()
+        .column("gen_id")
+        .pgInt8()
+        .notNull()
+        .generatedAs("MOD(id+1, 64)")
+        .stored()
+        .endColumn()
         .column("first_name")
         .pgVarchar()
         .size(10)
@@ -174,6 +189,7 @@ public class DdlTest {
         .endColumn()
         .primaryKey()
         .asc("id")
+        .asc("gen_id")
         .end()
         .indexes(
             ImmutableList.of("CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"))
@@ -201,12 +217,13 @@ public class DdlTest {
             "ALTER DATABASE \"%db_name%\" SET spanner.version_retention_period = '4d'"
                 + " CREATE TABLE \"Users\" ("
                 + " \"id\" bigint NOT NULL,"
+                + " \"gen_id\" bigint NOT NULL GENERATED ALWAYS AS (MOD(id+1, 64)) STORED,"
                 + " \"first_name\" character varying(10) DEFAULT John,"
                 + " \"last_name\" character varying DEFAULT Lennon,"
                 + " \"full_name\" character varying GENERATED ALWAYS AS"
                 + " (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\"),"
-                + " PRIMARY KEY (\"id\")"
+                + " PRIMARY KEY (\"id\", \"gen_id\")"
                 + " ) "
                 + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
@@ -592,6 +609,51 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             " CREATE CHANGE STREAM `ChangeStreamTableColumns`"
                 + " FOR `T1`, `T2`(`c1`, `c2`), `T3`()"));
+    assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void pgChangeStreams() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createChangeStream("ChangeStreamAll")
+            .forClause("FOR ALL")
+            .options(
+                ImmutableList.of(
+                    "retention_period='7d'", "value_capture_type='OLD_AND_NEW_VALUES'"))
+            .endChangeStream()
+            .createChangeStream("ChangeStreamEmpty")
+            .endChangeStream()
+            .createChangeStream("ChangeStreamTableColumns")
+            .forClause("FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()")
+            .endChangeStream()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE CHANGE STREAM \"ChangeStreamAll\""
+                + " FOR ALL"
+                + " WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES')"
+                + " CREATE CHANGE STREAM \"ChangeStreamEmpty\""
+                + " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
+                + " FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(3, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace(
+            "CREATE CHANGE STREAM \"ChangeStreamAll\""
+                + " FOR ALL"
+                + " WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES')"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(" CREATE CHANGE STREAM \"ChangeStreamEmpty\""));
+    assertThat(
+        statements.get(2),
+        equalToCompressingWhiteSpace(
+            " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
+                + " FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"));
     assertNotNull(ddl.hashCode());
   }
 

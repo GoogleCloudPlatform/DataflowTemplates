@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.metadata.util;
 
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
+import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameterNameFromMethod;
 import static com.google.common.truth.Truth.assertThat;
 
 import org.junit.Assert;
@@ -38,5 +39,13 @@ public class MetadataUtilsTest {
     Assert.assertThrows(IllegalArgumentException.class, () -> bucketNameOnly("/tmp/templates"));
     Assert.assertThrows(
         IllegalArgumentException.class, () -> bucketNameOnly("https://www.google.com/"));
+  }
+
+  @Test
+  public void testGetParameterNameFromMethod() {
+    assertThat(getParameterNameFromMethod("getName")).isEqualTo("name");
+    assertThat(getParameterNameFromMethod("getShouldKnowMyName")).isEqualTo("shouldKnowMyName");
+    assertThat(getParameterNameFromMethod("name")).isEqualTo("name");
+    assertThat(getParameterNameFromMethod("isClassic")).isEqualTo("classic");
   }
 }

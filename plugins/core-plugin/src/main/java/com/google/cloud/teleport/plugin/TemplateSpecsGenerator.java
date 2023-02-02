@@ -132,6 +132,8 @@ public class TemplateSpecsGenerator {
               + templateAnnotation.flexContainerName()
               + "/*:/template/"
               + templateAnnotation.flexContainerName()
+              + "/libs/conscrypt-openjdk-uber-*.jar:/template/"
+              + templateAnnotation.flexContainerName()
               + "/libs/*:/template/"
               + templateAnnotation.flexContainerName()
               + "/classes:/template/"

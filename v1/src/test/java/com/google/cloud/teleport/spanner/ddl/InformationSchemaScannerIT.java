@@ -701,13 +701,43 @@ public class InformationSchemaScannerIT {
                 + " ) PRIMARY KEY (`id` ASC)",
             " CREATE CHANGE STREAM `ChangeStreamAll` FOR ALL"
                 + " OPTIONS (retention_period=\"7d\", value_capture_type=\"OLD_AND_NEW_VALUES\")",
-            " CREATE CHANGE STREAM `ChangeStreamEmpty`" + " OPTIONS (retention_period=\"24h\")",
+            " CREATE CHANGE STREAM `ChangeStreamEmpty` OPTIONS (retention_period=\"24h\")",
             " CREATE CHANGE STREAM `ChangeStreamKeyColumns` FOR `Account`(), `Users`()",
             " CREATE CHANGE STREAM `ChangeStreamTableColumns`"
                 + " FOR `Account`, `Users`(`first_name`, `last_name`)");
 
     spannerServer.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  // TODO: Enable the test once change streams are supported in PG.
+  // @Test
+  public void pgChangeStreams() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE \"Account\" ("
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"balanceId\"                             bigint NOT NULL,"
+                + " \"balance\"                               double precision NOT NULL,"
+                + " PRIMARY KEY (\"id\")"
+                + " )",
+            " CREATE TABLE \"Users\" ("
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"first_name\"                            character varying(10),"
+                + " \"last_name\"                             character varying,"
+                + " \"age\"                                   bigint,"
+                + " PRIMARY KEY (\"id\")"
+                + " )",
+            " CREATE CHANGE STREAM \"ChangeStreamAll\" FOR ALL"
+                + " WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES')",
+            " CREATE CHANGE STREAM \"ChangeStreamEmpty\" WITH (retention_period='24h')",
+            " CREATE CHANGE STREAM \"ChangeStreamKeyColumns\" FOR \"Account\"(), \"Users\"()",
+            " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
+                + " FOR \"Account\", \"Users\"(\"first_name\", \"last_name\")");
+
+    spannerServer.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 }

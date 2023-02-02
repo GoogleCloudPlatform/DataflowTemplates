@@ -36,9 +36,9 @@ import com.google.api.services.dataflow.model.LaunchFlexTemplateRequest;
 import com.google.api.services.dataflow.model.LaunchFlexTemplateResponse;
 import com.google.api.services.dataflow.model.SdkVersion;
 import com.google.auth.Credentials;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.JobState;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import org.junit.Rule;
@@ -90,6 +90,8 @@ public final class FlexTemplateClientTest {
     Job getJob =
         new Job()
             .setId(JOB_ID)
+            .setProjectId(PROJECT)
+            .setLocation(REGION)
             .setCurrentState(JobState.RUNNING.toString())
             .setCreateTime("")
             .setJobMetadata(
@@ -97,7 +99,7 @@ public final class FlexTemplateClientTest {
                     .setSdkVersion(
                         new SdkVersion()
                             .setVersionDisplayName("Apache Beam Java")
-                            .setVersion("2.42")))
+                            .setVersion("2.42.0")))
             .setType("JOB_TYPE_BATCH");
     LaunchFlexTemplateResponse response = new LaunchFlexTemplateResponse().setJob(launchJob);
 
@@ -110,7 +112,8 @@ public final class FlexTemplateClientTest {
     when(get.execute()).thenReturn(getJob);
 
     // Act
-    JobInfo actual = FlexTemplateClient.withDataflowClient(client).launch(PROJECT, REGION, options);
+    LaunchInfo actual =
+        FlexTemplateClient.withDataflowClient(client).launch(PROJECT, REGION, options);
 
     // Assert
     LaunchFlexTemplateRequest expectedRequest =
@@ -133,13 +136,15 @@ public final class FlexTemplateClientTest {
     assertThat(regionCaptor.getValue()).isEqualTo(REGION);
     assertThat(jobIdCaptor.getValue()).isEqualTo(JOB_ID);
 
-    JobInfo expected =
-        JobInfo.builder()
+    LaunchInfo expected =
+        LaunchInfo.builder()
             .setJobId(JOB_ID)
+            .setProjectId(PROJECT)
+            .setRegion(REGION)
             .setState(JobState.RUNNING)
             .setCreateTime("")
             .setSdk("Apache Beam Java")
-            .setVersion("2.42")
+            .setVersion("2.42.0")
             .setJobType("JOB_TYPE_BATCH")
             .setRunner("Dataflow")
             .setParameters(ImmutableMap.of(PARAM_KEY, PARAM_VALUE))

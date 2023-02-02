@@ -42,7 +42,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
 
   private final ValueProvider<String> databaseId;
 
-  private final String databaseRole;
+  private final ValueProvider<String> databaseRole;
 
   private final ValueProvider<String> host;
 
@@ -68,7 +68,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
       @Nullable ValueProvider<String> projectId,
       @Nullable ValueProvider<String> instanceId,
       @Nullable ValueProvider<String> databaseId,
-      @Nullable String databaseRole,
+      @Nullable ValueProvider<String> databaseRole,
       @Nullable ValueProvider<String> host,
       @Nullable ValueProvider<String> emulatorHost,
       @Nullable ValueProvider<Boolean> isLocalChannelProvider,
@@ -114,7 +114,8 @@ public class ExposedSpannerConfig extends SpannerConfig {
   }
 
   @Nullable
-  public String getDatabaseRole() {
+  @Override
+  public ValueProvider<String> getDatabaseRole() {
     return databaseRole;
   }
 
@@ -293,7 +294,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
     private ValueProvider<String> projectId;
     private ValueProvider<String> instanceId;
     private ValueProvider<String> databaseId;
-    private String databaseRole;
+    private ValueProvider<String> databaseRole;
     private ValueProvider<String> host;
     private ValueProvider<String> emulatorHost;
     private ValueProvider<Boolean> isLocalChannelProvider;
@@ -342,7 +343,8 @@ public class ExposedSpannerConfig extends SpannerConfig {
       return this;
     }
 
-    ExposedSpannerConfig.Builder setDatabaseRole(String databaseRole) {
+    @Override
+    ExposedSpannerConfig.Builder setDatabaseRole(ValueProvider<String> databaseRole) {
       this.databaseRole = databaseRole;
       return this;
     }

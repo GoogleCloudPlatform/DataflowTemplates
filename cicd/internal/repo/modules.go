@@ -25,7 +25,8 @@ import (
 
 const (
 	// Roots in relation to the root directory of the repository.
-	ClassicRoot = "."
+	ProjectRoot = "."
+	ClassicRoot = "v1"
 	FlexRoot    = "v2"
 	SyndeoRoot  = "syndeo-template"
 	ItRoot      = "it"
@@ -46,11 +47,14 @@ func GetModulesForPaths(paths []string) map[string][]string {
 	flex := make([]string, 0)
 
 	it := fmt.Sprintf("it%s", string(os.PathSeparator))
+	v1 := fmt.Sprintf("v1%s", string(os.PathSeparator))
 	v2 := fmt.Sprintf("v2%s", string(os.PathSeparator))
 	syndeo := fmt.Sprintf("syndeo-template%s", string(os.PathSeparator))
 
 	for _, path := range paths {
-		if strings.HasPrefix(path, v2) {
+		if strings.HasPrefix(path, v1) {
+			m[ClassicRoot] = make([]string, 0)
+		} else if strings.HasPrefix(path, v2) {
 			flex = append(flex, strings.TrimPrefix(path, v2))
 		} else if strings.HasPrefix(path, it) {
 			m[ItRoot] = make([]string, 0)
@@ -59,7 +63,7 @@ func GetModulesForPaths(paths []string) map[string][]string {
 		} else {
 			// TODO(zhoufek): Make this more granular, especially separating .github and cicd code
 			// into separate "modules"
-			m[ClassicRoot] = make([]string, 0)
+			m[ProjectRoot] = make([]string, 0)
 		}
 	}
 
@@ -147,6 +151,7 @@ func flexModulesAsTrie() *moduleTrieNode {
 //		Value: All the submodules, sometimes nested under another parent that is also in the slice
 func getModuleMapping() map[string][]string {
 	m := make(map[string][]string)
+	m[ProjectRoot] = make([]string, 0)
 	m[ClassicRoot] = make([]string, 0)
 	m[ItRoot] = make([]string, 0)
 

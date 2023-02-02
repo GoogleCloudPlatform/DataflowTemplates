@@ -22,6 +22,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.TextToBigQueryStreaming.TextToBigQueryStreamingOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteStringMessageErrors;
@@ -119,7 +120,7 @@ import org.slf4j.LoggerFactory;
  * </pre>
  */
 @Template(
-    name = "Stream_GCS_Text_to_BigQuery",
+    name = "Stream_GCS_Text_to_BigQuery_Flex",
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Storage Text to BigQuery (Stream)",
     description =
@@ -128,6 +129,7 @@ import org.slf4j.LoggerFactory;
             + " pipeline requires a JavaScript function and a JSON representation of the BigQuery"
             + " TableSchema.",
     optionsClass = TextToBigQueryStreamingOptions.class,
+    flexContainerName = "text-to-bigquery-streaming",
     contactInformation = "https://cloud.google.com/support")
 public class TextToBigQueryStreaming {
 
@@ -327,7 +329,8 @@ public class TextToBigQueryStreaming {
    * The {@link TextToBigQueryStreamingOptions} class provides the custom execution options passed
    * by the executor at the command-line.
    */
-  public interface TextToBigQueryStreamingOptions extends TextIOToBigQuery.Options {
+  public interface TextToBigQueryStreamingOptions
+      extends TextIOToBigQuery.Options, BigQueryStorageApiStreamingOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
         optional = true,

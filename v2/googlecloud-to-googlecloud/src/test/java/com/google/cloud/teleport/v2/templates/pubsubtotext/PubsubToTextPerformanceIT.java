@@ -15,9 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates.pubsubtotext;
 
+import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.storage.Storage;
@@ -26,10 +28,9 @@ import com.google.cloud.teleport.it.PerformanceBenchmarkingBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -70,8 +71,6 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
   private static final String OUTPUT_FILENAME_PREFIX = "outputFilenamePrefix";
   private static final String DEFAULT_WINDOW_DURATION = "10s";
   private static final Pattern EXPECTED_PATTERN = Pattern.compile(".*subscription-output-.*");
-  private static final String SCHEMA_LOCATION =
-      "gs://apache-beam-pranavbhandari/fakeDataSchema.json";
   private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
   private static final String OUTPUT_PTRANSFORM =
       "Write File(s)/WriteFiles/WriteShardedBundlesToTempFiles/ApplyShardingKey";
@@ -108,7 +107,7 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
         pubsubResourceManager.createSubscription(backlogTopic, "backlog-subscription");
     // Generate fake data to topic
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(String.valueOf(numMessages))
             .setTopic(backlogTopic.toString())
@@ -127,14 +126,14 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
     Result result =
-        dataflowOperator.waitForConditionAndFinish(
+        pipelineOperator.waitForConditionAndFinish(
             createConfig(info, Duration.ofMinutes(30)),
             () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, numMessages));
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
     assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
 
     // export results
@@ -153,7 +152,7 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
         pubsubResourceManager.createSubscription(backlogTopic, "streaming-engine-subscription");
     // Generate fake data to topic
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(String.valueOf(numMessages))
             .setTopic(backlogTopic.toString())
@@ -173,14 +172,14 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
     Result result =
-        dataflowOperator.waitForConditionAndFinish(
+        pipelineOperator.waitForConditionAndFinish(
             createConfig(info, Duration.ofMinutes(30)),
             () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, numMessages));
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
     assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
 
     // export results
@@ -196,7 +195,7 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, "input-subscription");
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("100000")
             .setTopic(topic.toString())
             .setNumWorkers("10")
@@ -214,19 +213,19 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
     dataGenerator.execute(Duration.ofMinutes(60));
-    Result result = dataflowOperator.drainJobAndFinish(createConfig(info, Duration.ofMinutes(20)));
+    Result result = pipelineOperator.drainJobAndFinish(createConfig(info, Duration.ofMinutes(20)));
 
     // Assert
-    assertThat(result).isEqualTo(Result.JOB_FINISHED);
+    assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
     assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
     // export results
     exportMetricsToBigQuery(info, computeMetrics(info));
   }
 
-  private Map<String, Double> computeMetrics(JobInfo info)
+  private Map<String, Double> computeMetrics(LaunchInfo info)
       throws ParseException, IOException, InterruptedException {
     Map<String, Double> metrics = getMetrics(info, INPUT_PCOLLECTION);
     metrics.putAll(getCpuUtilizationMetrics(info));

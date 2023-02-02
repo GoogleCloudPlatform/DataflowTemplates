@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.spanner.ddl;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.HashMultimap;
@@ -44,9 +45,19 @@ public class Ddl implements Serializable {
   private ImmutableSortedMap<String, Table> tables;
   private TreeMultimap<String, String> parents;
 
-  private Ddl(ImmutableSortedMap<String, Table> tables, TreeMultimap<String, String> parents) {
+  private final Dialect dialect;
+
+  private Ddl(
+      ImmutableSortedMap<String, Table> tables,
+      TreeMultimap<String, String> parents,
+      Dialect dialect) {
     this.tables = tables;
     this.parents = parents;
+    this.dialect = dialect;
+  }
+
+  public Dialect dialect() {
+    return dialect;
   }
 
   public Collection<Table> allTables() {
@@ -190,7 +201,11 @@ public class Ddl implements Serializable {
   }
 
   public static Builder builder() {
-    return new Builder();
+    return new Builder(Dialect.GOOGLE_STANDARD_SQL);
+  }
+
+  public static Builder builder(Dialect dialect) {
+    return new Builder(dialect);
   }
 
   /** A builder for {@link Ddl}. */
@@ -198,11 +213,16 @@ public class Ddl implements Serializable {
 
     private Map<String, Table> tables = Maps.newLinkedHashMap();
     private TreeMultimap<String, String> parents = TreeMultimap.create();
+    private Dialect dialect;
+
+    public Builder(Dialect dialect) {
+      this.dialect = dialect;
+    }
 
     public Table.Builder createTable(String name) {
       Table table = tables.get(name.toLowerCase());
       if (table == null) {
-        return Table.builder().name(name).ddlBuilder(this);
+        return Table.builder(dialect).name(name).ddlBuilder(this);
       }
       return table.toBuilder().ddlBuilder(this);
     }
@@ -216,12 +236,12 @@ public class Ddl implements Serializable {
     }
 
     public Ddl build() {
-      return new Ddl(ImmutableSortedMap.copyOf(tables), parents);
+      return new Ddl(ImmutableSortedMap.copyOf(tables), parents, dialect);
     }
   }
 
   public Builder toBuilder() {
-    Builder builder = new Builder();
+    Builder builder = new Builder(dialect);
     builder.tables.putAll(tables);
     builder.parents.putAll(parents);
     return builder;
@@ -238,6 +258,9 @@ public class Ddl implements Serializable {
 
     Ddl ddl = (Ddl) o;
 
+    if (dialect != ddl.dialect) {
+      return false;
+    }
     if (tables != null ? !tables.equals(ddl.tables) : ddl.tables != null) {
       return false;
     }
@@ -246,7 +269,8 @@ public class Ddl implements Serializable {
 
   @Override
   public int hashCode() {
-    int result = tables != null ? tables.hashCode() : 0;
+    int result = dialect != null ? dialect.hashCode() : 0;
+    result = 31 * result + (tables != null ? tables.hashCode() : 0);
     result = 31 * result + (parents != null ? parents.hashCode() : 0);
     return result;
   }

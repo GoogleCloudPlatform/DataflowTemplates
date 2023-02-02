@@ -15,14 +15,18 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
+import static com.google.cloud.teleport.it.TemplateTestBase.toTableSpec;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.PerformanceBenchmarkingBase;
 import com.google.cloud.teleport.it.TestProperties;
@@ -30,13 +34,13 @@ import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SchemaTemplate;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -59,8 +63,6 @@ public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarking
       MoreObjects.firstNonNull(
           "gs://dataflow-templates/latest/flex/Streaming_Data_Generator",
           TestProperties.specPath());
-  private static final String SCHEMA_LOCATION =
-      "gs://apache-beam-pranavbhandari/fakeDataSchema.json";
   private static final String FAKE_DATA_PCOLLECTION = "Generate Fake Messages.out0";
   // 10 gb worth of messages
   private static final long numMessages = 35000000L;
@@ -96,11 +98,9 @@ public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarking
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(backlogTopic, "output-subscription");
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
     LaunchConfig options =
-        LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter("schemaLocation", SCHEMA_LOCATION)
+        LaunchConfig.builder(testName, SPEC_PATH)
+            .addParameter("schemaTemplate", SchemaTemplate.GAME_EVENT.name())
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", String.valueOf(numMessages))
             .addParameter("topic", backlogTopic.toString())
@@ -110,11 +110,11 @@ public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarking
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
-    Result result = dataflowOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
+    Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
-    assertThat(result).isEqualTo(Result.JOB_FINISHED);
+    assertThatResult(result).isLaunchFinished();
     assertThat(pubsubResourceManager.pull(subscription, 5).getReceivedMessagesCount())
         .isGreaterThan(0);
 
@@ -132,12 +132,10 @@ public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarking
         getFullGcsPath(
             artifactBucket, TEST_ROOT_DIR, artifactClient.runId(), testName.getMethodName());
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
     Pattern expectedPattern = Pattern.compile(".*output-.*");
     LaunchConfig options =
-        LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter("schemaLocation", SCHEMA_LOCATION)
+        LaunchConfig.builder(testName, SPEC_PATH)
+            .addParameter("schemaTemplate", SchemaTemplate.GAME_EVENT.name())
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", String.valueOf(numMessages))
             .addParameter("sinkType", "GCS")
@@ -149,12 +147,12 @@ public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarking
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
-    Result result = dataflowOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
+    Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
-    assertThat(result).isEqualTo(Result.JOB_FINISHED);
-    assertThat(artifactClient.listArtifacts(name, expectedPattern)).isNotEmpty();
+    assertThatResult(result).isLaunchFinished();
+    assertThat(artifactClient.listArtifacts(testName, expectedPattern)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, FAKE_DATA_PCOLLECTION));
@@ -182,27 +180,25 @@ public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarking
     // Arrange
     String name = testName.getMethodName();
     String jobName = createJobName(name);
-    bigQueryResourceManager.createTable(jobName, schema);
+    TableId table = bigQueryResourceManager.createTable(testName.getMethodName(), schema);
     LaunchConfig options =
-        LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter("schemaLocation", SCHEMA_LOCATION)
+        LaunchConfig.builder(testName, SPEC_PATH)
+            .addParameter("schemaTemplate", SchemaTemplate.GAME_EVENT.name())
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", String.valueOf(numMessages))
             .addParameter("sinkType", "BIGQUERY")
-            .addParameter(
-                "outputTableSpec",
-                String.format("%s:%s.%s", PROJECT, bigQueryResourceManager.getDatasetId(), jobName))
+            .addParameter("outputTableSpec", toTableSpec(table))
             .addParameter("numWorkers", "50")
             .addParameter("maxNumWorkers", "100")
             .addParameter("autoscalingAlgorithm", "THROUGHPUT_BASED")
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
-    Result result = dataflowOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
+    Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
-    assertThat(result).isEqualTo(Result.JOB_FINISHED);
+    assertThatResult(result).isLaunchFinished();
     assertThat(bigQueryResourceManager.readTable(jobName).getTotalRows()).isGreaterThan(0);
 
     // export results

@@ -34,7 +34,6 @@
   </description>
 
   <properties>
-    <apache-http-client-v2>1.40.1</apache-http-client-v2>
     <autovalue.service.version>1.0-rc6</autovalue.service.version>
     <avro.version>1.8.2</avro.version>
     <extra.enforcer.rules.version>1.3</extra.enforcer.rules.version>
@@ -45,7 +44,7 @@
     <protobuf.version>3.21.12</protobuf.version>
     <nashorn.version>15.4</nashorn.version>
     <junit.jupiter.version>5.5.2</junit.jupiter.version>
-    <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
+    <codehaus-jackson.version>2.14.0</codehaus-jackson.version>
     <commons-csv.version>1.8</commons-csv.version>
     <commons-text.version>1.10.0</commons-text.version>
     <google-cloud-bigquery.version>1.108.0</google-cloud-bigquery.version>
@@ -54,8 +53,6 @@
     <kafka.clients.version>1.0.0</kafka.clients.version>
     <threetenbp.version>1.4.4</threetenbp.version>
     <spring.version>5.2.22.RELEASE</spring.version>
-    <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
-    <autovalue.version>1.7.4</autovalue.version>
     <tensorflow.version>1.15.0</tensorflow.version>
     <dlp.version>2.1.0</dlp.version>
     <hbase.version>1.4.5</hbase.version>
@@ -218,7 +215,7 @@
       <version>${hadoop.version}</version>
       <exclusions>
         <exclusion>
-          <groupId>org.codehaus.jackson</groupId>
+          <groupId>com.fasterxml.jackson</groupId>
           <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
@@ -233,7 +230,7 @@
           <artifactId>commons-lang3</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.codehaus.jackson</groupId>
+          <groupId>com.fasterxml.jackson</groupId>
           <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
@@ -249,11 +246,11 @@
       <scope>provided</scope>
       <exclusions>
         <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>log4j</groupId>
           <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
@@ -268,12 +265,10 @@
     <dependency>
       <groupId>com.google.http-client</groupId>
       <artifactId>google-http-client</artifactId>
-      <version>${apache-http-client-v2}</version>
     </dependency>
     <dependency>
       <groupId>com.google.http-client</groupId>
       <artifactId>google-http-client-apache-v2</artifactId>
-      <version>${apache-http-client-v2}</version>
     </dependency>
 
     <!-- UDFs -->
@@ -416,6 +411,12 @@
       <groupId>com.google.cloud.bigtable</groupId>
       <artifactId>bigtable-beam-import</artifactId>
       <version>${bigtable-beam-import.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.json</groupId>
@@ -431,16 +432,16 @@
     <dependency>
       <groupId>com.google.auto.value</groupId>
       <artifactId>auto-value-annotations</artifactId>
-      <version>${autovalue.annotations.version}</version>
+      <version>${autovalue.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-core-asl</artifactId>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
       <version>${codehaus-jackson.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-mapper-asl</artifactId>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
       <version>${codehaus-jackson.version}</version>
     </dependency>
     <dependency>
@@ -469,12 +470,12 @@
       <scope>compile</scope>
       <exclusions>
         <exclusion>
-          <groupId>org.codehaus.jackson</groupId>
-          <artifactId>jackson-core-asl</artifactId>
+          <groupId>com.fasterxml.jackson</groupId>
+          <artifactId>jackson-core</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.codehaus.jackson</groupId>
-          <artifactId>jackson-mapper-asl</artifactId>
+          <groupId>com.fasterxml.jackson</groupId>
+          <artifactId>jackson-databind</artifactId>
         </exclusion>
         <exclusion>
           <groupId>org.apache.httpcomponents</groupId>
@@ -716,8 +717,8 @@
                 <ignoredUnusedDeclaredDependency>org.json:json</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-common</ignoredUnusedDeclaredDependency>
-                <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-core-asl</ignoredUnusedDeclaredDependency>
-                <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>com.fasterxml.jackson.core:jackson-core</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>com.fasterxml.jackson.core:jackson-databind</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>com.google.auto.service:auto-service</ignoredUnusedDeclaredDependency>
                 <!-- com.google.cloud.bigtable:bigtable-beam-import has the Main-Class on some templates. -->
@@ -1108,6 +1109,31 @@
                 <phase>package</phase>
                 <goals>
                   <goal>run</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>templatesRelease</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <jib.skip>true</jib.skip>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>templates-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>release</goal>
                 </goals>
               </execution>
             </executions>

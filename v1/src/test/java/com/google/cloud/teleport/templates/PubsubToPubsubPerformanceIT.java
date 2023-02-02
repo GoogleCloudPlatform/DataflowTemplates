@@ -15,16 +15,17 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.DataGenerator;
 import com.google.cloud.teleport.it.PerformanceBenchmarkingBase;
 import com.google.cloud.teleport.it.TestProperties;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -48,8 +49,6 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
           "gs://dataflow-templates/latest/Cloud_PubSub_to_Cloud_PubSub", TestProperties.specPath());
-  private static final String SCHEMA_LOCATION =
-      "gs://apache-beam-pranavbhandari/fakeDataSchema.json";
   private static final long numMessages = 35000000L;
   private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
   private static final String OUTPUT_PCOLLECTION = "Write PubSub Events/MapElements/Map.out0";
@@ -80,7 +79,7 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
         pubsubResourceManager.createSubscription(backlogTopic, "output-subscription");
     TopicName outputTopic = pubsubResourceManager.createTopic("output");
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(String.valueOf(numMessages))
             .setTopic(backlogTopic.toString())
@@ -95,14 +94,15 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
     Result result =
-        dataflowOperator.waitForConditionAndFinish(
+        pipelineOperator.waitForConditionAndFinish(
             createConfig(info, Duration.ofMinutes(60)),
             () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, numMessages));
+
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
     // check to see if messages reached the output topic
     assertThat(pubsubResourceManager.pull(outputSubscription, 5).getReceivedMessagesCount())
         .isGreaterThan(0);
@@ -122,7 +122,7 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(inputTopic, "output-subscription");
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("100000")
             .setTopic(inputTopic.toString())
             .setNumWorkers("10")
@@ -135,12 +135,12 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
     dataGenerator.execute(Duration.ofMinutes(60));
-    Result result = dataflowOperator.drainJobAndFinish(createConfig(info, Duration.ofMinutes(20)));
+    Result result = pipelineOperator.drainJobAndFinish(createConfig(info, Duration.ofMinutes(20)));
     // Assert
-    assertThat(result).isEqualTo(Result.JOB_FINISHED);
+    assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
     // check to see if messages reached the output topic
     assertThat(pubsubResourceManager.pull(outputSubscription, 5).getReceivedMessagesCount())
         .isGreaterThan(0);
@@ -149,7 +149,7 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
     exportMetricsToBigQuery(info, computeMetrics(info));
   }
 
-  private Map<String, Double> computeMetrics(JobInfo info)
+  private Map<String, Double> computeMetrics(LaunchInfo info)
       throws ParseException, IOException, InterruptedException {
     Map<String, Double> metrics = getMetrics(info, INPUT_PCOLLECTION);
     Map<String, Double> outputThroughput =

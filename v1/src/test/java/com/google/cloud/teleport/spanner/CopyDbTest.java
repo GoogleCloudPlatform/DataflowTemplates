@@ -800,6 +800,58 @@ public class CopyDbTest {
     runTest();
   }
 
+  // TODO: Enable the test once change streams are supported in PG.
+  // @Test
+  public void pgChangeStreams() throws Exception {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("T1")
+            .column("key")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("key")
+            .end()
+            .endTable()
+            .createTable("T2")
+            .column("key")
+            .pgInt8()
+            .endColumn()
+            .column("c1")
+            .pgInt8()
+            .endColumn()
+            .column("c2")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("key")
+            .end()
+            .endTable()
+            .createTable("T3")
+            .column("key")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("key")
+            .end()
+            .endTable()
+            .createChangeStream("ChangeStreamAll")
+            .forClause("FOR ALL")
+            .options(
+                ImmutableList.of(
+                    "retention_period='7d'", "value_capture_type='OLD_AND_NEW_VALUES'"))
+            .endChangeStream()
+            .createChangeStream("ChangeStreamEmpty")
+            .endChangeStream()
+            .createChangeStream("ChangeStreamTableColumns")
+            .forClause("FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()")
+            .endChangeStream()
+            .build();
+    createAndPopulate(ddl, 0);
+    runTest(Dialect.POSTGRESQL);
+  }
+
   @Test
   public void randomSchema() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();

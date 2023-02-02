@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.spanner.Dialect;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -36,20 +37,40 @@ public abstract class ChangeStream implements Serializable {
   @Nullable
   public abstract ImmutableList<String> options();
 
+  public abstract Dialect dialect();
+
   public abstract Builder toBuilder();
 
+  public static Builder builder(Dialect dialect) {
+    return new AutoValue_ChangeStream.Builder().dialect(dialect);
+  }
+
   public static Builder builder() {
-    return new AutoValue_ChangeStream.Builder();
+    return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
 
   public void prettyPrint(Appendable appendable) throws IOException {
-    appendable.append("CREATE CHANGE STREAM `").append(name()).append("`");
+    if (dialect() != Dialect.GOOGLE_STANDARD_SQL && dialect() != Dialect.POSTGRESQL) {
+      throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
+    }
+    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
+    appendable
+        .append("CREATE CHANGE STREAM ")
+        .append(identifierQuote)
+        .append(name())
+        .append(identifierQuote);
     if (!Strings.isNullOrEmpty(forClause())) {
       appendable.append("\n\t").append(forClause());
     }
     if (options() != null && !options().isEmpty()) {
       String optionsString = String.join(", ", options());
-      appendable.append("\n\t").append("OPTIONS (").append(optionsString).append(")");
+      appendable.append("\n\t");
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
+        appendable.append("OPTIONS ");
+      } else if (dialect() == Dialect.POSTGRESQL) {
+        appendable.append("WITH ");
+      }
+      appendable.append("(").append(optionsString).append(")");
     }
   }
 
@@ -83,6 +104,8 @@ public abstract class ChangeStream implements Serializable {
     public abstract Builder forClause(String name);
 
     public abstract Builder options(ImmutableList<String> options);
+
+    abstract Builder dialect(Dialect dialect);
 
     public abstract ChangeStream build();
 

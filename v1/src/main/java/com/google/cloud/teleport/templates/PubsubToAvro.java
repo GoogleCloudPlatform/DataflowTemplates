@@ -130,6 +130,7 @@ import org.apache.beam.sdk.values.PCollection;
         "Streaming pipeline. Reads from a Pub/Sub subscription and outputs windowed Avro files to"
             + " the specified directory.",
     optionsClass = Options.class,
+    skipOptions = "inputSubscription",
     contactInformation = "https://cloud.google.com/support")
 public class PubsubToAvro {
 

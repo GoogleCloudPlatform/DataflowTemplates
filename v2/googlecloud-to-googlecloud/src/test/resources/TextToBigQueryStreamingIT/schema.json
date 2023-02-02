@@ -1,0 +1,12 @@
+{
+  "fields": [
+    {
+      "name": "BOOK_ID",
+      "type": "INTEGER"
+    },
+    {
+      "name": "TITLE",
+      "type": "STRING"
+    }
+  ]
+}

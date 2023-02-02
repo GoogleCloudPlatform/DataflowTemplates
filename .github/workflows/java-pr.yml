@@ -60,7 +60,7 @@ jobs:
         run: ./cicd/run-build --changed-files="${{ steps.setup-env.outputs.changed-files }}"
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
-  java_tests:
+  java_unit_tests:
     name: Unit Tests
     timeout-minutes: 60
     runs-on: ubuntu-latest
@@ -74,24 +74,23 @@ jobs:
         run: ./cicd/run-unit-tests --changed-files="${{ steps.setup-env.outputs.changed-files }}"
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
-  java_integration_tests:
-    name: Integration Tests
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
+  java_integration_tests_templates:
+    name: Dataflow Templates Integration Tests
+    needs: [spotless_check, java_build, java_unit_tests]
+    timeout-minutes: 180
+    runs-on: self-hosted
     steps:
       - name: Checkout Code
-        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+        uses: actions/checkout@v2.6.0
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
-      - name: Set up JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-          distribution: 'adopt'
-      - name: Build with Maven
-        run: mvn install -f pom.xml -pl .,metadata,plaintext-logging,it,syndeo-template,v1 -DskipTests -Djib.skip=true
-      - name: Run integration tests with Maven
-        run: mvn verify -Djib.skip=true -DskipUnitTests -f pom.xml -pl syndeo-template -Dproject=cloud-teleport-testing -Dregion=us-central1 -DartifactBucket=gs://cloud-teleport-testing-df-staging/${{ github.job }}/artifacts -DtempLocation=gs://cloud-teleport-testing-df-staging/${{ github.job }}/temp
+      - name: Run Integration Tests
+        run: | 
+          ./cicd/run-it-tests \
+          --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env

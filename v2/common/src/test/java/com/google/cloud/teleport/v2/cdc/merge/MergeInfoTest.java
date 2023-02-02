@@ -49,7 +49,7 @@ public final class MergeInfoTest {
   @Mock private TableDefinition tableDefinition;
 
   private static final String MERGE_SQL =
-      "MERGE `projectId.dataset.table` AS replica USING (SELECT `id,"
+      "BEGIN BEGIN TRANSACTION; MERGE `projectId.dataset.table` AS replica USING (SELECT `id,"
           + " cola`,`colb`,`timestamp`,`other` FROM (SELECT `id, cola`,`colb`,`timestamp`,`other`,"
           + " ROW_NUMBER() OVER (PARTITION BY id ORDER BY timestamp DESC, other DESC,"
           + " metadata_deleteField ASC) as row_num FROM `projectId.dataset.staging_table` WHERE"
@@ -66,7 +66,7 @@ public final class MergeInfoTest {
           + " staging.id, cola, `colb` = staging.colb, `timestamp` = staging.timestamp, `other` ="
           + " staging.other WHEN NOT MATCHED BY TARGET AND staging.metadata_deleteField!=True THEN"
           + " INSERT(`id, cola`,`colb`,`timestamp`,`other`) VALUES (staging.id, cola, staging.colb,"
-          + " staging.timestamp, staging.other)";
+          + " staging.timestamp, staging.other); COMMIT TRANSACTION; END;";
 
   @Before
   public void setup() {

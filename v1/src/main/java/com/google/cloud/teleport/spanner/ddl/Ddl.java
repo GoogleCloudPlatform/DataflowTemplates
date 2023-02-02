@@ -393,7 +393,7 @@ public class Ddl implements Serializable {
     public ChangeStream.Builder createChangeStream(String name) {
       ChangeStream changeStream = changeStreams.get(name.toLowerCase());
       if (changeStream == null) {
-        return ChangeStream.builder().name(name).ddlBuilder(this);
+        return ChangeStream.builder(dialect).name(name).ddlBuilder(this);
       }
       return changeStream.toBuilder().ddlBuilder(this);
     }

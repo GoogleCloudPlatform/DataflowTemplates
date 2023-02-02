@@ -80,8 +80,15 @@ public class DdlToAvroSchemaConverterTest {
             .generatedAs("CONCAT(first_name, ' ', last_name)")
             .stored()
             .endColumn()
+            .column("gen_id")
+            .int64()
+            .notNull()
+            .generatedAs("MOD(id+1, 64)")
+            .stored()
+            .endColumn()
             .primaryKey()
             .asc("id")
+            .asc("gen_id")
             .desc("last_name")
             .end()
             .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
@@ -105,7 +112,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(4));
+    assertThat(fields, hasSize(5));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -142,9 +149,18 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(3).getProp("stored"), equalTo("true"));
     assertThat(fields.get(3).getProp("defaultExpression"), equalTo(null));
 
+    assertThat(fields.get(4).name(), equalTo("gen_id"));
+    assertThat(fields.get(4).schema(), equalTo(Schema.create(Schema.Type.NULL)));
+    assertThat(fields.get(4).getProp("sqlType"), equalTo("INT64"));
+    assertThat(fields.get(4).getProp("notNull"), equalTo("true"));
+    assertThat(fields.get(4).getProp("generationExpression"), equalTo("MOD(id+1, 64)"));
+    assertThat(fields.get(4).getProp("stored"), equalTo("true"));
+    assertThat(fields.get(4).getProp("defaultExpression"), equalTo(null));
+
     // spanner pk
     assertThat(avroSchema.getProp("spannerPrimaryKey_0"), equalTo("`id` ASC"));
-    assertThat(avroSchema.getProp("spannerPrimaryKey_1"), equalTo("`last_name` DESC"));
+    assertThat(avroSchema.getProp("spannerPrimaryKey_1"), equalTo("`gen_id` ASC"));
+    assertThat(avroSchema.getProp("spannerPrimaryKey_2"), equalTo("`last_name` DESC"));
     assertThat(avroSchema.getProp("spannerParent"), nullValue());
     assertThat(avroSchema.getProp("spannerOnDeleteAction"), nullValue());
 
@@ -189,8 +205,15 @@ public class DdlToAvroSchemaConverterTest {
             .generatedAs("CONCAT(first_name, ' ', last_name)")
             .stored()
             .endColumn()
+            .column("gen_id")
+            .pgInt8()
+            .notNull()
+            .generatedAs("MOD(id+1, 64)")
+            .stored()
+            .endColumn()
             .primaryKey()
             .asc("id")
+            .asc("gen_id")
             .asc("last_name")
             .end()
             .indexes(
@@ -216,7 +239,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(4));
+    assertThat(fields, hasSize(5));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -253,9 +276,18 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(3).getProp("stored"), equalTo("true"));
     assertThat(fields.get(3).getProp("defaultExpression"), equalTo(null));
 
+    assertThat(fields.get(4).name(), equalTo("gen_id"));
+    assertThat(fields.get(4).schema(), equalTo(Schema.create(Schema.Type.NULL)));
+    assertThat(fields.get(4).getProp("sqlType"), equalTo("bigint"));
+    assertThat(fields.get(4).getProp("notNull"), equalTo("true"));
+    assertThat(fields.get(4).getProp("generationExpression"), equalTo("MOD(id+1, 64)"));
+    assertThat(fields.get(4).getProp("stored"), equalTo("true"));
+    assertThat(fields.get(4).getProp("defaultExpression"), equalTo(null));
+
     // spanner pk
     assertThat(avroSchema.getProp("spannerPrimaryKey_0"), equalTo("\"id\" ASC"));
-    assertThat(avroSchema.getProp("spannerPrimaryKey_1"), equalTo("\"last_name\" ASC"));
+    assertThat(avroSchema.getProp("spannerPrimaryKey_1"), equalTo("\"gen_id\" ASC"));
+    assertThat(avroSchema.getProp("spannerPrimaryKey_2"), equalTo("\"last_name\" ASC"));
     assertThat(avroSchema.getProp("spannerParent"), nullValue());
     assertThat(avroSchema.getProp("spannerOnDeleteAction"), nullValue());
 
@@ -829,6 +861,55 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema3.getProp("spannerChangeStreamForClause"),
         equalTo("FOR `T1`, `T2`(`c1`, `c2`), `T3`()"));
+    assertThat(avroSchema3.getProp("spannerOption_0"), nullValue());
+  }
+
+  @Test
+  public void pgChangeStreams() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createChangeStream("ChangeStreamAll")
+            .forClause("FOR ALL")
+            .options(
+                ImmutableList.of(
+                    "retention_period='7d'", "value_capture_type='OLD_AND_NEW_VALUES'"))
+            .endChangeStream()
+            .createChangeStream("ChangeStreamEmpty")
+            .endChangeStream()
+            .createChangeStream("ChangeStreamTableColumns")
+            .forClause("FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()")
+            .endChangeStream()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(3));
+    for (Schema s : result) {
+      assertThat(s.getNamespace(), equalTo("spannertest"));
+      assertThat(s.getProp("googleFormatVersion"), equalTo("booleans"));
+      assertThat(s.getProp("googleStorage"), equalTo("CloudSpanner"));
+      assertThat(s.getFields(), empty());
+    }
+
+    Iterator<Schema> it = result.iterator();
+    Schema avroSchema1 = it.next();
+    assertThat(avroSchema1.getName(), equalTo("ChangeStreamAll"));
+    assertThat(avroSchema1.getProp("spannerChangeStreamForClause"), equalTo("FOR ALL"));
+    assertThat(avroSchema1.getProp("spannerOption_0"), equalTo("retention_period='7d'"));
+    assertThat(
+        avroSchema1.getProp("spannerOption_1"), equalTo("value_capture_type='OLD_AND_NEW_VALUES'"));
+
+    Schema avroSchema2 = it.next();
+    assertThat(avroSchema2.getName(), equalTo("ChangeStreamEmpty"));
+    assertThat(avroSchema2.getProp("spannerChangeStreamForClause"), equalTo(""));
+    assertThat(avroSchema2.getProp("spannerOption_0"), nullValue());
+
+    Schema avroSchema3 = it.next();
+    assertThat(avroSchema3.getName(), equalTo("ChangeStreamTableColumns"));
+    assertThat(
+        avroSchema3.getProp("spannerChangeStreamForClause"),
+        equalTo("FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"));
     assertThat(avroSchema3.getProp("spannerOption_0"), nullValue());
   }
 

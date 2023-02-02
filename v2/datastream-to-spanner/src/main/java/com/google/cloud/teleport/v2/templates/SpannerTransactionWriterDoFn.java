@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
@@ -42,10 +43,12 @@ import java.io.Serializable;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
@@ -108,6 +111,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private final Counter retryableErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
 
+  // The max length of tag allowed in Spanner Transaction tags.
+  private static final int MAX_TXN_TAG_LENGTH = 50;
+
   SpannerTransactionWriterDoFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
@@ -163,7 +169,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // Start transaction
       spannerAccessor
           .getDatabaseClient()
-          .readWriteTransaction()
+          .readWriteTransaction(Options.tag(getTxnTag(c.getPipelineOptions())))
           .run(
               (TransactionCallable<Void>)
                   transaction -> {
@@ -251,5 +257,25 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     e.printStackTrace(new PrintWriter(errors));
     output.setErrorMessage(errors.toString());
     c.output(errorTag, output);
+  }
+
+  String getTxnTag(PipelineOptions options) {
+    String jobId = "datastreamToSpanner";
+    try {
+      DataflowWorkerHarnessOptions harnessOptions = options.as(DataflowWorkerHarnessOptions.class);
+      jobId = harnessOptions.getJobId();
+    } catch (Exception e) {
+      LOG.warn(
+          "Unable to find Dataflow job id. Spanner transaction tags will not contain the dataflow"
+              + " job id.",
+          e);
+    }
+    // Spanner transaction tags have a limit of 50 characters. Dataflow job id is 40 chars in
+    // length.
+    String txnTag = "txBy=" + jobId;
+    if (txnTag.length() > MAX_TXN_TAG_LENGTH) {
+      txnTag = txnTag.substring(0, MAX_TXN_TAG_LENGTH);
+    }
+    return txnTag;
   }
 }
