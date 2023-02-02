@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model;
 
+import com.google.cloud.Timestamp;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,12 +32,20 @@ public class BigtableSource implements Serializable {
   private final Set<String> columnFamiliesToIgnore;
   private final Set<String> columnsToIgnore;
 
+  private final Timestamp startTimestamp;
+
+  private final Timestamp endTimestamp;
+
   public BigtableSource(
       String instanceId,
       String tableId,
       String charset,
       String ignoreColumnFamilies,
-      String ignoreColumns) {
+      String ignoreColumns,
+      Timestamp startTimestamp,
+      Timestamp endTimestamp) {
+    this.startTimestamp = startTimestamp;
+    this.endTimestamp = endTimestamp;
     this.instanceId = instanceId;
     this.tableId = tableId;
     this.charset = charset;
@@ -75,5 +84,13 @@ public class BigtableSource implements Serializable {
 
   public Set<String> getColumnsToIgnore() {
     return columnsToIgnore;
+  }
+
+  public Timestamp getStartTimestamp() {
+    return startTimestamp;
+  }
+
+  public Timestamp getEndTimestamp() {
+    return endTimestamp;
   }
 }

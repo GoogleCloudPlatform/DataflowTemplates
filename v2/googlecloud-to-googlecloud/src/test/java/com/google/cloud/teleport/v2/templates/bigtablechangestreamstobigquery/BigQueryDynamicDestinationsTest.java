@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.Timestamp;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination;
@@ -49,7 +50,14 @@ public final class BigQueryDynamicDestinationsTest {
   public static void before() throws Exception {
     sourceInfo =
         new BigtableSource(
-            TestUtil.TEST_CBT_INSTANCE, TestUtil.TEST_CBT_TABLE, "UTF-8", null, null);
+            TestUtil.TEST_CBT_INSTANCE,
+            TestUtil.TEST_CBT_TABLE,
+            "UTF-8",
+            null,
+            null,
+            Timestamp.now(),
+            Timestamp.MAX_VALUE
+        );
 
     tableRow = new TableRow();
     tableRow.set(ChangelogColumn.ROW_KEY_STRING.getBqColumnName(), "some key");

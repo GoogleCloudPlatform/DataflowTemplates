@@ -149,13 +149,25 @@ public final class BigtableChangeStreamsToBigQuery {
     String changelogTableName = getBigQueryChangelogTableName(options);
     String bigtableProject = getBigtableProjectId(options);
 
+    // Retrieve and parse the startTimestamp and endTimestamp.
+    Timestamp startTimestamp =
+        options.getStartTimestamp().isEmpty()
+            ? Timestamp.now()
+            : Timestamp.parseTimestamp(options.getStartTimestamp());
+    Timestamp endTimestamp =
+        options.getEndTimestamp().isEmpty()
+            ? Timestamp.MAX_VALUE
+            : Timestamp.parseTimestamp(options.getEndTimestamp());
+
     BigtableSource sourceInfo =
         new BigtableSource(
             options.getBigtableInstanceId(),
             options.getBigtableTableId(),
             getBigtableCharset(options),
             options.getIgnoreColumnFamilies(),
-            options.getIgnoreColumns());
+            options.getIgnoreColumns(),
+            startTimestamp,
+            endTimestamp);
 
     BigQueryDestination destinationInfo =
         new BigQueryDestination(
@@ -183,16 +195,6 @@ public final class BigtableChangeStreamsToBigQuery {
 
     String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
     String tempDlqDirectory = dlqManager.getRetryDlqDirectory() + "tmp/";
-
-    // Retrieve and parse the startTimestamp and endTimestamp.
-    Timestamp startTimestamp =
-        options.getStartTimestamp().isEmpty()
-            ? Timestamp.now()
-            : Timestamp.parseTimestamp(options.getStartTimestamp());
-    Timestamp endTimestamp =
-        options.getEndTimestamp().isEmpty()
-            ? Timestamp.MAX_VALUE
-            : Timestamp.parseTimestamp(options.getEndTimestamp());
 
     BigtableIO.ReadChangeStream readChangeStream =
         BigtableIO.readChangeStream()
