@@ -26,6 +26,7 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.re2j.Pattern;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -68,6 +69,11 @@ public final class GcsArtifactClient implements ArtifactClient {
   @Override
   public String runId() {
     return runId;
+  }
+
+  @Override
+  public Artifact createArtifact(String artifactName, String contents) {
+    return this.createArtifact(artifactName, contents.getBytes(StandardCharsets.UTF_8));
   }
 
   @Override
