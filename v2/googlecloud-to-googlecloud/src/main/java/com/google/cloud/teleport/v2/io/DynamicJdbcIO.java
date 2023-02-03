@@ -276,7 +276,7 @@ public class DynamicJdbcIO {
 
       abstract Builder setPassword(String password);
 
-      abstract Builder setConnectionProperties(String connectionProperties);
+      abstract Builder setConnectionProperties(@Nullable String connectionProperties);
 
       abstract Builder setDriverJars(String jars);
 
@@ -306,8 +306,8 @@ public class DynamicJdbcIO {
       return builder().setDriverJars(driverJars).build();
     }
 
-    public DynamicDataSourceConfiguration withConnectionProperties(String connectionProperties) {
-      checkArgument(connectionProperties != null, "connectionProperties can not be null");
+    public DynamicDataSourceConfiguration withConnectionProperties(
+        @Nullable String connectionProperties) {
       return builder().setConnectionProperties(connectionProperties).build();
     }
 
