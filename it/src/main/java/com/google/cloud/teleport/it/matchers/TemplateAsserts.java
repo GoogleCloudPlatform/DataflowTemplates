@@ -27,6 +27,7 @@ import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.apache.avro.generic.GenericRecord;
 import org.jetbrains.annotations.Nullable;
 
 /** Assert utilities for Template DSL-like tests. */
@@ -77,6 +78,16 @@ public final class TemplateAsserts {
   }
 
   /**
+   * Creates a {@link RecordsSubject} to assert information within a list of records.
+   *
+   * @param records Records in Avro/Parquet {@link GenericRecord} format to use in the comparison.
+   * @return Truth Subject to chain assertions.
+   */
+  public static RecordsSubject assertThatGenericRecords(List<GenericRecord> records) {
+    return assertThatRecords(genericRecordToRecords(records));
+  }
+
+  /**
    * Creates a {@link ArtifactsSubject} to assert information within a list of artifacts obtained
    * from Cloud Storage.
    *
@@ -117,6 +128,27 @@ public final class TemplateAsserts {
       return records;
     } catch (Exception e) {
       throw new RuntimeException("Error converting TableResult to Records", e);
+    }
+  }
+
+  /**
+   * Convert Avro {@link GenericRecord} to a list of maps.
+   *
+   * @param avroRecords Avro Records to parse
+   * @return List of maps to use in {@link RecordsSubject}
+   */
+  private static List<Map<String, Object>> genericRecordToRecords(List<GenericRecord> avroRecords) {
+    try {
+      List<Map<String, Object>> records = new ArrayList<>();
+
+      for (GenericRecord row : avroRecords) {
+        Map<String, Object> converted = objectMapper.readValue(row.toString(), recordTypeReference);
+        records.add(converted);
+      }
+
+      return records;
+    } catch (Exception e) {
+      throw new RuntimeException("Error converting Avro Record to Map", e);
     }
   }
 }

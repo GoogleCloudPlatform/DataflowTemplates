@@ -55,7 +55,17 @@ public interface ArtifactClient {
    *
    * @param artifactName the name of the artifact. If this is supposed to go under an input/output
    *     directory, then it should include that (example: input/artifact.txt)
-   * @param contents the contents of the artifact
+   * @param contents the contents of the artifact in String format
+   * @return a representation of the created artifact
+   */
+  Artifact createArtifact(String artifactName, String contents);
+
+  /**
+   * Creates a new artifact in whatever service is being used to store them.
+   *
+   * @param artifactName the name of the artifact. If this is supposed to go under an input/output
+   *     directory, then it should include that (example: input/artifact.txt)
+   * @param contents the contents of the artifact in byte array format
    * @return a representation of the created artifact
    */
   Artifact createArtifact(String artifactName, byte[] contents);
