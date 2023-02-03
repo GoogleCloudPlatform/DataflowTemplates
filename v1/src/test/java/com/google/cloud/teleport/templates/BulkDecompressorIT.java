@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.templates;
 
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifact;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
@@ -45,16 +46,19 @@ public final class BulkDecompressorIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException, URISyntaxException {
     artifactClient.uploadArtifact(
-        "input/compress.txt.gz",
-        Resources.getResource("BulkCompressorIT/compress.txt.gz").getPath());
+        "input/lipsum_gz.txt.gz",
+        Resources.getResource("BulkCompressorIT/lipsum.txt.gz").getPath());
+    artifactClient.uploadArtifact(
+        "input/lipsum_bz.txt.bz2",
+        Resources.getResource("BulkCompressorIT/lipsum.txt.bz2").getPath());
   }
 
   @Test
-  public void testDecompressGzip() throws IOException {
+  public void testDecompress() throws IOException {
     // Arrange
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("inputFilePattern", getGcsPath("input") + "/*.txt.gz")
+            .addParameter("inputFilePattern", getGcsPath("input") + "/*")
             .addParameter("outputDirectory", getGcsPath("output"))
             .addParameter("outputFailureFile", getGcsPath("output-failure"));
 
@@ -67,11 +71,15 @@ public final class BulkDecompressorIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
+    // Two files are expected, one for each input (gzip, bz2)
     List<Artifact> artifacts =
-        artifactClient.listArtifacts("output/", Pattern.compile(".*compress.*"));
-    assertThat(artifacts).hasSize(1);
-    assertThat(artifacts.get(0).contents())
-        .isEqualTo(
-            Resources.getResource("BulkCompressorIT/compress.txt").openStream().readAllBytes());
+        artifactClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
+    assertThat(artifacts).hasSize(2);
+
+    // However, they both have the same hash (based on the same text file)
+    assertThatArtifact(artifacts.get(0))
+        .hasHash("5ae59143e1ec5446e88b0386115c95e03a632f02d96c21a76179fa1110257cfb");
+    assertThatArtifact(artifacts.get(1))
+        .hasHash("5ae59143e1ec5446e88b0386115c95e03a632f02d96c21a76179fa1110257cfb");
   }
 }

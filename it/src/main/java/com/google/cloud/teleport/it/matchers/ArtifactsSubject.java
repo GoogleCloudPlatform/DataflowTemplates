@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.it.matchers;
 
+import static com.google.common.hash.Hashing.sha256;
+
 import com.google.cloud.teleport.it.artifacts.Artifact;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
@@ -60,6 +62,18 @@ public final class ArtifactsSubject extends Subject {
   public void hasContent(String content) {
     if (!actual.stream().anyMatch(artifact -> new String(artifact.contents()).contains(content))) {
       failWithActual("expected to contain", content);
+    }
+  }
+
+  /**
+   * Check if any of the artifacts have a specific content hash (using SHA-256).
+   *
+   * @param hash Content to search for
+   */
+  public void hasHash(String hash) {
+    if (!actual.stream()
+        .anyMatch(artifact -> sha256().hashBytes(artifact.contents()).toString().equals(hash))) {
+      failWithActual("expected to contain hash", hash);
     }
   }
 }

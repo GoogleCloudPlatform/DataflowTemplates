@@ -88,6 +88,17 @@ public final class TemplateAsserts {
   }
 
   /**
+   * Creates a {@link ArtifactsSubject} to assert information for an artifact obtained from Cloud
+   * Storage.
+   *
+   * @param artifact Artifact to use in the comparisons.
+   * @return Truth Subject to chain assertions.
+   */
+  public static ArtifactsSubject assertThatArtifact(@Nullable Artifact artifact) {
+    return assertAbout(ArtifactsSubject.records()).that(List.of(artifact));
+  }
+
+  /**
    * Convert BigQuery {@link TableResult} to a list of maps.
    *
    * @param tableResult Table Result to parse

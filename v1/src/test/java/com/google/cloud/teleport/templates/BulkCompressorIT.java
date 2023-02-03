@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.templates;
 
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifacts;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
@@ -46,18 +47,29 @@ public final class BulkCompressorIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException, URISyntaxException {
     artifactClient.uploadArtifact(
-        "input/compress.txt", Resources.getResource("BulkCompressorIT/compress.txt").getPath());
+        "input/lipsum.txt", Resources.getResource("BulkCompressorIT/lipsum.txt").getPath());
   }
 
   @Test
   public void testCompressGzip() throws IOException {
+    baseCompress(
+        Compression.GZIP, "81f7b7afd932b4754caaa9ba6ced7a8bcb2cbfec6857cf823e4d112125c6e939");
+  }
+
+  @Test
+  public void testCompressBzip2() throws IOException {
+    baseCompress(
+        Compression.BZIP2, "70d04e7576b6e02cbaff137be03fe70f18ea6646c7bef8198a1d68272d6183ae");
+  }
+
+  public void baseCompress(Compression compression, String expectedSha256) throws IOException {
     // Arrange
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("inputFilePattern", getGcsPath("input") + "/*.txt")
             .addParameter("outputDirectory", getGcsPath("output"))
             .addParameter("outputFailureFile", getGcsPath("output-failure"))
-            .addParameter("compression", Compression.GZIP.name());
+            .addParameter("compression", compression.name());
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -69,10 +81,8 @@ public final class BulkCompressorIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     List<Artifact> artifacts =
-        artifactClient.listArtifacts("output/", Pattern.compile(".*compress.*"));
+        artifactClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
     assertThat(artifacts).hasSize(1);
-    assertThat(artifacts.get(0).contents())
-        .isEqualTo(
-            Resources.getResource("BulkCompressorIT/compress.txt.gz").openStream().readAllBytes());
+    assertThatArtifacts(artifacts).hasHash(expectedSha256);
   }
 }
