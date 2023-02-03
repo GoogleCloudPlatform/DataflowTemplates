@@ -18,16 +18,20 @@ package com.google.cloud.syndeo.it;
 import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.INTEGRATION_TEST_SCHEMA;
 import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.generateBaseRootConfiguration;
 import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.generateRow;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.auth.Credentials;
+import com.google.cloud.syndeo.SyndeoTemplate;
+import com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest;
+import com.google.cloud.teleport.it.PipelineUtils;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowUtils;
 import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher;
+import com.google.cloud.teleport.it.launcher.PipelineOperator;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
@@ -61,7 +65,6 @@ import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore
 @RunWith(JUnit4.class)
 public class KafkaToBigQueryIT {
   @Rule public final TestName testName = new TestName();
@@ -95,7 +98,39 @@ public class KafkaToBigQueryIT {
   public void setUp() {
     bigQueryResourceManager =
         DefaultBigQueryResourceManager.builder("kafka-bq-test", PROJECT).build();
-    bigQueryResourceManager.createDataset(BIGQUERY_DATASET);
+    bigQueryResourceManager.createDataset(REGION);
+  }
+
+  @Test
+  public void testErrorOnCreateNeverIfTableNotExisting() throws Exception {
+    String tableName =
+        String.format("%s.%s.NONEXISTENT_TABLE", PROJECT, bigQueryResourceManager.getDatasetId());
+    JsonNode rootConfig =
+        KafkaToBigQueryLocalTest.generateConfigurationWithKafkaBootstrap(
+            KAFKA_BOOTSTRAP_SERVER, tableName);
+    ((ObjectNode) rootConfig.get("sink").get("configurationParameters"))
+        .put("createDisposition", "CREATE_NEVER");
+    RuntimeException e =
+        assertThrows(
+            RuntimeException.class,
+            () -> {
+              PipelineResult result =
+                  SyndeoTemplate.run(
+                      new String[] {
+                        "--jsonSpecPayload=" + rootConfig,
+                        "--streaming",
+                        "--experiments=use_deprecated_read",
+                        // We need to set this option because otherwise the pipeline will block on
+                        // p.run() and
+                        // never
+                        // reach Thread.sleep (and never be cancelled).
+                        "--blockOnRun=false"
+                      });
+              result.cancel();
+            });
+    assertTrue(
+        "Error message contains missing table name. ",
+        e.getMessage().contains("NONEXISTENT_TABLE"));
   }
 
   @After
@@ -103,12 +138,13 @@ public class KafkaToBigQueryIT {
     bigQueryResourceManager.cleanupAll();
   }
 
+  @Ignore
   @Test
   public void testOnlyWriteDataToKafka() throws Exception {
     // Make sure that Kafka Server exists
     // Start data generation pipeline
     PipelineResult dataGeneratorPipeline = kickstartDataGeneration();
-    if (!DataflowUtils.waitUntilState(
+    if (!PipelineUtils.waitUntilState(
         dataGeneratorPipeline, PipelineResult.State.RUNNING, SIX_MINUTES_MILLIS)) {
       dataGeneratorPipeline.cancel();
       throw new RuntimeException(
@@ -116,12 +152,13 @@ public class KafkaToBigQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void testKickOffKafkaToBigQuerySyndeoPipeline() throws Exception {
     // Make sure that Kafka Server exists
     // Start data generation pipeline
     PipelineResult dataGeneratorPipeline = kickstartDataGeneration();
-    if (!DataflowUtils.waitUntilState(
+    if (!PipelineUtils.waitUntilState(
         dataGeneratorPipeline, PipelineResult.State.RUNNING, SIX_MINUTES_MILLIS)) {
       dataGeneratorPipeline.cancel();
       throw new RuntimeException(
@@ -131,13 +168,13 @@ public class KafkaToBigQueryIT {
     // Start syndeo pipeline.
     FlexTemplateClient templateClient =
         FlexTemplateClient.builder().setCredentials(CREDENTIALS).build();
-    DataflowOperator operator = new DataflowOperator(templateClient);
+    PipelineOperator operator = new PipelineOperator(templateClient);
     {
-      DataflowClient.JobInfo syndeoPipeline = kickstartSyndeoPipeline();
+      PipelineLauncher.LaunchInfo syndeoPipeline = kickstartSyndeoPipeline();
 
       // Wait for two minutes while the pipeline executes, and then drain it.
       operator.waitUntilDoneAndFinish(
-          DataflowOperator.Config.builder()
+          PipelineOperator.Config.builder()
               .setProject(PROJECT)
               .setRegion(REGION)
               .setJobId(syndeoPipeline.jobId())
@@ -146,7 +183,7 @@ public class KafkaToBigQueryIT {
     }
 
     // Start a new syndeo pipeline. We do this to test for appropriate behavior on restarts
-    DataflowClient.JobInfo syndeoPipeline = kickstartSyndeoPipeline();
+    PipelineLauncher.LaunchInfo syndeoPipeline = kickstartSyndeoPipeline();
 
     // Sleep while the pipeline runs to move all the data.
     Thread.sleep(3 * ONE_MINUTE_MILLIS);
@@ -186,7 +223,7 @@ public class KafkaToBigQueryIT {
 
     // Wait three minutes while the pipeline drains
     operator.drainJobAndFinish(
-        DataflowOperator.Config.builder()
+        PipelineOperator.Config.builder()
             .setProject(PROJECT)
             .setRegion(REGION)
             .setJobId(syndeoPipeline.jobId())
@@ -214,7 +251,7 @@ public class KafkaToBigQueryIT {
     }
   }
 
-  DataflowClient.JobInfo kickstartSyndeoPipeline() throws Exception {
+  PipelineLauncher.LaunchInfo kickstartSyndeoPipeline() throws Exception {
     JsonNode templateConfiguration = generateBaseRootConfiguration(null);
 
     ObjectNode sourceProps =
@@ -230,14 +267,14 @@ public class KafkaToBigQueryIT {
     sinkProps.put("useTestingBigQueryServices", false);
     String jobName = "syndeo-job-" + UUID.randomUUID();
 
-    DataflowClient.LaunchConfig options =
-        DataflowClient.LaunchConfig.builder(jobName, SPEC_PATH)
+    PipelineLauncher.LaunchConfig options =
+        PipelineLauncher.LaunchConfig.builder(jobName, SPEC_PATH)
             .addParameter("jsonSpecPayload", templateConfiguration.toString())
             .addParameter(
                 "experiments", "enable_streaming_engine,enable_streaming_auto_sharding=true")
             .build();
 
-    DataflowClient.JobInfo actual =
+    PipelineLauncher.LaunchInfo actual =
         FlexTemplateClient.builder()
             .setCredentials(CREDENTIALS)
             .build()

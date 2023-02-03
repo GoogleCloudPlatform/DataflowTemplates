@@ -15,21 +15,24 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
+import static com.google.cloud.teleport.it.TemplateTestBase.toTableSpec;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.DataGenerator;
 import com.google.cloud.teleport.it.PerformanceBenchmarkingBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -99,7 +102,7 @@ public class PubsubToBigQueryPerformanceIT extends PerformanceBenchmarkingBase {
             Field.of("quest", StandardSQLTypeName.STRING),
             Field.of("score", StandardSQLTypeName.INT64),
             Field.of("completed", StandardSQLTypeName.BOOL));
-    bigQueryResourceManager.createTable(jobName, schema);
+    TableId table = bigQueryResourceManager.createTable(jobName, schema);
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("1000000")
@@ -112,20 +115,19 @@ public class PubsubToBigQueryPerformanceIT extends PerformanceBenchmarkingBase {
     LaunchConfig options =
         LaunchConfig.builder(jobName, SPEC_PATH)
             .addParameter("inputSubscription", backlogSubscription.toString())
-            .addParameter(
-                "outputTableSpec",
-                String.format("%s:%s.%s", PROJECT, bigQueryResourceManager.getDatasetId(), jobName))
+            .addParameter("outputTableSpec", toTableSpec(table))
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
     Result result =
-        dataflowOperator.waitForConditionAndFinish(
+        pipelineOperator.waitForConditionAndFinish(
             createConfig(info, Duration.ofMinutes(40)),
             () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, numMessages));
+
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
     assertThat(bigQueryResourceManager.readTable(jobName).getTotalRows()).isGreaterThan(0);
 
     // export results
@@ -151,8 +153,9 @@ public class PubsubToBigQueryPerformanceIT extends PerformanceBenchmarkingBase {
             Field.of("quest", StandardSQLTypeName.STRING),
             Field.of("score", StandardSQLTypeName.INT64),
             Field.of("completed", StandardSQLTypeName.BOOL));
-    bigQueryResourceManager.createTable(
-        jobName, schema, System.currentTimeMillis() + 7200000); // expire in 2 hrs
+    TableId table =
+        bigQueryResourceManager.createTable(
+            jobName, schema, System.currentTimeMillis() + 7200000); // expire in 2 hrs
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("100000")
@@ -163,26 +166,24 @@ public class PubsubToBigQueryPerformanceIT extends PerformanceBenchmarkingBase {
     LaunchConfig options =
         LaunchConfig.builder(jobName, SPEC_PATH)
             .addParameter("inputSubscription", inputSubscription.toString())
-            .addParameter(
-                "outputTableSpec",
-                String.format("%s:%s.%s", PROJECT, bigQueryResourceManager.getDatasetId(), jobName))
+            .addParameter("outputTableSpec", toTableSpec(table))
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
     dataGenerator.execute(Duration.ofMinutes(60));
     // Validate that the template executed as expected
-    Result result = dataflowOperator.drainJobAndFinish(createConfig(info, Duration.ofMinutes(20)));
+    Result result = pipelineOperator.drainJobAndFinish(createConfig(info, Duration.ofMinutes(20)));
     // Assert
-    assertThat(result).isEqualTo(Result.JOB_FINISHED);
+    assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
     assertThat(bigQueryResourceManager.readTable(jobName, 5).getTotalRows()).isGreaterThan(0);
 
     // export results
     exportMetricsToBigQuery(info, computeMetrics(info));
   }
 
-  private Map<String, Double> computeMetrics(JobInfo info)
+  private Map<String, Double> computeMetrics(LaunchInfo info)
       throws ParseException, IOException, InterruptedException {
     Map<String, Double> metrics = getMetrics(info, INPUT_PCOLLECTION);
     Map<String, Double> outputThroughput =

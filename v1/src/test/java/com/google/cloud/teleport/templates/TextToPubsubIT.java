@@ -16,15 +16,14 @@
 package com.google.cloud.teleport.templates;
 
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -66,24 +65,26 @@ public class TextToPubsubIT extends TemplateTestBase {
   @Test
   public void testTextToTopic() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
     TopicName outputTopic = pubsubResourceManager.createTopic("topic");
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
     List<String> expectedArtifacts =
-        List.of("message1-" + jobName, "message2-" + jobName, "message3-" + jobName);
+        List.of(
+            "message1-" + testName.getMethodName(),
+            "message2-" + testName.getMethodName(),
+            "message3-" + testName.getMethodName());
     createArtifacts(expectedArtifacts);
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter("inputFilePattern", getInputFilePattern())
             .addParameter("outputTopic", outputTopic.toString());
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
     List<String> records = new ArrayList<>();
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForCondition(
                 createConfig(info),
                 () -> {
@@ -99,8 +100,8 @@ public class TextToPubsubIT extends TemplateTestBase {
                   }
                   return records.size() >= expectedArtifacts.size();
                 });
-    // TODO: Replace this check by truth subjects (like assertThatArtifacts(), assertThatRecords())
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+
+    assertThatResult(result).meetsConditions();
     assertThat(records).containsAtLeastElementsIn(expectedArtifacts);
   }
 

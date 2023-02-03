@@ -22,12 +22,12 @@
 function transform(line) {
   try {
     var split = line.split(",");
-      var obj = new Object();
-      obj.id = split[0];
-      obj.state = split[1];
-      obj.price = parseFloat(split[2]);
-      var jsonString = JSON.stringify(obj);
-      return jsonString;
+    var obj = new Object();
+    obj.id = split[0];
+    obj.state = split[1];
+    obj.price = parseFloat(split[2]);
+    var jsonString = JSON.stringify(obj);
+    return jsonString;
 
   } catch (e) {
     return false;

@@ -398,6 +398,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
     private transient LocalSpannerAccessor spannerAccessor;
+    private static final Logger LOG = LoggerFactory.getLogger(CreateTables.class);
 
     /* If the schema has a lot of DDL changes after dataload, its preferable to create
      * them before dataload. This provides the threshold for the early creation.
@@ -556,7 +557,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 newDdl.createChangeStreamStatements());
                           }
                           c.output(pendingChangeStreamsTag, createChangeStreamStatements);
-
+                          LOG.info(
+                              "Applying DDL statements for tables and views: {}", ddlStatements);
                           if (!ddlStatements.isEmpty()) {
                             DatabaseAdminClient databaseAdminClient =
                                 spannerAccessor.getDatabaseAdminClient();

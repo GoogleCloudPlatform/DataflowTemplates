@@ -18,8 +18,7 @@ their functionality.
 As of November 18, 2021, our default branch is now named "main". This does not
 affect forks. If you would like your fork and its local clone to reflect these
 changes you can
-follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch)
-.
+follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch).
 
 ## Building
 
@@ -65,8 +64,7 @@ mvn clean package -pl v2/pubsub-binary-to-bigquery -am
 \* Supports user-defined functions (UDFs).
 
 For documentation on each template's usage and parameters, please see the
-official [docs](https://cloud.google.com/dataflow/docs/templates/provided-templates)
-.
+official [docs](https://cloud.google.com/dataflow/docs/templates/provided-templates).
 
 ## Getting Started
 
@@ -111,43 +109,107 @@ formatted correctly, run:
 mvn spotless:check
 ```
 
-The directory to run the commands from is based on whether the changes are under
-v2/ or not.
-
-### Creating a Template File
-
-Dataflow templates can
-be [created](https://cloud.google.com/dataflow/docs/templates/creating-templates#creating-and-staging-templates)
-using a Maven command which builds the project and stages the template file on
-Google Cloud Storage. Any parameters passed at template build time will not be
-able to be overwritten at execution time.
-
-```sh
-mvn compile exec:java \
--Dexec.mainClass=com.google.cloud.teleport.templates.<template-class> \
--Dexec.cleanupDaemonThreads=false \
--Dexec.args=" \
---project=<project-id> \
---stagingLocation=gs://<bucket-name>/staging \
---tempLocation=gs://<bucket-name>/temp \
---templateLocation=gs://<bucket-name>/templates/<template-name>.json \
---runner=DataflowRunner"
-```
-
 ### Executing a Template File
 
 Once the template is staged on Google Cloud Storage, it can then be executed
 using the
-[gcloud CLI](https://cloud.google.com/sdk/gcloud/reference/dataflow/jobs/run)
-tool. The runtime parameters required by the template can be passed in the
-parameters field via comma-separated list of `paramName=Value`.
+gcloud CLI tool. Please check [Running classic templates](https://cloud.google.com/dataflow/docs/guides/templates/running-templates#using-gcloud)
+or [Using Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates#run-a-flex-template-pipeline)
+for more information.
 
-```sh
-gcloud dataflow jobs run <job-name> \
---gcs-location=<template-location> \
---zone=<zone> \
---parameters <parameters>
+## Developing/Contributing Templates
+
+### Templates Plugin
+
+Templates plugin was created to make the workflow of creating, testing and
+releasing Templates easier.
+
+Before using the plugin, please make sure that
+the [gcloud CLI](https://cloud.google.com/sdk/docs/install) is installed and
+up-to-date, and that the client is properly authenticated using:
+
+```shell
+gcloud init
+gcloud auth application-default login
 ```
+
+After authenticated, install the plugin into your local repository:
+
+```shell
+mvn clean install -pl plugins/templates-maven-plugin -am
+```
+
+### Staging (Deploying) Templates
+
+To stage a Template, it is necessary to upload the images to Artifact
+Registry (for Flex templates) and copy the template to Cloud Storage.
+
+Although there are different steps that depend on the kind of template being
+developed. The plugin allows a template to be staged using the following single
+command:
+
+```shell
+mvn clean package -PtemplatesStage  \
+  -DskipTests \
+  -DprojectId="{projectId}" \
+  -DbucketName="{bucketName}" \
+  -DstagePrefix="images/$(date +%Y_%m_%d)_01" \
+  -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
+  -pl v2/googlecloud-to-googlecloud -am
+```
+
+Notes:
+- Change `-pl v2/googlecloud-to-googlecloud` and `-DtemplateName` to point to the specific Maven module where your template is located. Even though `-pl` is not required, it allows the command to run considerably faster.
+- In case `-DtemplateName` is not specified, all templates for the module will be staged.
+
+### Running a Template
+
+A template can also be executed on Dataflow, directly from the command line. The
+command-line is similar to staging a template, but it is required to
+specify `-Dparameters` with the parameters that will be used when launching the
+template. For example:
+
+```shell
+mvn clean package -PtemplatesRun \
+  -DskipTests \
+  -DprojectId="{projectId}" \
+  -DbucketName="{bucketName}" \
+  -Dregion="us-central1" \
+  -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
+  -Dparameters="inputTopic=projects/{projectId}/topics/{topicName},windowDuration=15s,outputDirectory=gs://{outputDirectory}/out,outputFilenamePrefix=output-,outputFilenameSuffix=.txt" \
+  -pl v2/googlecloud-to-googlecloud -am
+
+```
+
+Notes:
+- When running a template, `-DtemplateName` is mandatory, as `-Dparameters=` are
+  different across templates.
+- `-PtemplatesRun` is self-contained, i.e., it is not required to run **
+  Deploying/Staging Templates** before. In case you want to run a previously
+  staged template, the existing path can be provided
+  as `-DspecPath=gs://.../path`
+- `-DjobName="{name}"` may be informed if a specific name is desirable (
+  optional).
+
+
+### Running Integration Tests
+
+To run integration tests, the developer plugin can be also used to stage template on-demand (in case the parameter `-DspecPath=` is not specified).
+
+For example, to run all the integration tests in a specific module (in the example below, `v2/googlecloud-to-googlecloud`):
+
+```shell
+mvn clean verify \
+  -PtemplatesIntegrationTests \
+  -Dproject="{project}" \
+  -DartifactBucket="{bucketName}" \
+  -Dregion=us-central1 \
+  -pl v2/googlecloud-to-googlecloud -am
+```
+
+The parameter `-Dtest=` can be given to test a single class (e.g., `-Dtest=PubsubToTextIT`) or single test case (e.g., `-Dtest=PubsubToTextIT#testTopicToGcs`).
+
+The same happens when the test is executed from an IDE, just make sure to add the parameters `-Dproject=`, `-DartifactBucket=` and `-Dregion=` as program or VM arguments.
 
 ## Metadata Annotations
 
@@ -160,7 +222,7 @@ We introduced annotations to have the source code as a single source of truth,
 along with a set of utilities / plugins to generate template-accompanying
 artifacts (such as command specs, parameter specs).
 
-### @Template Annotation
+#### @Template Annotation
 
 Every template must be annotated with `@Template`. Existing templates can be
 used for reference, but the structure is as follows:
@@ -177,7 +239,7 @@ used for reference, but the structure is as follows:
 public class BigQueryToElasticsearch {
 ```
 
-### @TemplateParameter Annotation
+#### @TemplateParameter Annotation
 
 A set of `@TemplateParameter.{Type}` annotations were created to allow the
 definition of options for a template, and the proper rendering in the UI, and
@@ -229,7 +291,7 @@ BulkInsertMethodOptions getBulkInsertMethod();
 Note: `order` is relevant for templates that can be used from the UI, and
 specify the relative order of parameters.
 
-### @TemplateIntegrationTest Annotation
+#### @TemplateIntegrationTest Annotation
 
 This annotation should be used by classes that are used for integration tests of
 other templates. This is used to wire a specific `IT` class with a template, and
@@ -247,152 +309,7 @@ super-class):
 public final class PubsubToTextIT extends TemplateTestBase {
 ```
 
-Please refer to `Templates Plugin (Beta)` to use and validate such annotations.
-
-## Templates Plugin (Beta)
-
-Templates plugin was created to make the workflow of creating, testing and
-releasing Templates much simpler.
-
-Before using the plugin, please make sure that
-the [gcloud CLI](https://cloud.google.com/sdk/docs/install) is installed and
-up-to-date, and that the client is properly authenticated using:
-
-```shell
-gcloud init
-gcloud auth application-default login
-```
-
-After authenticated, install the plugin into your local repository:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
-
-### Deploying/Staging Templates
-
-To deploy a Template, it is necessary to upload the images to Artifact
-Registry (for Flex templates) and copy the template to Cloud Storage.
-
-Although there are different steps that depend on the kind of template being
-developed. The plugin allows a template to be staged using the following single
-command:
-
-```shell
-mvn clean package -PtemplatesStage  \
-  -DskipTests \
-  -DprojectId="{projectId}" \
-  -DbucketName="{bucketName}" \
-  -DstagePrefix="images/$(date +%Y_%m_%d)_v1" \
-  -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
-  -pl v2/googlecloud-to-googlecloud -am
-```
-
-**Note**: if `-DtemplateName` is not specified, all templates for the module
-will be staged.
-
-### Running a Template
-
-A template can also be executed on Dataflow, directly from the command line. The
-command-line is similar to staging a template, but it is required to
-specify `-Dparameters` with the parameters that will be used when launching the
-template. For example:
-
-```shell
-mvn clean package -PtemplatesRun \
-  -DskipTests \
-  -DprojectId="{projectId}" \
-  -DbucketName="{bucketName}" \
-  -Dregion="us-central1" \
-  -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
-  -Dparameters="inputTopic=projects/{projectId}/topics/{topicName},windowDuration=15s,outputDirectory=gs://{outputDirectory}/out,outputFilenamePrefix=output-,outputFilenameSuffix=.txt" \
-  -pl v2/googlecloud-to-googlecloud -am
-
-```
-
-**Notes**
-
-- When running a template, `-DtemplateName` is mandatory, as `-Dparameters=` are
-  different across templates.
-- `-PtemplatesRun` is self-contained, i.e., it is not required to run **
-  Deploying/Staging Templates** before. In case you want to run a previously
-  staged template, the existing path can be provided
-  as `-DspecPath=gs://.../path`
-- `-DjobName="{name}"` may be informed if a specific name is desirable (
-  optional).
-
-
-### Running Integration Tests
-
-To run integration tests, the developer plugin can be also used to stage template on-demand (in case the parameter `-DspecPath=` is not specified).
-
-For example, to run all the integration tests in a specific module (in the example below, `v2/googlecloud-to-googlecloud`):
-
-```shell
-mvn clean verify \
-  -PtemplatesIntegrationTests \
-  -Dproject="{project}" \
-  -DartifactBucket="{bucketName}" \
-  -Dregion=us-central1 \
-  -pl v2/googlecloud-to-googlecloud -am
-```
-
-The parameter `-Dtest=` can be given to test a single class (e.g., `-Dtest=PubsubToTextIT`) or single test case (e.g., `-Dtest=PubsubToTextIT#testTopicToGcs`).
-
-The same happens when the test is executed from an IDE, just make sure to add the parameters `-Dproject=`, `-DartifactBucket=` and `-Dregion=` as program or VM arguments.
-
-### Validating annotations
-
-To simply validate the templates in the current context without building the
-images or running, the profile `-PtemplatesValidate` can be activated on Maven
-commands. For example, use the following commands:
-
-Validate in all modules:
-
-```shell
-mvn clean compile -PtemplatesValidate
-```
-
-Validate in a specific module (for example, `v2/googlecloud-to-googlecloud)`:
-
-```shell
-mvn clean compile \
-  -PtemplatesValidate \
-  -pl v2/googlecloud-to-googlecloud -am
-```
-
-### Generating Specs
-
-Specs are useful to visualize the resulting metadata after writing a template,
-as those are the artifacts that are read by Dataflow when starting a job from a
-template.
-
-The spec files can be generated by using `-PtemplatesSpec`. For example:
-
-```shell
-mvn clean package \
-  -PtemplatesSpec \
-  -DskipTests \
-  -pl v2/googlecloud-to-googlecloud -am
-```
-
-Specs are generated in the folder `target`, with the
-name `{template}-spec-generated-metadata.json`. Please verify if all parameters
-are listed correctly, following the desired order that is intended on the
-templates UI.
-
-### Releasing Templates
-
-There's a specific command to release all Templates, which is a shortcut to
-create specs and stage templates, with additional validations.
-
-```shell
-mvn clean package -PtemplatesRelease  \
-  -DprojectId="{projectId}" \
-  -DbucketName="{bucketName}" \
-  -DlibrariesBucketName="{bucketName}-libraries" \
-  -DstagePrefix="$(date +%Y_%m_%d)-00_RC00"
-```
+Please refer to `Templates Plugin` to use and validate such annotations.
 
 ## Using UDFs
 
@@ -421,6 +338,8 @@ output.
 | Pub/Sub to Splunk  | String         | A string representation of the incoming payload | String          | The event data to be sent to Splunk HEC events endpoint. Must be a string or a stringified JSON object |
 
 ### UDF Examples
+
+For a comprehensive list of samples, please check our [udf-samples](v2/common/src/main/resources/udf-samples) folder.
 
 #### Adding fields
 
@@ -453,4 +372,22 @@ function transform(inJson) {
     return JSON.stringify(obj);
   }
 }
+```
+
+## Release Process
+
+Templates are released in a weekly basis (best-effort) as part of the efforts to
+keep [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates) updated with latest fixes and improvements.
+
+In case desired, you can stage and use your own changes using the `Staging (Deploying) Templates` steps.
+
+To execute the release of multiple templates, we provide a single Maven command to release Templates, which is a shortcut to
+stage all templates while running additional validations.
+
+```shell
+mvn clean package -PtemplatesRelease  \
+  -DprojectId="{projectId}" \
+  -DbucketName="{bucketName}" \
+  -DlibrariesBucketName="{bucketName}-libraries" \
+  -DstagePrefix="$(date +%Y_%m_%d)-00_RC00"
 ```

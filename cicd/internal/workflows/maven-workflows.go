@@ -170,7 +170,7 @@ func RunForChangedModules(cmd string, args ...string) error {
 	// other modules.
 	build_syndeo := false
 	for root, children := range repo.GetModulesForPaths(changed) {
-		if root == "syndeo-template" && len(children) > 0 {
+		if root == "syndeo-template" {
 			build_syndeo = true
 		}
 		if len(children) == 0 {
@@ -208,6 +208,8 @@ func RunForChangedModules(cmd string, args ...string) error {
 
 	if !build_syndeo {
 		args = append(args, "-P-oss-build")
+	} else {
+		args = append(args, "-Poss-build")
 	}
 
 	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), args...)

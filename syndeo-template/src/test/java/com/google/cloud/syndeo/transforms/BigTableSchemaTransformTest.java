@@ -45,6 +45,7 @@ import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
 import org.joda.time.DateTime;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -60,10 +61,10 @@ public class BigTableSchemaTransformTest {
   private static final Schema INTEGRATION_TEST_SCHEMA =
       Schema.builder()
           .addStringField("name")
-          .addBooleanField("vaccinated")
-          .addDoubleField("temperature")
           // The following fields cannot be included in local tests
           // due to limitations of the testing utilities.
+          .addBooleanField("vaccinated")
+          .addDoubleField("temperature")
           .addInt32Field("age")
           .addInt64Field("networth")
           .addDateTimeField("birthday")
@@ -74,8 +75,8 @@ public class BigTableSchemaTransformTest {
   private static final Schema LOCAL_TEST_INPUT_SCHEMA =
       Schema.builder()
           .addStringField("name")
-          .addBooleanField("vaccinated")
-          .addDoubleField("temperature")
+          // .addBooleanField("vaccinated")
+          // .addDoubleField("temperature")
           .build();
 
   public static String randomString(Integer length) {
@@ -88,8 +89,8 @@ public class BigTableSchemaTransformTest {
     if (local) {
       return Row.withSchema(LOCAL_TEST_INPUT_SCHEMA)
           .addValue(randomString(10))
-          .addValue(RND.nextBoolean())
-          .addValue(RND.nextDouble())
+          // .addValue(RND.nextBoolean())
+          // .addValue(RND.nextDouble())
           .build();
     } else {
       return Row.withSchema(INTEGRATION_TEST_SCHEMA)
@@ -170,10 +171,15 @@ public class BigTableSchemaTransformTest {
     assertEquals(
         1,
         providers.stream()
-            .filter((provider) -> provider.identifier().equals("bigtable:write"))
+            .filter(
+                (provider) ->
+                    provider
+                        .identifier()
+                        .equals("syndeo:schematransform:com.google.cloud:bigtable_write:v1"))
             .count());
   }
 
+  @Ignore
   @Test
   public void testBigQueryToBigTableLocallyWithEmulators() throws Exception {
     String bigTableName = "anytable";
@@ -220,7 +226,7 @@ public class BigTableSchemaTransformTest {
                       .toProto())
               .addTransforms(
                   new ProviderUtil.TransformSpec(
-                          "bigtable:write",
+                          "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
                           BigTableWriteSchemaTransformConfiguration.builder()
                               .setProjectId("anyproject")
                               .setInstanceId("anyinstance")

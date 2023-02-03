@@ -52,7 +52,7 @@ public class BigTableIOWriteSchemaBasedTransform
 
   private static final Logger LOG =
       LoggerFactory.getLogger(BigTableIOWriteSchemaBasedTransform.class);
-  private static final String INPUT_TAG = "input";
+  public static final String INPUT_TAG = "input";
 
   private final String projectId;
   private final String instanceId;
@@ -169,9 +169,8 @@ public class BigTableIOWriteSchemaBasedTransform
               }
             });
 
-    verifyTableSchemaMatches(inputData.getSchema());
-    // Create table if needed will not succeed for now. We want expand to be idempotent.
     createTableIfNeeded(inputData.getSchema());
+    verifyTableSchemaMatches(inputData.getSchema());
 
     // STEP 1: Select the key columns from the input Rows
     final Schema keySchema =
@@ -205,6 +204,7 @@ public class BigTableIOWriteSchemaBasedTransform
     PCollection<KV<byte[], Row>> byteEncodedKeyedRows =
         keyedRows
             .apply(
+                "encodeKeys",
                 ParDo.of(
                     new DoFn<KV<Row, Row>, KV<byte[], Row>>() {
                       @ProcessElement
@@ -253,6 +253,7 @@ public class BigTableIOWriteSchemaBasedTransform
     // STEP 3: Convert KV<bytes, Row> into KV<ByteString, List<SetCell<...>>>
     PCollection<KV<ByteString, Iterable<Mutation>>> bigtableMutations =
         byteEncodedKeyedRows.apply(
+            "buildMutations",
             ParDo.of(
                 new DoFn<KV<byte[], Row>, KV<ByteString, Iterable<Mutation>>>() {
                   @ProcessElement

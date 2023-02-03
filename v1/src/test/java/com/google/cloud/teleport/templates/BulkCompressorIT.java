@@ -15,16 +15,16 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifacts;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.re2j.Pattern;
@@ -47,35 +47,42 @@ public final class BulkCompressorIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException, URISyntaxException {
     artifactClient.uploadArtifact(
-        "input/compress.txt", Resources.getResource("BulkCompressorIT/compress.txt").getPath());
+        "input/lipsum.txt", Resources.getResource("BulkCompressorIT/lipsum.txt").getPath());
   }
 
   @Test
   public void testCompressGzip() throws IOException {
-    // Arrange
-    String jobName = createJobName(testName.getMethodName());
+    baseCompress(
+        Compression.GZIP, "81f7b7afd932b4754caaa9ba6ced7a8bcb2cbfec6857cf823e4d112125c6e939");
+  }
 
+  @Test
+  public void testCompressBzip2() throws IOException {
+    baseCompress(
+        Compression.BZIP2, "70d04e7576b6e02cbaff137be03fe70f18ea6646c7bef8198a1d68272d6183ae");
+  }
+
+  public void baseCompress(Compression compression, String expectedSha256) throws IOException {
+    // Arrange
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter("inputFilePattern", getGcsPath("input") + "/*.txt")
             .addParameter("outputDirectory", getGcsPath("output"))
             .addParameter("outputFailureFile", getGcsPath("output-failure"))
-            .addParameter("compression", Compression.GZIP.name());
+            .addParameter("compression", compression.name());
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
 
-    Result result = new DataflowOperator(getDataflowClient()).waitUntilDone(createConfig(info));
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     // Assert
-    assertThat(result).isEqualTo(Result.JOB_FINISHED);
+    assertThatResult(result).isLaunchFinished();
 
     List<Artifact> artifacts =
-        artifactClient.listArtifacts("output/", Pattern.compile(".*compress.*"));
+        artifactClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
     assertThat(artifacts).hasSize(1);
-    assertThat(artifacts.get(0).contents())
-        .isEqualTo(
-            Resources.getResource("BulkCompressorIT/compress.txt.gz").openStream().readAllBytes());
+    assertThatArtifacts(artifacts).hasHash(expectedSha256);
   }
 }

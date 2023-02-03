@@ -195,6 +195,7 @@ public class TemplateDefinitions {
     }
 
     Set<String> skipOptionsSet = Set.of(templateAnnotation.skipOptions());
+    Set<String> optionalOptionsSet = Set.of(templateAnnotation.optionalOptions());
     Collections.sort(methodDefinitions);
 
     for (MethodDefinitions method : methodDefinitions) {
@@ -208,7 +209,9 @@ public class TemplateDefinitions {
       if (skipOptionsSet.contains(parameter.getName())) {
         continue;
       }
-
+      if (optionalOptionsSet.contains(parameter.getName())) {
+        parameter.setOptional(true);
+      }
       if (parameterNames.add(parameter.getName())) {
         metadata.getParameters().add(parameter);
       } else {
