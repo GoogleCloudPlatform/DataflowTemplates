@@ -17,6 +17,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <groupId>com.google.cloud.teleport</groupId>
+    <artifactId>templates</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.google.cloud.teleport.metadata</groupId>
@@ -29,13 +34,8 @@
   <url>https://github.com/GoogleCloudPlatform/DataflowTemplates</url>
 
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
-
-    <junit.version>4.13.1</junit.version>
-    <truth.version>1.0.1</truth.version>
-    <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
   </properties>
 
   <dependencies>
@@ -52,47 +52,6 @@
       <version>${junit.version}</version>
     </dependency>
   </dependencies>
-
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>com.diffplug.spotless</groupId>
-        <artifactId>spotless-maven-plugin</artifactId>
-        <version>${spotless-maven-plugin.version}</version>
-        <configuration>
-          <formats>
-            <!-- Avoid trailing whitespace and require ending newline. -->
-            <format>
-              <includes>
-                <include>*.md</include>
-                <include>.gitignore</include>
-              </includes>
-              <trimTrailingWhitespace/>
-              <endWithNewline/>
-            </format>
-          </formats>
-          <java>
-            <toggleOffOn/>
-            <googleJavaFormat>
-              <version>1.8</version>
-              <style>GOOGLE</style>
-            </googleJavaFormat>
-            <licenseHeader>
-              <file>JAVA_LICENSE_HEADER</file>
-            </licenseHeader>
-          </java>
-        </configuration>
-        <!-- Bind to verify. -->
-        <executions>
-          <execution>
-            <goals>
-              <goal>check</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
 
   <profiles>
     <profile>
