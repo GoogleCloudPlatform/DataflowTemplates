@@ -65,6 +65,34 @@ public final class RecordsSubject extends Subject {
   }
 
   /**
+   * Check if the records list matches a specific row (using partial / subset comparison).
+   *
+   * @param subset Expected subset to search in a record.
+   */
+  public void hasRecordSubset(Map<String, Object> subset) {
+
+    Map<String, Object> expected = new TreeMap<>(subset);
+    for (Map<String, Object> candidate : actual) {
+      boolean match = true;
+      for (Map.Entry<String, Object> entry : subset.entrySet()) {
+        if (!candidate.containsKey(entry.getKey())
+            || !candidate.get(entry.getKey()).equals(entry.getValue())) {
+          match = false;
+          break;
+        }
+      }
+
+      if (match) {
+        return;
+      }
+    }
+
+    failWithoutActual(
+        Fact.simpleFact(
+            "expected that contains partial record " + expected + ", but only had " + actual));
+  }
+
+  /**
    * Check if the records list has specific rows, without guarantees of ordering. The way that
    * ordering is taken out of the equation is by converting all records to TreeMap, which guarantee
    * natural key ordering.

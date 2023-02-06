@@ -160,10 +160,13 @@ public final class PipelineOperator {
     Instant start = Instant.now();
 
     LOG.info("Making initial finish check.");
-    if (conditionCheck.get()) {
-      return Result.CONDITION_MET;
+    try {
+      if (conditionCheck.get()) {
+        return Result.CONDITION_MET;
+      }
+    } catch (Exception e) {
+      LOG.warn("Error happened when initially checking for condition: {}", e.getMessage());
     }
-
     LOG.info("Job was not already finished. Starting to wait between requests.");
     while (timeIsLeft(start, config.timeoutAfter())) {
       try {

@@ -135,6 +135,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
+            .addParameter("inputTableSpec", toTableSpec(table))
             .addParameter("query", "SELECT * FROM `" + toTableSpec(table).replace(':', '.') + "`")
             .addParameter("outputDeadletterTable", toTableSpec(table) + "_dlq")
             .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
