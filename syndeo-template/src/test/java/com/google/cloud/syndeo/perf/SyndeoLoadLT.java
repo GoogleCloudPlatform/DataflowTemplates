@@ -157,7 +157,10 @@ public class SyndeoLoadLT {
     PCollectionRowTuple.of(
             "input",
             SyndeoLoadTestUtils.inputData(
-                dataGenerator, testConfig.getNumRows(), testConfig.getDurationMinutes()))
+                dataGenerator,
+                testConfig.getNumRows(),
+                testConfig.getDurationMinutes() * 60L,
+                SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA))
         .apply(
             "beam:schematransform:org.apache.beam:pubsublite_write:v1",
             new PubsubLiteWriteSchemaTransformProvider()
