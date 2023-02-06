@@ -21,10 +21,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.Type.StructField;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.it.artifacts.Artifact;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.generic.GenericRecord;
@@ -70,11 +74,21 @@ public final class TemplateAsserts {
   /**
    * Creates a {@link RecordsSubject} to assert information within a list of records.
    *
-   * @param tableResult Records in BigQuery TableResult format to use in the comparison.
+   * @param tableResult Records in BigQuery {@link TableResult} format to use in the comparison.
    * @return Truth Subject to chain assertions.
    */
   public static RecordsSubject assertThatRecords(@Nullable TableResult tableResult) {
     return assertThatRecords(tableResultToRecords(tableResult));
+  }
+
+  /**
+   * Creates a {@link RecordsSubject} to assert information within a list of records.
+   *
+   * @param structs Records in Spanner {@link Struct} format to use in the comparison.
+   * @return Truth Subject to chain assertions.
+   */
+  public static RecordsSubject assertThatStructs(List<Struct> structs) {
+    return assertThatRecords(structsToRecords(structs));
   }
 
   /**
@@ -123,6 +137,34 @@ public final class TemplateAsserts {
         String jsonRow = row.get(0).getStringValue();
         Map<String, Object> converted = objectMapper.readValue(jsonRow, recordTypeReference);
         records.add(converted);
+      }
+
+      return records;
+    } catch (Exception e) {
+      throw new RuntimeException("Error converting TableResult to Records", e);
+    }
+  }
+
+  /**
+   * Convert Spanner {@link Struct} list to a list of maps.
+   *
+   * @param structs Structs to parse
+   * @return List of maps to use in {@link RecordsSubject}
+   */
+  private static List<Map<String, Object>> structsToRecords(List<Struct> structs) {
+    try {
+      List<Map<String, Object>> records = new ArrayList<>();
+
+      for (Struct struct : structs) {
+        Map<String, Object> record = new HashMap<>();
+
+        for (StructField field : struct.getType().getStructFields()) {
+          Value fieldValue = struct.getValue(field.getName());
+          // May need to explore using typed methods instead of .toString()
+          record.put(field.getName(), fieldValue.toString());
+        }
+
+        records.add(record);
       }
 
       return records;

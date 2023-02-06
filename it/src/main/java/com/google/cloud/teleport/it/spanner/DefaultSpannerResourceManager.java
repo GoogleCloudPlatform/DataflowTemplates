@@ -29,6 +29,7 @@ import com.google.cloud.spanner.InstanceId;
 import com.google.cloud.spanner.InstanceInfo;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
@@ -224,8 +225,8 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
     DatabaseClient databaseClient =
         spanner.getDatabaseClient(DatabaseId.of(projectId, instanceId, databaseId));
 
-    try (ResultSet resultSet =
-        databaseClient.singleUse().read(tableId, KeySet.all(), columnNames)) {
+    try (ReadContext readContext = databaseClient.singleUse();
+        ResultSet resultSet = readContext.read(tableId, KeySet.all(), columnNames)) {
       ImmutableList.Builder<Struct> tableRecordsBuilder = ImmutableList.builder();
 
       while (resultSet.next()) {

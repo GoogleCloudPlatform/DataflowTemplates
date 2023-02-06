@@ -37,7 +37,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 /**
  * Text files to Cloud Spanner Import pipeline. This pipeline ingests CSV and other type of
  * delimited data from GCS and writes data to a Cloud Spanner database table. Each row from the
- * input CSV file will be applied to Cloudd Spanner with an InsertOrUpdate mutation, so this can be
+ * input CSV file will be applied to Cloud Spanner with an InsertOrUpdate mutation, so this can be
  * used both to populate new rows or to update columns of existing rows.
  *
  * <p>You can specify column delimiter other than comma. Also make sure to use field qualifier such
