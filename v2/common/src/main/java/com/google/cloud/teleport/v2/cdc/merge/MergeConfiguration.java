@@ -60,7 +60,6 @@ public abstract class MergeConfiguration implements Serializable {
   public static final int DEFAULT_PARTITION_RETENTION_DAYS = 1;
   public static final Duration DEFAULT_MERGE_WINDOW_DURATION = Duration.standardMinutes(30);
   public static final int DEFAULT_MERGE_CONCURRENCY = 30;
-  public static final boolean DEFAULT_MERGE_USE_DETERMINISTIC_JOBID = false;
 
   // BigQuery-specific properties
   public static final String BIGQUERY_QUOTE_CHARACTER = "`";
@@ -79,8 +78,6 @@ public abstract class MergeConfiguration implements Serializable {
   public abstract Duration mergeWindowDuration();
 
   public abstract int mergeConcurrency();
-
-  public abstract Boolean useDeterministicJobId();
 
   public static MergeConfiguration bigQueryConfiguration() {
     return MergeConfiguration.builder().setQuoteCharacter(BIGQUERY_QUOTE_CHARACTER).build();
@@ -104,10 +101,6 @@ public abstract class MergeConfiguration implements Serializable {
     return this.toBuilder().setMergeConcurrency(mergeConcurrency).build();
   }
 
-  public MergeConfiguration withUseDeterministicJobId(boolean useDeterministicJobId) {
-    return this.toBuilder().setUseDeterministicJobId(useDeterministicJobId).build();
-  }
-
   public abstract Builder toBuilder();
 
   static Builder builder() {
@@ -117,8 +110,7 @@ public abstract class MergeConfiguration implements Serializable {
         .setPartitionRetention(DEFAULT_PARTITION_RETENTION_DAYS)
         .setSupportPartitionedTables(true)
         .setMergeWindowDuration(DEFAULT_MERGE_WINDOW_DURATION)
-        .setMergeConcurrency(DEFAULT_MERGE_CONCURRENCY)
-        .setUseDeterministicJobId(DEFAULT_MERGE_USE_DETERMINISTIC_JOBID);
+        .setMergeConcurrency(DEFAULT_MERGE_CONCURRENCY);
   }
 
   @AutoValue.Builder
@@ -136,8 +128,6 @@ public abstract class MergeConfiguration implements Serializable {
     abstract Builder setMergeWindowDuration(Duration mergeWindowDuration);
 
     abstract Builder setMergeConcurrency(int mergeConcurrency);
-
-    abstract Builder setUseDeterministicJobId(boolean useDetermininsticJobid);
 
     abstract MergeConfiguration build();
   }
