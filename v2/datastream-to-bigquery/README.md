@@ -187,13 +187,6 @@ echo '{
             "is_optional": true
         },
         {
-            "name": "useDeterministicJobId",
-            "label": "A switch to disable random MERGE queries job IDs.",
-            "help_text": "when true, generates a deterministic job ID. Default is false.",
-            "param_type": "TEXT",
-            "is_optional": true
-        },
-        {
             name: "mergeConcurrency"
             label: "Concurrent queries for merge."
             help_text:  "The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true. Default is 30."
@@ -313,7 +306,6 @@ The template has the following optional parameters:
 * saveHeapDumpsToGcsPath: Dataflow will dump heap on an OOM error to supplied GCS path
 * workerMachineType: Machine Type to Use: n1-standard-4
 * maxStreamingRowsToBatch: Max number of rows per BigQueryIO batch
-* useDeterministicJobId: A switch to disable random MERGE queries job IDs
 
 Template can be executed using the following API call:
 ```sh
