@@ -197,8 +197,7 @@ public class SyndeoTemplate {
       }
       // Adding the intermediate transform
       transforms.add(buildFromJsonConfig(config.get("transform")));
-      // TODO(pabloem): Should we add Syndeo Stats for the intermediate transform?
-      // transforms.add(buildSyndeoStats(config.get("transform").get("urn").asText()));
+      transforms.add(buildSyndeoStats(config.get("transform").get("urn").asText()));
     }
     // Add the sink transform
     transforms.add(buildFromJsonConfig(config.get("sink")));

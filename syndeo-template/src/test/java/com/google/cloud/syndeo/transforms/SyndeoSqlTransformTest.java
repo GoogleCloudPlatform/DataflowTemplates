@@ -58,7 +58,8 @@ public class SyndeoSqlTransformTest {
             // checkedMultiply issues
             + "abs(linesAdded) - abs(linesRemoved) as lineDelta, "
             + "author.name as author, author.email as author_email "
-            + "FROM input";
+            + "FROM input "
+            + "WHERE mod(linesAdded, 2) = 1";
     String jsonPayload =
         new ObjectMapper()
             .writeValueAsString(
@@ -107,13 +108,23 @@ public class SyndeoSqlTransformTest {
         .containsExactly("commit", "lineDelta", "author", "author_email");
     PipelineResult result = syndeoPipeline.run();
     result.waitUntilFinish();
-    Long elementsProcessedCount =
+    Long elementsToSink =
         StreamSupport.stream(result.metrics().allMetrics().getCounters().spliterator(), false)
             .filter(res -> res.getName().getName().equals("elementsProcessed"))
+            .filter(res -> res.getKey().stepName().contains("sql_transform"))
+            .map(res -> res.getAttempted())
             .findFirst()
-            .get()
-            .getAttempted();
-    assertThat(elementsProcessedCount).isAtLeast(1);
+            .get();
+    Long elementsProduced =
+        StreamSupport.stream(result.metrics().allMetrics().getCounters().spliterator(), false)
+            .filter(res -> res.getName().getName().equals("elementsProcessed"))
+            .filter(res -> res.getKey().stepName().contains("generate_data"))
+            .map(res -> res.getAttempted())
+            .findFirst()
+            .get();
+
+    // Verify that we filter out about 60% of elements.
+    assertThat((long) (elementsProduced / 0.6)).isGreaterThan(elementsToSink);
   }
 
   static class TransformInputAndOutputVerifier implements Pipeline.PipelineVisitor {
