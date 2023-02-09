@@ -85,9 +85,18 @@ public class JdbcConverters {
                 DATE_FORMATTER.format(resultSet.getDate(i).toLocalDate()));
             break;
           case "datetime":
-            outputTableRow.set(
-                getColumnRef(metaData, i),
-                DATETIME_FORMATTER.format((TemporalAccessor) resultSet.getObject(i)));
+            Object timeObject = resultSet.getObject(i);
+
+            if (timeObject instanceof TemporalAccessor) {
+              outputTableRow.set(
+                  getColumnRef(metaData, i),
+                  DATETIME_FORMATTER.format((TemporalAccessor) timeObject));
+            } else {
+              Timestamp ts = resultSet.getTimestamp(i);
+              // getTimestamp() returns timestamps in the default (JVM) time zone by default:
+              OffsetDateTime odt = ts.toInstant().atZone(DEFAULT_TIME_ZONE_ID).toOffsetDateTime();
+              outputTableRow.set(getColumnRef(metaData, i), TIMESTAMP_FORMATTER.format(odt));
+            }
             break;
           case "timestamp":
             Timestamp ts = resultSet.getTimestamp(i);
