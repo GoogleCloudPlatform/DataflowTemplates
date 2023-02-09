@@ -64,7 +64,7 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
   private static final String UDF_PATH = "TextIOToBigQueryTest/udf.js";
   private static final Map<String, Object> EXPECTED = ImmutableMap.of("book_id", 1, "title", "ABC");
 
-  private static BigQueryResourceManager bigQueryClient;
+  private BigQueryResourceManager bigQueryClient;
 
   @Rule public final TestName testName = new TestName();
 

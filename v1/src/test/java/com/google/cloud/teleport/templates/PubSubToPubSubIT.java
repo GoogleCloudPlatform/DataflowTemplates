@@ -48,7 +48,7 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(PubsubToPubsub.class)
 @RunWith(JUnit4.class)
 public class PubSubToPubSubIT extends TemplateTestBase {
-  private static PubsubResourceManager pubsubResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setUp() throws IOException {
