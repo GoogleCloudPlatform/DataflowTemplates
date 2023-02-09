@@ -314,6 +314,10 @@ public abstract class TemplateTestBase {
       options.addEnvironment("experiments", "use_runner_v2");
     }
 
+    if (System.getProperty("workerMachineType") != null) {
+      options.addEnvironment("workerMachineType", System.getProperty("workerMachineType"));
+    }
+
     if (System.getProperty("directRunnerTest") != null) {
       // For direct runner tests we need to explicitly add a tempLocation if missing
       if (options.getParameter("tempLocation") == null) {
