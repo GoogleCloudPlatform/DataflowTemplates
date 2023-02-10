@@ -15,9 +15,13 @@
  */
 package com.google.cloud.teleport.v2.cdc.merge;
 
+import com.google.api.gax.paging.Page;
 import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.BigQuery.JobListOption;
 import com.google.cloud.bigquery.BigQueryOptions;
+import com.google.cloud.bigquery.Job;
 import com.google.cloud.bigquery.JobId;
+import com.google.cloud.bigquery.JobStatus.State;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
 import java.time.Instant;
@@ -203,7 +207,14 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       MergeInfo mergeInfo = c.element();
       String statement = mergeInfo.buildMergeStatement(mergeConfiguration);
       try {
-        TableResult queryResult = issueQueryToBQ(statement);
+        String tableReference =
+            MergeInfo.getTableReference(mergeInfo.getReplicaTable()).replace(".", "_");
+        if (isActiveJobRunningForTable(tableReference)) {
+          LOG.info(
+              "A running merge job was found for table {}, skipping execution", tableReference);
+          return;
+        }
+        TableResult queryResult = issueQueryToBQ(statement, tableReference);
         mergesIssued.inc();
         LOG.info("Merge job executed: {}", statement);
       } catch (Exception e) {
@@ -212,10 +223,30 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       }
     }
 
-    private TableResult issueQueryToBQ(String statement) throws InterruptedException {
+    private boolean isActiveJobRunningForTable(String tableReference) {
+      Page<Job> jobs =
+          bigQueryClient.listJobs(
+              JobListOption.stateFilter(State.PENDING, State.RUNNING), JobListOption.pageSize(100));
+      if (jobs == null) {
+        LOG.info("Dataset does not contain any jobs.");
+        return false;
+      }
+      String tableJobPrefix = String.format("%s_%s", JOB_ID_PREFIX, tableReference);
+      for (Job job : jobs.iterateAll()) {
+        String jobId = job.getJobId().getJob();
+        if (jobId.startsWith(tableJobPrefix) && !job.isDone()) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    private TableResult issueQueryToBQ(String statement, String tableReference)
+        throws InterruptedException {
       QueryJobConfiguration jobConfiguration = QueryJobConfiguration.newBuilder(statement).build();
 
-      String jobId = makeJobId(JOB_ID_PREFIX, statement);
+      String jobId = makeJobId(JOB_ID_PREFIX, statement, tableReference);
 
       LOG.info("Triggering job {} for statement |{}|", jobId, statement);
 
@@ -223,13 +254,17 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       return result;
     }
 
-    String makeJobId(String jobIdPrefix, String statement) {
+    String makeJobId(String jobIdPrefix, String statement, String tableReference) {
       DateTimeFormatter formatter =
           DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ssz").withZone(ZoneId.of("UTC"));
       String randomId = UUID.randomUUID().toString();
       return String.format(
-          "%s_%d_%s_%s",
-          jobIdPrefix, Math.abs(statement.hashCode()), formatter.format(Instant.now()), randomId);
+          "%s_%s_%d_%s_%s",
+          jobIdPrefix,
+          tableReference,
+          Math.abs(statement.hashCode()),
+          formatter.format(Instant.now()),
+          randomId);
     }
   }
 }
