@@ -17,7 +17,8 @@ package com.google.cloud.teleport.templates;
 
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.storage.Storage;
@@ -26,10 +27,9 @@ import com.google.cloud.teleport.it.PerformanceBenchmarkingBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.spanner.DefaultSpannerResourceManager;
 import com.google.cloud.teleport.it.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -38,14 +38,14 @@ import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
-import java.util.Map;
+import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Performance test for {@link SpannerToText} template. */
+/** Performance test for {@link SpannerToText Spanner to GCS Text} template. */
 @TemplateIntegrationTest(SpannerToText.class)
 @RunWith(JUnit4.class)
 public class SpannerToTextPerformanceIT extends PerformanceBenchmarkingBase {
@@ -80,9 +80,19 @@ public class SpannerToTextPerformanceIT extends PerformanceBenchmarkingBase {
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
+    testBacklog10gb(Function.identity());
+  }
+
+  @Test
+  public void testBacklog10gbUsingStreamingEngine()
+      throws IOException, ParseException, InterruptedException {
+    testBacklog10gb(config -> config.addEnvironment("enableStreamingEngine", true));
+  }
+
+  public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException, ParseException, InterruptedException {
     // Arrange
     String name = testName.getMethodName();
-    String jobName = createJobName(name);
     // create spanner table
     String createTableStatement =
         String.format(
@@ -97,57 +107,44 @@ public class SpannerToTextPerformanceIT extends PerformanceBenchmarkingBase {
                 + "  score INT64,\n"
                 + "  completed BOOL,\n"
                 + ") PRIMARY KEY(eventId)",
-            testName.getMethodName());
+            name);
     spannerResourceManager.createTable(createTableStatement);
     DataGenerator dataGenerator =
-        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
+        DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(NUM_MESSAGES)
             .setSinkType("SPANNER")
             .setProjectId(PROJECT)
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
-            .setSpannerTableName(testName.getMethodName())
+            .setSpannerTableName(name)
             .setNumWorkers("50")
             .setMaxNumWorkers("100")
             .build();
     dataGenerator.execute(Duration.ofMinutes(30));
     LaunchConfig options =
-        LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter("spannerProjectId", PROJECT)
-            .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
-            .addParameter("spannerDatabaseId", spannerResourceManager.getDatabaseId())
-            .addParameter("spannerTable", testName.getMethodName())
-            .addParameter("textWritePrefix", getTestMethodDirPath())
+        paramsAdder
+            .apply(
+                LaunchConfig.builder(testName, SPEC_PATH)
+                    .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("spannerDatabaseId", spannerResourceManager.getDatabaseId())
+                    .addParameter("spannerTable", name)
+                    .addParameter("textWritePrefix", getTestMethodDirPath()))
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
-    Result result = dataflowOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
+    Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 
     // Assert
-    assertThat(result).isEqualTo(Result.JOB_FINISHED);
+    assertThatResult(result).isLaunchFinished();
     // check to see if messages reached the output bucket
     assertThat(artifactClient.listArtifacts(name, Pattern.compile(".*"))).isNotEmpty();
 
     // export results
-    exportMetricsToBigQuery(info, computeMetrics(info));
-  }
-
-  private Map<String, Double> computeMetrics(JobInfo info)
-      throws ParseException, IOException, InterruptedException {
-    Map<String, Double> metrics = getMetrics(info, INPUT_PCOLLECTION);
-    metrics.putAll(getCpuUtilizationMetrics(info));
-    Map<String, Double> outputThroughput =
-        getThroughputMetricsOfPcollection(info, OUTPUT_PCOLLECTION);
-    Map<String, Double> inputThroughput =
-        getThroughputMetricsOfPcollection(info, INPUT_PCOLLECTION);
-    metrics.put("AvgInputThroughput", inputThroughput.get("AvgThroughput"));
-    metrics.put("MaxInputThroughput", inputThroughput.get("MaxThroughput"));
-    metrics.put("AvgOutputThroughput", outputThroughput.get("AvgThroughput"));
-    metrics.put("MaxOutputThroughput", outputThroughput.get("MaxThroughput"));
-    return metrics;
+    exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
   private String getTestMethodDirPath() {

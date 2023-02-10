@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.pubsubtotext;
 
-import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
@@ -41,16 +40,14 @@ import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
-import java.util.Map;
+import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Performance test for testing performance of {@link PubsubToText} (Cloud_PubSub_to_GCS_Text_Flex).
- */
+/** Performance tests for {@link PubsubToText PubSub to GCS Text} Flex template. */
 @TemplateIntegrationTest(PubsubToText.class)
 @RunWith(JUnit4.class)
 public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase {
@@ -72,8 +69,8 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
   private static final String DEFAULT_WINDOW_DURATION = "10s";
   private static final Pattern EXPECTED_PATTERN = Pattern.compile(".*subscription-output-.*");
   private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
-  private static final String OUTPUT_PTRANSFORM =
-      "Write File(s)/WriteFiles/WriteShardedBundlesToTempFiles/ApplyShardingKey";
+  private static final String OUTPUT_PCOLLECTION =
+      "Write File(s)/WriteFiles/WriteShardedBundlesToTempFiles/ApplyShardingKey.out0";
   private static final long numMessages = 35000000L;
 
   private static PubsubResourceManager pubsubResourceManager;
@@ -98,31 +95,54 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
 
   @Test
   public void testBacklog10gb() throws IOException, InterruptedException, ParseException {
+    testBacklog10gb(Function.identity());
+  }
+
+  @Test
+  public void testBacklog10gbUsingStreamingEngine()
+      throws IOException, InterruptedException, ParseException {
+    testBacklog10gb(config -> config.addEnvironment("enableStreamingEngine", true));
+  }
+
+  @Test
+  public void testSteadyState1hr() throws IOException, InterruptedException, ParseException {
+    testSteadyState1hr(Function.identity());
+  }
+
+  @Test
+  public void testSteadyState1hrUsingStreamingEngine()
+      throws IOException, InterruptedException, ParseException {
+    testSteadyState1hr(config -> config.addEnvironment("enableStreamingEngine", true));
+  }
+
+  public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException, InterruptedException, ParseException {
     // Arrange
     String name = testName.getMethodName();
-    String jobName = createJobName(name);
     // Create topic and subscription
     TopicName backlogTopic = pubsubResourceManager.createTopic("backlog-input");
     SubscriptionName backlogSubscription =
         pubsubResourceManager.createSubscription(backlogTopic, "backlog-subscription");
     // Generate fake data to topic
     DataGenerator dataGenerator =
-        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
+        DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(String.valueOf(numMessages))
             .setTopic(backlogTopic.toString())
             .setNumWorkers("50")
-            .setMaxNumWorkers("150")
+            .setMaxNumWorkers("100")
             .build();
     dataGenerator.execute(Duration.ofMinutes(30));
     LaunchConfig options =
-        LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter(INPUT_SUBSCRIPTION, backlogSubscription.toString())
-            .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-            .addParameter(OUTPUT_DIRECTORY_KEY, getTestMethodDirPath())
-            .addParameter(NUM_SHARDS_KEY, "20")
-            .addParameter(OUTPUT_FILENAME_PREFIX, "subscription-output-")
-            .addParameter(NUM_WORKERS_KEY, "20")
+        paramsAdder
+            .apply(
+                LaunchConfig.builder(testName, SPEC_PATH)
+                    .addParameter(INPUT_SUBSCRIPTION, backlogSubscription.toString())
+                    .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
+                    .addParameter(OUTPUT_DIRECTORY_KEY, getTestMethodDirPath())
+                    .addParameter(NUM_SHARDS_KEY, "20")
+                    .addParameter(OUTPUT_FILENAME_PREFIX, "subscription-output-")
+                    .addParameter(NUM_WORKERS_KEY, "20"))
             .build();
 
     // Act
@@ -132,84 +152,39 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
         pipelineOperator.waitForConditionAndFinish(
             createConfig(info, Duration.ofMinutes(30)),
             () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, numMessages));
+
     // Assert
     assertThatResult(result).meetsConditions();
     assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
 
     // export results
-    exportMetricsToBigQuery(info, computeMetrics(info));
+    exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
-  @Test
-  public void testBacklog10gbUsingStreamingEngine()
+  public void testSteadyState1hr(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, InterruptedException, ParseException {
     // Arrange
     String name = testName.getMethodName();
-    String jobName = createJobName(name);
-    // Create topic and subscriptions
-    TopicName backlogTopic = pubsubResourceManager.createTopic("backlog-streaming-engine-input");
-    SubscriptionName streamingEngineSubscription =
-        pubsubResourceManager.createSubscription(backlogTopic, "streaming-engine-subscription");
-    // Generate fake data to topic
-    DataGenerator dataGenerator =
-        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
-            .setQPS("1000000")
-            .setMessagesLimit(String.valueOf(numMessages))
-            .setTopic(backlogTopic.toString())
-            .setNumWorkers("50")
-            .setMaxNumWorkers("150")
-            .build();
-    dataGenerator.execute(Duration.ofMinutes(30));
-    LaunchConfig options =
-        LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter(INPUT_SUBSCRIPTION, streamingEngineSubscription.toString())
-            .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-            .addParameter(OUTPUT_DIRECTORY_KEY, getTestMethodDirPath())
-            .addParameter(NUM_SHARDS_KEY, "20")
-            .addParameter(OUTPUT_FILENAME_PREFIX, "subscription-output-")
-            .addParameter(NUM_WORKERS_KEY, "20")
-            .addParameter("enableStreamingEngine", "true")
-            .build();
-
-    // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
-    assertThatPipeline(info).isRunning();
-    Result result =
-        pipelineOperator.waitForConditionAndFinish(
-            createConfig(info, Duration.ofMinutes(30)),
-            () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, numMessages));
-    // Assert
-    assertThatResult(result).meetsConditions();
-    assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
-
-    // export results
-    exportMetricsToBigQuery(info, computeMetrics(info));
-  }
-
-  @Test
-  public void testSteadyState1hr() throws IOException, InterruptedException, ParseException {
-    // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
     TopicName topic = pubsubResourceManager.createTopic(testName.getMethodName() + "input");
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, "input-subscription");
     DataGenerator dataGenerator =
-        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
+        DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
             .setQPS("100000")
             .setTopic(topic.toString())
             .setNumWorkers("10")
             .setMaxNumWorkers("100")
             .build();
     LaunchConfig options =
-        LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter(INPUT_SUBSCRIPTION, subscription.toString())
-            .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-            .addParameter(OUTPUT_DIRECTORY_KEY, getTestMethodDirPath())
-            .addParameter(NUM_SHARDS_KEY, "20")
-            .addParameter(OUTPUT_FILENAME_PREFIX, "subscription-output-")
-            .addParameter(NUM_WORKERS_KEY, "10")
-            .addParameter("enableStreamingEngine", "true")
+        paramsAdder
+            .apply(
+                LaunchConfig.builder(testName, SPEC_PATH)
+                    .addParameter(INPUT_SUBSCRIPTION, subscription.toString())
+                    .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
+                    .addParameter(OUTPUT_DIRECTORY_KEY, getTestMethodDirPath())
+                    .addParameter(NUM_SHARDS_KEY, "20")
+                    .addParameter(OUTPUT_FILENAME_PREFIX, "subscription-output-")
+                    .addParameter(NUM_WORKERS_KEY, "10"))
             .build();
 
     // Act
@@ -221,25 +196,9 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
     // Assert
     assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
     assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
-    // export results
-    exportMetricsToBigQuery(info, computeMetrics(info));
-  }
 
-  private Map<String, Double> computeMetrics(LaunchInfo info)
-      throws ParseException, IOException, InterruptedException {
-    Map<String, Double> metrics = getMetrics(info, INPUT_PCOLLECTION);
-    metrics.putAll(getCpuUtilizationMetrics(info));
-    metrics.putAll(getDataFreshnessMetrics(info));
-    metrics.putAll(getSystemLatencyMetrics(info));
-    Map<String, Double> outputThroughput =
-        getThroughputMetricsOfPtransform(info, OUTPUT_PTRANSFORM);
-    Map<String, Double> inputThroughput =
-        getThroughputMetricsOfPcollection(info, INPUT_PCOLLECTION);
-    metrics.put("AvgInputThroughput", inputThroughput.get("AvgThroughput"));
-    metrics.put("MaxInputThroughput", inputThroughput.get("MaxThroughput"));
-    metrics.put("AvgOutputThroughput", outputThroughput.get("AvgThroughput"));
-    metrics.put("MaxOutputThroughput", outputThroughput.get("MaxThroughput"));
-    return metrics;
+    // export results
+    exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
   private String getTestMethodDirPath() {

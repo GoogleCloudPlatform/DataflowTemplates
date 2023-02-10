@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.it;
 
 import static com.google.cloud.teleport.it.PerformanceBenchmarkingBase.createConfig;
+import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 
@@ -30,6 +31,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.rules.TestName;
 
 /** Helper class for starting a Streaming Data generator dataflow template job. */
 public class DataGenerator {
@@ -64,6 +66,18 @@ public class DataGenerator {
     return new DataGenerator.Builder(jobName)
         .setSchemaTemplate(schemaTemplate)
         .setAutoscalingAlgorithm(AutoscalingAlgorithmType.THROUGHPUT_BASED);
+  }
+
+  public static DataGenerator.Builder builderWithSchemaLocation(
+      TestName testName, String schemaLocation) {
+    return DataGenerator.builderWithSchemaLocation(
+        createJobName(testName.getMethodName() + "-data-generator"), schemaLocation);
+  }
+
+  public static DataGenerator.Builder builderWithSchemaTemplate(
+      TestName testName, String schemaTemplate) {
+    return DataGenerator.builderWithSchemaTemplate(
+        createJobName(testName.getMethodName() + "-data-generator"), schemaTemplate);
   }
 
   /**

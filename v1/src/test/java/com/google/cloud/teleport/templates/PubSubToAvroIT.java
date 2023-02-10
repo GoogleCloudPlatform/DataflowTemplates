@@ -52,7 +52,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for {@link PubsubToAvro} PubSub Subscription to Bigquery. */
+/** Integration test for {@link PubsubToAvro} PubSub to Avro. */
 // SkipDirectRunnerTest: PubsubIO doesn't trigger panes on the DirectRunner.
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(value = PubsubToAvro.class, template = "Cloud_PubSub_to_Avro")

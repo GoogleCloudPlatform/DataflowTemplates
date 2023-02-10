@@ -173,10 +173,10 @@ public interface PipelineLauncher {
     }
 
     /** Builder for the {@link LaunchConfig}. */
-    public static final class Builder {
+    public static final class Builder<T> {
       private final String jobName;
       private final String specPath;
-      private final Map<String, String> environment;
+      private final Map<String, T> environment;
       private Map<String, String> parameters;
       private Sdk sdk;
       private String executable;
@@ -209,12 +209,12 @@ public interface PipelineLauncher {
       }
 
       @Nullable
-      public String getEnvironment(String key) {
-        return parameters.get(key);
+      public T getEnvironment(String key) {
+        return environment.get(key);
       }
 
-      public Builder addEnvironment(String key, String value) {
-        parameters.put(key, value);
+      public Builder addEnvironment(String key, T value) {
+        environment.put(key, value);
         return this;
       }
 

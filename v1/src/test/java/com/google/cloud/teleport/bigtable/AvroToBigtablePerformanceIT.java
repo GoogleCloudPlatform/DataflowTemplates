@@ -17,7 +17,9 @@ package com.google.cloud.teleport.bigtable;
 
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.bigtable.BigtableResourceManagerUtils.generateTableId;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.storage.Storage;
@@ -28,10 +30,9 @@ import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
@@ -39,20 +40,17 @@ import com.google.common.io.Resources;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
-import java.util.Map;
+import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/** Performance tests for {@link AvroToBigtable} (GCS_Avro_to_Cloud_Bigtable) template. */
+/** Performance tests for {@link AvroToBigtable GCS Avro to Bigtable} template. */
 @TemplateIntegrationTest(AvroToBigtable.class)
 @RunWith(JUnit4.class)
 public class AvroToBigtablePerformanceIT extends PerformanceBenchmarkingBase {
-  private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtablePerformanceIT.class);
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/GCS_Avro_to_Cloud_Bigtable");
@@ -102,12 +100,24 @@ public class AvroToBigtablePerformanceIT extends PerformanceBenchmarkingBase {
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
+    testBacklog10gb(Function.identity());
+  }
+
+  @Test
+  public void testBacklog10gbUsingStreamingEngine()
+      throws IOException, ParseException, InterruptedException {
+    testBacklog10gb(config -> config.addEnvironment("enableStreamingEngine", true));
+  }
+
+  public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException, ParseException, InterruptedException {
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
+    String tableId = generateTableId(testName.getMethodName());
+    // The generated data contains only 1 column family named "SystemMetrics"
+    bigtableResourceManager.createTable(tableId, ImmutableList.of("SystemMetrics"));
     // Bigtable expects Avro files to meet a specific schema
     DataGenerator dataGenerator =
-        DataGenerator.builderWithSchemaLocation(jobName + "-data-generator", generatorSchemaPath)
+        DataGenerator.builderWithSchemaLocation(testName, generatorSchemaPath)
             .setQPS("1000000")
             .setMessagesLimit(NUM_MESSAGES)
             .setSinkType("GCS")
@@ -119,43 +129,28 @@ public class AvroToBigtablePerformanceIT extends PerformanceBenchmarkingBase {
             .setMaxNumWorkers("100")
             .build();
     dataGenerator.execute(Duration.ofMinutes(30));
-    // The generated data contains only 1 column family named "SystemMetrics"
-    bigtableResourceManager.createTable(name, ImmutableList.of("SystemMetrics"));
     LaunchConfig options =
-        LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter("bigtableProjectId", PROJECT)
-            .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableTableId", name)
-            .addParameter("inputFilePattern", getTestMethodDirPath() + "/*")
+        paramsAdder
+            .apply(
+                LaunchConfig.builder(testName, SPEC_PATH)
+                    .addParameter("bigtableProjectId", PROJECT)
+                    .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
+                    .addParameter("bigtableTableId", tableId)
+                    .addParameter("inputFilePattern", getTestMethodDirPath() + "/*"))
             .build();
 
     // Act
-    JobInfo info = dataflowClient.launch(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
-    Result result = dataflowOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
+    Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 
     // Assert
-    assertThat(result).isEqualTo(Result.JOB_FINISHED);
+    assertThatResult(result).isLaunchFinished();
     // check to see if messages reached the output bigtable table
-    assertThat(bigtableResourceManager.readTable(name)).isNotEmpty();
+    assertThat(bigtableResourceManager.readTable(tableId)).isNotEmpty();
 
     // export results
-    exportMetricsToBigQuery(info, computeMetrics(info));
-  }
-
-  private Map<String, Double> computeMetrics(JobInfo info)
-      throws ParseException, IOException, InterruptedException {
-    Map<String, Double> metrics = getMetrics(info, INPUT_PCOLLECTION);
-    metrics.putAll(getCpuUtilizationMetrics(info));
-    Map<String, Double> outputThroughput =
-        getThroughputMetricsOfPcollection(info, OUTPUT_PCOLLECTION);
-    Map<String, Double> inputThroughput =
-        getThroughputMetricsOfPcollection(info, INPUT_PCOLLECTION);
-    metrics.put("AvgInputThroughput", inputThroughput.get("AvgThroughput"));
-    metrics.put("MaxInputThroughput", inputThroughput.get("MaxThroughput"));
-    metrics.put("AvgOutputThroughput", outputThroughput.get("AvgThroughput"));
-    metrics.put("MaxOutputThroughput", outputThroughput.get("MaxThroughput"));
-    return metrics;
+    exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
   private String getTestMethodDirPath() {
