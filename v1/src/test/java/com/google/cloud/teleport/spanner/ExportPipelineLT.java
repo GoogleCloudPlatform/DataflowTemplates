@@ -13,30 +13,28 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.bigtable;
+package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.bigtable.BigtableResourceManagerUtils.generateTableId;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.DataGenerator;
-import com.google.cloud.teleport.it.PerformanceBenchmarkingBase;
+import com.google.cloud.teleport.it.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
-import com.google.cloud.teleport.it.bigtable.BigtableResourceManager;
-import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.it.spanner.DefaultSpannerResourceManager;
+import com.google.cloud.teleport.it.spanner.SpannerResourceManager;
+import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableList;
-import com.google.common.io.Resources;
+import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
@@ -47,54 +45,35 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Performance tests for {@link AvroToBigtable GCS Avro to Bigtable} template. */
-@TemplateIntegrationTest(AvroToBigtable.class)
+/** Performance tests for {@link ExportPipeline Spanner to GCS Avro} template. */
+@TemplateLoadTest(ExportPipeline.class)
 @RunWith(JUnit4.class)
-public class AvroToBigtablePerformanceIT extends PerformanceBenchmarkingBase {
+public class ExportPipelineLT extends TemplateLoadTestBase {
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
-          TestProperties.specPath(), "gs://dataflow-templates/latest/GCS_Avro_to_Cloud_Bigtable");
+          TestProperties.specPath(), "gs://dataflow-templates/latest/Cloud_Spanner_to_GCS_Avro");
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
-  private static final String TEST_ROOT_DIR =
-      AvroToBigtablePerformanceIT.class.getSimpleName().toLowerCase();
-  // 56,000,000 messages of the given schema approximately make up 10GB
-  private static final String NUM_MESSAGES = "56000000";
-  private static final String INPUT_PCOLLECTION = "Read from Avro/Read.out0";
-  private static final String OUTPUT_PCOLLECTION = "Transform to Bigtable.out0";
-  private static BigtableResourceManager bigtableResourceManager;
+  private static final String TEST_ROOT_DIR = ExportPipelineLT.class.getSimpleName().toLowerCase();
+  private static final String NUM_MESSAGES = "35000000";
+  private static final String INPUT_PCOLLECTION =
+      "Run Export/Read all rows from Spanner/Read from Cloud Spanner/Read from Partitions.out0";
+  private static final String OUTPUT_PCOLLECTION =
+      "Run Export/Store Avro files/Write/RewindowIntoGlobal/Window.Assign.out0";
+  private static SpannerResourceManager spannerResourceManager;
   private static ArtifactClient artifactClient;
-  private static String generatorSchemaPath;
-  private static String avroSchemaPath;
 
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    bigtableResourceManager =
-        DefaultBigtableResourceManager.builder(testName.getMethodName(), PROJECT).build();
+    spannerResourceManager =
+        DefaultSpannerResourceManager.builder(testName.getMethodName(), PROJECT, REGION).build();
     Storage gcsClient = createGcsClient(CREDENTIALS);
     artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
-    // upload schema files and save path
-    generatorSchemaPath =
-        getFullGcsPath(
-            ARTIFACT_BUCKET,
-            artifactClient
-                .uploadArtifact(
-                    "input/schema.json",
-                    Resources.getResource("AvroToBigtablePerformanceIT/schema.json").getPath())
-                .name());
-    avroSchemaPath =
-        getFullGcsPath(
-            ARTIFACT_BUCKET,
-            artifactClient
-                .uploadArtifact(
-                    "input/bigtable.avsc",
-                    Resources.getResource("schema/avro/bigtable.avsc").getPath())
-                .name());
   }
 
   @After
   public void teardown() {
-    bigtableResourceManager.cleanupAll();
+    spannerResourceManager.cleanupAll();
     artifactClient.cleanupRun();
   }
 
@@ -112,20 +91,33 @@ public class AvroToBigtablePerformanceIT extends PerformanceBenchmarkingBase {
   public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // Arrange
-    String tableId = generateTableId(testName.getMethodName());
-    // The generated data contains only 1 column family named "SystemMetrics"
-    bigtableResourceManager.createTable(tableId, ImmutableList.of("SystemMetrics"));
-    // Bigtable expects Avro files to meet a specific schema
+    String name = testName.getMethodName();
+    // create spanner table
+    String createTableStatement =
+        String.format(
+            "CREATE TABLE `%s` (\n"
+                + "  eventId STRING(1024) NOT NULL,\n"
+                + "  eventTimestamp INT64,\n"
+                + "  ipv4 STRING(1024),\n"
+                + "  ipv6 STRING(1024),\n"
+                + "  country STRING(1024),\n"
+                + "  username STRING(1024),\n"
+                + "  quest STRING(1024),\n"
+                + "  score INT64,\n"
+                + "  completed BOOL,\n"
+                + ") PRIMARY KEY(eventId)",
+            name);
+    spannerResourceManager.createTable(createTableStatement);
     DataGenerator dataGenerator =
-        DataGenerator.builderWithSchemaLocation(testName, generatorSchemaPath)
+        DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(NUM_MESSAGES)
-            .setSinkType("GCS")
-            .setOutputDirectory(getTestMethodDirPath())
-            .setOutputType("AVRO")
-            .setAvroSchemaLocation(avroSchemaPath)
-            .setNumShards("20")
-            .setNumWorkers("20")
+            .setSinkType("SPANNER")
+            .setProjectId(PROJECT)
+            .setSpannerInstanceName(spannerResourceManager.getInstanceId())
+            .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
+            .setSpannerTableName(name)
+            .setNumWorkers("50")
             .setMaxNumWorkers("100")
             .build();
     dataGenerator.execute(Duration.ofMinutes(30));
@@ -133,10 +125,9 @@ public class AvroToBigtablePerformanceIT extends PerformanceBenchmarkingBase {
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addParameter("bigtableProjectId", PROJECT)
-                    .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableTableId", tableId)
-                    .addParameter("inputFilePattern", getTestMethodDirPath() + "/*"))
+                    .addParameter("instanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+                    .addParameter("outputDir", getTestMethodDirPath()))
             .build();
 
     // Act
@@ -146,8 +137,8 @@ public class AvroToBigtablePerformanceIT extends PerformanceBenchmarkingBase {
 
     // Assert
     assertThatResult(result).isLaunchFinished();
-    // check to see if messages reached the output bigtable table
-    assertThat(bigtableResourceManager.readTable(tableId)).isNotEmpty();
+    // check to see if messages reached the output topic
+    assertThat(artifactClient.listArtifacts(name, Pattern.compile(".*"))).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));

@@ -23,7 +23,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.DataGenerator;
-import com.google.cloud.teleport.it.PerformanceBenchmarkingBase;
+import com.google.cloud.teleport.it.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
@@ -32,7 +32,7 @@ import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.spanner.DefaultSpannerResourceManager;
 import com.google.cloud.teleport.it.spanner.SpannerResourceManager;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.re2j.Pattern;
 import java.io.IOException;
@@ -46,15 +46,14 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance test for {@link SpannerToText Spanner to GCS Text} template. */
-@TemplateIntegrationTest(SpannerToText.class)
+@TemplateLoadTest(SpannerToText.class)
 @RunWith(JUnit4.class)
-public class SpannerToTextPerformanceIT extends PerformanceBenchmarkingBase {
+public class SpannerToTextLT extends TemplateLoadTestBase {
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/Spanner_to_GCS_Text");
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
-  private static final String TEST_ROOT_DIR =
-      SpannerToTextPerformanceIT.class.getSimpleName().toLowerCase();
+  private static final String TEST_ROOT_DIR = SpannerToTextLT.class.getSimpleName().toLowerCase();
   private static final String NUM_MESSAGES = "35000000";
   private static final String INPUT_PCOLLECTION =
       "Read all records/Read from Cloud Spanner/Read from Partitions.out0";

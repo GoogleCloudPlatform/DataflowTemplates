@@ -24,15 +24,10 @@ import com.google.auth.Credentials;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.dataflow.ClassicTemplateClient;
-import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
-import com.google.cloud.teleport.it.launcher.DefaultPipelineLauncher;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator;
 import com.google.cloud.teleport.it.monitoring.MonitoringClient;
-import com.google.cloud.teleport.metadata.Template;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.base.MoreObjects;
 import java.io.IOException;
 import java.text.ParseException;
@@ -54,8 +49,8 @@ import org.slf4j.LoggerFactory;
 
 /** Base class for performance tests. It provides helper methods for common operations. */
 @RunWith(JUnit4.class)
-public class PerformanceBenchmarkingBase {
-  private static final Logger LOG = LoggerFactory.getLogger(PerformanceBenchmarkingBase.class);
+public abstract class LoadTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(LoadTestBase.class);
   // Dataflow resources cost factors (showing us-central-1 pricing).
   // See https://cloud.google.com/dataflow/pricing#pricing-details
   private static final double VCPU_PER_HR_BATCH = 0.056;
@@ -90,31 +85,7 @@ public class PerformanceBenchmarkingBase {
     monitoringClient.cleanupAll();
   }
 
-  protected PipelineLauncher launcher() {
-    // If there is a TemplateIntegrationTest annotation, return appropriate dataflow template client
-    // Else, return default dataflow client.
-    TemplateIntegrationTest annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
-    if (annotation == null) {
-      LOG.warn(
-          "{} did not specify which template is tested using @TemplateIntegrationTest, using DefaultDataflowClient.",
-          getClass());
-      return DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
-    }
-
-    Class<?> templateClass = annotation.value();
-    Template[] templateAnnotations = templateClass.getAnnotationsByType(Template.class);
-    if (templateAnnotations.length == 0) {
-      LOG.warn(
-          " \"Template mentioned in @TemplateIntegrationTest for {} does not contain a @Template annotation, using DefaultDataflowClient.",
-          getClass());
-      return DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
-    } else if (templateAnnotations[0].flexContainerName() != null
-        && !templateAnnotations[0].flexContainerName().isEmpty()) {
-      return FlexTemplateClient.builder().setCredentials(CREDENTIALS).build();
-    } else {
-      return ClassicTemplateClient.builder().setCredentials(CREDENTIALS).build();
-    }
-  }
+  abstract PipelineLauncher launcher();
 
   /**
    * Exports the metrics of given dataflow job to BigQuery.

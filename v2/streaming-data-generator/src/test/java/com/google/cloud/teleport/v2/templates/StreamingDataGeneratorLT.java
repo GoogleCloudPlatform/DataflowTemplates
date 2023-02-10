@@ -27,7 +27,7 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Storage;
-import com.google.cloud.teleport.it.PerformanceBenchmarkingBase;
+import com.google.cloud.teleport.it.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
@@ -40,7 +40,7 @@ import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.spanner.DefaultSpannerResourceManager;
 import com.google.cloud.teleport.it.spanner.SpannerResourceManager;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SchemaTemplate;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
@@ -56,11 +56,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance test for {@link StreamingDataGenerator Streaming Data generator} template. */
-@TemplateIntegrationTest(StreamingDataGenerator.class)
+@TemplateLoadTest(StreamingDataGenerator.class)
 @RunWith(JUnit4.class)
-public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarkingBase {
-  private static final String TEST_ROOT_DIR =
-      StreamingDataGeneratorPerformanceIT.class.getSimpleName();
+public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
+  private static final String TEST_ROOT_DIR = StreamingDataGeneratorLT.class.getSimpleName();
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(),

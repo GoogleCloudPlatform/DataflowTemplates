@@ -15,19 +15,26 @@
  */
 package com.google.cloud.teleport.templates;
 
+import static com.google.cloud.teleport.it.bigquery.BigQueryResourceManagerUtils.toTableSpec;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.DataGenerator;
-import com.google.cloud.teleport.it.PerformanceBenchmarkingBase;
+import com.google.cloud.teleport.it.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.TestProperties;
+import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -41,17 +48,33 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Performance tests for {@link PubsubToPubsub PubSub to PubSub} template. */
-@TemplateIntegrationTest(PubsubToPubsub.class)
+/** Performance tests for {@link PubSubToBigQuery PubSub to BigQuery} template. */
+@TemplateLoadTest(PubSubToBigQuery.class)
 @RunWith(JUnit4.class)
-public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
+public class PubsubToBigQueryLT extends TemplateLoadTestBase {
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
-          TestProperties.specPath(), "gs://dataflow-templates/latest/Cloud_PubSub_to_Cloud_PubSub");
-  private static final long numMessages = 35000000L;
-  private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
-  private static final String OUTPUT_PCOLLECTION = "Write PubSub Events/MapElements/Map.out0";
+          TestProperties.specPath(),
+          "gs://dataflow-templates/latest/PubSub_Subscription_to_BigQuery");
+  private static final long NUM_MESSAGES = 35000000L;
+  // schema should match schema supplied to generate fake records.
+  private static final Schema SCHEMA =
+      Schema.of(
+          Field.of("eventId", StandardSQLTypeName.STRING),
+          Field.of("eventTimestamp", StandardSQLTypeName.INT64),
+          Field.of("ipv4", StandardSQLTypeName.STRING),
+          Field.of("ipv6", StandardSQLTypeName.STRING),
+          Field.of("country", StandardSQLTypeName.STRING),
+          Field.of("username", StandardSQLTypeName.STRING),
+          Field.of("quest", StandardSQLTypeName.STRING),
+          Field.of("score", StandardSQLTypeName.INT64),
+          Field.of("completed", StandardSQLTypeName.BOOL));
+  private static final String INPUT_PCOLLECTION =
+      "ReadPubSubSubscription/PubsubUnboundedSource.out0";
+  private static final String OUTPUT_PCOLLECTION =
+      "WriteSuccessfulRecords/StreamingInserts/StreamingWriteTables/StripShardId/Map.out0";
   private static PubsubResourceManager pubsubResourceManager;
+  private static BigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setup() throws IOException {
@@ -59,11 +82,16 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
         DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
+    bigQueryResourceManager =
+        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+            .setCredentials(CREDENTIALS)
+            .build();
   }
 
   @After
   public void teardown() {
     pubsubResourceManager.cleanupAll();
+    bigQueryResourceManager.cleanupAll();
   }
 
   @Test
@@ -78,13 +106,13 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
   }
 
   @Test
-  public void testSteadyState1hr() throws IOException, ParseException, InterruptedException {
+  public void testSteadyState1hr() throws ParseException, IOException, InterruptedException {
     testSteadyState1hr(Function.identity());
   }
 
   @Test
   public void testSteadyState1hrUsingStreamingEngine()
-      throws IOException, ParseException, InterruptedException {
+      throws ParseException, IOException, InterruptedException {
     testSteadyState1hr(config -> config.addEnvironment("enableStreamingEngine", true));
   }
 
@@ -94,14 +122,12 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
     TopicName backlogTopic = pubsubResourceManager.createTopic("backlog-input");
     SubscriptionName backlogSubscription =
         pubsubResourceManager.createSubscription(backlogTopic, "backlog-subscription");
-    SubscriptionName outputSubscription =
-        pubsubResourceManager.createSubscription(backlogTopic, "output-subscription");
-    TopicName outputTopic = pubsubResourceManager.createTopic("output");
-    // Generate fake data to topic
+    TableId table = bigQueryResourceManager.createTable(testName.getMethodName(), SCHEMA);
+    // Generate fake data to table
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
             .setQPS("1000000")
-            .setMessagesLimit(String.valueOf(numMessages))
+            .setMessagesLimit(String.valueOf(NUM_MESSAGES))
             .setTopic(backlogTopic.toString())
             .setNumWorkers("50")
             .setMaxNumWorkers("100")
@@ -113,7 +139,7 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
                 LaunchConfig.builder(testName, SPEC_PATH)
                     .addEnvironment("maxWorkers", 100)
                     .addParameter("inputSubscription", backlogSubscription.toString())
-                    .addParameter("outputTopic", outputTopic.toString()))
+                    .addParameter("outputTableSpec", toTableSpec(PROJECT, table)))
             .build();
 
     // Act
@@ -121,28 +147,29 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
     assertThatPipeline(info).isRunning();
     Result result =
         pipelineOperator.waitForConditionAndFinish(
-            createConfig(info, Duration.ofMinutes(60)),
-            () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, numMessages));
+            createConfig(info, Duration.ofMinutes(40)),
+            () ->
+                bigQueryResourceManager.getRowCount(PROJECT, table.getDataset(), table.getTable())
+                    == NUM_MESSAGES);
 
     // Assert
     assertThatResult(result).meetsConditions();
-    // check to see if messages reached the output topic
-    assertThat(pubsubResourceManager.pull(outputSubscription, 5).getReceivedMessagesCount())
-        .isGreaterThan(0);
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
   public void testSteadyState1hr(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
-      throws IOException, ParseException, InterruptedException {
+      throws ParseException, IOException, InterruptedException {
     // Arrange
     TopicName inputTopic = pubsubResourceManager.createTopic("steady-state-input");
-    SubscriptionName backlogSubscription =
+    SubscriptionName inputSubscription =
         pubsubResourceManager.createSubscription(inputTopic, "steady-state-subscription");
-    TopicName outputTopic = pubsubResourceManager.createTopic("output");
-    SubscriptionName outputSubscription =
-        pubsubResourceManager.createSubscription(inputTopic, "output-subscription");
+    TableId table =
+        bigQueryResourceManager.createTable(
+            testName.getMethodName(),
+            SCHEMA,
+            System.currentTimeMillis() + 7200000); // expire in 2 hrs
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
             .setQPS("100000")
@@ -155,19 +182,19 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
                     .addEnvironment("maxWorkers", 100)
-                    .addParameter("inputSubscription", backlogSubscription.toString())
-                    .addParameter("outputTopic", outputTopic.toString()))
+                    .addParameter("inputSubscription", inputSubscription.toString())
+                    .addParameter("outputTableSpec", toTableSpec(PROJECT, table)))
             .build();
 
     // Act
     LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     dataGenerator.execute(Duration.ofMinutes(60));
+    // Validate that the template executed as expected
     Result result = pipelineOperator.drainJobAndFinish(createConfig(info, Duration.ofMinutes(20)));
     // Assert
     assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
-    // check to see if messages reached the output topic
-    assertThat(pubsubResourceManager.pull(outputSubscription, 5).getReceivedMessagesCount())
+    assertThat(bigQueryResourceManager.getRowCount(PROJECT, table.getDataset(), table.getTable()))
         .isGreaterThan(0);
 
     // export results

@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it;
 
-import static com.google.cloud.teleport.it.PerformanceBenchmarkingBase.createConfig;
+import static com.google.cloud.teleport.it.LoadTestBase.createConfig;
 import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
