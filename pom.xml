@@ -346,7 +346,7 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>libraries-bom</artifactId>
-      <version>${libraries-bom.version}</version>
+      <version>${cloud-libraries-bom.version}</version>
       <type>pom</type>
     </dependency>
   </dependencies>
