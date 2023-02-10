@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.pubsubtotext;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.options.WindowedFilenamePolicyOptions;
 import com.google.cloud.teleport.v2.templates.pubsubtotext.PubsubToText.Options;
@@ -131,7 +132,10 @@ import org.apache.beam.sdk.values.PCollection;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub Subscription or Topic to Text Files on Cloud Storage",
     description =
-        "Streaming pipeline. Reads records from Pub/Sub Subscription or Topic and writes them to Cloud Storage, creating a text file for each five minute window. Note that this pipeline assumes no newlines in the body of the Pub/Sub message and thus each message becomes a single line in the output file.",
+        "Streaming pipeline. Reads records from Pub/Sub Subscription or Topic and writes them to"
+            + " Cloud Storage, creating a text file for each five minute window. Note that this"
+            + " pipeline assumes no newlines in the body of the Pub/Sub message and thus each"
+            + " message becomes a single line in the output file.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-to-text",
     contactInformation = "https://cloud.google.com/support")
@@ -162,7 +166,8 @@ public class PubsubToText {
         optional = true,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+            "Pub/Sub subscription to read the input from, in the format of"
+                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     String getInputSubscription();
 
@@ -172,8 +177,8 @@ public class PubsubToText {
         order = 3,
         description = "Output file directory in Cloud Storage",
         helpText =
-            "The path and filename prefix for writing output files. Must end with a slash. DateTime "
-                + "formatting is used to parse directory path for date & time formatters.",
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime"
+                + " formatting is used to parse directory path for date & time formatters.",
         example = "gs://your-bucket/your-path")
     @Required
     String getOutputDirectory();
@@ -222,6 +227,7 @@ public class PubsubToText {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
@@ -270,8 +276,7 @@ public class PubsubToText {
             options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
 
-        // Apply windowed file writes. Use a NestedValueProvider because the filename
-        // policy requires a resourceId generated from the input value at runtime.
+        // Apply windowed file writes
         .apply(
             "Write File(s)",
             TextIO.write()

@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQuery",
-  "classPath": "/template/mongodb-to-bigquery/*:/template/mongodb-to-bigquery/libs/*:/template/mongodb-to-bigquery/classes",
+  "classPath": "/template/mongodb-to-bigquery/mongodb-to-bigquery-conscrypt.jar:/template/mongodb-to-bigquery/*:/template/mongodb-to-bigquery/libs/*:/template/mongodb-to-bigquery/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"mongodb-to-bigquery\"}"
   }

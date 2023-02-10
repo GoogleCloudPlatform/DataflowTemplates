@@ -30,6 +30,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DataplexClientFactory;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform;
 import com.google.cloud.teleport.v2.transforms.DataplexBigQueryToGcsUpdateMetadata;
@@ -90,7 +91,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Dataplex: Tier Data from BigQuery to Cloud Storage",
     description =
-        "A pipeline that exports all tables from a BigQuery dataset to Cloud Storage, registering metadata for the newly created files in Dataplex.",
+        "A pipeline that exports all tables from a BigQuery dataset to Cloud Storage, registering"
+            + " metadata for the newly created files in Dataplex.",
     optionsClass = DataplexBigQueryToGcsOptions.class,
     flexContainerName = "dataplex-bigquery-to-gcs",
     contactInformation = "https://cloud.google.com/support")
@@ -106,6 +108,7 @@ public class DataplexBigQueryToGcs {
    */
   public static void main(String[] args)
       throws IOException, InterruptedException, ExecutionException {
+    UncaughtExceptionLogger.register();
 
     DataplexBigQueryToGcsOptions options =
         PipelineOptionsFactory.fromArgs(args)

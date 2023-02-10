@@ -76,12 +76,26 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
         .apply(
             new TriggerPerKeyOnFixedIntervals<String, MergeInfo>(
                 mergeConfiguration.mergeWindowDuration()))
-        .apply(Values.create())
         .apply(
-            Reshuffle.<MergeInfo>viaRandomKey()
-                .withNumBuckets(mergeConfiguration.mergeConcurrency()))
+            MapElements.into(
+                    TypeDescriptors.kvs(
+                        TypeDescriptors.integers(), TypeDescriptor.of(MergeInfo.class)))
+                .via(kv -> KV.of(createJobKey(kv.getKey()), kv.getValue())))
+        .apply(Reshuffle.of())
+        .apply(Values.create())
         .apply(ParDo.of(new BigQueryStatementIssuingFn(bigQueryClient, mergeConfiguration)))
         .apply(MapElements.into(TypeDescriptors.voids()).via(whatever -> (Void) null));
+  }
+
+  /**
+   * Creates job keys on a per-table basis, w.r.t the mergeConcurrency limit so that the target
+   * BigQuery isn't overloaded with tasks.
+   *
+   * @param tableReference the original table name key
+   * @return a number between [0, mergeConcurrency-1] that is used as key for assignment
+   */
+  int createJobKey(String tableReference) {
+    return Math.abs(tableReference.hashCode()) % mergeConfiguration.mergeConcurrency();
   }
 
   /**
@@ -171,7 +185,11 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
     @Setup
     public void setUp() {
       if (bigQueryClient == null) {
-        bigQueryClient = BigQueryOptions.getDefaultInstance().getService();
+        BigQueryOptions.Builder optionsBuilder = BigQueryOptions.newBuilder();
+        if (mergeConfiguration.projectId() != null && !mergeConfiguration.projectId().isEmpty()) {
+          optionsBuilder = optionsBuilder.setProjectId(mergeConfiguration.projectId());
+        }
+        bigQueryClient = optionsBuilder.build().getService();
       }
     }
 

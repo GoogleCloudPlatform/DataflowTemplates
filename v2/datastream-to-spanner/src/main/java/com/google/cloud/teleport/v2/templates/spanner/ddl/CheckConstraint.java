@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.spanner.Dialect;
 import java.io.IOException;
 import java.io.Serializable;
 
@@ -28,17 +29,24 @@ public abstract class CheckConstraint implements Serializable {
 
   public abstract String expression();
 
+  public abstract Dialect dialect();
+
   public abstract Builder toBuilder();
 
+  public static Builder builder(Dialect dialect) {
+    return new AutoValue_CheckConstraint.Builder().dialect(dialect);
+  }
+
   public static Builder builder() {
-    return new AutoValue_CheckConstraint.Builder();
+    return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
 
   private void prettyPrint(Appendable appendable) throws IOException {
+    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
     appendable
-        .append("CONSTRAINT `")
+        .append("CONSTRAINT " + identifierQuote)
         .append(name())
-        .append("` CHECK (")
+        .append(identifierQuote + " CHECK (")
         .append(expression())
         .append(")");
   }
@@ -64,6 +72,8 @@ public abstract class CheckConstraint implements Serializable {
     public abstract Builder name(String name);
 
     public abstract Builder expression(String expr);
+
+    public abstract Builder dialect(Dialect dialect);
 
     public abstract CheckConstraint build();
   }

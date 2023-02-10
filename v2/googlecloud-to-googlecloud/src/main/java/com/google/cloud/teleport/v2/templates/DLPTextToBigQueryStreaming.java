@@ -23,6 +23,7 @@ import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.DLPTextToBigQueryStreaming.TokenizePipelineOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.common.base.Charsets;
@@ -191,6 +192,8 @@ public class DLPTextToBigQueryStreaming {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     TokenizePipelineOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(TokenizePipelineOptions.class);
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);

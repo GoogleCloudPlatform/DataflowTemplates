@@ -27,13 +27,14 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <autovalue.version>1.8.2</autovalue.version>
     <cloud-storage.version>2.2.2</cloud-storage.version>
-    <guava.version>31.0.1-jre</guava.version>
+    <elasticsearch.version>7.9.2</elasticsearch.version>
+    <kafka.version>2.4.1</kafka.version>
     <mockito.version>3.7.7</mockito.version>
     <mockito-inline.version>4.5.1</mockito-inline.version>
     <mongodb.version>3.12.10</mongodb.version>
     <dataflow-api.version>v1b3-rev20220920-2.0.0</dataflow-api.version>
+    <parquet-avro.version>1.12.0</parquet-avro.version>
     <testcontainers.version>1.17.5</testcontainers.version>
   </properties>
 
@@ -56,11 +57,14 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-storage</artifactId>
-      <version>${cloud-storage.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-bigquery</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-monitoring</artifactId>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
@@ -73,6 +77,10 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-pubsub</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-pubsublite</artifactId>
     </dependency>
 
     <dependency>
@@ -102,6 +110,12 @@
       <version>${slf4j.version}</version>
     </dependency>
 
+    <!-- Apache Beam dependency -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-core</artifactId>
+    </dependency>
+
     <!-- Test Containers -->
     <dependency>
       <groupId>org.testcontainers</groupId>
@@ -111,6 +125,16 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>mongodb</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>kafka</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>elasticsearch</artifactId>
       <version>${testcontainers.version}</version>
     </dependency>
 
@@ -123,6 +147,46 @@
         <exclusion>
           <groupId>org.mongodb</groupId>
           <artifactId>bson-record-codec</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.elasticsearch.client</groupId>
+      <artifactId>elasticsearch-rest-high-level-client</artifactId>
+      <version>${elasticsearch.version}</version>
+    </dependency>
+
+    <!-- File Formats -->
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-avro</artifactId>
+      <version>${parquet-avro.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <version>${hadoop.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.sun.jersey</groupId>
+          <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -170,4 +234,25 @@
     </plugins>
   </build>
 
+  <!-- Skip tests for this common module when profile enabled -->
+  <profiles>
+    <profile>
+      <id>skipCommonTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <skipTests>true</skipTests>
+      </properties>
+    </profile>
+    <profile>
+      <id>skipIT</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <skipTests>true</skipTests>
+      </properties>
+    </profile>
+  </profiles>
 </project>

@@ -214,7 +214,8 @@ public class PubSubToBigQuery {
 
     void setInputSubscription(ValueProvider<String> value);
 
-    @TemplateCreationParameter
+    @TemplateCreationParameter(template = "PubSub_to_BigQuery", value = "false")
+    @TemplateCreationParameter(template = "PubSub_Subscription_to_BigQuery", value = "true")
     @Description(
         "This determines whether the template reads from a Pub/sub subscription or a topic")
     @Default.Boolean(false)

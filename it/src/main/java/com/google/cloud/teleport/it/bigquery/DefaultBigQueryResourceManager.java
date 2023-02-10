@@ -38,6 +38,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,10 +69,16 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     if (builder.credentials != null) {
       bigQueryOptions.setCredentials(builder.credentials);
     }
-
     this.bigQuery = bigQueryOptions.build().getService();
-    this.datasetId = BigQueryResourceManagerUtils.generateDatasetId(builder.testId);
     this.projectId = builder.projectId;
+
+    // If datasetId is provided, get the dataset.
+    if (builder.datasetId != null) {
+      this.datasetId = builder.datasetId;
+      dataset = getDatasetIfExists(this.datasetId);
+    } else {
+      this.datasetId = BigQueryResourceManagerUtils.generateDatasetId(builder.testId);
+    }
   }
 
   @VisibleForTesting
@@ -84,11 +92,6 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     return new DefaultBigQueryResourceManager.Builder(testId, projectId);
   }
 
-  /**
-   * Returns the project ID this Resource Manager is configured to operate on.
-   *
-   * @return the project ID.
-   */
   public String getProjectId() {
     return projectId;
   }
@@ -106,6 +109,22 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     if (dataset == null) {
       throw new IllegalStateException("There is no dataset for manager to perform operation on.");
     }
+  }
+
+  /**
+   * Helper method for fetching a dataset stored in the project given the datasetId.
+   *
+   * @param datasetId the name of the dataset to fetch.
+   * @return the dataset, if it exists.
+   * @throws IllegalStateException if the given dataset does not exist in the project.
+   */
+  private synchronized Dataset getDatasetIfExists(String datasetId) throws IllegalStateException {
+    Dataset dataset = bigQuery.getDataset(datasetId);
+    if (dataset == null) {
+      throw new IllegalStateException(
+          "The dataset " + datasetId + " does not exist in project " + projectId + ".");
+    }
+    return dataset;
   }
 
   /**
@@ -169,7 +188,8 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
   }
 
   @Override
-  public synchronized TableId createTable(String tableName, Schema schema, Long expirationTime) {
+  public synchronized TableId createTable(
+      String tableName, Schema schema, Long expirationTimeMillis) {
     // Check table ID
     checkValidTableId(tableName);
 
@@ -191,7 +211,7 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
         TableDefinition tableDefinition = StandardTableDefinition.of(schema);
         TableInfo tableInfo =
             TableInfo.newBuilder(tableId, tableDefinition)
-                .setExpirationTime(expirationTime)
+                .setExpirationTime(expirationTimeMillis)
                 .build();
         bigQuery.create(tableInfo);
         LOG.info(
@@ -234,7 +254,7 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
       successfullyWrittenRecords -= insertResponse.getInsertErrors().size();
 
       if (insertResponse.hasErrors()) {
-        LOG.info("Errors encountered when inserting rows: ");
+        LOG.warn("Errors encountered when inserting rows: ");
         logInsertErrors(insertResponse.getInsertErrors());
       }
 
@@ -250,31 +270,58 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
   }
 
   @Override
+  public TableResult runQuery(String query) {
+    try {
+      TableResult results = bigQuery.query(QueryJobConfiguration.newBuilder(query).build());
+      LOG.info("Loaded {} rows from {}", results.getTotalRows(), query);
+      return results;
+    } catch (Exception e) {
+      throw new BigQueryResourceManagerException("Failed to read query " + query, e);
+    }
+  }
+
+  @Override
+  public Long getRowCount(String project, String dataset, String table) {
+    TableResult r =
+        runQuery(String.format("SELECT COUNT(*) FROM %s:%s.%s", project, dataset, table));
+    return StreamSupport.stream(r.getValues().spliterator(), false)
+        .map(fieldValues -> fieldValues.get(0).getLongValue())
+        .collect(Collectors.toList())
+        .get(0);
+  }
+
+  @Override
+  public synchronized TableResult readTable(TableId table) {
+    return readTable(table.getTable());
+  }
+
+  @Override
   public synchronized TableResult readTable(String tableName) {
+    return readTable(tableName, -1);
+  }
+
+  @Override
+  public synchronized TableResult readTable(TableId table, int numRows) {
+    return readTable(table.getTable(), numRows);
+  }
+
+  @Override
+  public synchronized TableResult readTable(String tableName, int numRows) {
     getTableIfExists(tableName);
 
-    LOG.info("Reading all rows from {}.{}", dataset.getDatasetId().getDataset(), tableName);
-
-    // Read all the rows from the table given by tableId
-    TableResult results;
-    try {
-      String query =
-          "SELECT TO_JSON_STRING(t) FROM `"
-              + String.join(".", projectId, datasetId, tableName)
-              + "` AS t;";
-      QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).build();
-      results = bigQuery.query(queryConfig);
-    } catch (Exception e) {
-      throw new BigQueryResourceManagerException("Failed to read from table " + tableName + ".", e);
-    }
-
     LOG.info(
-        "Loaded {} rows from {}.{}",
-        results.getTotalRows(),
+        "Reading {} rows from {}.{}",
+        numRows == -1 ? "all" : Integer.toString(numRows),
         dataset.getDatasetId().getDataset(),
         tableName);
 
-    return results;
+    // Read all the rows from the table given by tableId
+    String query =
+        "SELECT TO_JSON_STRING(t) FROM `"
+            + String.join(".", projectId, datasetId, tableName)
+            + "` AS t"
+            + (numRows != -1 ? " LIMIT " + numRows + ";" : ";");
+    return runQuery(query);
   }
 
   @Override
@@ -301,11 +348,17 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
 
     private final String testId;
     private final String projectId;
+    private String datasetId;
     private Credentials credentials;
 
     private Builder(String testId, String projectId) {
       this.testId = testId;
       this.projectId = projectId;
+    }
+
+    public Builder setDatasetId(String datasetId) {
+      this.datasetId = datasetId;
+      return this;
     }
 
     public Builder setCredentials(Credentials credentials) {

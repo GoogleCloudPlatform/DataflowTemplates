@@ -15,6 +15,7 @@
  */
 package com.google.cloud.syndeo.transforms.bigtable;
 
+import com.google.api.gax.rpc.AlreadyExistsException;
 import com.google.bigtable.v2.Mutation;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings;
@@ -43,11 +44,15 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BigTableIOWriteSchemaBasedTransform
     extends PTransform<PCollectionRowTuple, PCollectionRowTuple> implements SchemaTransform {
 
-  private static final String INPUT_TAG = "INPUT";
+  private static final Logger LOG =
+      LoggerFactory.getLogger(BigTableIOWriteSchemaBasedTransform.class);
+  public static final String INPUT_TAG = "input";
 
   private final String projectId;
   private final String instanceId;
@@ -95,13 +100,28 @@ public class BigTableIOWriteSchemaBasedTransform
   }
 
   private void createTableIfNeeded(Schema inputSchema) {
-    // TODO(pabloem): What happens if we don't have privileges to create the table?
     try (BigtableTableAdminClient client = bigtableTableAdminClient()) {
       CreateTableRequest createTableRequest = CreateTableRequest.of(tableId);
       inputSchema.getFields().forEach(field -> createTableRequest.addFamily(field.getName()));
       client.createTable(createTableRequest);
     } catch (IOException e) {
-      // TODO(pabloem): HANDLE THIS POSSIBILITY
+      throw new RuntimeException(
+          String.format(
+              "Failed to access BigTable instance %s in project %s", instanceId, projectId),
+          e);
+    } catch (io.grpc.StatusRuntimeException | com.google.api.gax.rpc.AlreadyExistsException e) {
+      if (e.getMessage().toLowerCase().contains("already")
+              && e.getMessage().toLowerCase().contains("exists")
+          || e instanceof AlreadyExistsException) {
+        // The table already exists. We do not need to handle this.
+        LOG.info("Bigtable destination table {} already exists. Not creating a new one.", tableId);
+      } else {
+        throw new RuntimeException(
+            String.format(
+                "Unable to create BigTable table in instance %s in project %s",
+                instanceId, projectId),
+            e);
+      }
     }
   }
 
@@ -136,6 +156,18 @@ public class BigTableIOWriteSchemaBasedTransform
   @Override
   public PCollectionRowTuple expand(PCollectionRowTuple input) {
     PCollection<Row> inputData = input.get(INPUT_TAG);
+
+    inputData
+        .getSchema()
+        .getFields()
+        .forEach(
+            f -> {
+              if (f.getType().getTypeName().equals(Schema.TypeName.ROW)) {
+                throw new UnsupportedOperationException(
+                    String.format(
+                        "Nested fields are not supported. Field %s is of type ROW.", f.getName()));
+              }
+            });
 
     createTableIfNeeded(inputData.getSchema());
     verifyTableSchemaMatches(inputData.getSchema());
@@ -172,6 +204,7 @@ public class BigTableIOWriteSchemaBasedTransform
     PCollection<KV<byte[], Row>> byteEncodedKeyedRows =
         keyedRows
             .apply(
+                "encodeKeys",
                 ParDo.of(
                     new DoFn<KV<Row, Row>, KV<byte[], Row>>() {
                       @ProcessElement
@@ -220,6 +253,7 @@ public class BigTableIOWriteSchemaBasedTransform
     // STEP 3: Convert KV<bytes, Row> into KV<ByteString, List<SetCell<...>>>
     PCollection<KV<ByteString, Iterable<Mutation>>> bigtableMutations =
         byteEncodedKeyedRows.apply(
+            "buildMutations",
             ParDo.of(
                 new DoFn<KV<byte[], Row>, KV<ByteString, Iterable<Mutation>>>() {
                   @ProcessElement

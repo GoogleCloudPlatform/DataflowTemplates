@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.v2.transforms.FormatTransform.readFromKa
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.KafkaToPubsubOptions;
 import com.google.cloud.teleport.v2.transforms.FormatTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -140,6 +141,8 @@ public class KafkaToPubsub {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     KafkaToPubsubOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToPubsubOptions.class);
 

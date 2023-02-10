@@ -35,35 +35,18 @@
     <packaging>pom</packaging>
 
     <properties>
-        <autovalue.version>1.7.4</autovalue.version>
-        <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
-        <guava.version>30.1-jre</guava.version>
         <jib.maven.version>2.6.0</jib.maven.version>
         <junit-dep.version>4.10</junit-dep.version>
         <opencensus.version>0.31.0</opencensus.version>
 
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
+
+        <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <!--
-            Force gax version to 2.3.0.
-            Beam 2.34 depends on newer Google libraries that need don't work with older gax
-            versions, but because of some other transitive dependencies Maven picks the older ones.
-            -->
-            <dependency>
-                <groupId>com.google.api</groupId>
-                <artifactId>gax</artifactId>
-                <version>2.3.0</version>
-            </dependency>
-            <dependency>
-                <groupId>com.google.api</groupId>
-                <artifactId>gax-grpc</artifactId>
-                <version>2.3.0</version>
-            </dependency>
-
             <!-- Enforce Conscrypt version -->
             <dependency>
                 <groupId>org.conscrypt</groupId>
@@ -190,7 +173,7 @@
         <dependency>
             <groupId>com.google.auto.value</groupId>
             <artifactId>auto-value-annotations</artifactId>
-            <version>${autovalue.annotations.version}</version>
+            <version>${autovalue.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.re2j</groupId>
@@ -286,6 +269,7 @@
                     </configuration>
                     <executions>
                         <execution>
+                            <id>jib</id>
                             <phase>install</phase>
                             <goals>
                                 <goal>build</goal>
@@ -431,6 +415,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>${maven-jar-plugin.version}</version>
+            </plugin>
+
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
             </plugin>
 
             <plugin>
@@ -664,6 +653,31 @@
                                 <phase>package</phase>
                                 <goals>
                                     <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>templatesRelease</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <jib.skip>true</jib.skip>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.teleport</groupId>
+                        <artifactId>templates-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>release</goal>
                                 </goals>
                             </execution>
                         </executions>

@@ -31,6 +31,8 @@ import com.google.cloud.teleport.v2.cdc.merge.BigQueryMerger;
 import com.google.cloud.teleport.v2.cdc.merge.MergeConfiguration;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.DataStreamToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.StatefulRowCleaner;
@@ -50,7 +52,6 @@ import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.Default;
@@ -139,7 +140,11 @@ public class DataStreamToBigQuery {
    * <p>Inherits standard configuration options.
    */
   public interface Options
-      extends PipelineOptions, StreamingOptions, InputUDFOptions, BigQueryOptions {
+      extends PipelineOptions,
+          StreamingOptions,
+          InputUDFOptions,
+          BigQueryStorageApiStreamingOptions {
+
     @TemplateParameter.Text(
         order = 1,
         description = "File location for Datastream file output in Cloud Storage.",
@@ -342,6 +347,18 @@ public class DataStreamToBigQuery {
     Integer getMergeConcurrency();
 
     void setMergeConcurrency(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 19,
+        optional = true,
+        description = "Partition retention days.",
+        helpText =
+            "The number of days to use for partition retention when running BigQuery merges."
+                + " Default is 1.")
+    @Default.Integer(MergeConfiguration.DEFAULT_PARTITION_RETENTION_DAYS)
+    Integer getPartitionRetentionDays();
+
+    void setPartitionRetentionDays(Integer value);
   }
 
   /**
@@ -350,6 +367,8 @@ public class DataStreamToBigQuery {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting Input Files to BigQuery");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
@@ -540,9 +559,11 @@ public class DataStreamToBigQuery {
               "BigQuery Merge/Merge into Replica Tables",
               BigQueryMerger.of(
                   MergeConfiguration.bigQueryConfiguration()
+                      .withProjectId(bigqueryProjectId)
                       .withMergeWindowDuration(
                           Duration.standardMinutes(options.getMergeFrequencyMinutes()))
-                      .withMergeConcurrency(options.getMergeConcurrency())));
+                      .withMergeConcurrency(options.getMergeConcurrency())
+                      .withPartitionRetention(options.getPartitionRetentionDays())));
     }
 
     /*

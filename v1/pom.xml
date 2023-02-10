@@ -26,6 +26,7 @@
   </parent>
 
   <artifactId>classic-templates</artifactId>
+  <version>1.0-SNAPSHOT</version>
   <name>Google Cloud Teleport Classic</name>
   <description>
     Cloud Teleport Classic is a collection of Apache Beam pipelines for common tasks, like data movement
@@ -33,7 +34,6 @@
   </description>
 
   <properties>
-    <apache-http-client-v2>1.40.1</apache-http-client-v2>
     <autovalue.service.version>1.0-rc6</autovalue.service.version>
     <avro.version>1.8.2</avro.version>
     <extra.enforcer.rules.version>1.3</extra.enforcer.rules.version>
@@ -41,7 +41,7 @@
     <open-census.version>0.24.0</open-census.version>
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
     <bigtable-beam-import.version>1.27.1</bigtable-beam-import.version>
-    <protobuf.version>3.11.1</protobuf.version>
+    <protobuf.version>3.21.7</protobuf.version>
     <nashorn.version>15.4</nashorn.version>
     <junit.jupiter.version>5.5.2</junit.jupiter.version>
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
@@ -50,13 +50,9 @@
     <google-cloud-bigquery.version>1.108.0</google-cloud-bigquery.version>
     <grpc.gen.version>1.13.1</grpc.gen.version>
     <derby.version>10.14.2.0</derby.version>
-    <commons-codec.version>1.14</commons-codec.version>
-    <commons-io.version>2.4</commons-io.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
     <threetenbp.version>1.4.4</threetenbp.version>
-    <spring.version>5.2.8.RELEASE</spring.version>
-    <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
-    <autovalue.version>1.7.4</autovalue.version>
+    <spring.version>5.2.22.RELEASE</spring.version>
     <tensorflow.version>1.15.0</tensorflow.version>
     <dlp.version>2.1.0</dlp.version>
     <hbase.version>1.4.5</hbase.version>
@@ -195,11 +191,11 @@
       <scope>provided</scope>
       <exclusions>
         <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>log4j</groupId>
           <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
@@ -214,12 +210,10 @@
     <dependency>
       <groupId>com.google.http-client</groupId>
       <artifactId>google-http-client</artifactId>
-      <version>${apache-http-client-v2}</version>
     </dependency>
     <dependency>
       <groupId>com.google.http-client</groupId>
       <artifactId>google-http-client-apache-v2</artifactId>
-      <version>${apache-http-client-v2}</version>
     </dependency>
 
     <!-- UDFs -->
@@ -362,6 +356,12 @@
       <groupId>com.google.cloud.bigtable</groupId>
       <artifactId>bigtable-beam-import</artifactId>
       <version>${bigtable-beam-import.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.json</groupId>
@@ -377,7 +377,7 @@
     <dependency>
       <groupId>com.google.auto.value</groupId>
       <artifactId>auto-value-annotations</artifactId>
-      <version>${autovalue.annotations.version}</version>
+      <version>${autovalue.version}</version>
     </dependency>
     <dependency>
       <groupId>org.codehaus.jackson</groupId>
@@ -400,16 +400,13 @@
       <artifactId>commons-text</artifactId>
       <version>${commons-text.version}</version>
     </dependency>
-
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
-      <version>${commons-codec.version}</version>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-      <version>${commons-io.version}</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.avro/avro -->
     <dependency>
@@ -1057,6 +1054,31 @@
                 <phase>package</phase>
                 <goals>
                   <goal>run</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>templatesRelease</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <jib.skip>true</jib.skip>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>templates-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>release</goal>
                 </goals>
               </execution>
             </executions>

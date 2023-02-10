@@ -17,27 +17,26 @@ package com.google.cloud.teleport.v2.templates.session;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.Map;
 
 /** NameAndCols object to store Spanner table name and column name mapping information. */
 public class NameAndCols implements Serializable {
 
   /** Represents the name of the Spanner table. */
-  private final String name;
+  private String name;
 
   /** Mapping from source column names to the destination column names. */
-  private final Map<String, String> cols;
+  private HashMap<String, String> cols;
 
-  public NameAndCols(String name, Map<String, String> cols) {
+  public NameAndCols(String name, HashMap<String, String> cols) {
     this.name = name;
-    this.cols = (cols == null) ? (new HashMap<String, String>()) : cols;
+    this.cols = cols;
   }
 
   public String getName() {
     return name;
   }
 
-  public Map<String, String> getCols() {
+  public HashMap<String, String> getCols() {
     return cols;
   }
 

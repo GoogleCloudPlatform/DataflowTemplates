@@ -22,7 +22,9 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.KafkaToBigQuery.KafkaToBQOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
@@ -30,6 +32,7 @@ import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteKafkaMessage
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.cloud.teleport.v2.utils.MetadataValidator;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
@@ -47,7 +50,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -188,7 +190,9 @@ public class KafkaToBigQuery {
    * at the command-line.
    */
   public interface KafkaToBQOptions
-      extends KafkaReadOptions, JavascriptTextTransformerOptions, BigQueryOptions {
+      extends KafkaReadOptions,
+          JavascriptTextTransformerOptions,
+          BigQueryStorageApiStreamingOptions {
 
     @TemplateParameter.BigQueryTable(
         order = 1,
@@ -235,7 +239,7 @@ public class KafkaToBigQuery {
     @Deprecated
     @TemplateParameter.Text(
         order = 3,
-        regexes = {"[a-zA-Z0-9._-]+"},
+        regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read the input from",
         helpText = "Kafka topic(s) to read the input from.",
         example = "topic1,topic2")
@@ -273,6 +277,8 @@ public class KafkaToBigQuery {
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     KafkaToBQOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToBQOptions.class);
 
@@ -292,6 +298,7 @@ public class KafkaToBigQuery {
 
     // Validate BQ STORAGE_WRITE_API options
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
+    MetadataValidator.validate(options);
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);

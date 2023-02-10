@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.spanner;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
@@ -33,17 +34,16 @@ class ShadowTableCreator {
   private final String shadowTablePrefix;
   private final Map<String, Pair<String, String>> sortOrderMap;
 
-  ShadowTableCreator(String sourceType, String shadowTablePrefix) {
+  ShadowTableCreator(String sourceType, String shadowTablePrefix, Dialect dialect) {
     this.sourceType = sourceType;
     this.shadowTablePrefix = shadowTablePrefix;
-    if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
-      sortOrderMap = DatastreamConstants.ORACLE_SORT_ORDER;
-    } else if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
-      sortOrderMap = DatastreamConstants.MYSQL_SORT_ORDER;
-    } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
-      sortOrderMap = DatastreamConstants.POSTGRES_SORT_ORDER;
-    } else {
-      sortOrderMap = null;
+    Map<String, Map<String, Pair<String, String>>> dialectToSortOrder;
+    dialectToSortOrder = DatastreamConstants.DIALECT_TO_SORT_ORDER.get(dialect);
+    if (dialectToSortOrder == null) {
+      throw new IllegalArgumentException("Unsupported dialect specified: " + dialect);
+    }
+    sortOrderMap = dialectToSortOrder.get(sourceType);
+    if (sortOrderMap == null) {
       throw new IllegalArgumentException(
           "Unsupported datastream source type specified: " + sourceType);
     }
@@ -54,10 +54,10 @@ class ShadowTableCreator {
    * Note: Shadow tables for interleaved tables are not interleaved to
    * their shadow parent table.
    */
-  Table constructShadowTable(Ddl informationSchema, String dataTableName) {
+  Table constructShadowTable(Ddl informationSchema, String dataTableName, Dialect dialect) {
 
     // Create a new shadow table with the given prefix.
-    Table.Builder shadowTableBuilder = Table.builder();
+    Table.Builder shadowTableBuilder = Table.builder(dialect);
     String shadowTableName = shadowTablePrefix + dataTableName;
     shadowTableBuilder.name(shadowTableName);
 

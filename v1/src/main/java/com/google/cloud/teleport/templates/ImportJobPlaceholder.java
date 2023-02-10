@@ -85,7 +85,7 @@ public class ImportJobPlaceholder {
     @Integer(0)
     ValueProvider<Integer> getMutationThrottleLatencyMs();
 
-    @TemplateCreationParameter
+    @TemplateCreationParameter(value = "false")
     @Description("Wait for pipeline to finish.")
     @Default.Boolean(false)
     boolean getWait();

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.CdcJdbcIO;
 import com.google.cloud.teleport.v2.transforms.CreateDml;
 import com.google.cloud.teleport.v2.transforms.ProcessDml;
@@ -122,37 +123,58 @@ public class DataStreamToPostgres {
 
     void setRfcStartDateTime(String value);
 
-    @Description("DataStream API Root Url (only used for testing)")
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        description = "Datastream API Root URL (only required for testing)",
+        helpText = "Datastream API Root URL")
     @Default.String("https://datastream.googleapis.com/")
     String getDataStreamRootUrl();
 
     void setDataStreamRootUrl(String value);
 
     // Postgres Connection Parameters
-    @Description("Postgres Database Host")
+    @TemplateParameter.Text(
+        order = 4,
+        description = "Database Host to connect on.",
+        helpText = "Database Host to connect on.")
     String getDatabaseHost();
 
     void setDatabaseHost(String value);
 
-    @Description("Postgres Database Port")
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        description = "Database Port to connect on.",
+        helpText = "Database Port to connect on.")
     @Default.String("5432")
     String getDatabasePort();
 
     void setDatabasePort(String value);
 
-    @Description("Database User")
+    @TemplateParameter.Text(
+        order = 6,
+        description = "Database User to connect with.",
+        helpText = "Database User to connect with.")
     @Default.String("postgres")
     String getDatabaseUser();
 
     void setDatabaseUser(String value);
 
-    @Description("Database Password")
+    @TemplateParameter.Password(
+        order = 11,
+        description = "Database Password for given user.",
+        helpText = "Database Password for given user.")
     @Default.String("postgres")
     String getDatabasePassword();
 
     void setDatabasePassword(String value);
 
-    @Description("Database Name")
+    @TemplateParameter.Text(
+        order = 12,
+        optional = true,
+        description = "SQL Database Name.",
+        helpText = "The database name to connect to.")
     @Default.String("postgres")
     String getDatabaseName();
 
@@ -165,6 +187,8 @@ public class DataStreamToPostgres {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting Avro Python to BigQuery");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);

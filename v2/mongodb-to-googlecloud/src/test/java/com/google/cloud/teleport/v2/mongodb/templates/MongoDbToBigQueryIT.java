@@ -15,22 +15,23 @@
  */
 package com.google.cloud.teleport.v2.mongodb.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.mongodb.DefaultMongoDBResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
@@ -63,7 +64,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
  * export PROJECT=&lt;project id&gt;
  * export REGION=&lt;dataflow region&gt;
  * export TEMPLATE_MODULE=v2/mongodb-to-googlecloud
- * export TEMPLATE_IMAGE_SPEC=gs://dataflow-templates/latest/flex/MongoDB_to_BigQuery
+ * export ARTIFACT_BUCKET=&lt;bucket name&gt;
  * export HOST_IP=&lt;your host ip&gt;
  *
  * # To set the host ip to the default external ip
@@ -80,7 +81,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
  *   -Dtest="MongoDbToBigQueryIT" \
  *   -Dproject=${PROJECT} \
  *   -Dregion=${REGION} \
- *   -DspecPath=${TEMPLATE_IMAGE_SPEC} \
+ *   -DartifactBucket=${ARTIFACT_BUCKET} \
  *   -DhostIp=${HOST_IP} \
  *   -Djib.skip \
  *   -DfailIfNoTests=false
@@ -108,14 +109,13 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
   private static final String MONGO_DB_ID = "_id";
 
-  private static DefaultMongoDBResourceManager mongoDbClient;
-  private static BigQueryResourceManager bigQueryClient;
+  private DefaultMongoDBResourceManager mongoDbClient;
+  private BigQueryResourceManager bigQueryClient;
 
   @Before
   public void setup() throws IOException {
     mongoDbClient =
         DefaultMongoDBResourceManager.builder(testName.getMethodName()).setHost(HOST_IP).build();
-
     bigQueryClient =
         DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
             .setCredentials(credentials)
@@ -148,48 +148,48 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
   @Test
   public void testMongoDbToBigQuery() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
-
     String collectionName = testName.getMethodName();
     List<Document> mongoDocuments = generateDocuments();
     mongoDbClient.insertDocuments(collectionName, mongoDocuments);
 
     String bqTable = testName.getMethodName();
     List<Field> bqSchemaFields = new ArrayList<>();
+    bqSchemaFields.add(Field.of("timestamp", StandardSQLTypeName.TIMESTAMP));
     mongoDocuments
         .get(0)
         .forEach((key, val) -> bqSchemaFields.add(Field.of(key, StandardSQLTypeName.STRING)));
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryClient.createDataset(REGION);
-    bigQueryClient.createTable(bqTable, bqSchema);
-    String tableSpec = PROJECT + ":" + bigQueryClient.getDatasetId() + "." + bqTable;
+    TableId table = bigQueryClient.createTable(bqTable, bqSchema);
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter(MONGO_URI, mongoDbClient.getUri())
             .addParameter(MONGO_DB, mongoDbClient.getDatabaseName())
             .addParameter(MONGO_COLLECTION, collectionName)
-            .addParameter(BIGQUERY_TABLE, tableSpec)
+            .addParameter(BIGQUERY_TABLE, toTableSpec(table))
             .addParameter(USER_OPTION, "FLATTEN");
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
 
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForCondition(
                 createConfig(info), () -> bigQueryClient.readTable(bqTable).getTotalRows() != 0);
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
 
     Map<String, JSONObject> mongoMap = new HashMap<>();
     mongoDocuments.forEach(
         mongoDocument -> {
           JSONObject mongoDbJson = new JSONObject(mongoDocument.toJson());
-          mongoMap.put(mongoDbJson.getJSONObject(MONGO_DB_ID).getString("$oid"), mongoDbJson);
+          String mongoId = mongoDbJson.getJSONObject(MONGO_DB_ID).getString("$oid");
+          mongoDbJson.put(MONGO_DB_ID, mongoId);
+          mongoMap.put(mongoId, mongoDbJson);
         });
 
     TableResult tableRows = bigQueryClient.readTable(bqTable);
@@ -200,28 +200,31 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
                 row.forEach(
                     val -> {
                       JSONObject bigQueryJson = new JSONObject(val.getStringValue());
-                      JSONObject bigQueryIdJson =
-                          new JSONObject(
-                              bigQueryJson.getString(MONGO_DB_ID).replaceFirst("=", ":"));
-                      String bigQueryOid = bigQueryIdJson.getString("$oid");
-                      bigQueryJson.put(MONGO_DB_ID, bigQueryIdJson);
+                      assertTrue(bigQueryJson.has("timestamp"));
 
-                      assertThat(mongoMap.get(bigQueryOid).toString())
-                          .isEqualTo(bigQueryJson.toString());
+                      bigQueryJson.remove("timestamp");
+                      String bigQueryId = bigQueryJson.getString(MONGO_DB_ID);
+                      assertTrue(mongoMap.get(bigQueryId).similar(bigQueryJson));
                     }));
   }
 
   private static List<Document> generateDocuments() {
-    int numDocuments = Integer.parseInt(getProperty("numDocs", "100"));
-    int numFields = Integer.parseInt(getProperty("numFields", "20"));
-    int maxEntryLength = Integer.parseInt(getProperty("maxEntryLength", "20"));
+    int numDocuments =
+        Integer.parseInt(
+            TestProperties.getProperty("numDocs", "100", TestProperties.Type.PROPERTY));
+    int numFields =
+        Integer.parseInt(
+            TestProperties.getProperty("numFields", "20", TestProperties.Type.PROPERTY));
+    int maxEntryLength =
+        Integer.parseInt(
+            TestProperties.getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY));
     List<Document> mongoDocuments = new ArrayList<>();
 
     List<String> mongoDocumentKeys = new ArrayList<>();
     for (int j = 0; j < numFields; j++) {
       mongoDocumentKeys.add(
-          RandomStringUtils.randomAlphabetic(1)
-              + RandomStringUtils.randomAlphanumeric(0, maxEntryLength - 1));
+          RandomStringUtils.randomAlphabetic(2)
+              + RandomStringUtils.randomAlphanumeric(0, maxEntryLength - 2));
     }
 
     for (int i = 0; i < numDocuments; i++) {
@@ -236,10 +239,5 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     }
 
     return mongoDocuments;
-  }
-
-  private static String getProperty(String name, String defaultValue) {
-    String value = System.getProperty(name);
-    return value != null ? value : defaultValue;
   }
 }

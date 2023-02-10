@@ -42,7 +42,7 @@ public class TemplateDefinitionsTest {
     ImageSpecMetadata metadata = imageSpec.getMetadata();
     assertNotNull(metadata);
 
-    assertEquals("AtoB", metadata.getName());
+    assertEquals("A to B", metadata.getName());
     assertEquals("Send A to B", metadata.getDescription());
     assertEquals("com.google.cloud.teleport.plugin.sample.AtoBOk", metadata.getMainClass());
 
@@ -58,6 +58,9 @@ public class TemplateDefinitionsTest {
     ImageSpecParameter logical = metadata.getParameter("logical").get();
     assertEquals(ImageSpecParameterType.TEXT, logical.getParamType());
     assertEquals("^(true|false)$", logical.getRegexes().get(0));
+
+    ImageSpecParameter json = metadata.getParameter("JSON").get();
+    assertEquals(ImageSpecParameterType.TEXT, json.getParamType());
   }
 
   @Test

@@ -45,24 +45,34 @@
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.43.0</beam.version>
-    <cloud-libraries-bom.version>26.1.3</cloud-libraries-bom.version>
+    <beam.version>2.44.0</beam.version>
+    <cloud-libraries-bom.version>26.1.5</cloud-libraries-bom.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->
+    <autovalue.version>1.8.2</autovalue.version>
     <checkstyle.version>8.7</checkstyle.version>
+    <commons-codec.version>1.15</commons-codec.version>
+    <commons-io.version>2.11.0</commons-io.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <hadoop.version>2.10.2</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
+    <guava.version>31.0.1-jre</guava.version>
     <mockito-core.version>3.0.0</mockito-core.version>
+    <log4j-2.version>2.17.2</log4j-2.version>
     <json.version>20200518</json.version>
     <junit.version>4.13.1</junit.version>
-    <re2j.version>1.5</re2j.version>
+    <re2j.version>1.6</re2j.version>
     <slf4j.version>1.7.25</slf4j.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.0.1</truth.version>
+    <integration.tests>
+      com.google.cloud.teleport.metadata.TemplateIntegrationTest
+    </integration.tests>
     <excluded.spanner.tests></excluded.spanner.tests>
+
+    <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
   </properties>
 
   <dependencyManagement>
@@ -93,6 +103,32 @@
         <artifactId>junit</artifactId>
         <version>${junit.version}</version>
       </dependency>
+      <dependency>
+        <groupId>commons-codec</groupId>
+        <artifactId>commons-codec</artifactId>
+        <version>${commons-codec.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>${commons-io.version}</version>
+      </dependency>
+      <!-- If any module uses log4j 2.x, enforce it is patched by default -->
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j</artifactId>
+        <version>${log4j-2.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-api</artifactId>
+        <version>${log4j-2.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-core</artifactId>
+        <version>${log4j-2.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -122,7 +158,8 @@
         <configuration>
           <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
           They can be run manually using 'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
-          <excludedGroups>com.google.cloud.teleport.metadata.TemplateIntegrationTest,${excluded.spanner.tests}</excludedGroups>
+          <excludedGroups>${integration.tests}</excludedGroups>
+          <excludedGroups>${excluded.spanner.tests}</excludedGroups>
         </configuration>
       </plugin>
       <plugin>
@@ -153,7 +190,7 @@
               <style>GOOGLE</style>
             </googleJavaFormat>
             <licenseHeader>
-              <file>JAVA_LICENSE_HEADER</file>
+              <file>${licenseHeaderFile}</file>
             </licenseHeader>
           </java>
         </configuration>
@@ -238,7 +275,56 @@
         </plugins>
       </build>
     </profile>
-
+    <profile>
+      <id>templatesIntegrationDirectTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Skip shade for faster runs -->
+        <skipShade>true</skipShade>
+        <!-- Some modules may yield no integration tests -->
+        <failIfNoTests>false</failIfNoTests>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*IT.java</include>
+              </includes>
+              <excludedGroups>
+                com.google.cloud.teleport.metadata.SkipDirectRunnerTest
+              </excludedGroups>
+              <groups>
+                com.google.cloud.teleport.metadata.TemplateIntegrationTest
+              </groups>
+              <systemProperties>
+                <!-- Pass on the flag directRunnerTest to the templates test base -->
+                <property>
+                  <name>directRunnerTest</name>
+                  <value>true</value>
+                </property>
+              </systemProperties>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>pluginOutputDir</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <directory>${project.basedir}/target/plugin/${pluginRunId}</directory>
+      </build>
+    </profile>
     <profile>
       <id>oss-build</id>
       <activation>

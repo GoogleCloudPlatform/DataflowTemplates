@@ -20,6 +20,8 @@ import static com.google.common.base.Preconditions.checkState;
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.teleport.metadata.util.MetadataUtils;
+import java.io.IOException;
 import javax.annotation.Nullable;
 
 /**
@@ -41,6 +43,9 @@ public final class TestProperties {
   public static final String PROJECT_KEY = "project";
   public static final String REGION_KEY = "region";
   public static final String STAGE_BUCKET = "stageBucket";
+  public static final String EXPORT_DATASET_KEY = "exportDataset";
+  public static final String EXPORT_PROJECT = "exportProject";
+  public static final String EXPORT_TABLE_KEY = "exportTable";
   public static final String SPEC_PATH_KEY = "specPath";
   public static final String HOST_IP = "hostIp";
 
@@ -63,7 +68,23 @@ public final class TestProperties {
   }
 
   public static Credentials googleCredentials() {
-    return new GoogleCredentials(new AccessToken(accessToken(), /* expirationTime= */ null));
+    Credentials credentials;
+    try {
+      if (hasAccessToken()) {
+        credentials =
+            new GoogleCredentials(new AccessToken(accessToken(), /* expirationTime= */ null));
+      } else {
+        credentials = GoogleCredentials.getApplicationDefault();
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(
+          "Unable to get credentials! \n"
+              + "Please run the following command to set 60 minute access token, \n"
+              + "\t export DT_IT_ACCESS_TOKEN=$(gcloud auth application-default print-access-token) \n"
+              + "Please run the following command to set credentials using the gcloud command, "
+              + "\t gcloud auth application-default login");
+    }
+    return credentials;
   }
 
   public static boolean hasArtifactBucket() {
@@ -71,7 +92,19 @@ public final class TestProperties {
   }
 
   public static String artifactBucket() {
-    return getProperty(ARTIFACT_BUCKET_KEY, Type.PROPERTY, true);
+    return MetadataUtils.bucketNameOnly(getProperty(ARTIFACT_BUCKET_KEY, Type.PROPERTY, true));
+  }
+
+  public static String exportDataset() {
+    return getProperty(EXPORT_DATASET_KEY, Type.PROPERTY, false);
+  }
+
+  public static String exportProject() {
+    return getProperty(EXPORT_PROJECT, Type.PROPERTY, false);
+  }
+
+  public static String exportTable() {
+    return getProperty(EXPORT_TABLE_KEY, Type.PROPERTY, false);
   }
 
   public static String project() {
@@ -91,7 +124,7 @@ public final class TestProperties {
   }
 
   public static String stageBucket() {
-    return getProperty(STAGE_BUCKET, Type.PROPERTY, false);
+    return MetadataUtils.bucketNameOnly(getProperty(STAGE_BUCKET, Type.PROPERTY, false));
   }
 
   public static String hostIp() {
@@ -114,13 +147,13 @@ public final class TestProperties {
   }
 
   /** Gets a property or returns {@code defaultValue} if it is not found. */
-  private static String getProperty(String name, @Nullable String defaultValue, Type type) {
+  public static String getProperty(String name, @Nullable String defaultValue, Type type) {
     String value = type == Type.PROPERTY ? System.getProperty(name) : System.getenv(name);
     return value != null ? value : defaultValue;
   }
 
   /** Defines the types of properties there may be. */
-  private enum Type {
+  public enum Type {
     PROPERTY,
     ENVIRONMENT_VARIABLE
   }

@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.v2.io;
 
+import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
-import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.common.collect.Lists;
 import java.io.PrintWriter;
@@ -315,9 +315,5 @@ public class DynamicJdbcIOTest {
     public KV<Integer, String> mapRow(ResultSet resultSet) throws Exception {
       return KV.of(resultSet.getInt("id"), resultSet.getString("name"));
     }
-  }
-
-  private static KMSEncryptedNestedValue maybeDecrypt(String unencryptedValue, String kmsKey) {
-    return new KMSEncryptedNestedValue(unencryptedValue, kmsKey);
   }
 }

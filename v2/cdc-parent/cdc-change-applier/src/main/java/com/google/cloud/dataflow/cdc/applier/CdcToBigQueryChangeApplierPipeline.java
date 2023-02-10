@@ -20,6 +20,8 @@ import com.google.cloud.dataflow.cdc.applier.CdcToBigQueryChangeApplierPipeline.
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import java.io.IOException;
 import java.util.HashMap;
@@ -28,7 +30,6 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -79,12 +80,12 @@ public class CdcToBigQueryChangeApplierPipeline {
    * The {@link CdcApplierOptions} class provides the custom execution options passed by the
    * executor at the command-line.
    */
-  public interface CdcApplierOptions extends PipelineOptions, BigQueryOptions {
+  public interface CdcApplierOptions extends PipelineOptions, BigQueryStorageApiStreamingOptions {
 
     @TemplateParameter.Text(
         order = 1,
         optional = false,
-        regexes = {"[a-zA-Z0-9._-,]+"},
+        regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Pub/Sub topic(s) to read from",
         helpText = "Comma-separated list of PubSub topics to where CDC data is being pushed.")
     String getInputTopics();
@@ -157,6 +158,8 @@ public class CdcToBigQueryChangeApplierPipeline {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) throws IOException {
+    UncaughtExceptionLogger.register();
+
     CdcApplierOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(CdcApplierOptions.class);
 

@@ -29,6 +29,8 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A Beam transform that applies the DDL statements passed in a Cloud Spanner database and outputs
@@ -39,6 +41,7 @@ class ApplyDDLTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
   private final SpannerConfig spannerConfig;
   private final PCollectionView<List<String>> pendingDDLStatements;
   private final ValueProvider<Boolean> waitForApply;
+  private static final Logger LOG = LoggerFactory.getLogger(ApplyDDLTransform.class);
 
   /**
    * Default constructor.
@@ -81,6 +84,7 @@ class ApplyDDLTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
                     DatabaseAdminClient databaseAdminClient =
                         spannerAccessor.getDatabaseAdminClient();
                     List<String> statements = c.sideInput(pendingDDLStatements);
+                    LOG.info("Applying DDL statements: {}", statements);
                     if (!statements.isEmpty()) {
                       // This just kicks off the applying the DDL statements.
                       // It does not wait for it to complete.

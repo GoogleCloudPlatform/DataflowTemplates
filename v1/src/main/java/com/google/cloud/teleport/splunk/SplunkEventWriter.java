@@ -351,15 +351,13 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
         // the exception fall through, so this isn't considered a major issue.
         try {
           if (response != null) {
-            response.disconnect();
+            response.ignore();
           }
         } catch (IOException e) {
           LOG.warn(
-              "Error trying to disconnect from Splunk: {}\n"
-                  + "Messages should still have either been published or prepared for error"
-                  + " handling, but there might be a connection leak.\nStack Trace: {}",
-              e.getMessage(),
-              e.getStackTrace());
+              "Error ignoring response from Splunk. Messages should still have published, but there"
+                  + " might be a connection leak.",
+              e);
         }
       }
     }

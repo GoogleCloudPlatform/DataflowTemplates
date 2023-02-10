@@ -15,27 +15,25 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
+
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.options.PubsubToJdbcOptions;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
-import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
+import com.google.cloud.teleport.v2.utils.JsonStringToQueryMapper;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Types;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.values.PCollection;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +46,16 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to JDBC",
     description =
-        "A streaming pipeline which ingests data in the form of json strings from Pub/Sub subscription and writes to a JDBC table. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionUrl, username, and password should be all in encrypted format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\"  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\"  -H \"Authorization: Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type: application/json\"",
+        "A streaming pipeline which ingests data in the form of json strings from Pub/Sub"
+            + " subscription and writes to a JDBC table. JDBC connection string, user name and"
+            + " password can be passed in directly as plaintext or encrypted using the Google Cloud"
+            + " KMS API.  If the parameter KMSEncryptionKey is specified, connectionUrl, username,"
+            + " and password should be all in encrypted format. A sample curl command for the KMS"
+            + " API encrypt endpoint: curl -s -X POST"
+            + " \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\""
+            + "  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\"  -H \"Authorization:"
+            + " Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type:"
+            + " application/json\"",
     optionsClass = PubsubToJdbcOptions.class,
     flexContainerName = "pubsub-to-jdbc",
     contactInformation = "https://cloud.google.com/support")
@@ -67,6 +74,8 @@ public class PubsubToJdbc {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     PubsubToJdbcOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(PubsubToJdbcOptions.class);
 
@@ -124,7 +133,7 @@ public class PubsubToJdbc {
                     .withDataSourceConfiguration(dataSourceConfiguration)
                     .withStatement(options.getStatement())
                     .withPreparedStatementSetter(
-                        new MapJsonStringToQuery(getKeyOrder(options.getStatement()))))
+                        new JsonStringToQueryMapper(getKeyOrder(options.getStatement()))))
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
     errors.apply(
@@ -134,36 +143,6 @@ public class PubsubToJdbc {
             .build());
 
     return pipeline.run();
-  }
-
-  /** The {@link JdbcIO.PreparedStatementSetter} implementation for mapping json string to query. */
-  public static class MapJsonStringToQuery implements JdbcIO.PreparedStatementSetter<String> {
-
-    List<String> keyOrder;
-
-    public MapJsonStringToQuery(List<String> keyOrder) {
-      this.keyOrder = keyOrder;
-    }
-
-    public void setParameters(String element, PreparedStatement query) throws SQLException {
-      try {
-        JSONObject object = new JSONObject(element);
-        for (int i = 0; i < keyOrder.size(); i++) {
-          String key = keyOrder.get(i);
-          if (object.get(key) == JSONObject.NULL) {
-            query.setNull(i + 1, Types.NULL);
-          } else {
-            query.setObject(i + 1, object.get(key));
-          }
-        }
-      } catch (Exception e) {
-        LOG.error("Error while mapping PubSub strings to JDBC: {}", e.getMessage());
-      }
-    }
-  }
-
-  private static KMSEncryptedNestedValue maybeDecrypt(String unencryptedValue, String kmsKey) {
-    return new KMSEncryptedNestedValue(unencryptedValue, kmsKey);
   }
 
   private static List<String> getKeyOrder(String statement) {

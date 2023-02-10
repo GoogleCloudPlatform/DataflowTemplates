@@ -25,6 +25,7 @@ import com.google.cloud.bigquery.storage.v1beta1.TableReferenceProto;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.BigQueryToParquet.BigQueryToParquetOptions;
 import com.google.common.base.Strings;
 import java.io.IOException;
@@ -218,9 +219,10 @@ public class BigQueryToParquet {
         optional = true,
         description = "Maximum output shards",
         helpText =
-            "The maximum number of output shards produced when writing. A higher number of "
-                + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
-                + "data aggregation cost across shards when processing output Cloud Storage files.")
+            "The maximum number of output shards produced when writing. A higher number of shards"
+                + " means higher throughput for writing to Cloud Storage, but potentially higher"
+                + " data aggregation cost across shards when processing output Cloud Storage"
+                + " files.")
     @Default.Integer(0)
     Integer getNumShards();
 
@@ -240,7 +242,10 @@ public class BigQueryToParquet {
         optional = true,
         description = "Row restrictions/filter.",
         helpText =
-            "Read only rows which match the specified filter, which must be a SQL expression compatible with Google standard SQL (https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is specified, then all rows are returned.")
+            "Read only rows which match the specified filter, which must be a SQL expression"
+                + " compatible with Google standard SQL"
+                + " (https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is"
+                + " specified, then all rows are returned.")
     String getRowRestriction();
 
     void setRowRestriction(String restriction);
@@ -269,6 +274,8 @@ public class BigQueryToParquet {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     BigQueryToParquetOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(BigQueryToParquetOptions.class);
 

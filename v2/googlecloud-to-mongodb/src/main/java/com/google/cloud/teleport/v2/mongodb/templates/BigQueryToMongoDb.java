@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.mongodb.templates;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.mongodb.options.BigQueryToMongoDbOptions.BigQueryReadOptions;
 import com.google.cloud.teleport.v2.mongodb.options.BigQueryToMongoDbOptions.MongoDbOptions;
 import com.google.cloud.teleport.v2.mongodb.templates.BigQueryToMongoDb.Options;
@@ -39,7 +40,8 @@ import org.bson.Document;
     category = TemplateCategory.BATCH,
     displayName = "BigQuery to MongoDB",
     description =
-        "A batch pipeline which reads data rows from BigQuery and writes them to MongoDB as documents.",
+        "A batch pipeline which reads data rows from BigQuery and writes them to MongoDB as"
+            + " documents.",
     optionsClass = Options.class,
     flexContainerName = "bigquery-to-mongodb",
     contactInformation = "https://cloud.google.com/support")
@@ -60,6 +62,7 @@ public class BigQueryToMongoDb {
   }
 
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     run(options);

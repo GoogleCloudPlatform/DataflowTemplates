@@ -85,7 +85,7 @@ public class ExportPipeline {
 
     void setAvroTempDirectory(ValueProvider<String> value);
 
-    @TemplateCreationParameter
+    @TemplateCreationParameter(value = "")
     @Description("Test dataflow job identifier for Beam Direct Runner")
     @Default.String(value = "")
     ValueProvider<String> getTestJobId();
@@ -103,7 +103,7 @@ public class ExportPipeline {
 
     void setSpannerHost(ValueProvider<String> value);
 
-    @TemplateCreationParameter
+    @TemplateCreationParameter(value = "false")
     @Description("If true, wait for job finish")
     @Default.Boolean(true)
     boolean getWaitUntilFinish();

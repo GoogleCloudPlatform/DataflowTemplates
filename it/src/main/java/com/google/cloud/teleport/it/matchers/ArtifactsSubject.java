@@ -15,10 +15,18 @@
  */
 package com.google.cloud.teleport.it.matchers;
 
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatGenericRecords;
+import static com.google.common.hash.Hashing.sha256;
+
 import com.google.cloud.teleport.it.artifacts.Artifact;
+import com.google.cloud.teleport.it.common.AvroTestUtil;
+import com.google.cloud.teleport.it.common.ParquetTestUtil;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
+import java.util.ArrayList;
 import java.util.List;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -61,5 +69,49 @@ public final class ArtifactsSubject extends Subject {
     if (!actual.stream().anyMatch(artifact -> new String(artifact.contents()).contains(content))) {
       failWithActual("expected to contain", content);
     }
+  }
+
+  /**
+   * Check if any of the artifacts have a specific content hash (using SHA-256).
+   *
+   * @param hash Content to search for
+   */
+  public void hasHash(String hash) {
+    if (!actual.stream()
+        .anyMatch(artifact -> sha256().hashBytes(artifact.contents()).toString().equals(hash))) {
+      failWithActual("expected to contain hash", hash);
+    }
+  }
+
+  /**
+   * Parse artifacts to Avro records to be used for assertions.
+   *
+   * @param schema Avro Schema to use on the conversion.
+   */
+  public RecordsSubject asAvroRecords(Schema schema) {
+    List<GenericRecord> allRecords = new ArrayList<>();
+
+    for (Artifact artifact : this.actual) {
+      try {
+        allRecords.addAll(AvroTestUtil.readRecords(schema, artifact.contents()));
+      } catch (Exception e) {
+        throw new RuntimeException("Error reading " + artifact.name() + " as Avro.", e);
+      }
+    }
+    return assertThatGenericRecords(allRecords);
+  }
+
+  /** Parse artifacts to Parquet GenericRecord to be used for assertions. */
+  public RecordsSubject asParquetRecords() {
+    List<GenericRecord> allRecords = new ArrayList<>();
+
+    for (Artifact artifact : this.actual) {
+      try {
+        allRecords.addAll(ParquetTestUtil.readRecords(artifact.contents()));
+      } catch (Exception e) {
+        throw new RuntimeException("Error reading " + artifact.name() + " as Parquet.", e);
+      }
+    }
+    return assertThatGenericRecords(allRecords);
   }
 }

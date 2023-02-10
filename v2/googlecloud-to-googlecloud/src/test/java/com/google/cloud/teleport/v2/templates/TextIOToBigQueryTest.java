@@ -98,7 +98,7 @@ public class TextIOToBigQueryTest {
   public void testE2EWithDefaultApi() throws IOException, InterruptedException {
     TextIOToBigQuery.run(
             options,
-            TextIOToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
+            () -> TextIOToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
         .waitUntilFinish();
     assertThat(fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE))
         .isEqualTo(ImmutableList.of(new TableRow().set("BOOK_ID", "1").set("TITLE", "ABC")));
@@ -111,7 +111,7 @@ public class TextIOToBigQueryTest {
 
     TextIOToBigQuery.run(
             options,
-            TextIOToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
+            () -> TextIOToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
         .waitUntilFinish();
     assertThat(fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE))
         .isEqualTo(ImmutableList.of(new TableRow().set("book_id", "1").set("title", "ABC")));
@@ -123,7 +123,7 @@ public class TextIOToBigQueryTest {
 
     TextIOToBigQuery.run(
             options,
-            TextIOToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
+            () -> TextIOToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
         .waitUntilFinish();
     assertThat(fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE))
         .isEqualTo(ImmutableList.of(new TableRow().set("book_id", "1").set("title", "ABC")));

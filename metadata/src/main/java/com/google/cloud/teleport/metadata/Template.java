@@ -48,6 +48,12 @@ public @interface Template {
   /** Skip options that are not used for this template. Used mainly with {@link MultiTemplate}. * */
   String[] skipOptions() default "";
 
+  /**
+   * Optional options that are not used for this template. Used mainly with {@link MultiTemplate} or
+   * reusable options classes.. *
+   */
+  String[] optionalOptions() default "";
+
   /** The external class that holds the template code. */
   Class<?> placeholderClass() default void.class;
 

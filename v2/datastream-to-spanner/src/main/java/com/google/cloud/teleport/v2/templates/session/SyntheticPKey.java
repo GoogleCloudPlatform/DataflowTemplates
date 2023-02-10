@@ -21,7 +21,7 @@ import java.io.Serializable;
 public class SyntheticPKey implements Serializable {
 
   /** Represents the name of the synthetic PK column. */
-  private final String colId;
+  private String col;
 
   /**
    * This is a field in the HarbourBridge session file used to generate PK values. However, we do
@@ -29,13 +29,13 @@ public class SyntheticPKey implements Serializable {
    */
   private long sequence;
 
-  public SyntheticPKey(String colId, long sequence) {
-    this.colId = colId;
+  public SyntheticPKey(String col, long sequence) {
+    this.col = col;
     this.sequence = sequence;
   }
 
-  public String getColId() {
-    return colId;
+  public String getCol() {
+    return col;
   }
 
   public long getSequence() {
@@ -43,7 +43,7 @@ public class SyntheticPKey implements Serializable {
   }
 
   public String toString() {
-    return String.format("{ 'colId': '%s', 'sequence': %d }", colId, sequence);
+    return String.format("{ 'col': '%s', 'sequence': %d }", col, sequence);
   }
 
   @Override
@@ -55,6 +55,6 @@ public class SyntheticPKey implements Serializable {
       return false;
     }
     final SyntheticPKey other = (SyntheticPKey) o;
-    return this.colId.equals(other.colId) && this.sequence == other.sequence;
+    return this.col.equals(other.col) && this.sequence == other.sequence;
   }
 }

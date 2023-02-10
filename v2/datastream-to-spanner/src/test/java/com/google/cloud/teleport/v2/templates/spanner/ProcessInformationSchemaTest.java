@@ -19,6 +19,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -30,7 +31,7 @@ import org.junit.Test;
 /** Unit tests for ProcessInformationSchema class. */
 public class ProcessInformationSchemaTest {
 
-  static Ddl getTestDdl() {
+  static Ddl getTestDdlWithGSqlDialect() {
     /* Creates DDL with 2 tables with the same fields but with different primary key
      * columns and their associated shadow tables.
      */
@@ -191,13 +192,175 @@ public class ProcessInformationSchemaTest {
     return ddl;
   }
 
+  static Ddl getTestDdlWithPostgresDialect() {
+    /* Creates DDL with 2 tables with the same fields but with different primary key
+     * columns and their associated shadow tables.
+     */
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .pgVarchar()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .pgInt8()
+            .endColumn()
+            .column("bool_field")
+            .pgBool()
+            .endColumn()
+            .column("int8_field")
+            .pgInt8()
+            .endColumn()
+            .column("float8_field")
+            .pgFloat8()
+            .endColumn()
+            .column("varchar_field")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("bytea_field")
+            .pgBytea()
+            .max()
+            .endColumn()
+            .column("timestamp_field")
+            .pgTimestamptz()
+            .endColumn()
+            .column("date_field")
+            .pgDate()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .asc("age")
+            .asc("bool_field")
+            .asc("int8_field")
+            .asc("float8_field")
+            .asc("varchar_field")
+            .asc("bytea_field")
+            .asc("timestamp_field")
+            .asc("date_field")
+            .end()
+            .endTable()
+            .createTable("shadow_Users")
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .pgVarchar()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .pgInt8()
+            .endColumn()
+            .column("bool_field")
+            .pgBool()
+            .endColumn()
+            .column("int8_field")
+            .pgInt8()
+            .endColumn()
+            .column("float8_field")
+            .pgFloat8()
+            .endColumn()
+            .column("varchar_field")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("bytea_field")
+            .pgBytea()
+            .max()
+            .endColumn()
+            .column("timestamp_field")
+            .pgTimestamptz()
+            .endColumn()
+            .column("date_field")
+            .pgDate()
+            .endColumn()
+            .column("version")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .asc("age")
+            .asc("bool_field")
+            .asc("int8_field")
+            .asc("float8_field")
+            .asc("varchar_field")
+            .asc("bytea_field")
+            .asc("timestamp_field")
+            .asc("date_field")
+            .end()
+            .endTable()
+            .createTable("Users_interleaved")
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .pgVarchar()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .pgInt8()
+            .endColumn()
+            .column("bool_field")
+            .pgBool()
+            .endColumn()
+            .column("int8_field")
+            .pgInt8()
+            .endColumn()
+            .column("float8_field")
+            .pgFloat8()
+            .endColumn()
+            .column("varchar_field")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("bytea_field")
+            .pgBytea()
+            .max()
+            .endColumn()
+            .column("timestamp_field")
+            .pgTimestamptz()
+            .endColumn()
+            .column("date_field")
+            .pgDate()
+            .endColumn()
+            .column("id")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .asc("age")
+            .asc("bool_field")
+            .asc("int8_field")
+            .asc("float8_field")
+            .asc("varchar_field")
+            .asc("bytea_field")
+            .asc("timestamp_field")
+            .asc("date_field")
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
   @Test
   public void canListShadowTablesInDdl() throws Exception {
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
     ProcessInformationSchema.ProcessInformationSchemaFn processInformationSchema =
         new ProcessInformationSchema.ProcessInformationSchemaFn(
             spannerConfig, /*shouldCreateShadowTables=*/ true, "shadow_", "oracle");
-    Set<String> shadowTables = processInformationSchema.getShadowTablesInDdl(getTestDdl());
+    Set<String> shadowTables =
+        processInformationSchema.getShadowTablesInDdl(getTestDdlWithGSqlDialect());
     assertThat(shadowTables, is(new HashSet<String>(Arrays.asList("shadow_Users"))));
   }
 
@@ -208,7 +371,7 @@ public class ProcessInformationSchemaTest {
         new ProcessInformationSchema.ProcessInformationSchemaFn(
             spannerConfig, /*shouldCreateShadowTables=*/ true, "shadow_", "oracle");
     List<String> dataTablesWithNoShadowTables =
-        processInformationSchema.getDataTablesWithNoShadowTables(getTestDdl());
+        processInformationSchema.getDataTablesWithNoShadowTables(getTestDdlWithGSqlDialect());
     assertThat(dataTablesWithNoShadowTables, is(Arrays.asList("Users_interleaved")));
   }
 }

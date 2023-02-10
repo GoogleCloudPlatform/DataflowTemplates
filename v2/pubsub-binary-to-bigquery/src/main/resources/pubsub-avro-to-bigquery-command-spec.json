@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.PubsubAvroToBigQuery",
-  "classPath": "/template/pubsub-avro-to-bigquery/*:/template/pubsub-avro-to-bigquery/libs/*:/template/pubsub-avro-to-bigquery/classes",
+  "classPath": "/template/pubsub-avro-to-bigquery/pubsub-avro-to-bigquery-conscrypt.jar:/template/pubsub-avro-to-bigquery/*:/template/pubsub-avro-to-bigquery/libs/*:/template/pubsub-avro-to-bigquery/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"pubsub_avro_to_bigquery\"}"
   }

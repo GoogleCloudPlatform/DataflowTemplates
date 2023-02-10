@@ -19,6 +19,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactory;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
@@ -117,7 +118,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Kafka to Cloud Storage",
     description =
-        "A streaming pipeline which ingests data from Kafka and writes to a pre-existing Cloud Storage bucket with a variety of file types.",
+        "A streaming pipeline which ingests data from Kafka and writes to a pre-existing Cloud"
+            + " Storage bucket with a variety of file types.",
     optionsClass = KafkaToGCSOptions.class,
     flexContainerName = "kafka-to-gcs",
     contactInformation = "https://cloud.google.com/support")
@@ -132,6 +134,8 @@ public class KafkaToGCS {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     KafkaToGCSOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToGCSOptions.class);
 

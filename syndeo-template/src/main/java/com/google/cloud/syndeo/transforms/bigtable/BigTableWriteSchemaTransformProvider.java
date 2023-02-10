@@ -28,12 +28,12 @@ public class BigTableWriteSchemaTransformProvider
 
   @Override
   public String identifier() {
-    return "bigtable:write";
+    return "syndeo:schematransform:com.google.cloud:bigtable_write:v1";
   }
 
   @Override
   public List<String> inputCollectionNames() {
-    return Collections.singletonList("INPUT");
+    return Collections.singletonList(BigTableIOWriteSchemaBasedTransform.INPUT_TAG);
   }
 
   @Override

@@ -37,7 +37,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 /**
  * Text files to Cloud Spanner Import pipeline. This pipeline ingests CSV and other type of
  * delimited data from GCS and writes data to a Cloud Spanner database table. Each row from the
- * input CSV file will be applied to Cloudd Spanner with an InsertOrUpdate mutation, so this can be
+ * input CSV file will be applied to Cloud Spanner with an InsertOrUpdate mutation, so this can be
  * used both to populate new rows or to update columns of existing rows.
  *
  * <p>You can specify column delimiter other than comma. Also make sure to use field qualifier such
@@ -93,7 +93,8 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
     category = TemplateCategory.BATCH,
     displayName = "Text Files on Cloud Storage to Cloud Spanner",
     description =
-        "A pipeline to import a Cloud Spanner database from a set of Text (CSV) files in Cloud Storage.",
+        "A pipeline to import a Cloud Spanner database from a set of Text (CSV) files in Cloud"
+            + " Storage.",
     optionsClass = Options.class,
     contactInformation = "https://cloud.google.com/support")
 public class TextImportPipeline {
@@ -115,7 +116,8 @@ public class TextImportPipeline {
         regexes = {"^[a-z_0-9\\-]+$"},
         description = "Cloud Spanner database id",
         helpText =
-            "The database id of the Cloud Spanner database that you want to import into (must already exist, and with the destination tables created).")
+            "The database id of the Cloud Spanner database that you want to import into (must"
+                + " already exist, and with the destination tables created).")
     ValueProvider<String> getDatabaseId();
 
     void setDatabaseId(ValueProvider<String> value);
@@ -135,7 +137,8 @@ public class TextImportPipeline {
         order = 4,
         description = "Text Import Manifest file",
         helpText =
-            "The Cloud Storage path and filename of the text import manifest file. Text Import Manifest file, storing a json-encoded importManifest object.",
+            "The Cloud Storage path and filename of the text import manifest file. Text Import"
+                + " Manifest file, storing a json-encoded importManifest object.",
         example = "gs://your-bucket/your-folder/your-manifest.json")
     ValueProvider<String> getImportManifest();
 
@@ -157,7 +160,9 @@ public class TextImportPipeline {
         optional = true,
         description = "Field qualifier used by the source file",
         helpText =
-            "The field qualifier used by the source file. It should be used when character needs to be escaped. Field qualifier should be used when character needs to be escaped. The default value is double quotes.")
+            "The field qualifier used by the source file. It should be used when character needs to"
+                + " be escaped. Field qualifier should be used when character needs to be escaped."
+                + " The default value is double quotes.")
     @Default.Character('"')
     ValueProvider<Character> getFieldQualifier();
 
@@ -168,7 +173,10 @@ public class TextImportPipeline {
         optional = true,
         description = "If true, the lines has trailing delimiters",
         helpText =
-            "The flag indicating whether or not the input lines have trailing delimiters. The default value is true")
+            "The flag indicating whether or not the input lines have trailing delimiters. The"
+                + " default value is true. If the text file contains trailing delimiter, then set"
+                + " trailingDelimiter parameter to true during pipeline execution to import a Cloud"
+                + " Spanner database from a set of text files, otherwise set it to false.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getTrailingDelimiter();
 
@@ -189,7 +197,8 @@ public class TextImportPipeline {
         optional = true,
         description = "Null String",
         helpText =
-            "The string that represents the NULL value. The default value is null (not using the null string).")
+            "The string that represents the NULL value. The default value is null (not using the"
+                + " null string).")
     ValueProvider<String> getNullString();
 
     void setNullString(ValueProvider<String> value);
@@ -199,11 +208,11 @@ public class TextImportPipeline {
         optional = true,
         description = "Date format",
         helpText =
-            "The format used to parse date columns. By default, the pipeline tries to parse the "
-                + "date columns as \"yyyy-MM-dd[' 00:00:00']\" (e.g., 2019-01-31, or 2019-01-31 00:00:00). "
-                + "If your data format is different, please specify the format using the "
-                + "java.time.format.DateTimeFormatter patterns. For more details, please refer to "
-                + "https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html")
+            "The format used to parse date columns. By default, the pipeline tries to parse the"
+                + " date columns as \"yyyy-MM-dd[' 00:00:00']\" (e.g., 2019-01-31, or 2019-01-31"
+                + " 00:00:00). If your data format is different, please specify the format using"
+                + " the java.time.format.DateTimeFormatter patterns. For more details, please refer"
+                + " to https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html")
     ValueProvider<String> getDateFormat();
 
     void setDateFormat(ValueProvider<String> value);
@@ -213,17 +222,19 @@ public class TextImportPipeline {
         optional = true,
         description = "Timestamp format",
         helpText =
-            "The format used to parse timestamp columns. If the timestamp is a long integer, then "
-                + "it is treated as Unix epoch (the microsecond since 1970-01-01T00:00:00.000Z. Otherwise, "
-                + "it is parsed as a string using the java.time.format.DateTimeFormatter.ISO_INSTANT format. "
-                + "For other cases, please specify you own pattern string, e.g., \"MMM dd yyyy HH:mm:ss.SSSVV\" "
-                + "for timestamp in the form of \"Jan 21 1998 01:02:03.456+08:00\". For more details, "
-                + "please refer to https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html")
+            "The format used to parse timestamp columns. If the timestamp is a long integer, then"
+                + " it is treated as Unix epoch (the microsecond since 1970-01-01T00:00:00.000Z."
+                + " Otherwise, it is parsed as a string using the"
+                + " java.time.format.DateTimeFormatter.ISO_INSTANT format. For other cases, please"
+                + " specify you own pattern string, e.g., \"MMM dd yyyy HH:mm:ss.SSSVV\" for"
+                + " timestamp in the form of \"Jan 21 1998 01:02:03.456+08:00\". For more details,"
+                + " please refer to"
+                + " https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html")
     ValueProvider<String> getTimestampFormat();
 
     void setTimestampFormat(ValueProvider<String> value);
 
-    @TemplateCreationParameter
+    @TemplateCreationParameter(value = "false")
     @Description("If true, wait for job finish. The default value is true.")
     @Default.Boolean(true)
     boolean getWaitUntilFinish();
@@ -245,7 +256,8 @@ public class TextImportPipeline {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
+            "The request priority for Cloud Spanner calls. The value must be one of:"
+                + " [HIGH,MEDIUM,LOW].")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);

@@ -53,6 +53,7 @@ import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
+import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -153,7 +154,6 @@ public abstract class JavascriptTextTransformer {
      *
      * @param scripts a collection of javascript scripts encoded with UTF8 to load in
      */
-    @Nullable
     private static Invocable newInvocable(Collection<String> scripts) throws ScriptException {
       ScriptEngine engine = getJavaScriptEngine();
       for (String script : scripts) {
@@ -163,20 +163,15 @@ public abstract class JavascriptTextTransformer {
     }
 
     private static ScriptEngine getJavaScriptEngine() {
-      ScriptEngineManager manager = new ScriptEngineManager();
-      for (String engineName : JAVASCRIPT_ENGINE_NAMES) {
-        ScriptEngine engine = manager.getEngineByName(engineName);
-        if (engine != null) {
-          return engine;
-        }
-      }
+      NashornScriptEngineFactory nashornFactory = new NashornScriptEngineFactory();
+      ScriptEngine engine = nashornFactory.getScriptEngine("--language=es6");
 
-      ScriptEngine engine = manager.getEngineByExtension("js");
       if (engine != null) {
         return engine;
       }
 
       List<String> availableEngines = new ArrayList<>();
+      ScriptEngineManager manager = new ScriptEngineManager();
       for (ScriptEngineFactory factory : manager.getEngineFactories()) {
         availableEngines.add(
             factory.getEngineName()
@@ -227,23 +222,20 @@ public abstract class JavascriptTextTransformer {
           result.status() == Status.OK && !result.metadata().isEmpty(),
           "Failed to match any files with the pattern: " + path);
 
-      List<String> scripts =
-          result.metadata().stream()
-              .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
-              .map(Metadata::resourceId)
-              .map(
-                  resourceId -> {
-                    try (Reader reader =
-                        Channels.newReader(
-                            FileSystems.open(resourceId), StandardCharsets.UTF_8.name())) {
-                      return CharStreams.toString(reader);
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  })
-              .collect(Collectors.toList());
-
-      return scripts;
+      return result.metadata().stream()
+          .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
+          .map(Metadata::resourceId)
+          .map(
+              resourceId -> {
+                try (Reader reader =
+                    Channels.newReader(
+                        FileSystems.open(resourceId), StandardCharsets.UTF_8.name())) {
+                  return CharStreams.toString(reader);
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              })
+          .collect(Collectors.toList());
     }
   }
 
@@ -322,10 +314,10 @@ public abstract class JavascriptTextTransformer {
       return new AutoValue_JavascriptTextTransformer_FailsafeJavascriptUdf.Builder<>();
     }
 
-    private Counter successCounter =
+    private final Counter successCounter =
         Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-success-count");
 
-    private Counter failedCounter =
+    private final Counter failedCounter =
         Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-failed-count");
 
     /** Builder for {@link FailsafeJavascriptUdf}. */

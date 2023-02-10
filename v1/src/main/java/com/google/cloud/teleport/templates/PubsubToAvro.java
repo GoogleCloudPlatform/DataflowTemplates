@@ -130,6 +130,7 @@ import org.apache.beam.sdk.values.PCollection;
         "Streaming pipeline. Reads from a Pub/Sub subscription and outputs windowed Avro files to"
             + " the specified directory.",
     optionsClass = Options.class,
+    skipOptions = "inputSubscription",
     contactInformation = "https://cloud.google.com/support")
 public class PubsubToAvro {
 
@@ -161,7 +162,7 @@ public class PubsubToAvro {
 
     void setInputTopic(ValueProvider<String> value);
 
-    @TemplateCreationParameter
+    @TemplateCreationParameter(value = "false")
     @Description(
         "This determines whether the template reads from " + "a pub/sub subscription or a topic")
     @Default.Boolean(false)

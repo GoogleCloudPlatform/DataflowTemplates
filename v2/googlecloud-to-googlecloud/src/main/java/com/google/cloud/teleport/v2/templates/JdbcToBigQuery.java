@@ -15,15 +15,17 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
 import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
-import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -41,15 +43,19 @@ import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
     category = TemplateCategory.BATCH,
     displayName = "JDBC to BigQuery with BigQuery Storage API support",
     description =
-        "A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\"  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\" -H \"Authorization: Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type: application/json\"",
+        "A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection"
+            + " string, user name and password can be passed in directly as plaintext or encrypted"
+            + " using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified,"
+            + " connectionURL, username, and password should be all in encrypted format. A sample"
+            + " curl command for the KMS API encrypt endpoint: curl -s -X POST"
+            + " \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\""
+            + "  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\" -H \"Authorization:"
+            + " Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type:"
+            + " application/json\"",
     optionsClass = JdbcToBigQueryOptions.class,
     flexContainerName = "jdbc-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class JdbcToBigQuery {
-
-  private static KMSEncryptedNestedValue maybeDecrypt(String unencryptedValue, String kmsKey) {
-    return new KMSEncryptedNestedValue(unencryptedValue, kmsKey);
-  }
 
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
@@ -59,6 +65,7 @@ public class JdbcToBigQuery {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     // Parse the user options passed from the command-line
     JdbcToBigQueryOptions options =

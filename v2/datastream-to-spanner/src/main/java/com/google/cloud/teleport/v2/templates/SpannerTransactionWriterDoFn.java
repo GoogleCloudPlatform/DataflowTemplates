@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
@@ -31,8 +32,6 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorExc
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
-import com.google.cloud.teleport.v2.templates.session.ColumnDef;
-import com.google.cloud.teleport.v2.templates.session.CreateTable;
 import com.google.cloud.teleport.v2.templates.session.NameAndCols;
 import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.session.SyntheticPKey;
@@ -42,11 +41,14 @@ import com.google.common.base.Preconditions;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
+import java.util.HashMap;
 import java.util.Map;
+import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
@@ -109,6 +111,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private final Counter retryableErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
 
+  // The max length of tag allowed in Spanner Transaction tags.
+  private static final int MAX_TXN_TAG_LENGTH = 50;
+
   SpannerTransactionWriterDoFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
@@ -164,7 +169,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // Start transaction
       spannerAccessor
           .getDatabaseClient()
-          .readWriteTransaction()
+          .readWriteTransaction(Options.tag(getTxnTag(c.getPipelineOptions())))
           .run(
               (TransactionCallable<Void>)
                   transaction -> {
@@ -218,13 +223,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   JsonNode transformChangeEvent(JsonNode changeEvent, Session session) {
     String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
     if (!session.isEmpty()) {
-      if (!session.getToSpanner().containsKey(tableName)) {
-        throw new IllegalArgumentException(
-            "Missing entry for " + tableName + " in toSpanner map, provide a valid session file.");
-      }
       NameAndCols nameAndCols = session.getToSpanner().get(tableName);
       String spTableName = nameAndCols.getName();
-      Map<String, String> cols = nameAndCols.getCols();
+      HashMap<String, String> cols = nameAndCols.getCols();
 
       // Convert the table name to corresponding Spanner table name.
       ((ObjectNode) changeEvent).put(EVENT_TABLE_NAME_KEY, spTableName);
@@ -236,32 +237,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
           ((ObjectNode) changeEvent).remove(srcCol);
         }
       }
-      if (!session.getSrcToID().containsKey(tableName)) {
-        throw new IllegalArgumentException(
-            "Missing entry for " + tableName + " in srcToId map , provide a valid session file.");
-      }
-      nameAndCols = session.getSrcToID().get(tableName);
-      String tableId = nameAndCols.getName();
-      Map<String, SyntheticPKey> synthPks = session.getSyntheticPks();
-      if (synthPks.containsKey(tableId)) {
-        String colID = synthPks.get(tableId).getColId();
-        Map<String, CreateTable> spSchema = session.getSpSchema();
-        if (!spSchema.containsKey(tableId)) {
-          throw new IllegalArgumentException(
-              "Missing entry for " + tableId + " in spSchema, provide a valid session file.");
-        }
-        Map<String, ColumnDef> spCols = spSchema.get(tableId).getColDefs();
-        if (!spCols.containsKey(colID)) {
-          throw new IllegalArgumentException(
-              "Missing entry for "
-                  + colID
-                  + " in colDefs for tableId: "
-                  + tableId
-                  + ", provide a valid session file.");
-        }
-
+      HashMap<String, SyntheticPKey> synthPks = session.getSyntheticPks();
+      if (synthPks.containsKey(spTableName)) {
         ((ObjectNode) changeEvent)
-            .put(spCols.get(colID).getName(), changeEvent.get(EVENT_UUID_KEY).asText());
+            .put(synthPks.get(spTableName).getCol(), changeEvent.get(EVENT_UUID_KEY).asText());
       }
     }
     return changeEvent;
@@ -278,5 +257,25 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     e.printStackTrace(new PrintWriter(errors));
     output.setErrorMessage(errors.toString());
     c.output(errorTag, output);
+  }
+
+  String getTxnTag(PipelineOptions options) {
+    String jobId = "datastreamToSpanner";
+    try {
+      DataflowWorkerHarnessOptions harnessOptions = options.as(DataflowWorkerHarnessOptions.class);
+      jobId = harnessOptions.getJobId();
+    } catch (Exception e) {
+      LOG.warn(
+          "Unable to find Dataflow job id. Spanner transaction tags will not contain the dataflow"
+              + " job id.",
+          e);
+    }
+    // Spanner transaction tags have a limit of 50 characters. Dataflow job id is 40 chars in
+    // length.
+    String txnTag = "txBy=" + jobId;
+    if (txnTag.length() > MAX_TXN_TAG_LENGTH) {
+      txnTag = txnTag.substring(0, MAX_TXN_TAG_LENGTH);
+    }
+    return txnTag;
   }
 }

@@ -24,9 +24,14 @@ import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.T
 import com.google.common.base.Strings;
 import com.google.common.primitives.Longs;
 import java.io.IOException;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -215,7 +220,18 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
                   timestampFormat.get() == null
                       ? DateTimeFormatter.ISO_INSTANT
                       : DateTimeFormatter.ofPattern(timestampFormat.get());
-              Instant ts = Instant.from(formatter.parse(cellValue.trim()));
+              TemporalAccessor temporalAccessor = formatter.parse(cellValue.trim());
+
+              Instant ts;
+              try {
+                ts = Instant.from(temporalAccessor);
+              } catch (DateTimeException e) {
+                // Date format may not be converted because it lacks timezone, retry with UTC
+                LocalDateTime localDateTime = LocalDateTime.from(temporalAccessor);
+                ZonedDateTime zonedDateTime = ZonedDateTime.of(localDateTime, ZoneOffset.UTC);
+                ts = Instant.from(zonedDateTime);
+              }
+
               columnValue =
                   Value.timestamp(
                       com.google.cloud.Timestamp.ofTimeSecondsAndNanos(

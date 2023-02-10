@@ -20,6 +20,7 @@ import com.google.cloud.bigtable.beam.CloudBigtableTableConfiguration;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.BigQueryToBigtable.BigQueryToBigtableOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.AvroToMutation;
 import org.apache.beam.sdk.Pipeline;
@@ -70,7 +71,8 @@ public class BigQueryToBigtable {
         order = 3,
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to")
+            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to"
+                + " write data to")
     @Required
     String getBigtableWriteProjectId();
 
@@ -124,6 +126,7 @@ public class BigQueryToBigtable {
    * @param args arguments to the pipeline
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     BigQueryToBigtableOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(BigQueryToBigtableOptions.class);

@@ -103,6 +103,7 @@ public final class PubsubProtoToBigQueryTest {
   public void testApplyUdfWithPathButNoFunction() {
     PubSubProtoToBigQueryOptions options = getOptions();
     options.setJavascriptTextTransformGcsPath("/some/path.js");
+    options.setJavascriptTextTransformFunctionName("");
     PCollection<String> input = pipeline.apply(Create.of(""));
 
     assertThrows(IllegalArgumentException.class, () -> runUdf(input, options));

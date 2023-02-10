@@ -20,7 +20,6 @@ import com.google.cloud.teleport.v2.utils.DataplexJdbcPartitionUtils.Partitionin
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionOptions;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
@@ -30,7 +29,10 @@ import org.apache.beam.sdk.options.Validation;
  * the executor at the command-line.
  */
 public interface DataplexJdbcIngestionOptions
-    extends GcpOptions, PipelineOptions, DataplexUpdateMetadataOptions, BigQueryOptions {
+    extends GcpOptions,
+        PipelineOptions,
+        DataplexUpdateMetadataOptions,
+        BigQueryStorageApiBatchOptions {
 
   @TemplateParameter.Text(
       order = 1,

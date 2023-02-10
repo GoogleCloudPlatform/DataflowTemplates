@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.DataStreamToMongoDB",
-  "classPath": "/template/datastream-to-mongodb/*:/template/datastream-to-mongodb/libs/*:/template/datastream-to-mongodb/classes",
+  "classPath": "/template/datastream-to-mongodb/datastream-to-mongodb-conscrypt.jar:/template/datastream-to-mongodb/*:/template/datastream-to-mongodb/libs/*:/template/datastream-to-mongodb/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"datastream_to_mongodb\"}"
   }

@@ -26,12 +26,14 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.re2j.Pattern;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +69,11 @@ public final class GcsArtifactClient implements ArtifactClient {
   @Override
   public String runId() {
     return runId;
+  }
+
+  @Override
+  public Artifact createArtifact(String artifactName, String contents) {
+    return this.createArtifact(artifactName, contents.getBytes(StandardCharsets.UTF_8));
   }
 
   @Override
@@ -110,6 +117,11 @@ public final class GcsArtifactClient implements ArtifactClient {
   }
 
   @Override
+  public List<Artifact> listArtifacts(TestName testName, Pattern regex) {
+    return listArtifacts(testName.getMethodName(), regex);
+  }
+
+  @Override
   public List<Artifact> listArtifacts(String prefix, Pattern regex) {
     String listFrom = joinPathParts(testClassName, runId, prefix);
     LOG.info("Listing everything under '{}' that matches '{}'", listFrom, regex.pattern());
@@ -149,7 +161,9 @@ public final class GcsArtifactClient implements ArtifactClient {
 
           List<Boolean> deleted = client.delete(blobIds);
           for (int i = 0; i < deleted.size(); ++i) {
-            if (!deleted.get(i)) {
+            if (deleted.get(i)) {
+              LOG.info("Blob '{}' was deleted", blobIds.get(i).getName());
+            } else {
               LOG.warn("Blob '{}' not deleted", blobIds.get(i).getName());
             }
           }

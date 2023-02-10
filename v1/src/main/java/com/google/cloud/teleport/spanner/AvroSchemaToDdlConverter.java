@@ -83,7 +83,7 @@ public class AvroSchemaToDdlConverter {
     LOG.debug("Converting to Ddl changeStreamName {}", changeStreamName);
 
     ChangeStream.Builder builder =
-        ChangeStream.builder()
+        ChangeStream.builder(dialect)
             .name(changeStreamName)
             .forClause(schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE));
 
