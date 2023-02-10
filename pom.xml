@@ -353,6 +353,10 @@
 
   <repositories>
     <repository>
+      <id>maven-central</id>
+      <url>https://repo1.maven.org/maven2</url>
+    </repository>
+    <repository>
       <id>apache.candidate</id>
       <url>https://repository.apache.org/content/repositories/orgapachebeam-1293/</url>
     </repository>
