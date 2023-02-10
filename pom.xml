@@ -336,21 +336,6 @@
     </profile>
   </profiles>
 
-  <dependencies>
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-bom</artifactId>
-      <version>${beam.version}</version>
-      <type>pom</type>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>libraries-bom</artifactId>
-      <version>${cloud-libraries-bom.version}</version>
-      <type>pom</type>
-    </dependency>
-  </dependencies>
-
   <repositories>
     <repository>
       <id>maven-central</id>
