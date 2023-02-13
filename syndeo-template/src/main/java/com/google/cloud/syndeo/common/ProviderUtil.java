@@ -27,8 +27,10 @@ import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.SchemaTranslation;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TypeDescriptors;
 
 public class ProviderUtil {
 
@@ -122,6 +124,15 @@ public class ProviderUtil {
 
       if (tuple.getAll().containsKey(ERRORS_TAG)) {
         // TODO(pabloem): Deal with errors.
+        tuple
+            .get(ERRORS_TAG)
+            .apply(
+                MapElements.into(TypeDescriptors.voids())
+                    .via(
+                        err -> {
+                          System.out.println("ERROR " + err);
+                          return null;
+                        }));
       }
       // We know we only deal with transforms with either 0 or 1 input so we know how to connect the
       // collections. To sanity check we should confirm the output collections match expected.

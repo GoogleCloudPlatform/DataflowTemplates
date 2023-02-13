@@ -66,7 +66,7 @@ public class SyndeoStatsSchemaTransformProvider
                 inputPcoll
                     .apply(
                         String.format("%s_%s", configuration.getParent(), identifier()),
-                        ParDo.of(new StatsDoFn()))
+                        ParDo.of(new StatsDoFn(configuration.getParent())))
                     .setRowSchema(inputPcoll.getSchema()));
           }
         };
@@ -106,8 +106,15 @@ public class SyndeoStatsSchemaTransformProvider
     final Counter elementsCounter =
         Metrics.counter(SyndeoStatsSchemaTransformProvider.class, "elementsProcessed");
 
+    final String parent;
+
+    StatsDoFn(String parent) {
+      this.parent = parent;
+    }
+
     @DoFn.ProcessElement
     public void process(@DoFn.Element Row elm, OutputReceiver<Row> receiver) {
+      System.out.println("ELEMENT CAME IN from " + parent + " elm: " + elm);
       elementsProcessed += 1;
       receiver.output(elm);
     }

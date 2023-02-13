@@ -34,7 +34,7 @@ import org.apache.beam.sdk.values.PValue;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -44,55 +44,63 @@ import org.testcontainers.utility.DockerImageName;
 @RunWith(JUnit4.class)
 public class SyndeoSqlTransformTest {
 
-  @Rule
-  public BigtableEmulatorContainer bigTableContainer =
+  @ClassRule
+  public static BigtableEmulatorContainer bigTableContainer =
       new BigtableEmulatorContainer(
           DockerImageName.parse("gcr.io/google.com/cloudsdktool/cloud-sdk:367.0.0-emulators"));
+
+  //  @Rule public final Timeout timeout = Timeout.seconds(40);
+
+  static String buildPayloadWithQuery(String query) throws JsonProcessingException {
+    return new ObjectMapper()
+        .writeValueAsString(
+            Map.of(
+                "source",
+                Map.of(
+                    "urn",
+                    "syndeo_test:schematransform:com.google.cloud:generate_data:v1",
+                    "configurationParameters",
+                    Map.of(
+                        "numRows",
+                        Long.valueOf(7L), // TODO(pabloem): Make 100 again
+                        "runtimeSeconds",
+                        Integer.valueOf(3),
+                        "useNestedSchema",
+                        true)),
+                "transform",
+                Map.of(
+                    "urn",
+                    "syndeo:schematransform:com.google.cloud:sql_transform:v1",
+                    "configurationParameters",
+                    Map.of("query", query)),
+                "sink",
+                Map.of(
+                    "urn",
+                    "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
+                    "configurationParameters",
+                    Map.of(
+                        "projectId",
+                        "anyproject",
+                        "instanceId",
+                        "anyinstance",
+                        "tableId",
+                        "anytable-" + query.hashCode(),
+                        "keyColumns",
+                        Arrays.asList("lineDelta"),
+                        "endpoint",
+                        bigTableContainer.getEmulatorEndpoint()))));
+  }
 
   @Test
   public void testEndToEndLocalPipeline() throws JsonProcessingException {
     String query =
         "SELECT "
             + "commit, "
-            //            + "commitDate, " // TODO(pabloem): Datetime parameters are causing
-            // checkedMultiply issues
             + "abs(linesAdded) - abs(linesRemoved) as lineDelta, "
             + "author.name as author, author.email as author_email "
             + "FROM input "
             + "WHERE mod(linesAdded, 2) = 1";
-    String jsonPayload =
-        new ObjectMapper()
-            .writeValueAsString(
-                Map.of(
-                    "source",
-                        Map.of(
-                            "urn",
-                            "syndeo_test:schematransform:com.google.cloud:generate_data:v1",
-                            "configurationParameters",
-                            Map.of(
-                                "numRows",
-                                Long.valueOf(100L),
-                                "runtimeSeconds",
-                                Integer.valueOf(3),
-                                "useNestedSchema",
-                                true)),
-                    "transform",
-                        Map.of(
-                            "urn",
-                            "syndeo:schematransform:com.google.cloud:sql_transform:v1",
-                            "configurationParameters",
-                            Map.of("query", query)),
-                    "sink",
-                        Map.of(
-                            "urn",
-                            "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
-                            "configurationParameters",
-                            Map.of(
-                                "projectId", "anyproject",
-                                "instanceId", "anyinstance",
-                                "tableId", "anytable",
-                                "keyColumns", Arrays.asList("commit", "author"),
-                                "endpoint", bigTableContainer.getEmulatorEndpoint()))));
+    String jsonPayload = buildPayloadWithQuery(query);
 
     Pipeline syndeoPipeline = Pipeline.create();
     SyndeoTemplate.buildPipeline(syndeoPipeline, SyndeoTemplate.buildFromJsonPayload(jsonPayload));
@@ -124,6 +132,63 @@ public class SyndeoSqlTransformTest {
             .get();
 
     // Verify that we filter out about 60% of elements.
+    assertThat((long) (elementsProduced / 0.6)).isGreaterThan(elementsToSink);
+  }
+
+  @Test
+  public void testEndToEndLocalPipelineWithErrorsInQuery() throws JsonProcessingException {
+    String query =
+        "SELECT "
+            //            + "commitDate, "
+            + "linesAdded - linesRemoved as lineDelta, "
+            + "FROM input";
+    String jsonPayload = buildPayloadWithQuery(query);
+
+    Pipeline syndeoPipeline = Pipeline.create();
+    SyndeoTemplate.buildPipeline(syndeoPipeline, SyndeoTemplate.buildFromJsonPayload(jsonPayload));
+
+    TransformInputAndOutputVerifier verifier =
+        new TransformInputAndOutputVerifier(
+            "syndeo:schematransform:com.google.cloud:sql_transform:v1", "input", "errors");
+    syndeoPipeline.traverseTopologically(verifier);
+
+    assertThat(verifier.matchedSchemas.get("input"))
+        .isEqualTo(SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA);
+    assertThat(verifier.matchedSchemas.get("errors").getFieldNames())
+        .containsExactly("row", "error");
+    assertThat(verifier.matchedSchemas.get("errors").getField("error").getType())
+        .isEqualTo(Schema.FieldType.STRING);
+
+    assertThat(
+            verifier
+                .matchedSchemas
+                .get("errors")
+                .getField("row")
+                .getType()
+                .getRowSchema()
+                .getFieldNames())
+        // Only the list of fields that are accessed, not the full list of fields in the input.
+        .containsExactly("linesAdded", "linesRemoved");
+
+    PipelineResult result = syndeoPipeline.run();
+    result.waitUntilFinish();
+    Long elementsToSink =
+        StreamSupport.stream(result.metrics().allMetrics().getCounters().spliterator(), false)
+            .filter(res -> res.getName().getName().equals("elementsProcessed"))
+            .filter(res -> res.getKey().stepName().contains("sql_transform"))
+            .map(res -> res.getAttempted())
+            .findFirst()
+            .orElse(-1L);
+    Long elementsProduced =
+        StreamSupport.stream(result.metrics().allMetrics().getCounters().spliterator(), false)
+            .filter(res -> res.getName().getName().equals("elementsProcessed"))
+            .filter(res -> res.getKey().stepName().contains("generate_data"))
+            .map(res -> res.getAttempted())
+            .findFirst()
+            .orElse(-1L);
+
+    // Verify that we filter out about 60% of elements.
+    assertThat(elementsToSink).isGreaterThan(0);
     assertThat((long) (elementsProduced / 0.6)).isGreaterThan(elementsToSink);
   }
 
