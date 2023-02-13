@@ -15,7 +15,8 @@
  */
 package com.google.cloud.teleport.it;
 
-import static com.google.cloud.teleport.it.PerformanceBenchmarkingBase.createConfig;
+import static com.google.cloud.teleport.it.LoadTestBase.createConfig;
+import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 
@@ -30,6 +31,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.rules.TestName;
 
 /** Helper class for starting a Streaming Data generator dataflow template job. */
 public class DataGenerator {
@@ -64,6 +66,18 @@ public class DataGenerator {
     return new DataGenerator.Builder(jobName)
         .setSchemaTemplate(schemaTemplate)
         .setAutoscalingAlgorithm(AutoscalingAlgorithmType.THROUGHPUT_BASED);
+  }
+
+  public static DataGenerator.Builder builderWithSchemaLocation(
+      TestName testName, String schemaLocation) {
+    return DataGenerator.builderWithSchemaLocation(
+        createJobName(testName.getMethodName() + "-data-generator"), schemaLocation);
+  }
+
+  public static DataGenerator.Builder builderWithSchemaTemplate(
+      TestName testName, String schemaTemplate) {
+    return DataGenerator.builderWithSchemaTemplate(
+        createJobName(testName.getMethodName() + "-data-generator"), schemaTemplate);
   }
 
   /**
@@ -134,6 +148,11 @@ public class DataGenerator {
       return this;
     }
 
+    public DataGenerator.Builder setSinkType(String value) {
+      parameters.put("sinkType", value);
+      return this;
+    }
+
     public Builder setWorkerMachineType(String value) {
       parameters.put("workerMachineType", value);
       return this;
@@ -154,8 +173,48 @@ public class DataGenerator {
       return this;
     }
 
+    public DataGenerator.Builder setOutputDirectory(String value) {
+      parameters.put("outputDirectory", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setOutputType(String value) {
+      parameters.put("outputType", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setNumShards(String value) {
+      parameters.put("numShards", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setAvroSchemaLocation(String value) {
+      parameters.put("avroSchemaLocation", value);
+      return this;
+    }
+
     public DataGenerator.Builder setTopic(String value) {
       parameters.put("topic", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setProjectId(String value) {
+      parameters.put("projectId", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setSpannerInstanceName(String value) {
+      parameters.put("spannerInstanceName", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setSpannerDatabaseName(String value) {
+      parameters.put("spannerDatabaseName", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setSpannerTableName(String value) {
+      parameters.put("spannerTableName", value);
       return this;
     }
 

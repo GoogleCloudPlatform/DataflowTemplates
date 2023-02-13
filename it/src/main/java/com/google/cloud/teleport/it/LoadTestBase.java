@@ -24,15 +24,10 @@ import com.google.auth.Credentials;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.dataflow.ClassicTemplateClient;
-import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
-import com.google.cloud.teleport.it.launcher.DefaultPipelineLauncher;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator;
 import com.google.cloud.teleport.it.monitoring.MonitoringClient;
-import com.google.cloud.teleport.metadata.Template;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.base.MoreObjects;
 import java.io.IOException;
 import java.text.ParseException;
@@ -42,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -51,10 +47,10 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for testing performance of dataflow templates. */
+/** Base class for performance tests. It provides helper methods for common operations. */
 @RunWith(JUnit4.class)
-public class PerformanceBenchmarkingBase {
-  private static final Logger LOG = LoggerFactory.getLogger(PerformanceBenchmarkingBase.class);
+public abstract class LoadTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(LoadTestBase.class);
   // Dataflow resources cost factors (showing us-central-1 pricing).
   // See https://cloud.google.com/dataflow/pricing#pricing-details
   private static final double VCPU_PER_HR_BATCH = 0.056;
@@ -89,31 +85,7 @@ public class PerformanceBenchmarkingBase {
     monitoringClient.cleanupAll();
   }
 
-  protected PipelineLauncher launcher() {
-    // If there is a TemplateIntegrationTest annotation, return appropriate dataflow template client
-    // Else, return default dataflow client.
-    TemplateIntegrationTest annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
-    if (annotation == null) {
-      LOG.warn(
-          "{} did not specify which template is tested using @TemplateIntegrationTest, using DefaultDataflowClient.",
-          getClass());
-      return DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
-    }
-
-    Class<?> templateClass = annotation.value();
-    Template[] templateAnnotations = templateClass.getAnnotationsByType(Template.class);
-    if (templateAnnotations.length == 0) {
-      LOG.warn(
-          " \"Template mentioned in @TemplateIntegrationTest for {} does not contain a @Template annotation, using DefaultDataflowClient.",
-          getClass());
-      return DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
-    } else if (templateAnnotations[0].flexContainerName() != null
-        && !templateAnnotations[0].flexContainerName().isEmpty()) {
-      return FlexTemplateClient.builder().setCredentials(CREDENTIALS).build();
-    } else {
-      return ClassicTemplateClient.builder().setCredentials(CREDENTIALS).build();
-    }
-  }
+  abstract PipelineLauncher launcher();
 
   /**
    * Exports the metrics of given dataflow job to BigQuery.
@@ -194,15 +166,22 @@ public class PerformanceBenchmarkingBase {
    * Computes the metrics of the given job using dataflow and monitoring clients.
    *
    * @param launchInfo Job info of the job
-   * @param inputPcollection input pcollection of the dataflow job to query additional metrics
+   * @param inputPcollection input pcollection of the dataflow job to query additional metrics. If
+   *     not provided, the metrics will not be calculated.
+   * @param outputPcollection output pcollection of the dataflow job to query additional metrics. If
+   *     not provided, the metrics will not be calculated.
    * @return metrics
    * @throws IOException if there is an issue sending the request
    * @throws ParseException if timestamp is inaccurate
    * @throws InterruptedException thrown if thread is interrupted
    */
-  protected Map<String, Double> getMetrics(LaunchInfo launchInfo, String inputPcollection)
+  protected Map<String, Double> getMetrics(
+      LaunchInfo launchInfo, @Nullable String inputPcollection, @Nullable String outputPcollection)
       throws ParseException, InterruptedException, IOException {
     // Metrics take up to 3 minutes to show up
+    // TODO(pranavbhandari): We should use a library like http://awaitility.org/ to poll for metrics
+    // instead of hardcoding X minutes.
+    LOG.info("Sleeping for 4 minutes to query metrics.");
     Thread.sleep(Duration.ofMinutes(4).toMillis());
     Map<String, Double> metrics = pipelineLauncher.getMetrics(PROJECT, REGION, launchInfo.jobId());
     LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), PROJECT);
@@ -211,6 +190,9 @@ public class PerformanceBenchmarkingBase {
       cost += metrics.get("TotalVcpuTime") / 3600 * VCPU_PER_HR_STREAMING;
       cost += (metrics.get("TotalMemoryUsage") / 1000) / 3600 * MEM_PER_GB_HR_STREAMING;
       cost += metrics.get("TotalShuffleDataProcessed") * SHUFFLE_PER_GB_STREAMING;
+      // Also, add other streaming metrics
+      metrics.putAll(getDataFreshnessMetrics(launchInfo));
+      metrics.putAll(getSystemLatencyMetrics(launchInfo));
     } else {
       cost += metrics.get("TotalVcpuTime") / 3600 * VCPU_PER_HR_BATCH;
       cost += (metrics.get("TotalMemoryUsage") / 1000) / 3600 * MEM_PER_GB_HR_BATCH;
@@ -223,9 +205,51 @@ public class PerformanceBenchmarkingBase {
     Double dataProcessed = monitoringClient.getDataProcessed(PROJECT, launchInfo, inputPcollection);
     if (dataProcessed != null) {
       metrics.put("EstimatedDataProcessedGB", dataProcessed / 1e9d);
-      metrics.put("EstimatedCostPerGBProcessed", metrics.get("EstimatedCost") / dataProcessed);
+    }
+    metrics.putAll(getCpuUtilizationMetrics(launchInfo));
+    if (inputPcollection != null) {
+      Map<String, Double> inputThroughput =
+          getThroughputMetricsOfPcollection(launchInfo, inputPcollection);
+      metrics.put("AvgInputThroughput", inputThroughput.get("AvgThroughput"));
+      metrics.put("MaxInputThroughput", inputThroughput.get("MaxThroughput"));
+    }
+    if (outputPcollection != null) {
+      Map<String, Double> outputThroughput =
+          getThroughputMetricsOfPcollection(launchInfo, outputPcollection);
+      metrics.put("AvgOutputThroughput", outputThroughput.get("AvgThroughput"));
+      metrics.put("MaxOutputThroughput", outputThroughput.get("MaxThroughput"));
     }
     return metrics;
+  }
+
+  /**
+   * Computes the metrics of the given job using dataflow and monitoring clients.
+   *
+   * @param launchInfo Job info of the job
+   * @param inputPcollection input pcollection of the dataflow job to query additional metrics. If
+   *     not provided, the metrics will not be calculated.
+   * @return metrics
+   * @throws IOException if there is an issue sending the request
+   * @throws ParseException if timestamp is inaccurate
+   * @throws InterruptedException thrown if thread is interrupted
+   */
+  protected Map<String, Double> getMetrics(LaunchInfo launchInfo, String inputPcollection)
+      throws ParseException, InterruptedException, IOException {
+    return getMetrics(launchInfo, inputPcollection, null);
+  }
+
+  /**
+   * Computes the metrics of the given job using dataflow and monitoring clients.
+   *
+   * @param launchInfo Job info of the job
+   * @return metrics
+   * @throws IOException if there is an issue sending the request
+   * @throws ParseException if timestamp is inaccurate
+   * @throws InterruptedException thrown if thread is interrupted
+   */
+  protected Map<String, Double> getMetrics(LaunchInfo launchInfo)
+      throws ParseException, InterruptedException, IOException {
+    return getMetrics(launchInfo, null, null);
   }
 
   /**
