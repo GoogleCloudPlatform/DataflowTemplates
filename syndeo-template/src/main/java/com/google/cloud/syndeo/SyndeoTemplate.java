@@ -90,7 +90,9 @@ public class SyndeoTemplate {
           "beam:schematransform:org.apache.beam:kafka_read:v1",
           Set.of(),
           "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
-          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"));
+          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
+          "syndeo:schematransform:com.google.cloud:sql_transform:v1",
+          Set.of());
 
   public static void main(String[] args) throws Exception {
     run(args);
@@ -175,12 +177,31 @@ public class SyndeoTemplate {
     ObjectMapper om = new ObjectMapper();
     JsonNode config = om.readTree(jsonPayload);
     LOG.info("Initializing with JSON Config: {}", config);
-    return PipelineDescription.newBuilder()
-        .addTransforms(buildFromJsonConfig(config.get("source")))
-        // TODO(pabloem): Add stats for other
-        .addTransforms(buildSyndeoStats(config.get("source").get("urn").asText()))
-        .addTransforms(buildFromJsonConfig(config.get("sink")))
-        .build();
+    List<ConfiguredSchemaTransform> transforms = new ArrayList<>();
+
+    // Adding the source transform
+    transforms.add(buildFromJsonConfig(config.get("source")));
+    transforms.add(buildSyndeoStats(config.get("source").get("urn").asText()));
+
+    if (config.has("transform")) {
+      if (!config
+          .get("transform")
+          .get("urn")
+          .asText()
+          .equals("syndeo:schematransform:com.google.cloud:sql_transform:v1")) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Intermediate transform with URN %s not supported. Only %s is supported.",
+                config.get("transform").get("urn"),
+                "syndeo:schematransform:com.google.cloud:sql_transform:v1"));
+      }
+      // Adding the intermediate transform
+      transforms.add(buildFromJsonConfig(config.get("transform")));
+      transforms.add(buildSyndeoStats(config.get("transform").get("urn").asText()));
+    }
+    // Add the sink transform
+    transforms.add(buildFromJsonConfig(config.get("sink")));
+    return PipelineDescription.newBuilder().addAllTransforms(transforms).build();
   }
 
   public static PipelineDescription readFromFile(String filename) {

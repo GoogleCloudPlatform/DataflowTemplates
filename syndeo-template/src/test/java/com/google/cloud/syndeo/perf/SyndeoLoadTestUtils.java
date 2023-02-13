@@ -15,15 +15,24 @@
  */
 package com.google.cloud.syndeo.perf;
 
+import com.google.auto.service.AutoService;
+import com.google.auto.value.AutoValue;
 import com.google.cloud.syndeo.transforms.SyndeoStatsSchemaTransformProvider;
+import com.google.cloud.syndeo.transforms.TypedSchemaTransformProvider;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
+import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
+import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.FlatMapElements;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.PeriodicImpulse;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -31,6 +40,10 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -40,11 +53,11 @@ public class SyndeoLoadTestUtils {
   public static final Long MAX_ROWS_PER_SPLIT = 2000L;
 
   public static PCollection<Row> inputData(
-      Pipeline dataGenerator, Long numRows, Integer runtimeMinutes) {
+      Pipeline dataGenerator, Long numRows, Long runtimeSeconds, Schema dataSchema) {
     Random randomSeed = new Random();
 
     final long numSplits = Math.max(numRows / MAX_ROWS_PER_SPLIT, 1);
-    final long periodPerSplitMsecs = Math.max((runtimeMinutes * 60 * 1000) / numSplits, 1);
+    final long periodPerSplitMsecs = Math.max((runtimeSeconds * 1000) / numSplits, 1);
     System.out.printf(
         "Producing %s rows in %s splits. Each split every %s msecs. Each split has max %s rows.%n",
         numRows, numSplits, periodPerSplitMsecs, MAX_ROWS_PER_SPLIT);
@@ -57,7 +70,7 @@ public class SyndeoLoadTestUtils {
                 .apply(
                     PeriodicImpulse.create()
                         .startAt(startTime)
-                        .stopAt(Instant.now().plus(Duration.standardMinutes(runtimeMinutes)))
+                        .stopAt(Instant.now().plus(Duration.standardSeconds(runtimeSeconds)))
                         .withInterval(Duration.millis(periodPerSplitMsecs)))
                 .apply(Reshuffle.viaRandomKey())
                 .apply(
@@ -73,12 +86,10 @@ public class SyndeoLoadTestUtils {
                                   .mapToObj(
                                       intVal ->
                                           SyndeoLoadTestUtils.randomRowForSchema(
-                                              SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA,
-                                              0.05,
-                                              randomSeed))
+                                              dataSchema, 0.05, randomSeed))
                                   .collect(Collectors.toList());
                             }))
-                .setRowSchema(SIMPLE_TABLE_SCHEMA))
+                .setRowSchema(dataSchema))
         .apply(
             new SyndeoStatsSchemaTransformProvider()
                 .from(
@@ -97,7 +108,8 @@ public class SyndeoLoadTestUtils {
           .addField(Schema.Field.of("commitDate", Schema.FieldType.DATETIME))
           .addField(Schema.Field.nullable("message", Schema.FieldType.STRING))
           .addInt64Field("linesAdded")
-          .addInt32Field("linesRemoved")
+          // TODO(pabloem): This field should be INT32
+          .addInt64Field("linesRemoved")
           .addBooleanField("merged")
           .addByteArrayField("sha1")
           // A decimal field that means nothing but that we include for good measure : )
@@ -239,5 +251,78 @@ public class SyndeoLoadTestUtils {
       }
     }
     return rowBuilder.build();
+  }
+
+  @AutoService(SchemaTransformProvider.class)
+  public static class GenerateDataSchemaTransformProvider
+      extends TypedSchemaTransformProvider<
+          GenerateDataSchemaTransformProvider.GenerateDataSchemaTransformConfiguration> {
+
+    @Override
+    public Class<GenerateDataSchemaTransformConfiguration> configurationClass() {
+      return GenerateDataSchemaTransformConfiguration.class;
+    }
+
+    @Override
+    public SchemaTransform from(GenerateDataSchemaTransformConfiguration configuration) {
+      return new SchemaTransform() {
+        @Override
+        public @UnknownKeyFor @NonNull @Initialized PTransform<
+                @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple,
+                @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple>
+            buildTransform() {
+          return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
+            @Override
+            public PCollectionRowTuple expand(PCollectionRowTuple input) {
+              Schema dataSchema = SIMPLE_TABLE_SCHEMA;
+              if (configuration.getUseNestedSchema() != null
+                  && configuration.getUseNestedSchema()) {
+                dataSchema = NESTED_TABLE_SCHEMA;
+              }
+              return PCollectionRowTuple.of(
+                  "output",
+                  inputData(
+                      input.getPipeline(),
+                      configuration.getNumRows(),
+                      configuration.getRuntimeSeconds(),
+                      dataSchema));
+            }
+          };
+        }
+      };
+    }
+
+    @Override
+    public @UnknownKeyFor @NonNull @Initialized String identifier() {
+      return "syndeo_test:schematransform:com.google.cloud:generate_data:v1";
+    }
+
+    @Override
+    public @UnknownKeyFor @NonNull @Initialized List<@UnknownKeyFor @NonNull @Initialized String>
+        inputCollectionNames() {
+      return List.of();
+    }
+
+    @Override
+    public @UnknownKeyFor @NonNull @Initialized List<@UnknownKeyFor @NonNull @Initialized String>
+        outputCollectionNames() {
+      return List.of("output");
+    }
+
+    @DefaultSchema(AutoValueSchema.class)
+    @AutoValue
+    public abstract static class GenerateDataSchemaTransformConfiguration {
+      public abstract Long getNumRows();
+
+      public abstract Long getRuntimeSeconds();
+
+      public abstract @Nullable Boolean getUseNestedSchema();
+
+      public static GenerateDataSchemaTransformConfiguration create(
+          Long numRows, Long runtimeSeconds, Boolean useNestedSchema) {
+        return new AutoValue_SyndeoLoadTestUtils_GenerateDataSchemaTransformProvider_GenerateDataSchemaTransformConfiguration(
+            numRows, runtimeSeconds, useNestedSchema);
+      }
+    }
   }
 }
