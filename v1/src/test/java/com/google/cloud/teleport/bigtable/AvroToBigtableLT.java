@@ -56,7 +56,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
           TestProperties.specPath(), "gs://dataflow-templates/latest/GCS_Avro_to_Cloud_Bigtable");
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
   private static final String TEST_ROOT_DIR = AvroToBigtableLT.class.getSimpleName().toLowerCase();
-  // 56,000,000 messages of the given schema approximately make up 10GB
+  // 56,000,000 messages of the given schema make up approximately 10GB
   private static final String NUM_MESSAGES = "56000000";
   private static final String INPUT_PCOLLECTION = "Read from Avro/Read.out0";
   private static final String OUTPUT_PCOLLECTION = "Transform to Bigtable.out0";
@@ -93,8 +93,12 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
 
   @After
   public void teardown() {
-    bigtableResourceManager.cleanupAll();
-    artifactClient.cleanupRun();
+    if (bigtableResourceManager != null) {
+      bigtableResourceManager.cleanupAll();
+    }
+    if (artifactClient != null) {
+      artifactClient.cleanupRun();
+    }
   }
 
   @Test

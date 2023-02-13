@@ -48,6 +48,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/Cloud_PubSub_to_Cloud_PubSub");
+  // 35,000,000 messages of the given schema make up approximately 10GB
   private static final long NUM_MESSAGES = 35000000L;
   private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
   private static final String OUTPUT_PCOLLECTION = "Write PubSub Events/MapElements/Map.out0";
@@ -63,7 +64,9 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
 
   @After
   public void teardown() {
-    pubsubResourceManager.cleanupAll();
+    if (pubsubResourceManager != null) {
+      pubsubResourceManager.cleanupAll();
+    }
   }
 
   @Test

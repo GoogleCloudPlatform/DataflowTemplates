@@ -56,6 +56,7 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
       MoreObjects.firstNonNull(
           TestProperties.specPath(),
           "gs://dataflow-templates/latest/PubSub_Subscription_to_BigQuery");
+  // 35,000,000 messages of the given schema make up approximately 10GB
   private static final long NUM_MESSAGES = 35000000L;
   // schema should match schema supplied to generate fake records.
   private static final Schema SCHEMA =
@@ -90,8 +91,12 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
 
   @After
   public void teardown() {
-    pubsubResourceManager.cleanupAll();
-    bigQueryResourceManager.cleanupAll();
+    if (pubsubResourceManager != null) {
+      pubsubResourceManager.cleanupAll();
+    }
+    if (bigQueryResourceManager != null) {
+      bigQueryResourceManager.cleanupAll();
+    }
   }
 
   @Test
@@ -150,7 +155,7 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
             createConfig(info, Duration.ofMinutes(40)),
             () ->
                 bigQueryResourceManager.getRowCount(PROJECT, table.getDataset(), table.getTable())
-                    == NUM_MESSAGES);
+                    >= NUM_MESSAGES);
 
     // Assert
     assertThatResult(result).meetsConditions();

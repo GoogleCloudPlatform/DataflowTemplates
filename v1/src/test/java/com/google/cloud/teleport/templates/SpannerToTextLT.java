@@ -54,6 +54,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
           TestProperties.specPath(), "gs://dataflow-templates/latest/Spanner_to_GCS_Text");
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
   private static final String TEST_ROOT_DIR = SpannerToTextLT.class.getSimpleName().toLowerCase();
+  // 35,000,000 messages of the given schema make up approximately 10GB
   private static final String NUM_MESSAGES = "35000000";
   private static final String INPUT_PCOLLECTION =
       "Read all records/Read from Cloud Spanner/Read from Partitions.out0";
@@ -73,8 +74,12 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
 
   @After
   public void teardown() {
-    spannerResourceManager.cleanupAll();
-    artifactClient.cleanupRun();
+    if (spannerResourceManager != null) {
+      spannerResourceManager.cleanupAll();
+    }
+    if (artifactClient != null) {
+      artifactClient.cleanupRun();
+    }
   }
 
   @Test

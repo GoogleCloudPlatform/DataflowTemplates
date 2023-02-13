@@ -54,6 +54,8 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
           TestProperties.specPath(), "gs://dataflow-templates/latest/Cloud_Spanner_to_GCS_Avro");
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
   private static final String TEST_ROOT_DIR = ExportPipelineLT.class.getSimpleName().toLowerCase();
+  // 35,000,000 messages of the given schema make up approximately 10GB
+
   private static final String NUM_MESSAGES = "35000000";
   private static final String INPUT_PCOLLECTION =
       "Run Export/Read all rows from Spanner/Read from Cloud Spanner/Read from Partitions.out0";
@@ -73,8 +75,12 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
 
   @After
   public void teardown() {
-    spannerResourceManager.cleanupAll();
-    artifactClient.cleanupRun();
+    if (spannerResourceManager != null) {
+      spannerResourceManager.cleanupAll();
+    }
+    if (artifactClient != null) {
+      artifactClient.cleanupRun();
+    }
   }
 
   @Test

@@ -70,6 +70,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
   private static final String OUTPUT_PCOLLECTION =
       "Write File(s)/WriteFiles/WriteShardedBundlesToTempFiles/ApplyShardingKey.out0";
+  // 35,000,000 messages of the given schema make up approximately 10GB
   private static final long NUM_MESSAGES = 35000000L;
 
   private static PubsubResourceManager pubsubResourceManager;
@@ -88,8 +89,12 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
 
   @After
   public void tearDown() {
-    artifactClient.cleanupRun();
-    pubsubResourceManager.cleanupAll();
+    if (artifactClient != null) {
+      artifactClient.cleanupRun();
+    }
+    if (pubsubResourceManager != null) {
+      pubsubResourceManager.cleanupAll();
+    }
   }
 
   @Test

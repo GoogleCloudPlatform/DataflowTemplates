@@ -65,7 +65,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
           TestProperties.specPath(),
           "gs://dataflow-templates/latest/flex/Streaming_Data_Generator");
   private static final String FAKE_DATA_PCOLLECTION = "Generate Fake Messages.out0";
-  // 10 gb worth of messages
+  // 35,000,000 messages of the given schema make up approximately 10GB
   private static final String NUM_MESSAGES = "35000000";
   private static PubsubResourceManager pubsubResourceManager;
   private static ArtifactClient artifactClient;

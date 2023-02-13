@@ -107,7 +107,7 @@ public interface PipelineLauncher {
   class LaunchConfig {
     private final String jobName;
     private final ImmutableMap<String, String> parameters;
-    private final ImmutableMap<String, String> environment;
+    private final ImmutableMap<String, Object> environment;
     @Nullable private final String specPath;
     @Nullable private final Sdk sdk;
     @Nullable private final String executable;
@@ -131,7 +131,7 @@ public interface PipelineLauncher {
       return parameters;
     }
 
-    public ImmutableMap<String, String> environment() {
+    public ImmutableMap<String, Object> environment() {
       return environment;
     }
 
@@ -173,10 +173,10 @@ public interface PipelineLauncher {
     }
 
     /** Builder for the {@link LaunchConfig}. */
-    public static final class Builder<T> {
+    public static final class Builder {
       private final String jobName;
       private final String specPath;
-      private final Map<String, T> environment;
+      private final Map<String, Object> environment;
       private Map<String, String> parameters;
       private Sdk sdk;
       private String executable;
@@ -209,11 +209,11 @@ public interface PipelineLauncher {
       }
 
       @Nullable
-      public T getEnvironment(String key) {
+      public Object getEnvironment(String key) {
         return environment.get(key);
       }
 
-      public Builder addEnvironment(String key, T value) {
+      public Builder addEnvironment(String key, Object value) {
         environment.put(key, value);
         return this;
       }
