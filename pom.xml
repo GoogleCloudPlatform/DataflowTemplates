@@ -34,7 +34,7 @@
     <java.version>11</java.version>
 
     <!-- Plugins -->
-    <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
+    <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
@@ -51,7 +51,7 @@
 
     <!-- Common dependency versions -->
     <autovalue.version>1.8.2</autovalue.version>
-    <checkstyle.version>8.7</checkstyle.version>
+    <checkstyle.version>10.7.0</checkstyle.version>
     <commons-codec.version>1.15</commons-codec.version>
     <commons-io.version>2.11.0</commons-io.version>
     <conscrypt.version>2.5.2</conscrypt.version>
