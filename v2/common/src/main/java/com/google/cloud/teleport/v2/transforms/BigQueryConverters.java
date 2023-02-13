@@ -745,7 +745,8 @@ public class BigQueryConverters {
       };
 
   /**
-   * The {@link SchemaUtils} Class to easily convert from a json string to a BigQuery List<Field>.
+   * The {@link SchemaUtils} Class to easily convert from a json string to a BigQuery
+   * List&lt;Field&gt;.
    */
   public static class SchemaUtils {
 

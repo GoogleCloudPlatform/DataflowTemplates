@@ -41,8 +41,8 @@ public class BigQueryDynamicConverters {
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryDynamicConverters.class);
 
   /**
-   * Section 1: Transform PCollection<TableRow> into PCollection<KV<TableId, TableRow>> with table
-   * state added.
+   * Section 1: Transform PCollection of TableRow into PCollection of KV&lt;TableId, TableRow&gt;
+   * with table state added.
    */
   public static PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>>
       extractTableRowDestination(String projectId, String datasetTemplate, String tableTemplate) {

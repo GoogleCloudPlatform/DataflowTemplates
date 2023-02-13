@@ -20,7 +20,6 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.kafka.connector.KafkaIO;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.templates.KafkaToBigQuery.Options;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;

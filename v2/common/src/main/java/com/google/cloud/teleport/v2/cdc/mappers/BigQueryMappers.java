@@ -25,15 +25,15 @@ import org.slf4j.LoggerFactory;
 /**
  * BigQueryMappers contains different versions of a generic BigQueryMapper class. The BigQueryMapper
  * can be easily extended by overriding: - public TableId getTableId(InputT input) - public TableRow
- * getTableRow(InputT input) - public OutputT getOutputObject(InputT input) - public Map<String,
- * LegacySQLTypeName> getInputSchema(InputT input)
+ * getTableRow(InputT input) - public OutputT getOutputObject(InputT input) - public Map&lt;String,
+ * LegacySQLTypeName&gt; getInputSchema(InputT input)
  *
  * <p>BigQueryMapper Versions can be used via helper functions buildBigQueryTableMapper(String
  * datasetProvider, String tableNameProvider) - This expects table name to be provided and handles
  * schema changes for a TableRow object
  *
- * <p>buildBigQueryDynamicTableMapper - Expect to process a KV<TableId, TableRow> and the class will
- * manage the schema - for each table supplied in the stream
+ * <p>buildBigQueryDynamicTableMapper - Expect to process a KV&lt;TableId, TableRow&gt; and the
+ * class will manage the schema - for each table supplied in the stream.
  */
 public class BigQueryMappers {
 

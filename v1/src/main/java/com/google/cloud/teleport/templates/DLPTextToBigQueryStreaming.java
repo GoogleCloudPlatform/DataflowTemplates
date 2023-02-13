@@ -131,8 +131,8 @@ import org.slf4j.LoggerFactory;
  * --gcs-location=${PIPELINE_FOLDER}/template \
  * --zone=us-east1-d \
  * --parameters \
- * "inputFilePattern=gs://<bucketName>/<fileName>.csv, batchSize=15,datasetName=<BQDatasetId>,
- *  dlpProjectId=<projectId>,
+ * "inputFilePattern=gs://{bucketName}/{fileName}.csv, batchSize=15,datasetName={BQDatasetId},
+ *  dlpProjectId={projectId},
  *  deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}
  * </pre>
  */

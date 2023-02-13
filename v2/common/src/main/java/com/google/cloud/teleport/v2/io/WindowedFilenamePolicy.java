@@ -369,7 +369,7 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
    * timePatternGroupName} with all the options in {@code timePatterns}.
    *
    * <p>The resulting group will be equivalent to the following in RE2 syntax:
-   * (?P<timePatternGroupName>timePattern1|...|timePatternN)
+   * (?P&lt;timePatternGroupName&gt;timePattern1|...|timePatternN)
    *
    * <p>The above group will also be surrounded by an optional match of {@link
    * WindowedFilenamePolicy#EXCLUDED_GROUP_WRAPPER_REGEX}.

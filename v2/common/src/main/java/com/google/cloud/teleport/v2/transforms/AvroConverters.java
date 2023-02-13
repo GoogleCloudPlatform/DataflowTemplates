@@ -91,7 +91,7 @@ public class AvroConverters {
 
   /**
    * The {@link ReadAvroFile} class is a {@link PTransform} that reads from one or more Avro files
-   * and returns a {@link PCollection} of {@link GenericRecord>}.
+   * and returns a {@link PCollection} of {@link GenericRecord}.
    */
   @AutoValue
   public abstract static class ReadAvroFile extends PTransform<PBegin, PCollection<GenericRecord>> {

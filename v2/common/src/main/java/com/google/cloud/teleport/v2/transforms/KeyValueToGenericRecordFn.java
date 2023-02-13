@@ -24,8 +24,8 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 
 /**
- * The {@link KeyValueToGenericRecordFn} class converts a KV<String, String> to a GenericRecord
- * using a static schema.
+ * The {@link KeyValueToGenericRecordFn} class converts a KV&lt;String, String&gt; to a
+ * GenericRecord using a static schema.
  */
 public class KeyValueToGenericRecordFn extends DoFn<KV<String, String>, GenericRecord> {
 
