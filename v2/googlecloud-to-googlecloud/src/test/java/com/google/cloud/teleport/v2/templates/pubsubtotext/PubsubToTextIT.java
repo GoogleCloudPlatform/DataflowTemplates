@@ -61,7 +61,7 @@ public final class PubsubToTextIT extends TemplateTestBase {
 
   private static final String DEFAULT_WINDOW_DURATION = "10s";
 
-  private static PubsubResourceManager pubsubResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setup() throws IOException {

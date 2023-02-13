@@ -68,10 +68,11 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
 
-  private static PubsubResourceManager pubsubResourceManager;
-  private static BigQueryResourceManager bigQueryResourceManager;
   private Schema avroSchema;
   private com.google.cloud.bigquery.Schema bigQuerySchema;
+
+  private PubsubResourceManager pubsubResourceManager;
+  private BigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setup() throws IOException {

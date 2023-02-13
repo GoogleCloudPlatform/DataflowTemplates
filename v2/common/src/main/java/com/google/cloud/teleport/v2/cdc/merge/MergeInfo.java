@@ -185,7 +185,7 @@ public abstract class MergeInfo implements Serializable {
     return mergeFields;
   }
 
-  private static String getTableReference(TableId tableId) {
+  public static String getTableReference(TableId tableId) {
     return String.format(
         "%s.%s.%s", tableId.getProject(), tableId.getDataset(), tableId.getTable());
   }

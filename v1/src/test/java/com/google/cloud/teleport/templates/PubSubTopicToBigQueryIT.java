@@ -55,8 +55,8 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(value = PubSubToBigQuery.class, template = "PubSub_to_BigQuery")
 @RunWith(JUnit4.class)
 public final class PubSubTopicToBigQueryIT extends TemplateTestBase {
-  private static PubsubResourceManager pubsubResourceManager;
-  private static BigQueryResourceManager bigQueryResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
+  private BigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setUp() throws IOException {

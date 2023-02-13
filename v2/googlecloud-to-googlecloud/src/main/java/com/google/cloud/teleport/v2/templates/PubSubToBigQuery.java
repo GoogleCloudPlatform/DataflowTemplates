@@ -80,10 +80,10 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>
  * # Set the pipeline vars
- * export PROJECT=<project id>
+ * export PROJECT={project id}
  * export TEMPLATE_MODULE=googlecloud-to-googlecloud
  * export TEMPLATE_NAME=pubsub-to-bigquery
- * export BUCKET_NAME=gs://<bucket name>
+ * export BUCKET_NAME=gs://{bucket name}
  * export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${TEMPLATE_NAME}-image
  * export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
  * export BASE_CONTAINER_IMAGE_VERSION=latest
@@ -146,7 +146,7 @@ import org.slf4j.LoggerFactory;
  * gcloud beta dataflow flex-template run ${JOB_NAME} \
  *       --project=${PROJECT} --region=us-central1 \
  *       --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
- *       --parameters inputTopic=<topic>,outputTableSpec=<output table>
+ *       --parameters inputTopic={topic},outputTableSpec={output table}
  * </pre>
  */
 @Template(

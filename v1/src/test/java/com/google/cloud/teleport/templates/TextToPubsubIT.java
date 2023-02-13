@@ -47,7 +47,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class TextToPubsubIT extends TemplateTestBase {
   private static final String TEST_ROOT_DIR = TextToPubsubIT.class.getSimpleName();
-  private static PubsubResourceManager pubsubResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setUp() throws IOException {

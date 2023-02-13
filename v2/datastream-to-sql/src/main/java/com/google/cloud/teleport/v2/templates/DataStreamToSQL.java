@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
  * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
  * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
  * --templateLocation=gs://$BUCKET_NAME/templates/${PIPELINE_NAME}.json \
- * --gcsPubSubSubscription="projects/<project-id>/subscriptions/<subscription-name>" \
+ * --gcsPubSubSubscription="projects/{project-id}/subscriptions/{subscription-name}" \
  * --inputFilePattern=${GCS_AVRO_FILE_PATTERN} \
  * --outputProjectId=${OUTPUT_PROJECT_ID} \
  * --runner=(DirectRunner|DataflowRunner)"

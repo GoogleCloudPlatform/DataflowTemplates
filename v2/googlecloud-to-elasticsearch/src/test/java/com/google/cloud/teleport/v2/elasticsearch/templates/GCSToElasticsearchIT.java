@@ -47,8 +47,8 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class GCSToElasticsearchIT extends TemplateTestBase {
 
-  private static BigQueryResourceManager bigQueryClient;
-  private static ElasticsearchResourceManager elasticsearchResourceManager;
+  private BigQueryResourceManager bigQueryClient;
+  private ElasticsearchResourceManager elasticsearchResourceManager;
 
   @Before
   public void setup() {

@@ -47,7 +47,7 @@ import org.apache.beam.sdk.values.PCollectionView;
  * view is needed to get the table schema for the {@link AvroRecordConverter}. This is then used to
  * verify the table's schema against the Avro record schema.
  *
- * <p>Input PCollection is a @{code KV<filePath, tableName>}
+ * <p>Input PCollection is a @{code KV&lt;filePath, tableName&gt;}
  */
 class AvroTableFileAsMutations
     extends PTransform<PCollection<KV<String, String>>, PCollection<Mutation>> {

@@ -71,8 +71,8 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
       Integer.max(
           300, Integer.parseInt(getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY)));
 
-  private static BigQueryResourceManager bigQueryClient;
-  private static DefaultBigtableResourceManager bigtableClient;
+  private BigQueryResourceManager bigQueryClient;
+  private DefaultBigtableResourceManager bigtableClient;
 
   @Before
   public void setup() throws IOException {

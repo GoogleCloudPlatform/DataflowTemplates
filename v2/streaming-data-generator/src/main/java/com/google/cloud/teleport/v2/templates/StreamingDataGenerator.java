@@ -76,8 +76,8 @@ import org.slf4j.LoggerFactory;
  * # Set the pipeline vars
  * PROJECT=my-project
  * BUCKET_NAME=my-bucket
- * SCHEMA_LOCATION=gs://<bucket>/<path>/<to>/game-event-schema.json
- * PUBSUB_TOPIC=projects/<project-id>/topics/<topic-id>
+ * SCHEMA_LOCATION=gs://{bucket}/{path}/{to}/game-event-schema.json
+ * PUBSUB_TOPIC=projects/{project-id}/topics/{topic-id}
  * QPS=2500
  *
  * # Set containerization vars
@@ -100,11 +100,11 @@ import org.slf4j.LoggerFactory;
  *   as specified in README.md file
  *
  * # Execute template:
- * JOB_NAME=<job-name>
- * PROJECT=<project-id>
+ * JOB_NAME={job-name}
+ * PROJECT={project-id}
  * TEMPLATE_SPEC_GCSPATH=gs://path/to/template-spec
  * SCHEMA_LOCATION=gs://path/to/schema.json
- * PUBSUB_TOPIC=projects/$PROJECT/topics/<topic-name>
+ * PUBSUB_TOPIC=projects/$PROJECT/topics/{topic-name}
  * QPS=1
  *
  * gcloud beta dataflow flex-template run $JOB_NAME \

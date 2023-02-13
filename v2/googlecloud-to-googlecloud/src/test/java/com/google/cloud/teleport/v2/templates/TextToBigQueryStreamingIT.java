@@ -58,7 +58,7 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
   private static final String UDF_PATH = "TextToBigQueryStreamingIT/udf.js";
   private static final Map<String, Object> EXPECTED = ImmutableMap.of("BOOK_ID", 1, "TITLE", "ABC");
 
-  private static BigQueryResourceManager bigQueryClient;
+  private BigQueryResourceManager bigQueryClient;
 
   @Rule public final TestName testName = new TestName();
 

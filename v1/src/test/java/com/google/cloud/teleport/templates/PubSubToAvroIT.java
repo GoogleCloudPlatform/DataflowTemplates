@@ -58,7 +58,7 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(value = PubsubToAvro.class, template = "Cloud_PubSub_to_Avro")
 @RunWith(JUnit4.class)
 public class PubSubToAvroIT extends TemplateTestBase {
-  private static PubsubResourceManager pubsubResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setUp() throws IOException {

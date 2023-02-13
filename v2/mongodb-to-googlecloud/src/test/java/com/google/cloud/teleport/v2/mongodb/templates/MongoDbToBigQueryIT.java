@@ -109,14 +109,13 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
   private static final String MONGO_DB_ID = "_id";
 
-  private static DefaultMongoDBResourceManager mongoDbClient;
-  private static BigQueryResourceManager bigQueryClient;
+  private DefaultMongoDBResourceManager mongoDbClient;
+  private BigQueryResourceManager bigQueryClient;
 
   @Before
   public void setup() throws IOException {
     mongoDbClient =
         DefaultMongoDBResourceManager.builder(testName.getMethodName()).setHost(HOST_IP).build();
-
     bigQueryClient =
         DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
             .setCredentials(credentials)

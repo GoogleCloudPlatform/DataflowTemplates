@@ -56,8 +56,8 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class PubSubToBigQueryIT extends TemplateTestBase {
 
-  private static PubsubResourceManager pubsubResourceManager;
-  private static BigQueryResourceManager bigQueryResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
+  private BigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setUp() throws IOException {

@@ -63,7 +63,7 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(TextToPubsubStreamIT.class);
   private static final String TEST_ROOT_DIR = TextToPubsubStreamIT.class.getSimpleName();
 
-  private static PubsubResourceManager pubsubResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
 
   @ClassRule public static TemporaryFolder tempFolder = new TemporaryFolder();
 
