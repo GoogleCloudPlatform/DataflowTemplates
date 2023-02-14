@@ -114,7 +114,6 @@ public class SyndeoStatsSchemaTransformProvider
 
     @DoFn.ProcessElement
     public void process(@DoFn.Element Row elm, OutputReceiver<Row> receiver) {
-      System.out.println("ELEMENT CAME IN from " + parent + " elm: " + elm);
       elementsProcessed += 1;
       receiver.output(elm);
     }

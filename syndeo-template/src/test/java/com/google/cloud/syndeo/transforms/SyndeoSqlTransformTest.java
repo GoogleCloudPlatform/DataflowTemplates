@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.values.PCollection;
@@ -35,7 +36,9 @@ import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.testcontainers.containers.BigtableEmulatorContainer;
@@ -49,7 +52,7 @@ public class SyndeoSqlTransformTest {
       new BigtableEmulatorContainer(
           DockerImageName.parse("gcr.io/google.com/cloudsdktool/cloud-sdk:367.0.0-emulators"));
 
-  //  @Rule public final Timeout timeout = Timeout.seconds(40);
+  @Rule public final Timeout timeout = Timeout.seconds(40);
 
   static String buildPayloadWithQuery(String query) throws JsonProcessingException {
     return new ObjectMapper()
@@ -62,7 +65,7 @@ public class SyndeoSqlTransformTest {
                     "configurationParameters",
                     Map.of(
                         "numRows",
-                        Long.valueOf(7L), // TODO(pabloem): Make 100 again
+                        Long.valueOf(100L),
                         "runtimeSeconds",
                         Integer.valueOf(3),
                         "useNestedSchema",
@@ -139,12 +142,13 @@ public class SyndeoSqlTransformTest {
   public void testEndToEndLocalPipelineWithErrorsInQuery() throws JsonProcessingException {
     String query =
         "SELECT "
-            //            + "commitDate, "
+            + "commit, commitDate, "
             + "linesAdded - linesRemoved as lineDelta, "
             + "FROM input";
     String jsonPayload = buildPayloadWithQuery(query);
 
-    Pipeline syndeoPipeline = Pipeline.create();
+    Pipeline syndeoPipeline =
+        Pipeline.create(PipelineOptionsFactory.fromArgs("--streaming").create());
     SyndeoTemplate.buildPipeline(syndeoPipeline, SyndeoTemplate.buildFromJsonPayload(jsonPayload));
 
     TransformInputAndOutputVerifier verifier =
@@ -168,28 +172,20 @@ public class SyndeoSqlTransformTest {
                 .getRowSchema()
                 .getFieldNames())
         // Only the list of fields that are accessed, not the full list of fields in the input.
-        .containsExactly("linesAdded", "linesRemoved");
+        .containsExactly("commit", "commitDate", "linesAdded", "linesRemoved");
 
     PipelineResult result = syndeoPipeline.run();
     result.waitUntilFinish();
-    Long elementsToSink =
+    Long erroringElements =
         StreamSupport.stream(result.metrics().allMetrics().getCounters().spliterator(), false)
             .filter(res -> res.getName().getName().equals("elementsProcessed"))
-            .filter(res -> res.getKey().stepName().contains("sql_transform"))
-            .map(res -> res.getAttempted())
-            .findFirst()
-            .orElse(-1L);
-    Long elementsProduced =
-        StreamSupport.stream(result.metrics().allMetrics().getCounters().spliterator(), false)
-            .filter(res -> res.getName().getName().equals("elementsProcessed"))
-            .filter(res -> res.getKey().stepName().contains("generate_data"))
+            .filter(res -> res.getKey().stepName().contains("errors"))
             .map(res -> res.getAttempted())
             .findFirst()
             .orElse(-1L);
 
-    // Verify that we filter out about 60% of elements.
-    assertThat(elementsToSink).isGreaterThan(0);
-    assertThat((long) (elementsProduced / 0.6)).isGreaterThan(elementsToSink);
+    // Verify that we have several error messages.
+    assertThat(erroringElements).isGreaterThan(10);
   }
 
   static class TransformInputAndOutputVerifier implements Pipeline.PipelineVisitor {
