@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
@@ -56,47 +55,37 @@ public class SyndeoLoadTestUtils {
 
   private static PCollection<Long> longSequence(
       Pipeline dataGenerator, Long numRows, Long runtimeSeconds) {
-    if (numRows > 0) {
-      final long numSplits = Math.max(numRows / MAX_ROWS_PER_SPLIT, 1);
-      final long periodPerSplitMsecs = Math.max((runtimeSeconds * 1000) / numSplits, 1);
-      System.out.printf(
-          "Producing %s rows in %s splits. Each split every %s msecs. Each split has max %s rows.%n",
-          numRows, numSplits, periodPerSplitMsecs, MAX_ROWS_PER_SPLIT);
-      final Instant startTime = Instant.now();
-      return dataGenerator
-          .apply(
-              PeriodicImpulse.create()
-                  .startAt(startTime)
-                  .stopAt(Instant.now().plus(Duration.standardSeconds(runtimeSeconds)))
-                  .withInterval(Duration.millis(periodPerSplitMsecs)))
-          .apply(Reshuffle.viaRandomKey())
-          .apply(
-              FlatMapElements.into(TypeDescriptors.longs())
-                  .via(
-                      inst -> {
-                        long ordinal =
-                            inst.minus(Duration.millis(startTime.getMillis())).getMillis()
-                                / periodPerSplitMsecs;
-
-                        System.out.println("ORDINAL IS " + ordinal);
-                        return LongStream.range(
-                                ordinal * MAX_ROWS_PER_SPLIT,
-                                Math.min(numRows, (ordinal + 1) * MAX_ROWS_PER_SPLIT))
-                            .boxed()
-                            .collect(Collectors.toList());
-                      }));
-    } else {
-      return dataGenerator.apply(
-          GenerateSequence.from(0)
-              .to(numRows)
-              .withRate(Math.max(numRows / runtimeSeconds, 1L), Duration.standardSeconds(1)));
-    }
+    final long numSplits = Math.max(numRows / MAX_ROWS_PER_SPLIT, 1);
+    final long periodPerSplitMsecs = Math.max((runtimeSeconds * 1000) / numSplits, 1);
+    System.out.printf(
+        "Producing %s rows in %s splits. Each split every %s msecs. Each split has max %s rows.%n",
+        numRows, numSplits, periodPerSplitMsecs, MAX_ROWS_PER_SPLIT);
+    final Instant startTime = Instant.now();
+    return dataGenerator
+        .apply(
+            PeriodicImpulse.create()
+                .startAt(startTime)
+                .stopAt(Instant.now().plus(Duration.standardSeconds(runtimeSeconds)))
+                .withInterval(Duration.millis(periodPerSplitMsecs)))
+        .apply(Reshuffle.viaRandomKey())
+        .apply(
+            FlatMapElements.into(TypeDescriptors.longs())
+                .via(
+                    inst -> {
+                      assert inst != null;
+                      long ordinal =
+                          inst.minus(Duration.millis(startTime.getMillis())).getMillis()
+                              / periodPerSplitMsecs;
+                      return LongStream.range(
+                              ordinal * MAX_ROWS_PER_SPLIT,
+                              Math.min(numRows, (ordinal + 1) * MAX_ROWS_PER_SPLIT))
+                          .boxed()
+                          .collect(Collectors.toList());
+                    }));
   }
 
   public static PCollection<Row> inputData(
       Pipeline dataGenerator, Long numRows, Long runtimeSeconds, Schema dataSchema) {
-    //    Random randomSeed = new Random();
-
     return PCollectionRowTuple.of(
             "input",
             longSequence(dataGenerator, numRows, runtimeSeconds)
