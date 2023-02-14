@@ -33,6 +33,7 @@ import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -74,30 +75,15 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
 
   @After
   public void cleanup() {
-    // clean up resources
-    if (pubsubResourceManager != null) {
-      pubsubResourceManager.cleanupAll();
-      pubsubResourceManager = null;
-    }
-    if (artifactClient != null) {
-      artifactClient.cleanupRun();
-      artifactClient = null;
-    }
-    if (bigQueryResourceManager != null) {
-      bigQueryResourceManager.cleanupAll();
-      bigQueryResourceManager = null;
-    }
-    if (spannerResourceManager != null) {
-      spannerResourceManager.cleanupAll();
-      spannerResourceManager = null;
-    }
+    ResourceManagerUtils.cleanResources(
+        pubsubResourceManager, artifactClient, bigQueryResourceManager, spannerResourceManager);
   }
 
   @Test
   public void testGeneratePubsub10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     TopicName backlogTopic = pubsubResourceManager.createTopic("output");
@@ -135,8 +121,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
     Storage gcsClient = createGcsClient(CREDENTIALS);
     artifactClient = GcsArtifactClient.builder(gcsClient, artifactBucket, TEST_ROOT_DIR).build();
     String outputDirectory =
-        getFullGcsPath(
-            artifactBucket, TEST_ROOT_DIR, artifactClient.runId(), testName.getMethodName());
+        getFullGcsPath(artifactBucket, TEST_ROOT_DIR, artifactClient.runId(), testName);
     // Arrange
     Pattern expectedPattern = Pattern.compile(".*output-.*");
     LaunchConfig options =
@@ -167,7 +152,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   @Test
   public void testGenerateBigQuery10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
-    String name = testName.getMethodName();
+    String name = testName;
     bigQueryResourceManager =
         DefaultBigQueryResourceManager.builder(name, PROJECT).setCredentials(CREDENTIALS).build();
     // schema should match schema supplied to generate fake records.
@@ -212,7 +197,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   @Test
   public void testGenerateSpanner10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
-    String name = testName.getMethodName();
+    String name = testName;
     spannerResourceManager = DefaultSpannerResourceManager.builder(name, PROJECT, REGION).build();
     String createTableStatement =
         String.format(

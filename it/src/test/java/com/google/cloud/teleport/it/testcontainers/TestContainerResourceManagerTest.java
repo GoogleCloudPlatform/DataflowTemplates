@@ -146,7 +146,7 @@ public class TestContainerResourceManagerTest {
   public void testCleanupAllShouldCloseContainerWhenNotUsingStaticResource() {
     TestContainerResourceManager<?> testManager = testManagerBuilder.build();
 
-    assertThat(testManager.cleanupAll()).isEqualTo(true);
+    testManager.cleanupAll();
     verify(container).close();
   }
 
@@ -156,7 +156,7 @@ public class TestContainerResourceManagerTest {
 
     TestContainerResourceManager<?> testManager = testManagerBuilder.build();
 
-    assertThat(testManager.cleanupAll()).isEqualTo(false);
+    assertThrows(TestContainerResourceManagerException.class, () -> testManager.cleanupAll());
   }
 
   @Test
@@ -164,7 +164,7 @@ public class TestContainerResourceManagerTest {
     TestContainerResourceManager<?> testManager =
         testManagerBuilder.useStaticContainer().setHost(HOST).setPort(PORT).build();
 
-    assertThat(testManager.cleanupAll()).isEqualTo(true);
+    testManager.cleanupAll();
     verify(container, never()).close();
   }
 

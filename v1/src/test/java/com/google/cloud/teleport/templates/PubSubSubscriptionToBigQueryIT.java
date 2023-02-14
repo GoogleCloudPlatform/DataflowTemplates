@@ -27,6 +27,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -63,26 +64,25 @@ public class PubSubSubscriptionToBigQueryIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
   }
 
   @After
   public void cleanUp() {
-    pubsubResourceManager.cleanupAll();
-    bigQueryResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, bigQueryResourceManager);
   }
 
   @Test
   public void testSubscriptionToBigQuery() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
-    String bqTable = testName.getMethodName();
+    String jobName = createJobName(testName);
+    String bqTable = testName;
     List<Map<String, Object>> messages =
         List.of(
             Map.of("job", jobName, "msgNumber", 1),

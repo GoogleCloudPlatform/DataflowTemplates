@@ -30,6 +30,7 @@ import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -68,8 +69,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    bigtableResourceManager =
-        DefaultBigtableResourceManager.builder(testName.getMethodName(), PROJECT).build();
+    bigtableResourceManager = DefaultBigtableResourceManager.builder(testName, PROJECT).build();
     Storage gcsClient = createGcsClient(CREDENTIALS);
     artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
     // upload schema files and save path
@@ -93,12 +93,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
 
   @After
   public void teardown() {
-    if (bigtableResourceManager != null) {
-      bigtableResourceManager.cleanupAll();
-    }
-    if (artifactClient != null) {
-      artifactClient.cleanupRun();
-    }
+    ResourceManagerUtils.cleanResources(bigtableResourceManager, artifactClient);
   }
 
   @Test
@@ -115,7 +110,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // Arrange
-    String tableId = generateTableId(testName.getMethodName());
+    String tableId = generateTableId(testName);
     // The generated data contains only 1 column family named "SystemMetrics"
     bigtableResourceManager.createTable(tableId, ImmutableList.of("SystemMetrics"));
     // Bigtable expects Avro files to meet a specific schema
@@ -157,7 +152,6 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   }
 
   private String getTestMethodDirPath() {
-    return getFullGcsPath(
-        ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName.getMethodName());
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName);
   }
 }

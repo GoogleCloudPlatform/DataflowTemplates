@@ -57,6 +57,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TestName;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
@@ -67,11 +72,24 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
  *
  * <p>It is required to use @TemplateIntegrationTest to specify which template is under test.
  */
+@RunWith(JUnit4.class)
 public abstract class TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(TemplateTestBase.class);
 
-  @Rule public final TestName testName = new TestName();
+  public String testName;
+
+  @Rule
+  public TestRule watcher =
+      new TestWatcher() {
+        protected void starting(Description description) {
+          LOG.info(
+              "Starting integration test {}.{}",
+              description.getClassName(),
+              description.getMethodName());
+          testName = description.getMethodName();
+        }
+      };
 
   protected static final String PROJECT = TestProperties.project();
   protected static final String REGION = TestProperties.region();
@@ -95,7 +113,7 @@ public abstract class TemplateTestBase {
 
     TemplateIntegrationTest annotation = null;
     try {
-      Method testMethod = getClass().getMethod(testName.getMethodName());
+      Method testMethod = getClass().getMethod(testName);
       annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
     } catch (NoSuchMethodException e) {
       // ignore error
@@ -284,7 +302,7 @@ public abstract class TemplateTestBase {
   @After
   public void tearDownBase() {
     if (artifactClient != null) {
-      artifactClient.cleanupRun();
+      artifactClient.cleanupAll();
     }
   }
 

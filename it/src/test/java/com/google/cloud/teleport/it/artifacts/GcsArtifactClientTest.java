@@ -249,7 +249,7 @@ public final class GcsArtifactClientTest {
     when(client.delete(anyIterable())).thenReturn(ImmutableList.of(true, false, true));
 
     // Act
-    artifactClient.cleanupRun();
+    artifactClient.cleanupAll();
 
     // Assert
     verify(client).list(bucketCaptor.capture(), listOptionsCaptor.capture());
@@ -286,7 +286,7 @@ public final class GcsArtifactClientTest {
         .thenReturn(ImmutableList.of(true));
 
     // Act
-    artifactClient.cleanupRun();
+    artifactClient.cleanupAll();
 
     // Assert
     verify(client).list(bucketCaptor.capture(), listOptionsCaptor.capture());
@@ -309,7 +309,7 @@ public final class GcsArtifactClientTest {
     TestBlobPage allPages = createPages(ImmutableList.of());
     when(client.list(anyString(), any(BlobListOption.class))).thenReturn(allPages);
 
-    artifactClient.cleanupRun();
+    artifactClient.cleanupAll();
 
     verify(client, never()).delete(anyIterable());
   }

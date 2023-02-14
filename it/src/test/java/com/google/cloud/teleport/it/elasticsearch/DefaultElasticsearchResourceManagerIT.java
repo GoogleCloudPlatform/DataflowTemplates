@@ -17,6 +17,7 @@ package com.google.cloud.teleport.it.elasticsearch;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
 import java.util.HashMap;
 import java.util.List;
@@ -64,6 +65,6 @@ public class DefaultElasticsearchResourceManagerIT {
 
   @After
   public void tearDown() {
-    elasticsearchResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(elasticsearchResourceManager);
   }
 }

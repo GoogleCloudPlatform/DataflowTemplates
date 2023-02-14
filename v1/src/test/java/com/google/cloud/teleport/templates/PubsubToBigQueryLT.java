@@ -29,6 +29,7 @@ import com.google.cloud.teleport.it.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -80,23 +81,18 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(CREDENTIALS)
             .build();
   }
 
   @After
   public void teardown() {
-    if (pubsubResourceManager != null) {
-      pubsubResourceManager.cleanupAll();
-    }
-    if (bigQueryResourceManager != null) {
-      bigQueryResourceManager.cleanupAll();
-    }
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, bigQueryResourceManager);
   }
 
   @Test
@@ -127,7 +123,7 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
     TopicName backlogTopic = pubsubResourceManager.createTopic("backlog-input");
     SubscriptionName backlogSubscription =
         pubsubResourceManager.createSubscription(backlogTopic, "backlog-subscription");
-    TableId table = bigQueryResourceManager.createTable(testName.getMethodName(), SCHEMA);
+    TableId table = bigQueryResourceManager.createTable(testName, SCHEMA);
     // Generate fake data to table
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
@@ -172,9 +168,7 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
         pubsubResourceManager.createSubscription(inputTopic, "steady-state-subscription");
     TableId table =
         bigQueryResourceManager.createTable(
-            testName.getMethodName(),
-            SCHEMA,
-            System.currentTimeMillis() + 7200000); // expire in 2 hrs
+            testName, SCHEMA, System.currentTimeMillis() + 7200000); // expire in 2 hrs
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
             .setQPS("100000")

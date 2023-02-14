@@ -28,6 +28,7 @@ import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManagerCluster;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.pubsublite.DefaultPubsubliteResourceManager;
 import com.google.cloud.teleport.it.pubsublite.PubsubLiteResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
@@ -86,8 +87,7 @@ public class SyndeoLoadLT {
 
   @After
   public void afterTest() {
-    pubsubLite.cleanupAll();
-    bigtable.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubLite, bigtable);
   }
 
   @AutoValue

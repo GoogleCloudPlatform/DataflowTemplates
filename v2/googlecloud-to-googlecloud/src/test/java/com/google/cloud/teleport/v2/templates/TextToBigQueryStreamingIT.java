@@ -26,6 +26,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -38,10 +39,8 @@ import java.util.Map;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -61,24 +60,17 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
 
   private BigQueryResourceManager bigQueryClient;
 
-  @Rule public final TestName testName = new TestName();
-
   @Before
   public void setup() throws IOException {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
   }
 
   @After
-  public void tearDownClass() {
-    try {
-      bigQueryClient.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete BigQuery resources.", e);
-      throw new IllegalStateException("Failed to delete resources. Check above for errors.");
-    }
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(bigQueryClient);
   }
 
   @Test
@@ -98,7 +90,7 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
   private void testTextToBigQuery(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
     // Arrange
-    String bqTable = testName.getMethodName();
+    String bqTable = testName;
 
     artifactClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
     artifactClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());

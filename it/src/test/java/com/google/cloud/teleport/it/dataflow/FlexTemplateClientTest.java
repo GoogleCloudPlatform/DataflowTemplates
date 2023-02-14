@@ -104,7 +104,9 @@ public final class FlexTemplateClientTest {
     LaunchFlexTemplateResponse response = new LaunchFlexTemplateResponse().setJob(launchJob);
 
     LaunchConfig options =
-        LaunchConfig.builder(JOB_NAME, SPEC_PATH).addParameter(PARAM_KEY, PARAM_VALUE).build();
+        LaunchConfig.builderWithName(JOB_NAME, SPEC_PATH)
+            .addParameter(PARAM_KEY, PARAM_VALUE)
+            .build();
 
     when(getFlexTemplates(client).launch(any(), any(), any())).thenReturn(launch);
     when(getLocationJobs(client).get(any(), any(), any())).thenReturn(get);

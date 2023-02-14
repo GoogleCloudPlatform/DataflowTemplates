@@ -15,12 +15,13 @@
  */
 package com.google.cloud.teleport.it.mongodb;
 
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.mongodb.client.FindIterable;
 import java.util.List;
 import org.bson.Document;
 
 /** Interface for managing MongoDB resources in integration tests. */
-public interface MongoDBResourceManager {
+public interface MongoDBResourceManager extends ResourceManager {
 
   /**
    * Returns the name of the Database that this MongoDB manager will operate in.
@@ -71,5 +72,5 @@ public interface MongoDBResourceManager {
    *
    * @throws MongoDBResourceManagerException if there is an error deleting the MongoDB resources.
    */
-  boolean cleanupAll();
+  void cleanupAll();
 }

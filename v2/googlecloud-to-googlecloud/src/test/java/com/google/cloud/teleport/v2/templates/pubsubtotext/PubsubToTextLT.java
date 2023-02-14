@@ -27,6 +27,7 @@ import com.google.cloud.teleport.it.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -80,7 +81,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     Storage gcsClient = createGcsClient(CREDENTIALS);
@@ -89,12 +90,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
 
   @After
   public void tearDown() {
-    if (artifactClient != null) {
-      artifactClient.cleanupRun();
-    }
-    if (pubsubResourceManager != null) {
-      pubsubResourceManager.cleanupAll();
-    }
+    ResourceManagerUtils.cleanResources(artifactClient, pubsubResourceManager);
   }
 
   @Test
@@ -122,7 +118,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, InterruptedException, ParseException {
     // Arrange
-    String name = testName.getMethodName();
+    String name = testName;
     // Create topic and subscription
     TopicName backlogTopic = pubsubResourceManager.createTopic("backlog-input");
     SubscriptionName backlogSubscription =
@@ -168,8 +164,8 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   public void testSteadyState1hr(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, InterruptedException, ParseException {
     // Arrange
-    String name = testName.getMethodName();
-    TopicName topic = pubsubResourceManager.createTopic(testName.getMethodName() + "input");
+    String name = testName;
+    TopicName topic = pubsubResourceManager.createTopic(testName + "input");
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, "input-subscription");
     DataGenerator dataGenerator =
@@ -206,7 +202,6 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   }
 
   private String getTestMethodDirPath() {
-    return getFullGcsPath(
-        ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName.getMethodName());
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName);
   }
 }

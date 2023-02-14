@@ -21,6 +21,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -43,22 +44,18 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link PubSubToKafka}. */
+/** Integration test for {@link PubsubToKafka}. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(PubsubToKafka.class)
 @RunWith(JUnit4.class)
 public final class PubsubToKafkaIT extends TemplateTestBase {
-
-  @Rule public final TestName testName = new TestName();
 
   private static final Logger LOG = LoggerFactory.getLogger(PubsubToKafka.class);
 
@@ -70,35 +67,16 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
   public void setup() throws IOException {
 
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
 
-    kafkaResourceManager =
-        DefaultKafkaResourceManager.builder(testName.getMethodName()).setHost(HOST_IP).build();
+    kafkaResourceManager = DefaultKafkaResourceManager.builder(testName).setHost(HOST_IP).build();
   }
 
   @After
-  public void tearDownClass() {
-    boolean producedError = false;
-
-    try {
-      pubsubResourceManager.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete Pubsub resources.", e);
-      producedError = true;
-    }
-
-    try {
-      // kafkaResourceManager.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete Kafka resources.", e);
-      producedError = true;
-    }
-
-    if (producedError) {
-      throw new IllegalStateException("Failed to delete resources. Check above for errors.");
-    }
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, kafkaResourceManager);
   }
 
   @Test
@@ -109,13 +87,13 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
   public void pubsubToKafka(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ExecutionException, InterruptedException {
     // Arrange
-    TopicName tc = pubsubResourceManager.createTopic(testName.getMethodName());
+    TopicName tc = pubsubResourceManager.createTopic(testName);
     String inTopicName = tc.getTopic();
 
-    String outTopicName = kafkaResourceManager.createTopic(testName.getMethodName(), 5);
+    String outTopicName = kafkaResourceManager.createTopic(testName, 5);
 
     String outDeadLetterTopicName =
-        pubsubResourceManager.createTopic("outDead" + testName.getMethodName()).getTopic();
+        pubsubResourceManager.createTopic("outDead" + testName).getTopic();
 
     KafkaConsumer<String, String> consumer =
         kafkaResourceManager.buildConsumer(new StringDeserializer(), new StringDeserializer());

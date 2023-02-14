@@ -17,10 +17,11 @@ package com.google.cloud.teleport.it.spanner;
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.common.collect.ImmutableList;
 
 /** Interface for managing spanner resources in integration tests. */
-public interface SpannerResourceManager {
+public interface SpannerResourceManager extends ResourceManager {
 
   /**
    * Return the instance ID this Resource Manager uses to create and manage tables in.

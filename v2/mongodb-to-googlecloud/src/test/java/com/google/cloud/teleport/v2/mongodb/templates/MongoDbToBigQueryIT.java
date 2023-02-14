@@ -29,6 +29,7 @@ import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -45,10 +46,8 @@ import org.bson.types.ObjectId;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -98,8 +97,6 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @RunWith(JUnit4.class)
 public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
-  @Rule public final TestName testName = new TestName();
-
   private static final Logger LOG = LoggerFactory.getLogger(DefaultBigtableResourceManager.class);
 
   private static final String MONGO_URI = "mongoDbUri";
@@ -115,45 +112,26 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException {
-    mongoDbClient =
-        DefaultMongoDBResourceManager.builder(testName.getMethodName()).setHost(HOST_IP).build();
+    mongoDbClient = DefaultMongoDBResourceManager.builder(testName).setHost(HOST_IP).build();
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
   }
 
   @After
-  public void tearDownClass() {
-    boolean producedError = false;
-
-    try {
-      mongoDbClient.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete MongoDB resources.", e);
-      producedError = true;
-    }
-
-    try {
-      bigQueryClient.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete BigQuery resources.", e);
-      producedError = true;
-    }
-
-    if (producedError) {
-      throw new IllegalStateException("Failed to delete resources. Check above for errors.");
-    }
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(mongoDbClient, bigQueryClient);
   }
 
   @Test
   public void testMongoDbToBigQuery() throws IOException {
     // Arrange
-    String collectionName = testName.getMethodName();
+    String collectionName = testName;
     List<Document> mongoDocuments = generateDocuments();
     mongoDbClient.insertDocuments(collectionName, mongoDocuments);
 
-    String bqTable = testName.getMethodName();
+    String bqTable = testName;
     List<Field> bqSchemaFields = new ArrayList<>();
     bqSchemaFields.add(Field.of("timestamp", StandardSQLTypeName.TIMESTAMP));
     mongoDocuments

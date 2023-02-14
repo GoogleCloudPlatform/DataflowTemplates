@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.it.kafka;
 
+import com.google.cloud.teleport.it.common.ResourceManager;
 import java.util.Set;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -22,7 +23,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serializer;
 
 /** Interface for managing Kafka resources in integration tests. */
-public interface KafkaResourceManager {
+public interface KafkaResourceManager extends ResourceManager {
   /**
    * Returns a list of names of the topics that this kafka manager will operate in.
    *
@@ -46,7 +47,7 @@ public interface KafkaResourceManager {
    *
    * @throws KafkaResourceManagerException if there is an error deleting the Kafka resources.
    */
-  boolean cleanupAll();
+  void cleanupAll();
 
   /**
    * Creates a kafka topic.

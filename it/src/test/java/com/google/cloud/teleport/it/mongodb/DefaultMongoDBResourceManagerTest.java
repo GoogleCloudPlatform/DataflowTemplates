@@ -275,7 +275,7 @@ public class DefaultMongoDBResourceManagerTest {
     DefaultMongoDBResourceManager tm =
         new DefaultMongoDBResourceManager(mongoClient, container, builder);
 
-    assertThat(tm.cleanupAll()).isEqualTo(true);
+    tm.cleanupAll();
 
     verify(mongoClient, never()).getDatabase(anyString());
     verify(database, never()).drop();
@@ -286,7 +286,7 @@ public class DefaultMongoDBResourceManagerTest {
   public void testCleanupShouldDropNonStaticDatabase() {
     when(mongoClient.getDatabase(anyString())).thenReturn(database);
 
-    assertThat(testManager.cleanupAll()).isEqualTo(true);
+    testManager.cleanupAll();
 
     verify(database).drop();
     verify(mongoClient).close();

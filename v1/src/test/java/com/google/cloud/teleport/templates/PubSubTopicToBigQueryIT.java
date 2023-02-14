@@ -27,6 +27,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -60,26 +61,25 @@ public final class PubSubTopicToBigQueryIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
   }
 
   @After
   public void cleanUp() {
-    pubsubResourceManager.cleanupAll();
-    bigQueryResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, bigQueryResourceManager);
   }
 
   @Test
   public void testTopicToBigQuery() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
-    String bqTable = testName.getMethodName();
+    String jobName = createJobName(testName);
+    String bqTable = testName;
     Map<String, Object> message = Map.of("job", jobName, "msg", "message");
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -89,7 +89,7 @@ public final class PubSubTopicToBigQueryIT extends TemplateTestBase {
 
     TopicName topic = pubsubResourceManager.createTopic("input");
     bigQueryResourceManager.createDataset(REGION);
-    TableId table = bigQueryResourceManager.createTable(testName.getMethodName(), bqSchema);
+    TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)

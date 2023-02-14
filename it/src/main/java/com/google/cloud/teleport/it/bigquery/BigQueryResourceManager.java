@@ -19,10 +19,11 @@ import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import java.util.List;
 
 /** Interface for managing BigQuery resources in integration tests. */
-public interface BigQueryResourceManager {
+public interface BigQueryResourceManager extends ResourceManager {
 
   /**
    * Create a BigQuery dataset in which all tables will exist.

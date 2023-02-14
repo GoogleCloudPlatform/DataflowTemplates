@@ -31,6 +31,7 @@ import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.BigQueryTestUtils;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.elasticsearch.DefaultElasticsearchResourceManager;
 import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
@@ -69,7 +70,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   @Before
   public void setup() {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
     elasticsearchResourceManager =
@@ -78,14 +79,13 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
 
   @After
   public void tearDown() {
-    bigQueryClient.cleanupAll();
-    elasticsearchResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(bigQueryClient, elasticsearchResourceManager);
   }
 
   @Test
   public void testBigQueryToElasticsearch() throws IOException {
     // Arrange
-    String tableName = testName.getMethodName();
+    String tableName = testName;
     Tuple<Schema, List<RowToInsert>> generatedTable =
         BigQueryTestUtils.generateBigQueryTable(
             BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENTH);
@@ -93,7 +93,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     List<RowToInsert> bigQueryRows = generatedTable.y();
     TableId table = bigQueryClient.createTable(tableName, bigQuerySchema);
     bigQueryClient.write(tableName, bigQueryRows);
-    String indexName = createJobName(testName.getMethodName());
+    String indexName = createJobName(testName);
     elasticsearchResourceManager.createIndex(indexName);
 
     LaunchConfig.Builder options =
@@ -122,7 +122,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   @Test
   public void testBigQueryToElasticsearchQuery() throws IOException {
     // Arrange
-    String tableName = testName.getMethodName();
+    String tableName = testName;
     Tuple<Schema, List<RowToInsert>> generatedTable =
         BigQueryTestUtils.generateBigQueryTable(
             BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENTH);
@@ -130,7 +130,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     List<RowToInsert> bigQueryRows = generatedTable.y();
     TableId table = bigQueryClient.createTable(tableName, bigQuerySchema);
     bigQueryClient.write(tableName, bigQueryRows);
-    String indexName = createJobName(testName.getMethodName());
+    String indexName = createJobName(testName);
     elasticsearchResourceManager.createIndex(indexName);
 
     LaunchConfig.Builder options =

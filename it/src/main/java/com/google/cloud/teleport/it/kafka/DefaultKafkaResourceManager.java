@@ -164,7 +164,7 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
   }
 
   @Override
-  public synchronized boolean cleanupAll() {
+  public synchronized void cleanupAll() {
     LOG.info("Attempting to cleanup Kafka manager.");
 
     boolean producedError = false;
@@ -180,14 +180,14 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
     }
 
     // Throw Exception at the end if there were any errors
-    if (producedError || !super.cleanupAll()) {
+    if (producedError) {
       throw new KafkaResourceManagerException(
           "Failed to delete resources. Check above for errors.");
     }
 
-    LOG.info("Kafka manager successfully cleaned up.");
+    super.cleanupAll();
 
-    return true;
+    LOG.info("Kafka manager successfully cleaned up.");
   }
 
   /** Builder for {@link DefaultKafkaResourceManager}. */

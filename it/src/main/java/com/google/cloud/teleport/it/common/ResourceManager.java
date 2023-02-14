@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,19 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.it.testcontainers;
+package com.google.cloud.teleport.it.common;
 
-/**
- * Custom exception for {@link
- * com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager} implementations.
- */
-public class TestContainerResourceManagerException extends RuntimeException {
+/** Common interface across resource managers. */
+public interface ResourceManager {
 
-  public TestContainerResourceManagerException(String errorMessage) {
-    super(errorMessage);
-  }
-
-  public TestContainerResourceManagerException(String errorMessage, Exception cause) {
-    super(errorMessage, cause);
-  }
+  /** Deletes all created resources created by this instance of ResourceManager. */
+  void cleanupAll();
 }

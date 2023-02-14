@@ -28,6 +28,7 @@ import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -65,11 +66,11 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
 
@@ -84,8 +85,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
   @After
   public void cleanUp() {
-    pubsubResourceManager.cleanupAll();
-    bigQueryResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, bigQueryResourceManager);
   }
 
   @Test
@@ -101,7 +101,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     TopicName topic = pubsubResourceManager.createTopic("input");
     bigQueryResourceManager.createDataset(REGION);
-    TableId table = bigQueryResourceManager.createTable(testName.getMethodName(), bqSchema);
+    TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
 
     // Act
     LaunchInfo info =
@@ -115,8 +115,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     ByteString messageData =
         ByteString.copyFromUtf8(
-            new JSONObject(Map.of("id", 1, "job", testName.getMethodName(), "name", "message"))
-                .toString());
+            new JSONObject(Map.of("id", 1, "job", testName, "name", "message")).toString());
     pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
 
     Result result =
@@ -134,7 +133,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).meetsConditions();
     assertThatRecords(bigQueryResourceManager.readTable(table))
-        .allMatch(Map.of("id", 1, "job", testName.getMethodName(), "name", "MESSAGE"));
+        .allMatch(Map.of("id", 1, "job", testName, "name", "MESSAGE"));
   }
 
   @Test
@@ -153,7 +152,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     TopicName topic = pubsubResourceManager.createTopic("input");
     SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "input-sub-1");
     bigQueryResourceManager.createDataset(REGION);
-    TableId table = bigQueryResourceManager.createTable(testName.getMethodName(), bqSchema);
+    TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
     TableId dlqTable =
         TableId.of(
             PROJECT,
@@ -171,8 +170,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     assertThatPipeline(info).isRunning();
 
     for (int i = 1; i <= MESSAGES_COUNT; i++) {
-      Map<String, Object> message =
-          Map.of("id", i, "job", testName.getMethodName(), "name", "message");
+      Map<String, Object> message = Map.of("id", i, "job", testName, "name", "message");
       ByteString messageData = ByteString.copyFromUtf8(new JSONObject(message).toString());
       pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
     }
@@ -199,8 +197,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     // Make sure record can be read and UDF changed name to uppercase
     assertThatRecords(records)
-        .hasRecordsUnordered(
-            List.of(Map.of("id", 1, "job", testName.getMethodName(), "name", "MESSAGE")));
+        .hasRecordsUnordered(List.of(Map.of("id", 1, "job", testName, "name", "MESSAGE")));
 
     TableResult dlqRecords = bigQueryResourceManager.readTable(dlqTable);
     assertThat(dlqRecords.getValues().iterator().next().toString())

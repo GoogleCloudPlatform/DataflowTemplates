@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
-import org.junit.rules.TestName;
 
 /** Client for working with Cloud Dataflow. */
 public interface PipelineLauncher {
@@ -156,20 +155,16 @@ public interface PipelineLauncher {
       return mainClassname;
     }
 
-    public static Builder builder(String jobName, String specPath) {
+    public static Builder builderWithName(String jobName, String specPath) {
       return new Builder(jobName, specPath);
     }
 
-    public static Builder builder(TestName testName, String specPath) {
-      return new Builder(createJobName(testName.getMethodName()), specPath);
+    public static Builder builder(String testName, String specPath) {
+      return new Builder(createJobName(testName), specPath);
     }
 
     public static Builder builder(String jobName) {
       return builder(jobName, null);
-    }
-
-    public static Builder builder(TestName testName) {
-      return builder(testName, null);
     }
 
     /** Builder for the {@link LaunchConfig}. */

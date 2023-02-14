@@ -25,6 +25,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -76,7 +77,7 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
     bigQueryResourceManager =
@@ -94,8 +95,8 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
   }
 
   @After
-  public void tearDownClass() {
-    pubsubResourceManager.cleanupAll();
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(pubsubResourceManager);
   }
 
   @Test

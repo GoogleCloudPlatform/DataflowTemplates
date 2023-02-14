@@ -27,6 +27,7 @@ import com.google.cloud.teleport.it.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -67,19 +68,14 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName.getMethodName(), PROJECT, REGION).build();
+        DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
     Storage gcsClient = createGcsClient(CREDENTIALS);
     artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
   }
 
   @After
   public void teardown() {
-    if (spannerResourceManager != null) {
-      spannerResourceManager.cleanupAll();
-    }
-    if (artifactClient != null) {
-      artifactClient.cleanupRun();
-    }
+    ResourceManagerUtils.cleanResources(spannerResourceManager, artifactClient);
   }
 
   @Test
@@ -96,7 +92,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
   public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // Arrange
-    String name = testName.getMethodName();
+    String name = testName;
     // create spanner table
     String createTableStatement =
         String.format(
@@ -152,7 +148,6 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
   }
 
   private String getTestMethodDirPath() {
-    return getFullGcsPath(
-        ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName.getMethodName());
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName);
   }
 }

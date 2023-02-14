@@ -41,7 +41,9 @@ import javax.annotation.Nullable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
-import org.junit.rules.TestName;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -70,7 +72,17 @@ public abstract class LoadTestBase {
   protected static PipelineLauncher pipelineLauncher;
   protected static PipelineOperator pipelineOperator;
 
-  @Rule public final TestName testName = new TestName();
+  protected String testName;
+
+  @Rule
+  public TestRule watcher =
+      new TestWatcher() {
+        protected void starting(Description description) {
+          LOG.info(
+              "Starting load test {}.{}", description.getClassName(), description.getMethodName());
+          testName = description.getMethodName();
+        }
+      };
 
   @Before
   public void setUpPerformanceBenchmarkingBase() throws IOException {
@@ -99,7 +111,7 @@ public abstract class LoadTestBase {
       // either use the user specified project for exporting, or the same project
       String project = MoreObjects.firstNonNull(TestProperties.exportProject(), PROJECT);
       BigQueryResourceManager bigQueryResourceManager =
-          DefaultBigQueryResourceManager.builder(testName.getMethodName(), project)
+          DefaultBigQueryResourceManager.builder(testName, project)
               .setDatasetId(TestProperties.exportDataset())
               .setCredentials(CREDENTIALS)
               .build();
@@ -112,7 +124,7 @@ public abstract class LoadTestBase {
       rowContent.put("template_name", launchInfo.templateName());
       rowContent.put("template_version", launchInfo.templateVersion());
       rowContent.put("template_type", launchInfo.templateType());
-      rowContent.put("test_name", testName.getMethodName());
+      rowContent.put("test_name", testName);
       // Convert parameters map to list of table row since it's a repeated record
       List<TableRow> parameterRows = new ArrayList<>();
       for (String parameter : launchInfo.parameters().keySet()) {
