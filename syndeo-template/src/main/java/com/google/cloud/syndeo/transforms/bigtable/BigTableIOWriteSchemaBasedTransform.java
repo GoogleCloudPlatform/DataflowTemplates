@@ -200,7 +200,7 @@ public class BigTableIOWriteSchemaBasedTransform
 
     PCollection<KV<Row, Row>> keyedRows =
         inputData
-            .apply(WithKeys.of(elm -> keySelector.select(elm)))
+            .apply(WithKeys.of(row -> keySelector.select(row)))
             .setCoder(KvCoder.of(SchemaCoder.of(keySchema), SchemaCoder.of(inputData.getSchema())));
 
     // STEP 2: Convert all data types to ByteString data
