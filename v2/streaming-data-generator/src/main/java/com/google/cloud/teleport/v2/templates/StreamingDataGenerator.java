@@ -28,14 +28,18 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.StreamingDataGeneratorOptions;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigQuery;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToGcs;
+import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToJdbc;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToPubSub;
+import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToSpanner;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.GCSUtils;
+import com.google.cloud.teleport.v2.utils.MetadataValidator;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import javax.annotation.Nonnull;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -72,8 +76,8 @@ import org.slf4j.LoggerFactory;
  * # Set the pipeline vars
  * PROJECT=my-project
  * BUCKET_NAME=my-bucket
- * SCHEMA_LOCATION=gs://<bucket>/<path>/<to>/game-event-schema.json
- * PUBSUB_TOPIC=projects/<project-id>/topics/<topic-id>
+ * SCHEMA_LOCATION=gs://{bucket}/{path}/{to}/game-event-schema.json
+ * PUBSUB_TOPIC=projects/{project-id}/topics/{topic-id}
  * QPS=2500
  *
  * # Set containerization vars
@@ -96,11 +100,11 @@ import org.slf4j.LoggerFactory;
  *   as specified in README.md file
  *
  * # Execute template:
- * JOB_NAME=<job-name>
- * PROJECT=<project-id>
+ * JOB_NAME={job-name}
+ * PROJECT={project-id}
  * TEMPLATE_SPEC_GCSPATH=gs://path/to/template-spec
  * SCHEMA_LOCATION=gs://path/to/schema.json
- * PUBSUB_TOPIC=projects/$PROJECT/topics/<topic-name>
+ * PUBSUB_TOPIC=projects/$PROJECT/topics/{topic-name}
  * QPS=1
  *
  * gcloud beta dataflow flex-template run $JOB_NAME \
@@ -205,7 +209,7 @@ public class StreamingDataGenerator {
 
     @TemplateParameter.Enum(
         order = 8,
-        enumOptions = {"BIGQUERY", "GCS", "PUBSUB"},
+        enumOptions = {"BIGQUERY", "GCS", "PUBSUB", "JDBC", "SPANNER"},
         optional = true,
         description = "Output Sink Type",
         helpText = "The message Sink type. Default is PUBSUB")
@@ -265,6 +269,7 @@ public class StreamingDataGenerator {
 
     @TemplateParameter.GcsWriteFolder(
         order = 13,
+        optional = true,
         description = "Output file directory in Cloud Storage",
         helpText =
             "The path and filename prefix for writing output files. Must end with a slash. DateTime"
@@ -298,6 +303,116 @@ public class StreamingDataGenerator {
     Integer getNumShards();
 
     void setNumShards(Integer numShards);
+
+    @TemplateParameter.Text(
+        order = 16,
+        optional = true,
+        regexes = {"^.+$"},
+        description = "JDBC driver class name.",
+        helpText = "JDBC driver class name to use.",
+        example = "com.mysql.jdbc.Driver")
+    String getDriverClassName();
+
+    void setDriverClassName(String driverClassName);
+
+    @TemplateParameter.Text(
+        order = 17,
+        optional = true,
+        regexes = {
+          "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
+        },
+        description = "JDBC connection URL string.",
+        helpText = "Url connection string to connect to the JDBC source.",
+        example = "jdbc:mysql://some-host:3306/sampledb")
+    String getConnectionUrl();
+
+    void setConnectionUrl(String connectionUrl);
+
+    @TemplateParameter.Text(
+        order = 18,
+        optional = true,
+        regexes = {"^.+$"},
+        description = "JDBC connection username.",
+        helpText = "User name to be used for the JDBC connection.")
+    String getUsername();
+
+    void setUsername(String username);
+
+    @TemplateParameter.Password(
+        order = 19,
+        optional = true,
+        description = "JDBC connection password.",
+        helpText = "Password to be used for the JDBC connection.")
+    String getPassword();
+
+    void setPassword(String password);
+
+    @TemplateParameter.Text(
+        order = 20,
+        optional = true,
+        regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
+        description = "JDBC connection property string.",
+        helpText =
+            "Properties string to use for the JDBC connection. Format of the string must be"
+                + " [propertyName=property;]*.",
+        example = "unicode=true;characterEncoding=UTF-8")
+    String getConnectionProperties();
+
+    void setConnectionProperties(String connectionProperties);
+
+    @TemplateParameter.Text(
+        order = 21,
+        optional = true,
+        regexes = {"^.+$"},
+        description = "Statement which will be executed against the database.",
+        helpText =
+            "SQL statement which will be executed to write to the database. The statement must"
+                + " specify the column names of the table in any order. Only the values of the"
+                + " specified column names will be read from the json and added to the statement.",
+        example = "INSERT INTO tableName (column1, column2) VALUES (?,?)")
+    String getStatement();
+
+    void setStatement(String statement);
+
+    @TemplateParameter.Text(
+        order = 22,
+        optional = true,
+        regexes = {"^.+$"},
+        description = "GCP Project Id of where the Spanner table lives.",
+        helpText = "GCP Project Id of where the Spanner table lives.")
+    String getProjectId();
+
+    void setProjectId(String projectId);
+
+    @TemplateParameter.Text(
+        order = 23,
+        optional = true,
+        regexes = {"^.+$"},
+        description = "Cloud Spanner instance name.",
+        helpText = "Cloud Spanner instance name.")
+    String getSpannerInstanceName();
+
+    void setSpannerInstanceName(String spannerInstanceName);
+
+    @TemplateParameter.Text(
+        order = 24,
+        optional = true,
+        regexes = {"^.+$"},
+        description = "Cloud Spanner database name.",
+        helpText = "Cloud Spanner database name.")
+    String getSpannerDatabaseName();
+
+    void setSpannerDatabaseName(String spannerDBName);
+
+    @TemplateParameter.Text(
+        order = 25,
+        optional = true,
+        regexes = {"^.+$"},
+        description = "Cloud Spanner table name.",
+        helpText = "Cloud Spanner table name.")
+    String getSpannerTableName();
+
+    void setSpannerTableName(String spannerTableName);
   }
 
   /** Allowed list of existing schema templates. */
@@ -314,6 +429,41 @@ public class StreamingDataGenerator {
             + " the Low Road\")}}\",\n"
             + "  \"score\": {{integer(100, 10000)}},\n"
             + "  \"completed\": {{bool()}}\n"
+            + "}"),
+    LOG_ENTRY(
+        "{\n"
+            + "  \"logName\": \"{{alpha(10,20)}}\",\n"
+            + "  \"resource\": {\n"
+            + "    \"type\": \"{{alpha(5,10)}}\"\n"
+            + "  },\n"
+            + "  \"timestamp\": {{timestamp()}},\n"
+            + "  \"receiveTimestamp\": {{timestamp()}},\n"
+            + "  \"severity\": \"{{random(\"DEFAULT\", \"DEBUG\", \"INFO\", \"NOTICE\","
+            + " \"WARNING\", \"ERROR\", \"CRITICAL\", \"ERROR\")}}\",\n"
+            + "  \"insertId\": \"{{uuid()}}\",\n"
+            + "  \"trace\": \"{{uuid()}}\",\n"
+            + "  \"spanId\": \"{{uuid()}}\",\n"
+            + "  \"jsonPayload\": {\n"
+            + "    \"bytes_sent\": {{integer(1000,20000)}},\n"
+            + "    \"connection\": {\n"
+            + "      \"dest_ip\": \"{{ipv4()}}\",\n"
+            + "      \"dest_port\": {{integer(0,65000)}},\n"
+            + "      \"protocol\": {{integer(0,6)}},\n"
+            + "      \"src_ip\": \"{{ipv4()}}\",\n"
+            + "      \"src_port\": {{integer(0,65000)}}\n"
+            + "    },\n"
+            + "    \"dest_instance\": {\n"
+            + "      \"project_id\": \"{{concat(\"PROJECT\", integer(0,3))}}\",\n"
+            + "      \"region\": \"{{country()}}\",\n"
+            + "      \"vm_name\": \"{{username()}}\",\n"
+            + "      \"zone\": \"{{state()}}\"\n"
+            + "    },\n"
+            + "    \"end_time\": {{timestamp()}},\n"
+            + "    \"packets_sent\": {{integer(100,400)}},\n"
+            + "    \"reporter\": \"{{random(\"SRC\", \"DEST\")}}\",\n"
+            + "    \"rtt_msec\": {{integer(0,20)}},\n"
+            + "    \"start_time\": {{timestamp()}}\n"
+            + "  }\n"
             + "}");
 
     private final String schema;
@@ -350,7 +500,9 @@ public class StreamingDataGenerator {
   public enum SinkType {
     PUBSUB,
     BIGQUERY,
-    GCS
+    GCS,
+    JDBC,
+    SPANNER
   }
 
   /**
@@ -383,6 +535,12 @@ public class StreamingDataGenerator {
    */
   public static PipelineResult run(@Nonnull StreamingDataGeneratorOptions options) {
     checkNotNull(options, "options argument to run method cannot be null.");
+    MetadataValidator.validate(options);
+
+    // FileSystems does not set the default configuration in workers till Pipeline.run
+    // Explicitly registering standard file systems.
+    FileSystems.setDefaultPipelineOptions(options);
+    String schema = getSchema(options.getSchemaTemplate(), options.getSchemaLocation());
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -393,24 +551,21 @@ public class StreamingDataGenerator {
      *  2) Generate messages containing fake data
      *  3) Write messages to appropriate Sink
      */
-    PCollection<byte[]> fakeMessages =
+    PCollection<byte[]> generatedMessages =
         pipeline
             .apply("Trigger", createTrigger(options))
-            .apply(
-                "Generate Fake Messages",
-                ParDo.of(
-                    new MessageGeneratorFn(
-                        options.getSchemaTemplate(), options.getSchemaLocation())));
+            .apply("Generate Fake Messages", ParDo.of(new MessageGeneratorFn(schema)));
 
     if (options.getSinkType().equals(SinkType.GCS)) {
-      fakeMessages =
-          fakeMessages.apply(
+      generatedMessages =
+          generatedMessages.apply(
               options.getWindowDuration() + " Window",
               Window.into(
                   FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))));
     }
 
-    fakeMessages.apply("Write To " + options.getSinkType().name(), createSink(options));
+    generatedMessages.apply(
+        "Write To " + options.getSinkType().name(), createSink(options, schema));
 
     return pipeline.run();
   }
@@ -444,16 +599,8 @@ public class StreamingDataGenerator {
     private transient JsonDataGenerator dataGenerator;
     private final String schema;
 
-    MessageGeneratorFn(SchemaTemplate schemaTemplate, String schemaLocation) {
-      checkArgument(
-          schemaTemplate != null || schemaLocation != null,
-          "Either schemaTemplate or schemaLocation argument of MessageGeneratorFn class must be"
-              + " provided.");
-      if (schemaLocation != null) {
-        this.schema = GCSUtils.getGcsFileAsString(schemaLocation);
-      } else {
-        this.schema = schemaTemplate.getSchema();
-      }
+    MessageGeneratorFn(String schema) {
+      this.schema = schema;
     }
 
     @Setup
@@ -488,8 +635,9 @@ public class StreamingDataGenerator {
    */
   @VisibleForTesting
   static PTransform<PCollection<byte[]>, PDone> createSink(
-      @Nonnull StreamingDataGeneratorOptions options) {
+      @Nonnull StreamingDataGeneratorOptions options, @Nonnull String schema) {
     checkNotNull(options, "options argument to createSink method cannot be null.");
+    checkNotNull(schema, "schema argument to createSink method cannot be null.");
 
     switch (options.getSinkType()) {
       case PUBSUB:
@@ -497,7 +645,7 @@ public class StreamingDataGenerator {
             options.getTopic() != null,
             String.format(
                 "Missing required value --topic for %s sink type", options.getSinkType().name()));
-        return StreamingDataGeneratorWriteToPubSub.Writer.builder(options).build();
+        return StreamingDataGeneratorWriteToPubSub.Writer.builder(options, schema).build();
       case BIGQUERY:
         checkArgument(
             options.getOutputTableSpec() != null,
@@ -513,8 +661,59 @@ public class StreamingDataGenerator {
                 "Missing required value --outputDirectory in format gs:// for %s sink type",
                 options.getSinkType().name()));
         return StreamingDataGeneratorWriteToGcs.builder(options).build();
+      case JDBC:
+        checkArgument(
+            options.getDriverClassName() != null,
+            String.format(
+                "Missing required value --driverClassName for %s sink type",
+                options.getSinkType().name()));
+        checkArgument(
+            options.getConnectionUrl() != null,
+            String.format(
+                "Missing required value --connectionUrl for %s sink type",
+                options.getSinkType().name()));
+        checkArgument(
+            options.getStatement() != null,
+            String.format(
+                "Missing required value --statement for %s sink type",
+                options.getSinkType().name()));
+        return StreamingDataGeneratorWriteToJdbc.builder(options).build();
+      case SPANNER:
+        checkArgument(
+            options.getProjectId() != null,
+            String.format(
+                "Missing required value --projectId for %s sink type",
+                options.getSinkType().name()));
+        checkArgument(
+            options.getSpannerInstanceName() != null,
+            String.format(
+                "Missing required value --spannerInstanceName for %s sink type",
+                options.getSinkType().name()));
+        checkArgument(
+            options.getSpannerDatabaseName() != null,
+            String.format(
+                "Missing required value --spannerDatabaseName for %s sink type",
+                options.getSinkType().name()));
+        checkArgument(
+            options.getSpannerTableName() != null,
+            String.format(
+                "Missing required value --spannerTableName for %s sink type",
+                options.getSinkType().name()));
+        return StreamingDataGeneratorWriteToSpanner.builder(options).build();
       default:
         throw new IllegalArgumentException("Unsupported Sink.");
+    }
+  }
+
+  private static String getSchema(SchemaTemplate schemaTemplate, String schemaLocation) {
+    checkArgument(
+        schemaTemplate != null || schemaLocation != null,
+        "Either schemaTemplate or schemaLocation argument of MessageGeneratorFn class must be"
+            + " provided.");
+    if (schemaLocation != null) {
+      return GCSUtils.getGcsFileAsString(schemaLocation);
+    } else {
+      return schemaTemplate.getSchema();
     }
   }
 }

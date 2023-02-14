@@ -70,12 +70,12 @@ public class FileFormatConversionTest {
 
   /**
    * Tests {@link FileFormatConversion#run(FileFormatConversionOptions)} throws an exception if an
-   * invalid file format is provided.
+   * invalid input file format is provided.
    */
   @Test
-  public void testInvalidFileFormat() {
+  public void testInvalidInputFileFormat() {
     expectedException.expect(RuntimeException.class);
-    expectedException.expectMessage("Provide correct input/output file format.");
+    expectedException.expectMessage("Invalid input file format.");
 
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
@@ -87,13 +87,31 @@ public class FileFormatConversionTest {
   }
 
   /**
+   * Tests {@link FileFormatConversion#run(FileFormatConversionOptions)} throws an exception if an
+   * invalid output file format is provided.
+   */
+  @Test
+  public void testInvalidOutputFileFormat() {
+    expectedException.expect(RuntimeException.class);
+    expectedException.expectMessage("Invalid output file format.");
+
+    FileFormatConversionOptions options =
+        PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
+
+    options.setInputFileFormat(AVRO);
+    options.setOutputFileFormat("INVALID");
+
+    FileFormatConversion.run(options);
+  }
+
+  /**
    * Tests {@link FileFormatConversion#run(FileFormatConversionOptions)} throws an exception if the
    * same input and output file formats are provided.
    */
   @Test
   public void testSameInputAndOutputFileFormat() {
     expectedException.expect(RuntimeException.class);
-    expectedException.expectMessage("Provide correct input/output file format.");
+    expectedException.expectMessage("Input and output file format cannot be the same.");
 
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);

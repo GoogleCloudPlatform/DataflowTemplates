@@ -19,7 +19,6 @@ import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToAv
 import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToJson.DataChangeRecordToJsonTextFn;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToPubSubOptions;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -54,17 +53,22 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
     return new AutoValue_FileFormatFactorySpannerChangeStreamsToPubSub.Builder();
   }
 
-  public abstract SpannerChangeStreamsToPubSubOptions options();
+  protected abstract String outputDataFormat();
+
+  protected abstract String projectId();
+
+  protected abstract String pubsubAPI();
+
+  protected abstract String pubsubTopicName();
 
   @Override
   public PCollection<byte[]> expand(PCollection<DataChangeRecord> records) {
     PCollection<byte[]> encodedRecords = null;
 
-    String outputDataFormat = options().getOutputDataFormat();
     /*
      * Calls appropriate class Builder to performs PTransform based on user provided File Format.
      */
-    switch (outputDataFormat) {
+    switch (outputDataFormat()) {
       case "AVRO":
         AvroCoder<com.google.cloud.teleport.v2.DataChangeRecord> coder =
             AvroCoder.of(com.google.cloud.teleport.v2.DataChangeRecord.class);
@@ -119,7 +123,9 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
 
       default:
         final String errorMessage =
-            "Invalid output format:" + outputDataFormat + ". Supported output formats: JSON, AVRO";
+            "Invalid output format:"
+                + outputDataFormat()
+                + ". Supported output formats: JSON, AVRO";
         LOG.info(errorMessage);
         throw new IllegalArgumentException(errorMessage);
     }
@@ -127,10 +133,10 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
   }
 
   private void sendToPubSub(PCollection<byte[]> encodedRecords) {
-    String projectId = getProjectId(options());
-    String pubsubTopicName = options().getPubsubTopic();
+    String pubsubTopicName = pubsubTopicName();
+    String pubsubAPI = pubsubAPI();
+    String projectId = projectId();
     String outputPubsubTopic = "projects/" + projectId + "/topics/" + pubsubTopicName;
-    String pubsubAPI = options().getPubsubAPI();
 
     if (pubsubAPI.equals(NATIVE_CLIENT)) {
       final PublishToPubSubDoFn publishToPubSubDoFn =
@@ -148,16 +154,7 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
     }
   }
 
-  private String getProjectId(SpannerChangeStreamsToPubSubOptions options) {
-    return options.getSpannerProjectId().isEmpty()
-        ? options.getProject()
-        : options.getSpannerProjectId();
-  }
-
-  /**
-   * The {@link convertByteArrayToPubsubMessage} method takes in {@link byte[]} and output
-   * PubsubMessages.
-   */
+  /** Method that takes in byte arrays and outputs PubsubMessages. */
   private PCollection<PubsubMessage> convertByteArrayToPubsubMessage(
       PCollection<byte[]> encodedRecords) {
     PCollection<PubsubMessage> messageCollection =
@@ -174,13 +171,17 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
     return messageCollection;
   }
 
-  /** Builder for {@link FileFormatFactory}. */
+  /** Builder for {@link FileFormatFactorySpannerChangeStreamsToPubSub}. */
   @AutoValue.Builder
   public abstract static class WriteToPubSubBuilder {
 
-    public abstract WriteToPubSubBuilder setOptions(SpannerChangeStreamsToPubSubOptions options);
+    public abstract WriteToPubSubBuilder setOutputDataFormat(String value);
 
-    abstract SpannerChangeStreamsToPubSubOptions options();
+    public abstract WriteToPubSubBuilder setProjectId(String value);
+
+    public abstract WriteToPubSubBuilder setPubsubAPI(String value);
+
+    public abstract WriteToPubSubBuilder setPubsubTopicName(String value);
 
     abstract FileFormatFactorySpannerChangeStreamsToPubSub autoBuild();
 

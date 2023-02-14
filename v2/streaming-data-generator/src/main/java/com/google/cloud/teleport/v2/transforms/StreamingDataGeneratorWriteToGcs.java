@@ -70,21 +70,15 @@ public abstract class StreamingDataGeneratorWriteToGcs
 
   /** A {@link DoFn} that converts UTF8 Bytes to JSON Object. */
   private static class Utf8BytesToJsonFn extends DoFn<byte[], String> {
-    private JsonParser jsonParser;
-
-    @Setup
-    public void setup() throws IOException {
-      jsonParser = new JsonParser();
-    }
-
     @ProcessElement
     public void processElement(
         @Element byte[] element,
         @Timestamp Instant timestamp,
         OutputReceiver<String> receiver,
-        ProcessContext context)
-        throws IOException {
-      receiver.output(jsonParser.parse(new String(element, StandardCharsets.UTF_8)).toString());
+        ProcessContext context) {
+      // parsing as json for formatting
+      receiver.output(
+          JsonParser.parseString(new String(element, StandardCharsets.UTF_8)).toString());
     }
   }
 

@@ -18,8 +18,8 @@ package com.google.cloud.teleport.v2.templates.datastream;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.templates.spanner.common.Type;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.IndexColumn;
@@ -150,45 +150,55 @@ public class ChangeEventConvertor {
         String keyColName = key.name().toLowerCase();
         switch (keyColType.getCode()) {
           case BOOL:
+          case PG_BOOL:
             pk.append(
                 ChangeEventTypeConvertor.toBoolean(
                     changeEvent, keyColName, /*requiredField=*/ true));
             break;
           case INT64:
+          case PG_INT8:
             pk.append(
                 ChangeEventTypeConvertor.toLong(changeEvent, keyColName, /*requiredField=*/ true));
             break;
           case FLOAT64:
+          case PG_FLOAT8:
             pk.append(
                 ChangeEventTypeConvertor.toDouble(
                     changeEvent, keyColName, /*requiredField=*/ true));
             break;
           case STRING:
+          case PG_VARCHAR:
+          case PG_TEXT:
             pk.append(
                 ChangeEventTypeConvertor.toString(
                     changeEvent, keyColName, /*requiredField=*/ true));
             break;
           case NUMERIC:
+          case PG_NUMERIC:
             pk.append(
                 ChangeEventTypeConvertor.toNumericBigDecimal(
                     changeEvent, keyColName, /*requiredField=*/ true));
             break;
           case JSON:
+          case PG_JSONB:
             pk.append(
                 ChangeEventTypeConvertor.toString(
                     changeEvent, keyColName, /*requiredField=*/ true));
             break;
           case BYTES:
+          case PG_BYTEA:
             pk.append(
                 ChangeEventTypeConvertor.toByteArray(
                     changeEvent, keyColName, /*requiredField=*/ true));
             break;
           case TIMESTAMP:
+          case PG_TIMESTAMPTZ:
             pk.append(
                 ChangeEventTypeConvertor.toTimestamp(
                     changeEvent, keyColName, /*requiredField=*/ true));
             break;
           case DATE:
+          case PG_DATE:
             pk.append(
                 ChangeEventTypeConvertor.toDate(changeEvent, keyColName, /*requiredField=*/ true));
             break;
@@ -257,42 +267,52 @@ public class ChangeEventConvertor {
       boolean requiredField = keyColumnNames.contains(columnName);
       switch (columnType.getCode()) {
         case BOOL:
+        case PG_BOOL:
           columnValue =
               Value.bool(ChangeEventTypeConvertor.toBoolean(changeEvent, colName, requiredField));
           break;
         case INT64:
+        case PG_INT8:
           columnValue =
               Value.int64(ChangeEventTypeConvertor.toLong(changeEvent, colName, requiredField));
           break;
         case FLOAT64:
+        case PG_FLOAT8:
           columnValue =
               Value.float64(ChangeEventTypeConvertor.toDouble(changeEvent, colName, requiredField));
           break;
         case STRING:
+        case PG_VARCHAR:
+        case PG_TEXT:
           columnValue =
               Value.string(ChangeEventTypeConvertor.toString(changeEvent, colName, requiredField));
           break;
         case NUMERIC:
+        case PG_NUMERIC:
           columnValue =
               Value.numeric(
                   ChangeEventTypeConvertor.toNumericBigDecimal(
                       changeEvent, colName, requiredField));
           break;
         case JSON:
+        case PG_JSONB:
           columnValue =
               Value.string(ChangeEventTypeConvertor.toString(changeEvent, colName, requiredField));
           break;
         case BYTES:
+        case PG_BYTEA:
           columnValue =
               Value.bytes(
                   ChangeEventTypeConvertor.toByteArray(changeEvent, colName, requiredField));
           break;
         case TIMESTAMP:
+        case PG_TIMESTAMPTZ:
           columnValue =
               Value.timestamp(
                   ChangeEventTypeConvertor.toTimestamp(changeEvent, colName, requiredField));
           break;
         case DATE:
+        case PG_DATE:
           columnValue =
               Value.date(ChangeEventTypeConvertor.toDate(changeEvent, colName, requiredField));
           break;

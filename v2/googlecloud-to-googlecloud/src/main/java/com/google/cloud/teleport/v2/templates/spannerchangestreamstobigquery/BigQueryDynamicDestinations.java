@@ -22,6 +22,8 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
@@ -52,12 +54,14 @@ public final class BigQueryDynamicDestinations
 
   public static BigQueryDynamicDestinations of(
       BigQueryDynamicDestinationsOptions bigQueryDynamicDestinationsOptions) {
+    Dialect dialect = getDialect(bigQueryDynamicDestinationsOptions.getSpannerConfig());
     try (SpannerAccessor spannerAccessor =
         SpannerAccessor.getOrCreate(bigQueryDynamicDestinationsOptions.getSpannerConfig())) {
       Map<String, TrackedSpannerTable> spannerTableByName =
           new SpannerUtils(
                   spannerAccessor.getDatabaseClient(),
-                  bigQueryDynamicDestinationsOptions.getChangeStreamName())
+                  bigQueryDynamicDestinationsOptions.getChangeStreamName(),
+                  dialect)
               .getSpannerTableByName();
       return new BigQueryDynamicDestinations(
           bigQueryDynamicDestinationsOptions, spannerTableByName);
@@ -207,5 +211,10 @@ public final class BigQueryDynamicDestinations
 
       abstract BigQueryDynamicDestinationsOptions build();
     }
+  }
+
+  private static Dialect getDialect(SpannerConfig spannerConfig) {
+    DatabaseClient databaseClient = SpannerAccessor.getOrCreate(spannerConfig).getDatabaseClient();
+    return databaseClient.getDialect();
   }
 }

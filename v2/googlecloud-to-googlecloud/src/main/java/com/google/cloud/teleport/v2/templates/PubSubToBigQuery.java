@@ -80,10 +80,10 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>
  * # Set the pipeline vars
- * export PROJECT=<project id>
+ * export PROJECT={project id}
  * export TEMPLATE_MODULE=googlecloud-to-googlecloud
  * export TEMPLATE_NAME=pubsub-to-bigquery
- * export BUCKET_NAME=gs://<bucket name>
+ * export BUCKET_NAME=gs://{bucket name}
  * export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${TEMPLATE_NAME}-image
  * export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
  * export BASE_CONTAINER_IMAGE_VERSION=latest
@@ -146,30 +146,19 @@ import org.slf4j.LoggerFactory;
  * gcloud beta dataflow flex-template run ${JOB_NAME} \
  *       --project=${PROJECT} --region=us-central1 \
  *       --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
- *       --parameters inputTopic=<topic>,outputTableSpec=<output table>
+ *       --parameters inputTopic={topic},outputTableSpec={output table}
  * </pre>
  */
 @Template(
-    name = "PubSub_Subscription_to_BigQuery",
+    name = "PubSub_to_BigQuery_Flex",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub Subscription to BigQuery",
     description =
-        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub subscription, transforms"
-            + " them using a JavaScript user-defined function (UDF), and writes them to a"
-            + " pre-existing BigQuery table as BigQuery elements.",
+        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub subscription or topic,"
+            + " transforms them using a JavaScript user-defined function (UDF), and writes them to"
+            + " a pre-existing BigQuery table as BigQuery elements.",
     optionsClass = Options.class,
-    skipOptions = "inputTopic",
-    contactInformation = "https://cloud.google.com/support")
-@Template(
-    name = "PubSub_to_BigQuery",
-    category = TemplateCategory.STREAMING,
-    displayName = "Pub/Sub Topic to BigQuery",
-    description =
-        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub topic, transforms them"
-            + " using a JavaScript user-defined function (UDF), and writes them to a pre-existing"
-            + " BigQuery table as BigQuery elements.",
-    optionsClass = Options.class,
-    skipOptions = "inputSubscription",
+    flexContainerName = "pubsub-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class PubSubToBigQuery {
 
@@ -345,7 +334,6 @@ public class PubSubToBigQuery {
                     .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                     .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                     .withExtendedErrorInfo()
-                    .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
                     .to(options.getOutputTableSpec()));
 

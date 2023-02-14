@@ -38,7 +38,7 @@ public interface KafkaReadOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 2,
       optional = true,
-      regexes = {"[a-zA-Z0-9._-,]+"},
+      regexes = {"[,a-zA-Z0-9._-]+"},
       description = "Kafka topic(s) to read input from.",
       helpText = "Kafka topic(s) to read input from.",
       example = "topic1,topic2")

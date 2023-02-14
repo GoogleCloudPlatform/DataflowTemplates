@@ -33,6 +33,8 @@ import org.apache.beam.sdk.values.Row;
 public class ProviderUtil {
 
   public static final Map<String, SchemaTransformProvider> PROVIDERS = loadProviders();
+  public static final String ERRORS_TAG = "errors";
+  public static final String OUTPUT_TAG = "output";
 
   /** Load providers, including bringing in one for SchemaIOs. */
   private static Map<String, SchemaTransformProvider> loadProviders() {
@@ -117,11 +119,19 @@ public class ProviderUtil {
       Collection<TransformSpec> specs, PCollectionRowTuple tuple) {
     for (TransformSpec spec : specs) {
       SchemaTransform transform = spec.provider.from(spec.configuration);
+
+      if (tuple.getAll().containsKey(ERRORS_TAG)) {
+        // TODO(pabloem): Deal with errors.
+      }
       // We know we only deal with transforms with either 0 or 1 input so we know how to connect the
       // collections. To sanity check we should confirm the output collections match expected.
-      if (tuple.getAll().size() == 1) {
+      if (tuple.getAll().size() == 1 || tuple.getAll().containsKey(OUTPUT_TAG)) {
         String input = spec.provider.inputCollectionNames().get(0);
-        String priorOutput = tuple.getAll().keySet().stream().findFirst().get();
+        // TODO(pabloem): Check this logic.
+        String priorOutput =
+            tuple.getAll().size() == 1
+                ? tuple.getAll().keySet().stream().findFirst().get()
+                : OUTPUT_TAG;
         tuple = PCollectionRowTuple.of(input, tuple.get(priorOutput));
       }
 

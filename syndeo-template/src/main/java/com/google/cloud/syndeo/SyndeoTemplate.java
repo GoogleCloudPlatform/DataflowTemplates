@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.syndeo.common.ProviderUtil;
 import com.google.cloud.syndeo.common.ProviderUtil.TransformSpec;
+import com.google.cloud.syndeo.transforms.SyndeoStatsSchemaTransformProvider;
 import com.google.cloud.syndeo.v1.SyndeoV1.ConfiguredSchemaTransform;
 import com.google.cloud.syndeo.v1.SyndeoV1.PipelineDescription;
 import com.google.protobuf.ByteString;
@@ -30,8 +31,10 @@ import java.io.Reader;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -68,6 +71,29 @@ public class SyndeoTemplate {
     void setJsonSpecPayload(String jsonSpecPayload);
   }
 
+  public static final Map<String, Set<String>> SUPPORTED_URNS =
+      Map.of(
+          // Old names:
+          "bigquery:read",
+          Set.of("table"),
+          "kafka:read",
+          Set.of(),
+          "bigtable:write",
+          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
+          "schemaIO:bigquery:write",
+          Set.of("table", "createDisposition", "writeDisposition"),
+          // New names:
+          "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+          Set.of(),
+          "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+          Set.of(),
+          "beam:schematransform:org.apache.beam:kafka_read:v1",
+          Set.of(),
+          "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
+          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
+          "syndeo:schematransform:com.google.cloud:sql_transform:v1",
+          Set.of());
+
   public static void main(String[] args) throws Exception {
     run(args);
   }
@@ -86,17 +112,27 @@ public class SyndeoTemplate {
     return run(options, pipeline);
   }
 
-  public static PipelineResult run(PipelineOptions options, PipelineDescription pipeline) {
-    // Read proto as configuration.
-    List<TransformSpec> specs = new ArrayList<>();
-    for (ConfiguredSchemaTransform inst : pipeline.getTransformsList()) {
-      specs.add(new TransformSpec(inst));
-    }
-
+  public static PipelineResult run(PipelineOptions options, PipelineDescription description) {
     Pipeline p = Pipeline.create(options);
     // Run pipeline from configuration.
-    ProviderUtil.applyConfigs(specs, PCollectionRowTuple.empty(p));
+    buildPipeline(p, description);
     return p.run();
+  }
+
+  public static void buildPipeline(Pipeline p, PipelineDescription description) {
+    // Read proto as configuration.
+    List<TransformSpec> specs = new ArrayList<>();
+    for (ConfiguredSchemaTransform inst : description.getTransformsList()) {
+      specs.add(new TransformSpec(inst));
+    }
+    ProviderUtil.applyConfigs(specs, PCollectionRowTuple.empty(p));
+  }
+
+  public static ConfiguredSchemaTransform buildSyndeoStats(String parent) {
+    SchemaTransformProvider transformProvider = new SyndeoStatsSchemaTransformProvider();
+    return new ProviderUtil.TransformSpec(
+            transformProvider.identifier(), Collections.singletonList(parent))
+        .toProto();
   }
 
   public static ConfiguredSchemaTransform buildFromJsonConfig(JsonNode transformConfig) {
@@ -105,6 +141,12 @@ public class SyndeoTemplate {
         ProviderUtil.getProvider(transformConfig.get("urn").asText());
     LOG.info(
         "Transform provider({}) is: {}", transformConfig.get("urn").asText(), transformProvider);
+    if (transformProvider == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Unable to load a transform provider for urn [%s]. Available providers are: %s",
+              transformConfig.get("urn").asText(), ProviderUtil.PROVIDERS.keySet()));
+    }
     List<Object> configurationParameters =
         transformProvider.configurationSchema().getFields().stream()
             .map(field -> field.getName())
@@ -135,10 +177,31 @@ public class SyndeoTemplate {
     ObjectMapper om = new ObjectMapper();
     JsonNode config = om.readTree(jsonPayload);
     LOG.info("Initializing with JSON Config: {}", config);
-    return PipelineDescription.newBuilder()
-        .addTransforms(buildFromJsonConfig(config.get("source")))
-        .addTransforms(buildFromJsonConfig(config.get("sink")))
-        .build();
+    List<ConfiguredSchemaTransform> transforms = new ArrayList<>();
+
+    // Adding the source transform
+    transforms.add(buildFromJsonConfig(config.get("source")));
+    transforms.add(buildSyndeoStats(config.get("source").get("urn").asText()));
+
+    if (config.has("transform")) {
+      if (!config
+          .get("transform")
+          .get("urn")
+          .asText()
+          .equals("syndeo:schematransform:com.google.cloud:sql_transform:v1")) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Intermediate transform with URN %s not supported. Only %s is supported.",
+                config.get("transform").get("urn"),
+                "syndeo:schematransform:com.google.cloud:sql_transform:v1"));
+      }
+      // Adding the intermediate transform
+      transforms.add(buildFromJsonConfig(config.get("transform")));
+      transforms.add(buildSyndeoStats(config.get("transform").get("urn").asText()));
+    }
+    // Add the sink transform
+    transforms.add(buildFromJsonConfig(config.get("sink")));
+    return PipelineDescription.newBuilder().addAllTransforms(transforms).build();
   }
 
   public static PipelineDescription readFromFile(String filename) {

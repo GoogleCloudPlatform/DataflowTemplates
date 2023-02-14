@@ -26,12 +26,14 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.re2j.Pattern;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +69,11 @@ public final class GcsArtifactClient implements ArtifactClient {
   @Override
   public String runId() {
     return runId;
+  }
+
+  @Override
+  public Artifact createArtifact(String artifactName, String contents) {
+    return this.createArtifact(artifactName, contents.getBytes(StandardCharsets.UTF_8));
   }
 
   @Override
@@ -107,6 +114,11 @@ public final class GcsArtifactClient implements ArtifactClient {
         "Successfully uploaded {} bytes to '{}' under bucket '{}'", contents.length, path, bucket);
 
     return new GcsArtifact(blob);
+  }
+
+  @Override
+  public List<Artifact> listArtifacts(TestName testName, Pattern regex) {
+    return listArtifacts(testName.getMethodName(), regex);
   }
 
   @Override

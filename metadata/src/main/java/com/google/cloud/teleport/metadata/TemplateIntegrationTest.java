@@ -22,7 +22,7 @@ import java.lang.annotation.Target;
 
 /** Annotation that marks the test of a Dataflow Template. */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.METHOD})
 public @interface TemplateIntegrationTest {
 
   /** Class with the template that is being tested. */

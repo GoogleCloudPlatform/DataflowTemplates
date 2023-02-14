@@ -15,21 +15,23 @@
  */
 package com.google.cloud.teleport.it;
 
-import static com.google.cloud.teleport.it.PerformanceBenchmarkingBase.createConfig;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.LoadTestBase.createConfig;
+import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 
 import com.google.auth.Credentials;
-import com.google.cloud.teleport.it.dataflow.DataflowClient;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
 import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.rules.TestName;
 
 /** Helper class for starting a Streaming Data generator dataflow template job. */
 public class DataGenerator {
@@ -40,22 +42,42 @@ public class DataGenerator {
   private static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   private static final String MESSAGES_LIMIT = "messagesLimit";
   private final LaunchConfig dataGeneratorOptions;
-  private final DataflowClient dataflowClient;
-  private final DataflowOperator dataflowOperator;
+  private final PipelineLauncher pipelineLauncher;
+  private final PipelineOperator pipelineOperator;
 
   private DataGenerator(Builder builder) {
-    dataflowClient = FlexTemplateClient.builder().setCredentials(CREDENTIALS).build();
-    dataflowOperator = new DataflowOperator(dataflowClient);
+    pipelineLauncher = FlexTemplateClient.builder().setCredentials(CREDENTIALS).build();
+    pipelineOperator = new PipelineOperator(pipelineLauncher);
     this.dataGeneratorOptions =
         LaunchConfig.builder(builder.getJobName(), SPEC_PATH)
             .setParameters(builder.getParameters())
             .build();
   }
 
-  public static DataGenerator.Builder builder(String jobName, String schemaLocation) {
+  public static DataGenerator.Builder builderWithSchemaLocation(
+      String jobName, String schemaLocation) {
     return new DataGenerator.Builder(jobName)
         .setSchemaLocation(schemaLocation)
         .setAutoscalingAlgorithm(AutoscalingAlgorithmType.THROUGHPUT_BASED);
+  }
+
+  public static DataGenerator.Builder builderWithSchemaTemplate(
+      String jobName, String schemaTemplate) {
+    return new DataGenerator.Builder(jobName)
+        .setSchemaTemplate(schemaTemplate)
+        .setAutoscalingAlgorithm(AutoscalingAlgorithmType.THROUGHPUT_BASED);
+  }
+
+  public static DataGenerator.Builder builderWithSchemaLocation(
+      TestName testName, String schemaLocation) {
+    return DataGenerator.builderWithSchemaLocation(
+        createJobName(testName.getMethodName() + "-data-generator"), schemaLocation);
+  }
+
+  public static DataGenerator.Builder builderWithSchemaTemplate(
+      TestName testName, String schemaTemplate) {
+    return DataGenerator.builderWithSchemaTemplate(
+        createJobName(testName.getMethodName() + "-data-generator"), schemaTemplate);
   }
 
   /**
@@ -71,19 +93,20 @@ public class DataGenerator {
    * @throws IOException if any errors are encountered.
    */
   public void execute(Duration timeout) throws IOException {
-    JobInfo dataGeneratorJobInfo = dataflowClient.launch(PROJECT, REGION, dataGeneratorOptions);
-    assertThat(dataGeneratorJobInfo.state()).isIn(JobState.ACTIVE_STATES);
-    DataflowOperator.Config config = createConfig(dataGeneratorJobInfo, timeout);
+    LaunchInfo dataGeneratorLaunchInfo =
+        pipelineLauncher.launch(PROJECT, REGION, dataGeneratorOptions);
+    assertThatPipeline(dataGeneratorLaunchInfo).isRunning();
+    PipelineOperator.Config config = createConfig(dataGeneratorLaunchInfo, timeout);
     // check if the job will be BATCH or STREAMING
     Result dataGeneratorResult;
     if (dataGeneratorOptions.parameters().containsKey(MESSAGES_LIMIT)) {
       // BATCH job, wait till data generator job finishes
-      dataGeneratorResult = dataflowOperator.waitUntilDone(config);
-      assertThat(dataGeneratorResult).isEqualTo(Result.JOB_FINISHED);
+      dataGeneratorResult = pipelineOperator.waitUntilDone(config);
+      assertThatResult(dataGeneratorResult).isLaunchFinished();
     } else {
       // STREAMING job, wait till timeout and drain job
-      dataGeneratorResult = dataflowOperator.waitUntilDoneAndFinish(config);
-      assertThat(dataGeneratorResult).isEqualTo(Result.TIMEOUT);
+      dataGeneratorResult = pipelineOperator.waitUntilDoneAndFinish(config);
+      assertThatResult(dataGeneratorResult).hasTimedOut();
     }
   }
 
@@ -105,6 +128,11 @@ public class DataGenerator {
       return parameters;
     }
 
+    public DataGenerator.Builder setSchemaTemplate(String value) {
+      parameters.put("schemaTemplate", value);
+      return this;
+    }
+
     public DataGenerator.Builder setSchemaLocation(String value) {
       parameters.put("schemaLocation", value);
       return this;
@@ -117,6 +145,11 @@ public class DataGenerator {
 
     public DataGenerator.Builder setQPS(String value) {
       parameters.put("qps", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setSinkType(String value) {
+      parameters.put("sinkType", value);
       return this;
     }
 
@@ -140,8 +173,48 @@ public class DataGenerator {
       return this;
     }
 
+    public DataGenerator.Builder setOutputDirectory(String value) {
+      parameters.put("outputDirectory", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setOutputType(String value) {
+      parameters.put("outputType", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setNumShards(String value) {
+      parameters.put("numShards", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setAvroSchemaLocation(String value) {
+      parameters.put("avroSchemaLocation", value);
+      return this;
+    }
+
     public DataGenerator.Builder setTopic(String value) {
       parameters.put("topic", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setProjectId(String value) {
+      parameters.put("projectId", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setSpannerInstanceName(String value) {
+      parameters.put("spannerInstanceName", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setSpannerDatabaseName(String value) {
+      parameters.put("spannerDatabaseName", value);
+      return this;
+    }
+
+    public DataGenerator.Builder setSpannerTableName(String value) {
+      parameters.put("spannerTableName", value);
       return this;
     }
 

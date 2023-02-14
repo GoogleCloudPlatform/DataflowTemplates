@@ -60,6 +60,7 @@ import org.slf4j.LoggerFactory;
         "A pipeline to read messages from Pub/Sub and writes into an Elasticsearch instance as json"
             + " documents with optional intermediate transformations using Javascript Udf.",
     optionsClass = PubSubToElasticsearchOptions.class,
+    skipOptions = "index", // Template just ignores what is sent as "index"
     flexContainerName = "pubsub-to-elasticsearch",
     contactInformation = "https://cloud.google.com/support")
 public class PubSubToElasticsearch {

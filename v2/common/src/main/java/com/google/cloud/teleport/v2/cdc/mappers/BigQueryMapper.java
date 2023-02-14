@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The BigQueryMapper can be easily extended by overriding: - public TableId getTableId(InputT
  * input) - public TableRow getTableRow(InputT input) - public OutputT getOutputObject(InputT input)
- * - public Map<String, StandardSQLTypeName> getInputSchema(TableId tableId, TableRow row)
+ * - public Map&lt;String, StandardSQLTypeName&gt; getInputSchema(TableId tableId, TableRow row)
  */
 public class BigQueryMapper<InputT, OutputT>
     extends PTransform<PCollection<InputT>, PCollection<OutputT>> {

@@ -154,7 +154,6 @@ public abstract class JavascriptTextTransformer {
      *
      * @param scripts a collection of javascript scripts encoded with UTF8 to load in
      */
-    @Nullable
     private static Invocable newInvocable(Collection<String> scripts) throws ScriptException {
       ScriptEngine engine = getJavaScriptEngine();
       for (String script : scripts) {
@@ -223,23 +222,20 @@ public abstract class JavascriptTextTransformer {
           result.status() == Status.OK && !result.metadata().isEmpty(),
           "Failed to match any files with the pattern: " + path);
 
-      List<String> scripts =
-          result.metadata().stream()
-              .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
-              .map(Metadata::resourceId)
-              .map(
-                  resourceId -> {
-                    try (Reader reader =
-                        Channels.newReader(
-                            FileSystems.open(resourceId), StandardCharsets.UTF_8.name())) {
-                      return CharStreams.toString(reader);
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  })
-              .collect(Collectors.toList());
-
-      return scripts;
+      return result.metadata().stream()
+          .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
+          .map(Metadata::resourceId)
+          .map(
+              resourceId -> {
+                try (Reader reader =
+                    Channels.newReader(
+                        FileSystems.open(resourceId), StandardCharsets.UTF_8.name())) {
+                  return CharStreams.toString(reader);
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              })
+          .collect(Collectors.toList());
     }
   }
 
@@ -318,10 +314,10 @@ public abstract class JavascriptTextTransformer {
       return new AutoValue_JavascriptTextTransformer_FailsafeJavascriptUdf.Builder<>();
     }
 
-    private Counter successCounter =
+    private final Counter successCounter =
         Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-success-count");
 
-    private Counter failedCounter =
+    private final Counter failedCounter =
         Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-failed-count");
 
     /** Builder for {@link FailsafeJavascriptUdf}. */

@@ -34,9 +34,9 @@ import com.google.api.services.dataflow.model.JobMetadata;
 import com.google.api.services.dataflow.model.RuntimeEnvironment;
 import com.google.api.services.dataflow.model.SdkVersion;
 import com.google.auth.Credentials;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.JobState;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import org.junit.Rule;
@@ -88,6 +88,8 @@ public final class ClassicTemplateClientTest {
     Job getJob =
         new Job()
             .setId(JOB_ID)
+            .setProjectId(PROJECT)
+            .setLocation(REGION)
             .setCurrentState(JobState.RUNNING.toString())
             .setCreateTime("")
             .setJobMetadata(
@@ -95,7 +97,7 @@ public final class ClassicTemplateClientTest {
                     .setSdkVersion(
                         new SdkVersion()
                             .setVersionDisplayName("Apache Beam Java")
-                            .setVersion("2.42")))
+                            .setVersion("2.42.0")))
             .setType("JOB_TYPE_BATCH");
 
     LaunchConfig options =
@@ -107,7 +109,7 @@ public final class ClassicTemplateClientTest {
     when(get.execute()).thenReturn(getJob);
 
     // Act
-    JobInfo actual =
+    LaunchInfo actual =
         ClassicTemplateClient.withDataflowClient(client).launch(PROJECT, REGION, options);
 
     // Assert
@@ -130,13 +132,15 @@ public final class ClassicTemplateClientTest {
     assertThat(regionCaptor.getValue()).isEqualTo(REGION);
     assertThat(jobIdCaptor.getValue()).isEqualTo(JOB_ID);
 
-    JobInfo expected =
-        JobInfo.builder()
+    LaunchInfo expected =
+        LaunchInfo.builder()
             .setJobId(JOB_ID)
+            .setProjectId(PROJECT)
+            .setRegion(REGION)
             .setState(JobState.RUNNING)
             .setCreateTime("")
             .setSdk("Apache Beam Java")
-            .setVersion("2.42")
+            .setVersion("2.42.0")
             .setJobType("JOB_TYPE_BATCH")
             .setRunner("Dataflow")
             .setParameters(ImmutableMap.of(PARAM_KEY, PARAM_VALUE))

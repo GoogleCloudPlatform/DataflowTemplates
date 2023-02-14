@@ -24,6 +24,7 @@ import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsCons
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.DEFAULT_INCLUSIVE_START_AT;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.DEFAULT_RPC_PRIORITY;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.MAX_INCLUSIVE_END_AT;
+import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.THROUGHPUT_WINDOW_SECONDS;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.NameGenerator.generatePartitionMetadataTableName;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
@@ -34,6 +35,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.ServiceFactory;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.AbortedException;
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ErrorCode;
@@ -64,6 +66,7 @@ import org.apache.beam.runners.core.metrics.MonitoringInfoConstants;
 import org.apache.beam.runners.core.metrics.ServiceCallMetric;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Experimental.Kind;
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.action.ActionFactory;
@@ -73,9 +76,10 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.dofn.DetectNewPartitions
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dofn.InitializeDoFn;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dofn.PostProcessingMetricsDoFn;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dofn.ReadChangeStreamPartitionDoFn;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.estimator.BytesThroughputEstimator;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.estimator.SizeEstimator;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.mapper.MapperFactory;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
-import org.apache.beam.sdk.io.gcp.spanner.changestreams.restriction.ThroughputEstimator;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -1546,6 +1550,11 @@ public class LocalSpannerIO {
               getMetadataInstance(), changeStreamDatabaseId.getInstanceId().getInstance());
       final String partitionMetadataDatabaseId =
           MoreObjects.firstNonNull(getMetadataDatabase(), changeStreamDatabaseId.getDatabase());
+      final DatabaseId fullPartitionMetadataDatabaseId =
+          DatabaseId.of(
+              getSpannerConfig().getProjectId().get(),
+              partitionMetadataInstanceId,
+              partitionMetadataDatabaseId);
       final String partitionMetadataTableName =
           MoreObjects.firstNonNull(
               getMetadataTable(), generatePartitionMetadataTableName(partitionMetadataDatabaseId));
@@ -1576,6 +1585,18 @@ public class LocalSpannerIO {
               .setInstanceId(StaticValueProvider.of(partitionMetadataInstanceId))
               .setDatabaseId(StaticValueProvider.of(partitionMetadataDatabaseId))
               .build();
+      Dialect changeStreamDatabaseDialect = getDialect(changeStreamSpannerConfig);
+      Dialect metadataDatabaseDialect = getDialect(partitionMetadataSpannerConfig);
+      LOG.info(
+          "The Spanner database "
+              + changeStreamDatabaseId
+              + " has dialect "
+              + changeStreamDatabaseDialect);
+      LOG.info(
+          "The Spanner database "
+              + fullPartitionMetadataDatabaseId
+              + " has dialect "
+              + metadataDatabaseDialect);
       final String changeStreamName = getChangeStreamName();
       final Timestamp startTimestamp = getInclusiveStartAt();
       // Uses (Timestamp.MAX - 1ns) at max for end timestamp, because we add 1ns to transform the
@@ -1584,9 +1605,8 @@ public class LocalSpannerIO {
           getInclusiveEndAt().compareTo(MAX_INCLUSIVE_END_AT) > 0
               ? MAX_INCLUSIVE_END_AT
               : getInclusiveEndAt();
-      final MapperFactory mapperFactory = new MapperFactory();
+      final MapperFactory mapperFactory = new MapperFactory(changeStreamDatabaseDialect);
       final ChangeStreamMetrics metrics = new ChangeStreamMetrics();
-      final ThroughputEstimator throughputEstimator = new ThroughputEstimator();
       final RpcPriority rpcPriority = MoreObjects.firstNonNull(getRpcPriority(), RpcPriority.HIGH);
       final DaoFactory daoFactory =
           new DaoFactory(
@@ -1595,7 +1615,9 @@ public class LocalSpannerIO {
               partitionMetadataSpannerConfig,
               partitionMetadataTableName,
               rpcPriority,
-              input.getPipeline().getOptions().getJobName());
+              input.getPipeline().getOptions().getJobName(),
+              changeStreamDatabaseDialect,
+              metadataDatabaseDialect);
       final ActionFactory actionFactory = new ActionFactory();
 
       final InitializeDoFn initializeDoFn =
@@ -1603,8 +1625,7 @@ public class LocalSpannerIO {
       final DetectNewPartitionsDoFn detectNewPartitionsDoFn =
           new DetectNewPartitionsDoFn(daoFactory, mapperFactory, actionFactory, metrics);
       final ReadChangeStreamPartitionDoFn readChangeStreamPartitionDoFn =
-          new ReadChangeStreamPartitionDoFn(
-              daoFactory, mapperFactory, actionFactory, metrics, throughputEstimator);
+          new ReadChangeStreamPartitionDoFn(daoFactory, mapperFactory, actionFactory, metrics);
       final PostProcessingMetricsDoFn postProcessingMetricsDoFn =
           new PostProcessingMetricsDoFn(metrics);
 
@@ -1622,12 +1643,24 @@ public class LocalSpannerIO {
               .apply("Detect new partitions", ParDo.of(detectNewPartitionsDoFn))
               .apply("Read change stream partition", ParDo.of(readChangeStreamPartitionDoFn))
               .apply("Gather metrics", ParDo.of(postProcessingMetricsDoFn));
+      final Coder<DataChangeRecord> dataChangeRecordCoder = results.getCoder();
+      final SizeEstimator<DataChangeRecord> dataChangeRecordSizeEstimator =
+          new SizeEstimator<>(dataChangeRecordCoder);
+      final BytesThroughputEstimator<DataChangeRecord> throughputEstimator =
+          new BytesThroughputEstimator<>(THROUGHPUT_WINDOW_SECONDS, dataChangeRecordSizeEstimator);
+      readChangeStreamPartitionDoFn.setThroughputEstimator(throughputEstimator);
 
       impulseOut
           .apply(WithTimestamps.of(e -> GlobalWindow.INSTANCE.maxTimestamp()))
           .apply(Wait.on(results))
           .apply(ParDo.of(new CleanUpReadChangeStreamDoFn(daoFactory)));
       return results;
+    }
+
+    private static Dialect getDialect(SpannerConfig spannerConfig) {
+      DatabaseClient databaseClient =
+          SpannerAccessor.getOrCreate(spannerConfig).getDatabaseClient();
+      return databaseClient.getDialect();
     }
   }
 

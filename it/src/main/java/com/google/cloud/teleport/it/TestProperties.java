@@ -78,7 +78,7 @@ public final class TestProperties {
       }
     } catch (IOException e) {
       throw new RuntimeException(
-          "Unable to get credetials! \n"
+          "Unable to get credentials! \n"
               + "Please run the following command to set 60 minute access token, \n"
               + "\t export DT_IT_ACCESS_TOKEN=$(gcloud auth application-default print-access-token) \n"
               + "Please run the following command to set credentials using the gcloud command, "
@@ -147,13 +147,13 @@ public final class TestProperties {
   }
 
   /** Gets a property or returns {@code defaultValue} if it is not found. */
-  private static String getProperty(String name, @Nullable String defaultValue, Type type) {
+  public static String getProperty(String name, @Nullable String defaultValue, Type type) {
     String value = type == Type.PROPERTY ? System.getProperty(name) : System.getenv(name);
     return value != null ? value : defaultValue;
   }
 
   /** Defines the types of properties there may be. */
-  private enum Type {
+  public enum Type {
     PROPERTY,
     ENVIRONMENT_VARIABLE
   }

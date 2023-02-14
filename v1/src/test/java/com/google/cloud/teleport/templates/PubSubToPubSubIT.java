@@ -15,26 +15,26 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PullResponse;
+import com.google.pubsub.v1.ReceivedMessage;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
@@ -48,7 +48,7 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(PubsubToPubsub.class)
 @RunWith(JUnit4.class)
 public class PubSubToPubSubIT extends TemplateTestBase {
-  private static PubsubResourceManager pubsubResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setUp() throws IOException {
@@ -66,7 +66,6 @@ public class PubSubToPubSubIT extends TemplateTestBase {
   @Test
   public void testSubscriptionToTopic() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
     TopicName inputTopic = pubsubResourceManager.createTopic("input-topic");
     TopicName outputTopic = pubsubResourceManager.createTopic("output-topic");
     SubscriptionName inputSubscription =
@@ -75,35 +74,38 @@ public class PubSubToPubSubIT extends TemplateTestBase {
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
 
     List<String> expectedMessages =
-        List.of("message1-" + jobName, "message2-" + jobName, "message3-" + jobName);
+        List.of(
+            "message1-" + testName.getMethodName(),
+            "message2-" + testName.getMethodName(),
+            "message3-" + testName.getMethodName());
     publishMessages(inputTopic, expectedMessages);
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter("inputSubscription", inputSubscription.toString())
             .addParameter("outputTopic", outputTopic.toString());
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
 
-    AtomicReference<PullResponse> records = new AtomicReference<>();
+    List<ReceivedMessage> receivedMessages = new ArrayList<>();
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
                   PullResponse response =
                       pubsubResourceManager.pull(outputSubscription, expectedMessages.size());
-                  records.set(response);
-                  return response.getReceivedMessagesList().size() >= expectedMessages.size();
+                  receivedMessages.addAll(response.getReceivedMessagesList());
+                  return receivedMessages.size() >= expectedMessages.size();
                 });
 
     // Assert
     List<String> actualMessages =
-        records.get().getReceivedMessagesList().stream()
+        receivedMessages.stream()
             .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
             .collect(Collectors.toList());
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
     assertThat(actualMessages).containsAtLeastElementsIn(expectedMessages);
   }
 

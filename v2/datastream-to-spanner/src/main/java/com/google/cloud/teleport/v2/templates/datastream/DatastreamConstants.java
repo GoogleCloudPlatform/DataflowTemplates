@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.List;
@@ -67,12 +68,21 @@ public class DatastreamConstants {
   public static final Pair<String, String> ORACLE_TIMESTAMP_SHADOW_INFO =
       Pair.of("timestamp", "INT64");
 
+  public static final Pair<String, String> ORACLE_TIMESTAMP_SHADOW_INFO_PG_DIALECT =
+      Pair.of("timestamp", "bigint");
+
   public static final String ORACLE_SCN_KEY = "_metadata_scn";
 
   public static final Pair<String, String> ORACLE_SCN_SHADOW_INFO = Pair.of("scn", "INT64");
 
-  /* Mapping from Event keys to shadow table information for Oracle database */
+  public static final Pair<String, String> ORACLE_SCN_SHADOW_INFO_PG_DIALECT =
+      Pair.of("scn", "bigint");
+
+  /* Mapping from Event keys to shadow table information for Oracle database with gsql dialect*/
   public static final Map<String, Pair<String, String>> ORACLE_SORT_ORDER;
+
+  /* Mapping from Event keys to shadow table information for Oracle database with postgres dialect*/
+  public static final Map<String, Pair<String, String>> ORACLE_SORT_ORDER_PG_DIALECT;
 
   /* List of Event keys, Shadow table information related to sort order in MySQL database. */
   public static final String MYSQL_TIMESTAMP_KEY = "_metadata_timestamp";
@@ -80,18 +90,30 @@ public class DatastreamConstants {
   public static final Pair<String, String> MYSQL_TIMESTAMP_SHADOW_INFO =
       Pair.of("timestamp", "INT64");
 
+  public static final Pair<String, String> MYSQL_TIMESTAMP_SHADOW_INFO_PG_DIALECT =
+      Pair.of("timestamp", "bigint");
+
   public static final String MYSQL_LOGFILE_KEY = "_metadata_log_file";
 
   public static final Pair<String, String> MYSQL_LOGFILE_SHADOW_INFO =
       Pair.of("log_file", "STRING(MAX)");
+
+  public static final Pair<String, String> MYSQL_LOGFILE_SHADOW_INFO_PG_DIALECT =
+      Pair.of("log_file", "character varying(2621440)");
 
   public static final String MYSQL_LOGPOSITION_KEY = "_metadata_log_position";
 
   public static final Pair<String, String> MYSQL_LOGPOSITION_SHADOW_INFO =
       Pair.of("log_position", "INT64");
 
-  /* Mapping from Event keys to shadow table information for MySql database */
+  public static final Pair<String, String> MYSQL_LOGPOSITION_SHADOW_INFO_PG_DIALECT =
+      Pair.of("log_position", "bigint");
+
+  /* Mapping from Event keys to shadow table information for MySql database with gsql dialect*/
   public static final Map<String, Pair<String, String>> MYSQL_SORT_ORDER;
+
+  /* Mapping from Event keys to shadow table information for MySql database with postgres dialect*/
+  public static final Map<String, Pair<String, String>> MYSQL_SORT_ORDER_PG_DIALECT;
 
   /* List of Event keys, Shadow table information related to sort order in Postgres database. */
   public static final String POSTGRES_TIMESTAMP_KEY = "_metadata_timestamp";
@@ -99,12 +121,24 @@ public class DatastreamConstants {
   public static final Pair<String, String> POSTGRES_TIMESTAMP_SHADOW_INFO =
       Pair.of("timestamp", "INT64");
 
+  public static final Pair<String, String> POSTGRES_TIMESTAMP_SHADOW_INFO_PG_DIALECT =
+      Pair.of("timestamp", "bigint");
+
   public static final String POSTGRES_LSN_KEY = "_metadata_lsn";
 
   public static final Pair<String, String> POSTGRES_LSN_SHADOW_INFO = Pair.of("lsn", "STRING(MAX)");
 
-  /* Mapping from Event keys to shadow table information for Postgres database */
+  public static final Pair<String, String> POSTGRES_LSN_SHADOW_INFO_PG_DIALECT =
+      Pair.of("lsn", "character varying(2621440)");
+
+  /* Mapping from Event keys to shadow table information for Postgres database with gsql dialect*/
   public static final Map<String, Pair<String, String>> POSTGRES_SORT_ORDER;
+
+  /* Mapping from Event keys to shadow table information for Postgres database with postgres dialect*/
+  public static final Map<String, Pair<String, String>> POSTGRES_SORT_ORDER_PG_DIALECT;
+
+  public static final Map<Dialect, Map<String, Map<String, Pair<String, String>>>>
+      DIALECT_TO_SORT_ORDER;
 
   /* List of supported */
   public static final List<String> SUPPORTED_DATASTREAM_SOURCES;
@@ -115,16 +149,51 @@ public class DatastreamConstants {
             ORACLE_TIMESTAMP_KEY, ORACLE_TIMESTAMP_SHADOW_INFO,
             ORACLE_SCN_KEY, ORACLE_SCN_SHADOW_INFO);
 
+    ORACLE_SORT_ORDER_PG_DIALECT =
+        ImmutableMap.of(
+            ORACLE_TIMESTAMP_KEY, ORACLE_TIMESTAMP_SHADOW_INFO_PG_DIALECT,
+            ORACLE_SCN_KEY, ORACLE_SCN_SHADOW_INFO_PG_DIALECT);
+
     MYSQL_SORT_ORDER =
         ImmutableMap.of(
             MYSQL_TIMESTAMP_KEY, MYSQL_TIMESTAMP_SHADOW_INFO,
             MYSQL_LOGFILE_KEY, MYSQL_LOGFILE_SHADOW_INFO,
             MYSQL_LOGPOSITION_KEY, MYSQL_LOGPOSITION_SHADOW_INFO);
 
+    MYSQL_SORT_ORDER_PG_DIALECT =
+        ImmutableMap.of(
+            MYSQL_TIMESTAMP_KEY, MYSQL_TIMESTAMP_SHADOW_INFO_PG_DIALECT,
+            MYSQL_LOGFILE_KEY, MYSQL_LOGFILE_SHADOW_INFO_PG_DIALECT,
+            MYSQL_LOGPOSITION_KEY, MYSQL_LOGPOSITION_SHADOW_INFO_PG_DIALECT);
+
     POSTGRES_SORT_ORDER =
         ImmutableMap.of(
             POSTGRES_TIMESTAMP_KEY, POSTGRES_TIMESTAMP_SHADOW_INFO,
             POSTGRES_LSN_KEY, POSTGRES_LSN_SHADOW_INFO);
+
+    POSTGRES_SORT_ORDER_PG_DIALECT =
+        ImmutableMap.of(
+            POSTGRES_TIMESTAMP_KEY, POSTGRES_TIMESTAMP_SHADOW_INFO_PG_DIALECT,
+            POSTGRES_LSN_KEY, POSTGRES_LSN_SHADOW_INFO_PG_DIALECT);
+
+    DIALECT_TO_SORT_ORDER =
+        ImmutableMap.of(
+            Dialect.GOOGLE_STANDARD_SQL,
+            ImmutableMap.of(
+                ORACLE_SOURCE_TYPE,
+                ORACLE_SORT_ORDER,
+                MYSQL_SOURCE_TYPE,
+                MYSQL_SORT_ORDER,
+                POSTGRES_SOURCE_TYPE,
+                POSTGRES_SORT_ORDER),
+            Dialect.POSTGRESQL,
+            ImmutableMap.of(
+                ORACLE_SOURCE_TYPE,
+                ORACLE_SORT_ORDER_PG_DIALECT,
+                MYSQL_SOURCE_TYPE,
+                MYSQL_SORT_ORDER_PG_DIALECT,
+                POSTGRES_SOURCE_TYPE,
+                POSTGRES_SORT_ORDER_PG_DIALECT));
 
     SUPPORTED_DATASTREAM_SOURCES =
         ImmutableList.of(ORACLE_SOURCE_TYPE, MYSQL_SOURCE_TYPE, POSTGRES_SOURCE_TYPE);

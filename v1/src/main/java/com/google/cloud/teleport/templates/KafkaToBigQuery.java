@@ -20,7 +20,6 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.kafka.connector.KafkaIO;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.templates.KafkaToBigQuery.Options;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
@@ -156,7 +155,7 @@ public class KafkaToBigQuery {
 
     @TemplateParameter.Text(
         order = 3,
-        regexes = {"[a-zA-Z0-9._-,]+"},
+        regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read input from.",
         helpText = "Kafka topic(s) to read input from.",
         example = "topic1,topic2")

@@ -25,7 +25,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 
 /**
  * {@link SecretManagerValueProvider} class is a subclass of {@link ValueProvider} that takes in a
- * {@link ValueProvider<String>} of the form
+ * {@link ValueProvider}&lt;String&gt; of the form
  * projects/{project}/secrets/{secret}/versions/{secret_version} and returns the secret value in
  * Secret Manager.
  */

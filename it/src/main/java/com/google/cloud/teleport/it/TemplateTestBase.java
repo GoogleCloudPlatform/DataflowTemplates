@@ -20,28 +20,36 @@ import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPat
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.api.services.dataflow.model.Job;
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.ComputeEngineCredentials;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.common.IORedirectUtil;
 import com.google.cloud.teleport.it.dataflow.ClassicTemplateClient;
-import com.google.cloud.teleport.it.dataflow.DataflowClient;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowUtils;
+import com.google.cloud.teleport.it.dataflow.DirectRunnerClient;
 import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Config;
 import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCreationParameter;
+import com.google.cloud.teleport.metadata.TemplateCreationParameters;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.metadata.util.MetadataUtils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,6 +59,7 @@ import org.junit.Rule;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Base class for Templates. It wraps around tests that extend it to stage the Templates when
@@ -72,24 +81,35 @@ public abstract class TemplateTestBase {
   protected Credentials credentials;
   protected CredentialsProvider credentialsProvider;
   protected String artifactBucketName;
-  protected String testId = DataflowUtils.createJobName("");
+  protected String testId = PipelineUtils.createJobName("");
 
   /** Cache to avoid staging the same template multiple times on the same execution. */
   private static final Map<String, String> stagedTemplates = new HashMap<>();
 
   protected Template template;
+  private Class<?> templateClass;
   protected GcsArtifactClient artifactClient;
 
   @Before
   public void setUpBase() throws IOException {
-    TemplateIntegrationTest annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
+
+    TemplateIntegrationTest annotation = null;
+    try {
+      Method testMethod = getClass().getMethod(testName.getMethodName());
+      annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
+    } catch (NoSuchMethodException e) {
+      // ignore error
+    }
+    if (annotation == null) {
+      annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
+    }
     if (annotation == null) {
       LOG.warn(
           "{} did not specify which template is tested using @TemplateIntegrationTest, skipping.",
           getClass());
       return;
     }
-    Class<?> templateClass = annotation.value();
+    templateClass = annotation.value();
     template = getTemplateAnnotation(annotation, templateClass);
     if (template == null) {
       return;
@@ -124,7 +144,7 @@ public abstract class TemplateTestBase {
       specPath = TestProperties.specPath();
     } else if (stagedTemplates.containsKey(template.name())) {
       specPath = stagedTemplates.get(template.name());
-    } else {
+    } else if (System.getProperty("directRunnerTest") == null) {
       LOG.info("Preparing test for {} ({})", template.name(), templateClass);
 
       String prefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm").format(new Date()) + "_IT";
@@ -209,6 +229,11 @@ public abstract class TemplateTestBase {
     return null;
   }
 
+  /**
+   * Create the Maven command line used to stage the specific template using the Templates Plugin.
+   * It identifies whether the template is v1 (Classic) or v2 (Flex) to setup the Maven reactor
+   * accordingly.
+   */
   private String[] buildMavenStageCommand(String prefix, File pom, String bucketName) {
     String pomPath = pom.getAbsolutePath();
     String moduleBuild;
@@ -239,8 +264,9 @@ public abstract class TemplateTestBase {
       "-pl",
       moduleBuild,
       // Do not make all dependencies every time. Faster but requires prior `mvn install`.
-      // "-am",
+      //      "-am",
       "-PtemplatesStage,pluginOutputDir",
+      "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(0, 20),
       "-DskipShade",
       "-DskipTests",
       "-Dcheckstyle.skip",
@@ -262,47 +288,139 @@ public abstract class TemplateTestBase {
     }
   }
 
-  protected DataflowClient getDataflowClient() {
-    if (template.flexContainerName() != null && !template.flexContainerName().isEmpty()) {
+  protected PipelineLauncher launcher() {
+    if (System.getProperty("directRunnerTest") != null) {
+      return DirectRunnerClient.builder(templateClass).setCredentials(credentials).build();
+    } else if (template.flexContainerName() != null && !template.flexContainerName().isEmpty()) {
       return FlexTemplateClient.builder().setCredentials(credentials).build();
     } else {
       return ClassicTemplateClient.builder().setCredentials(credentials).build();
     }
   }
 
-  protected JobInfo launchTemplate(LaunchConfig.Builder options) throws IOException {
+  /**
+   * Launch the template job with the given options. By default, it will setup the hooks to avoid
+   * jobs getting leaked.
+   */
+  protected LaunchInfo launchTemplate(LaunchConfig.Builder options) throws IOException {
+    return this.launchTemplate(options, true);
+  }
+
+  /**
+   * Launch the template with the given options and configuration for hook.
+   *
+   * @param options Options to use for launch.
+   * @param setupShutdownHook Whether should setup a hook to cancel the job upon VM termination.
+   *     This is useful to teardown resources if the VM/test terminates unexpectedly.
+   * @return Job details.
+   * @throws IOException Thrown when {@link PipelineLauncher#launch(String, String, LaunchConfig)}
+   *     fails.
+   */
+  protected LaunchInfo launchTemplate(LaunchConfig.Builder options, boolean setupShutdownHook)
+      throws IOException {
 
     // Property allows testing with Runner v2 / Unified Worker
     if (System.getProperty("unifiedWorker") != null) {
       options.addEnvironment("experiments", "use_runner_v2");
     }
 
-    return getDataflowClient().launch(PROJECT, REGION, options.build());
+    if (System.getProperty("workerMachineType") != null) {
+      options.addEnvironment("workerMachineType", System.getProperty("workerMachineType"));
+    }
+
+    if (System.getProperty("directRunnerTest") != null) {
+      // For direct runner tests we need to explicitly add a tempLocation if missing
+      if (options.getParameter("tempLocation") == null) {
+        options.addParameter("tempLocation", "gs://" + artifactBucketName + "/temp/");
+      }
+
+      if (System.getProperty("runner") != null) {
+        options.addParameter("runner", System.getProperty("runner"));
+      }
+
+      // If template has creation parameters, they need to be specified as a --parameter=value
+      for (Method method : template.optionsClass().getMethods()) {
+        TemplateCreationParameters creationParameters =
+            method.getAnnotation(TemplateCreationParameters.class);
+        if (creationParameters != null) {
+          for (TemplateCreationParameter param : creationParameters.value()) {
+            if (param.template() == null
+                || param.template().isEmpty()
+                || param.template().equals(template.name())) {
+              options.addParameter(
+                  MetadataUtils.getParameterNameFromMethod(method.getName()), param.value());
+            }
+          }
+        }
+      }
+    }
+
+    PipelineLauncher pipelineLauncher = launcher();
+    LaunchInfo launchInfo = pipelineLauncher.launch(PROJECT, REGION, options.build());
+
+    // if the launch succeeded and setupShutdownHook is enabled, setup a thread to cancel job
+    if (setupShutdownHook && launchInfo.jobId() != null && !launchInfo.jobId().isEmpty()) {
+      Runtime.getRuntime()
+          .addShutdownHook(new Thread(new CancelJobShutdownHook(pipelineLauncher, launchInfo)));
+    }
+
+    return launchInfo;
   }
 
+  /** Get the Cloud Storage base path for this test suite. */
   protected String getGcsBasePath() {
     return getFullGcsPath(artifactBucketName, getClass().getSimpleName(), artifactClient.runId());
   }
 
-  protected String getGcsPath(String testMethod) {
+  /** Get the Cloud Storage base path for a specific test. */
+  protected String getGcsPath(TestName testName) {
+    return getGcsPath(testName.getMethodName());
+  }
+
+  /** Get the Cloud Storage base path for a specific testing method or artifact id. */
+  protected String getGcsPath(String artifactId) {
     return getFullGcsPath(
-        artifactBucketName, getClass().getSimpleName(), artifactClient.runId(), testMethod);
+        artifactBucketName, getClass().getSimpleName(), artifactClient.runId(), artifactId);
   }
 
-  protected DataflowOperator.Config createConfig(JobInfo info) {
-    return DataflowOperator.Config.builder()
-        .setJobId(info.jobId())
-        .setProject(PROJECT)
-        .setRegion(REGION)
-        .build();
+  /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */
+  protected PipelineOperator.Config createConfig(LaunchInfo info) {
+    Config.Builder configBuilder =
+        Config.builder().setJobId(info.jobId()).setProject(PROJECT).setRegion(REGION);
+
+    // For DirectRunner tests, reduce the max time and the interval, as there is no worker required
+    if (System.getProperty("directRunnerTest") != null) {
+      configBuilder =
+          configBuilder.setTimeoutAfter(Duration.ofMinutes(3)).setCheckAfter(Duration.ofSeconds(5));
+    }
+
+    return configBuilder.build();
   }
 
-  public static Credentials buildCredentialsFromEnv() throws IOException {
+  /**
+   * Infers the {@link Credentials} to use with Google services from the current environment
+   * settings.
+   *
+   * <p>First, checks if {@link ServiceAccountCredentials#getApplicationDefault()} returns Compute
+   * Engine credentials, which means that it is running from a GCE instance and can use the Service
+   * Account configured for that VM. Will use that
+   *
+   * <p>Secondly, it will try to get the environment variable
+   * <strong>GOOGLE_APPLICATION_CREDENTIALS</strong>, and use that Service Account if configured to
+   * doing so. The method {@link #getCredentialsStream()} will make sure to search for the specific
+   * file using both the file system and classpath.
+   *
+   * <p>If <strong>GOOGLE_APPLICATION_CREDENTIALS</strong> is not configured, it will return the
+   * application default, which is often setup through <strong>gcloud auth application-default
+   * login</strong>.
+   */
+  protected static Credentials buildCredentialsFromEnv() throws IOException {
 
     // if on Compute Engine, return default credentials.
+    GoogleCredentials applicationDefault = ServiceAccountCredentials.getApplicationDefault();
     try {
-      if (ServiceAccountCredentials.getApplicationDefault() instanceof ComputeEngineCredentials) {
-        return ServiceAccountCredentials.getApplicationDefault();
+      if (applicationDefault instanceof ComputeEngineCredentials) {
+        return applicationDefault;
       }
     } catch (Exception e) {
       // no problem
@@ -310,12 +428,12 @@ public abstract class TemplateTestBase {
 
     InputStream credentialsStream = getCredentialsStream();
     if (credentialsStream == null) {
-      return ServiceAccountCredentials.getApplicationDefault();
+      return applicationDefault;
     }
     return ServiceAccountCredentials.fromStream(credentialsStream);
   }
 
-  public static InputStream getCredentialsStream() throws FileNotFoundException {
+  protected static InputStream getCredentialsStream() throws FileNotFoundException {
     String credentialFile = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 
     if (credentialFile == null || credentialFile.isEmpty()) {
@@ -353,11 +471,44 @@ public abstract class TemplateTestBase {
    * @param table TableId to format.
    * @return String in the format {project}:{dataset}.{table}.
    */
-  protected String toTableSpec(TableId table) {
+  public static String toTableSpec(TableId table) {
     return String.format(
         "%s:%s.%s",
         table.getProject() != null ? table.getProject() : PROJECT,
         table.getDataset(),
         table.getTable());
+  }
+
+  protected PipelineOperator pipelineOperator() {
+    return new PipelineOperator(launcher());
+  }
+
+  /**
+   * This {@link Runnable} class calls {@link PipelineLauncher#cancelJob(String, String, String)}
+   * for a specific instance of client and given job information, which is useful to enforcing
+   * resource termination using {@link Runtime#addShutdownHook(Thread)}.
+   */
+  static class CancelJobShutdownHook implements Runnable {
+
+    private final PipelineLauncher pipelineLauncher;
+    private final LaunchInfo launchInfo;
+
+    public CancelJobShutdownHook(PipelineLauncher pipelineLauncher, LaunchInfo launchInfo) {
+      this.pipelineLauncher = pipelineLauncher;
+      this.launchInfo = launchInfo;
+    }
+
+    @Override
+    public void run() {
+      try {
+        Job cancelled =
+            pipelineLauncher.cancelJob(
+                launchInfo.projectId(), launchInfo.region(), launchInfo.jobId());
+        LOG.warn("Job {} was shutdown by the hook to prevent resources leak.", cancelled.getId());
+      } catch (Exception e) {
+        // expected that the cancel fails if the test works as intended, so logging as debug only.
+        LOG.debug("Error shutting down job {}: {}", launchInfo.jobId(), e.getMessage());
+      }
+    }
   }
 }

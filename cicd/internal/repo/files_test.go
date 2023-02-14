@@ -55,7 +55,7 @@ func TestGetAllPomFiles(t *testing.T) {
 			},
 		},
 		{
-			dir: ClassicRoot,
+			dir: ProjectRoot,
 			expected: map[string]interface{}{
 				RootDirName:                  nil,
 				"v2":                         nil,
@@ -63,6 +63,12 @@ func TestGetAllPomFiles(t *testing.T) {
 				"cdc-common":                 nil,
 				"pubsub-binary-to-bigquery":  nil,
 				"googlecloud-to-googlecloud": nil,
+			},
+		},
+		{
+			dir: ClassicRoot,
+			expected: map[string]interface{}{
+				"v1": nil,
 			},
 		},
 	}

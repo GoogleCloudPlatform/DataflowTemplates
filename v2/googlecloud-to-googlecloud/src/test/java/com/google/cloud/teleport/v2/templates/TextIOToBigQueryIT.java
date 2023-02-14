@@ -15,22 +15,21 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
@@ -65,7 +64,7 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
   private static final String UDF_PATH = "TextIOToBigQueryTest/udf.js";
   private static final Map<String, Object> EXPECTED = ImmutableMap.of("book_id", 1, "title", "ABC");
 
-  private static BigQueryResourceManager bigQueryClient;
+  private BigQueryResourceManager bigQueryClient;
 
   @Rule public final TestName testName = new TestName();
 
@@ -100,7 +99,6 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
   private void testTextIOToBigQuery(
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
     String bqTable = testName.getMethodName();
 
     artifactClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
@@ -108,31 +106,30 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
     artifactClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
 
     bigQueryClient.createDataset(REGION);
-    bigQueryClient.createTable(
-        bqTable,
-        Schema.of(
-            Field.of("book_id", StandardSQLTypeName.INT64),
-            Field.of("title", StandardSQLTypeName.STRING)));
+    TableId table =
+        bigQueryClient.createTable(
+            bqTable,
+            Schema.of(
+                Field.of("book_id", StandardSQLTypeName.INT64),
+                Field.of("title", StandardSQLTypeName.STRING)));
 
     // Act
-    JobInfo info =
+    LaunchInfo info =
         launchTemplate(
             paramsAdder.apply(
-                LaunchConfig.builder(jobName, specPath)
+                LaunchConfig.builder(testName, specPath)
                     .addParameter("JSONPath", getGcsPath("schema.json"))
                     .addParameter("inputFilePattern", getGcsPath("input.txt"))
                     .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                     .addParameter("javascriptTextTransformFunctionName", "identity")
-                    .addParameter(
-                        "outputTable",
-                        PROJECT + ":" + bigQueryClient.getDatasetId() + "." + bqTable)
+                    .addParameter("outputTable", toTableSpec(table))
                     .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp"))));
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    assertThatPipeline(info).isRunning();
 
-    assertThat(new DataflowOperator(getDataflowClient()).waitUntilDone(createConfig(info)))
-        .isEqualTo(Result.JOB_FINISHED);
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     // Assert
+    assertThatResult(result).isLaunchFinished();
     TableResult tableRows = bigQueryClient.readTable(bqTable);
     assertThatRecords(tableRows).hasRecord(EXPECTED);
   }

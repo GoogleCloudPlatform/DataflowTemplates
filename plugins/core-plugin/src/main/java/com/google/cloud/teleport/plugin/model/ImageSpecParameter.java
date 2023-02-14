@@ -16,8 +16,8 @@
 package com.google.cloud.teleport.plugin.model;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.util.MetadataUtils;
 import java.lang.annotation.Annotation;
-import java.util.Arrays;
 import java.util.List;
 
 /** Parameters in a template. */
@@ -89,14 +89,6 @@ public class ImageSpecParameter {
             simpleTextParam.description(), simpleTextParam.helpText(), simpleTextParam.example());
         this.setOptional(simpleTextParam.optional());
         this.setParamType(ImageSpecParameterType.TEXT);
-
-        if (simpleTextParam.regexes() != null
-            && simpleTextParam.regexes().length > 0
-            && !(simpleTextParam.regexes().length == 1
-                && simpleTextParam.regexes()[0].equals(""))) {
-          this.setRegexes(Arrays.asList(simpleTextParam.regexes()));
-        }
-
         break;
       case "GcsReadFile":
         TemplateParameter.GcsReadFile gcsReadFileParam =
@@ -109,7 +101,6 @@ public class ImageSpecParameter {
             gcsReadFileParam.helpText(),
             gcsReadFileParam.example());
         this.setOptional(gcsReadFileParam.optional());
-        this.setRegexes(List.of("^gs:\\/\\/[^\\n\\r]+$"));
         this.setParamType(ImageSpecParameterType.GCS_READ_FILE);
         break;
       case "GcsReadFolder":
@@ -123,7 +114,6 @@ public class ImageSpecParameter {
             gcsReadFolderParam.helpText(),
             gcsReadFolderParam.example());
         this.setOptional(gcsReadFolderParam.optional());
-        this.setRegexes(List.of("^gs:\\/\\/[^\\n\\r]+$"));
         this.setParamType(ImageSpecParameterType.GCS_READ_FOLDER);
         break;
       case "GcsWriteFile":
@@ -137,7 +127,6 @@ public class ImageSpecParameter {
             gcsWriteFileParam.helpText(),
             gcsWriteFileParam.example());
         this.setOptional(gcsWriteFileParam.optional());
-        this.setRegexes(List.of("^gs:\\/\\/[^\\n\\r]+$"));
         this.setParamType(ImageSpecParameterType.GCS_WRITE_FILE);
         break;
       case "GcsWriteFolder":
@@ -151,7 +140,6 @@ public class ImageSpecParameter {
             gcsWriteFolderParam.helpText(),
             gcsWriteFolderParam.example());
         this.setOptional(gcsWriteFolderParam.optional());
-        this.setRegexes(List.of("^gs:\\/\\/[^\\n\\r]+$"));
         this.setParamType(ImageSpecParameterType.GCS_WRITE_FOLDER);
         break;
       case "PubsubSubscription":
@@ -165,7 +153,6 @@ public class ImageSpecParameter {
             pubsubSubscriptionParam.helpText(),
             pubsubSubscriptionParam.example());
         this.setOptional(pubsubSubscriptionParam.optional());
-        this.setRegexes(List.of("^projects\\/[^\\n\\r\\/]+\\/subscriptions\\/[^\\n\\r\\/]+$|^$"));
         this.setParamType(ImageSpecParameterType.PUBSUB_SUBSCRIPTION);
         break;
       case "PubsubTopic":
@@ -179,7 +166,6 @@ public class ImageSpecParameter {
             pubsubTopicParam.helpText(),
             pubsubTopicParam.example());
         this.setOptional(pubsubTopicParam.optional());
-        this.setRegexes(List.of("^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$|^$"));
         this.setParamType(ImageSpecParameterType.PUBSUB_TOPIC);
         break;
       case "Password":
@@ -201,8 +187,6 @@ public class ImageSpecParameter {
         processDescriptions(
             projectIdParam.description(), projectIdParam.helpText(), projectIdParam.example());
         this.setOptional(projectIdParam.optional());
-        // More specific? {"^([a-z0-9\\.]+:)?[a-z0-9][a-z0-9-]{5,29}$"}
-        this.setRegexes(List.of("[a-z0-9\\-\\.\\:]+"));
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
       case "Boolean":
@@ -214,7 +198,6 @@ public class ImageSpecParameter {
             booleanParam.description(), booleanParam.helpText(), booleanParam.example());
         this.setOptional(booleanParam.optional());
         this.setParamType(ImageSpecParameterType.TEXT);
-        this.setRegexes(List.of("^(true|false)$"));
         break;
       case "Integer":
         TemplateParameter.Integer integerParam = (TemplateParameter.Integer) parameterAnnotation;
@@ -225,7 +208,6 @@ public class ImageSpecParameter {
             integerParam.description(), integerParam.helpText(), integerParam.example());
         this.setOptional(integerParam.optional());
         this.setParamType(ImageSpecParameterType.TEXT);
-        this.setRegexes(List.of("^[0-9]+$"));
         break;
       case "Long":
         TemplateParameter.Long longParam = (TemplateParameter.Long) parameterAnnotation;
@@ -235,7 +217,6 @@ public class ImageSpecParameter {
         processDescriptions(longParam.description(), longParam.helpText(), longParam.example());
         this.setOptional(longParam.optional());
         this.setParamType(ImageSpecParameterType.TEXT);
-        this.setRegexes(List.of("^[0-9]+$"));
         break;
       case "Enum":
         TemplateParameter.Enum enumParam = (TemplateParameter.Enum) parameterAnnotation;
@@ -245,7 +226,6 @@ public class ImageSpecParameter {
         processDescriptions(enumParam.description(), enumParam.helpText(), enumParam.example());
         this.setOptional(enumParam.optional());
         this.setParamType(ImageSpecParameterType.TEXT);
-        this.setRegexes(List.of("^(" + String.join("|", enumParam.enumOptions()) + ")$"));
         break;
       case "DateTime":
         TemplateParameter.DateTime dateTimeParam = (TemplateParameter.DateTime) parameterAnnotation;
@@ -256,9 +236,6 @@ public class ImageSpecParameter {
             dateTimeParam.description(), dateTimeParam.helpText(), dateTimeParam.example());
         this.setOptional(dateTimeParam.optional());
         this.setParamType(ImageSpecParameterType.TEXT);
-        this.setRegexes(
-            List.of(
-                "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\\\.[0-9]+)?)Z$"));
         break;
       case "BigQueryTable":
         TemplateParameter.BigQueryTable bigQueryTableParam =
@@ -272,7 +249,6 @@ public class ImageSpecParameter {
             bigQueryTableParam.example());
         this.setOptional(bigQueryTableParam.optional());
         this.setParamType(ImageSpecParameterType.TEXT);
-        this.setRegexes(List.of(".+:.+\\..+"));
         break;
       case "KmsEncryptionKey":
         TemplateParameter.KmsEncryptionKey kmsEncryptionKeyParam =
@@ -286,17 +262,6 @@ public class ImageSpecParameter {
             kmsEncryptionKeyParam.example());
         this.setOptional(kmsEncryptionKeyParam.optional());
         this.setParamType(ImageSpecParameterType.TEXT);
-        this.setRegexes(
-            List.of(
-                "^projects\\/[^\\n"
-                    + "\\r"
-                    + "\\/]+\\/locations\\/[^\\n"
-                    + "\\r"
-                    + "\\/]+\\/keyRings\\/[^\\n"
-                    + "\\r"
-                    + "\\/]+\\/cryptoKeys\\/[^\\n"
-                    + "\\r"
-                    + "\\/]+$"));
         break;
       case "Duration":
         TemplateParameter.Duration durationParam = (TemplateParameter.Duration) parameterAnnotation;
@@ -307,11 +272,11 @@ public class ImageSpecParameter {
             durationParam.description(), durationParam.helpText(), durationParam.example());
         this.setOptional(durationParam.optional());
         this.setParamType(ImageSpecParameterType.TEXT);
-        this.setRegexes(List.of("^[1-9][0-9]*[s|m|h]$"));
         break;
       default:
         throw new IllegalArgumentException("Invalid type " + parameterAnnotation);
     }
+    this.setRegexes(MetadataUtils.getRegexes(parameterAnnotation));
   }
 
   protected void processDescriptions(String description, String helpText, String example) {
