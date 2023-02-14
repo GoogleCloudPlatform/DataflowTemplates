@@ -72,6 +72,12 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
         run: ./cicd/run-unit-tests --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+      - name: Fetch Test Results
+        uses: actions/upload-artifact@v2  # upload test results
+        if: success() || failure()        # run this step even if previous step failed
+        with:
+          name: test-results
+          path: java-junit.xml
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_integration_tests_templates:
