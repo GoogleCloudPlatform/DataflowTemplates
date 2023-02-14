@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.it.kafka;
 
 import java.util.Set;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serializer;
 
 /** Interface for managing Kafka resources in integration tests. */
@@ -35,6 +37,9 @@ public interface KafkaResourceManager {
   <K, V> KafkaProducer<K, V> buildProducer(
       Serializer<K> keySerializer, Serializer<V> valueSerializer);
 
+  /** Build a {@link KafkaConsumer} for the given serializer and deserializers. */
+  <K, V> KafkaConsumer<K, V> buildConsumer(
+      Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer);
   /**
    * Deletes all created resources and cleans up the Kafka client, making the manager object
    * unusable.

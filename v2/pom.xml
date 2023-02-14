@@ -712,8 +712,10 @@
         <module>mongodb-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
+        <module>pubsub-to-kafka</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
+
     </modules>
 
 </project>
