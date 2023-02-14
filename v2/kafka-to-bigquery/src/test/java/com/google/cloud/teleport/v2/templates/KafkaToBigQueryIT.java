@@ -29,6 +29,7 @@ import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -221,10 +222,10 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(info),
-                () ->
-                    bigQueryClient.readTable(tableId.getTable()).getTotalRows() >= 20
-                        && bigQueryClient.readTable(deadletterTableId.getTable()).getTotalRows()
-                            >= 10);
+                BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(20).build(),
+                BigQueryRowsCheck.builder(bigQueryClient, deadletterTableId)
+                    .setMinRows(10)
+                    .build());
 
     // Assert
     assertThatResult(result).meetsConditions();

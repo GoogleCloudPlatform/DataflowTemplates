@@ -13,20 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.metadata;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-/** Annotation that marks the test of a Dataflow Template. */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE, ElementType.METHOD})
-public @interface TemplateIntegrationTest {
-
-  /** Class with the template that is being tested. */
-  Class<?> value();
-
-  String template() default "";
-}
+/** Package that contains reusable conditions. */
+package com.google.cloud.teleport.it.conditions;

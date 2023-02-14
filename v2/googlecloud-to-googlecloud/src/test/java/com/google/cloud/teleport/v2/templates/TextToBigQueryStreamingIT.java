@@ -26,6 +26,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -129,7 +130,8 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
         pipelineOperator()
             // drain doesn't seem to work with the TextIO GCS files watching that the template uses
             .waitForConditionAndCancel(
-                createConfig(info), () -> bigQueryClient.readTable(bqTable).getTotalRows() > 0);
+                createConfig(info),
+                BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(1).build());
 
     // Assert
     assertThatResult(result).meetsConditions();

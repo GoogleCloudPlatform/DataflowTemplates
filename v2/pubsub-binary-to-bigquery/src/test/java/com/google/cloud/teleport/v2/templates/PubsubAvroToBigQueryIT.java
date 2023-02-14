@@ -22,10 +22,10 @@ import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRe
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -47,7 +47,6 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -132,22 +131,15 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
                 .addParameter("outputTopic", dlqTopic.toString()));
     assertThatPipeline(info).isRunning();
 
-    AtomicReference<TableResult> records = new AtomicReference<>();
-
     Result result =
         pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
-                () -> {
-                  TableResult values = bigQueryResourceManager.readTable("people");
-                  records.set(values);
-
-                  return values.getTotalRows() >= recordMaps.size();
-                });
+                BigQueryRowsCheck.builder(bigQueryResourceManager, people).setMinRows(1).build());
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThatRecords(records.get()).hasRecords(recordMaps);
+    assertThatRecords(bigQueryResourceManager.readTable(people)).hasRecords(recordMaps);
   }
 
   private ByteString createRecord(String name, int age, double decimal) throws IOException {

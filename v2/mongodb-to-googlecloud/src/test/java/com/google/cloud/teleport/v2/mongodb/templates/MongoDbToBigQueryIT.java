@@ -29,6 +29,7 @@ import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -178,7 +179,8 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(info), () -> bigQueryClient.readTable(bqTable).getTotalRows() != 0);
+                createConfig(info),
+                BigQueryRowsCheck.builder(bigQueryClient, table).setMinRows(1).build());
 
     // Assert
     assertThatResult(result).meetsConditions();

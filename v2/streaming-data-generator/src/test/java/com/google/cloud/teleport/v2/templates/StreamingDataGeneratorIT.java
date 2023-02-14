@@ -26,6 +26,7 @@ import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -229,7 +230,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
         pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
-                () -> bigQueryResourceManager.readTable(table.getTable()).getTotalRows() > 0);
+                BigQueryRowsCheck.builder(bigQueryResourceManager, table).setMinRows(1).build());
     // Assert
     assertThatResult(result).meetsConditions();
   }
@@ -269,14 +270,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
         pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
-                () -> {
-                  try {
-                    return bigQueryResourceManager.readTable(dlq.getTable()).getTotalRows() > 0;
-                  } catch (Exception e) {
-                    LOG.info("Error pulling records from {}: {}", dlq.getTable(), e.getMessage());
-                    return false;
-                  }
-                });
+                BigQueryRowsCheck.builder(bigQueryResourceManager, dlq).setMinRows(1).build());
 
     // Assert
     assertThatResult(result).meetsConditions();

@@ -92,7 +92,17 @@ public abstract class TemplateTestBase {
 
   @Before
   public void setUpBase() throws IOException {
-    TemplateIntegrationTest annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
+
+    TemplateIntegrationTest annotation = null;
+    try {
+      Method testMethod = getClass().getMethod(testName.getMethodName());
+      annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
+    } catch (NoSuchMethodException e) {
+      // ignore error
+    }
+    if (annotation == null) {
+      annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
+    }
     if (annotation == null) {
       LOG.warn(
           "{} did not specify which template is tested using @TemplateIntegrationTest, skipping.",

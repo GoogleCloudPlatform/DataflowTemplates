@@ -59,7 +59,9 @@ public final class PipelineOperator {
    */
   public Result waitUntilDone(Config config) {
     return finishOrTimeout(
-        config, () -> false, () -> jobIsDone(config.project(), config.region(), config.jobId()));
+        config,
+        new Supplier[] {() -> false},
+        () -> jobIsDone(config.project(), config.region(), config.jobId()));
   }
 
   /**
@@ -94,7 +96,7 @@ public final class PipelineOperator {
    *     condition is met
    * @return the result, which could be any value in {@link Result}
    */
-  public Result waitForCondition(Config config, Supplier<Boolean> conditionCheck) {
+  public Result waitForCondition(Config config, Supplier<Boolean>... conditionCheck) {
     return finishOrTimeout(
         config,
         conditionCheck,
@@ -105,29 +107,40 @@ public final class PipelineOperator {
    * Waits until a given condition is met OR when a job enters a state that indicates that it is
    * done or ready to be done.
    *
+   * @see #waitForConditionsAndFinish(Config, Supplier[])
+   */
+  public Result waitForConditionAndFinish(Config config, Supplier<Boolean> conditionCheck)
+      throws IOException {
+    return waitForConditionsAndFinish(config, conditionCheck);
+  }
+
+  /**
+   * Waits until a given condition is met OR when a job enters a state that indicates that it is
+   * done or ready to be done.
+   *
    * <p>If the condition was met before the job entered a done or finishing state, then this will
    * cancel the job and wait for the job to enter a done state.
    *
    * @param config the configuration for performing operations
-   * @param conditionCheck a {@link Supplier} that will be called periodically to check if the
-   *     condition is met
+   * @param conditionChecks {@link Supplier} varargs that will be called periodically to check if
+   *     the condition is met
    * @return the result of waiting for the condition, not of waiting for the job to be done
    * @throws IOException if there is an issue cancelling the job
    */
-  public Result waitForConditionAndFinish(Config config, Supplier<Boolean> conditionCheck)
+  public Result waitForConditionsAndFinish(Config config, Supplier<Boolean>... conditionChecks)
       throws IOException {
-    return waiForConditionAndExecute(config, conditionCheck, this::drainJobAndFinish);
+    return waiForConditionAndExecute(config, conditionChecks, this::drainJobAndFinish);
   }
 
   /** Similar to {@link #waitForConditionAndFinish} but cancels the job instead of draining. */
-  public Result waitForConditionAndCancel(Config config, Supplier<Boolean> conditionCheck)
+  public Result waitForConditionAndCancel(Config config, Supplier<Boolean>... conditionCheck)
       throws IOException {
     return waiForConditionAndExecute(config, conditionCheck, this::cancelJobAndFinish);
   }
 
   private Result waiForConditionAndExecute(
       Config config,
-      Supplier<Boolean> conditionCheck,
+      Supplier<Boolean>[] conditionCheck,
       ThrowingConsumer<IOException, Config> executable)
       throws IOException {
     Result conditionStatus = waitForCondition(config, conditionCheck);
@@ -156,17 +169,18 @@ public final class PipelineOperator {
   }
 
   private static Result finishOrTimeout(
-      Config config, Supplier<Boolean> conditionCheck, Supplier<Boolean> stopChecking) {
+      Config config, Supplier<Boolean>[] conditionCheck, Supplier<Boolean>... stopChecking) {
     Instant start = Instant.now();
 
-    LOG.info("Making initial finish check.");
+    LOG.debug("Making initial finish check.");
     try {
-      if (conditionCheck.get()) {
+      if (allMatch(conditionCheck)) {
         return Result.CONDITION_MET;
       }
     } catch (Exception e) {
       LOG.warn("Error happened when initially checking for condition: {}", e.getMessage());
     }
+
     LOG.info("Job was not already finished. Starting to wait between requests.");
     while (timeIsLeft(start, config.timeoutAfter())) {
       try {
@@ -175,9 +189,9 @@ public final class PipelineOperator {
         LOG.warn("Wait interrupted. Checking now.");
       }
 
-      LOG.info("Checking if condition is met.");
+      LOG.debug("Checking if condition is met.");
       try {
-        if (conditionCheck.get()) {
+        if (allMatch(conditionCheck)) {
           LOG.info("Condition met!");
           return Result.CONDITION_MET;
         }
@@ -185,18 +199,16 @@ public final class PipelineOperator {
         LOG.warn("Error happened when checking for condition: {}", e.getMessage());
       }
 
-      LOG.info("Condition not met. Checking if job is finished.");
-      if (stopChecking.get()) {
+      LOG.info("Condition was not met yet. Checking if job is finished.");
+      if (allMatch(stopChecking)) {
         LOG.info("Detected that we should stop checking.");
         return Result.LAUNCH_FINISHED;
       }
       LOG.info(
-          "Job not finished. Will check again in {} seconds (total wait: "
-              + Duration.between(start, Instant.now()).getSeconds()
-              + "s of max "
-              + config.timeoutAfter().getSeconds()
-              + "s)",
-          config.checkAfter().getSeconds());
+          "Job not finished and conditions not met. Will check again in {} seconds (total wait: {}s of max{}s)",
+          config.checkAfter().getSeconds(),
+          Duration.between(start, Instant.now()).getSeconds(),
+          config.timeoutAfter().getSeconds());
     }
 
     LOG.warn("Neither the condition or job completion were fulfilled on time.");
@@ -239,6 +251,23 @@ public final class PipelineOperator {
 
   private static boolean timeIsLeft(Instant start, Duration maxWaitTime) {
     return Duration.between(start, Instant.now()).minus(maxWaitTime).isNegative();
+  }
+
+  /**
+   * Check if all checks return true, but makes sure that all of them are executed. This is
+   * important to have complete feedback of integration tests progress.
+   *
+   * @param checks Varargs with all checks to run.
+   * @return If all checks meet the criteria.
+   */
+  private static boolean allMatch(Supplier<Boolean>... checks) {
+    boolean match = true;
+    for (Supplier<Boolean> check : checks) {
+      if (!check.get()) {
+        match = false;
+      }
+    }
+    return match;
   }
 
   /** Configuration for running an operation. */

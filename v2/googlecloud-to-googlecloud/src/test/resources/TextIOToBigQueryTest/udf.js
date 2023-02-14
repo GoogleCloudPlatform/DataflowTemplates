@@ -16,7 +16,7 @@
 
 /**
  * Identity function.
- * @param {T?} value inpout value
+ * @param {T?} value input value
  * @return {T?} provided value
  */
 function identity(value) {
