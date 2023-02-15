@@ -32,6 +32,7 @@ import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,27 +73,36 @@ public class SyndeoTemplate {
   }
 
   public static final Map<String, Set<String>> SUPPORTED_URNS =
-      Map.of(
-          // Old names:
-          "bigquery:read",
-          Set.of("table"),
-          "kafka:read",
-          Set.of(),
-          "bigtable:write",
-          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
-          "schemaIO:bigquery:write",
-          Set.of("table", "createDisposition", "writeDisposition"),
-          // New names:
-          "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-          Set.of(),
-          "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
-          Set.of(),
-          "beam:schematransform:org.apache.beam:kafka_read:v1",
-          Set.of(),
-          "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
-          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
-          "syndeo:schematransform:com.google.cloud:sql_transform:v1",
-          Set.of());
+      new HashMap<>(
+          Map.of(
+              // New names:
+              "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:spanner_write:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:kafka_read:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:kafka_write:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:file_write:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:pubsublite_write:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:pubsublite_read:v1",
+              Set.of()));
+
+  static {
+    SUPPORTED_URNS.putAll(
+        Map.of(
+            "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+            Set.of(),
+            "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
+            Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
+            "syndeo:schematransform:com.google.cloud:sql_transform:v1",
+            Set.of()));
+  }
 
   public static void main(String[] args) throws Exception {
     run(args);
