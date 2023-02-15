@@ -26,7 +26,7 @@
         }
       }
     }},
-  {"errorMessage": "Only syndeo:schematransform:com.google.cloud:sql_transform:v1 is supported",
+  {"errorMessage": "Only [syndeo:schematransform:com.google.cloud:sql_scalar_transform:v1, syndeo:schematransform:com.google.cloud:sql_transform:v1] are supported",
     "jsonPayload":
     {
       "source": {
