@@ -63,8 +63,8 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
       Integer.parseInt(getProperty("numRows", "20", TestProperties.Type.PROPERTY));
   private static final int BIGQUERY_NUM_FIELDS =
       Integer.parseInt(getProperty("numFields", "100", TestProperties.Type.PROPERTY));
-  private static final int BIGQUERY_MAX_ENTRY_LENTH =
-      Integer.max(
+  private static final int BIGQUERY_MAX_ENTRY_LENGTH =
+      Integer.min(
           300, Integer.parseInt(getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY)));
 
   @Before
@@ -88,7 +88,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     String tableName = testName;
     Tuple<Schema, List<RowToInsert>> generatedTable =
         BigQueryTestUtils.generateBigQueryTable(
-            BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENTH);
+            BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
     Schema bigQuerySchema = generatedTable.x();
     List<RowToInsert> bigQueryRows = generatedTable.y();
     TableId table = bigQueryClient.createTable(tableName, bigQuerySchema);
@@ -125,7 +125,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     String tableName = testName;
     Tuple<Schema, List<RowToInsert>> generatedTable =
         BigQueryTestUtils.generateBigQueryTable(
-            BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENTH);
+            BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
     Schema bigQuerySchema = generatedTable.x();
     List<RowToInsert> bigQueryRows = generatedTable.y();
     TableId table = bigQueryClient.createTable(tableName, bigQuerySchema);
