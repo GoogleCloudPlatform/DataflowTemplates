@@ -15,25 +15,25 @@
  */
 package com.google.cloud.teleport.bigtable;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.bigtable.BigtableResourceManagerUtils.generateTableId;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.artifacts.ArtifactUtils.createGcsClient;
+import static com.google.cloud.teleport.it.gcp.artifacts.ArtifactUtils.getFullGcsPath;
+import static com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManagerUtils.generateTableId;
+import static com.google.cloud.teleport.it.gcp.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.gcp.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.storage.Storage;
-import com.google.cloud.teleport.it.DataGenerator;
-import com.google.cloud.teleport.it.TemplateLoadTestBase;
-import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
-import com.google.cloud.teleport.it.bigtable.BigtableResourceManager;
-import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
+import com.google.cloud.teleport.it.gcp.DataGenerator;
+import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
+import com.google.cloud.teleport.it.gcp.TestProperties;
+import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
+import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
+import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineOperator.Result;
+import com.google.cloud.teleport.it.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;

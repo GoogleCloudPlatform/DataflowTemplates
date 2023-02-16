@@ -15,19 +15,19 @@
  */
 package com.google.cloud.teleport.bigtable;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.gcp.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.bigtable.data.v2.models.Row;
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
 import com.google.cloud.teleport.it.cassandra.CassandraResourceManager;
 import com.google.cloud.teleport.it.cassandra.DefaultCassandraResourceManager;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineLauncher;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineOperator;
+import com.google.cloud.teleport.it.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;

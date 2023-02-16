@@ -31,6 +31,19 @@
             <artifactId>kafka-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-kafka</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
 
     </project>

@@ -47,6 +47,18 @@
 
         <!-- Test Dependencies -->
         <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-mongodb</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
             <groupId>com.google.truth</groupId>
             <artifactId>truth</artifactId>
             <version>${truth.version}</version>

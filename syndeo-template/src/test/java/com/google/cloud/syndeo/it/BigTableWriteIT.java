@@ -28,7 +28,7 @@ import com.google.cloud.syndeo.common.ProviderUtil;
 import com.google.cloud.syndeo.transforms.BigTableSchemaTransformTest;
 import com.google.cloud.syndeo.transforms.bigtable.BigTableWriteSchemaTransformConfiguration;
 import com.google.cloud.syndeo.v1.SyndeoV1;
-import com.google.cloud.teleport.it.TestProperties;
+import com.google.cloud.teleport.it.gcp.TestProperties;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.beam.sdk.io.gcp.testing.BigqueryClient;

@@ -226,7 +226,31 @@
     <!-- Test -->
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>integration-testing-lib</artifactId>
+      <artifactId>it-common</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-simple</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-google-cloud-platform</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-simple</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-cassandra</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
       <exclusions>

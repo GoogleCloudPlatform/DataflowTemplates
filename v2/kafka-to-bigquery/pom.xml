@@ -26,6 +26,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <dependencies>
+        <!-- test dependencies -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-kafka</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
         <!-- Kafka dependencies -->
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>

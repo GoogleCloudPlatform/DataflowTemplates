@@ -15,25 +15,25 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.gcp.matchers.TemplateAsserts.assertThatRecords;
+import static com.google.cloud.teleport.it.gcp.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.utils.PipelineUtils.createJobName;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.conditions.BigQueryRowsCheck;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineOperator.Result;
+import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;

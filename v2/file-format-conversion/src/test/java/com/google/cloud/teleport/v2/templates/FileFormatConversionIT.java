@@ -15,19 +15,19 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifacts;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.matchers.TemplateAsserts.assertThatArtifacts;
+import static com.google.cloud.teleport.it.gcp.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.gcp.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.common.AvroTestUtil;
-import com.google.cloud.teleport.it.common.ParquetTestUtil;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.matchers.RecordsSubject;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.gcp.launcher.PipelineOperator.Result;
+import com.google.cloud.teleport.it.gcp.matchers.RecordsSubject;
+import com.google.cloud.teleport.it.utils.AvroTestUtil;
+import com.google.cloud.teleport.it.utils.ParquetTestUtil;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.re2j.Pattern;

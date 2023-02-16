@@ -1,0 +1,58 @@
+/*
+ * Copyright (C) 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.it.cassandra;
+
+import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.google.cloud.teleport.it.gcp.matchers.RecordsSubject;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class CassandraTestUtils {
+  /**
+   * Convert Cassandra {@link Row} list to a list of maps.
+   *
+   * @param rows Rows to parse
+   * @return List of maps to use in {@link RecordsSubject}
+   */
+  static List<Map<String, Object>> cassandraRowsToRecords(Iterable<Row> rows) {
+    try {
+      List<Map<String, Object>> records = new ArrayList<>();
+
+      for (Row row : rows) {
+        Map<String, Object> converted = new HashMap<>();
+        for (ColumnDefinition columnDefinition : row.getColumnDefinitions()) {
+
+          Object value = null;
+          if (columnDefinition.getType().equals(DataTypes.TEXT)) {
+            value = row.getString(columnDefinition.getName());
+          } else if (columnDefinition.getType().equals(DataTypes.INT)) {
+            value = row.getInt(columnDefinition.getName());
+          }
+          converted.put(columnDefinition.getName().toString(), value);
+        }
+        records.add(converted);
+      }
+
+      return records;
+    } catch (Exception e) {
+      throw new RuntimeException("Error converting Cassandra Rows to Records", e);
+    }
+  }
+}
