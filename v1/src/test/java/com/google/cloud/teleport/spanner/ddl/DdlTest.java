@@ -187,6 +187,10 @@ public class DdlTest {
         .generatedAs("CONCAT(first_name, ' ', last_name)")
         .stored()
         .endColumn()
+        .column("update_time")
+        .pgSpannerCommitTimestamp()
+        .notNull()
+        .endColumn()
         .primaryKey()
         .asc("id")
         .asc("gen_id")
@@ -222,6 +226,7 @@ public class DdlTest {
                 + " \"last_name\" character varying DEFAULT Lennon,"
                 + " \"full_name\" character varying GENERATED ALWAYS AS"
                 + " (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " \"update_time\" spanner.commit_timestamp NOT NULL,"
                 + " CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\", \"gen_id\")"
                 + " ) "

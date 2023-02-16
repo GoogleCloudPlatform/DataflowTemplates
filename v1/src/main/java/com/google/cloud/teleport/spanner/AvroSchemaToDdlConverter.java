@@ -329,6 +329,8 @@ public class AvroSchemaToDdlConverter {
         return "TIMESTAMP";
       case PG_TIMESTAMPTZ:
         return "timestamp with time zone";
+      case PG_SPANNER_COMMIT_TIMESTAMP:
+        return "spanner.commit_timestamp";
       case DATE:
         return "DATE";
       case PG_DATE:

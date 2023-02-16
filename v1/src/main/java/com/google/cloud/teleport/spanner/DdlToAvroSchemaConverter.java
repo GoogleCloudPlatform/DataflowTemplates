@@ -173,6 +173,7 @@ public class DdlToAvroSchemaConverter {
         return SchemaBuilder.builder().bytesType();
       case TIMESTAMP:
       case PG_TIMESTAMPTZ:
+      case PG_SPANNER_COMMIT_TIMESTAMP:
         return shouldExportTimestampAsLogicalType
             ? LogicalTypes.timestampMicros().addToSchema(SchemaBuilder.builder().longType())
             : SchemaBuilder.builder().stringType();

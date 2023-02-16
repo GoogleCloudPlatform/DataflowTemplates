@@ -155,6 +155,8 @@ public abstract class Column implements Serializable {
         return "TIMESTAMP";
       case PG_TIMESTAMPTZ:
         return "timestamp with time zone";
+      case PG_SPANNER_COMMIT_TIMESTAMP:
+        return "spanner.commit_timestamp";
       case NUMERIC:
         return "NUMERIC";
       case PG_NUMERIC:
@@ -273,6 +275,10 @@ public abstract class Column implements Serializable {
 
     public Builder pgTimestamptz() {
       return type(Type.pgTimestamptz());
+    }
+
+    public Builder pgSpannerCommitTimestamp() {
+      return type(Type.pgSpannerCommitTimestamp());
     }
 
     public Builder date() {
@@ -417,6 +423,9 @@ public abstract class Column implements Serializable {
           }
           if (spannerType.equals("date")) {
             return t(Type.pgDate(), null);
+          }
+          if (spannerType.equals("spanner.commit_timestamp")) {
+            return t(Type.pgSpannerCommitTimestamp(), null);
           }
           break;
         }
