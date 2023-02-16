@@ -15,6 +15,7 @@
  */
 package com.google.cloud.syndeo.common;
 
+import com.google.cloud.syndeo.transforms.SyndeoStatsSchemaTransformProvider;
 import com.google.cloud.syndeo.v1.SyndeoV1.ConfiguredSchemaTransform;
 import java.util.Collection;
 import java.util.HashMap;
@@ -119,10 +120,6 @@ public class ProviderUtil {
       Collection<TransformSpec> specs, PCollectionRowTuple tuple) {
     for (TransformSpec spec : specs) {
       SchemaTransform transform = spec.provider.from(spec.configuration);
-
-      if (tuple.getAll().containsKey(ERRORS_TAG)) {
-        // TODO(pabloem): Deal with errors.
-      }
       // We know we only deal with transforms with either 0 or 1 input so we know how to connect the
       // collections. To sanity check we should confirm the output collections match expected.
       if (tuple.getAll().size() == 1 || tuple.getAll().containsKey(OUTPUT_TAG)) {
@@ -136,6 +133,17 @@ public class ProviderUtil {
       }
 
       tuple = tuple.apply(spec.inputId, transform.buildTransform());
+
+      if (tuple.getAll().containsKey(ERRORS_TAG)) {
+        // TODO(pabloem): Deal with errors.
+        PCollectionRowTuple.of("input", tuple.get(ERRORS_TAG))
+            .apply(
+                new SyndeoStatsSchemaTransformProvider()
+                    .from(
+                        SyndeoStatsSchemaTransformProvider.SyndeoStatsConfiguration.create(
+                            "errors"))
+                    .buildTransform());
+      }
     }
     return tuple;
   }

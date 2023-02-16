@@ -32,6 +32,7 @@ import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.FlatMapElements;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.PeriodicImpulse;
 import org.apache.beam.sdk.transforms.Reshuffle;
@@ -52,43 +53,48 @@ public class SyndeoLoadTestUtils {
 
   public static final Long MAX_ROWS_PER_SPLIT = 2000L;
 
-  public static PCollection<Row> inputData(
-      Pipeline dataGenerator, Long numRows, Long runtimeSeconds, Schema dataSchema) {
-    Random randomSeed = new Random();
-
+  private static PCollection<Long> longSequence(
+      Pipeline dataGenerator, Long numRows, Long runtimeSeconds) {
     final long numSplits = Math.max(numRows / MAX_ROWS_PER_SPLIT, 1);
     final long periodPerSplitMsecs = Math.max((runtimeSeconds * 1000) / numSplits, 1);
     System.out.printf(
         "Producing %s rows in %s splits. Each split every %s msecs. Each split has max %s rows.%n",
         numRows, numSplits, periodPerSplitMsecs, MAX_ROWS_PER_SPLIT);
-
     final Instant startTime = Instant.now();
+    return dataGenerator
+        .apply(
+            PeriodicImpulse.create()
+                .startAt(startTime)
+                .stopAt(Instant.now().plus(Duration.standardSeconds(runtimeSeconds)))
+                .withInterval(Duration.millis(periodPerSplitMsecs)))
+        .apply(Reshuffle.viaRandomKey())
+        .apply(
+            FlatMapElements.into(TypeDescriptors.longs())
+                .via(
+                    inst -> {
+                      assert inst != null;
+                      long ordinal =
+                          inst.minus(Duration.millis(startTime.getMillis())).getMillis()
+                              / periodPerSplitMsecs;
+                      return LongStream.range(
+                              ordinal * MAX_ROWS_PER_SPLIT,
+                              Math.min(numRows, (ordinal + 1) * MAX_ROWS_PER_SPLIT))
+                          .boxed()
+                          .collect(Collectors.toList());
+                    }));
+  }
 
+  public static PCollection<Row> inputData(
+      Pipeline dataGenerator, Long numRows, Long runtimeSeconds, Schema dataSchema) {
     return PCollectionRowTuple.of(
             "input",
-            dataGenerator
+            longSequence(dataGenerator, numRows, runtimeSeconds)
                 .apply(
-                    PeriodicImpulse.create()
-                        .startAt(startTime)
-                        .stopAt(Instant.now().plus(Duration.standardSeconds(runtimeSeconds)))
-                        .withInterval(Duration.millis(periodPerSplitMsecs)))
-                .apply(Reshuffle.viaRandomKey())
-                .apply(
-                    FlatMapElements.into(TypeDescriptors.rows())
+                    MapElements.into(TypeDescriptors.rows())
                         .via(
-                            inst -> {
-                              long ordinal =
-                                  (inst.minus(Duration.millis(startTime.getMillis())).getMillis()
-                                      / periodPerSplitMsecs);
-                              return LongStream.range(
-                                      ordinal * MAX_ROWS_PER_SPLIT,
-                                      (ordinal + 1) * MAX_ROWS_PER_SPLIT)
-                                  .mapToObj(
-                                      intVal ->
-                                          SyndeoLoadTestUtils.randomRowForSchema(
-                                              dataSchema, 0.05, randomSeed))
-                                  .collect(Collectors.toList());
-                            }))
+                            ordinal ->
+                                SyndeoLoadTestUtils.randomRowForSchema(
+                                    dataSchema, 0.05, new Random(ordinal))))
                 .setRowSchema(dataSchema))
         .apply(
             new SyndeoStatsSchemaTransformProvider()
