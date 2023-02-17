@@ -19,10 +19,18 @@ import static com.google.common.base.Preconditions.checkState;
 
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.AccessToken;
+import com.google.auth.oauth2.ComputeEngineCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.teleport.metadata.util.MetadataUtils;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility for accessing system properties set for the test.
@@ -58,6 +66,8 @@ public final class TestProperties {
   // Error messages
   private static final String CLI_ERR_MSG = "-D%s is required on the command line";
   private static final String ENV_VAR_MSG = "%s is required as an environment variable";
+
+  private static final Logger LOG = LoggerFactory.getLogger(TestProperties.class);
 
   public static boolean hasAccessToken() {
     return getProperty(ACCESS_TOKEN_KEY, null, Type.ENVIRONMENT_VARIABLE) != null;
@@ -156,5 +166,73 @@ public final class TestProperties {
   public enum Type {
     PROPERTY,
     ENVIRONMENT_VARIABLE
+  }
+
+  /**
+   * Infers the {@link Credentials} to use with Google services from the current environment
+   * settings.
+   *
+   * <p>First, checks if {@link ServiceAccountCredentials#getApplicationDefault()} returns Compute
+   * Engine credentials, which means that it is running from a GCE instance and can use the Service
+   * Account configured for that VM. Will use that
+   *
+   * <p>Secondly, it will try to get the environment variable
+   * <strong>GOOGLE_APPLICATION_CREDENTIALS</strong>, and use that Service Account if configured to
+   * doing so. The method {@link #getCredentialsStream()} will make sure to search for the specific
+   * file using both the file system and classpath.
+   *
+   * <p>If <strong>GOOGLE_APPLICATION_CREDENTIALS</strong> is not configured, it will return the
+   * application default, which is often setup through <strong>gcloud auth application-default
+   * login</strong>.
+   */
+  public static Credentials buildCredentialsFromEnv() throws IOException {
+
+    // if on Compute Engine, return default credentials.
+    GoogleCredentials applicationDefault = ServiceAccountCredentials.getApplicationDefault();
+    try {
+      if (applicationDefault instanceof ComputeEngineCredentials) {
+        return applicationDefault;
+      }
+    } catch (Exception e) {
+      // no problem
+    }
+
+    InputStream credentialsStream = getCredentialsStream();
+    if (credentialsStream == null) {
+      return applicationDefault;
+    }
+    return ServiceAccountCredentials.fromStream(credentialsStream);
+  }
+
+  private static InputStream getCredentialsStream() throws FileNotFoundException {
+    String credentialFile = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
+
+    if (credentialFile == null || credentialFile.isEmpty()) {
+      LOG.warn(
+          "Not found Google Cloud credentials: GOOGLE_APPLICATION_CREDENTIALS, assuming application"
+              + " default");
+      return null;
+    }
+
+    InputStream is = null;
+
+    File credentialFileRead = new File(credentialFile);
+    if (credentialFileRead.exists()) {
+      is = new FileInputStream(credentialFile);
+    }
+
+    if (is == null) {
+      is = TemplateTestBase.class.getResourceAsStream(credentialFile);
+    }
+
+    if (is == null) {
+      is = TemplateTestBase.class.getResourceAsStream("/" + credentialFile);
+    }
+
+    if (is == null) {
+      LOG.warn("Not found credentials with file name {}", credentialFile);
+      return null;
+    }
+    return is;
   }
 }
