@@ -50,8 +50,10 @@ import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
@@ -259,11 +261,10 @@ public abstract class TemplateTestBase {
     // Classic templates run on parent pom and -pl v1
     if (pomPath.endsWith("v1/pom.xml")) {
       pomPath = new File(pom.getParentFile().getParentFile(), "pom.xml").getAbsolutePath();
-      moduleBuild = "it,v1";
+      moduleBuild = String.join(",", List.of("metadata", "it", "v1"));
     } else if (pomPath.contains("v2/")) {
       // Flex templates run on parent pom and -pl {path-to-folder}
-      moduleBuild =
-          "it,v2/common," + pomPath.substring(pomPath.indexOf("v2/")).replace("/pom.xml", "");
+      moduleBuild = String.join(",", getModulesBuild(pomPath));
       pomPath = pomPath.replaceAll("/v2/.*", "/pom.xml");
     } else {
       LOG.warn(
@@ -297,6 +298,25 @@ public abstract class TemplateTestBase {
       "-DstagePrefix=" + prefix,
       "-DtemplateName=" + template.name()
     };
+  }
+
+  private List<String> getModulesBuild(String pomPath) {
+    List<String> modules = new ArrayList<>();
+    modules.add("metadata");
+    modules.add("it");
+    modules.add("v2/common");
+
+    // Force building specific common areas. This is much faster than using -am when staging.
+    if (pomPath.contains("kafka")) {
+      modules.add("v2/kafka-common");
+    }
+    if (pomPath.contains("elasticsearch")) {
+      modules.add("v2/elasticsearch-common");
+    }
+
+    modules.add(pomPath.substring(pomPath.indexOf("v2/")).replace("/pom.xml", ""));
+
+    return modules;
   }
 
   @After

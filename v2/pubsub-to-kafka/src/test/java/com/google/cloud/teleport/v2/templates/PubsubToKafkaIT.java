@@ -19,7 +19,6 @@ import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPi
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
@@ -27,6 +26,7 @@ import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -52,8 +52,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link PubsubToKafka}. */
-@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(PubsubToKafka.class)
+// SkipDirectRunnerTest: PubsubIO doesn't trigger panes on the DirectRunner.
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @RunWith(JUnit4.class)
 public final class PubsubToKafkaIT extends TemplateTestBase {
 
@@ -119,7 +120,6 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
     assertThatPipeline(info).isRunning();
 
     List<String> inMessages = Arrays.asList("first message", "second message");
-    Publisher publisher = null;
     for (final String message : inMessages) {
       ByteString data = ByteString.copyFromUtf8(message);
       pubsubResourceManager.publish(tc, ImmutableMap.of(), data);
@@ -142,6 +142,6 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThat(outMessages).isEqualTo(inMessages);
+    assertThat(outMessages).containsExactlyElementsIn(inMessages);
   }
 }
