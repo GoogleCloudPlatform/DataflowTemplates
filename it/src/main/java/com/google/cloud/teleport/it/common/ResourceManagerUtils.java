@@ -144,6 +144,7 @@ public class ResourceManagerUtils {
       }
       try {
         LOG.info("Cleaning up resource manager {}", manager.getClass().getSimpleName());
+        manager.cleanupAll();
       } catch (Exception e) {
         LOG.error("Error cleaning the resource manager {}", manager.getClass().getSimpleName());
         if (bubbleException == null) {

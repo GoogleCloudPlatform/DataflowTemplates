@@ -243,8 +243,8 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
 
   @Override
   public synchronized void cleanupAll() {
-    LOG.info("Attempting to cleanup manager.");
     try {
+      LOG.info("Deleting instance {}...", instanceId);
       instanceAdminClient.deleteInstance(instanceId);
       hasInstance = false;
       hasDatabase = false;
