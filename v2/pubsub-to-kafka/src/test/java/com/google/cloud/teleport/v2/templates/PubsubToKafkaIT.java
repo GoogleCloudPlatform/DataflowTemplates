@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
@@ -86,7 +87,7 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
   }
 
   public void pubsubToKafka(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
-      throws IOException, ExecutionException, InterruptedException {
+      throws IOException {
     // Arrange
     TopicName tc = pubsubResourceManager.createTopic(testName);
     String inTopicName = tc.getTopic();
@@ -98,7 +99,7 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
 
     KafkaConsumer<String, String> consumer =
         kafkaResourceManager.buildConsumer(new StringDeserializer(), new StringDeserializer());
-    consumer.subscribe(Arrays.asList(outTopicName));
+    consumer.subscribe(Collections.singletonList(outTopicName));
     LOG.info("Created Kafka Consumer");
 
     LaunchConfig.Builder options =
@@ -115,7 +116,7 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
 
     // Act
     LaunchInfo info = launchTemplate(options);
-    LOG.info("Triggered Dataflow job");
+    LOG.info("Triggered template job");
 
     assertThatPipeline(info).isRunning();
 
@@ -137,7 +138,7 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
                   for (ConsumerRecord<String, String> message : outMessage) {
                     outMessages.add(message.value());
                   }
-                  return outMessages.size() >= 2;
+                  return outMessages.size() >= inMessages.size();
                 });
 
     // Assert

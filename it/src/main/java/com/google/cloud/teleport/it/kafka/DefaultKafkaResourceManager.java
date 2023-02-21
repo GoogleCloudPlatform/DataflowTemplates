@@ -201,8 +201,8 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
       super(testId);
       this.containerImageName = DEFAULT_KAFKA_CONTAINER_NAME;
       this.containerImageTag = DEFAULT_KAFKA_CONTAINER_TAG;
-      this.topicNames = new HashSet<String>();
-      this.numTopics = 1;
+      this.topicNames = new HashSet<>();
+      this.numTopics = 0;
     }
 
     /**
