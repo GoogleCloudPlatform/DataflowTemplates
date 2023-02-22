@@ -77,6 +77,7 @@ public interface BigQueryResourceManager extends ResourceManager {
    * BigQueryResourceManager#createTable(String, Schema)} to be called for the target table
    * beforehand.
    *
+   * @param tableName The name of the table to insert the given row into.
    * @param tableRow A row object representing the table row.
    * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
    *     up, if the manager object has no dataset, if the table does not exist or if there is an

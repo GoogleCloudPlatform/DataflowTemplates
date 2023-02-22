@@ -32,7 +32,6 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MongoDBContainer;
 
 /**
  * Unit tests for {@link com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager}.
@@ -41,7 +40,7 @@ import org.testcontainers.containers.MongoDBContainer;
 public class TestContainerResourceManagerTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
-  @Mock private MongoDBContainer container;
+  @Mock private GenericContainer<?> container;
 
   private static final String TEST_ID = "test-id";
   private static final String HOST = "localhost";
@@ -62,9 +61,9 @@ public class TestContainerResourceManagerTest {
 
   @Test
   public void testCreateResourceManagerSetsCorrectDockerImageName() {
-    when(container.getDockerImageName()).thenReturn("mongo-test:test");
+    when(container.getDockerImageName()).thenReturn("container-test:test");
 
-    testManagerBuilder.setContainerImageName("mongo-test").setContainerImageTag("test").build();
+    testManagerBuilder.setContainerImageName("container-test").setContainerImageTag("test").build();
 
     assertThat(container.getDockerImageName())
         .isEqualTo(

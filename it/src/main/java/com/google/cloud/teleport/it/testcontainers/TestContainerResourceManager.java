@@ -57,6 +57,10 @@ public abstract class TestContainerResourceManager<T extends GenericContainer<?>
     }
   }
 
+  protected String getDockerImageName() {
+    return container.getDockerImageName();
+  }
+
   /**
    * Returns the host that the resource is running on. If a host was specified in the builder, then
    * this method will return that value. Otherwise, the host will default to localhost.

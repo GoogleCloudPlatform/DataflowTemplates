@@ -59,7 +59,7 @@ public final class BigQueryResourceManagerUtils {
    */
   static void checkValidTableId(String idToCheck) {
     if (idToCheck.length() < MIN_TABLE_ID_LENGTH) {
-      throw new IllegalArgumentException("Table ID " + idToCheck + " cannot be empty. ");
+      throw new IllegalArgumentException("Table ID cannot be empty. ");
     }
     if (idToCheck.length() > MAX_TABLE_ID_LENGTH) {
       throw new IllegalArgumentException(

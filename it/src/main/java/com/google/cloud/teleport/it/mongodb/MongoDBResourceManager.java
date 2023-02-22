@@ -46,6 +46,17 @@ public interface MongoDBResourceManager extends ResourceManager {
   boolean createCollection(String collectionName);
 
   /**
+   * Inserts the given Document into a collection.
+   *
+   * <p>A database will be created here, if one does not already exist.
+   *
+   * @param collectionName The name of the collection to insert the document into.
+   * @param document The document to insert into the collection.
+   * @return A boolean indicating whether the Document was inserted successfully.
+   */
+  boolean insertDocument(String collectionName, Document document);
+
+  /**
    * Inserts the given Documents into a collection.
    *
    * <p>Note: Implementations may do collection creation here, if one does not already exist.
