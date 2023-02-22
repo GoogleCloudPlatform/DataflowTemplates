@@ -156,7 +156,7 @@ public class WindowedFilenamePolicyTest {
     assertThat(filename).isNotNull();
     assertThat(filename.getCurrentDirectory().toString())
         .isEqualTo("gs://test-bucket-mm/2017/01/08/10:56/");
-    assertThat(filename.getCurrentDirectory().toString())
+    assertThat(filename_with_dd.getCurrentDirectory().toString())
         .isEqualTo("gs://test-bucket-dd/2017/01/08/10:56/");
     assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
