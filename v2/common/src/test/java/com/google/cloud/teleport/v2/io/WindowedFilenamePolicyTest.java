@@ -118,7 +118,8 @@ public class WindowedFilenamePolicyTest {
 
   /**
    * Tests that windowedFilename() produces the correct directory when the directory has dynamic
-   * date variables.
+   * date variables. Only "dd" and "mm" are tested as part of the GCS bucket name, as upper case
+   * letters cannot be part of GCS bucket names.
    */
   @Test
   public void testWithDynamicDirectory() throws IOException {
@@ -132,21 +133,32 @@ public class WindowedFilenamePolicyTest {
     when(window.start()).thenReturn(windowBegin);
     when(window.end()).thenReturn(windowEnd);
 
-    // Directory with "YYYY-MM-dd_HH_mm" specified
+    // Directory with "mm" specified
     WindowedFilenamePolicy policy =
         WindowedFilenamePolicy.writeWindowedFiles()
-            .withOutputDirectory("gs://test-bucket-YYYY-MM-dd_HH_mm/YYYY/MM/dd/HH:mm")
+            .withOutputDirectory("gs://test-bucket-mm/YYYY/MM/dd/HH:mm")
+            .withOutputFilenamePrefix("output")
+            .withShardTemplate("-SSS-of-NNN");
+ 
+    // Directory with "dd" specified
+    WindowedFilenamePolicy policyWithDay =
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory("gs://test-bucket-dd/YYYY/MM/dd/HH:mm")
             .withOutputFilenamePrefix("output")
             .withShardTemplate("-SSS-of-NNN");
 
     // Act
     ResourceId filename =
         policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
+    ResourceId filenameWithDay =
+        policyWithDay.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
     // Assert
     assertThat(filename).isNotNull();
     assertThat(filename.getCurrentDirectory().toString())
-        .isEqualTo("gs://test-bucket-YYYY-MM-dd_HH_mm/2017/01/08/10:56/");
+        .isEqualTo("gs://test-bucket-mm/2017/01/08/10:56/");
+    assertThat(filenameWithDay.getCurrentDirectory().toString())
+        .isEqualTo("gs://test-bucket-dd/2017/01/08/10:56/");
     assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
