@@ -3,7 +3,7 @@
     "jsonPayload":
     {
       "source": {
-        "urn": "kafka:read",
+        "urn": "beam:schematransform:org.apache.beam:kafka_read:v1",
         "configurationParameters": {
           "topic": "mytopic123_avro",
           "bootstrapServers": "123.123.123.123:12345",
@@ -30,7 +30,7 @@
     "jsonPayload":
     {
       "source": {
-        "urn": "kafka:read",
+        "urn": "beam:schematransform:org.apache.beam:kafka_read:v1",
         "configurationParameters": {
           "topic": "mytopic123_avro",
           "bootstrapServers": "123.123.123.123:12345",

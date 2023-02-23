@@ -143,7 +143,7 @@ public class KafkaToBigQueryLocalTest {
     }
     JsonNode rootConfiguration = JsonNodeFactory.instance.objectNode();
     JsonNode kafkaSourceNode = ((ObjectNode) rootConfiguration).putObject("source");
-    ((ObjectNode) kafkaSourceNode).put("urn", "kafka:read");
+    ((ObjectNode) kafkaSourceNode).put("urn", "beam:schematransform:org.apache.beam:kafka_read:v1");
     JsonNode kafkaConfigParams =
         ((ObjectNode) kafkaSourceNode).putObject("configurationParameters");
 
