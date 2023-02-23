@@ -139,7 +139,7 @@ public class WindowedFilenamePolicyTest {
             .withOutputDirectory("gs://test-bucket-mm/YYYY/MM/dd/HH:mm")
             .withOutputFilenamePrefix("output")
             .withShardTemplate("-SSS-of-NNN");
- 
+
     // Directory with "dd" specified
     WindowedFilenamePolicy policyWithDay =
         WindowedFilenamePolicy.writeWindowedFiles()
