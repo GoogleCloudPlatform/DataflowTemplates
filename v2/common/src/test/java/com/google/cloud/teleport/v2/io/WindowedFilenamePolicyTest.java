@@ -131,7 +131,7 @@ public class WindowedFilenamePolicyTest {
     when(window.maxTimestamp()).thenReturn(windowEnd);
     when(window.start()).thenReturn(windowBegin);
     when(window.end()).thenReturn(windowEnd);
-    
+
     // Directory with "YYYY-MM-dd_HH_mm" specified
     WindowedFilenamePolicy policy =
         WindowedFilenamePolicy.writeWindowedFiles()
