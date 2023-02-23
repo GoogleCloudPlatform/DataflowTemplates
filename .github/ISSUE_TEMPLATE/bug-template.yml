@@ -30,7 +30,9 @@ body:
       label: Beam Version
       description: What version of beam are you using?
       options:
-        - Newer than 2.43.0
+        - Newer than 2.45.0
+        - 2.45.0
+        - 2.44.0
         - 2.43.0
         - 2.42.0
         - 2.41.0
@@ -38,9 +40,7 @@ body:
         - 2.39.0
         - 2.38.0
         - 2.37.0
-        - 2.36.0
-        - 2.35.0
-        - Older than 2.35.0
+        - Older than 2.37.0
     validations:
       required: true
   - type: textarea
