@@ -129,7 +129,7 @@ public class KafkaToBigQueryIT {
               result.cancel();
             });
     assertTrue(
-        "Error message contains missing table name. ",
+        "Error message contains missing table name. " + e,
         e.getMessage().contains("NONEXISTENT_TABLE"));
   }
 

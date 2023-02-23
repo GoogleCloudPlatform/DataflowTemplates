@@ -149,9 +149,9 @@ public class KafkaToBigQueryLocalTest {
 
     ((ObjectNode) kafkaConfigParams).put("bootstrapServers", "");
     ((ObjectNode) kafkaConfigParams).put("topic", KAFKA_TOPIC);
-    ((ObjectNode) kafkaConfigParams).put("dataFormat", "AVRO");
+    ((ObjectNode) kafkaConfigParams).put("format", "AVRO");
     // TODO(pabloem): Test using Confluent Schema Registry
-    ((ObjectNode) kafkaConfigParams).put("avroSchema", AVRO_SCHEMA);
+    ((ObjectNode) kafkaConfigParams).put("schema", AVRO_SCHEMA);
     ((ObjectNode) kafkaConfigParams).put("autoOffsetResetConfig", "earliest");
     ((ObjectNode) kafkaConfigParams).putObject("consumerConfigUpdates");
     ((ObjectNode) kafkaConfigParams.get("consumerConfigUpdates"))
