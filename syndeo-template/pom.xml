@@ -193,12 +193,29 @@
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
+            <artifactId>beam-model-pipeline</artifactId>
+            <version>${beam.snapshot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-model-job-management</artifactId>
+            <version>${beam.snapshot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-model-pipeline</artifactId>
+            <version>${beam.snapshot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
+            <version>${beam.snapshot.version}</version>
         </dependency>
         <dependency>
             <!-- Direct runner included for local development and testing. -->
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-direct-java</artifactId>
+            <version>${beam.snapshot.version}</version>
         </dependency>
 
         <dependency>
