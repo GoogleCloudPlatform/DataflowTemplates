@@ -22,6 +22,7 @@ on:
       - 'main'
     paths:
       - 'syndeo-template/**.java'
+      - 'syndeo-template/**.xml'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
       - '.github/workflows/syndeo-pr.yml'

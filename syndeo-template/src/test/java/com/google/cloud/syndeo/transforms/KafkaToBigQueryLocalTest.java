@@ -143,15 +143,15 @@ public class KafkaToBigQueryLocalTest {
     }
     JsonNode rootConfiguration = JsonNodeFactory.instance.objectNode();
     JsonNode kafkaSourceNode = ((ObjectNode) rootConfiguration).putObject("source");
-    ((ObjectNode) kafkaSourceNode).put("urn", "kafka:read");
+    ((ObjectNode) kafkaSourceNode).put("urn", "beam:schematransform:org.apache.beam:kafka_read:v1");
     JsonNode kafkaConfigParams =
         ((ObjectNode) kafkaSourceNode).putObject("configurationParameters");
 
     ((ObjectNode) kafkaConfigParams).put("bootstrapServers", "");
     ((ObjectNode) kafkaConfigParams).put("topic", KAFKA_TOPIC);
-    ((ObjectNode) kafkaConfigParams).put("dataFormat", "AVRO");
+    ((ObjectNode) kafkaConfigParams).put("format", "AVRO");
     // TODO(pabloem): Test using Confluent Schema Registry
-    ((ObjectNode) kafkaConfigParams).put("avroSchema", AVRO_SCHEMA);
+    ((ObjectNode) kafkaConfigParams).put("schema", AVRO_SCHEMA);
     ((ObjectNode) kafkaConfigParams).put("autoOffsetResetConfig", "earliest");
     ((ObjectNode) kafkaConfigParams).putObject("consumerConfigUpdates");
     ((ObjectNode) kafkaConfigParams.get("consumerConfigUpdates"))

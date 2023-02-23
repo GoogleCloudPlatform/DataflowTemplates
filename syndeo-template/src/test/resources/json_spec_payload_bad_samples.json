@@ -3,12 +3,12 @@
     "jsonPayload":
     {
       "source": {
-        "urn": "kafka:read",
+        "urn": "beam:schematransform:org.apache.beam:kafka_read:v1",
         "configurationParameters": {
           "topic": "mytopic123_avro",
           "bootstrapServers": "123.123.123.123:12345",
-          "dataFormat": "AVRO",
-          "avroSchema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
+          "format": "AVRO",
+          "schema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
         }
       },
       "transform": {
@@ -30,12 +30,12 @@
     "jsonPayload":
     {
       "source": {
-        "urn": "kafka:read",
+        "urn": "beam:schematransform:org.apache.beam:kafka_read:v1",
         "configurationParameters": {
           "topic": "mytopic123_avro",
           "bootstrapServers": "123.123.123.123:12345",
-          "dataFormat": "AVRO",
-          "avroSchema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
+          "format": "AVRO",
+          "schema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
         }
       },
       "transform": {
