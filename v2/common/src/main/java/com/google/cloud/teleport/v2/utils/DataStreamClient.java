@@ -124,8 +124,6 @@ public class DataStreamClient implements Serializable {
       return getMysqlObjectSchema(streamName, schemaName, tableName, sourceConnProfile);
     } else if (sourceConnProfile.getOracleSourceConfig() != null) {
       return getOracleObjectSchema(streamName, schemaName, tableName, sourceConnProfile);
-    } else if (sourceConnProfile.getOracleSourceConfig() != null) {
-      return getOracleObjectSchema(streamName, schemaName, tableName, sourceConnProfile);
     } else if (sourceConnProfile.getPostgresqlSourceConfig() != null) {
       return getPostgresqlObjectSchema(streamName, schemaName, tableName, sourceConnProfile);
     } else {
