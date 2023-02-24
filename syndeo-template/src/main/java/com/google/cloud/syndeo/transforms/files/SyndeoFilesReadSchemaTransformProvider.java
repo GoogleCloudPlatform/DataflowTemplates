@@ -51,6 +51,7 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.joda.time.Duration;
 
@@ -92,21 +93,37 @@ public class SyndeoFilesReadSchemaTransformProvider
 
   @Override
   public SchemaTransform from(SyndeoFilesReadSchemaTransformConfiguration configuration) {
+    if (configuration.getPubsubSubscription() == null) {
+      throw new IllegalArgumentException(
+          "A pubsub subscription must be provided for notifications to be consumed. "
+              + "Automatically setting up notifications from a GCS prefix is not yet supported.");
+    }
+
+    if (configuration.getPerformBackfill() != null && configuration.getPerformBackfill()) {
+      throw new IllegalArgumentException("Backfills of files in GCS are not currently supported");
+      // TODO(pabloem): Enable the check below.
+      // if (configuration.getGcsPrefix() == null) {
+      //   throw new IllegalArgumentException("To perform a backfill, a GCS Prefix must be
+      // provided.");
+      // }
+    }
     return new SchemaTransform() {
       @Override
       public @UnknownKeyFor @NonNull @Initialized PTransform<
               @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple,
               @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple>
           buildTransform() {
+        PTransform<PCollection<FileIO.ReadableFile>, PCollectionTuple> deserializerTransform =
+            fileDeserializer(configuration.getFormat(), configuration.getSchema());
         return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
           @Override
           public PCollectionRowTuple expand(PCollectionRowTuple input) {
-            // TODO how do we handle the subscription and notifications creations and
-            //   how do we handle backfills.
             PCollectionTuple firstResult =
                 input
                     .getPipeline()
-                    .apply(PubsubIO.readStrings().fromSubscription(""))
+                    .apply(
+                        PubsubIO.readStrings()
+                            .fromSubscription(configuration.getPubsubSubscription()))
                     .apply(
                         ParDo.of(
                                 new DoFn<String, KV<String, Long>>() {
@@ -241,7 +258,16 @@ public class SyndeoFilesReadSchemaTransformProvider
   @DefaultSchema(AutoValueSchema.class)
   @AutoValue
   abstract static class SyndeoFilesReadSchemaTransformConfiguration {
-    public abstract String getGcsPrefix();
+    @SchemaFieldDescription(
+        "The GCS Prefix from which to consume file arrival notifications. "
+            + "If one is not provided, then a Pubsub Subscription must be provided.")
+    public abstract @Nullable String getGcsPrefix();
+
+    @SchemaFieldDescription(
+        "The PubSub subscription from which to consume file arrival notifications. "
+            + "If one is not provided, then a GCS prefix must be provided, and the notifications will be set up "
+            + "automatically.")
+    public abstract @Nullable String getPubsubSubscription();
 
     @SchemaFieldDescription(
         "The format of the files to load. Supported formats are: " + SUPPORTED_FORMATS_STR)
@@ -251,5 +277,11 @@ public class SyndeoFilesReadSchemaTransformProvider
         "The schema of the files to load."
             + " It may be an avro schema, or a json schema definition.")
     public abstract String getSchema();
+
+    @SchemaFieldDescription(
+        "If this option is set to true, ALL files within the GCS Prefix will be consumed initially "
+            + "as a backfill, and then processing of the new arriving files will continue via "
+            + "PubSub notifications. Default is false.")
+    public abstract @Nullable Boolean getPerformBackfill();
   }
 }
