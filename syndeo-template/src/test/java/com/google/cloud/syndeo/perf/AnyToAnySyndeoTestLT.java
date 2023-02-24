@@ -381,10 +381,10 @@ public class AnyToAnySyndeoTestLT {
   @Test
   public void testSelectedSinkAndSelectedSource() throws JsonProcessingException {
     String sourceUrn =
-        SOURCE_URN != null
-            ? SOURCE_URN
-            : new ArrayList<>(SOURCE_PROVIDERS.keySet())
-                .get(new Random().nextInt(SOURCE_PROVIDERS.size()));
+            SOURCE_URN != null
+                    ? SOURCE_URN
+                    : new ArrayList<>(SOURCE_PROVIDERS.keySet())
+                    .get(new Random().nextInt(SOURCE_PROVIDERS.size()));
     String sinkUrn =
         SINK_URN != null
             ? SINK_URN
