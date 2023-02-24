@@ -194,7 +194,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
             TestProperties.getProperty("numDocs", "100", TestProperties.Type.PROPERTY));
     int numFields =
         Integer.parseInt(
-            TestProperties.getProperty("numFields", "20", TestProperties.Type.PROPERTY));
+            TestProperties.getProperty("numFields", "200", TestProperties.Type.PROPERTY));
     int maxEntryLength =
         Integer.parseInt(
             TestProperties.getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY));
@@ -202,9 +202,15 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
     List<String> mongoDocumentKeys = new ArrayList<>();
     for (int j = 0; j < numFields; j++) {
-      mongoDocumentKeys.add(
-          RandomStringUtils.randomAlphabetic(2)
-              + RandomStringUtils.randomAlphanumeric(0, maxEntryLength - 2));
+
+      // Generate unique field name
+      String randomFieldName = null;
+      while (randomFieldName == null || mongoDocumentKeys.contains(randomFieldName.toLowerCase())) {
+        randomFieldName =
+            RandomStringUtils.randomAlphabetic(2)
+                + RandomStringUtils.randomAlphanumeric(0, maxEntryLength - 2);
+      }
+      mongoDocumentKeys.add(randomFieldName.toLowerCase());
     }
 
     for (int i = 0; i < numDocuments; i++) {
