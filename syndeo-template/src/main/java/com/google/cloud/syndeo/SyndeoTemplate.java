@@ -72,6 +72,13 @@ public class SyndeoTemplate {
     void setJsonSpecPayload(String jsonSpecPayload);
   }
 
+  public static final Map<String, Set<String>> SUPPORTED_SCALAR_TRANSFORM_URNS =
+      Map.of(
+          "syndeo:schematransform:com.google.cloud:sql_transform:v1",
+          Set.of(),
+          "syndeo:schematransform:com.google.cloud:sql_scalar_transform:v1",
+          Set.of());
+
   public static final Map<String, Set<String>> SUPPORTED_URNS =
       new HashMap<>(
           Map.of(
@@ -99,9 +106,8 @@ public class SyndeoTemplate {
             "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
             Set.of(),
             "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
-            Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
-            "syndeo:schematransform:com.google.cloud:sql_transform:v1",
-            Set.of()));
+            Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId")));
+    SUPPORTED_URNS.putAll(SUPPORTED_SCALAR_TRANSFORM_URNS);
   }
 
   public static void main(String[] args) throws Exception {
@@ -194,16 +200,15 @@ public class SyndeoTemplate {
     transforms.add(buildSyndeoStats(config.get("source").get("urn").asText()));
 
     if (config.has("transform")) {
-      if (!config
-          .get("transform")
-          .get("urn")
-          .asText()
-          .equals("syndeo:schematransform:com.google.cloud:sql_transform:v1")) {
+      if (!SUPPORTED_SCALAR_TRANSFORM_URNS.containsKey(
+          config.get("transform").get("urn").asText())) {
         throw new IllegalArgumentException(
             String.format(
-                "Intermediate transform with URN %s not supported. Only %s is supported.",
+                "Intermediate transform with URN %s not supported. Only %s are supported.",
                 config.get("transform").get("urn"),
-                "syndeo:schematransform:com.google.cloud:sql_transform:v1"));
+                SUPPORTED_SCALAR_TRANSFORM_URNS.keySet().stream()
+                    .sorted()
+                    .collect(Collectors.toList())));
       }
       // Adding the intermediate transform
       transforms.add(buildFromJsonConfig(config.get("transform")));
