@@ -34,6 +34,9 @@ public final class DiscoverConnectionProfileResponse
   /** Enriched Oracle RDBMS object. The value may be {@code null}. */
   @com.google.api.client.util.Key private OracleRdbms oracleRdbms;
 
+  /** Enriched PsotgreSQL RDBMS object. The value may be {@code null}. */
+  @com.google.api.client.util.Key private PostgresqlRdbms postgresqlRdbms;
+
   /**
    * Enriched MySQL RDBMS object.
    *
@@ -50,6 +53,25 @@ public final class DiscoverConnectionProfileResponse
    */
   public DiscoverConnectionProfileResponse setMysqlRdbms(MysqlRdbms mysqlRdbms) {
     this.mysqlRdbms = mysqlRdbms;
+    return this;
+  }
+
+  /**
+   * Enriched PostgreSQL RDBMS object.
+   *
+   * @return value or {@code null} for none
+   */
+  public PostgresqlRdbms getPostgresqlRdbms() {
+    return postgresqlRdbms;
+  }
+
+  /**
+   * Enriched PostgreSQL RDBMS object.
+   *
+   * @param postgresqlRdbms postgresqlRdbms or {@code null} for none
+   */
+  public DiscoverConnectionProfileResponse setPostgresqlRdbms(PostgresqlRdbms postgresqlRdbms) {
+    this.postgresqlRdbms = postgresqlRdbms;
     return this;
   }
 
