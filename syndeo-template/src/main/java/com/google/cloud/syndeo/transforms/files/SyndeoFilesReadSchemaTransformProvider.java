@@ -257,7 +257,7 @@ public class SyndeoFilesReadSchemaTransformProvider
 
   @DefaultSchema(AutoValueSchema.class)
   @AutoValue
-  abstract static class SyndeoFilesReadSchemaTransformConfiguration {
+  public abstract static class SyndeoFilesReadSchemaTransformConfiguration {
     @SchemaFieldDescription(
         "The GCS Prefix from which to consume file arrival notifications. "
             + "If one is not provided, then a Pubsub Subscription must be provided.")
@@ -283,5 +283,21 @@ public class SyndeoFilesReadSchemaTransformProvider
             + "as a backfill, and then processing of the new arriving files will continue via "
             + "PubSub notifications. Default is false.")
     public abstract @Nullable Boolean getPerformBackfill();
+
+    public static Builder builder() {
+      return new AutoValue_SyndeoFilesReadSchemaTransformProvider_SyndeoFilesReadSchemaTransformConfiguration.Builder();
+    }
+
+    @AutoValue.Builder
+    public static abstract class Builder {
+      public abstract Builder setGcsPrefix(String gcsPrefix);
+
+      public abstract Builder setPubsubSubscription(String pubsubSubscription);
+      public abstract Builder setFormat(String format);
+      public abstract Builder setSchema(String schema);
+      public abstract Builder setPerformBackfill(Boolean performBackfill);
+
+      public abstract SyndeoFilesReadSchemaTransformConfiguration build();
+    }
   }
 }
