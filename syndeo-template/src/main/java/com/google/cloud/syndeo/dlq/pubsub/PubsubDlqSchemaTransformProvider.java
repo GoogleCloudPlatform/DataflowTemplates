@@ -60,7 +60,7 @@ public class PubsubDlqSchemaTransformProvider
   @Override
   public @UnknownKeyFor @NonNull @Initialized List<@UnknownKeyFor @NonNull @Initialized String>
       inputCollectionNames() {
-    return Collections.singletonList("input");
+    return Collections.singletonList("errors");
   }
 
   @Override
