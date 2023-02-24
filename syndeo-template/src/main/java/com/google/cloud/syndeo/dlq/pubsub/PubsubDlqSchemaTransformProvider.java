@@ -98,7 +98,7 @@ public class PubsubDlqSchemaTransformProvider
     @Override
     public PCollectionRowTuple expand(PCollectionRowTuple input) {
       PCollection<PubsubMessage> messages =
-          input.get("input").apply(ParDo.of(new ConvertRowToMessage()));
+          input.get("errors").apply(ParDo.of(new ConvertRowToMessage()));
 
       PubsubIO.Write<PubsubMessage> write = PubsubIO.writeMessages().to(configuration.getTopic());
       if (pubsubClientFactory != null) {
