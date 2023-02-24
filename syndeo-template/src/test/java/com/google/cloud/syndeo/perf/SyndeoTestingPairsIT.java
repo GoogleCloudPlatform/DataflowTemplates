@@ -74,61 +74,45 @@ public class SyndeoTestingPairsIT {
                 SourceSinkUrns.create(
                     "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
                     "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                    true)
-                //                SourceSinkUrns.create(
-                //                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                //                    "beam:schematransform:org.apache.beam:spanner_write:v1",
-                //                    true)
-                //                                SourceSinkUrns.create(
-                //
-                // "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                //
-                // "beam:schematransform:org.apache.beam:kafka_write:v1",
-                //                                    true),
-                //                                SourceSinkUrns.create(
-                //
-                // "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                //
-                // "beam:schematransform:org.apache.beam:file_write:v1",
-                //                                    true),
-                //                                SourceSinkUrns.create(
-                //
-                // "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                //
-                // "beam:schematransform:org.apache.beam:pubsublite_write:v1",
-                //                                    true),
-                //                                SourceSinkUrns.create(
-                //
-                // "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                //
-                // "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
-                //                                    true)
-                //
-                //                // We test all sources against a BigQuery sink
-                //                                SourceSinkUrns.create(
-                //
-                //                 "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
-                //
-                //                 "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                //                                    false),
-                //                SourceSinkUrns.create(
-                //                    "beam:schematransform:org.apache.beam:kafka_read:v1",
-                //
-                // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                //                    true),
-                //                                SourceSinkUrns.create(
-                //
-                // "beam:schematransform:org.apache.beam:pubsublite_read:v1",
-                //
-                //                 "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                //                                        true),
-                //                                SourceSinkUrns.create(
-                //
-                // "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                //
-                //                 "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                //                                        true)
-                )));
+                    true),
+                SourceSinkUrns.create(
+                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                    "beam:schematransform:org.apache.beam:spanner_write:v1",
+                    true),
+                SourceSinkUrns.create(
+                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                    "beam:schematransform:org.apache.beam:kafka_write:v1",
+                    true),
+                SourceSinkUrns.create(
+                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                    "beam:schematransform:org.apache.beam:file_write:v1",
+                    true),
+                SourceSinkUrns.create(
+                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                    "beam:schematransform:org.apache.beam:pubsublite_write:v1",
+                    true),
+                SourceSinkUrns.create(
+                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                    "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
+                    true),
+
+                // We test all sources against a BigQuery sink
+                SourceSinkUrns.create(
+                    "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                    false),
+                SourceSinkUrns.create(
+                    "beam:schematransform:org.apache.beam:kafka_read:v1",
+                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                    false),
+                SourceSinkUrns.create(
+                    "beam:schematransform:org.apache.beam:pubsublite_read:v1",
+                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                    false),
+                SourceSinkUrns.create(
+                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                    false))));
   }
 
   private final SourceSinkUrns pairToTest;
