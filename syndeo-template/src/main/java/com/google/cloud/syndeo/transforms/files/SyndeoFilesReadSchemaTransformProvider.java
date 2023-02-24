@@ -125,38 +125,7 @@ public class SyndeoFilesReadSchemaTransformProvider
                         PubsubIO.readStrings()
                             .fromSubscription(configuration.getPubsubSubscription()))
                     .apply(
-                        ParDo.of(
-                                new DoFn<String, KV<String, Long>>() {
-                                  @ProcessElement
-                                  public void process(
-                                      @Element String fileNotification,
-                                      MultiOutputReceiver receiver) {
-                                    ObjectMapper om = new ObjectMapper();
-                                    try {
-                                      JsonNode notificationPayload = om.readTree(fileNotification);
-                                      String fileName =
-                                          "gs://"
-                                              + Path.of(
-                                                  notificationPayload.get("bucket").asText(),
-                                                  notificationPayload.get("name").asText());
-                                      receiver
-                                          .get(FILE_GENERATION_OUTPUT_TAG)
-                                          .output(
-                                              KV.of(
-                                                  fileName,
-                                                  notificationPayload
-                                                      .get("generation")
-                                                      .longValue()));
-                                    } catch (JsonProcessingException e) {
-                                      receiver
-                                          .get(ERROR_TAG)
-                                          .output(
-                                              Row.withSchema(ERROR_SCHEMA)
-                                                  .addValues(fileNotification, e.toString())
-                                                  .build());
-                                    }
-                                  }
-                                })
+                        ParDo.of(new ParseNotifications())
                             .withOutputTags(
                                 FILE_GENERATION_OUTPUT_TAG, TupleTagList.of(ERROR_TAG)));
 
@@ -171,10 +140,15 @@ public class SyndeoFilesReadSchemaTransformProvider
                     .apply(FileIO.readMatches())
                     .apply(fileDeserializer(configuration.getFormat(), configuration.getSchema()));
 
-            PCollection<Row> errors =
-                PCollectionList.of(firstResult.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA))
-                    .and(result.get(ERROR_TAG))
-                    .apply(Flatten.pCollections());
+            PCollection<Row> errors;
+            if (result.has(ERROR_TAG)) {
+              errors =
+                  PCollectionList.of(firstResult.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA))
+                      .and(result.get(ERROR_TAG))
+                      .apply(Flatten.pCollections());
+            } else {
+              errors = firstResult.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA);
+            }
             return PCollectionRowTuple.of(
                 "output", result.get(JSON_ROW_OUTPUT_TAG), "errors", errors);
           }
@@ -285,19 +259,50 @@ public class SyndeoFilesReadSchemaTransformProvider
     public abstract @Nullable Boolean getPerformBackfill();
 
     public static Builder builder() {
-      return new AutoValue_SyndeoFilesReadSchemaTransformProvider_SyndeoFilesReadSchemaTransformConfiguration.Builder();
+      return new AutoValue_SyndeoFilesReadSchemaTransformProvider_SyndeoFilesReadSchemaTransformConfiguration
+          .Builder();
     }
 
     @AutoValue.Builder
-    public static abstract class Builder {
+    public abstract static class Builder {
       public abstract Builder setGcsPrefix(String gcsPrefix);
 
       public abstract Builder setPubsubSubscription(String pubsubSubscription);
+
       public abstract Builder setFormat(String format);
+
       public abstract Builder setSchema(String schema);
+
       public abstract Builder setPerformBackfill(Boolean performBackfill);
 
       public abstract SyndeoFilesReadSchemaTransformConfiguration build();
+    }
+  }
+
+  static class ParseNotifications extends DoFn<String, KV<String, Long>> {
+    @DoFn.ProcessElement
+    public void process(@DoFn.Element String fileNotification, DoFn.MultiOutputReceiver receiver) {
+      ObjectMapper om = new ObjectMapper();
+      try {
+        JsonNode notificationPayload = om.readTree(fileNotification);
+        if (!(notificationPayload.has("bucket") && notificationPayload.has("name"))) {
+          throw new IllegalStateException(
+              "Json message does not have the proper format. Attributes \"bucket\" "
+                  + "and \"name\" are required.");
+        }
+        String fileName =
+            "gs://"
+                + Path.of(
+                    notificationPayload.get("bucket").asText(),
+                    notificationPayload.get("name").asText());
+        receiver
+            .get(FILE_GENERATION_OUTPUT_TAG)
+            .output(KV.of(fileName, notificationPayload.get("generation").longValue()));
+      } catch (JsonProcessingException | IllegalStateException e) {
+        receiver
+            .get(ERROR_TAG)
+            .output(Row.withSchema(ERROR_SCHEMA).addValues(fileNotification, e.toString()).build());
+      }
     }
   }
 }
