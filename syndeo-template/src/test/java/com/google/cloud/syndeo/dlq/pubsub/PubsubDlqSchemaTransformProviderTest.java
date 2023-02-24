@@ -94,7 +94,8 @@ public class PubsubDlqSchemaTransformProviderTest {
         PubsubTestClient.createFactoryForPublish(topicPath, outgoing, ImmutableList.of());
 
     PCollectionRowTuple.of(
-            "errors", pipeline.apply(Create.of(generateRow())).setRowSchema(LOCAL_TEST_INPUT_SCHEMA))
+            "errors",
+            pipeline.apply(Create.of(generateRow())).setRowSchema(LOCAL_TEST_INPUT_SCHEMA))
         .apply(
             transform(PubsubDlqWriteConfiguration.create(TOPIC))
                 .withPubsubClientFactory(pubsubFactory)
