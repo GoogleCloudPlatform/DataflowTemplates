@@ -52,13 +52,16 @@ public abstract class MergeInfo implements Serializable {
 
   public abstract List<String> getCustomColumns();
 
+  public abstract String getJobId();
+
   public static MergeInfo create(
       String projectId,
       List<String> allPkFields,
       List<String> orderByFields,
       String deleteField,
       TableId stagingTable,
-      TableId replicaTable) {
+      TableId replicaTable,
+      String jobId) {
     return create(
         projectId,
         allPkFields,
@@ -66,7 +69,8 @@ public abstract class MergeInfo implements Serializable {
         deleteField,
         stagingTable,
         replicaTable,
-        new ArrayList<>());
+        new ArrayList<>(),
+        jobId);
   }
 
   @SchemaCreate
@@ -77,7 +81,8 @@ public abstract class MergeInfo implements Serializable {
       String deleteField,
       TableId stagingTable,
       TableId replicaTable,
-      List<String> customColumns) {
+      List<String> customColumns,
+      String jobId) {
     return new AutoValue_MergeInfo(
         projectId,
         allPkFields,
@@ -85,7 +90,8 @@ public abstract class MergeInfo implements Serializable {
         deleteField,
         stagingTable,
         replicaTable,
-        customColumns);
+        customColumns,
+        jobId);
   }
 
   /** Returns the formatted String reference to the BigQuery replica table. */

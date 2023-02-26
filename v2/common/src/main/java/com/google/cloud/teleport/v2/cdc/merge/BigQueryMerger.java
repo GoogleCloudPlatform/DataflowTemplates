@@ -15,22 +15,16 @@
  */
 package com.google.cloud.teleport.v2.cdc.merge;
 
-import com.google.api.gax.paging.Page;
 import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQuery.JobListOption;
+import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.Job;
 import com.google.cloud.bigquery.JobId;
-import com.google.cloud.bigquery.JobStatus.State;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.UUID;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -174,7 +168,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
   /** Class {@link BigQueryStatementIssuingFn}. */
   public static class BigQueryStatementIssuingFn extends DoFn<MergeInfo, Void> {
 
-    public static final String JOB_ID_PREFIX = "bigstream_to_bq";
+    private static final int BIGQUERY_DUPLICATE_JOB_ERROR_CODE = 409;
     private final Counter mergesIssued = Metrics.counter(BigQueryMerger.class, "mergesIssued");
 
     private BigQuery bigQueryClient;
@@ -207,14 +201,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       MergeInfo mergeInfo = c.element();
       String statement = mergeInfo.buildMergeStatement(mergeConfiguration);
       try {
-        String tableReference =
-            MergeInfo.getTableReference(mergeInfo.getReplicaTable()).replace(".", "_");
-        if (isActiveJobRunningForTable(tableReference)) {
-          LOG.info(
-              "A running merge job was found for table {}, skipping execution", tableReference);
-          return;
-        }
-        TableResult queryResult = issueQueryToBQ(statement, tableReference);
+        TableResult queryResult = issueQueryToBQ(mergeInfo, statement);
         mergesIssued.inc();
         LOG.info("Merge job executed: {}", statement);
       } catch (Exception e) {
@@ -223,48 +210,28 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       }
     }
 
-    private boolean isActiveJobRunningForTable(String tableReference) {
-      Page<Job> jobs =
-          bigQueryClient.listJobs(
-              JobListOption.stateFilter(State.PENDING, State.RUNNING), JobListOption.pageSize(100));
-      if (jobs == null) {
-        LOG.info("Dataset does not contain any jobs.");
-        return false;
-      }
-      String tableJobPrefix = String.format("%s_%s", JOB_ID_PREFIX, tableReference);
-      for (Job job : jobs.iterateAll()) {
-        String jobId = job.getJobId().getJob();
-        if (jobId.startsWith(tableJobPrefix) && !job.isDone()) {
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    private TableResult issueQueryToBQ(String statement, String tableReference)
+    private TableResult issueQueryToBQ(MergeInfo mergeInfo, String statement)
         throws InterruptedException {
       QueryJobConfiguration jobConfiguration = QueryJobConfiguration.newBuilder(statement).build();
 
-      String jobId = makeJobId(JOB_ID_PREFIX, statement, tableReference);
+      JobId jobId = JobId.of(mergeInfo.getJobId());
+      LOG.info("Triggering job {} for statement |{}|", jobId.toString(), statement);
 
-      LOG.info("Triggering job {} for statement |{}|", jobId, statement);
-
-      TableResult result = bigQueryClient.query(jobConfiguration, JobId.of(jobId));
-      return result;
-    }
-
-    String makeJobId(String jobIdPrefix, String statement, String tableReference) {
-      DateTimeFormatter formatter =
-          DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ssz").withZone(ZoneId.of("UTC"));
-      String randomId = UUID.randomUUID().toString();
-      return String.format(
-          "%s_%s_%d_%s_%s",
-          jobIdPrefix,
-          tableReference,
-          Math.abs(statement.hashCode()),
-          formatter.format(Instant.now()),
-          randomId);
+      try {
+        return bigQueryClient.query(jobConfiguration, jobId);
+      } catch (BigQueryException e) {
+        // If we get a duplicate job error, it means that the worker is trying to issue an already
+        // existing job in BigQuery. We wait for the original job's execution to finish and return
+        // its results to avoid duplicates.
+        if (BIGQUERY_DUPLICATE_JOB_ERROR_CODE == e.getCode()) {
+          LOG.warn("BigQuery Duplicate Job: {}", e.toString());
+          Job job = bigQueryClient.getJob(jobId);
+          job.waitFor();
+          return job.getQueryResults();
+        } else {
+          throw e;
+        }
+      }
     }
   }
 }
