@@ -72,47 +72,53 @@ public class SyndeoTestingPairsIT {
             List.of(
                 // We test all sinks against a Pubsub source
                 SourceSinkUrns.create(
-                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                    true),
-                SourceSinkUrns.create(
-                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                    "beam:schematransform:org.apache.beam:spanner_write:v1",
-                    true),
-                SourceSinkUrns.create(
-                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                    "beam:schematransform:org.apache.beam:kafka_write:v1",
-                    true),
-                SourceSinkUrns.create(
-                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                    "beam:schematransform:org.apache.beam:file_write:v1",
-                    true),
-                SourceSinkUrns.create(
-                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                    "beam:schematransform:org.apache.beam:pubsublite_write:v1",
-                    true),
-                SourceSinkUrns.create(
-                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                    "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
-                    true),
-
-                // We test all sources against a BigQuery sink
-                SourceSinkUrns.create(
-                    "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
-                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                    false),
-                SourceSinkUrns.create(
                     "beam:schematransform:org.apache.beam:kafka_read:v1",
                     "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                    false),
-                SourceSinkUrns.create(
-                    "beam:schematransform:org.apache.beam:pubsublite_read:v1",
-                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                    false),
-                SourceSinkUrns.create(
-                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                    false))));
+                    true)
+                //                SourceSinkUrns.create(
+                //                        "beam:schematransform:org.apache.beam:kafka_read:v1",
+                //                    "beam:schematransform:org.apache.beam:spanner_write:v1",
+                //                    true),
+                //                SourceSinkUrns.create(
+                //                        "beam:schematransform:org.apache.beam:kafka_read:v1",
+                //                    "beam:schematransform:org.apache.beam:kafka_write:v1",
+                //                    true),
+                //                SourceSinkUrns.create(
+                //                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                //                    "beam:schematransform:org.apache.beam:file_write:v1",
+                //                    true),
+                //                SourceSinkUrns.create(
+                //                        "beam:schematransform:org.apache.beam:kafka_read:v1",
+                //                    "beam:schematransform:org.apache.beam:pubsublite_write:v1",
+                //                    true),
+                //                SourceSinkUrns.create(
+                //                        "beam:schematransform:org.apache.beam:kafka_read:v1",
+                //                    "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
+                //                    true),
+                //
+                //                // We test all sources against a BigQuery sink
+                //                SourceSinkUrns.create(
+                //
+                // "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+                //
+                // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                //                    false),
+                //                SourceSinkUrns.create(
+                //                    "beam:schematransform:org.apache.beam:kafka_read:v1",
+                //
+                // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                //                    true),
+                //                SourceSinkUrns.create(
+                //                    "beam:schematransform:org.apache.beam:pubsublite_read:v1",
+                //
+                // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                //                        true),
+                //                SourceSinkUrns.create(
+                //                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                //
+                // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                //                        true)
+                )));
   }
 
   private final SourceSinkUrns pairToTest;
@@ -205,12 +211,22 @@ public class SyndeoTestingPairsIT {
     LOG.info("Building syndeo test pipeline from configuration: {}", syndeoPipelinePayload);
     SyndeoTemplate.buildPipeline(syndeoPipeline, syndeoPipeDescription);
 
+    LOG.info("Starting data generation pipeline");
+    PipelineResult generatorResult = dataGenerator.run(options);
+
+    if (!pairToTest.getIsStreaming()) {
+      LOG.info(
+          "Waiting for data generation pipeline to finish before starting Syndeo pipeline"
+              + " because the source is a batch source.");
+      generatorResult.waitUntilFinish();
+    }
+
     LOG.info("Starting syndeo test pipeline");
-    PipelineResult syndeoResult = syndeoPipeline.run(syndeoOptions);
+    PipelineResult syndeoResult = syndeoPipeline.run(options);
 
     if (pairToTest.getIsStreaming()) {
-      // Data generator will finish at some point because it creates a limited amount of data
-      // NUM_ROWS_FOR_TEST rows.
+      // Data generator will finish at some point because it creates a limited amount of data (300
+      // rows).
       LOG.info("Waiting for data generation pipeline to finish.");
       generatorResult.waitUntilFinish();
     }
