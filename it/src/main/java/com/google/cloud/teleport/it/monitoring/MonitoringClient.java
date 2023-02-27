@@ -67,10 +67,64 @@ public final class MonitoringClient {
    * Lists time series that match a filter.
    *
    * @param request time series request to execute
-   * @return time series response
+   * @return list of Double values of time series
    */
-  public List<Double> listTimeSeries(ListTimeSeriesRequest request) {
-    return extractValuesFromTimeSeries(metricServiceClient.listTimeSeries(request));
+  public List<Double> listTimeSeriesAsDouble(ListTimeSeriesRequest request) {
+    return extractValuesFromTimeSeriesAsDouble(metricServiceClient.listTimeSeries(request));
+  }
+
+  /**
+   * Lists time series that match a filter.
+   *
+   * @param request time series request to execute
+   * @return list of Long values of time series
+   */
+  public List<Long> listTimeSeriesAsLong(ListTimeSeriesRequest request) {
+    return extractValuesFromTimeSeriesAsLong(metricServiceClient.listTimeSeries(request));
+  }
+
+  /**
+   * Gets the number of undelivered messages in a given Pub/Sub subscription.
+   *
+   * @param project the project that the job is running under
+   * @param subscriptionName name of the Pub/Sub subscription
+   * @return number of undelivered messages in the subscription
+   */
+  public Long getNumMessagesInSubscription(String project, String subscriptionName) {
+    LOG.info(
+        "Getting number of messages in subscription for {} under {}", subscriptionName, project);
+    String filter =
+        String.format(
+            "metric.type = \"pubsub.googleapis.com/subscription/num_undelivered_messages\" "
+                + "AND resource.labels.subscription_id = \"%s\"",
+            subscriptionName);
+    // only consider the time interval of last 60 seconds to get the most recent value
+    TimeInterval timeInterval =
+        TimeInterval.newBuilder()
+            .setStartTime(Timestamps.fromMillis(System.currentTimeMillis() - 60000))
+            .setEndTime(Timestamps.fromMillis(System.currentTimeMillis()))
+            .build();
+    Aggregation aggregation =
+        Aggregation.newBuilder()
+            .setAlignmentPeriod(Duration.newBuilder().setSeconds(60).build())
+            .setPerSeriesAligner(Aligner.ALIGN_MAX)
+            .build();
+    ListTimeSeriesRequest request =
+        ListTimeSeriesRequest.newBuilder()
+            .setName(ProjectName.of(project).toString())
+            .setFilter(filter)
+            .setInterval(timeInterval)
+            .setAggregation(aggregation)
+            .build();
+    List<Long> timeSeries = listTimeSeriesAsLong(request);
+    if (timeSeries.isEmpty()) {
+      LOG.warn(
+          "No monitoring data found. Unable to get number of messages in {}.", subscriptionName);
+      return null;
+    }
+    // get the last recorded value of number of messages in the subscription (there should be only 1
+    // value)
+    return timeSeries.get(0);
   }
 
   /**
@@ -105,7 +159,7 @@ public final class MonitoringClient {
             .setInterval(timeInterval)
             .setAggregation(aggregation)
             .build();
-    List<Double> timeSeries = listTimeSeries(request);
+    List<Double> timeSeries = listTimeSeriesAsDouble(request);
     if (timeSeries.isEmpty()) {
       LOG.warn("No monitoring data found. Unable to get CPU utilization information.");
       return null;
@@ -143,7 +197,7 @@ public final class MonitoringClient {
             .setInterval(timeInterval)
             .setAggregation(aggregation)
             .build();
-    List<Double> timeSeries = listTimeSeries(request);
+    List<Double> timeSeries = listTimeSeriesAsDouble(request);
     if (timeSeries.isEmpty()) {
       LOG.warn("No monitoring data found. Unable to get System Latency information.");
       return null;
@@ -181,7 +235,7 @@ public final class MonitoringClient {
             .setInterval(timeInterval)
             .setAggregation(aggregation)
             .build();
-    List<Double> timeSeries = listTimeSeries(request);
+    List<Double> timeSeries = listTimeSeriesAsDouble(request);
     if (timeSeries.isEmpty()) {
       LOG.warn("No monitoring data found. Unable to get Data freshness information.");
       return null;
@@ -201,7 +255,7 @@ public final class MonitoringClient {
   public List<Double> getThroughputOfPcollection(
       String project, LaunchInfo launchInfo, String pcollection) throws ParseException {
     if (pcollection == null) {
-      LOG.warn("Output PTransform name not provided. Unable to calculate max throughput.");
+      LOG.warn("Output PCollection name not provided. Unable to calculate throughput.");
       return null;
     }
     LOG.info("Getting throughput for {} under {}", launchInfo.jobId(), project);
@@ -224,7 +278,7 @@ public final class MonitoringClient {
             .setInterval(timeInterval)
             .setAggregation(aggregation)
             .build();
-    List<Double> timeSeries = listTimeSeries(request);
+    List<Double> timeSeries = listTimeSeriesAsDouble(request);
     if (timeSeries.isEmpty()) {
       LOG.warn("No monitoring data found. Unable to get throughput information.");
       return null;
@@ -244,7 +298,7 @@ public final class MonitoringClient {
   public List<Double> getThroughputOfPtransform(
       String project, LaunchInfo launchInfo, String ptransform) throws ParseException {
     if (ptransform == null) {
-      LOG.warn("Output PTransform name not provided. Unable to calculate max throughput.");
+      LOG.warn("Output PTransform name not provided. Unable to calculate throughput.");
       return null;
     }
     LOG.info("Getting throughput for {} under {}", launchInfo.jobId(), project);
@@ -267,7 +321,7 @@ public final class MonitoringClient {
             .setInterval(timeInterval)
             .setAggregation(aggregation)
             .build();
-    List<Double> timeSeries = listTimeSeries(request);
+    List<Double> timeSeries = listTimeSeriesAsDouble(request);
     if (timeSeries.isEmpty()) {
       LOG.warn("No monitoring data found. Unable to get throughput information.");
       return null;
@@ -303,7 +357,7 @@ public final class MonitoringClient {
             .setInterval(timeInterval)
             .setAggregation(aggregation)
             .build();
-    List<Double> timeSeries = listTimeSeries(request);
+    List<Double> timeSeries = listTimeSeriesAsDouble(request);
     if (timeSeries.isEmpty()) {
       LOG.warn("No monitoring data found. Unable to get elapsed time information.");
       return null;
@@ -346,9 +400,9 @@ public final class MonitoringClient {
             .setInterval(timeInterval)
             .setAggregation(aggregation)
             .build();
-    List<Double> timeSeries = listTimeSeries(request);
+    List<Double> timeSeries = listTimeSeriesAsDouble(request);
     if (timeSeries.isEmpty()) {
-      LOG.warn("No monitoring data found. Unable to elapsed time information.");
+      LOG.warn("No monitoring data found. Unable to get data processed information.");
       return null;
     }
     // getting max since this is a gauge metric
@@ -368,11 +422,21 @@ public final class MonitoringClient {
         .build();
   }
 
-  private List<Double> extractValuesFromTimeSeries(ListTimeSeriesPagedResponse response) {
+  private List<Double> extractValuesFromTimeSeriesAsDouble(ListTimeSeriesPagedResponse response) {
     List<Double> values = new ArrayList<>();
     for (TimeSeries ts : response.iterateAll()) {
       for (Point point : ts.getPointsList()) {
         values.add(point.getValue().getDoubleValue());
+      }
+    }
+    return values;
+  }
+
+  private List<Long> extractValuesFromTimeSeriesAsLong(ListTimeSeriesPagedResponse response) {
+    List<Long> values = new ArrayList<>();
+    for (TimeSeries ts : response.iterateAll()) {
+      for (Point point : ts.getPointsList()) {
+        values.add(point.getValue().getInt64Value());
       }
     }
     return values;

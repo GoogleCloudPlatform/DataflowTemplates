@@ -187,8 +187,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
     assertThatResult(result).isLaunchFinished();
-    assertThat(bigQueryResourceManager.getRowCount(PROJECT, table.getDataset(), table.getTable()))
-        .isGreaterThan(0);
+    assertThat(bigQueryResourceManager.getRowCount(table.getTable())).isGreaterThan(0);
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, FAKE_DATA_PCOLLECTION));

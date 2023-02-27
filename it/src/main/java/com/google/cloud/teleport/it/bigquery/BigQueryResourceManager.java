@@ -161,5 +161,5 @@ public interface BigQueryResourceManager extends ResourceManager {
 
   TableResult runQuery(String query);
 
-  Long getRowCount(String project, String dataset, String table);
+  Long getRowCount(String table);
 }

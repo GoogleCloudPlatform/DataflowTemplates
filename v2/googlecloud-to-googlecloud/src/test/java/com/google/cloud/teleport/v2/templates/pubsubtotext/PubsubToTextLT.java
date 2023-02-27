@@ -105,6 +105,17 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   }
 
   @Test
+  public void testBacklog10gbUsingRunnerV2()
+      throws IOException, ParseException, InterruptedException {
+    testBacklog10gb(config -> config.addParameter("experiments", "use_runner_v2"));
+  }
+
+  @Test
+  public void testBacklog10gbUsingPrime() throws IOException, ParseException, InterruptedException {
+    testBacklog10gb(config -> config.addParameter("experiments", "enable_prime"));
+  }
+
+  @Test
   public void testSteadyState1hr() throws IOException, InterruptedException, ParseException {
     testSteadyState1hr(Function.identity());
   }
@@ -113,6 +124,18 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   public void testSteadyState1hrUsingStreamingEngine()
       throws IOException, InterruptedException, ParseException {
     testSteadyState1hr(config -> config.addEnvironment("enableStreamingEngine", true));
+  }
+
+  @Test
+  public void testSteadyState1hrUsingRunnerV2()
+      throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(config -> config.addParameter("experiments", "use_runner_v2"));
+  }
+
+  @Test
+  public void testSteadyState1hrUsingPrime()
+      throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(config -> config.addParameter("experiments", "enable_prime"));
   }
 
   public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
@@ -190,11 +213,14 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
     // Act
     LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
-    dataGenerator.execute(Duration.ofMinutes(60));
-    Result result = pipelineOperator.drainJobAndFinish(createConfig(info, Duration.ofMinutes(20)));
-
+    // ElementCount metric in dataflow is approximate, allow for 1% difference
+    long expectedMessages = (long) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
+    Result result =
+        pipelineOperator.waitForConditionAndFinish(
+            createConfig(info, Duration.ofMinutes(20)),
+            () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, expectedMessages));
     // Assert
-    assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
+    assertThatResult(result).meetsConditions();
     assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
 
     // export results

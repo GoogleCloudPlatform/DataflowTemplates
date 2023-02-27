@@ -17,7 +17,6 @@ package com.google.cloud.teleport.it.conditions;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import javax.annotation.Nullable;
 
@@ -46,8 +45,7 @@ public abstract class BigQueryRowsCheck extends ConditionCheck {
 
   @Override
   CheckResult check() {
-    TableResult tableResult = resourceManager().readTable(tableId());
-    long totalRows = tableResult.getTotalRows();
+    long totalRows = resourceManager().getRowCount(tableId().getTable());
     if (totalRows < minRows()) {
       return new CheckResult(
           false, String.format("Expected %d but has only %d", minRows(), totalRows));

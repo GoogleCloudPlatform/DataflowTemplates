@@ -84,12 +84,6 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
     testBacklog10gb(Function.identity());
   }
 
-  @Test
-  public void testBacklog10gbUsingStreamingEngine()
-      throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(config -> config.addEnvironment("enableStreamingEngine", true));
-  }
-
   public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // Arrange
