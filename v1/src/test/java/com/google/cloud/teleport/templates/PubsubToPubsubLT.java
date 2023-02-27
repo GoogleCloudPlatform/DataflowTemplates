@@ -17,7 +17,6 @@ package com.google.cloud.teleport.templates;
 
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
-import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.DataGenerator;
 import com.google.cloud.teleport.it.TemplateLoadTestBase;
@@ -41,11 +40,15 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Performance tests for {@link PubsubToPubsub PubSub to PubSub} template. */
 @TemplateLoadTest(PubsubToPubsub.class)
 @RunWith(JUnit4.class)
 public class PubsubToPubsubLT extends TemplateLoadTestBase {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PubsubToPubsubLT.class);
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/Cloud_PubSub_to_Cloud_PubSub");
@@ -96,9 +99,9 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
     TopicName backlogTopic = pubsubResourceManager.createTopic("backlog-input");
     SubscriptionName backlogSubscription =
         pubsubResourceManager.createSubscription(backlogTopic, "backlog-subscription");
-    SubscriptionName outputSubscription =
-        pubsubResourceManager.createSubscription(backlogTopic, "output-subscription");
     TopicName outputTopic = pubsubResourceManager.createTopic("output");
+    SubscriptionName outputSubscription =
+        pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
     // Generate fake data to topic
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
@@ -124,13 +127,19 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
     Result result =
         pipelineOperator.waitForConditionAndFinish(
             createConfig(info, Duration.ofMinutes(60)),
-            () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, NUM_MESSAGES));
+            () -> {
+              Long currentMessages =
+                  monitoringClient.getNumMessagesInSubscription(
+                      PROJECT, outputSubscription.getSubscription());
+              LOG.info(
+                  "Found {} messages in output subscription, expected {} messages.",
+                  currentMessages,
+                  NUM_MESSAGES);
+              return currentMessages >= NUM_MESSAGES;
+            });
 
     // Assert
     assertThatResult(result).meetsConditions();
-    // check to see if messages reached the output topic
-    assertThat(pubsubResourceManager.pull(outputSubscription, 5).getReceivedMessagesCount())
-        .isGreaterThan(0);
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
@@ -164,13 +173,24 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
     // Act
     LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
-    dataGenerator.execute(Duration.ofMinutes(60));
-    Result result = pipelineOperator.drainJobAndFinish(createConfig(info, Duration.ofMinutes(20)));
+    // ElementCount metric in dataflow is approximate, allow for 1% difference
+    Integer expectedMessages = (int) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
+    Result result =
+        pipelineOperator.waitForConditionAndFinish(
+            createConfig(info, Duration.ofMinutes(60)),
+            () -> {
+              Long currentMessages =
+                  monitoringClient.getNumMessagesInSubscription(
+                      PROJECT, outputSubscription.getSubscription());
+              LOG.info(
+                  "Found {} messages in output subscription, expected {} messages.",
+                  currentMessages,
+                  expectedMessages);
+              return currentMessages >= expectedMessages;
+            });
+
     // Assert
-    assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
-    // check to see if messages reached the output topic
-    assertThat(pubsubResourceManager.pull(outputSubscription, 5).getReceivedMessagesCount())
-        .isGreaterThan(0);
+    assertThatResult(result).meetsConditions();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));

@@ -194,8 +194,6 @@ public class KafkaToBigQueryIT {
       while (true) {
         Long rowsInTable =
             bigQueryResourceManager.getRowCount(
-                PROJECT,
-                BIGQUERY_DATASET,
                 BIGQUERY_TABLE.substring(BIGQUERY_TABLE.lastIndexOf(".") + 1));
         if (rowsInTable == ELEMENTS_PER_SECOND * PIPELINE_DURATION_SECONDS) {
           // Test passes yay!

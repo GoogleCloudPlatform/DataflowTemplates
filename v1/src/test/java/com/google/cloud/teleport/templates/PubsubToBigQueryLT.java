@@ -18,7 +18,6 @@ package com.google.cloud.teleport.templates;
 import static com.google.cloud.teleport.it.bigquery.BigQueryResourceManagerUtils.toTableSpec;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
-import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
@@ -30,6 +29,7 @@ import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -58,7 +58,7 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
           TestProperties.specPath(),
           "gs://dataflow-templates/latest/PubSub_Subscription_to_BigQuery");
   // 35,000,000 messages of the given schema make up approximately 10GB
-  private static final long NUM_MESSAGES = 35000000L;
+  private static final int NUM_MESSAGES = 35_000_000;
   // schema should match schema supplied to generate fake records.
   private static final Schema SCHEMA =
       Schema.of(
@@ -149,9 +149,9 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
     Result result =
         pipelineOperator.waitForConditionAndFinish(
             createConfig(info, Duration.ofMinutes(40)),
-            () ->
-                bigQueryResourceManager.getRowCount(PROJECT, table.getDataset(), table.getTable())
-                    >= NUM_MESSAGES);
+            BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+                .setMinRows(NUM_MESSAGES)
+                .build());
 
     // Assert
     assertThatResult(result).meetsConditions();
@@ -188,13 +188,16 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
     // Act
     LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
-    dataGenerator.execute(Duration.ofMinutes(60));
-    // Validate that the template executed as expected
-    Result result = pipelineOperator.drainJobAndFinish(createConfig(info, Duration.ofMinutes(20)));
+    // ElementCount metric in dataflow is approximate, allow for 1% difference
+    Integer expectedMessages = (int) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
+    Result result =
+        pipelineOperator.waitForConditionAndFinish(
+            createConfig(info, Duration.ofMinutes(20)),
+            BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+                .setMinRows(expectedMessages)
+                .build());
     // Assert
-    assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
-    assertThat(bigQueryResourceManager.getRowCount(PROJECT, table.getDataset(), table.getTable()))
-        .isGreaterThan(0);
+    assertThatResult(result).meetsConditions();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));

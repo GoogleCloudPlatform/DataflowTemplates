@@ -145,7 +145,7 @@ public abstract class LoadTestBase {
       bigQueryResourceManager.write(
           TestProperties.exportTable(), RowToInsert.of("rowId", rowContent));
     } catch (IllegalStateException e) {
-      LOG.warn("Unable to export results to datastore. ", e);
+      LOG.error("Unable to export results to datastore. ", e);
     }
   }
 
@@ -153,14 +153,14 @@ public abstract class LoadTestBase {
    * Checks if the input PCollection has the expected number of messages.
    *
    * @param jobId JobId of the job
-   * @param pcollectionName the input pcollection name
+   * @param pcollection the input pcollection name
    * @param expectedElements expected number of messages
    * @return whether the input pcollection has the expected number of messages.
    */
-  public boolean waitForNumMessages(String jobId, String pcollectionName, Long expectedElements) {
+  public boolean waitForNumMessages(String jobId, String pcollection, Long expectedElements) {
     try {
       // the element count metric always follows the pattern <pcollection name>-ElementCount
-      String metricName = pcollectionName.replace(".", "-") + "-ElementCount";
+      String metricName = pcollection.replace(".", "-") + "-ElementCount";
       Double metric = pipelineLauncher.getMetric(PROJECT, REGION, jobId, metricName);
       if ((metric != null) && (metric >= (double) expectedElements)) {
         return true;
@@ -192,7 +192,7 @@ public abstract class LoadTestBase {
       throws ParseException, InterruptedException, IOException {
     // Metrics take up to 3 minutes to show up
     // TODO(pranavbhandari): We should use a library like http://awaitility.org/ to poll for metrics
-    // instead of hardcoding X minutes.
+    // instead of hard coding X minutes.
     LOG.info("Sleeping for 4 minutes to query metrics.");
     Thread.sleep(Duration.ofMinutes(4).toMillis());
     Map<String, Double> metrics = pipelineLauncher.getMetrics(PROJECT, REGION, launchInfo.jobId());
@@ -219,18 +219,8 @@ public abstract class LoadTestBase {
       metrics.put("EstimatedDataProcessedGB", dataProcessed / 1e9d);
     }
     metrics.putAll(getCpuUtilizationMetrics(launchInfo));
-    if (inputPcollection != null) {
-      Map<String, Double> inputThroughput =
-          getThroughputMetricsOfPcollection(launchInfo, inputPcollection);
-      metrics.put("AvgInputThroughput", inputThroughput.get("AvgThroughput"));
-      metrics.put("MaxInputThroughput", inputThroughput.get("MaxThroughput"));
-    }
-    if (outputPcollection != null) {
-      Map<String, Double> outputThroughput =
-          getThroughputMetricsOfPcollection(launchInfo, outputPcollection);
-      metrics.put("AvgOutputThroughput", outputThroughput.get("AvgThroughput"));
-      metrics.put("MaxOutputThroughput", outputThroughput.get("MaxThroughput"));
-    }
+    metrics.putAll(
+        getThroughputMetricsOfPcollection(launchInfo, inputPcollection, outputPcollection));
     return metrics;
   }
 
@@ -287,30 +277,38 @@ public abstract class LoadTestBase {
    * Computes throughput metrics of the given ptransform in dataflow job.
    *
    * @param launchInfo Job info of the job
-   * @param ptransform ptransform of the dataflow job to query additional metrics
+   * @param inputPtransform input ptransform of the dataflow job to query additional metrics
+   * @param outputPtransform output ptransform of the dataflow job to query additional metrics
    * @return throughput metrics of the ptransform
    * @throws ParseException if timestamp is inaccurate
    */
   protected Map<String, Double> getThroughputMetricsOfPtransform(
-      LaunchInfo launchInfo, String ptransform) throws ParseException {
-    List<Double> throughput =
-        monitoringClient.getThroughputOfPtransform(PROJECT, launchInfo, ptransform);
-    return getThroughputMetrics(throughput);
+      LaunchInfo launchInfo, @Nullable String inputPtransform, @Nullable String outputPtransform)
+      throws ParseException {
+    List<Double> inputThroughput =
+        monitoringClient.getThroughputOfPtransform(PROJECT, launchInfo, inputPtransform);
+    List<Double> outputThroughput =
+        monitoringClient.getThroughputOfPtransform(PROJECT, launchInfo, outputPtransform);
+    return getThroughputMetrics(inputThroughput, outputThroughput);
   }
 
   /**
    * Computes throughput metrics of the given pcollection in dataflow job.
    *
    * @param launchInfo Job info of the job
-   * @param pcollection pcollection of the dataflow job to query additional metrics
+   * @param inputPcollection input pcollection of the dataflow job to query additional metrics
+   * @param outputPcollection output pcollection of the dataflow job to query additional metrics
    * @return throughput metrics of the pcollection
    * @throws ParseException if timestamp is inaccurate
    */
   protected Map<String, Double> getThroughputMetricsOfPcollection(
-      LaunchInfo launchInfo, String pcollection) throws ParseException {
-    List<Double> throughput =
-        monitoringClient.getThroughputOfPcollection(PROJECT, launchInfo, pcollection);
-    return getThroughputMetrics(throughput);
+      LaunchInfo launchInfo, @Nullable String inputPcollection, @Nullable String outputPcollection)
+      throws ParseException {
+    List<Double> inputThroughput =
+        monitoringClient.getThroughputOfPcollection(PROJECT, launchInfo, inputPcollection);
+    List<Double> outputThroughput =
+        monitoringClient.getThroughputOfPcollection(PROJECT, launchInfo, outputPcollection);
+    return getThroughputMetrics(inputThroughput, outputThroughput);
   }
 
   /**
@@ -351,13 +349,17 @@ public abstract class LoadTestBase {
     return systemLatencyMetrics;
   }
 
-  private Map<String, Double> getThroughputMetrics(List<Double> throughput) {
+  private Map<String, Double> getThroughputMetrics(
+      List<Double> inputThroughput, List<Double> outputThroughput) {
     Map<String, Double> throughputMetrics = new HashMap<>();
-    if (throughput == null) {
-      return throughputMetrics;
+    if (inputThroughput != null) {
+      throughputMetrics.put("AvgInputThroughput", calculateAverage(inputThroughput));
+      throughputMetrics.put("MaxInputThroughput", Collections.max(inputThroughput));
     }
-    throughputMetrics.put("AvgThroughput", calculateAverage(throughput));
-    throughputMetrics.put("MaxThroughput", Collections.max(throughput));
+    if (outputThroughput != null) {
+      throughputMetrics.put("AvgOutputThroughput", calculateAverage(outputThroughput));
+      throughputMetrics.put("MaxOutputThroughput", Collections.max(outputThroughput));
+    }
     return throughputMetrics;
   }
 

@@ -129,16 +129,16 @@ public final class PipelineOperator {
    */
   public Result waitForConditionsAndFinish(Config config, Supplier<Boolean>... conditionChecks)
       throws IOException {
-    return waiForConditionAndExecute(config, conditionChecks, this::drainJobAndFinish);
+    return waitForConditionAndExecute(config, conditionChecks, this::drainJobAndFinish);
   }
 
   /** Similar to {@link #waitForConditionAndFinish} but cancels the job instead of draining. */
   public Result waitForConditionAndCancel(Config config, Supplier<Boolean>... conditionCheck)
       throws IOException {
-    return waiForConditionAndExecute(config, conditionCheck, this::cancelJobAndFinish);
+    return waitForConditionAndExecute(config, conditionCheck, this::cancelJobAndFinish);
   }
 
-  private Result waiForConditionAndExecute(
+  private Result waitForConditionAndExecute(
       Config config,
       Supplier<Boolean>[] conditionCheck,
       ThrowingConsumer<IOException, Config> executable)
@@ -196,7 +196,7 @@ public final class PipelineOperator {
           return Result.CONDITION_MET;
         }
       } catch (Exception e) {
-        LOG.warn("Error happened when checking for condition: {}", e.getMessage());
+        LOG.warn("Error happened when checking for condition: {}", e);
       }
 
       LOG.info("Condition was not met yet. Checking if job is finished.");
@@ -205,7 +205,7 @@ public final class PipelineOperator {
         return Result.LAUNCH_FINISHED;
       }
       LOG.info(
-          "Job not finished and conditions not met. Will check again in {} seconds (total wait: {}s of max{}s)",
+          "Job not finished and conditions not met. Will check again in {} seconds (total wait: {}s of max {}s)",
           config.checkAfter().getSeconds(),
           Duration.between(start, Instant.now()).getSeconds(),
           config.timeoutAfter().getSeconds());

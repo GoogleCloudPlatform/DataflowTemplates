@@ -20,12 +20,9 @@ import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Base class for Templates Load Tests. */
 public class TemplateLoadTestBase extends LoadTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(TemplateLoadTestBase.class);
 
   PipelineLauncher launcher() {
     // If there is a TemplateLoadTest annotation, return appropriate dataflow template client
