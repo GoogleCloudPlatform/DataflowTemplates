@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.google.cloud.teleport.it.common.ResourceManager;
 import java.sql.ResultSet;
 import java.util.List;
@@ -103,7 +105,7 @@ public interface JDBCResourceManager extends ResourceManager {
    * @param tableName The name of the table to read rows from.
    * @return a map containing the table rows.
    */
-  Map<Integer, List<String>> readTable(String tableName);
+  Map<Object, List<String>> readTable(String tableName);
 
   /**
    * Returns the schema of the given table as a list of strings.
@@ -114,12 +116,19 @@ public interface JDBCResourceManager extends ResourceManager {
   List<String> getTableSchema(String tableName);
 
   /**
-   * Run the given SQL statement.
+   * Run the given SQL query.
    *
-   * @param sql The SQL statement to run.
+   * @param sql The SQL query to run.
    * @return A ResultSet containing the result of the execution.
    */
-  ResultSet runSQLStatement(String sql);
+  ResultSet runSQLQuery(String sql);
+
+  /**
+   * Run the given SQL DML statement (INSERT, UPDATE and DELETE).
+   *
+   * @param sql The SQL DML statement to run.
+   */
+  void runSQLUpdate(String sql);
 
   /** Object for managing JDBC table schemas in {@link JDBCResourceManager} instances. */
   class JDBCSchema {
@@ -128,22 +137,6 @@ public interface JDBCResourceManager extends ResourceManager {
 
     private final Map<String, String> columns;
     private final String idColumn;
-
-    /**
-     * Creates a JDBCSchema object using the map given and adds a unique ID column using the default
-     * name "id".
-     *
-     * <p>The columns map should map column name to SQL type. For example, {{"example" ->
-     * "VARCHAR(200)} {"example2" -> "INTEGER"} {"example3" -> "BOOLEAN"}}
-     *
-     * <p>Note: The ID column should not be included as an entry in the map passed to this
-     * constructor.
-     *
-     * @param columns a map containing the schema columns.
-     */
-    public JDBCSchema(Map<String, String> columns) {
-      this(columns, DEFAULT_ID_COLUMN);
-    }
 
     /**
      * Creates a JDBCSchema object using the map given and assigns the unique id column to the given
@@ -156,6 +149,9 @@ public interface JDBCResourceManager extends ResourceManager {
      * @param idColumn the unique id column.
      */
     public JDBCSchema(Map<String, String> columns, String idColumn) {
+      checkArgument(
+          columns.get(idColumn) != null,
+          String.format("%s must be one of the columns passed in the columns map.", idColumn));
       this.columns = columns;
       this.idColumn = idColumn;
     }
@@ -175,7 +171,7 @@ public interface JDBCResourceManager extends ResourceManager {
      * @return this schema object as a SQL statement.
      */
     public String toSqlStatement() {
-      StringBuilder sql = new StringBuilder(idColumn + " INTEGER not NULL");
+      StringBuilder sql = new StringBuilder(idColumn + " " + columns.get(idColumn) + " not NULL");
       for (String colKey : columns.keySet()) {
         if (colKey.equals(idColumn)) {
           continue;

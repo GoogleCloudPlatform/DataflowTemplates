@@ -43,8 +43,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Integration test for {@link TextIOToBigQuery} (GCS_Text_to_BigQuery_Flex).
@@ -55,8 +53,6 @@ import org.slf4j.LoggerFactory;
 @TemplateIntegrationTest(TextIOToBigQuery.class)
 @RunWith(JUnit4.class)
 public final class TextIOToBigQueryIT extends TemplateTestBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(TextIOToBigQueryIT.class);
 
   private static final String SCHEMA_PATH = "TextIOToBigQueryTest/schema.json";
   private static final String INPUT_PATH = "TextIOToBigQueryTest/input.txt";

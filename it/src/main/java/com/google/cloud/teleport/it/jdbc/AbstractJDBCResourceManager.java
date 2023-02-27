@@ -232,10 +232,10 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
   }
 
   @Override
-  public Map<Integer, List<String>> readTable(String tableName) {
+  public Map<Object, List<String>> readTable(String tableName) {
     LOG.info("Reading all rows from {}.{}", databaseName, tableName);
 
-    Map<Integer, List<String>> resultMap = new HashMap<>();
+    Map<Object, List<String>> resultMap = new HashMap<>();
 
     StringBuilder sql = new StringBuilder();
     try (Connection con = driver.getConnection(getUri(), username, password)) {
@@ -245,7 +245,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
       ResultSet result = stmt.executeQuery(sql.toString());
 
       while (result.next()) {
-        int id = result.getInt(tableIds.get(tableName));
+        Object id = result.getObject(tableIds.get(tableName));
         List<String> rowToInsert = new ArrayList<>();
         ResultSetMetaData metadata = result.getMetaData();
         // Columns list in table metadata is 1-indexed
@@ -299,10 +299,20 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
   }
 
   @Override
-  public synchronized ResultSet runSQLStatement(String sql) {
+  public synchronized ResultSet runSQLQuery(String sql) {
     try (Connection con = driver.getConnection(getUri(), username, password)) {
       Statement stmt = con.createStatement();
       return stmt.executeQuery(sql);
+    } catch (Exception e) {
+      throw new JDBCResourceManagerException("Failed to execute SQL statement: " + sql, e);
+    }
+  }
+
+  @Override
+  public synchronized void runSQLUpdate(String sql) {
+    try (Connection con = driver.getConnection(getUri(), username, password)) {
+      Statement stmt = con.createStatement();
+      stmt.executeUpdate(sql);
     } catch (Exception e) {
       throw new JDBCResourceManagerException("Failed to execute SQL statement: " + sql, e);
     }

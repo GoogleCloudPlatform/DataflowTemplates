@@ -1,0 +1,38 @@
+name: Load Tests for Dataflow Templates
+
+on:
+  schedule:
+    # at 00:00 every Monday.
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+    inputs:
+      testPattern:
+        description: 'Tests to run'
+        type: string
+        required: false
+        # run all load tests by default
+        default: '*LT'
+
+permissions: read-all
+
+jobs:
+  performance_tests:
+    name: Dataflow Templates performance tests
+    timeout-minutes: 600
+    runs-on: self-hosted
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Build with Maven
+      run: mvn install -f pom.xml -pl metadata,plaintext-logging,it,structured-logging -DskipTests -Djib.skip=true
+    - name: Run integration tests with Maven
+      run: mvn test -Dtest=${TEST_PATTERN} -f pom.xml -pl '!syndeo-template' -Dproject=cloud-teleport-testing -DartifactBucket=gs://cloud-teleport-testing-df-staging/${{ github.job }}/artifacts -DexportDataset=performance_tests -DexportTable=template_performance_metrics -DforkCount=8 -Djib.skip=true -DskipUnitTests -DfailIfNoTests=false -DtrimStackTrace=false -fae
+      env:
+        TEST_PATTERN: ${{ inputs.testPattern }}
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env
+
+

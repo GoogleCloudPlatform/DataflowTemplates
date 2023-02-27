@@ -74,10 +74,11 @@ public class AbstractJDBCResourceManagerIT {
   private <T extends AbstractJDBCResourceManager<?>> void simpleTest(T rm) {
     try {
       HashMap<String, String> columns = new HashMap<>();
+      columns.put("id", "INTEGER");
       columns.put("first", "VARCHAR(32)");
       columns.put("last", "VARCHAR(32)");
       columns.put("age", "VARCHAR(32)");
-      JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns);
+      JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
       rm.createTable(TABLE_NAME, schema);
 
       Map<Integer, List<Object>> rows = new HashMap<>();
@@ -86,7 +87,7 @@ public class AbstractJDBCResourceManagerIT {
       rows.put(2, List.of('A', 'B', 1));
       rm.write(TABLE_NAME, rows, ImmutableList.of());
 
-      Map<Integer, List<String>> fetchRows = rm.readTable(TABLE_NAME);
+      Map<Object, List<String>> fetchRows = rm.readTable(TABLE_NAME);
       List<String> validateSchema = new ArrayList<>(columns.keySet());
       validateSchema.add(schema.getIdColumn());
 

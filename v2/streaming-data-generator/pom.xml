@@ -32,7 +32,8 @@
   <properties>
     <json-data-generator.version>1.10</json-data-generator.version>
     <snakeyaml.version>1.33</snakeyaml.version>
-   </properties>
+    <mssql.version>12.2.0.jre11</mssql.version>
+  </properties>
 
   <dependencies>
 
@@ -54,6 +55,12 @@
          <artifactId>snakeyaml</artifactId>
        </exclusion>
       </exclusions>
+    </dependency>
+    <!-- Jdbc dependencies -->
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>${mssql.version}</version>
     </dependency>
 
     <!-- json-data-generator dependency javafaker depends on snakeyaml  -->

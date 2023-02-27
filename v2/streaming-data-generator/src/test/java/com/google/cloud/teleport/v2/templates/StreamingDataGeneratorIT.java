@@ -28,6 +28,9 @@ import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
+import com.google.cloud.teleport.it.jdbc.DefaultMSSQLResourceManager;
+import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
+import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -45,6 +48,7 @@ import com.google.pubsub.v1.TopicName;
 import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -82,11 +86,16 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   private PubsubResourceManager pubsubResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
   private SpannerResourceManager spannerResourceManager;
+  private JDBCResourceManager jdbcResourceManager;
 
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(
-        pubsubResourceManager, artifactClient, bigQueryResourceManager, spannerResourceManager);
+        pubsubResourceManager,
+        artifactClient,
+        bigQueryResourceManager,
+        spannerResourceManager,
+        jdbcResourceManager);
   }
 
   @Test
@@ -313,6 +322,53 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> !spannerResourceManager.readTableRecords(testName, columnNames).isEmpty());
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+  }
+
+  @Test
+  public void testFakeMessagesToJdbc() throws IOException {
+    jdbcResourceManager = DefaultMSSQLResourceManager.builder(testName).build();
+    JDBCSchema jdbcSchema =
+        new JDBCSchema(
+            Map.of(
+                "eventId", "VARCHAR(100)",
+                "eventTimestamp", "DATETIME",
+                "ipv4", "VARCHAR(100)",
+                "ipv6", "VARCHAR(100)",
+                "country", "VARCHAR(100)",
+                "username", "VARCHAR(100)",
+                "quest", "VARCHAR(100)",
+                "score", "INTEGER",
+                "completed", "BIT"),
+            "eventId");
+    jdbcResourceManager.createTable(testName, jdbcSchema);
+    String statement =
+        String.format(
+            "INSERT INTO %s (eventId,eventTimestamp,ipv4,ipv6,country,username,quest,score,completed) VALUES (?,DATEADD(SECOND,?/1000,'1970-1-1'),?,?,?,?,?,?,?)",
+            testName);
+    String driverClassName = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter(SCHEMA_TEMPLATE_KEY, SchemaTemplate.GAME_EVENT.name())
+            .addParameter(QPS_KEY, DEFAULT_QPS)
+            .addParameter(SINK_TYPE_KEY, SinkType.JDBC.name())
+            .addParameter("driverClassName", driverClassName)
+            .addParameter("connectionUrl", jdbcResourceManager.getUri())
+            .addParameter("statement", statement)
+            .addParameter("username", jdbcResourceManager.getUsername())
+            .addParameter("password", jdbcResourceManager.getPassword());
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Result result =
+        pipelineOperator()
+            .waitForConditionAndFinish(
+                createConfig(info), () -> !jdbcResourceManager.readTable(testName).isEmpty());
 
     // Assert
     assertThatResult(result).meetsConditions();
