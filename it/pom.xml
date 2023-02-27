@@ -27,6 +27,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
+    <cassandra.driver.version>4.15.0</cassandra.driver.version>
     <cloud-storage.version>2.2.2</cloud-storage.version>
     <elasticsearch.version>7.9.2</elasticsearch.version>
     <kafka.version>2.4.1</kafka.version>
@@ -141,6 +142,11 @@
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
+      <artifactId>cassandra</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
       <artifactId>mysql</artifactId>
       <version>${testcontainers.version}</version>
     </dependency>
@@ -181,6 +187,11 @@
       <groupId>org.elasticsearch.client</groupId>
       <artifactId>elasticsearch-rest-high-level-client</artifactId>
       <version>${elasticsearch.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-core</artifactId>
+      <version>${cassandra.driver.version}</version>
     </dependency>
     <dependency>
       <groupId>mysql</groupId>

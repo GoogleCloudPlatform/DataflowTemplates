@@ -67,7 +67,7 @@ public abstract class TestContainerResourceManager<T extends GenericContainer<?>
    *
    * @return the host that the resource is running on
    */
-  protected String getHost() {
+  public String getHost() {
     if (host == null) {
       return container.getHost();
     }

@@ -353,6 +353,10 @@
       <version>${google-cloud-bigquery.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-bigtable</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
       <artifactId>bigtable-beam-import</artifactId>
       <version>${bigtable-beam-import.version}</version>

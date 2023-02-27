@@ -247,6 +247,7 @@ public class DirectRunnerClient extends AbstractPipelineLauncher {
         currentJob.setCurrentState(JobState.RUNNING.toString());
 
         LOG.info("Starting job {}...", currentJob.getId());
+        mainMethod.setAccessible(true);
         mainMethod.invoke(null, (Object) args);
 
         currentJob.setCurrentState(JobState.DONE.toString());
