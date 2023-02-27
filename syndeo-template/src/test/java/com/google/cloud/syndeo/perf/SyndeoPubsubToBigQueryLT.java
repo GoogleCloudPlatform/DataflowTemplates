@@ -184,7 +184,7 @@ public class SyndeoPubsubToBigQueryLT {
                         Map.of(
                             "subscription",
                             subscriptionPath.toString(),
-                            "dataFormat",
+                            "format",
                             "AVRO",
                             "schema",
                             AvroUtils.toAvroSchema(SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA)
