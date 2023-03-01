@@ -15,23 +15,29 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Integration tests for JDBC Resource Managers. */
 @Category(TestContainersIntegrationTest.class)
 @RunWith(JUnit4.class)
 public class AbstractJDBCResourceManagerIT {
+
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractJDBCResourceManagerIT.class);
 
   private static final String TEST_ID = "dummy-test";
   private static final String TABLE_NAME = "dummy_table";
@@ -53,56 +59,57 @@ public class AbstractJDBCResourceManagerIT {
 
   @Test
   public void testDefaultOracleResourceManagerE2E() {
-    if (System.getProperty("testOnM1") == null) {
-      DefaultOracleResourceManager oracle = DefaultOracleResourceManager.builder(TEST_ID).build();
-      simpleTest(oracle);
+    // Oracle image does not work on M1
+    if (System.getProperty("testOnM1") != null) {
+      LOG.info("M1 is being used, Oracle tests are not being executed.");
+      return;
     }
+
+    DefaultOracleResourceManager oracle = DefaultOracleResourceManager.builder(TEST_ID).build();
+    simpleTest(oracle);
   }
 
   @Test
   public void testDefaultMSSQLResourceManagerE2E() {
-    DefaultMSSQLResourceManager.Builder mssqlBuilder = DefaultMSSQLResourceManager.builder(TEST_ID);
-    if (System.getProperty("testOnM1") != null) {
-      mssqlBuilder
-          .setContainerImageName("mcr.microsoft.com/azure-sql-edge")
-          .setContainerImageTag("1.0.6");
-    }
-
-    simpleTest(mssqlBuilder.build());
+    DefaultMSSQLResourceManager mssqlBuilder = DefaultMSSQLResourceManager.builder(TEST_ID).build();
+    simpleTest(mssqlBuilder);
   }
 
   private <T extends AbstractJDBCResourceManager<?>> void simpleTest(T rm) {
     try {
-      HashMap<String, String> columns = new HashMap<>();
+      Map<String, String> columns = new LinkedHashMap<>();
       columns.put("first", "VARCHAR(32)");
       columns.put("last", "VARCHAR(32)");
       columns.put("age", "VARCHAR(32)");
-      JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns);
+      JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
       rm.createTable(TABLE_NAME, schema);
 
-      Map<Integer, List<Object>> rows = new HashMap<>();
+      Map<Integer, List<Object>> rows = new LinkedHashMap<>();
       rows.put(0, ImmutableList.of("John", "Doe", 23));
       rows.put(1, ImmutableList.of("Jane", "Doe", 42L));
       rows.put(2, List.of('A', 'B', 1));
       rm.write(TABLE_NAME, rows, ImmutableList.of());
 
-      Map<Integer, List<String>> fetchRows = rm.readTable(TABLE_NAME);
       List<String> validateSchema = new ArrayList<>(columns.keySet());
       validateSchema.add(schema.getIdColumn());
+      List<Map<String, Object>> fetchRows = rm.readTable(TABLE_NAME);
 
-      assertThat(rm.getTableSchema(TABLE_NAME)).containsExactlyElementsIn(validateSchema);
+      // toUpperCase expected because some databases (Postgres, Oracle) transform column names
+      assertThat(toUpperCase(rm.getTableSchema(TABLE_NAME)))
+          .containsExactlyElementsIn(toUpperCase(validateSchema));
       assertThat(fetchRows).hasSize(3);
-      assertThat(fetchRows)
-          .containsExactlyEntriesIn(
-              Map.of(
-                  0,
-                  ImmutableList.of("John", "Doe", "23"),
-                  1,
-                  ImmutableList.of("Jane", "Doe", "42"),
-                  2,
-                  ImmutableList.of("A", "B", "1")));
+      assertThatRecords(fetchRows)
+          .hasRecordsUnorderedCaseInsensitiveColumns(
+              List.of(
+                  Map.of("id", 0, "first", "John", "last", "Doe", "age", "23"),
+                  Map.of("id", 1, "first", "Jane", "last", "Doe", "age", "42"),
+                  Map.of("id", 2, "first", "A", "last", "B", "age", "1")));
     } finally {
       rm.cleanupAll();
     }
+  }
+
+  private List<String> toUpperCase(List<String> list) {
+    return list.stream().map(String::toUpperCase).collect(Collectors.toList());
   }
 }

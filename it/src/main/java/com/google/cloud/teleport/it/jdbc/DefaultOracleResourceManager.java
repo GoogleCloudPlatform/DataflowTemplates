@@ -70,6 +70,18 @@ public class DefaultOracleResourceManager extends AbstractJDBCResourceManager<Or
     return "oracle";
   }
 
+  @Override
+  public synchronized String getUri() {
+    return String.format(
+        "jdbc:%s:thin:@%s:%d/%s",
+        getJDBCPrefix(), this.getHost(), this.getPort(getJDBCPort()), this.getDatabaseName());
+  }
+
+  @Override
+  protected String getFirstRow(String tableName) {
+    return "SELECT * FROM " + tableName + " WHERE ROWNUM <= 1";
+  }
+
   /** Builder for {@link DefaultOracleResourceManager}. */
   public static final class Builder extends AbstractJDBCResourceManager.Builder<OracleContainer> {
 

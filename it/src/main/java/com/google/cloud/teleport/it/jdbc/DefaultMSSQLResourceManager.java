@@ -38,11 +38,11 @@ public class DefaultMSSQLResourceManager
 
   private static final Logger LOG = LoggerFactory.getLogger(DefaultMSSQLResourceManager.class);
 
-  private static final String DEFAULT_MSSQL_CONTAINER_NAME = "mcr.microsoft.com/mssql/server";
+  private static final String DEFAULT_MSSQL_CONTAINER_NAME = "mcr.microsoft.com/azure-sql-edge";
 
   // A list of available mySQL Docker image tags can be found at
-  // https://mcr.microsoft.com/v2/mssql/server/tags/list
-  private static final String DEFAULT_MSSQL_CONTAINER_TAG = "2017-CU20";
+  // https://hub.docker.com/_/microsoft-azure-sql-edge
+  private static final String DEFAULT_MSSQL_CONTAINER_TAG = "1.0.6";
 
   private boolean initialized;
 

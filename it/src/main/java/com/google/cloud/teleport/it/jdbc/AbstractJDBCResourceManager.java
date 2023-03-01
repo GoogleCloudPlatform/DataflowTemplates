@@ -139,7 +139,13 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
       stmt.executeUpdate(sql.toString());
 
     } catch (Exception e) {
-      throw new JDBCResourceManagerException("Error creating table with SQL statement: " + sql, e);
+      throw new JDBCResourceManagerException(
+          "Error creating table with SQL statement: "
+              + sql
+              + " (for connection with URL "
+              + getUri()
+              + ")",
+          e);
     }
 
     tableIds.put(tableName, schema.getIdColumn());
@@ -157,9 +163,9 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
    *
    * @param tableName The name of the table to insert the given row into.
    * @param row An Object array containing the row values.
+   * @return true, if the rows were successfully written
    * @throws JDBCResourceManagerException if method is called after resources have been cleaned up,
    *     if the table does not exist or if there is an Exception when attempting to insert the rows.
-   * @return true, if the rows were successfully written
    */
   public boolean write(String tableName, Integer id, Object... row) {
     return write(tableName, ImmutableMap.of(id, ImmutableList.of(row)), ImmutableList.of());
@@ -201,7 +207,6 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
       }
       sql.append(" VALUES ");
 
-      List<String> rowsToInsert = new ArrayList<>();
       for (Integer rowId : rows.keySet()) {
         StringBuilder valueList = new StringBuilder("(");
 
@@ -214,12 +219,12 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
             rowToInsert.add(String.valueOf(value));
           }
         }
-        LOG.info("Running SQL statement: " + sql);
-        valueList.append(String.join(",", rowToInsert)).append(")");
 
-        rowsToInsert.add(valueList.toString());
+        valueList.append(String.join(",", rowToInsert)).append(")");
+        String insertStatement = sql.toString() + valueList;
+        LOG.info("Running SQL statement: " + insertStatement);
+        stmt.executeUpdate(insertStatement);
       }
-      stmt.executeUpdate(sql.append(String.join(",", rowsToInsert)).toString());
 
     } catch (Exception e) {
       throw new JDBCResourceManagerException(
@@ -232,10 +237,10 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
   }
 
   @Override
-  public Map<Integer, List<String>> readTable(String tableName) {
+  public List<Map<String, Object>> readTable(String tableName) {
     LOG.info("Reading all rows from {}.{}", databaseName, tableName);
 
-    Map<Integer, List<String>> resultMap = new HashMap<>();
+    List<Map<String, Object>> resultSet = new ArrayList<>();
 
     StringBuilder sql = new StringBuilder();
     try (Connection con = driver.getConnection(getUri(), username, password)) {
@@ -245,16 +250,13 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
       ResultSet result = stmt.executeQuery(sql.toString());
 
       while (result.next()) {
-        int id = result.getInt(tableIds.get(tableName));
-        List<String> rowToInsert = new ArrayList<>();
+        Map<String, Object> row = new HashMap<>();
         ResultSetMetaData metadata = result.getMetaData();
         // Columns list in table metadata is 1-indexed
         for (int i = 1; i <= metadata.getColumnCount(); i++) {
-          if (!metadata.getColumnName(i).equals(tableIds.get(tableName))) {
-            rowToInsert.add(result.getString(i));
-          }
+          row.put(metadata.getColumnName(i), result.getObject(i));
         }
-        resultMap.put(id, rowToInsert);
+        resultSet.add(row);
       }
 
     } catch (Exception e) {
@@ -263,7 +265,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
     }
 
     LOG.info("Successfully loaded rows from {}.{}", databaseName, tableName);
-    return resultMap;
+    return resultSet;
   }
 
   @Override

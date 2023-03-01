@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -52,7 +53,7 @@ public final class RecordsSubject extends Subject {
    * @param expectedRows Expected Rows
    */
   public void hasRows(int expectedRows) {
-    check("there are %d rows", expectedRows).that(actual.size()).isEqualTo(expectedRows);
+    check("there are %s rows", expectedRows).that(actual.size()).isEqualTo(expectedRows);
   }
 
   /**
@@ -113,6 +114,42 @@ public final class RecordsSubject extends Subject {
                     + actual));
       }
     }
+  }
+
+  /**
+   * Check if the records list has specific rows, without guarantees of ordering. The way that
+   * ordering is taken out of the equation is by converting all records to TreeMap, which guarantee
+   * natural key ordering.
+   *
+   * <p>In this particular method, force the columns to be case-insensitive to maximize
+   * compatibility.
+   *
+   * @param records Expected rows to search
+   */
+  public void hasRecordsUnorderedCaseInsensitiveColumns(List<Map<String, Object>> records) {
+
+    for (Map<String, Object> record : records) {
+      String expected = convertKeysToUpperCase(new TreeMap<>(record)).toString();
+      if (actual.stream()
+          .noneMatch(
+              candidate ->
+                  convertKeysToUpperCase(new TreeMap<>(candidate)).toString().equals(expected))) {
+        failWithoutActual(
+            Fact.simpleFact(
+                "expected that contains unordered record (and case insensitive) "
+                    + expected
+                    + ", but only had "
+                    + actual));
+      }
+    }
+  }
+
+  private TreeMap<String, Object> convertKeysToUpperCase(Map<String, Object> map) {
+    return new TreeMap<>(
+        map.entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    entry -> entry.getKey().toUpperCase(), entry -> entry.getValue())));
   }
 
   /**

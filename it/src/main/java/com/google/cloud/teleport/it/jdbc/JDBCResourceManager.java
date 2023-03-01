@@ -90,20 +90,13 @@ public interface JDBCResourceManager extends ResourceManager {
   boolean write(String tableName, Map<Integer, List<Object>> rows);
 
   /**
-   * Reads all the rows in a table and returns a map that maps the row id to the values in that row.
-   *
-   * <p>For example, the table:<br>
-   * ID,first,last<br>
-   * 1,John,Doe<br>
-   * 2,Jane,Doe
-   *
-   * <p>Would return the following map:<br>
-   * {{1: ["John","Doe"]}, {2: ["Jane","Doe"]}}
+   * Reads all the rows in a table and returns in the format of a list of Maps, which contain all
+   * the columns (including ID).
    *
    * @param tableName The name of the table to read rows from.
-   * @return a map containing the table rows.
+   * @return a list containing the table rows.
    */
-  Map<Integer, List<String>> readTable(String tableName);
+  List<Map<String, Object>> readTable(String tableName);
 
   /**
    * Returns the schema of the given table as a list of strings.
