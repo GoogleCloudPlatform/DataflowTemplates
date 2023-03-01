@@ -18,6 +18,8 @@ package com.google.cloud.syndeo.transforms.pubsub;
 import com.google.auto.service.AutoService;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.syndeo.transforms.TypedSchemaTransformProvider;
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -33,9 +35,11 @@ import org.apache.beam.sdk.schemas.utils.JsonUtils;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -63,43 +67,88 @@ public class SyndeoPubsubReadSchemaTransformProvider
           "To read from Pubsub, a subscription name or a topic name must be provided. Not both.");
     }
 
-    return new SchemaTransform() {
-      @Override
-      public @UnknownKeyFor @NonNull @Initialized PTransform<
-              @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple,
-              @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple>
-          buildTransform() {
-        return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
-          @Override
-          public PCollectionRowTuple expand(PCollectionRowTuple input) {
-            PubsubIO.Read<PubsubMessage> pubsubRead = PubsubIO.readMessages();
-            if (configuration.getTopic() != null) {
-              pubsubRead = pubsubRead.fromTopic(configuration.getTopic());
-            } else {
-              pubsubRead = pubsubRead.fromSubscription(configuration.getSubscription());
-            }
-            final Schema beamSchema =
-                Objects.equals(configuration.getDataFormat(), "JSON")
-                    ? JsonUtils.beamSchemaFromJsonSchema(configuration.getSchema())
-                    : AvroUtils.toBeamSchema(
-                        new org.apache.avro.Schema.Parser().parse(configuration.getSchema()));
-            SerializableFunction<byte[], Row> valueMapper =
-                Objects.equals(configuration.getDataFormat(), "JSON")
-                    ? JsonUtils.getJsonBytesToRowFunction(beamSchema)
-                    : AvroUtils.getAvroBytesToRowFunction(beamSchema);
-            return PCollectionRowTuple.of(
-                "output",
-                input
-                    .getPipeline()
-                    .apply(pubsubRead)
-                    .apply(
-                        MapElements.into(TypeDescriptors.rows())
-                            .via(message -> valueMapper.apply(message.getPayload())))
-                    .setRowSchema(beamSchema));
-          }
-        };
+    if ((Strings.isNullOrEmpty(configuration.getSchema())
+            && !Strings.isNullOrEmpty(configuration.getDataFormat()))
+        || (!Strings.isNullOrEmpty(configuration.getSchema())
+            && Strings.isNullOrEmpty(configuration.getDataFormat()))) {
+      throw new IllegalArgumentException(
+          "A schema was provided without a data format (or viceversa). Please provide "
+              + "both of these parameters to read from Pubsub, or if you would like to use the Pubsub schema service,"
+              + " please leave both of these blank.");
+    }
+
+    Schema beamSchema;
+    SerializableFunction<byte[], Row> valueMapper;
+    if (configuration.getSchema() == null && configuration.getDataFormat() == null) {
+      try {
+        KV<Schema, SerializableFunction<byte[], Row>> schemaFunctionPair =
+            SyndeoPubsubUtils.getTopicInfo(
+                configuration.getTopic(), configuration.getSubscription());
+        beamSchema = schemaFunctionPair.getKey();
+        valueMapper = schemaFunctionPair.getValue();
+      } catch (IOException e) {
+        throw new RuntimeException(
+            String.format(
+                "Unable to retrieve schema information for topic %s or subscription %s",
+                configuration.getTopic(), configuration.getSubscription()),
+            e);
       }
-    };
+    } else {
+      beamSchema =
+          Objects.equals(configuration.getDataFormat(), "JSON")
+              ? JsonUtils.beamSchemaFromJsonSchema(configuration.getSchema())
+              : AvroUtils.toBeamSchema(
+                  new org.apache.avro.Schema.Parser().parse(configuration.getSchema()));
+      valueMapper =
+          Objects.equals(configuration.getDataFormat(), "JSON")
+              ? JsonUtils.getJsonBytesToRowFunction(beamSchema)
+              : AvroUtils.getAvroBytesToRowFunction(beamSchema);
+    }
+
+    return new PubsubReadSchemaTransform(
+        configuration.getTopic(), configuration.getSubscription(), beamSchema, valueMapper);
+  }
+
+  private static class PubsubReadSchemaTransform implements SchemaTransform, Serializable {
+    final Schema beamSchema;
+    final SerializableFunction<byte[], Row> valueMapper;
+    final @Nullable String topic;
+    final @Nullable String subscription;
+
+    PubsubReadSchemaTransform(
+        String topic,
+        String subscription,
+        Schema beamSchema,
+        SerializableFunction<byte[], Row> valueMapper) {
+      this.topic = topic;
+      this.subscription = subscription;
+      this.beamSchema = beamSchema;
+      this.valueMapper = valueMapper;
+    }
+
+    @Override
+    public PTransform<PCollectionRowTuple, PCollectionRowTuple> buildTransform() {
+      return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
+        @Override
+        public PCollectionRowTuple expand(PCollectionRowTuple input) {
+          PubsubIO.Read<PubsubMessage> pubsubRead = PubsubIO.readMessages();
+          if (!Strings.isNullOrEmpty(topic)) {
+            pubsubRead = pubsubRead.fromTopic(topic);
+          } else {
+            pubsubRead = pubsubRead.fromSubscription(subscription);
+          }
+          return PCollectionRowTuple.of(
+              "output",
+              input
+                  .getPipeline()
+                  .apply(pubsubRead)
+                  .apply(
+                      MapElements.into(TypeDescriptors.rows())
+                          .via(message -> valueMapper.apply(message.getPayload())))
+                  .setRowSchema(beamSchema));
+        }
+      };
+    }
   }
 
   @Override

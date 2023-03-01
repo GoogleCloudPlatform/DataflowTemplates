@@ -17,7 +17,9 @@ package com.google.cloud.teleport.it.pubsub;
 
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.Encoding;
 import com.google.pubsub.v1.PullResponse;
+import com.google.pubsub.v1.Schema;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.util.Map;
@@ -63,6 +65,22 @@ public interface PubsubResourceManager extends ResourceManager {
    * @return The message id that was generated.
    */
   PullResponse pull(SubscriptionName subscriptionName, int maxMessages);
+
+  /**
+   * Registers a new schema of the given type and definition, then assigns it to the specified
+   * topic.
+   *
+   * @param schemaType the type of schema to create (e.g. AVRO, PROTOBUF)
+   * @param schemaDefinition the definition of the schema to create in AVRO or Protobuf syntax.
+   * @param dataEncoding the encoding of the data in pubsub (e.g. BINARY_ENCODING, JSON)
+   * @param schemaTopic the name of the topic to which assign the schema.
+   * @return the name of the newly created schema
+   */
+  String createSchema(
+      Schema.Type schemaType,
+      String schemaDefinition,
+      Encoding dataEncoding,
+      TopicName schemaTopic);
 
   /** Delete any topics or subscriptions created by this manager. */
   void cleanupAll();

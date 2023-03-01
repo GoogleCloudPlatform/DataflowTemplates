@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.api.core.ApiFutures;
 import com.google.cloud.pubsub.v1.Publisher;
+import com.google.cloud.pubsub.v1.SchemaServiceClient;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.common.collect.ImmutableMap;
@@ -61,6 +62,8 @@ public final class DefaultPubsubResourceManagerTest {
 
   @Mock private TopicAdminClient topicAdminClient;
   @Mock private SubscriptionAdminClient subscriptionAdminClient;
+
+  @Mock private SchemaServiceClient schemaServiceClient;
   @Mock private Topic topic;
   @Mock private Subscription subscription;
   @Mock private Publisher publisher;
@@ -77,7 +80,12 @@ public final class DefaultPubsubResourceManagerTest {
     // Using spy to inject our mocked publisher at getPublisher(topic)
     testManager =
         new DefaultPubsubResourceManager(
-            TEST_ID, PROJECT_ID, publisherFactory, topicAdminClient, subscriptionAdminClient);
+            TEST_ID,
+            PROJECT_ID,
+            publisherFactory,
+            topicAdminClient,
+            subscriptionAdminClient,
+            schemaServiceClient);
 
     when(topic.getName()).thenReturn("projects/" + PROJECT_ID + "/topics/" + TOPIC_NAME);
     when(subscription.getName())
@@ -215,6 +223,13 @@ public final class DefaultPubsubResourceManagerTest {
     when(subscriptionAdminClient.createSubscription(
             any(SubscriptionName.class), any(TopicName.class), any(), anyInt()))
         .thenReturn(subscription);
+    when(topic.getName())
+        .thenReturn(
+            TopicName.format(PROJECT_ID, "topic1"),
+            TopicName.format(PROJECT_ID, "topic2"),
+            TopicName.format(PROJECT_ID, "topic1"),
+            TopicName.format(PROJECT_ID, "topic1"),
+            TopicName.format(PROJECT_ID, "topic2"));
 
     TopicName topic1 = testManager.createTopic("topic1");
     TopicName topic2 = testManager.createTopic("topic2");
