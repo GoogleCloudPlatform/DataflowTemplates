@@ -22,8 +22,10 @@ import com.google.cloud.bigquery.Job;
 import com.google.cloud.bigquery.JobId;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -173,11 +175,13 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
 
     private BigQuery bigQueryClient;
     private final MergeConfiguration mergeConfiguration;
+    private final Map<String, String> datasetsToLocations;
 
     public BigQueryStatementIssuingFn(
         BigQuery bigQueryClient, MergeConfiguration mergeConfiguration) {
       this.bigQueryClient = bigQueryClient;
       this.mergeConfiguration = mergeConfiguration;
+      this.datasetsToLocations = new HashMap<>();
     }
 
     @Setup
@@ -204,8 +208,15 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
         TableResult queryResult = issueQueryToBQ(mergeInfo, statement);
         mergesIssued.inc();
         LOG.info("Merge job executed: {}", statement);
+      } catch (BigQueryException e) {
+        LOG.warn(
+            "Merge Job Failed With BigQuery Exception: {} Statement: {}", e.toString(), statement);
+        return;
       } catch (Exception e) {
-        LOG.warn("Merge Job Failed: Exception: {} Statement: {}", e.toString(), statement);
+        LOG.warn(
+            "Merge Job Failed With Unexpected exception: {} Statement: {}",
+            e.toString(),
+            statement);
         throw e;
       }
     }
@@ -214,7 +225,16 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
         throws InterruptedException {
       QueryJobConfiguration jobConfiguration = QueryJobConfiguration.newBuilder(statement).build();
 
-      JobId jobId = JobId.of(mergeInfo.getJobId());
+      String datasetName = mergeInfo.getReplicaTable().getDataset();
+      // get and store the location of the dataset to avoid further API calls
+      if (!datasetsToLocations.containsKey(datasetName)) {
+        LOG.info("refreshing dataset location cache for dataset {}", datasetName);
+        datasetsToLocations.put(
+            datasetName,
+            bigQueryClient.getDataset(mergeInfo.getReplicaTable().getDataset()).getLocation());
+      }
+      String location = datasetsToLocations.get(datasetName);
+      JobId jobId = JobId.newBuilder().setJob(mergeInfo.getJobId()).setLocation(location).build();
       LOG.info("Triggering job {} for statement |{}|", jobId.toString(), statement);
 
       try {
