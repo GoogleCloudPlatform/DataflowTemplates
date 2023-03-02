@@ -33,6 +33,9 @@ public final class UncaughtExceptionLogger implements UncaughtExceptionHandler {
   @Override
   public void uncaughtException(Thread t, Throwable e) {
     LOG.error("The template launch failed.", e);
+
+    // Still print crashes to stderr
+    e.printStackTrace();
   }
 
   public static void register() {

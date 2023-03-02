@@ -372,7 +372,17 @@ public class DataplexBigQueryToGcs {
       throws IOException {
 
     LOG.info("Resolving asset: {}", assetName);
-    GoogleCloudDataplexV1Asset asset = dataplex.getAsset(assetName);
+
+    GoogleCloudDataplexV1Asset asset;
+    try {
+      asset = dataplex.getAsset(assetName);
+    } catch (Throwable e) {
+      LOG.error("Error resolving Dataplex Asset {}", assetName, e);
+      throw e;
+    }
+
+    LOG.info("Asset {} resolved! {}", assetName, asset);
+
     checkNotNull(asset.getResourceSpec(), "Asset has no ResourceSpec.");
 
     String type = asset.getResourceSpec().getType();
