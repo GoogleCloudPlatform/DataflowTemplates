@@ -32,8 +32,10 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorExc
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.templates.session.ColumnDef;
 import com.google.cloud.teleport.v2.templates.session.NameAndCols;
 import com.google.cloud.teleport.v2.templates.session.Session;
+import com.google.cloud.teleport.v2.templates.session.SrcSchema;
 import com.google.cloud.teleport.v2.templates.session.SyntheticPKey;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -41,7 +43,6 @@ import com.google.common.base.Preconditions;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
@@ -156,7 +157,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
      */
     try {
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
-      changeEvent = transformChangeEvent(changeEvent, session);
+      if (!session.isEmpty()) {
+        verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
+        changeEvent = transformChangeEvent(changeEvent);
+      }
       ChangeEventContext changeEventContext =
           ChangeEventContextFactory.createChangeEventContext(
               changeEvent, ddl, shadowTablePrefix, sourceType);
@@ -194,6 +198,11 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
       sucessfulEvents.inc();
+    } catch (DroppedTableException e) {
+      // Errors when table exists in source but was dropped during conversion. We do not output any
+      // errors to dlq for this.
+      LOG.warn(e.getMessage());
+      skippedEvents.inc();
     } catch (InvalidChangeEventException e) {
       // Errors that result from invalid change events.
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
@@ -220,27 +229,86 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     }
   }
 
-  JsonNode transformChangeEvent(JsonNode changeEvent, Session session) {
-    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
-    if (!session.isEmpty()) {
-      NameAndCols nameAndCols = session.getToSpanner().get(tableName);
-      String spTableName = nameAndCols.getName();
-      HashMap<String, String> cols = nameAndCols.getCols();
+  void verifyTableInSession(String tableName)
+      throws IllegalArgumentException, DroppedTableException {
+    if (!session.getSrcToID().containsKey(tableName)) {
+      throw new IllegalArgumentException(
+          "Missing entry for " + tableName + " in srcToId map , provide a valid session file.");
+    }
+    if (!session.getToSpanner().containsKey(tableName)) {
+      throw new DroppedTableException(
+          "Cannot find entry for "
+              + tableName
+              + " in toSpanner map, it is likely this table was dropped");
+    }
+    String tableId = session.getSrcToID().get(tableName).getName();
+    if (!session.getSpSchema().containsKey(tableId)) {
+      throw new IllegalArgumentException(
+          "Missing entry for " + tableId + " in spSchema, provide a valid session file.");
+    }
+  }
 
-      // Convert the table name to corresponding Spanner table name.
-      ((ObjectNode) changeEvent).put(EVENT_TABLE_NAME_KEY, spTableName);
-      // Convert the column names to corresponding Spanner column names.
-      for (Map.Entry<String, String> col : cols.entrySet()) {
-        String srcCol = col.getKey(), spCol = col.getValue();
-        if (!srcCol.equals(spCol)) {
-          ((ObjectNode) changeEvent).set(spCol, changeEvent.get(srcCol));
-          ((ObjectNode) changeEvent).remove(srcCol);
-        }
+  JsonNode transformChangeEvent(JsonNode changeEvent) {
+    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
+    String tableId = session.getSrcToID().get(tableName).getName();
+
+    // Convert table and column names in change event.
+    changeEvent = convertTableAndColumnNames(changeEvent, tableName);
+
+    // Add synthetic PK to change event.
+    changeEvent = addSyntheticPKs(changeEvent, tableId);
+
+    // Remove columns present in change event that were dropped in Spanner.
+    changeEvent = removeDroppedColumns(changeEvent, tableId);
+
+    return changeEvent;
+  }
+
+  JsonNode convertTableAndColumnNames(JsonNode changeEvent, String tableName) {
+    NameAndCols nameAndCols = session.getToSpanner().get(tableName);
+    String spTableName = nameAndCols.getName();
+    Map<String, String> cols = nameAndCols.getCols();
+
+    // Convert the table name to corresponding Spanner table name.
+    ((ObjectNode) changeEvent).put(EVENT_TABLE_NAME_KEY, spTableName);
+    // Convert the column names to corresponding Spanner column names.
+    for (Map.Entry<String, String> col : cols.entrySet()) {
+      String srcCol = col.getKey(), spCol = col.getValue();
+      if (!srcCol.equals(spCol)) {
+        ((ObjectNode) changeEvent).set(spCol, changeEvent.get(srcCol));
+        ((ObjectNode) changeEvent).remove(srcCol);
       }
-      HashMap<String, SyntheticPKey> synthPks = session.getSyntheticPks();
-      if (synthPks.containsKey(spTableName)) {
-        ((ObjectNode) changeEvent)
-            .put(synthPks.get(spTableName).getCol(), changeEvent.get(EVENT_UUID_KEY).asText());
+    }
+    return changeEvent;
+  }
+
+  JsonNode addSyntheticPKs(JsonNode changeEvent, String tableId) {
+    Map<String, ColumnDef> spCols = session.getSpSchema().get(tableId).getColDefs();
+    Map<String, SyntheticPKey> synthPks = session.getSyntheticPks();
+    if (synthPks.containsKey(tableId)) {
+      String colID = synthPks.get(tableId).getColId();
+      if (!spCols.containsKey(colID)) {
+        throw new IllegalArgumentException(
+            "Missing entry for "
+                + colID
+                + " in colDefs for tableId: "
+                + tableId
+                + ", provide a valid session file.");
+      }
+      ((ObjectNode) changeEvent)
+          .put(spCols.get(colID).getName(), changeEvent.get(EVENT_UUID_KEY).asText());
+    }
+    return changeEvent;
+  }
+
+  JsonNode removeDroppedColumns(JsonNode changeEvent, String tableId) {
+    Map<String, ColumnDef> spCols = session.getSpSchema().get(tableId).getColDefs();
+    SrcSchema srcSchema = session.getSrcSchema().get(tableId);
+    Map<String, ColumnDef> srcCols = srcSchema.getColDefs();
+    for (String colId : srcSchema.getColIds()) {
+      // If spanner columns do not contain this column Id, drop from change event.
+      if (!spCols.containsKey(colId)) {
+        ((ObjectNode) changeEvent).remove(srcCols.get(colId).getName());
       }
     }
     return changeEvent;

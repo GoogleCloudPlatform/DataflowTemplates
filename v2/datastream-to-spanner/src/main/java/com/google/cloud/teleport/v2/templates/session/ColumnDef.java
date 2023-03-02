@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -16,32 +16,23 @@
 package com.google.cloud.teleport.v2.templates.session;
 
 import java.io.Serializable;
-import java.util.Map;
 
-/** NameAndCols object to store Spanner table name and column name mapping information. */
-public class NameAndCols implements Serializable {
+/** ColumnDef object to store Spanner table name and column name mapping information. */
+public class ColumnDef implements Serializable {
 
-  /** Represents the name of the Spanner table. */
+  /** Represents the name of the Spanner column. */
   private final String name;
 
-  /** Mapping from source column names to the destination column names. */
-  private final Map<String, String> cols;
-
-  public NameAndCols(String name, Map<String, String> cols) {
+  public ColumnDef(String name) {
     this.name = name;
-    this.cols = cols;
   }
 
   public String getName() {
     return name;
   }
 
-  public Map<String, String> getCols() {
-    return cols;
-  }
-
   public String toString() {
-    return String.format("{ 'name': '%s', 'cols': '%s' }", name, cols);
+    return String.format("{ 'name': '%s' }", name);
   }
 
   @Override
@@ -49,10 +40,10 @@ public class NameAndCols implements Serializable {
     if (o == this) {
       return true;
     }
-    if (!(o instanceof NameAndCols)) {
+    if (!(o instanceof ColumnDef)) {
       return false;
     }
-    final NameAndCols other = (NameAndCols) o;
-    return this.name.equals(other.name) && this.cols.equals(other.cols);
+    final ColumnDef other = (ColumnDef) o;
+    return this.name.equals(other.name);
   }
 }
