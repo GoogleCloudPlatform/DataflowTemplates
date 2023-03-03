@@ -247,9 +247,9 @@
         <skipShade>true</skipShade>
         <!-- Some modules may yield no integration tests -->
         <failIfNoTests>false</failIfNoTests>
-        <!-- Parallelism. Default is 1.0C (number of cores), considering methods -->
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
         <itParallelismType>classesAndMethods</itParallelismType>
-        <itParallelism>1.0C</itParallelism>
+        <itParallelism>2</itParallelism>
       </properties>
       <build>
         <plugins>
