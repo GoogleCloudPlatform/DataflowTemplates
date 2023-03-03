@@ -60,12 +60,12 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   // Define a set of parameters used to allow configuration of the test size being run.
   private static final String BIGQUERY_ID_COL = "test_id";
   private static final int BIGQUERY_NUM_ROWS =
-      Integer.parseInt(getProperty("numRows", "20", TestProperties.Type.PROPERTY));
+      Integer.parseInt(getProperty("numRows", "50", TestProperties.Type.PROPERTY));
   private static final int BIGQUERY_NUM_FIELDS =
       Integer.parseInt(getProperty("numFields", "100", TestProperties.Type.PROPERTY));
   private static final int BIGQUERY_MAX_ENTRY_LENGTH =
       Integer.min(
-          300, Integer.parseInt(getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY)));
+          300, Integer.parseInt(getProperty("maxEntryLength", "50", TestProperties.Type.PROPERTY)));
 
   @Before
   public void setup() {
@@ -113,7 +113,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(20);
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(50);
     assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
         .hasRecordsUnordered(
             bigQueryRows.stream().map(RowToInsert::getContent).collect(Collectors.toList()));
@@ -151,7 +151,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(20);
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(50);
     assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
         .hasRecordsUnordered(
             bigQueryRows.stream().map(RowToInsert::getContent).collect(Collectors.toList()));

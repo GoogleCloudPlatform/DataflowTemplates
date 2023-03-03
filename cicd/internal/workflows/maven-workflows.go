@@ -49,6 +49,7 @@ const (
 // Interface for retrieving flags that can be passed into the workflow's
 // `Run` method.
 type MavenFlags interface {
+	BatchMode() string
 	IncludeDependencies() string
 	IncludeDependents() string
 	SkipCheckstyle() string
@@ -64,6 +65,10 @@ type MavenFlags interface {
 }
 
 type mvnFlags struct{}
+
+func (*mvnFlags) BatchMode() string {
+	return "--batch-mode"
+}
 
 func (*mvnFlags) IncludeDependencies() string {
 	return "-am"

@@ -31,7 +31,7 @@
 
     <name>PubSub To MongoDB</name>
     <description>
-        Stream data from Google PubSub to a hosted MongoDB Database
+        Stream data from Google Pub/Sub to a hosted MongoDB Database
     </description>
 
     <dependencies>

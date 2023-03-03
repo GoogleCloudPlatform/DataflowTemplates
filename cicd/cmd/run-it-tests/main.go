@@ -32,6 +32,7 @@ func main() {
 	// Run mvn install before running integration tests
 	mvnFlags := workflows.NewMavenFlags()
 	err := workflows.MvnCleanInstall().Run(
+		mvnFlags.BatchMode(),
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.IncludeDependents(),
 		mvnFlags.SkipDependencyAnalysis(),
@@ -48,6 +49,7 @@ func main() {
 	// Run integration tests
 	mvnFlags = workflows.NewMavenFlags()
 	err = workflows.MvnVerify().Run(
+		mvnFlags.BatchMode(),
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.IncludeDependents(),
 		mvnFlags.SkipDependencyAnalysis(),
