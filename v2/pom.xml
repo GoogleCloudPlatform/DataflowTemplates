@@ -710,6 +710,7 @@
         <module>kafka-to-pubsub</module>
         <module>kudu-to-bigquery</module>
         <module>mongodb-to-googlecloud</module>
+        <module>mqtt-to-pubsub</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-kafka</module>
