@@ -22,6 +22,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -53,12 +54,12 @@ public final class TextImportPipelineIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException, URISyntaxException {
     spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName.getMethodName(), PROJECT, REGION).build();
+        DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
   }
 
   @After
   public void tearDown() {
-    spannerResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
   @Test

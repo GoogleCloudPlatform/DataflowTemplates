@@ -21,11 +21,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
-import com.google.cloud.teleport.v2.templates.session.NameAndCols;
+import com.google.cloud.teleport.v2.templates.session.ReadSessionFileTest;
 import com.google.cloud.teleport.v2.templates.session.Session;
-import com.google.cloud.teleport.v2.templates.session.SyntheticPKey;
 import java.io.IOException;
-import java.util.HashMap;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerConfig;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -45,74 +43,46 @@ public class SpannerTransactionWriterDoFnTest {
 
   @Test
   public void transformChangeEventNamesTest() {
+    Session session = ReadSessionFileTest.getSessionObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(ExposedSpannerConfig.create(), null, null, "", "");
+        new SpannerTransactionWriterDoFn(ExposedSpannerConfig.create(), null, session, "", "");
     JSONObject changeEvent = new JSONObject();
-    changeEvent.put("first_name", "A");
-    changeEvent.put("last_name", "B");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put("product_id", "A");
+    changeEvent.put("quantity", 1);
+    changeEvent.put("user_id", "B");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "cart");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
-    HashMap<String, NameAndCols> toSpanner = new HashMap<String, NameAndCols>();
-    HashMap<String, String> cols = new HashMap<String, String>();
-    cols.put("first_name", "first_name_new");
-    cols.put("last_name", "last_name_new");
-    toSpanner.put("Users", new NameAndCols("Users_new", cols));
-    Session session = new Session(null, toSpanner);
-    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEvent(ce, session);
+    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEvent(ce);
 
     JSONObject changeEventNew = new JSONObject();
-    changeEventNew.put("first_name_new", "A");
-    changeEventNew.put("last_name_new", "B");
-    changeEventNew.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users_new");
+    changeEventNew.put("new_product_id", "A");
+    changeEventNew.put("new_quantity", 1);
+    changeEventNew.put("new_user_id", "B");
+    changeEventNew.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "new_cart");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
     assertEquals(expectedEvent, actualEvent);
   }
 
   @Test
   public void transformChangeEventSynthPKTest() {
+    Session session = ReadSessionFileTest.getSessionObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(ExposedSpannerConfig.create(), null, null, "", "");
+        new SpannerTransactionWriterDoFn(ExposedSpannerConfig.create(), null, session, "", "");
     JSONObject changeEvent = new JSONObject();
-    changeEvent.put("first_name", "A");
-    changeEvent.put("last_name", "B");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put("name", "A");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "people");
     changeEvent.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
 
-    HashMap<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
-    syntheticPKeys.put("Users_new", new SyntheticPKey("synth_id", 0));
-    HashMap<String, NameAndCols> toSpanner = new HashMap<String, NameAndCols>();
-    HashMap<String, String> cols = new HashMap<String, String>();
-    cols.put("first_name", "first_name_new");
-    cols.put("last_name", "last_name_new");
-    toSpanner.put("Users", new NameAndCols("Users_new", cols));
-    Session session = new Session(syntheticPKeys, toSpanner);
-    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEvent(ce, session);
+    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEvent(ce);
 
     JSONObject changeEventNew = new JSONObject();
-    changeEventNew.put("first_name_new", "A");
-    changeEventNew.put("last_name_new", "B");
-    changeEventNew.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users_new");
+    changeEventNew.put("new_name", "A");
+    changeEventNew.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "new_people");
     changeEventNew.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
     changeEventNew.put("synth_id", "abc-123");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
     assertEquals(expectedEvent, actualEvent);
-  }
-
-  @Test
-  public void transformChangeEventEmptySessionTest() {
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(ExposedSpannerConfig.create(), null, null, "", "");
-    JSONObject changeEvent = new JSONObject();
-    changeEvent.put("first_name", "A");
-    changeEvent.put("last_name", "B");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    JsonNode ce = parseChangeEvent(changeEvent.toString());
-
-    Session session = new Session();
-    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEvent(ce, session);
-
-    assertEquals(ce, actualEvent);
   }
 }

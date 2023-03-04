@@ -23,10 +23,15 @@ import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,7 +148,23 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
   }
 
   @Override
-  public synchronized boolean cleanupAll() {
+  public synchronized <K, V> KafkaConsumer<K, V> buildConsumer(
+      Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
+
+    return new KafkaConsumer<>(
+        Map.of(
+            ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+            getBootstrapServers().replace("PLAINTEXT://", ""),
+            ConsumerConfig.GROUP_ID_CONFIG,
+            "cg-" + UUID.randomUUID(),
+            ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+            "earliest"),
+        keyDeserializer,
+        valueDeserializer);
+  }
+
+  @Override
+  public synchronized void cleanupAll() {
     LOG.info("Attempting to cleanup Kafka manager.");
 
     boolean producedError = false;
@@ -159,14 +180,14 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
     }
 
     // Throw Exception at the end if there were any errors
-    if (producedError || !super.cleanupAll()) {
+    if (producedError) {
       throw new KafkaResourceManagerException(
           "Failed to delete resources. Check above for errors.");
     }
 
-    LOG.info("Kafka manager successfully cleaned up.");
+    super.cleanupAll();
 
-    return true;
+    LOG.info("Kafka manager successfully cleaned up.");
   }
 
   /** Builder for {@link DefaultKafkaResourceManager}. */
@@ -180,8 +201,8 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
       super(testId);
       this.containerImageName = DEFAULT_KAFKA_CONTAINER_NAME;
       this.containerImageTag = DEFAULT_KAFKA_CONTAINER_TAG;
-      this.topicNames = new HashSet<String>();
-      this.numTopics = 1;
+      this.topicNames = new HashSet<>();
+      this.numTopics = 0;
     }
 
     /**

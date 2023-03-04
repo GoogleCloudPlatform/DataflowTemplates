@@ -18,8 +18,8 @@ package com.google.cloud.teleport.metadata.util;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameterNameFromMethod;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 /** Class to unit test {@link MetadataUtils} functionality. */
@@ -34,11 +34,9 @@ public class MetadataUtilsTest {
 
   @Test
   public void testBucketNameInvalid() {
-    Assert.assertThrows(
-        IllegalArgumentException.class, () -> bucketNameOnly("gs://templates/path"));
-    Assert.assertThrows(IllegalArgumentException.class, () -> bucketNameOnly("/tmp/templates"));
-    Assert.assertThrows(
-        IllegalArgumentException.class, () -> bucketNameOnly("https://www.google.com/"));
+    assertThrows(IllegalArgumentException.class, () -> bucketNameOnly("gs://templates/path"));
+    assertThrows(IllegalArgumentException.class, () -> bucketNameOnly("/tmp/templates"));
+    assertThrows(IllegalArgumentException.class, () -> bucketNameOnly("https://www.google.com/"));
   }
 
   @Test

@@ -137,7 +137,7 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>${mockito-core.version}</version>
+            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -710,11 +710,14 @@
         <module>kafka-to-pubsub</module>
         <module>kudu-to-bigquery</module>
         <module>mongodb-to-googlecloud</module>
+        <module>mqtt-to-pubsub</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-binary-to-bigtable</module>
         <module>pubsub-cdc-to-bigquery</module>
+        <module>pubsub-to-kafka</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
+
     </modules>
 
 </project>

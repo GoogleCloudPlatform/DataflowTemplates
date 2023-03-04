@@ -101,7 +101,9 @@ public final class ClassicTemplateClientTest {
             .setType("JOB_TYPE_BATCH");
 
     LaunchConfig options =
-        LaunchConfig.builder(JOB_NAME, SPEC_PATH).addParameter(PARAM_KEY, PARAM_VALUE).build();
+        LaunchConfig.builderWithName(JOB_NAME, SPEC_PATH)
+            .addParameter(PARAM_KEY, PARAM_VALUE)
+            .build();
 
     when(getTemplates(client).create(any(), any(), any())).thenReturn(launch);
     when(getLocationJobs(client).get(any(), any(), any())).thenReturn(get);

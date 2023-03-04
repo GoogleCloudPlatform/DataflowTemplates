@@ -24,10 +24,11 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -42,7 +43,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -64,26 +64,25 @@ public class PubSubSubscriptionToBigQueryIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
   }
 
   @After
   public void cleanUp() {
-    pubsubResourceManager.cleanupAll();
-    bigQueryResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, bigQueryResourceManager);
   }
 
   @Test
   public void testSubscriptionToBigQuery() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
-    String bqTable = testName.getMethodName();
+    String jobName = createJobName(testName);
+    String bqTable = testName;
     List<Map<String, Object>> messages =
         List.of(
             Map.of("job", jobName, "msgNumber", 1),
@@ -112,20 +111,17 @@ public class PubSubSubscriptionToBigQueryIT extends TemplateTestBase {
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
-    AtomicReference<TableResult> records = new AtomicReference<>();
     Result result =
         pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
-                () -> {
-                  TableResult values = bigQueryResourceManager.readTable(bqTable);
-                  records.set(values);
-                  return values.getTotalRows() >= messages.size();
-                });
+                BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+                    .setMinRows(messages.size())
+                    .build());
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThatRecords(records.get()).hasRecords(messages);
+    assertThatRecords(bigQueryResourceManager.readTable(table)).hasRecords(messages);
   }
 
   private void publishMessages(TopicName topic, List<Map<String, Object>> messages) {

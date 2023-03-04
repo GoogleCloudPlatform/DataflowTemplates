@@ -23,7 +23,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Transforms list of object to PCollection<Row>. */
+/** Transforms list of object to PCollection of Rows. */
 public class ListOfStringToRowFn extends DoFn<List<Object>, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ListOfStringToRowFn.class);

@@ -27,12 +27,15 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
+    <cassandra.driver.version>4.15.0</cassandra.driver.version>
     <cloud-storage.version>2.2.2</cloud-storage.version>
     <elasticsearch.version>7.9.2</elasticsearch.version>
     <kafka.version>2.4.1</kafka.version>
-    <mockito.version>3.7.7</mockito.version>
-    <mockito-inline.version>4.5.1</mockito-inline.version>
     <mongodb.version>3.12.10</mongodb.version>
+    <mysql-connector-java.version>8.0.22</mysql-connector-java.version>
+    <postgresql-connector-java.version>42.2.27</postgresql-connector-java.version>
+    <ojdbc8-connector-java.version>19.3.0.0</ojdbc8-connector-java.version>
+    <sqlserver-connector-java.version>6.4.0.jre8</sqlserver-connector-java.version>
     <dataflow-api.version>v1b3-rev20220920-2.0.0</dataflow-api.version>
     <parquet-avro.version>1.12.0</parquet-avro.version>
     <testcontainers.version>1.17.5</testcontainers.version>
@@ -137,6 +140,31 @@
       <artifactId>elasticsearch</artifactId>
       <version>${testcontainers.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>cassandra</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mysql</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>oracle-xe</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mssqlserver</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
 
     <!-- Third-party drivers -->
     <dependency>
@@ -159,6 +187,31 @@
       <groupId>org.elasticsearch.client</groupId>
       <artifactId>elasticsearch-rest-high-level-client</artifactId>
       <version>${elasticsearch.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-core</artifactId>
+      <version>${cassandra.driver.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>${mysql-connector-java.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql-connector-java.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.oracle.ojdbc</groupId>
+      <artifactId>ojdbc8</artifactId>
+      <version>${ojdbc8-connector-java.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>${sqlserver-connector-java.version}</version>
     </dependency>
 
     <!-- File Formats -->
@@ -211,7 +264,7 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-inline</artifactId>
-      <version>${mockito-inline.version}</version>
+      <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

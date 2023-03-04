@@ -486,6 +486,7 @@ public class DefaultBigtableResourceManagerTest {
     // use mocked instance admin client object
     when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
         .thenReturn(bigtableInstanceAdminClient);
+    testManager.createInstance(cluster);
 
     doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).deleteInstance(anyString());
 
@@ -497,6 +498,7 @@ public class DefaultBigtableResourceManagerTest {
     // use mocked instance admin client object
     when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
         .thenReturn(bigtableInstanceAdminClient);
+    testManager.createInstance(cluster);
 
     doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).close();
 
@@ -511,6 +513,7 @@ public class DefaultBigtableResourceManagerTest {
     // use mocked table admin client object
     when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
         .thenReturn(bigtableTableAdminClient);
+    testManager.createInstance(cluster);
 
     doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).deleteInstance(any());
 
@@ -522,6 +525,7 @@ public class DefaultBigtableResourceManagerTest {
     // use mocked instance admin client object
     when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
         .thenReturn(bigtableInstanceAdminClient);
+    testManager.createInstance(cluster);
 
     doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).deleteInstance(anyString());
 
@@ -533,6 +537,7 @@ public class DefaultBigtableResourceManagerTest {
     // use mocked instance admin client object
     when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
         .thenReturn(bigtableInstanceAdminClient);
+    testManager.createInstance(cluster);
 
     doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).close();
 

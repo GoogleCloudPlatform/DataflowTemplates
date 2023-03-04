@@ -5,15 +5,15 @@
 Develop a simple Flex Template and run it on Google Cloud. This will take you
 through setting up the POM and template code, staging it in Google Container
 Registry, and running it on Dataflow. Once done, you'll be able to run the
-template to calculate the occurrences of each word in a given file in
+template to calculate the frequency of each word in a given file in
 Google Cloud Storage and output the results to another file in
 Google Cloud Storage.
 
 ## Google Cloud Resources
 
-1.  Dataflow
-2.  Google Container Registry (GCR)
-3.  Google Cloud Storage (GCS)
+1. Dataflow
+2. Google Container Registry (GCR)
+3. Google Cloud Storage (GCS)
 
 ## Create a Word Count Template
 
@@ -24,40 +24,18 @@ the following content:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-
-    Copyright (C) 2021 Google Inc.
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
--->
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns="http://maven.apache.org/POM/4.0.0"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-  <modelVersion>4.0.0</modelVersion>
-  <artifactId>wordcount</artifactId>
-
   <parent>
-    <artifactId>dynamic-templates</artifactId>
     <groupId>com.google.cloud.teleport.v2</groupId>
+    <artifactId>dynamic-templates</artifactId>
     <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <properties>
-    <truth.version>1.1.3</truth.version>
-    <guava.version>31.0.1-jre</guava.version>
-  </properties>
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>wordcount</artifactId>
 
   <dependencies>
     <!-- Not always necessary, but sometimes Maven resolves to a Guava version
@@ -86,19 +64,19 @@ will be discussed later.
 ### Step 2: Add module to parent
 
 In the POM, we have declared a parent named `dynamic-templates`. This
-corresponds to the POM file under `v2/`. Open that file, and towards the bottom,
+corresponds to the `pom.xml` file under `v2/`. Open that file, and towards the
+bottom,
 you should see a list of child modules. Add the `wordcount` module to this list:
 
 ```xml
+
 <module>wordcount</module>
 ```
 
-Since all non-test dependencies necessary for `wordcount` are contained in this
-parent, we don't need to add any to `wordcount` itself.
-
-WARNING: Adding dependencies to `v2/pom.xml` can increase build time for *all*
-Flex Templates. If possible, please avoid inheriting dependencies and only put
-the most general dependencies, like Beam and JUnit, in the parent.
+WARNING: Adding dependencies to `v2/pom.xml` can increase build time and
+container sizes for *all* Flex Templates. If possible, please avoid inheriting
+dependencies and only put the most general dependencies, like Beam and JUnit,
+in the parent.
 
 ### Step 3: Add packages
 
@@ -144,6 +122,7 @@ public class WordCountTransforms {
    */
   public static class CountWords
       extends PTransform<PCollection<String>, PCollection<KV<String, Long>>> {
+
     @Override
     public PCollection<KV<String, Long>> expand(PCollection<String> lines) {
 
@@ -151,17 +130,18 @@ public class WordCountTransforms {
       PCollection<String> words = lines.apply(ParDo.of(new ExtractWordsFn()));
 
       // Count the number of times each word occurs.
-      PCollection<KV<String, Long>> wordCounts = words.apply(Count.<String>perElement());
-
-      return wordCounts;
+      return words.apply(Count.<String>perElement());
     }
   }
 
   static class ExtractWordsFn extends DoFn<String, String> {
-    private final Counter emptyLines = Metrics.counter(ExtractWordsFn.class, "emptyLines");
+
+    private final Counter emptyLines = Metrics.counter(ExtractWordsFn.class,
+        "emptyLines");
 
     @ProcessElement
-    public void processElement(@Element String line, OutputReceiver<String> receiver) {
+    public void processElement(@Element String line,
+        OutputReceiver<String> receiver) {
       line = line.trim();
       if (line.isEmpty()) {
         emptyLines.inc();
@@ -170,7 +150,8 @@ public class WordCountTransforms {
         String[] words = line.split("[^a-zA-Z']+");
 
         // Output each word encountered into the output PCollection.
-        Arrays.stream(words).filter((word) -> !word.isEmpty()).forEach(receiver::output);
+        Arrays.stream(words).filter((word) -> !word.isEmpty())
+            .forEach(receiver::output);
       }
     }
   }
@@ -195,13 +176,17 @@ counter, is preferable in this case.
 ### Step 5: Add the template code
 
 Under the `templates` package, add a file named `WordCount.java` with the
-following content:
+following code and metadata annotations:
 
 ```java
 package com.google.cloud.teleport.v2.templates;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkNotNull;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.templates.WordCount.WordCountOptions;
 import com.google.cloud.teleport.v2.transforms.WordCountTransforms;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -217,25 +202,51 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 
 /** Word count template. */
+@Template(
+    name = "Word_Count_Flex",
+    category = TemplateCategory.GET_STARTED,
+    displayName = "Word Count",
+    description =
+        "Batch pipeline to read text files from Cloud Storage and perform "
+            + "frequency count on each of the words.",
+    flexContainerName = "wordcount",
+    optionsClass = WordCountOptions.class)
 public final class WordCount {
+
   /**
    * The {@link WordCountOptions} class provides the custom execution options passed by the executor
    * at the command-line.
    */
   public interface WordCountOptions extends PipelineOptions {
-    @Description("Path of the file to read from.")
-    @Required
+
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Input file(s) in Cloud Storage",
+        helpText =
+            "The input file pattern Dataflow reads from. Use the example file "
+                + "(gs://dataflow-samples/shakespeare/kinglear.txt) or enter the path to your own "
+                + "using the same format: gs://your-bucket/your-file.txt")
     String getInputFile();
 
     void setInputFile(String value);
 
-    @Description("Path of the file to write to.")
-    @Required
+    @TemplateParameter.GcsWriteFolder(
+        order = 2,
+        description = "Output Cloud Storage file prefix",
+        helpText = "Path and filename prefix for writing output files. Ex: gs://your-bucket/counts")
     String getOutputPath();
 
     void setOutputPath(String value);
 
-    @Description("Number of shards. Default Runner dependent.")
+    @TemplateParameter.Integer(
+        order = 3,
+        optional = true,
+        description = "Maximum output shards",
+        helpText =
+            "The maximum number of output shards produced when writing. A higher number of shards"
+                + " means higher throughput for writing to Cloud Storage, but potentially higher"
+                + " data aggregation cost across shards when processing output Cloud Storage"
+                + " files. Default is runner dependent.")
     @Default.Integer(-1)
     int getNumShards();
 
@@ -249,7 +260,8 @@ public final class WordCount {
    */
   public static void main(String[] args) {
     WordCountOptions options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(WordCountOptions.class);
+        PipelineOptionsFactory.fromArgs(args).withValidation()
+            .as(WordCountOptions.class);
 
     run(options);
   }
@@ -270,10 +282,12 @@ public final class WordCount {
     PCollection<String> inputLines =
         pipeline.apply("ReadLines", TextIO.read().from(options.getInputFile()));
 
-    PCollection<String> wordsCount = applyTransfroms(inputLines);
+    PCollection<String> wordsCount = applyTransforms(inputLines);
 
     TextIO.Write writer = TextIO.write().to(options.getOutputPath());
-    writer = options.getNumShards() > 0 ? writer.withNumShards(options.getNumShards()) : writer;
+    if (options.getNumShards() > 0) {
+      writer = writer.withNumShards(options.getNumShards());
+    }
 
     wordsCount.apply("WriteCounts", writer);
 
@@ -286,14 +300,16 @@ public final class WordCount {
    * @param lines Collection of text lines
    * @return the count of words with each line representing word and count in the form word: count.
    */
-  public static PCollection<String> applyTransfroms(PCollection<String> lines) {
+  public static PCollection<String> applyTransforms(PCollection<String> lines) {
     return lines
         .apply(new WordCountTransforms.CountWords())
         .apply(MapElements.via(new FormatAsTextFn()));
   }
 
   /** A SimpleFunction that converts a Word and Count into a printable string. */
-  private static class FormatAsTextFn extends SimpleFunction<KV<String, Long>, String> {
+  private static class FormatAsTextFn extends
+      SimpleFunction<KV<String, Long>, String> {
+
     @Override
     public String apply(KV<String, Long> input) {
       return input.getKey() + ": " + input.getValue();
@@ -306,15 +322,15 @@ This is the actual template where we construct the pipeline's graph. Some
 options are provided for getting input and output locations, along with
 configuring the output.
 
-In this template, we wrap a couple PTransforms in a separate method named
+In this template, we wrap a couple of `PTransforms` in a separate method named
 `applyTransforms`. We could do these `apply` steps directly in the `run` method,
 but this makes it easier to unit test.
 
 `FormatAsTextFn` is an implementation of Beam's `SimpleFunction` and used as the
 mapping method for
-[MapElements](https://beam.apache.org/documentation/transforms/java/elementwise/mapelements/),
-which, along with the previously mentioned `ParDo`, is a core building block of
-Beam pipelines.
+[MapElements](https://beam.apache.org/documentation/transforms/java/elementwise/mapelements/)
+, which, along with the previously mentioned `ParDo`, is a core building block
+of Beam pipelines.
 
 ### Step 6: Verify Pipeline Build
 
@@ -327,24 +343,23 @@ mvn spotless:apply -pl v2/wordcount
 
 This will format the code. If you try to build and get checkstyle violations,
 this can solve many of them, though some will need to be addressed manually,
-such as missing Javadocs.
+such as missing JavaDocs.
 
-Once formatted, you can run:
+Once formatted, you can run (from the project's root as well):
 
 ```shell
-mvn clean package -pl v2/wordcount -am \
-  -Dmaven.test.skip \
-  -Djib.skip
+mvn clean package -pl v2/wordcount -am -Dmaven.test.skip
 ```
 
-The `-am` option guarantees that all the necessary local dependencies are included in the build.
+The `-am` option guarantees that all the necessary local dependencies are
+included in the build.
 
 `-pl v2/wordcount` is how we specify the target module, allowing us to only
 build what we need. You can see all the available modules in the
 `pom.xml` file.
 
-Lastly, we use `-Dmaven.test.skip` and `-Djib.skip` to avoid running steps of
-`install` that we want to skip for now.
+Lastly, we use `-Dmaven.test.skip` to avoid running any tests, which we are going
+to cover next.
 
 ### Step 7: Add a unit test
 
@@ -379,21 +394,26 @@ import org.junit.runners.JUnit4;
 /** Test cases for the {@link WordCount} class. */
 @RunWith(JUnit4.class)
 public final class WordCountTest {
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  @Rule public final ExpectedException expectedException = ExpectedException.none();
+  @Rule
+  public final transient TestPipeline pipeline = TestPipeline.create();
 
-  @ClassRule public static TemporaryFolder tempFolder = new TemporaryFolder();
+  @Rule
+  public final ExpectedException expectedException = ExpectedException.none();
+
+  @ClassRule
+  public static TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Test
   public void testWordCount_returnsValidCount() throws IOException {
     // Arrange
     String filePath = tempFolder.newFile().getAbsolutePath();
     writeToFile(filePath, Arrays.asList("Beam Pipeline", "Beam Java Sdk"));
-    PCollection<String> inputLines = pipeline.apply("Read Lines", TextIO.read().from(filePath));
+    PCollection<String> inputLines = pipeline.apply("Read Lines",
+        TextIO.read().from(filePath));
 
     // Act
-    PCollection<String> results = WordCount.applyTransfroms(inputLines);
+    PCollection<String> results = WordCount.applyTransforms(inputLines);
 
     // Assert
     PAssert.that(results)
@@ -402,7 +422,8 @@ public final class WordCountTest {
               List<String> result = new ArrayList<>();
               pcollection.iterator().forEachRemaining(result::add);
 
-              String[] expected = {"Beam: 2", "Java: 1", "Pipeline: 1", "Sdk: 1"};
+              String[] expected = {"Beam: 2", "Java: 1", "Pipeline: 1",
+                  "Sdk: 1"};
 
               assertThat(result.size()).isEqualTo(4);
               assertThat(result).containsExactlyElementsIn(expected);
@@ -413,7 +434,8 @@ public final class WordCountTest {
     pipeline.run();
   }
 
-  private void writeToFile(String filePath, List<String> lines) throws IOException {
+  private void writeToFile(String filePath, List<String> lines)
+      throws IOException {
     String newlineCharacter = "\n";
     try (FileWriter fileWriter = new FileWriter(new File(filePath))) {
       for (String line : lines) {
@@ -428,7 +450,7 @@ All unit tests should follow the basic Arrange, Act, Assert structure, where
 test data is prepared in Arrange, acted on in Act, and verified in Assert. The
 block comments are unnecessary unless the block has multiple lines.
 
-For verifying data, we now encourage
+For verifying data, we encourage the use of
 [Google Truth](https://github.com/google/truth), though you may see other
 assertion libraries used in older templates. Please avoid using these. The only
 exception is using `assertThrows` from JUnit, which does not have a good Truth
@@ -439,168 +461,95 @@ equivalent.
 You can run the unit test with the following command:
 
 ```shell
-mvn clean package -pl v2/wordcount -am \
-  -Dtest=WordCountTest -DfailIfNoTests=false \
-  -Djib.skip
+mvn clean test -pl v2/wordcount -am \
+  -Dtest=WordCountTest -DfailIfNoTests=false
 ```
 
-This is similar to the above but with the target test specified. Since we will
+This is similar to the above but with the `test` target specified. Since we will
 be building other modules as well, we need to set the
 [failIfNoTests](https://maven.apache.org/surefire/maven-surefire-plugin/test-mojo.html#failIfNoTests)
-property to false to avoid failures in dependencies when no tests are run.
+property as false to avoid failures in dependencies when no tests are run.
 
-### Step 9: Add Jib plugin
+### Step 9: Stage or Run the template
 
-Flex Templates are all containerized. An easy way to do this is to use the
-[Jib plugin](https://github.com/GoogleContainerTools/jib/tree/master/jib-maven-plugin).
-To use it, add it to the `<build>` block of the `wordcount/pom.xml` file, so
-that it now looks like:
+`Stage` is the term used for the process of building and uploading the template to
+Cloud Registry and Google Cloud Storage. After the template code is created, you
+can use the 
+[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+to help with the staging process and/or run the template.
 
-```xml
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>com.google.cloud.tools</groupId>
-        <artifactId>jib-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>build</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
-```
-
-(NOTE: Sometimes you may get errors about
-`com.google.cloud.tools:jib-maven-plugin` not being found. In this case, you can
-add a `<version>` equal to the version in `v2/pom.xml`. This normally should not
-be necessary but has been observed in IntelliJ.)
-
-Once Jib is added, you can skip it during `mvn install` or `mvn package` using
-`-Djib.skip`, similar to the above commands.
-
-### Step 10: Add command spec
-
-To configure the Docker image, we use a `wordcount-command-spec.json` file.
-Place this under `src/main/resources`:
-
-```json
-{
-  "mainClass": "com.google.cloud.teleport.v2.templates.WordCount",
-  "classPath": "/template/wordcount/*:/template/wordcount/libs/*:/template/wordcount/classes",
-  "defaultParameterValues": {
-    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"wordcount\"}",
-    "autoscalingAlgorithm": "THROUGHPUT_BASED",
-    "maxNumWorkers": "10"
-  }
-}
-```
-
-### Step 11: Add image spec
-
-We also use an image spec to provide metadata about the pipeline. This is used
-to display options from the Google Cloud console. Add
-`wordcount-image-spec.json` to the `src/main/resources` folder with the
-following:
-
-```json
-{
-  "name": "Word Count",
-  "description": "A pipeline to count words inside a text file",
-  "parameters": [{
-    "name": "inputFile",
-    "label": "Input file(s) in Cloud Storage",
-    "helpText": "The input file pattern pipeline reads from. Use the example file (gs://dataflow-samples/shakespeare/kinglear.txt) or enter the path to your own using the same format: gs://your-bucket/your-file.txt",
-    "regexes": [
-      "^gs:\\/\\/[^\\n\\r]+$"
-    ],
-    "paramType": "GCS_READ_FILE"
-  },
-  {
-    "name": "outputPath",
-    "label": "Output directory in Cloud Storage",
-    "helpText": "Path and filename prefix for writing output files. ex: gs://MyBucket/export",
-    "regexes": [
-      "^gs:\\/\\/[^\\n\\r]+$"
-    ],
-    "paramType": "GCS_WRITE_FOLDER"
-  },
-  {
-    "name": "numShards",
-    "label": "Maximum Number of Output Shards",
-    "helpText": "The maximum number of output shards produced when writing.Default is runner dependent",
-    "isOptional": true,
-    "regexes": [
-      "^[1-9]+$"
-    ],
-    "paramType": "TEXT"
-  }
-  ]
-}
-```
-
-### Step 12: Run template
-
-You can now test the template by running all of the following commands:
-
-NOTE: Be sure to set the `PROJECT`, `BUCKET_NAME`, and `METADATA_FILEPATH` shell
-variables. You can also set the `REGION` variable to the one you would normally
-run Dataflow jobs in, but it can be set to any region.
+First of all, be sure to authenticate through `gcloud` and install the plugin:
 
 ```shell
 gcloud auth login
 gcloud auth configure-docker
 
+# Install the plugin, used to stage and run the templates
+mvn clean install -pl plugins/templates-maven-plugin -am 
+
+# Configure the environment variables
 export USERNAME=`whoami`
 export PROJECT=<Your GCP projectid>
 export REGION=us-central1
 export BUCKET_NAME=<Your GCS Bucket name>
-export IMAGE_NAME="$USERNAME-wordcount"
 export MODULE_NAME=wordcount
+```
 
-export TARGET_GCR_IMAGE="gcr.io/$PROJECT/$IMAGE_NAME"
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
-export BASE_CONTAINER_IMAGE_VERSION=latest
-export APP_ROOT="/template/$MODULE_NAME"
-export COMMAND_SPEC="$APP_ROOT/resources/$MODULE_NAME-command-spec.json"
+Then choose between one of the options:
 
-mvn clean package -pl "v2/$MODULE_NAME" -am \
-  -Dimage="$TARGET_GCR_IMAGE" \
-  -Dbase-container-image="$BASE_CONTAINER_IMAGE" \
-  -Dbase-container-image.version="$BASE_CONTAINER_IMAGE_VERSION" \
-  -Dapp-root="$APP_ROOT" \
-  -Dcommand-spec="$COMMAND_SPEC" \
-  -Djib.applicationCache="/tmp/"
+1. Just stage the template:
+    ```shell
+   mvn clean package -PtemplatesStage  \
+    -DskipTests \
+    -DprojectId="$PROJECT" \
+    -DbucketName="$BUCKET_NAME" \
+    -DstagePrefix="$USERNAME/$MODULE_NAME" \
+    -DtemplateName="Word_Count_Flex" \
+    -pl v2/$MODULE_NAME -am
+    ```
 
-export METADATA_FILEPATH=<path to wordcount-image-spec.json>
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/$USERNAME/templates/specs/wordcount"
+2. Stage + run the template:
+    ```shell
+    mvn clean package -PtemplatesRun \
+      -DskipTests \
+      -DprojectId="$PROJECT" \
+      -DbucketName="$BUCKET_NAME" \
+      -Dregion="$REGION" \
+      -DjobName="wordcount-$(date +'%Y%m%d%H%M%S')" \
+      -DtemplateName="Word_Count_Flex" \
+      -Dparameters="inputFile=gs://dataflow-samples/shakespeare/kinglear.txt,outputPath=gs://$BUCKET_NAME/output/wordcount/$USERNAME/wordcount" \
+      -pl v2/$MODULE -am
+    ```
 
-gcloud dataflow flex-template build "$TEMPLATE_SPEC_GCSPATH" \
-    --image "$TARGET_GCR_IMAGE" \
-    --sdk-language "JAVA" \
-    --metadata-file "$METADATA_FILEPATH"
+Both commands should print what is the template location on Cloud Storage:
 
-export JOB_NAME="wordcount-$USERNAME"
+```
+Flex Template was staged! gs://{BUCKET}/{PATH}
+```
 
-gcloud dataflow flex-template run "$JOB_NAME-$(date +'%Y%m%d%H%M%S')" \
-  --project "$PROJECT" --region "$REGION" \
+You can use that path to share the template. To run the template at any time
+using `gcloud`, you can use:
+
+```
+export TEMPLATE_SPEC_GCSPATH={PATH_FROM_ABOVE}
+
+gcloud dataflow flex-template run "wordcount-$(date +'%Y%m%d%H%M%S')" \
+  --project "$PROJECT" \
+  --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters inputFile="gs://dataflow-samples/shakespeare/kinglear.txt"  \
   --parameters outputPath="gs://$BUCKET_NAME/output/wordcount/$USERNAME/wordcount"
 ```
 
-Once done, you can verify that the job ran successfully by going to the Dataflow
+Once ran, you can verify that the job ran successfully by going to the Dataflow
 jobs page in the Google Cloud Console.
 
-NOTE: If you would prefer, you can also launch the template from the Google
-Cloud Console by selecting the custom template option in the dropdown. You would
-then point it to the file specified by `TEMPLATE_SPEC_GCSPATH`.
+NOTE: If preferred, you can also launch the template from the Google
+Cloud Console by selecting the `Custom Template` option in the dropdown of the
+`Create job from template` page. You would then point it to the path specified
+by `TEMPLATE_SPEC_GCSPATH`.
 
-### Step 13: Cleanup
+### Step 10: Cleanup
 
 It's a good idea to run `mvn spotless:apply` after development and before
 putting in a PR. This will fix any formatting issues.
@@ -614,6 +563,6 @@ git stash save --include-untracked && git stash drop
 If you created a separate project for this tutorial, also remember to delete it
 to avoid any billing costs from the artifacts created by the template.
 
-### Step 14: Celebrate!
+### Bonus Step: Celebrate!
 
 You're done with this tutorial!

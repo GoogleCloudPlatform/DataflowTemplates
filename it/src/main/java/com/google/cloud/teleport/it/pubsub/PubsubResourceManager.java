@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.it.pubsub;
 
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.SubscriptionName;
@@ -22,7 +23,7 @@ import com.google.pubsub.v1.TopicName;
 import java.util.Map;
 
 /** Interface for managing Pub/Sub resources in integration tests. */
-public interface PubsubResourceManager {
+public interface PubsubResourceManager extends ResourceManager {
 
   /**
    * Creates a topic with the given name on Pub/Sub.

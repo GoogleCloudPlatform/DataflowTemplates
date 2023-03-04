@@ -484,12 +484,14 @@ public class InformationSchemaScanner {
                 + " WHERE t.table_catalog = '' AND t.table_schema = ''"
                 + " ORDER BY t.table_name, t.column_name");
       case POSTGRESQL:
+        // Ignore the 'allow_commit_timestamp' option since it's not user-settable in POSTGRESQL.
         return Statement.of(
             "SELECT t.table_name, t.column_name, t.option_name, t.option_type,"
                 + " t.option_value"
                 + " FROM information_schema.column_options AS t"
                 + " WHERE t.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " AND t.option_name NOT IN ('allow_commit_timestamp')"
                 + " ORDER BY t.table_name, t.column_name");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);

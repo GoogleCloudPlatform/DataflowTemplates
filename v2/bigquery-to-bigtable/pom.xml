@@ -26,7 +26,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <properties>
-        <bigtable.version>1.15.0</bigtable.version>
+        <bigtable-hbase.version>2.7.0</bigtable-hbase.version>
     </properties>
 
     <dependencies>
@@ -39,7 +39,7 @@
         <dependency>
             <groupId>com.google.cloud.bigtable</groupId>
             <artifactId>bigtable-hbase-beam</artifactId>
-            <version>${bigtable.version}</version>
+            <version>${bigtable-hbase.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>

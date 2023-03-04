@@ -37,6 +37,8 @@ public final class BigtableResourceManagerUtils {
   private static final int MIN_TABLE_ID_LENGTH = 1;
   private static final int MAX_TABLE_ID_LENGTH = 30;
   private static final Pattern ILLEGAL_TABLE_CHARS = Pattern.compile("[^a-zA-Z0-9-_.]");
+  private static final String REPLACE_TABLE_ID_CHAR = "-";
+
   private static final DateTimeFormatter TIME_FORMAT =
       DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSSSSS");
 
@@ -80,6 +82,21 @@ public final class BigtableResourceManagerUtils {
         ILLEGAL_INSTANCE_ID_CHARS,
         REPLACE_INSTANCE_ID_CHAR,
         MAX_INSTANCE_ID_LENGTH,
+        TIME_FORMAT);
+  }
+
+  /**
+   * Generates an table id from a given string.
+   *
+   * @param baseString The string to generate the id from.
+   * @return The instance id string.
+   */
+  public static String generateTableId(String baseString) {
+    return generateResourceId(
+        baseString.toLowerCase(),
+        ILLEGAL_TABLE_CHARS,
+        REPLACE_TABLE_ID_CHAR,
+        MAX_TABLE_ID_LENGTH,
         TIME_FORMAT);
   }
 

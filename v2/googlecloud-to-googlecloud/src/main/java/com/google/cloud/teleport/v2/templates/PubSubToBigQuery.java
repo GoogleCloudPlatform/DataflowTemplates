@@ -35,6 +35,7 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.nio.charset.StandardCharsets;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -80,10 +81,10 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>
  * # Set the pipeline vars
- * export PROJECT=<project id>
+ * export PROJECT={project id}
  * export TEMPLATE_MODULE=googlecloud-to-googlecloud
  * export TEMPLATE_NAME=pubsub-to-bigquery
- * export BUCKET_NAME=gs://<bucket name>
+ * export BUCKET_NAME=gs://{bucket name}
  * export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${TEMPLATE_NAME}-image
  * export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
  * export BASE_CONTAINER_IMAGE_VERSION=latest
@@ -146,7 +147,7 @@ import org.slf4j.LoggerFactory;
  * gcloud beta dataflow flex-template run ${JOB_NAME} \
  *       --project=${PROJECT} --region=us-central1 \
  *       --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
- *       --parameters inputTopic=<topic>,outputTableSpec=<output table>
+ *       --parameters inputTopic={topic},outputTableSpec={output table}
  * </pre>
  */
 @Template(
@@ -198,7 +199,8 @@ public class PubSubToBigQuery {
   public interface Options
       extends PipelineOptions,
           JavascriptTextTransformerOptions,
-          BigQueryStorageApiStreamingOptions {
+          BigQueryStorageApiStreamingOptions,
+          DataflowPipelineWorkerPoolOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery output table",
@@ -258,6 +260,9 @@ public class PubSubToBigQuery {
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
+    //    options.setWorkerDiskType(
+    //
+    // "compute.googleapis.com/projects/cloud-teleport-testing/zones/us-central1-a/diskTypes/t2a-test");
 
     run(options);
   }

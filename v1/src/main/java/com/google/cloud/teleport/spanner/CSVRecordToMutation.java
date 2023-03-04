@@ -48,7 +48,7 @@ import org.apache.commons.csv.CSVRecord;
  * a side input. When the record cannot be converted to the requested table schema, an
  * IllegalArgumentException will be raised.
  *
- * <p>Input PCollection is a @{code KV<tableName, CSVRecord>}
+ * <p>Input PCollection is a @{code KV&lt;tableName, CSVRecord&gt;}
  */
 class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
 

@@ -31,7 +31,7 @@ import org.apache.beam.sdk.values.TypeDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Transform to query BigQuery and output PCollection<Row>. */
+/** Transform to query BigQuery and output PCollection of Row. */
 public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BqQueryToRow.class);

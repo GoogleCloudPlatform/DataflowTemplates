@@ -17,6 +17,9 @@ package com.google.cloud.teleport.it.matchers;
 
 import static com.google.common.truth.Truth.assertAbout;
 
+import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.bigquery.FieldValueList;
@@ -99,6 +102,16 @@ public final class TemplateAsserts {
    */
   public static RecordsSubject assertThatGenericRecords(List<GenericRecord> records) {
     return assertThatRecords(genericRecordToRecords(records));
+  }
+
+  /**
+   * Creates a {@link RecordsSubject} to assert information within a list of records.
+   *
+   * @param rows Records in Cassandra's {@link Row} format to use in the comparison.
+   * @return Truth Subject to chain assertions.
+   */
+  public static RecordsSubject assertThatRecords(@Nullable Iterable<Row> rows) {
+    return assertThatRecords(cassandraRowsToRecords(rows));
   }
 
   /**
@@ -191,6 +204,37 @@ public final class TemplateAsserts {
       return records;
     } catch (Exception e) {
       throw new RuntimeException("Error converting Avro Record to Map", e);
+    }
+  }
+
+  /**
+   * Convert Cassandra {@link Row} list to a list of maps.
+   *
+   * @param rows Rows to parse
+   * @return List of maps to use in {@link RecordsSubject}
+   */
+  private static List<Map<String, Object>> cassandraRowsToRecords(Iterable<Row> rows) {
+    try {
+      List<Map<String, Object>> records = new ArrayList<>();
+
+      for (Row row : rows) {
+        Map<String, Object> converted = new HashMap<>();
+        for (ColumnDefinition columnDefinition : row.getColumnDefinitions()) {
+
+          Object value = null;
+          if (columnDefinition.getType().equals(DataTypes.TEXT)) {
+            value = row.getString(columnDefinition.getName());
+          } else if (columnDefinition.getType().equals(DataTypes.INT)) {
+            value = row.getInt(columnDefinition.getName());
+          }
+          converted.put(columnDefinition.getName().toString(), value);
+        }
+        records.add(converted);
+      }
+
+      return records;
+    } catch (Exception e) {
+      throw new RuntimeException("Error converting Cassandra Rows to Records", e);
     }
   }
 }

@@ -1,6 +1,6 @@
 {
   "kafka_read": {
-    "urn": "kafka:read",
+    "urn": "beam:schematransform:org.apache.beam:kafka_read:v1",
     "configurationParameters": {
       "topic": {
         "description": "The name of the Kafka topic to consume data from",

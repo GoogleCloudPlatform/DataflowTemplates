@@ -30,6 +30,7 @@ import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.BigQueryTestUtils;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator;
@@ -39,10 +40,8 @@ import java.io.IOException;
 import java.util.List;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -51,7 +50,6 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(BigQueryToBigtable.class)
 @RunWith(JUnit4.class)
 public class BigQueryToBigtableIT extends TemplateTestBase {
-  @Rule public final TestName testName = new TestName();
 
   private static final String READ_QUERY = "readQuery";
   private static final String READ_ID_COL = "readIdColumn";
@@ -67,8 +65,8 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
       Integer.parseInt(getProperty("numRows", "20", TestProperties.Type.PROPERTY));
   private static final int BIGQUERY_NUM_FIELDS =
       Integer.parseInt(getProperty("numFields", "100", TestProperties.Type.PROPERTY));
-  private static final int BIGQUERY_MAX_ENTRY_LENTH =
-      Integer.max(
+  private static final int BIGQUERY_MAX_ENTRY_LENGTH =
+      Integer.min(
           300, Integer.parseInt(getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY)));
 
   private BigQueryResourceManager bigQueryClient;
@@ -77,23 +75,18 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
     bigtableClient =
-        DefaultBigtableResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigtableResourceManager.builder(testName, PROJECT)
             .setCredentialsProvider(credentialsProvider)
             .build();
   }
 
   @After
-  public void tearDownClass() {
-    if (bigtableClient != null) {
-      bigtableClient.cleanupAll();
-    }
-    if (bigQueryClient != null) {
-      bigQueryClient.cleanupAll();
-    }
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(bigtableClient, bigQueryClient);
   }
 
   @Test
@@ -102,7 +95,7 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
     String tableName = "test_table";
     Tuple<Schema, List<RowToInsert>> generatedTable =
         BigQueryTestUtils.generateBigQueryTable(
-            BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENTH);
+            BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
     Schema bigQuerySchema = generatedTable.x();
     List<RowToInsert> bigQueryRows = generatedTable.y();
     bigQueryClient.createTable(tableName, bigQuerySchema);

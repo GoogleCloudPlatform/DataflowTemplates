@@ -87,7 +87,8 @@ public final class MergeInfoTest {
             orderByFields,
             "metadata_deleteField",
             stagingTable,
-            replicaTable);
+            replicaTable,
+            "job-id-dataset-table");
 
     assertThat(mergeInfo.getCustomColumns()).isEmpty();
     assertThat(mergeInfo.getStagingTable()).isEqualTo(stagingTable);
@@ -107,7 +108,8 @@ public final class MergeInfoTest {
             orderByFields,
             "metadata_deleteField",
             stagingTable,
-            replicaTable);
+            replicaTable,
+            "job-id-dataset-table");
 
     assertThat(mergeInfo.getReplicaTableReference()).isEqualTo("projectId.dataset.table");
   }
@@ -125,7 +127,8 @@ public final class MergeInfoTest {
             orderByFields,
             "metadata_deleteField",
             stagingTable,
-            replicaTable);
+            replicaTable,
+            "job-id-dataset-table");
 
     assertThat(mergeInfo.getStagingTableReference()).isEqualTo("projectId.dataset.staging_table");
   }
@@ -146,7 +149,8 @@ public final class MergeInfoTest {
             "metadata_deleteField",
             stagingTable,
             replicaTable,
-            mergeFields);
+            mergeFields,
+            "job-id-dataset-table");
 
     assertThat(mergeInfo.buildMergeStatement(cfg)).isEqualTo(MERGE_SQL);
   }
@@ -196,6 +200,7 @@ public final class MergeInfoTest {
         "metadata_deleteField",
         stagingTable,
         replicaTable,
-        customColumns);
+        customColumns,
+        "job-id-dataset-table");
   }
 }

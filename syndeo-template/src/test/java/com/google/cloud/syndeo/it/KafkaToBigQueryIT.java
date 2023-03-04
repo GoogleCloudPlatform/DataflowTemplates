@@ -129,7 +129,7 @@ public class KafkaToBigQueryIT {
               result.cancel();
             });
     assertTrue(
-        "Error message contains missing table name. ",
+        "Error message contains missing table name. " + e,
         e.getMessage().contains("NONEXISTENT_TABLE"));
   }
 
@@ -194,8 +194,6 @@ public class KafkaToBigQueryIT {
       while (true) {
         Long rowsInTable =
             bigQueryResourceManager.getRowCount(
-                PROJECT,
-                BIGQUERY_DATASET,
                 BIGQUERY_TABLE.substring(BIGQUERY_TABLE.lastIndexOf(".") + 1));
         if (rowsInTable == ELEMENTS_PER_SECOND * PIPELINE_DURATION_SECONDS) {
           // Test passes yay!

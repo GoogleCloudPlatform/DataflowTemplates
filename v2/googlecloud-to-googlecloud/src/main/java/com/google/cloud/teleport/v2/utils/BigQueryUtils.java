@@ -35,7 +35,7 @@ public class BigQueryUtils {
   private static final String DATASET_REGEXP = "[-\\w.]{1,1024}";
 
   /**
-   * Matches table specifications in the form {@code "projects/[project_id]/datasets/[dataset_id]".
+   * Matches table specifications in the form {@code projects/[project_id]/datasets/[dataset_id]}.
    */
   private static final String DATASET_URN_REGEXP =
       String.format(

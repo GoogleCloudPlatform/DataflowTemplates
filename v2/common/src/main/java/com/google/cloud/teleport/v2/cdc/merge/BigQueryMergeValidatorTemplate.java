@@ -119,6 +119,7 @@ public class BigQueryMergeValidatorTemplate {
                 new DoFn<Integer, MergeInfo>() {
                   @ProcessElement
                   public void process(ProcessContext c) {
+                    String jobId = String.format("datastream-job-id-%s", replicaTable);
                     MergeInfo mergeInfo =
                         MergeInfo.create(
                             "project_id",
@@ -127,7 +128,8 @@ public class BigQueryMergeValidatorTemplate {
                             "_metadata_deleted",
                             replicaTable,
                             stagingTable,
-                            ALL_FIELDS);
+                            ALL_FIELDS,
+                            jobId);
                     c.output(mergeInfo);
                   }
                 }))

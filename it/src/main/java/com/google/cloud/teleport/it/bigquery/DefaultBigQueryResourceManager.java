@@ -281,9 +281,9 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
   }
 
   @Override
-  public Long getRowCount(String project, String dataset, String table) {
+  public Long getRowCount(String table) {
     TableResult r =
-        runQuery(String.format("SELECT COUNT(*) FROM %s:%s.%s", project, dataset, table));
+        runQuery(String.format("SELECT COUNT(*) FROM `%s.%s.%s`", projectId, datasetId, table));
     return StreamSupport.stream(r.getValues().spliterator(), false)
         .map(fieldValues -> fieldValues.get(0).getLongValue())
         .collect(Collectors.toList())

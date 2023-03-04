@@ -65,6 +65,8 @@ public final class Type implements Serializable {
   private static final Type TYPE_PG_BYTEA = new Type(Code.PG_BYTEA, null, null);
   private static final Type TYPE_PG_TIMESTAMPTZ = new Type(Code.PG_TIMESTAMPTZ, null, null);
   private static final Type TYPE_PG_DATE = new Type(Code.PG_DATE, null, null);
+  private static final Type TYPE_PG_SPANNER_COMMIT_TIMESTAMP =
+      new Type(Code.PG_SPANNER_COMMIT_TIMESTAMP, null, null);
   private static final Type TYPE_PG_ARRAY_BOOL = new Type(Code.PG_ARRAY, TYPE_PG_BOOL, null);
   private static final Type TYPE_PG_ARRAY_INT8 = new Type(Code.PG_ARRAY, TYPE_PG_INT8, null);
   private static final Type TYPE_PG_ARRAY_FLOAT8 = new Type(Code.PG_ARRAY, TYPE_PG_FLOAT8, null);
@@ -177,6 +179,10 @@ public final class Type implements Serializable {
 
   public static Type pgDate() {
     return TYPE_PG_DATE;
+  }
+
+  public static Type pgSpannerCommitTimestamp() {
+    return TYPE_PG_SPANNER_COMMIT_TIMESTAMP;
   }
 
   /** Returns a descriptor for an array of {@code elementType}. */
@@ -293,6 +299,7 @@ public final class Type implements Serializable {
     PG_BYTEA("bytea", Dialect.POSTGRESQL),
     PG_TIMESTAMPTZ("timestamp with time zone", Dialect.POSTGRESQL),
     PG_DATE("date", Dialect.POSTGRESQL),
+    PG_SPANNER_COMMIT_TIMESTAMP("spanner.commit_timestamp", Dialect.POSTGRESQL),
     PG_ARRAY("array", Dialect.POSTGRESQL);
 
     private final String name;

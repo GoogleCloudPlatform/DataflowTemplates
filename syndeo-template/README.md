@@ -157,7 +157,7 @@ for that Beam module. For example, for `sdks-java-io-google-cloud-platform`:
 <dependency>
   <groupId>org.apache.beam</groupId>
   <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-  <version>2.46.0-SNAPSHOT</version>
+  <version>2.47.0-SNAPSHOT</version>
 </dependency>
 ```
 

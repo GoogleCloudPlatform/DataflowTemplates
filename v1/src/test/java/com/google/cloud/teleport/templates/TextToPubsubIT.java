@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRe
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -52,14 +53,14 @@ public class TextToPubsubIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
   }
 
   @After
   public void tearDown() {
-    pubsubResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager);
   }
 
   @Test
@@ -69,10 +70,7 @@ public class TextToPubsubIT extends TemplateTestBase {
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
     List<String> expectedArtifacts =
-        List.of(
-            "message1-" + testName.getMethodName(),
-            "message2-" + testName.getMethodName(),
-            "message3-" + testName.getMethodName());
+        List.of("message1-" + testName, "message2-" + testName, "message3-" + testName);
     createArtifacts(expectedArtifacts);
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)

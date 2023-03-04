@@ -26,6 +26,8 @@ import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -83,30 +85,15 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
 
   @After
   public void tearDown() {
-    // clean up resources
-    if (pubsubResourceManager != null) {
-      pubsubResourceManager.cleanupAll();
-      pubsubResourceManager = null;
-    }
-    if (artifactClient != null) {
-      artifactClient.cleanupRun();
-      artifactClient = null;
-    }
-    if (bigQueryResourceManager != null) {
-      bigQueryResourceManager.cleanupAll();
-      bigQueryResourceManager = null;
-    }
-    if (spannerResourceManager != null) {
-      spannerResourceManager.cleanupAll();
-      spannerResourceManager = null;
-    }
+    ResourceManagerUtils.cleanResources(
+        pubsubResourceManager, artifactClient, bigQueryResourceManager, spannerResourceManager);
   }
 
   @Test
   public void testFakeMessagesToGcs() throws IOException {
     // Arrange
     artifactClient.uploadArtifact(SCHEMA_FILE, LOCAL_SCHEMA_PATH);
-    String name = testName.getMethodName();
+    String name = testName;
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -168,7 +155,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   public void testFakeMessagesToPubSub() throws IOException {
     // Set up resource manager
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
     TopicName backlogTopic = pubsubResourceManager.createTopic("output");
@@ -198,7 +185,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   public void testFakeMessagesToBigQuery() throws IOException {
     // Set up resource manager
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
     // schema should match schema supplied to generate fake records.
@@ -214,7 +201,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             Field.of("score", StandardSQLTypeName.INT64),
             Field.of("completed", StandardSQLTypeName.BOOL));
     // Arrange
-    TableId table = bigQueryResourceManager.createTable(testName.getMethodName(), schema);
+    TableId table = bigQueryResourceManager.createTable(testName, schema);
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter(SCHEMA_TEMPLATE_KEY, String.valueOf(SchemaTemplate.GAME_EVENT))
@@ -229,7 +216,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
         pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
-                () -> bigQueryResourceManager.readTable(table.getTable()).getTotalRows() > 0);
+                BigQueryRowsCheck.builder(bigQueryResourceManager, table).setMinRows(1).build());
     // Assert
     assertThatResult(result).meetsConditions();
   }
@@ -238,7 +225,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   public void testFakeMessagesToBigQueryWithErrors() throws IOException {
     // Set up resource manager
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
     // removes fields intentionally to reproduce DLQ errors
@@ -251,7 +238,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             Field.of("country", StandardSQLTypeName.STRING),
             Field.of("username", StandardSQLTypeName.STRING));
     // Arrange
-    TableId table = bigQueryResourceManager.createTable(testName.getMethodName(), schema);
+    TableId table = bigQueryResourceManager.createTable(testName, schema);
     TableId dlq = TableId.of(table.getDataset(), table.getTable() + "_dlq");
 
     LaunchConfig.Builder options =
@@ -269,14 +256,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
         pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
-                () -> {
-                  try {
-                    return bigQueryResourceManager.readTable(dlq.getTable()).getTotalRows() > 0;
-                  } catch (Exception e) {
-                    LOG.info("Error pulling records from {}: {}", dlq.getTable(), e.getMessage());
-                    return false;
-                  }
-                });
+                BigQueryRowsCheck.builder(bigQueryResourceManager, dlq).setMinRows(1).build());
 
     // Assert
     assertThatResult(result).meetsConditions();
@@ -286,7 +266,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   public void testFakeMessagesToSpanner() throws IOException {
     // Arrange
     spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName.getMethodName(), PROJECT, REGION).build();
+        DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
     String createTableStatement =
         String.format(
             "CREATE TABLE `%s` (\n"
@@ -300,7 +280,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
                 + "  score INT64,\n"
                 + "  completed BOOL,\n"
                 + ") PRIMARY KEY(eventId)",
-            testName.getMethodName());
+            testName);
     ImmutableList<String> columnNames =
         ImmutableList.of(
             "eventId",
@@ -322,7 +302,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             .addParameter("projectId", PROJECT)
             .addParameter("spannerInstanceName", spannerResourceManager.getInstanceId())
             .addParameter("spannerDatabaseName", spannerResourceManager.getDatabaseId())
-            .addParameter("spannerTableName", testName.getMethodName());
+            .addParameter("spannerTableName", testName);
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -332,10 +312,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
         pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
-                () ->
-                    !spannerResourceManager
-                        .readTableRecords(testName.getMethodName(), columnNames)
-                        .isEmpty());
+                () -> !spannerResourceManager.readTableRecords(testName, columnNames).isEmpty());
 
     // Assert
     assertThatResult(result).meetsConditions();

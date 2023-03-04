@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.it.testcontainers;
 
+import com.google.cloud.teleport.it.common.ResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -32,7 +33,8 @@ import org.testcontainers.containers.GenericContainer;
  * or any other source that can be connected to. If a static container is used, the host and port
  * must also be configured using the Builder's setHost() and setPort() methods, respectively.
  */
-public abstract class TestContainerResourceManager<T extends GenericContainer<?>> {
+public abstract class TestContainerResourceManager<T extends GenericContainer<?>>
+    implements ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(TestContainerResourceManager.class);
 
   private final T container;
@@ -55,13 +57,17 @@ public abstract class TestContainerResourceManager<T extends GenericContainer<?>
     }
   }
 
+  protected String getDockerImageName() {
+    return container.getDockerImageName();
+  }
+
   /**
    * Returns the host that the resource is running on. If a host was specified in the builder, then
    * this method will return that value. Otherwise, the host will default to localhost.
    *
    * @return the host that the resource is running on
    */
-  protected String getHost() {
+  public String getHost() {
     if (host == null) {
       return container.getHost();
     }
@@ -93,20 +99,18 @@ public abstract class TestContainerResourceManager<T extends GenericContainer<?>
    * @throws TestContainerResourceManagerException if there is an error deleting the TestContainers
    *     resources.
    */
-  protected boolean cleanupAll() {
+  public void cleanupAll() {
     if (usingStaticContainer) {
       LOG.info("This manager was configured to use a static resource that will not be cleaned up.");
-      return true;
+      return;
     }
 
     LOG.info("Attempting to cleanup TestContainers manager.");
     try {
       container.close();
       LOG.info("TestContainers manager successfully cleaned up.");
-      return true;
     } catch (Exception e) {
-      LOG.error("Failed to close TestContainer resources. {}", e.getMessage());
-      return false;
+      throw new TestContainerResourceManagerException("Failed to close TestContainer resources", e);
     }
   }
 

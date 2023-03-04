@@ -25,9 +25,13 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Random;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Common utilities for ResourceManager implementations. */
 public class ResourceManagerUtils {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ResourceManagerUtils.class);
 
   private static final int MIN_PROJECT_ID_LENGTH = 4;
   private static final int MAX_PROJECT_ID_LENGTH = 30;
@@ -117,6 +121,40 @@ public class ResourceManagerUtils {
               + idToCheck
               + " is not a valid ID. Only letters, numbers, hyphens, single quotes and exclamation"
               + " points are allowed.");
+    }
+  }
+
+  /**
+   * Cleanup Resources from the given ResourceManagers. It will guarantee that all the cleanups are
+   * invoked, but still throws / bubbles the first exception at the end if something went wrong.
+   *
+   * @param managers Varargs of the managers to clean
+   */
+  public static void cleanResources(ResourceManager... managers) {
+
+    if (managers == null || managers.length == 0) {
+      return;
+    }
+
+    Exception bubbleException = null;
+
+    for (ResourceManager manager : managers) {
+      if (manager == null) {
+        continue;
+      }
+      try {
+        LOG.info("Cleaning up resource manager {}", manager.getClass().getSimpleName());
+        manager.cleanupAll();
+      } catch (Exception e) {
+        LOG.error("Error cleaning the resource manager {}", manager.getClass().getSimpleName());
+        if (bubbleException == null) {
+          bubbleException = e;
+        }
+      }
+    }
+
+    if (bubbleException != null) {
+      throw new RuntimeException("Error cleaning up resources", bubbleException);
     }
   }
 }

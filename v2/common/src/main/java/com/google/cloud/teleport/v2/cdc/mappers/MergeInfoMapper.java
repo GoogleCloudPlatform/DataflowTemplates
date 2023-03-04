@@ -19,7 +19,11 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.cdc.merge.MergeInfo;
 import com.google.cloud.teleport.v2.values.DatastreamRow;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.FlatMapElements;
@@ -37,6 +41,7 @@ public class MergeInfoMapper
 
   public static final String METADATA_DELETED = "_metadata_deleted";
   public static final String METADATA_REPLICA_TABLE = "_metadata_table";
+  public static final String JOB_ID_PREFIX = "datastream";
 
   private static final Logger LOG = LoggerFactory.getLogger(MergeInfoMapper.class);
   private String projectId;
@@ -97,6 +102,11 @@ public class MergeInfoMapper
                       foregoneMerges.inc();
                     }
 
+                    String formattedReplicaDataset =
+                        row.formatStringTemplateForBigQueryDataset(replicaDataset);
+                    String formattedReplicaTable =
+                        row.formatStringTemplateForBigQuery(replicaTable);
+
                     MergeInfo mergeInfo =
                         MergeInfo.create(
                             projectId,
@@ -107,10 +117,8 @@ public class MergeInfoMapper
                                 projectId,
                                 row.formatStringTemplateForBigQueryDataset(stagingDataset),
                                 row.formatStringTemplateForBigQuery(stagingTable)),
-                            TableId.of(
-                                projectId,
-                                row.formatStringTemplateForBigQueryDataset(replicaDataset),
-                                row.formatStringTemplateForBigQuery(replicaTable)));
+                            TableId.of(projectId, formattedReplicaDataset, formattedReplicaTable),
+                            getJobId(projectId, formattedReplicaDataset, formattedReplicaTable));
 
                     return Lists.newArrayList(mergeInfo);
                   } catch (Exception e) {
@@ -121,5 +129,18 @@ public class MergeInfoMapper
                     return Lists.newArrayList();
                   }
                 }));
+  }
+
+  String getJobId(String projectId, String dataset, String table) {
+    DateTimeFormatter formatter =
+        DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ssz").withZone(ZoneId.of("UTC"));
+    return String.format(
+        "%s_%s_%s_%s_%s_%s",
+        JOB_ID_PREFIX,
+        projectId,
+        dataset,
+        table,
+        formatter.format(Instant.now()),
+        UUID.randomUUID().toString());
   }
 }

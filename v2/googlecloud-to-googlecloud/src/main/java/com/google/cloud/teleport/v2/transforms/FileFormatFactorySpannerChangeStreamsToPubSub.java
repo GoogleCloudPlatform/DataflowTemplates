@@ -154,7 +154,7 @@ public abstract class FileFormatFactorySpannerChangeStreamsToPubSub
     }
   }
 
-  /** Method that takes in {@link byte[]} and output PubsubMessages. */
+  /** Method that takes in byte arrays and outputs PubsubMessages. */
   private PCollection<PubsubMessage> convertByteArrayToPubsubMessage(
       PCollection<byte[]> encodedRecords) {
     PCollection<PubsubMessage> messageCollection =

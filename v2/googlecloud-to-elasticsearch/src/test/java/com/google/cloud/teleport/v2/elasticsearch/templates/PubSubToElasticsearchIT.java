@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRe
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.elasticsearch.DefaultElasticsearchResourceManager;
 import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
@@ -61,7 +62,7 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
     elasticsearchResourceManager =
@@ -69,15 +70,13 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
   }
 
   @After
-  public void tearDownClass() {
-    pubsubResourceManager.cleanupAll();
-    elasticsearchResourceManager.cleanupAll();
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, elasticsearchResourceManager);
   }
 
   @Test
   public void testPubSubToElasticsearch() throws IOException {
-    basePubSubToElasticsearch(
-        Function.identity(), Map.of("id", "1", "name", testName.getMethodName()));
+    basePubSubToElasticsearch(Function.identity(), Map.of("id", "1", "name", testName));
   }
 
   @Test
@@ -96,7 +95,7 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
                 .addParameter(
                     "javascriptTextTransformGcsPath", getGcsPath("udf-name-upper-case.js"))
                 .addParameter("javascriptTextTransformFunctionName", "transform"),
-        Map.of("id", "1", "name", testName.getMethodName().toUpperCase()));
+        Map.of("id", "1", "name", testName.toUpperCase()));
   }
 
   public void basePubSubToElasticsearch(
@@ -124,8 +123,7 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
 
     for (int i = 0; i < MESSAGES_TO_SEND; i++) {
       ByteString data =
-          ByteString.copyFromUtf8(
-              String.format("{\"id\": \"%d\", \"name\": \"%s\"}", i, testName.getMethodName()));
+          ByteString.copyFromUtf8(String.format("{\"id\": \"%d\", \"name\": \"%s\"}", i, testName));
       pubsubResourceManager.publish(topic, ImmutableMap.of(), data);
     }
 

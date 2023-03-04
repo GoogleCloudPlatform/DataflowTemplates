@@ -16,17 +16,17 @@
 package com.google.cloud.teleport.v2.cdc.merge;
 
 import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.BigQueryOptions;
+import com.google.cloud.bigquery.Job;
 import com.google.cloud.bigquery.JobId;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -170,16 +170,18 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
   /** Class {@link BigQueryStatementIssuingFn}. */
   public static class BigQueryStatementIssuingFn extends DoFn<MergeInfo, Void> {
 
-    public static final String JOB_ID_PREFIX = "bigstream_to_bq";
+    private static final int BIGQUERY_DUPLICATE_JOB_ERROR_CODE = 409;
     private final Counter mergesIssued = Metrics.counter(BigQueryMerger.class, "mergesIssued");
 
     private BigQuery bigQueryClient;
     private final MergeConfiguration mergeConfiguration;
+    private final Map<String, String> datasetsToLocations;
 
     public BigQueryStatementIssuingFn(
         BigQuery bigQueryClient, MergeConfiguration mergeConfiguration) {
       this.bigQueryClient = bigQueryClient;
       this.mergeConfiguration = mergeConfiguration;
+      this.datasetsToLocations = new HashMap<>();
     }
 
     @Setup
@@ -203,33 +205,53 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       MergeInfo mergeInfo = c.element();
       String statement = mergeInfo.buildMergeStatement(mergeConfiguration);
       try {
-        TableResult queryResult = issueQueryToBQ(statement);
+        TableResult queryResult = issueQueryToBQ(mergeInfo, statement);
         mergesIssued.inc();
         LOG.info("Merge job executed: {}", statement);
+      } catch (BigQueryException e) {
+        LOG.warn(
+            "Merge Job Failed With BigQuery Exception: {} Statement: {}", e.toString(), statement);
+        return;
       } catch (Exception e) {
-        LOG.warn("Merge Job Failed: Exception: {} Statement: {}", e.toString(), statement);
+        LOG.warn(
+            "Merge Job Failed With Unexpected exception: {} Statement: {}",
+            e.toString(),
+            statement);
         throw e;
       }
     }
 
-    private TableResult issueQueryToBQ(String statement) throws InterruptedException {
+    private TableResult issueQueryToBQ(MergeInfo mergeInfo, String statement)
+        throws InterruptedException {
       QueryJobConfiguration jobConfiguration = QueryJobConfiguration.newBuilder(statement).build();
 
-      String jobId = makeJobId(JOB_ID_PREFIX, statement);
+      String datasetName = mergeInfo.getReplicaTable().getDataset();
+      // get and store the location of the dataset to avoid further API calls
+      if (!datasetsToLocations.containsKey(datasetName)) {
+        LOG.info("refreshing dataset location cache for dataset {}", datasetName);
+        datasetsToLocations.put(
+            datasetName,
+            bigQueryClient.getDataset(mergeInfo.getReplicaTable().getDataset()).getLocation());
+      }
+      String location = datasetsToLocations.get(datasetName);
+      JobId jobId = JobId.newBuilder().setJob(mergeInfo.getJobId()).setLocation(location).build();
+      LOG.info("Triggering job {} for statement |{}|", jobId.toString(), statement);
 
-      LOG.info("Triggering job {} for statement |{}|", jobId, statement);
-
-      TableResult result = bigQueryClient.query(jobConfiguration, JobId.of(jobId));
-      return result;
-    }
-
-    String makeJobId(String jobIdPrefix, String statement) {
-      DateTimeFormatter formatter =
-          DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ssz").withZone(ZoneId.of("UTC"));
-      String randomId = UUID.randomUUID().toString();
-      return String.format(
-          "%s_%d_%s_%s",
-          jobIdPrefix, Math.abs(statement.hashCode()), formatter.format(Instant.now()), randomId);
+      try {
+        return bigQueryClient.query(jobConfiguration, jobId);
+      } catch (BigQueryException e) {
+        // If we get a duplicate job error, it means that the worker is trying to issue an already
+        // existing job in BigQuery. We wait for the original job's execution to finish and return
+        // its results to avoid duplicates.
+        if (BIGQUERY_DUPLICATE_JOB_ERROR_CODE == e.getCode()) {
+          LOG.warn("BigQuery Duplicate Job: {}", e.toString());
+          Job job = bigQueryClient.getJob(jobId);
+          job.waitFor();
+          return job.getQueryResults();
+        } else {
+          throw e;
+        }
+      }
     }
   }
 }

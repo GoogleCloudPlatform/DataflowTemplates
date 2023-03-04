@@ -61,6 +61,7 @@ type MavenFlags interface {
 	FailAtTheEnd() string
 	RunIntegrationTests() string
 	ThreadCount(int) string
+	IntegrationTestParallelism(int) string
 }
 
 type mvnFlags struct{}
@@ -111,6 +112,10 @@ func (*mvnFlags) RunIntegrationTests() string {
 
 func (*mvnFlags) ThreadCount(count int) string {
 	return "-T" + strconv.Itoa(count)
+}
+
+func (*mvnFlags) IntegrationTestParallelism(count int) string {
+	return "-DitParallelism=" + strconv.Itoa(count)
 }
 
 func NewMavenFlags() MavenFlags {

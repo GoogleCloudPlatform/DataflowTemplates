@@ -146,7 +146,7 @@ public class DefaultElasticsearchResourceManagerTest {
 
     boolean index = testManager.createIndex("dummy-index");
     assertThat(index).isTrue();
-    assertThat(testManager.cleanupAll()).isEqualTo(true);
+    testManager.cleanupAll();
 
     verify(elasticsearchIndicesClient)
         .delete(any(DeleteIndexRequest.class), eq(RequestOptions.DEFAULT));
@@ -170,7 +170,7 @@ public class DefaultElasticsearchResourceManagerTest {
 
     boolean index = tm.createIndex("dummy-index");
     assertThat(index).isTrue();
-    assertThat(tm.cleanupAll()).isEqualTo(true);
+    tm.cleanupAll();
 
     verify(elasticsearchIndicesClient)
         .delete(any(DeleteIndexRequest.class), eq(RequestOptions.DEFAULT));

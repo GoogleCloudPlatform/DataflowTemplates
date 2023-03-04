@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRe
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -70,14 +71,14 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
   }
 
   @After
   public void tearDown() {
-    pubsubResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager);
   }
 
   @Test
@@ -86,7 +87,7 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
     TopicName outputTopic = pubsubResourceManager.createTopic("topic");
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
-    String messageString = String.format("msg-%s", testName.getMethodName());
+    String messageString = String.format("msg-%s", testName);
     File file = tempFolder.newFile();
     writeToFile(file.getAbsolutePath(), messageString);
     LaunchConfig.Builder options =

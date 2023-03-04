@@ -19,10 +19,11 @@ import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import java.util.List;
 
 /** Interface for managing BigQuery resources in integration tests. */
-public interface BigQueryResourceManager {
+public interface BigQueryResourceManager extends ResourceManager {
 
   /**
    * Create a BigQuery dataset in which all tables will exist.
@@ -76,6 +77,7 @@ public interface BigQueryResourceManager {
    * BigQueryResourceManager#createTable(String, Schema)} to be called for the target table
    * beforehand.
    *
+   * @param tableName The name of the table to insert the given row into.
    * @param tableRow A row object representing the table row.
    * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
@@ -159,5 +161,5 @@ public interface BigQueryResourceManager {
 
   TableResult runQuery(String query);
 
-  Long getRowCount(String project, String dataset, String table);
+  Long getRowCount(String table);
 }

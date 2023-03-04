@@ -118,7 +118,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
             .addParameter("delimiter", "|")
             .addParameter("outputBucket", getGcsPath("output/"))
             .addParameter("schema", getGcsPath("input/schema.json"))
-            .addParameter("outputFilePrefix", testName.getMethodName());
+            .addParameter("outputFilePrefix", testName);
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -131,7 +131,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
 
     List<Artifact> artifacts =
         artifactClient.listArtifacts(
-            "output/", Pattern.compile(".*" + testName.getMethodName() + ".*\\." + toFormat));
+            "output/", Pattern.compile(".*" + testName + ".*\\." + toFormat));
     assertThat(artifacts).isNotEmpty();
     parseFunction.apply(artifacts, SCHEMA).hasRecordsUnordered(buildExpectedRows());
   }
@@ -149,7 +149,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
             .addParameter("inputFileSpec", getGcsPath("input/*.avro"))
             .addParameter("outputBucket", getGcsPath("output/"))
             .addParameter("schema", getGcsPath("input/schema.json"))
-            .addParameter("outputFilePrefix", testName.getMethodName());
+            .addParameter("outputFilePrefix", testName);
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -161,8 +161,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     List<Artifact> artifacts =
-        artifactClient.listArtifacts(
-            "output/", Pattern.compile(".*" + testName.getMethodName() + ".*\\.parquet"));
+        artifactClient.listArtifacts("output/", Pattern.compile(".*" + testName + ".*\\.parquet"));
     assertThat(artifacts).isNotEmpty();
     assertThatArtifacts(artifacts).asParquetRecords().hasRecordsUnordered(buildExpectedRows());
   }
@@ -181,7 +180,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
             .addParameter("inputFileSpec", getGcsPath("input/*.parquet"))
             .addParameter("outputBucket", getGcsPath("output/"))
             .addParameter("schema", getGcsPath("input/schema.json"))
-            .addParameter("outputFilePrefix", testName.getMethodName());
+            .addParameter("outputFilePrefix", testName);
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -193,8 +192,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     List<Artifact> artifacts =
-        artifactClient.listArtifacts(
-            "output/", Pattern.compile(".*" + testName.getMethodName() + ".*\\.avro"));
+        artifactClient.listArtifacts("output/", Pattern.compile(".*" + testName + ".*\\.avro"));
     assertThat(artifacts).isNotEmpty();
     assertThatArtifacts(artifacts).asAvroRecords(SCHEMA).hasRecordsUnordered(buildExpectedRows());
   }

@@ -18,9 +18,10 @@ package com.google.cloud.teleport.it.pubsublite;
 import com.google.cloud.pubsublite.ReservationPath;
 import com.google.cloud.pubsublite.SubscriptionName;
 import com.google.cloud.pubsublite.TopicName;
+import com.google.cloud.teleport.it.common.ResourceManager;
 
 /** Interface for managing Pub/Sub resources in integration tests. */
-public interface PubsubLiteResourceManager {
+public interface PubsubLiteResourceManager extends ResourceManager {
 
   /**
    * Creates a new PubsubLite reservation with the specified number of capacity units. Capacity

@@ -210,10 +210,8 @@ public class DefaultElasticsearchResourceManager
   }
 
   @Override
-  public synchronized boolean cleanupAll() {
+  public synchronized void cleanupAll() {
     LOG.info("Attempting to cleanup Elasticsearch manager.");
-
-    boolean producedError = false;
 
     // First, delete the database if it was not given as a static argument
     if (!managedIndexNames.isEmpty()) {
@@ -226,19 +224,13 @@ public class DefaultElasticsearchResourceManager
                 RequestOptions.DEFAULT);
       } catch (Exception e) {
         LOG.error("Failed to delete Elasticsearch indices {}.", managedIndexNames, e);
-        producedError = true;
+        throw new RuntimeException("Failing deleting Elasticsearch indices", e);
       }
     }
 
-    // Throw Exception at the end if there were any errors
-    if (producedError || !super.cleanupAll()) {
-      throw new ElasticsearchResourceManagerException(
-          "Failed to delete resources. Check above for errors.");
-    }
+    super.cleanupAll();
 
     LOG.info("Elasticsearch manager successfully cleaned up.");
-
-    return true;
   }
 
   /** Builder for {@link DefaultElasticsearchResourceManager}. */
