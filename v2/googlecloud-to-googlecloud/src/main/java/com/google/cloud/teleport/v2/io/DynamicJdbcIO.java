@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.io;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
@@ -251,13 +250,13 @@ public class DynamicJdbcIO {
     abstract String getDriverClassName();
 
     @Nullable
-    abstract KMSEncryptedNestedValue getUrl();
+    abstract String getUrl();
 
     @Nullable
-    abstract KMSEncryptedNestedValue getUsername();
+    abstract String getUsername();
 
     @Nullable
-    abstract KMSEncryptedNestedValue getPassword();
+    abstract String getPassword();
 
     @Nullable
     abstract String getConnectionProperties();
@@ -271,37 +270,34 @@ public class DynamicJdbcIO {
     abstract static class Builder {
       abstract Builder setDriverClassName(String driverClassName);
 
-      abstract Builder setUrl(KMSEncryptedNestedValue kmsEncryptedNestedValueUrl);
+      abstract Builder setUrl(String url);
 
-      abstract Builder setUsername(KMSEncryptedNestedValue kmsEncryptedNestedValueUsername);
+      abstract Builder setUsername(String username);
 
-      abstract Builder setPassword(KMSEncryptedNestedValue kmsEncryptedNestedValuePassword);
+      abstract Builder setPassword(String password);
 
-      abstract Builder setConnectionProperties(String connectionProperties);
+      abstract Builder setConnectionProperties(@Nullable String connectionProperties);
 
       abstract Builder setDriverJars(String jars);
 
       abstract DynamicDataSourceConfiguration build();
     }
 
-    public static DynamicDataSourceConfiguration create(
-        String driverClassName, KMSEncryptedNestedValue kmsEncryptedNestedValueUrl) {
+    public static DynamicDataSourceConfiguration create(String driverClassName, String url) {
       checkArgument(driverClassName != null, "driverClassName can not be null");
-      checkArgument(kmsEncryptedNestedValueUrl != null, "url can not be null");
+      checkArgument(url != null, "url can not be null");
       return new AutoValue_DynamicJdbcIO_DynamicDataSourceConfiguration.Builder()
           .setDriverClassName(driverClassName)
-          .setUrl(kmsEncryptedNestedValueUrl)
+          .setUrl(url)
           .build();
     }
 
-    public DynamicDataSourceConfiguration withUsername(
-        KMSEncryptedNestedValue kmsEncryptedNestedValueUsername) {
-      return builder().setUsername(kmsEncryptedNestedValueUsername).build();
+    public DynamicDataSourceConfiguration withUsername(String username) {
+      return builder().setUsername(username).build();
     }
 
-    public DynamicDataSourceConfiguration withPassword(
-        KMSEncryptedNestedValue kmsEncryptedNestedValuePassword) {
-      return builder().setPassword(kmsEncryptedNestedValuePassword).build();
+    public DynamicDataSourceConfiguration withPassword(String password) {
+      return builder().setPassword(password).build();
     }
 
     public DynamicDataSourceConfiguration withDriverJars(String driverJars) {
@@ -310,15 +306,15 @@ public class DynamicJdbcIO {
       return builder().setDriverJars(driverJars).build();
     }
 
-    public DynamicDataSourceConfiguration withConnectionProperties(String connectionProperties) {
-      checkArgument(connectionProperties != null, "connectionProperties can not be null");
+    public DynamicDataSourceConfiguration withConnectionProperties(
+        @Nullable String connectionProperties) {
       return builder().setConnectionProperties(connectionProperties).build();
     }
 
     private void populateDisplayData(DisplayData.Builder builder) {
       builder.addIfNotNull(DisplayData.item("jdbcDriverClassName", getDriverClassName()));
-      builder.addIfNotNull(DisplayData.item("jdbcUrl", getUrl().get()));
-      builder.addIfNotNull(DisplayData.item("username", getUsername().get()));
+      builder.addIfNotNull(DisplayData.item("jdbcUrl", getUrl()));
+      builder.addIfNotNull(DisplayData.item("username", getUsername()));
       builder.addIfNotNull(DisplayData.item("driverJars", getDriverJars()));
     }
 
@@ -330,17 +326,15 @@ public class DynamicJdbcIO {
       } else {
         basicDataSource.setDriverClassName(getDriverClassName());
       }
-      if (getUrl() != null) {
-        if (getUrl().get() == null) {
-          throw new RuntimeException("Connection url is required.");
-        }
-        basicDataSource.setUrl(getUrl().get());
+      if (getUrl() == null) {
+        throw new RuntimeException("Connection url is required.");
       }
+      basicDataSource.setUrl(getUrl());
       if (getUsername() != null) {
-        basicDataSource.setUsername(getUsername().get());
+        basicDataSource.setUsername(getUsername());
       }
       if (getPassword() != null) {
-        basicDataSource.setPassword(getPassword().get());
+        basicDataSource.setPassword(getPassword());
       }
       if (getConnectionProperties() != null) {
         basicDataSource.setConnectionProperties(getConnectionProperties());

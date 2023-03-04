@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.pubsub;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.common.base.CaseFormat;
 import com.google.pubsub.v1.Subscription;
@@ -78,14 +78,14 @@ final class PubsubUtils {
     Matcher matcher = SUBSCRIPTIONS_PATTERN.matcher(subscription.getName());
     checkArgument(
         matcher.find(),
-        "Subscription name must be in the format 'projects/{project_id}/subscriptions/{subscription_name}.");
+        "Subscription name must be in the format"
+            + " 'projects/{project_id}/subscriptions/{subscription_name}.");
 
     return SubscriptionName.of(matcher.group("project_id"), matcher.group("subscription_name"));
   }
 
   /**
-   * Creates a topic name. Based on {@link
-   * com.google.cloud.teleport.it.dataflow.DataflowUtils#createJobName(String)}
+   * Creates a topic name.
    *
    * <p>If there are uppercase characters in {@code prefix}, then this will convert them into a dash
    * followed by the lowercase equivalent of that letter.

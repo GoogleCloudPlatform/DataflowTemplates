@@ -15,18 +15,17 @@
  */
 package com.google.cloud.teleport.it.artifacts;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Arrays.stream;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auth.Credentials;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import com.google.common.base.Strings;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Joiner;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 
 /** Utilities for working with test artifacts. */
 public final class ArtifactUtils {
@@ -37,7 +36,10 @@ public final class ArtifactUtils {
     return String.format(
         "%s-%s",
         DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneId.of("UTC")).format(Instant.now()),
-        UUID.randomUUID());
+        // by default some templates replace "dd" in the output paths with a day of month, since
+        // this id is used as a part of output paths replace "dd" with arbitrary number to avoid
+        // confusion and potential flaky tests
+        UUID.randomUUID().toString().replace("dd", "99"));
   }
 
   /**
@@ -55,7 +57,7 @@ public final class ArtifactUtils {
     checkArgument(
         stream(pathParts).noneMatch(Strings::isNullOrEmpty), "No path part can be null or empty");
 
-    return String.format("gs://%s", Joiner.on('/').join(pathParts));
+    return String.format("gs://%s", String.join("/", pathParts));
   }
 
   /**

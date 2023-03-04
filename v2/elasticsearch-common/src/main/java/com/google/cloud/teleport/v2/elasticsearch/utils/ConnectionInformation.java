@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.utils;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.InetAddresses;
 import com.google.common.net.InternetDomainName;
 import java.net.MalformedURLException;
@@ -29,7 +30,11 @@ import java.util.regex.Pattern;
  * option can contain URL to Elasticsearch host or CloudId.
  */
 public class ConnectionInformation {
-  private static final Pattern URL_PATTERN = Pattern.compile("^http(s?)://([^:]+)(:[0-9]+)?$");
+
+  /** Match Elasticsearch endpoint with host and port, with an optional path. */
+  private static final Pattern URL_PATTERN =
+      Pattern.compile("^http(s?)://([^:]+)(:[0-9]+)?(/?|/(.*)?)$");
+
   private URL elasticsearchURL;
   private URL kibanaURL;
   private Type type;
@@ -46,7 +51,8 @@ public class ConnectionInformation {
     return type;
   }
 
-  private static boolean isValidUrlFormat(String url) {
+  @VisibleForTesting
+  static boolean isValidUrlFormat(String url) {
     Matcher matcher = URL_PATTERN.matcher(url);
     if (matcher.find()) {
       String host = matcher.group(2);

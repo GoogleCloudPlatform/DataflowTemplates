@@ -15,12 +15,17 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
+
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
 import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
-import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -33,11 +38,24 @@ import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 /**
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
  */
+@Template(
+    name = "Jdbc_to_BigQuery_Flex",
+    category = TemplateCategory.BATCH,
+    displayName = "JDBC to BigQuery with BigQuery Storage API support",
+    description =
+        "A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection"
+            + " string, user name and password can be passed in directly as plaintext or encrypted"
+            + " using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified,"
+            + " connectionURL, username, and password should be all in encrypted format. A sample"
+            + " curl command for the KMS API encrypt endpoint: curl -s -X POST"
+            + " \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\""
+            + "  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\" -H \"Authorization:"
+            + " Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type:"
+            + " application/json\"",
+    optionsClass = JdbcToBigQueryOptions.class,
+    flexContainerName = "jdbc-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public class JdbcToBigQuery {
-
-  private static KMSEncryptedNestedValue maybeDecrypt(String unencryptedValue, String kmsKey) {
-    return new KMSEncryptedNestedValue(unencryptedValue, kmsKey);
-  }
 
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
@@ -47,6 +65,7 @@ public class JdbcToBigQuery {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     // Parse the user options passed from the command-line
     JdbcToBigQueryOptions options =
@@ -65,14 +84,7 @@ public class JdbcToBigQuery {
   @VisibleForTesting
   static PipelineResult run(JdbcToBigQueryOptions options, Write<TableRow> writeToBQ) {
     // Validate BQ STORAGE_WRITE_API options
-    if (options.getUseStorageWriteApiAtLeastOnce() && !options.getUseStorageWriteApi()) {
-      // Technically this is a no-op, since useStorageWriteApiAtLeastOnce is only checked by
-      // BigQueryIO when useStorageWriteApi is true, but it might be confusing to a user why
-      // useStorageWriteApiAtLeastOnce doesn't take effect.
-      throw new IllegalArgumentException(
-          "When at-least-once semantics (useStorageWriteApiAtLeastOnce) are enabled Storage Write"
-              + " API (useStorageWriteApi) must also be enabled.");
-    }
+    BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -101,7 +113,7 @@ public class JdbcToBigQuery {
                         .withConnectionProperties(options.getConnectionProperties()))
                 .withQuery(options.getQuery())
                 .withCoder(TableRowJsonCoder.of())
-                .withRowMapper(JdbcConverters.getResultSetToTableRow()))
+                .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())))
         /*
          * Step 2: Append TableRow to an existing BigQuery table
          */
@@ -111,13 +123,18 @@ public class JdbcToBigQuery {
     return pipeline.run();
   }
 
-  /** Create the {@link Write} transform that outputs the collection to BigQuery. */
+  /**
+   * Create the {@link Write} transform that outputs the collection to BigQuery as per input option.
+   */
   @VisibleForTesting
   static Write<TableRow> writeToBQTransform(JdbcToBigQueryOptions options) {
     return BigQueryIO.writeTableRows()
         .withoutValidation()
         .withCreateDisposition(Write.CreateDisposition.CREATE_NEVER)
-        .withWriteDisposition(Write.WriteDisposition.WRITE_APPEND)
+        .withWriteDisposition(
+            options.getIsTruncate()
+                ? Write.WriteDisposition.WRITE_TRUNCATE
+                : Write.WriteDisposition.WRITE_APPEND)
         .withCustomGcsTempLocation(
             StaticValueProvider.of(options.getBigQueryLoadingTemporaryDirectory()))
         .to(options.getOutputTable());

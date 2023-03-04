@@ -37,7 +37,7 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
   private final Long logPosition;
 
   MySqlChangeEventSequence(Long timestamp, String logFile, Long logPosition) {
-    super("mysql");
+    super(DatastreamConstants.MYSQL_SOURCE_TYPE);
     this.timestamp = timestamp;
     this.logFile = logFile;
     this.logPosition = logPosition;

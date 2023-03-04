@@ -156,6 +156,8 @@ public class WriteDataChangeRecordsToGcsTextTest {
         ValueCaptureType.OLD_AND_NEW_VALUES,
         10L,
         2L,
+        "transactionTag",
+        /*isSystemTransaction*/ false,
         null);
   }
 }

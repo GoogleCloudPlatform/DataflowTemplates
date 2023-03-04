@@ -98,6 +98,35 @@ public final class ChangeEventSequenceFactoryTest {
     return mockContext;
   }
 
+  ChangeEventContext getMockPostgresChangeEventContext(
+      boolean addPostgresPositionFields, boolean cdcEvent) throws Exception {
+    // Create dummy postgres change event.
+    JSONObject postgresChangeEvent = new JSONObject();
+    postgresChangeEvent.put(
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.POSTGRES_SOURCE_TYPE);
+    postgresChangeEvent.put(
+        DatastreamConstants.EVENT_CHANGE_TYPE_KEY, DatastreamConstants.INSERT_EVENT);
+    postgresChangeEvent.put(DatastreamConstants.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
+    if (addPostgresPositionFields) {
+      if (cdcEvent) {
+        postgresChangeEvent.put(DatastreamConstants.POSTGRES_LSN_KEY, "13/314");
+      } else {
+        postgresChangeEvent.put(DatastreamConstants.POSTGRES_LSN_KEY, JSONObject.NULL);
+      }
+    }
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    JsonNode jsonNode = mapper.readTree(postgresChangeEvent.toString());
+
+    // Prepare mock ChangeEventContext.
+    ChangeEventContext mockContext = mock(ChangeEventContext.class);
+    when(mockContext.getChangeEvent()).thenReturn(jsonNode);
+    when(mockContext.getPrimaryKey()).thenReturn(Key.of("test"));
+    when(mockContext.getShadowTable()).thenReturn("test");
+
+    return mockContext;
+  }
+
   @Test
   public void canCreateMySqlChangeEventSequenceFromChangeEvent() throws Exception {
 
@@ -151,61 +180,12 @@ public final class ChangeEventSequenceFactoryTest {
   }
 
   @Test
-  public void canCreateOracleChangeEventSequenceFromChangeEvent() throws Exception {
-
-    ChangeEventContext mockContext =
-        getMockOracleChangeEventContext(/*addOraclePositionFields=*/ true, /*cdcEvent=*/ true);
-
-    ChangeEventSequence changeEventSequence =
-        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
-
-    assertThat(changeEventSequence, instanceOf(OracleChangeEventSequence.class));
-    OracleChangeEventSequence oracleChangeEventSequence =
-        (OracleChangeEventSequence) changeEventSequence;
-    assertEquals(oracleChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
-    assertEquals(oracleChangeEventSequence.getSCN(), new Long(2));
-  }
-
-  @Test
-  public void canCreateOracleChangeEventSequenceFromBackfillEvent() throws Exception {
-
-    ChangeEventContext mockContext =
-        getMockOracleChangeEventContext(/*addOraclePositionFields=*/ true, /*cdcEvent=*/ false);
-
-    ChangeEventSequence changeEventSequence =
-        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
-
-    assertThat(changeEventSequence, instanceOf(OracleChangeEventSequence.class));
-    OracleChangeEventSequence oracleChangeEventSequence =
-        (OracleChangeEventSequence) changeEventSequence;
-    assertEquals(oracleChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
-    assertEquals(oracleChangeEventSequence.getSCN(), new Long(-1));
-  }
-
-  @Test
-  public void canCreateOracleChangeEventSequenceFromBackfillEventWithNoPositionFields()
-      throws Exception {
-
-    ChangeEventContext mockContext =
-        getMockOracleChangeEventContext(/*addOraclePositionFields=*/ false, /*cdcEvent=*/ false);
-
-    ChangeEventSequence changeEventSequence =
-        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
-
-    assertThat(changeEventSequence, instanceOf(OracleChangeEventSequence.class));
-    OracleChangeEventSequence oracleChangeEventSequence =
-        (OracleChangeEventSequence) changeEventSequence;
-    assertEquals(oracleChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
-    assertEquals(oracleChangeEventSequence.getSCN(), new Long(-1));
-  }
-
-  @Test
   public void canCreateMySqlChangeEventSequenceFromShadowTable() throws Exception {
 
     long previousEventTimestamp = 1615159727L;
 
     ChangeEventContext mockContext =
-        getMockMySqlChangeEventContext(/*addMysqlPositionFields=*/ true, /*cdcEvent=*/ true);
+        getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ true);
 
     // Mock transaction which can read a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
@@ -233,7 +213,7 @@ public final class ChangeEventSequenceFactoryTest {
     long previousEventTimestamp = 1615159727L;
 
     ChangeEventContext mockContext =
-        getMockMySqlChangeEventContext(/*addMysqlPositionFields=*/ true, /*cdcEvent=*/ true);
+        getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ true);
 
     // Mock transaction which can read a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
@@ -256,12 +236,81 @@ public final class ChangeEventSequenceFactoryTest {
   }
 
   @Test
+  public void cannotCreateMySqlChangeEventSequenceWhenMissingRecordInShadowTable()
+      throws Exception {
+
+    ChangeEventContext mockContext =
+        getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ true);
+
+    // mock transaction which cannot find a row from shadow table.
+    TransactionContext mockTransaction = mock(TransactionContext.class);
+    when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
+        .thenReturn(null);
+
+    ChangeEventSequence mysqlChangeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
+            mockTransaction, mockContext);
+
+    assertNull(mysqlChangeEventSequence);
+  }
+
+  @Test
+  public void canCreateOracleChangeEventSequenceFromChangeEvent() throws Exception {
+
+    ChangeEventContext mockContext =
+        getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ true);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
+
+    assertThat(changeEventSequence, instanceOf(OracleChangeEventSequence.class));
+    OracleChangeEventSequence oracleChangeEventSequence =
+        (OracleChangeEventSequence) changeEventSequence;
+    assertEquals(oracleChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
+    assertEquals(oracleChangeEventSequence.getSCN(), new Long(2));
+  }
+
+  @Test
+  public void canCreateOracleChangeEventSequenceFromBackfillEvent() throws Exception {
+
+    ChangeEventContext mockContext =
+        getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ false);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
+
+    assertThat(changeEventSequence, instanceOf(OracleChangeEventSequence.class));
+    OracleChangeEventSequence oracleChangeEventSequence =
+        (OracleChangeEventSequence) changeEventSequence;
+    assertEquals(oracleChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
+    assertEquals(oracleChangeEventSequence.getSCN(), new Long(-1));
+  }
+
+  @Test
+  public void canCreateOracleChangeEventSequenceFromBackfillEventWithNoPositionFields()
+      throws Exception {
+
+    ChangeEventContext mockContext =
+        getMockOracleChangeEventContext(
+            /* addOraclePositionFields= */ false, /* cdcEvent= */ false);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
+
+    assertThat(changeEventSequence, instanceOf(OracleChangeEventSequence.class));
+    OracleChangeEventSequence oracleChangeEventSequence =
+        (OracleChangeEventSequence) changeEventSequence;
+    assertEquals(oracleChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
+    assertEquals(oracleChangeEventSequence.getSCN(), new Long(-1));
+  }
+
+  @Test
   public void canCreateOracleChangeEventSequenceFromShadowTable() throws Exception {
 
     long previousEventTimestamp = 1615159727L;
 
     ChangeEventContext mockContext =
-        getMockOracleChangeEventContext(/*addOraclePositionFields=*/ true, /*cdcEvent=*/ true);
+        getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ true);
 
     // Mock transaction which can read a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
@@ -287,7 +336,7 @@ public final class ChangeEventSequenceFactoryTest {
     long previousEventTimestamp = 1615159727L;
 
     ChangeEventContext mockContext =
-        getMockOracleChangeEventContext(/*addOraclePositionFields=*/ true, /*cdcEvent=*/ true);
+        getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ true);
 
     // Mock transaction which can read a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
@@ -308,25 +357,6 @@ public final class ChangeEventSequenceFactoryTest {
   }
 
   @Test
-  public void cannotCreateMySqlChangeEventSequenceWhenMissingRecordInShadowTable()
-      throws Exception {
-
-    ChangeEventContext mockContext =
-        getMockMySqlChangeEventContext(/*addMysqlPositionFields=*/ true, /*cdcEvent=*/ true);
-
-    // mock transaction which cannot find a row from shadow table.
-    TransactionContext mockTransaction = mock(TransactionContext.class);
-    when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
-        .thenReturn(null);
-
-    ChangeEventSequence mysqlChangeEventSequence =
-        ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-            mockTransaction, mockContext);
-
-    assertNull(mysqlChangeEventSequence);
-  }
-
-  @Test
   public void cannotCreateOracleChangeEventSequenceWhenMissingRecordInShadowTable()
       throws Exception {
 
@@ -343,5 +373,133 @@ public final class ChangeEventSequenceFactoryTest {
             mockTransaction, mockContext);
 
     assertNull(oracleChangeEventSequence);
+  }
+
+  @Test
+  public void canCreatePostgresChangeEventSequenceFromChangeEvent() throws Exception {
+
+    ChangeEventContext mockContext =
+        getMockPostgresChangeEventContext(
+            /* addPostgresPositionFields= */ true, /* cdcEvent= */ true);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
+
+    assertThat(changeEventSequence, instanceOf(PostgresChangeEventSequence.class));
+    PostgresChangeEventSequence postgresChangeEventSequence =
+        (PostgresChangeEventSequence) changeEventSequence;
+    assertEquals(postgresChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
+    assertEquals(postgresChangeEventSequence.getLSN(), "13/314");
+  }
+
+  @Test
+  public void canCreatePostgresChangeEventSequenceFromBackfillEvent() throws Exception {
+
+    ChangeEventContext mockContext =
+        getMockPostgresChangeEventContext(
+            /* addPostgresPositionFields= */ true, /* cdcEvent= */ false);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
+
+    assertThat(changeEventSequence, instanceOf(PostgresChangeEventSequence.class));
+    PostgresChangeEventSequence postgresChangeEventSequence =
+        (PostgresChangeEventSequence) changeEventSequence;
+    assertEquals(postgresChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
+    assertEquals(postgresChangeEventSequence.getLSN(), "");
+  }
+
+  @Test
+  public void canCreatePostgresChangeEventSequenceFromBackfillEventWithNoPositionFields()
+      throws Exception {
+
+    ChangeEventContext mockContext =
+        getMockPostgresChangeEventContext(
+            /* addPostgresPositionFields= */ false, /* cdcEvent= */ false);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
+
+    assertThat(changeEventSequence, instanceOf(PostgresChangeEventSequence.class));
+    PostgresChangeEventSequence postgresChangeEventSequence =
+        (PostgresChangeEventSequence) changeEventSequence;
+    assertEquals(postgresChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
+    assertEquals(postgresChangeEventSequence.getLSN(), "");
+  }
+
+  @Test
+  public void canCreatePostgresChangeEventSequenceFromShadowTable() throws Exception {
+
+    long previousEventTimestamp = 1615159727L;
+
+    ChangeEventContext mockContext =
+        getMockPostgresChangeEventContext(
+            /* addPostgresPositionFields= */ true, /* cdcEvent= */ true);
+
+    // Mock transaction which can read a row from shadow table.
+    TransactionContext mockTransaction = mock(TransactionContext.class);
+    Struct mockRow = mock(Struct.class);
+    when(mockRow.getLong(any(String.class))).thenReturn(previousEventTimestamp);
+    when(mockRow.getString(any(String.class))).thenReturn("13/314");
+    when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
+        .thenReturn(mockRow);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
+            mockTransaction, mockContext);
+
+    assertThat(changeEventSequence, instanceOf(PostgresChangeEventSequence.class));
+    PostgresChangeEventSequence postgresChangeEventSequence =
+        (PostgresChangeEventSequence) changeEventSequence;
+    assertEquals(postgresChangeEventSequence.getTimestamp(), new Long(previousEventTimestamp));
+    assertEquals(postgresChangeEventSequence.getLSN(), "13/314");
+  }
+
+  @Test
+  public void canCreatePostgresChangeEventSequenceFromShadowTableForDumpEvent() throws Exception {
+
+    long previousEventTimestamp = 1615159727L;
+
+    ChangeEventContext mockContext =
+        getMockPostgresChangeEventContext(
+            /* addPostgresPositionFields= */ true, /* cdcEvent= */ true);
+
+    // Mock transaction which can read a row from shadow table.
+    TransactionContext mockTransaction = mock(TransactionContext.class);
+    Struct mockRow = mock(Struct.class);
+    when(mockRow.getLong(any(String.class))).thenReturn(previousEventTimestamp);
+    when(mockRow.getString(any(String.class))).thenReturn("");
+    when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
+        .thenReturn(mockRow);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
+            mockTransaction, mockContext);
+
+    assertThat(changeEventSequence, instanceOf(PostgresChangeEventSequence.class));
+    PostgresChangeEventSequence postgresChangeEventSequence =
+        (PostgresChangeEventSequence) changeEventSequence;
+    assertEquals(postgresChangeEventSequence.getTimestamp(), new Long(previousEventTimestamp));
+    assertEquals(postgresChangeEventSequence.getLSN(), "");
+  }
+
+  @Test
+  public void cannotCreatePostgresChangeEventSequenceWhenMissingRecordInShadowTable()
+      throws Exception {
+
+    ChangeEventContext mockContext =
+        getMockPostgresChangeEventContext(
+            /* addPostgresPositionFields= */ true, /* cdcEvent= */ true);
+
+    // mock transaction which cannot find a row from shadow table.
+    TransactionContext mockTransaction = mock(TransactionContext.class);
+    when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
+        .thenReturn(null);
+
+    ChangeEventSequence postgresChangeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
+            mockTransaction, mockContext);
+
+    assertNull(postgresChangeEventSequence);
   }
 }

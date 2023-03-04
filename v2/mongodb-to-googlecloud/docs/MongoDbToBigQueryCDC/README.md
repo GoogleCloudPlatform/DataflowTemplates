@@ -1,11 +1,11 @@
 # MongoDB to BigQuery Dataflow Template
 
-The MongoDB to BigQuery template is a streaming pipeline t works together with MongoDB change stream. The pipeline [MongoDbToBigQueryCdc](src/main/java/com/google/cloud/teleport/v2/templates/MongoDbToBigQueryCdc.java) read the json pushed to Pub/Sub via MongoDB change stream and writes to BigQuery based on user input. Currently, this pipeline supports two types of userOptions. First is FLATTEN where the documents are Flattened to first level. Second is NONE where the documents are stored as a json string into BigQuery. 
+The MongoDB to BigQuery template is a streaming pipeline t works together with MongoDB change stream. The pipeline [MongoDbToBigQueryCdc](src/main/java/com/google/cloud/teleport/v2/templates/MongoDbToBigQueryCdc.java) read the json pushed to Pub/Sub via MongoDB change stream and writes to BigQuery based on user input. Currently, this pipeline supports two types of userOptions. First is FLATTEN where the documents are Flattened to first level. Second is NONE where the documents are stored as a json string into BigQuery.
 
 ## Getting Started
 
 ### Requirements
-* Java 8
+* Java 11
 * Maven
 * MongoDB host exists and is operational
 * Bigquery dataset exists
@@ -35,7 +35,7 @@ export PROJECT=<project-id>
 export IMAGE_NAME="mongodb-to-bigquery-cdc"
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=mongodb-to-googlecloud
 export APP_ROOT=/template/${TEMPLATE_MODULE}
@@ -115,6 +115,20 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
         "helpText": "Topic Name to read from e.g. projects/<project-name>/topics/<topic-name>",
         "is_optional": false,
         "paramType": "TEXT"
+      },
+      {
+        "name":"javascriptDocumentTransformGcsPath",
+        "label" : "JavaScript File Path",
+        "helpText": "JS File Path",
+        "is_optional": true,
+        "paramType": "TEXT"
+      },
+      {
+        "name":"javascriptDocumentTransformFunctionName",
+        "label":"UDF JavaScript Function Name",
+        "helpText":"JS Function Name",
+        "paramType":"TEXT",
+        "isOptional":true
       }
     ]
   },
@@ -143,7 +157,7 @@ The template requires the following parameters:
 * inputTopic: the Topic where the changes are pushed from MongoDb changestream
 
 The template has the following optional parameters:
-* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN".
+* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN". To store the whole document as a JSON String use "NONE".
 
 Template can be executed using the following gcloud command.
 ```sh
@@ -151,5 +165,25 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-east1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters mongoDbUri=${MONGODB_HOSTNAME},database=${MONGODB_DATABASE_NAME},collection=${MONGODB_COLLECTION_NAME},outputTableSpec=${OUTPUT_TABLE_SPEC},inputTopic=${INPUT_TOPIC},userOption=${USER_OPTION}
+        --parameters mongoDbUri=${MONGODB_HOSTNAME},database=${MONGODB_DATABASE_NAME},collection=${MONGODB_COLLECTION_NAME},outputTableSpec=${OUTPUT_TABLE_SPEC},inputTopic=${INPUT_TOPIC},userOption=${USER_OPTION},javascriptDocumentTransformGcsPath=${UDF_PATH},javascriptDocumentTransformFunctionName=${UDF_NAME}
 ```
+
+### Document Transformer UDFs
+
+The template gives you the option to apply a UDF to the pipeline by loading a script to GCS and providing the path and function name via the {Language}DocumentTransformGcsPath parameter on job creation. Currently, JavaScript is supported. The function should expect to receive and return a Bson Document. Example transformations are provided below.
+
+```
+/**
+ * A transform which adds a field to the incoming data.
+ * @param {Document} doc
+ * @return {Document} returnObj
+ */
+ function transform(doc) {
+    var obj = doc;
+    var returnObj = new Object();
+    return returnObj;
+  }
+```
+
+
+

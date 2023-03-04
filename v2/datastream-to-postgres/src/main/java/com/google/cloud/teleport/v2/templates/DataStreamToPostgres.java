@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.CdcJdbcIO;
 import com.google.cloud.teleport.v2.transforms.CreateDml;
 import com.google.cloud.teleport.v2.transforms.ProcessDml;
@@ -38,9 +40,9 @@ import org.slf4j.LoggerFactory;
  * BigQuery Table. If new columns or tables appear, they are automatically added to BigQuery. The
  * data is then inserted into BigQuery staging tables and Merged into a final replica table.
  *
- * <p>NOTE: Future versiosn will support: Pub/Sub, GCS, or Kafka as per DataStream
+ * <p>NOTE: Future version will support: Pub/Sub, GCS, or Kafka as per DataStream
  *
- * <p>Example Usage: TODO: FIX EXMAPLE USAGE
+ * <p>Example Usage: TODO: FIX EXAMPLE USAGE
  *
  * <pre>
  * mvn compile exec:java \
@@ -79,7 +81,11 @@ public class DataStreamToPostgres {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
-    @Description("The GCS location of the avro files you'd like to process")
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Cloud Storage Input File(s)",
+        helpText = "Path of the file pattern glob to read from.",
+        example = "gs://your-bucket/path/*.avro")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -103,45 +109,72 @@ public class DataStreamToPostgres {
 
     void setStreamName(String value);
 
-    @Description(
-        "The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).")
+    @TemplateParameter.DateTime(
+        order = 2,
+        optional = true,
+        description =
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).",
+        helpText =
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).")
     @Default.String("1970-01-01T00:00:00.00Z")
     String getRfcStartDateTime();
 
     void setRfcStartDateTime(String value);
 
-    // DataStream API Root Url (only used for testing)
-    @Description("DataStream API Root Url (only used for testing)")
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        description = "Datastream API Root URL (only required for testing)",
+        helpText = "Datastream API Root URL")
     @Default.String("https://datastream.googleapis.com/")
     String getDataStreamRootUrl();
 
     void setDataStreamRootUrl(String value);
 
     // Postgres Connection Parameters
-    @Description("Postgres Database Host")
+    @TemplateParameter.Text(
+        order = 4,
+        description = "Database Host to connect on.",
+        helpText = "Database Host to connect on.")
     String getDatabaseHost();
 
     void setDatabaseHost(String value);
 
-    @Description("Postgres Database Port")
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        description = "Database Port to connect on.",
+        helpText = "Database Port to connect on.")
     @Default.String("5432")
     String getDatabasePort();
 
     void setDatabasePort(String value);
 
-    @Description("Database User")
+    @TemplateParameter.Text(
+        order = 6,
+        description = "Database User to connect with.",
+        helpText = "Database User to connect with.")
     @Default.String("postgres")
     String getDatabaseUser();
 
     void setDatabaseUser(String value);
 
-    @Description("Database Password")
+    @TemplateParameter.Password(
+        order = 11,
+        description = "Database Password for given user.",
+        helpText = "Database Password for given user.")
     @Default.String("postgres")
     String getDatabasePassword();
 
     void setDatabasePassword(String value);
 
-    @Description("Database Name")
+    @TemplateParameter.Text(
+        order = 12,
+        optional = true,
+        description = "SQL Database Name.",
+        helpText = "The database name to connect to.")
     @Default.String("postgres")
     String getDatabaseName();
 
@@ -154,6 +187,8 @@ public class DataStreamToPostgres {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting Avro Python to BigQuery");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);

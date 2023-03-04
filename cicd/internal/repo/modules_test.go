@@ -26,6 +26,9 @@ func TestModuleMappingHasAllRoots(t *testing.T) {
 	if _, ok := m[ClassicRoot]; !ok {
 		t.Error("Missing Classic root")
 	}
+	if _, ok := m[ProjectRoot]; !ok {
+		t.Error("Missing Project root")
+	}
 	if _, ok := m[ItRoot]; !ok {
 		t.Error("Missing integration test root")
 	}
@@ -49,7 +52,7 @@ func TestGetModulesForPaths(t *testing.T) {
 				"v2/something",
 			},
 			expected: map[string][]string{
-				ClassicRoot: []string{},
+				ProjectRoot: []string{},
 				ItRoot:      []string{},
 				FlexRoot:    []string{"pubsub-binary-to-bigquery", ""},
 			},
@@ -69,9 +72,17 @@ func TestGetModulesForPaths(t *testing.T) {
 		{
 			input: []string{"something", "it/something", "v2/something"},
 			expected: map[string][]string{
-				ClassicRoot: make([]string, 0),
+				ProjectRoot: make([]string, 0),
 				ItRoot:      make([]string, 0),
 				FlexRoot:    []string{""},
+			},
+		},
+		{
+			input: []string{"something", "it/something", "v1/something"},
+			expected: map[string][]string{
+				ProjectRoot: make([]string, 0),
+				ItRoot:      make([]string, 0),
+				ClassicRoot: make([]string, 0),
 			},
 		},
 		{

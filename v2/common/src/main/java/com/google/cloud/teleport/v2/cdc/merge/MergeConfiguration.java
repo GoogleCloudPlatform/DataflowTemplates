@@ -15,8 +15,11 @@
  */
 package com.google.cloud.teleport.v2.cdc.merge;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+
 import com.google.auto.value.AutoValue;
 import java.io.Serializable;
+import javax.annotation.Nullable;
 import org.joda.time.Duration;
 
 /** Class {@link MergeConfiguration}. */
@@ -40,6 +43,8 @@ public abstract class MergeConfiguration implements Serializable {
   private static final String DEFAULT_MERGE_QUERY_TEMPLATE =
       String.join(
           "",
+          "BEGIN ",
+          "BEGIN TRANSACTION; ",
           "MERGE `{replicaTable}` AS {replicaAlias} ",
           "USING ({stagingViewSql}) AS {stagingAlias} ",
           "ON {joinCondition} ",
@@ -47,15 +52,20 @@ public abstract class MergeConfiguration implements Serializable {
               + " DELETE ", // TODO entire block should be configurably removed
           "WHEN MATCHED AND {sortFieldsCompareSql} THEN {mergeUpdateSql} ",
           "WHEN NOT MATCHED BY TARGET AND {stagingAlias}.{deleteColumn}!=True ",
-          "THEN {mergeInsertSql}");
+          "THEN {mergeInsertSql}; ",
+          "COMMIT TRANSACTION; ",
+          "END;");
 
-  private static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
-  private static final Integer DEFAULT_PARTITION_RETENTION_DAYS = 1;
-  private static final Duration DEFAULT_MERGE_WINDOW_DURATION = Duration.standardMinutes(30);
-  private static final int DEFAULT_MERGE_CONCURRENCY = 30;
+  public static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
+  public static final int DEFAULT_PARTITION_RETENTION_DAYS = 1;
+  public static final Duration DEFAULT_MERGE_WINDOW_DURATION = Duration.standardMinutes(30);
+  public static final int DEFAULT_MERGE_CONCURRENCY = 30;
 
   // BigQuery-specific properties
   public static final String BIGQUERY_QUOTE_CHARACTER = "`";
+
+  @Nullable
+  public abstract String projectId();
 
   public abstract String quoteCharacter();
 
@@ -73,7 +83,12 @@ public abstract class MergeConfiguration implements Serializable {
     return MergeConfiguration.builder().setQuoteCharacter(BIGQUERY_QUOTE_CHARACTER).build();
   }
 
+  public MergeConfiguration withProjectId(String projectId) {
+    return this.toBuilder().setProjectId(projectId).build();
+  }
+
   public MergeConfiguration withPartitionRetention(int partitionRetention) {
+    checkArgument(partitionRetention > 0, "partitionRetention must be greater than 0");
     return this.toBuilder().setPartitionRetention(Integer.valueOf(partitionRetention)).build();
   }
 
@@ -82,6 +97,7 @@ public abstract class MergeConfiguration implements Serializable {
   }
 
   public MergeConfiguration withMergeConcurrency(int mergeConcurrency) {
+    checkArgument(mergeConcurrency > 0, "mergeConcurrency must be greater than 0");
     return this.toBuilder().setMergeConcurrency(mergeConcurrency).build();
   }
 
@@ -99,6 +115,8 @@ public abstract class MergeConfiguration implements Serializable {
 
   @AutoValue.Builder
   abstract static class Builder {
+    abstract Builder setProjectId(String projectId);
+
     abstract Builder setQuoteCharacter(String quote);
 
     abstract Builder setSupportPartitionedTables(Boolean supportPartitionedTables);

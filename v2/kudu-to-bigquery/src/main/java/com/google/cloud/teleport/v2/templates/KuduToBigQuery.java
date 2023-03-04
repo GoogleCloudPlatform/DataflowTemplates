@@ -16,6 +16,9 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.common.base.Splitter;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
@@ -38,7 +41,7 @@ import org.apache.kudu.client.RowResult;
 public class KuduToBigQuery {
 
   /** Options supported by {@link com.google.cloud.teleport.v2.templates.KuduToBigQuery}. */
-  public interface KuduToBigQueryOptions extends PipelineOptions {
+  public interface KuduToBigQueryOptions extends PipelineOptions, BigQueryStorageApiBatchOptions {
 
     @Description("Master addresses")
     @Validation.Required
@@ -74,9 +77,12 @@ public class KuduToBigQuery {
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     KuduToBigQueryOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KuduToBigQueryOptions.class);
+
+    BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
 
     run(options);
   }

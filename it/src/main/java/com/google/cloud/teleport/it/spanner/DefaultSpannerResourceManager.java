@@ -15,9 +15,10 @@
  */
 package com.google.cloud.teleport.it.spanner;
 
+import static com.google.cloud.teleport.it.common.ResourceManagerUtils.checkValidProjectId;
+import static com.google.cloud.teleport.it.common.ResourceManagerUtils.generateNewId;
 import static com.google.cloud.teleport.it.spanner.SpannerResourceManagerUtils.generateDatabaseId;
 import static com.google.cloud.teleport.it.spanner.SpannerResourceManagerUtils.generateInstanceId;
-import static com.google.cloud.teleport.it.spanner.SpannerResourceManagerUtils.generateNewId;
 
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
@@ -28,6 +29,7 @@ import com.google.cloud.spanner.InstanceId;
 import com.google.cloud.spanner.InstanceInfo;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
@@ -79,6 +81,9 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
 
   @VisibleForTesting
   DefaultSpannerResourceManager(Spanner spanner, String testId, String projectId, String region) {
+    // Check that the project ID conforms to GCP standards
+    checkValidProjectId(projectId);
+
     if (testId.length() > MAX_BASE_ID_LENGTH) {
       testId = generateNewId(testId, MAX_BASE_ID_LENGTH);
     }
@@ -104,7 +109,7 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
     LOG.info("Creating instance {} in project {}.", instanceId, projectId);
     InstanceInfo instanceInfo =
         InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
-            .setInstanceConfigId(InstanceConfigId.of(projectId, region))
+            .setInstanceConfigId(InstanceConfigId.of(projectId, "regional-" + region))
             .setDisplayName(instanceId)
             .setNodeCount(1)
             .build();
@@ -147,6 +152,16 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
     if (!hasDatabase) {
       throw new IllegalStateException("There is no database for manager to perform operation on");
     }
+  }
+
+  @Override
+  public String getInstanceId() {
+    return this.instanceId;
+  }
+
+  @Override
+  public String getDatabaseId() {
+    return this.databaseId;
   }
 
   /** Creates an instance and database as well if there are none at the time of method call. */
@@ -210,8 +225,8 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
     DatabaseClient databaseClient =
         spanner.getDatabaseClient(DatabaseId.of(projectId, instanceId, databaseId));
 
-    try (ResultSet resultSet =
-        databaseClient.singleUse().read(tableId, KeySet.all(), columnNames)) {
+    try (ReadContext readContext = databaseClient.singleUse();
+        ResultSet resultSet = readContext.read(tableId, KeySet.all(), columnNames)) {
       ImmutableList.Builder<Struct> tableRecordsBuilder = ImmutableList.builder();
 
       while (resultSet.next()) {

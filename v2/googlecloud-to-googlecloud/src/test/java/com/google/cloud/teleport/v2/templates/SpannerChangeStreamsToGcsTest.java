@@ -25,6 +25,7 @@ import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToGcsOptions;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
+import com.google.cloud.teleport.v2.spanner.SpannerTestHelper;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreams;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility.FileFormat;
@@ -46,6 +47,7 @@ import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -57,7 +59,7 @@ import org.junit.runners.JUnit4;
 
 /** Test class for {@link SpannerChangeStreamsToGcsTest}. */
 @RunWith(JUnit4.class)
-public final class SpannerChangeStreamsToGcsTest {
+public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
 
   /** Rule for exception testing. */
   @Rule public ExpectedException exception = ExpectedException.none();
@@ -74,7 +76,7 @@ public final class SpannerChangeStreamsToGcsTest {
   private static final String TEXT_FILENAME_PREFIX = "text-output-";
   private static final Integer NUM_SHARDS = 1;
   private static final String TEST_PROJECT = "span-cloud-testing";
-  private static final String TEST_INSTANCE = "changestream";
+  private static final String TEST_INSTANCE = "change-stream-test";
   private static final String TEST_DATABASE_PREFIX = "testdbchangestreams";
   private static final String TEST_TABLE = "Users";
   private static final String TEST_CHANGE_STREAM = "UsersStream";
@@ -88,6 +90,12 @@ public final class SpannerChangeStreamsToGcsTest {
   public void setup() throws Exception {
     fakeDir = tmpDir.newFolder("output").getAbsolutePath();
     fakeTempLocation = tmpDir.newFolder("temporaryLocation").getAbsolutePath();
+    super.setUp();
+  }
+
+  @After
+  public void tearDown() throws NoSuchFieldException, IllegalAccessException {
+    super.tearDown();
   }
 
   @SuppressWarnings("DefaultAnnotationParam")
@@ -158,6 +166,7 @@ public final class SpannerChangeStreamsToGcsTest {
    */
   @Test
   public void testFileFormatFactoryInvalid() {
+    mockGetDialect();
 
     exception.expect(IllegalArgumentException.class);
     exception.expectMessage("Invalid output format:PARQUET. Supported output formats: TEXT, AVRO");
@@ -174,18 +183,14 @@ public final class SpannerChangeStreamsToGcsTest {
 
     Timestamp startTimestamp = Timestamp.now();
     Timestamp endTimestamp = Timestamp.now();
+    SpannerConfig spannerConfig = getFakeSpannerConfig();
 
     p
         // Reads from the change stream
         .apply(
             SpannerIO.readChangeStream()
-                .withSpannerConfig(
-                    SpannerConfig.create()
-                        .withProjectId("project")
-                        .withInstanceId("instance")
-                        .withDatabaseId("db"))
-                .withMetadataInstance("instance")
-                .withMetadataDatabase("db")
+                .withSpannerConfig(spannerConfig)
+                .withMetadataDatabase(spannerConfig.getDatabaseId().get())
                 .withChangeStreamName("changestream")
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)
@@ -202,6 +207,8 @@ public final class SpannerChangeStreamsToGcsTest {
 
   @Test
   public void testInvalidWindowDuration() {
+    mockGetDialect();
+
     exception.expect(IllegalArgumentException.class);
     exception.expectMessage("The window duration must be greater than 0!");
     SpannerChangeStreamsToGcsOptions options =
@@ -217,18 +224,14 @@ public final class SpannerChangeStreamsToGcsTest {
 
     Timestamp startTimestamp = Timestamp.now();
     Timestamp endTimestamp = Timestamp.now();
+    SpannerConfig spannerConfig = getFakeSpannerConfig();
 
     p
         // Reads from the change stream
         .apply(
             SpannerIO.readChangeStream()
-                .withSpannerConfig(
-                    SpannerConfig.create()
-                        .withProjectId("project")
-                        .withInstanceId("instance")
-                        .withDatabaseId("db"))
-                .withMetadataInstance("instance")
-                .withMetadataDatabase("db")
+                .withSpannerConfig(spannerConfig)
+                .withMetadataDatabase(spannerConfig.getDatabaseId().get())
                 .withChangeStreamName("changestream")
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)

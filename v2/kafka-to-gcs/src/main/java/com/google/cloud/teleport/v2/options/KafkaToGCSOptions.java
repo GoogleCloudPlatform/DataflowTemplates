@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSParquet;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
@@ -33,33 +33,50 @@ public interface KafkaToGCSOptions
         WriteToGCSParquet.WriteToGCSParquetOptions,
         WriteToGCSAvro.WriteToGCSAvroOptions {
 
-  @Description("Kafka Bootstrap Server(s). ")
+  @TemplateParameter.Text(
+      order = 1,
+      optional = false,
+      regexes = {"[,:a-zA-Z0-9._-]+"},
+      description = "Kafka Bootstrap Server list",
+      helpText = "Kafka Bootstrap Server list, separated by commas.",
+      example = "localhost:9092,127.0.0.1:9093")
   @Validation.Required
   String getBootstrapServers();
 
   void setBootstrapServers(String bootstrapServers);
 
-  @Description("Kafka topic(s) to read the input from. ")
+  @TemplateParameter.Text(
+      order = 2,
+      optional = false,
+      regexes = {"[,a-zA-Z0-9._-]+"},
+      description = "Kafka topic(s) to read the input from",
+      helpText = "Kafka topic(s) to read the input from.",
+      example = "topic1,topic2")
   @Validation.Required
   String getInputTopics();
 
   void setInputTopics(String inputTopics);
 
-  @Description(
-      "The format of the file to write to. Default: TEXT. "
-          + "Allowed formats are: "
-          + "TEXT, AVRO, PARQUET")
+  @TemplateParameter.Enum(
+      order = 3,
+      enumOptions = {"TEXT, AVRO, PARQUET"},
+      optional = false,
+      description = "File format of the desired output files. (TEXT, AVRO or PARQUET)",
+      helpText =
+          "The file format of the desired output files. Can be TEXT, AVRO or PARQUET. Defaults to TEXT")
   @Default.String("TEXT")
   String getOutputFileFormat();
 
   void setOutputFileFormat(String outputFileFormat);
 
-  @Description(
-      "The window duration in which data will be written. Defaults to 5m. "
-          + "Allowed formats are: "
-          + "Ns (for seconds, example: 5s), "
-          + "Nm (for minutes, example: 12m), "
-          + "Nh (for hours, example: 2h).")
+  @TemplateParameter.Duration(
+      order = 4,
+      optional = true,
+      description = "Window duration",
+      helpText =
+          "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for "
+              + "seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h).",
+      example = "5m")
   @Default.String("5m")
   String getWindowDuration();
 

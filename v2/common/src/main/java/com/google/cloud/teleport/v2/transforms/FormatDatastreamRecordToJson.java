@@ -130,6 +130,11 @@ public class FormatDatastreamRecordToJson
       outputObject.put("_metadata_schema", getMetadataDatabase(record));
       outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
       outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+    } else if (sourceType.equals("postgresql")) {
+      // Postgres Specific Metadata
+      outputObject.put("_metadata_schema", getMetadataSchema(record));
+      outputObject.put("_metadata_lsn", getPostgresLsn(record));
+      outputObject.put("_metadata_tx_id", getPostgresTxId(record));
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
@@ -289,6 +294,22 @@ public class FormatDatastreamRecordToJson
   }
 
   private String getOracleTxId(GenericRecord record) {
+    if (((GenericRecord) record.get("source_metadata")).get("tx_id") != null) {
+      return ((GenericRecord) record.get("source_metadata")).get("tx_id").toString();
+    }
+
+    return (String) null;
+  }
+
+  private String getPostgresLsn(GenericRecord record) {
+    if (((GenericRecord) record.get("source_metadata")).get("lsn") != null) {
+      return ((GenericRecord) record.get("source_metadata")).get("lsn").toString();
+    }
+
+    return (String) null;
+  }
+
+  private String getPostgresTxId(GenericRecord record) {
     if (((GenericRecord) record.get("source_metadata")).get("tx_id") != null) {
       return ((GenericRecord) record.get("source_metadata")).get("tx_id").toString();
     }

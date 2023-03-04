@@ -25,6 +25,7 @@ import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ValueCaptureType;
 
 /**
  * The {@link Mod} contains the keys, new values (from {@link
@@ -46,6 +47,7 @@ public final class Mod implements Serializable {
   private String recordSequence;
   private String tableName;
   private ModType modType;
+  private ValueCaptureType valueCaptureType;
   private long numberOfRecordsInTransaction;
   private long numberOfPartitionsInTransaction;
 
@@ -68,6 +70,7 @@ public final class Mod implements Serializable {
    * @param tableName the name of the table in which the modifications occurred
    * @param modType the operation that caused the modification to occur, can only be one of INSERT,
    *     UPDATE and DELETE
+   * @param valueCaptureType the value capture type of the change stream
    * @param numberOfRecordsInTransaction the total number of records for the given transaction
    * @param numberOfPartitionsInTransaction the total number of partitions within the given
    *     transaction
@@ -87,6 +90,7 @@ public final class Mod implements Serializable {
       String recordSequence,
       String tableName,
       ModType modType,
+      ValueCaptureType valueCaptureType,
       long numberOfRecordsInTransaction,
       long numberOfPartitionsInTransaction) {
     this.keysJson = keysJson;
@@ -98,6 +102,7 @@ public final class Mod implements Serializable {
     this.recordSequence = recordSequence;
     this.tableName = tableName;
     this.modType = modType;
+    this.valueCaptureType = valueCaptureType;
     this.numberOfRecordsInTransaction = numberOfRecordsInTransaction;
     this.numberOfPartitionsInTransaction = numberOfPartitionsInTransaction;
   }
@@ -176,6 +181,11 @@ public final class Mod implements Serializable {
     return modType;
   }
 
+  /** The value capture type that defined the values in data change records. */
+  public ValueCaptureType getValueCaptureType() {
+    return valueCaptureType;
+  }
+
   /** The total number of data change records for the given transaction. */
   public long getNumberOfRecordsInTransaction() {
     return numberOfRecordsInTransaction;
@@ -204,7 +214,8 @@ public final class Mod implements Serializable {
         && Objects.equals(serverTransactionId, that.serverTransactionId)
         && Objects.equals(recordSequence, that.recordSequence)
         && Objects.equals(tableName, that.tableName)
-        && modType == that.modType;
+        && modType == that.modType
+        && valueCaptureType == that.valueCaptureType;
   }
 
   @Override
@@ -218,6 +229,7 @@ public final class Mod implements Serializable {
         recordSequence,
         tableName,
         modType,
+        valueCaptureType,
         numberOfRecordsInTransaction,
         numberOfPartitionsInTransaction);
   }
@@ -245,6 +257,8 @@ public final class Mod implements Serializable {
         + '\''
         + ", modType="
         + modType
+        + ", valueCaptureType="
+        + valueCaptureType
         + ", numberOfRecordsInTransaction="
         + numberOfRecordsInTransaction
         + ", numberOfPartitionsInTransaction="

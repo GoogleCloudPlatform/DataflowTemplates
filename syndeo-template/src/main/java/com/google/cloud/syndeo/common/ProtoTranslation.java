@@ -17,7 +17,7 @@ package com.google.cloud.syndeo.common;
 
 import com.google.cloud.syndeo.v1.SyndeoV1;
 import org.apache.beam.model.pipeline.v1.SchemaApi;
-import org.apache.beam.vendor.grpc.v1p43p2.com.google.protobuf.InvalidProtocolBufferException;
+import org.apache.beam.vendor.grpc.v1p48p1.com.google.protobuf.InvalidProtocolBufferException;
 
 public class ProtoTranslation {
 

@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.kafka.options;
 
-import org.apache.beam.sdk.options.Description;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
@@ -23,15 +23,25 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * executor at the command-line.
  */
 public interface KafkaReadOptions extends PipelineOptions {
-  @Description(
-      "Comma Separated list of source Kafka Bootstrap Servers (e.g:"
-          + " server1:[port],server2:[port]).")
+
+  @TemplateParameter.Text(
+      order = 1,
+      optional = true,
+      regexes = {"[,:a-zA-Z0-9._-]+"},
+      description = "Kafka Bootstrap Server list",
+      helpText = "Kafka Bootstrap Server list, separated by commas.",
+      example = "localhost:9092,127.0.0.1:9093")
   String getReadBootstrapServers();
 
   void setReadBootstrapServers(String bootstrapServers);
 
-  @Description(
-      "Comma Separated list of Kafka topic(s) to read the input from (e.g: topic1,topic2).")
+  @TemplateParameter.Text(
+      order = 2,
+      optional = true,
+      regexes = {"[,a-zA-Z0-9._-]+"},
+      description = "Kafka topic(s) to read input from.",
+      helpText = "Kafka topic(s) to read input from.",
+      example = "topic1,topic2")
   String getKafkaReadTopics();
 
   void setKafkaReadTopics(String inputTopics);

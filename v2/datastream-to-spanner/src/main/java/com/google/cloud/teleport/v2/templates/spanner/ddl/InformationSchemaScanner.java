@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.spanner.ddl;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
@@ -42,13 +43,20 @@ public class InformationSchemaScanner {
           .build();
 
   private final ReadContext context;
+  private final Dialect dialect;
 
   public InformationSchemaScanner(ReadContext context) {
     this.context = context;
+    this.dialect = Dialect.GOOGLE_STANDARD_SQL;
+  }
+
+  public InformationSchemaScanner(ReadContext context, Dialect dialect) {
+    this.context = context;
+    this.dialect = dialect;
   }
 
   public Ddl scan() {
-    Ddl.Builder builder = Ddl.builder();
+    Ddl.Builder builder = Ddl.builder(dialect);
     listTables(builder);
     listColumns(builder);
     listColumnOptions(builder);
@@ -95,12 +103,27 @@ public class InformationSchemaScanner {
   }
 
   private void listTables(Ddl.Builder builder) {
-    ResultSet resultSet =
-        context.executeQuery(
+    Statement query;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        query =
             Statement.of(
                 "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
                     + " FROM information_schema.tables AS t"
-                    + " WHERE t.table_catalog = '' AND t.table_schema = ''"));
+                    + " WHERE t.table_catalog = '' AND t.table_schema = ''");
+        break;
+      case POSTGRESQL:
+        query =
+            Statement.of(
+                "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
+                    + " information_schema.tables AS t"
+                    + " WHERE t.table_schema NOT IN "
+                    + "('information_schema', 'spanner_sys', 'pg_catalog')");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+    ResultSet resultSet = context.executeQuery(query);
     while (resultSet.next()) {
       String tableName = resultSet.getString(0);
       String parentTableName = resultSet.isNull(1) ? null : resultSet.getString(1);
@@ -134,17 +157,9 @@ public class InformationSchemaScanner {
   }
 
   private void listColumns(Ddl.Builder builder) {
-    ResultSet resultSet =
-        context.executeQuery(
-            Statement.newBuilder(
-                    "SELECT c.table_name, c.column_name,"
-                        + " c.ordinal_position, c.spanner_type, c.is_nullable,"
-                        + " c.is_generated, c.generation_expression, c.is_stored"
-                        + " FROM information_schema.columns as c"
-                        + " WHERE c.table_catalog = '' AND c.table_schema = '' "
-                        + " AND c.spanner_state = 'COMMITTED' "
-                        + " ORDER BY c.table_name, c.ordinal_position")
-                .build());
+    Statement statement = listColumnsSQL();
+
+    ResultSet resultSet = context.executeQuery(statement);
     while (resultSet.next()) {
       String tableName = resultSet.getString(0);
       String columnName = resultSet.getString(1);
@@ -167,16 +182,36 @@ public class InformationSchemaScanner {
     }
   }
 
+  Statement listColumnsSQL() {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        return Statement.of(
+            "SELECT c.table_name, c.column_name,"
+                + " c.ordinal_position, c.spanner_type, c.is_nullable,"
+                + " c.is_generated, c.generation_expression, c.is_stored"
+                + " FROM information_schema.columns as c"
+                + " WHERE c.table_catalog = '' AND c.table_schema = '' "
+                + " AND c.spanner_state = 'COMMITTED' "
+                + " ORDER BY c.table_name, c.ordinal_position");
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT c.table_name, c.column_name,"
+                + " c.ordinal_position, c.spanner_type, c.is_nullable,"
+                + " c.is_generated, c.generation_expression, c.is_stored"
+                + " FROM information_schema.columns as c"
+                + " WHERE c.table_schema NOT IN "
+                + " ('information_schema', 'spanner_sys', 'pg_catalog') "
+                + " AND c.spanner_state = 'COMMITTED' "
+                + " ORDER BY c.table_name, c.ordinal_position");
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+  }
+
   private void listIndexes(Map<String, NavigableMap<String, Index.Builder>> indexes) {
-    ResultSet resultSet =
-        context.executeQuery(
-            Statement.of(
-                "SELECT t.table_name, t.index_name, t.parent_table_name,"
-                    + " t.is_unique, t.is_null_filtered"
-                    + " FROM information_schema.indexes AS t "
-                    + " WHERE t.table_catalog = '' AND t.table_schema = '' AND t.index_type='INDEX'"
-                    + " AND t.spanner_is_managed = FALSE"
-                    + " ORDER BY t.table_name, t.index_name"));
+    Statement statement = listIndexesSQL();
+
+    ResultSet resultSet = context.executeQuery(statement);
     while (resultSet.next()) {
       String tableName = resultSet.getString(0);
       String indexName = resultSet.getString(1);
@@ -185,32 +220,62 @@ public class InformationSchemaScanner {
       if (Strings.isNullOrEmpty(parent)) {
         parent = null;
       }
-      boolean unique = resultSet.getBoolean(3);
-      boolean nullFiltered = resultSet.getBoolean(4);
+      boolean unique =
+          (dialect == Dialect.GOOGLE_STANDARD_SQL)
+              ? resultSet.getBoolean(3)
+              : resultSet.getString(3).equalsIgnoreCase("YES");
+      boolean nullFiltered =
+          (dialect == Dialect.GOOGLE_STANDARD_SQL)
+              ? resultSet.getBoolean(4)
+              : resultSet.getString(4).equalsIgnoreCase("YES");
+      String filter =
+          (dialect == Dialect.GOOGLE_STANDARD_SQL || resultSet.isNull(5))
+              ? null
+              : resultSet.getString(5);
 
       Map<String, Index.Builder> tableIndexes =
           indexes.computeIfAbsent(tableName, k -> Maps.newTreeMap());
 
       tableIndexes.put(
           indexName,
-          Index.builder()
+          Index.builder(dialect)
               .name(indexName)
               .table(tableName)
               .unique(unique)
               .nullFiltered(nullFiltered)
-              .interleaveIn(parent));
+              .interleaveIn(parent)
+              .filter(filter));
+    }
+  }
+
+  Statement listIndexesSQL() {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        return Statement.of(
+            "SELECT t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
+                + " t.is_null_filtered"
+                + " FROM information_schema.indexes AS t"
+                + " WHERE t.table_catalog = '' AND t.table_schema = '' AND"
+                + " t.index_type='INDEX' AND t.spanner_is_managed = FALSE"
+                + " ORDER BY t.table_name, t.index_name");
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
+                + " t.is_null_filtered, t.filter FROM information_schema.indexes AS t "
+                + " WHERE t.table_schema NOT IN "
+                + " ('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " AND t.index_type='INDEX' AND t.spanner_is_managed = 'NO' "
+                + " ORDER BY t.table_name, t.index_name");
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
   }
 
   private void listIndexColumns(
       Ddl.Builder builder, Map<String, NavigableMap<String, Index.Builder>> indexes) {
-    ResultSet resultSet =
-        context.executeQuery(
-            Statement.of(
-                "SELECT t.table_name, t.column_name, t.column_ordering, t.index_name "
-                    + "FROM information_schema.index_columns AS t "
-                    + "WHERE t.table_catalog = '' AND t.table_schema "
-                    + "= ''  ORDER BY t.table_name, t.index_name, t.ordinal_position"));
+    Statement statement = listIndexColumnsSQL();
+
+    ResultSet resultSet = context.executeQuery(statement);
     while (resultSet.next()) {
       String tableName = resultSet.getString(0);
       String columnName = resultSet.getString(1);
@@ -246,15 +311,30 @@ public class InformationSchemaScanner {
     }
   }
 
+  Statement listIndexColumnsSQL() {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        return Statement.of(
+            "SELECT t.table_name, t.column_name, t.column_ordering, t.index_name "
+                + "FROM information_schema.index_columns AS t "
+                + "WHERE t.table_catalog = '' AND t.table_schema = '' "
+                + "ORDER BY t.table_name, t.index_name, t.ordinal_position");
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT t.table_name, t.column_name, t.column_ordering, t.index_name "
+                + "FROM information_schema.index_columns AS t "
+                + "WHERE t.table_schema NOT IN "
+                + "('information_schema', 'spanner_sys', 'pg_catalog') "
+                + "ORDER BY t.table_name, t.index_name, t.ordinal_position");
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+  }
+
   private void listColumnOptions(Ddl.Builder builder) {
-    ResultSet resultSet =
-        context.executeQuery(
-            Statement.newBuilder(
-                    "SELECT t.table_name, t.column_name, t.option_name, t.option_type, t.option_value "
-                        + " FROM information_schema.column_options AS t "
-                        + " WHERE t.table_catalog = '' AND t.table_schema = ''"
-                        + " ORDER BY t.table_name, t.column_name")
-                .build());
+    Statement statement = listColumnOptionsSQL();
+
+    ResultSet resultSet = context.executeQuery(statement);
 
     Map<KV<String, String>, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
     while (resultSet.next()) {
@@ -269,6 +349,8 @@ public class InformationSchemaScanner {
           allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
       if (optionType.equalsIgnoreCase("STRING")) {
         options.add(optionName + "=\"" + ESCAPER.escape(optionValue) + "\"");
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(optionName + "='" + ESCAPER.escape(optionValue) + "'");
       } else {
         options.add(optionName + "=" + optionValue);
       }
@@ -288,9 +370,34 @@ public class InformationSchemaScanner {
     }
   }
 
+  Statement listColumnOptionsSQL() {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        return Statement.of(
+            "SELECT t.table_name, t.column_name, t.option_name, t.option_type,"
+                + " t.option_value"
+                + " FROM information_schema.column_options AS t"
+                + " WHERE t.table_catalog = '' AND t.table_schema = ''"
+                + " ORDER BY t.table_name, t.column_name");
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT t.table_name, t.column_name, t.option_name, t.option_type,"
+                + " t.option_value"
+                + " FROM information_schema.column_options AS t"
+                + " WHERE t.table_schema NOT IN "
+                + " ('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " ORDER BY t.table_name, t.column_name");
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+  }
+
   private void listForeignKeys(Map<String, NavigableMap<String, ForeignKey.Builder>> foreignKeys) {
-    ResultSet resultSet =
-        context.executeQuery(
+    Statement statement;
+
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        statement =
             Statement.of(
                 "SELECT rc.constraint_name,"
                     + " kcu1.table_name,"
@@ -313,7 +420,39 @@ public class InformationSchemaScanner {
                     + " AND kcu1.constraint_schema = ''"
                     + " AND kcu2.constraint_catalog = ''"
                     + " AND kcu2.constraint_schema = ''"
-                    + " ORDER BY rc.constraint_name, kcu1.ordinal_position;"));
+                    + " ORDER BY rc.constraint_name, kcu1.ordinal_position;");
+        break;
+      case POSTGRESQL:
+        statement =
+            Statement.of(
+                "SELECT rc.constraint_name,"
+                    + " kcu1.table_name,"
+                    + " kcu1.column_name,"
+                    + " kcu2.table_name,"
+                    + " kcu2.column_name"
+                    + " FROM information_schema.referential_constraints as rc"
+                    + " INNER JOIN information_schema.key_column_usage as kcu1"
+                    + " ON kcu1.constraint_catalog = rc.constraint_catalog"
+                    + " AND kcu1.constraint_schema = rc.constraint_schema"
+                    + " AND kcu1.constraint_name = rc.constraint_name"
+                    + " INNER JOIN information_schema.key_column_usage as kcu2"
+                    + " ON kcu2.constraint_catalog = rc.unique_constraint_catalog"
+                    + " AND kcu2.constraint_schema = rc.unique_constraint_schema"
+                    + " AND kcu2.constraint_name = rc.unique_constraint_name"
+                    + " AND kcu2.ordinal_position = kcu1.position_in_unique_constraint"
+                    + " WHERE rc.constraint_catalog = kcu1.constraint_catalog"
+                    + " AND rc.constraint_catalog = kcu2.constraint_catalog"
+                    + " AND rc.constraint_schema NOT IN "
+                    + " ('information_schema', 'spanner_sys', 'pg_catalog')"
+                    + " AND rc.constraint_schema = kcu1.constraint_schema"
+                    + " AND rc.constraint_schema = kcu2.constraint_schema"
+                    + " ORDER BY rc.constraint_name, kcu1.ordinal_position;");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+
+    ResultSet resultSet = context.executeQuery(statement);
     while (resultSet.next()) {
       String name = resultSet.getString(0);
       String table = resultSet.getString(1);
@@ -325,7 +464,11 @@ public class InformationSchemaScanner {
       ForeignKey.Builder foreignKey =
           tableForeignKeys.computeIfAbsent(
               name,
-              k -> ForeignKey.builder().name(name).table(table).referencedTable(referencedTable));
+              k ->
+                  ForeignKey.builder(dialect)
+                      .name(name)
+                      .table(table)
+                      .referencedTable(referencedTable));
       foreignKey.columnsBuilder().add(column);
       foreignKey.referencedColumnsBuilder().add(referencedColumn);
     }
@@ -333,8 +476,11 @@ public class InformationSchemaScanner {
 
   private Map<String, NavigableMap<String, CheckConstraint>> listCheckConstraints() {
     Map<String, NavigableMap<String, CheckConstraint>> checkConstraints = Maps.newHashMap();
-    ResultSet resultSet =
-        context.executeQuery(
+    Statement statement;
+
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        statement =
             Statement.of(
                 "SELECT ctu.TABLE_NAME,"
                     + " cc.CONSTRAINT_NAME,"
@@ -349,8 +495,31 @@ public class InformationSchemaScanner {
                     + " AND ctu.table_schema = ''"
                     + " AND ctu.constraint_catalog = ''"
                     + " AND ctu.constraint_schema = ''"
-                    + " AND cc.SPANNER_STATE = 'COMMITTED'"
-                    + ";"));
+                    + " AND cc.SPANNER_STATE = 'COMMITTED';");
+        break;
+      case POSTGRESQL:
+        statement =
+            Statement.of(
+                "SELECT ctu.TABLE_NAME,"
+                    + " cc.CONSTRAINT_NAME,"
+                    + " cc.CHECK_CLAUSE"
+                    + " FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS as ctu"
+                    + " INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
+                    + " ON ctu.constraint_catalog = cc.constraint_catalog"
+                    + " AND ctu.constraint_schema = cc.constraint_schema"
+                    + " AND ctu.CONSTRAINT_NAME = cc.CONSTRAINT_NAME"
+                    + " WHERE NOT STARTS_WITH(cc.CONSTRAINT_NAME, 'CK_IS_NOT_NULL_')"
+                    + " AND ctu.table_catalog = ctu.constraint_catalog"
+                    + " AND ctu.table_schema NOT IN"
+                    + "('information_schema', 'spanner_sys', 'pg_catalog')"
+                    + " AND ctu.table_schema = ctu.constraint_schema"
+                    + " AND cc.SPANNER_STATE = 'COMMITTED';");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+
+    ResultSet resultSet = context.executeQuery(statement);
     while (resultSet.next()) {
       String table = resultSet.getString(0);
       String name = resultSet.getString(1);
@@ -358,7 +527,7 @@ public class InformationSchemaScanner {
       Map<String, CheckConstraint> tableCheckConstraints =
           checkConstraints.computeIfAbsent(table, k -> Maps.newTreeMap());
       tableCheckConstraints.computeIfAbsent(
-          name, k -> CheckConstraint.builder().name(name).expression(expression).build());
+          name, k -> CheckConstraint.builder(dialect).name(name).expression(expression).build());
     }
     return checkConstraints;
   }

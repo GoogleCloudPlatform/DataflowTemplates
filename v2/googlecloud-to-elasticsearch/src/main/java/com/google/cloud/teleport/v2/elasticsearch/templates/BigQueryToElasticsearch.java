@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQuery;
@@ -31,6 +34,15 @@ import org.apache.beam.sdk.transforms.ParDo;
  * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/docs/BigQueryToElasticsearch/README.md">
  * README.md</a></b> for further information.
  */
+@Template(
+    name = "BigQuery_to_Elasticsearch",
+    category = TemplateCategory.BATCH,
+    displayName = "BigQuery to Elasticsearch",
+    description =
+        "A pipeline which sends BigQuery records into an Elasticsearch instance as json documents.",
+    optionsClass = BigQueryToElasticsearchOptions.class,
+    flexContainerName = "bigquery-to-elasticsearch",
+    contactInformation = "https://cloud.google.com/support")
 public class BigQueryToElasticsearch {
   /**
    * Main entry point for pipeline execution.
@@ -38,6 +50,8 @@ public class BigQueryToElasticsearch {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     BigQueryToElasticsearchOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()

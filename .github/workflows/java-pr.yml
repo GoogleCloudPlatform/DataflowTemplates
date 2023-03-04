@@ -22,11 +22,14 @@ on:
       - 'main'
     paths:
       - '**.java'
-      - '**pom.xml'
+      - '**.xml'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
       - '.github/actions/setup-env/*'
       - '.github/workflows/java-pr.yml'
+
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
 
 permissions: read-all
 
@@ -57,7 +60,7 @@ jobs:
         run: ./cicd/run-build --changed-files="${{ steps.setup-env.outputs.changed-files }}"
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
-  java_tests:
+  java_unit_tests:
     name: Unit Tests
     timeout-minutes: 60
     runs-on: ubuntu-latest
@@ -69,5 +72,25 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
         run: ./cicd/run-unit-tests --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+  java_integration_tests_templates:
+    name: Dataflow Templates Integration Tests
+    needs: [spotless_check, java_build, java_unit_tests]
+    timeout-minutes: 180
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2.6.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Integration Tests
+        run: | 
+          ./cicd/run-it-tests \
+          --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env

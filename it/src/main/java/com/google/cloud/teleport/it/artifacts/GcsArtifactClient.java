@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.it.artifacts;
 
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createRunId;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.Blob;
@@ -26,12 +26,14 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.re2j.Pattern;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Joiner;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +72,11 @@ public final class GcsArtifactClient implements ArtifactClient {
   }
 
   @Override
+  public Artifact createArtifact(String artifactName, String contents) {
+    return this.createArtifact(artifactName, contents.getBytes(StandardCharsets.UTF_8));
+  }
+
+  @Override
   public Artifact createArtifact(String artifactName, byte[] contents) {
     String path = joinPathParts(testClassName, runId, artifactName);
     return handleCreate(path, contents);
@@ -77,12 +84,17 @@ public final class GcsArtifactClient implements ArtifactClient {
 
   @Override
   public Artifact uploadArtifact(String artifactName, String localPath) throws IOException {
+    return uploadArtifact(artifactName, Paths.get(localPath));
+  }
+
+  @Override
+  public Artifact uploadArtifact(String artifactName, Path localPath) throws IOException {
     LOG.info(
         "Uploading '{}' to file '{}' under '{}'",
         localPath,
         artifactName,
         joinPathParts(testClassName, runId));
-    return createArtifact(artifactName, Files.readAllBytes(Paths.get(localPath)));
+    return createArtifact(artifactName, Files.readAllBytes(localPath));
   }
 
   /**
@@ -102,6 +114,11 @@ public final class GcsArtifactClient implements ArtifactClient {
         "Successfully uploaded {} bytes to '{}' under bucket '{}'", contents.length, path, bucket);
 
     return new GcsArtifact(blob);
+  }
+
+  @Override
+  public List<Artifact> listArtifacts(TestName testName, Pattern regex) {
+    return listArtifacts(testName.getMethodName(), regex);
   }
 
   @Override
@@ -144,7 +161,9 @@ public final class GcsArtifactClient implements ArtifactClient {
 
           List<Boolean> deleted = client.delete(blobIds);
           for (int i = 0; i < deleted.size(); ++i) {
-            if (!deleted.get(i)) {
+            if (deleted.get(i)) {
+              LOG.info("Blob '{}' was deleted", blobIds.get(i).getName());
+            } else {
               LOG.warn("Blob '{}' not deleted", blobIds.get(i).getName());
             }
           }
@@ -168,7 +187,7 @@ public final class GcsArtifactClient implements ArtifactClient {
   }
 
   private static String joinPathParts(String... parts) {
-    return Joiner.on('/').join(parts);
+    return String.join("/", parts);
   }
 
   /** Builder for {@link GcsArtifactClient}. */

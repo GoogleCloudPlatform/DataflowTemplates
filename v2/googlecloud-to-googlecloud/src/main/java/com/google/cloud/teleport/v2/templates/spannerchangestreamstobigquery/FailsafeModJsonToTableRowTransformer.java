@@ -19,6 +19,8 @@ import com.google.api.gax.grpc.GrpcCallContext;
 import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key.Builder;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Options;
@@ -48,6 +50,7 @@ import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ValueCaptureType;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -155,9 +158,10 @@ public final class FailsafeModJsonToTableRowTransformer {
 
       @Setup
       public void setUp() {
+        Dialect dialect = getDialect(spannerConfig);
         spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
         spannerTableByName =
-            new SpannerUtils(spannerAccessor.getDatabaseClient(), spannerChangeStream)
+            new SpannerUtils(spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
                 .getSpannerTableByName();
         setUpCallContextConfigurator();
       }
@@ -208,7 +212,7 @@ public final class FailsafeModJsonToTableRowTransformer {
         BigQueryUtils.setMetadataFiledsOfTableRow(
             spannerTableName, mod, modJsonString, spannerCommitTimestamp, tableRow);
         JSONObject keysJsonObject = new JSONObject(mod.getKeysJson());
-        // Set Spanner key columns of of the tableRow.
+        // Set Spanner key columns of the tableRow.
         for (TrackedSpannerColumn spannerColumn : spannerTable.getPkColumns()) {
           String spannerColumnName = spannerColumn.getName();
           if (keysJsonObject.has(spannerColumnName)) {
@@ -230,6 +234,11 @@ public final class FailsafeModJsonToTableRowTransformer {
 
         // For "INSERT" mod, we can get all columns from mod.
         if (mod.getModType() == ModType.INSERT) {
+          return tableRow;
+        }
+
+        // For "NEW_ROW" value capture type, we can get all columns from mod.
+        if (mod.getValueCaptureType() == ValueCaptureType.NEW_ROW) {
           return tableRow;
         }
 
@@ -359,5 +368,10 @@ public final class FailsafeModJsonToTableRowTransformer {
 
       abstract FailsafeModJsonToTableRowOptions build();
     }
+  }
+
+  private static Dialect getDialect(SpannerConfig spannerConfig) {
+    DatabaseClient databaseClient = SpannerAccessor.getOrCreate(spannerConfig).getDatabaseClient();
+    return databaseClient.getDialect();
   }
 }

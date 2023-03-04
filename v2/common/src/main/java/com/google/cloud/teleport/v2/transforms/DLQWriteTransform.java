@@ -78,8 +78,11 @@ public class DLQWriteTransform {
                   .withWindowedWrites()
                   .withNumShards(20)
                   .to(
-                      new WindowedFilenamePolicy(
-                          dlqDirectory(), "error", getShardTemplate(), ".json"))
+                      WindowedFilenamePolicy.writeWindowedFiles()
+                          .withOutputDirectory(dlqDirectory())
+                          .withOutputFilenamePrefix("error")
+                          .withShardTemplate(getShardTemplate())
+                          .withSuffix(".json"))
                   .withTempDirectory(
                       FileBasedSink.convertToFileResourceIfPossible(tmpDirectory())));
     }

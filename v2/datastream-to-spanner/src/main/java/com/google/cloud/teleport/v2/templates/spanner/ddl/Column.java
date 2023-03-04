@@ -16,7 +16,8 @@
 package com.google.cloud.teleport.v2.templates.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.spanner.Type;
+import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.templates.spanner.common.Type;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.io.Serializable;
@@ -45,8 +46,11 @@ public abstract class Column implements Serializable {
 
   public abstract boolean isStored();
 
-  public static Builder builder() {
+  public abstract Dialect dialect();
+
+  public static Builder builder(Dialect dialect) {
     return new AutoValue_Column.Builder()
+        .dialect(dialect)
         .columnOptions(ImmutableList.of())
         .notNull(false)
         .isGenerated(false)
@@ -54,12 +58,25 @@ public abstract class Column implements Serializable {
         .isStored(false);
   }
 
+  public static Builder builder() {
+    return builder(Dialect.GOOGLE_STANDARD_SQL);
+  }
+
   public void prettyPrint(Appendable appendable) throws IOException {
-    appendable.append(String.format("%1$-40s", "`" + name() + "`")).append(typeString());
+    if (dialect() != Dialect.GOOGLE_STANDARD_SQL && dialect() != Dialect.POSTGRESQL) {
+      throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
+    }
+    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
+    appendable
+        .append(String.format("%1$-40s", identifierQuote + name() + identifierQuote))
+        .append(typeString());
     if (notNull()) {
       appendable.append(" NOT NULL");
     }
     if (isGenerated()) {
+      if (dialect() == Dialect.POSTGRESQL) {
+        appendable.append(" GENERATED ALWAYS");
+      }
       appendable.append(" AS (").append(generationExpression()).append(")");
       if (isStored()) {
         appendable.append(" STORED");
@@ -98,24 +115,54 @@ public abstract class Column implements Serializable {
   private static String typeString(Type type, Integer size) {
     switch (type.getCode()) {
       case BOOL:
-        return "BOOL";
+        return Type.Code.BOOL.getName();
+      case PG_BOOL:
+        return Type.Code.PG_BOOL.getName();
       case INT64:
-        return "INT64";
+        return Type.Code.INT64.getName();
+      case PG_INT8:
+        return Type.Code.PG_INT8.getName();
       case FLOAT64:
-        return "FLOAT64";
+        return Type.Code.FLOAT64.getName();
+      case PG_FLOAT8:
+        return Type.Code.PG_FLOAT8.getName();
       case STRING:
-        return "STRING(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
+        return Type.Code.STRING + "(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
+      case PG_VARCHAR:
+        return Type.Code.PG_VARCHAR.getName()
+            + (size == -1 ? "" : ("(" + Integer.toString(size) + ")"));
+      case PG_TEXT:
+        return Type.Code.PG_TEXT.getName();
       case BYTES:
-        return "BYTES(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
+        return Type.Code.BYTES + "(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
+      case PG_BYTEA:
+        return Type.Code.PG_BYTEA.getName();
       case DATE:
-        return "DATE";
-      case NUMERIC:
-        return "NUMERIC";
+        return Type.Code.DATE.getName();
+      case PG_DATE:
+        return Type.Code.PG_DATE.getName();
       case TIMESTAMP:
-        return "TIMESTAMP";
+        return Type.Code.TIMESTAMP.getName();
+      case PG_TIMESTAMPTZ:
+        return Type.Code.PG_TIMESTAMPTZ.getName();
+      case NUMERIC:
+        return Type.Code.NUMERIC.getName();
+      case PG_NUMERIC:
+        return Type.Code.PG_NUMERIC.getName();
+      case JSON:
+        return Type.Code.JSON.getName();
+      case PG_JSONB:
+        return Type.Code.PG_JSONB.getName();
       case ARRAY:
-        Type arrayType = type.getArrayElementType();
-        return "ARRAY<" + typeString(arrayType, size) + ">";
+        {
+          Type arrayType = type.getArrayElementType();
+          return Type.Code.ARRAY + "<" + typeString(arrayType, size) + ">";
+        }
+      case PG_ARRAY:
+        {
+          Type arrayType = type.getArrayElementType();
+          return typeString(arrayType, size) + "[]";
+        }
     }
 
     throw new IllegalArgumentException("Unknown type " + type);
@@ -158,6 +205,10 @@ public abstract class Column implements Serializable {
       return isStored(true);
     }
 
+    public abstract Builder dialect(Dialect dialect);
+
+    abstract Dialect dialect();
+
     public abstract Column autoBuild();
 
     public Builder int64() {
@@ -193,12 +244,56 @@ public abstract class Column implements Serializable {
       return type(Type.numeric());
     }
 
+    public Builder json() {
+      return type(Type.json());
+    }
+
+    public Builder pgInt8() {
+      return type(Type.pgInt8());
+    }
+
+    public Builder pgFloat8() {
+      return type(Type.pgFloat8());
+    }
+
+    public Builder pgBool() {
+      return type(Type.pgBool());
+    }
+
+    public Builder pgVarchar() {
+      return type(Type.pgVarchar()).max();
+    }
+
+    public Builder pgText() {
+      return type(Type.pgText()).max();
+    }
+
+    public Builder pgBytea() {
+      return type(Type.pgBytea()).max();
+    }
+
+    public Builder pgTimestamptz() {
+      return type(Type.pgTimestamptz());
+    }
+
+    public Builder pgDate() {
+      return type(Type.pgDate());
+    }
+
+    public Builder pgNumeric() {
+      return type(Type.pgNumeric());
+    }
+
+    public Builder pgJsonb() {
+      return type(Type.pgJsonb());
+    }
+
     public Builder max() {
       return size(-1);
     }
 
     public Builder parseType(String spannerType) {
-      SizedType sizedType = parseSpannerType(spannerType);
+      SizedType sizedType = parseSpannerType(spannerType, dialect());
       return type(sizedType.type).size(sizedType.size);
     }
 
@@ -225,40 +320,97 @@ public abstract class Column implements Serializable {
     return new SizedType(type, size);
   }
 
-  private static SizedType parseSpannerType(String spannerType) {
-    if (spannerType.equals("BOOL")) {
-      return t(Type.bool(), null);
-    }
-    if (spannerType.equals("INT64")) {
-      return t(Type.int64(), null);
-    }
-    if (spannerType.equals("FLOAT64")) {
-      return t(Type.float64(), null);
-    }
-    if (spannerType.startsWith("STRING")) {
-      String sizeStr = spannerType.substring(7, spannerType.length() - 1);
-      int size = sizeStr.equals("MAX") ? -1 : Integer.parseInt(sizeStr);
-      return t(Type.string(), size);
-    }
-    if (spannerType.startsWith("BYTES")) {
-      String sizeStr = spannerType.substring(6, spannerType.length() - 1);
-      int size = sizeStr.equals("MAX") ? -1 : Integer.parseInt(sizeStr);
-      return t(Type.bytes(), size);
-    }
-    if (spannerType.equals("TIMESTAMP")) {
-      return t(Type.timestamp(), null);
-    }
-    if (spannerType.equals("DATE")) {
-      return t(Type.date(), null);
-    }
-    if (spannerType.equals("NUMERIC")) {
-      return t(Type.numeric(), null);
-    }
-    if (spannerType.startsWith("ARRAY")) {
-      // Substring "ARRAY<"xxx">"
-      String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);
-      SizedType itemType = parseSpannerType(spannerArrayType);
-      return t(Type.array(itemType.type), itemType.size);
+  private static SizedType parseSpannerType(String spannerType, Dialect dialect) {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        {
+          if (spannerType.equals(Type.Code.BOOL.getName())) {
+            return t(Type.bool(), null);
+          }
+          if (spannerType.equals(Type.Code.INT64.getName())) {
+            return t(Type.int64(), null);
+          }
+          if (spannerType.equals(Type.Code.FLOAT64.getName())) {
+            return t(Type.float64(), null);
+          }
+          if (spannerType.startsWith(Type.Code.STRING.getName())) {
+            String sizeStr = spannerType.substring(7, spannerType.length() - 1);
+            int size = sizeStr.equals("MAX") ? -1 : Integer.parseInt(sizeStr);
+            return t(Type.string(), size);
+          }
+          if (spannerType.startsWith(Type.Code.BYTES.getName())) {
+            String sizeStr = spannerType.substring(6, spannerType.length() - 1);
+            int size = sizeStr.equals("MAX") ? -1 : Integer.parseInt(sizeStr);
+            return t(Type.bytes(), size);
+          }
+          if (spannerType.equals(Type.Code.TIMESTAMP.getName())) {
+            return t(Type.timestamp(), null);
+          }
+          if (spannerType.equals(Type.Code.DATE.getName())) {
+            return t(Type.date(), null);
+          }
+          if (spannerType.equals(Type.Code.NUMERIC.getName())) {
+            return t(Type.numeric(), null);
+          }
+          if (spannerType.equals(Type.Code.JSON.getName())) {
+            return t(Type.json(), null);
+          }
+          if (spannerType.startsWith(Type.Code.ARRAY.getName())) {
+            // Substring "ARRAY<"xxx">"
+            String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);
+            SizedType itemType = parseSpannerType(spannerArrayType, dialect);
+            return t(Type.array(itemType.type), itemType.size);
+          }
+          break;
+        }
+      case POSTGRESQL:
+        {
+          if (spannerType.endsWith("[]")) {
+            // Substring "xxx[]"
+            // Must check array type first
+            String spannerArrayType = spannerType.substring(0, spannerType.length() - 2);
+            SizedType itemType = parseSpannerType(spannerArrayType, dialect);
+            return t(Type.pgArray(itemType.type), itemType.size);
+          }
+          if (spannerType.equals(Type.Code.PG_BOOL.getName())) {
+            return t(Type.pgBool(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_INT8.getName())) {
+            return t(Type.pgInt8(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_FLOAT8.getName())) {
+            return t(Type.pgFloat8(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_TEXT.getName())) {
+            return t(Type.pgText(), -1);
+          }
+          if (spannerType.startsWith(Type.Code.PG_VARCHAR.getName())) {
+            int size = -1;
+            if (spannerType.length() > 18) {
+              String sizeStr = spannerType.substring(18, spannerType.length() - 1);
+              size = Integer.parseInt(sizeStr);
+            }
+            return t(Type.pgVarchar(), size);
+          }
+          if (spannerType.equals(Type.Code.PG_BYTEA.getName())) {
+            return t(Type.pgBytea(), -1);
+          }
+          if (spannerType.equals(Type.Code.PG_TIMESTAMPTZ.getName())) {
+            return t(Type.pgTimestamptz(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_NUMERIC.getName())) {
+            return t(Type.pgNumeric(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_JSONB.getName())) {
+            return t(Type.pgJsonb(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_DATE.getName())) {
+            return t(Type.pgDate(), null);
+          }
+          break;
+        }
+      default:
+        break;
     }
     throw new IllegalArgumentException("Unknown spanner type " + spannerType);
   }

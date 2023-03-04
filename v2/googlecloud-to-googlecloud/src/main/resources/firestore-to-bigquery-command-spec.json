@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.FirestoreToBigQuery",
+  "classPath": "/template/firestore-to-bigquery/*:/template/firestore-to-bigquery/libs/*:/template/firestore-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"firestore-to-bigquery\"}"
+  }
+}

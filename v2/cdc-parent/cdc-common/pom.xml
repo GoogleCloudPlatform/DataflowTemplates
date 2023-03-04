@@ -20,10 +20,9 @@
   <parent>
     <groupId>com.google.cloud.dataflow.cdc</groupId>
     <artifactId>cdc-parent</artifactId>
-    <version>0.1</version>
+    <version>1.0-SNAPSHOT</version>
   </parent>
   <artifactId>cdc-common</artifactId>
-  <version>0.1</version>
   <packaging>jar</packaging>
   <inceptionYear>2019</inceptionYear>
   <licenses>
@@ -35,60 +34,37 @@
   </licenses>
   <dependencyManagement>
     <dependencies>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-jdk14</artifactId>
-      <version>${slf4j.version}</version>
-    </dependency>
       <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-nop</artifactId>
-      <version>${slf4j.version}</version>
-    </dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-jdk14</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
+        <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-nop</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
-  <!-- Exluding com.google.protobuf transitive dependencies to avoid version conflicts -->
   <dependencies>
     <dependency>
       <groupId>com.google.api.grpc</groupId>
       <artifactId>proto-google-cloud-datacatalog-v1beta1</artifactId>
       <version>${data-catalog.version}</version>
-      <scope>compile</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.protobuf</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.api.grpc</groupId>
       <artifactId>grpc-google-cloud-datacatalog-v1beta1</artifactId>
       <version>${data-catalog.version}</version>
-      <scope>compile</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.protobuf</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-datacatalog</artifactId>
       <version>${data-catalog.version}</version>
-      <scope>compile</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.protobuf</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-extensions-sql</artifactId>
-      <scope>compile</scope>
     </dependency>
   </dependencies>
 </project>

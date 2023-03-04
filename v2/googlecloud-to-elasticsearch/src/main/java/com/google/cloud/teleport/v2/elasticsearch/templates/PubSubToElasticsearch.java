@@ -15,7 +15,10 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.elasticsearch.options.PubSubToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.FailedPubsubMessageToPubsubTopicFn;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.ProcessEventMetadata;
@@ -49,6 +52,17 @@ import org.slf4j.LoggerFactory;
  * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/docs/PubSubToElasticsearch/README.md">
  * README.md</a></b> for further information.
  */
+@Template(
+    name = "PubSub_to_Elasticsearch",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub to Elasticsearch",
+    description =
+        "A pipeline to read messages from Pub/Sub and writes into an Elasticsearch instance as json"
+            + " documents with optional intermediate transformations using Javascript Udf.",
+    optionsClass = PubSubToElasticsearchOptions.class,
+    skipOptions = "index", // Template just ignores what is sent as "index"
+    flexContainerName = "pubsub-to-elasticsearch",
+    contactInformation = "https://cloud.google.com/support")
 public class PubSubToElasticsearch {
 
   /** The tag for the main output of the json transformation. */
@@ -76,6 +90,7 @@ public class PubSubToElasticsearch {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     // Parse the user options passed from the command-line.
     PubSubToElasticsearchOptions pubSubToElasticsearchOptions =

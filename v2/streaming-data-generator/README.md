@@ -30,7 +30,7 @@ Below table outlines supported sinks and output encoding formats:
 
 ### Requirements
 
-* Java 8
+* Java 11
 * Maven 3
 * One of the following depending on Sink Type:
   &nbsp;&nbsp;PubSub Topic
@@ -186,7 +186,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=streaming-data-generator
 export APP_ROOT=/template/${TEMPLATE_MODULE}
@@ -380,19 +380,20 @@ Below example publishes Avro encoded messages to Pub/Sub :
 
 Template can be executed using the following gcloud command:
 ```sh
-TEMPLATE_SPEC_GCSPATH=gs://path/to/template-spec
-SCHEMA_LOCATION=gs://path/to/schemafile.json
-QPS=1
-PUBSUB_TOPIC=projects/$PROJECT/topics/<topic-id>
-OUTPUTTYPE=AVRO
-AVRO_SCHEMA_LOCATION=gs://path/to/avroschemafile.avsc
-
+export PROJECT=<my-project>
+export TEMPLATE_MODULE=streaming-data-generator
+export TEMPLATE_SPEC_GCSPATH=gs://path/to/template-spec
+export SCHEMA_LOCATION=gs://path/to/schemafile.json
+export QPS=1
+export PUBSUB_TOPIC=projects/$PROJECT/topics/<topic-id>
+export OUTPUTTYPE=AVRO
+export AVRO_SCHEMA_LOCATION=gs://path/to/avroschemafile.avsc
 
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
-        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters schemaLocation=$SCHEMA_LOCATION,qps=$QPS,topic=$PUBSUB_TOPIC,outputType=$PUBSUB_TOPIC,--avroSchemaLocation=$AVRO_SCHEMA_LOCATION
+        --template-file-gcs-location=${TEMPLATE_SPEC_GCSPATH} \
+        --parameters schemaLocation=$SCHEMA_LOCATION,qps=$QPS,topic=$PUBSUB_TOPIC,outputType=$OUTPUTTYPE,avroSchemaLocation=$AVRO_SCHEMA_LOCATION
 ```
  *Note*: Additional options such as autoscaling Algorithm,  max workers, service account can be specified in the parameters section as shown below:
 

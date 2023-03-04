@@ -8,7 +8,7 @@ the final table.
 ## Getting Started
 
 ### Requirements
-* Java 8
+* Java 11
 * Maven
 * DataStream stream is created and sending data to storage
 * PubSub Subscription exists or GCS Bucket contains data
@@ -25,7 +25,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=datastream-to-bigquery
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT=/template/${IMAGE_NAME}
 export DATAFLOW_JAVA_COMMAND_SPEC=${APP_ROOT}/resources/${IMAGE_NAME}-command-spec.json
@@ -86,6 +86,14 @@ echo '{
             "help_text": "The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).",
             "param_type": "TEXT",
             "is_optional": true
+        },
+        {
+            name: "fileReadConcurrency"
+            label: "File read concurrency."
+            help_text: "The number of concurrent DataStream files to read. Default is 10."
+            regexes: "^[1-9][0-9]*$"
+            param_type: TEXT
+            is_optional: true
         },
         {
             "name": "javascriptTextTransformGcsPath",
@@ -179,6 +187,14 @@ echo '{
             "is_optional": true
         },
         {
+            name: "mergeConcurrency"
+            label: "Concurrent queries for merge."
+            help_text:  "The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true. Default is 30."
+            regexes: "^[1-9][0-9]*$"
+            param_type: TEXT
+            is_optional: true
+        },
+        {
             "name":"autoscalingAlgorithm",
             "label":"Autoscaling algorithm to use",
             "help_text": "Autoscaling algorithm to use: THROUGHPUT_BASED",
@@ -270,6 +286,7 @@ The template requires the following parameters:
 
 The template has the following optional parameters:
 * rfcStartDateTime: The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).
+* fileReadConcurrency: The number of concurrent DataStream files to read.
 * javascriptTextTransformGcsPath: The full URL of your .js file. Example: gs://your-bucket/your-function.js
 * javascriptTextTransformFunctionName: The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'.
 * outputProjectId: Project for BigQuery datasets to output data into. The default for this parameter is the project where the Dataflow pipeline is running.
@@ -280,6 +297,7 @@ The template has the following optional parameters:
 * mergeFrequencyMinutes: The number of minutes between merges for a given table.
 * dlqRetryMinutes: The number of minutes between DLQ Retries.
 * applyMerge: A switch to disable MERGE queries for the job.
+* mergeConcurrency: The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true.
 * autoscalingAlgorithm: Autoscaling algorithm to use: THROUGHPUT_BASED
 * numWorkers: Number of workers Dataflow will start with
 * maxNumWorkers: Maximum number of workers Dataflow job will use

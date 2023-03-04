@@ -17,7 +17,9 @@ package com.google.cloud.teleport.it.artifacts;
 
 import com.google.re2j.Pattern;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
+import org.junit.rules.TestName;
 
 /**
  * Interface for working with test artifacts.
@@ -53,10 +55,31 @@ public interface ArtifactClient {
    *
    * @param artifactName the name of the artifact. If this is supposed to go under an input/output
    *     directory, then it should include that (example: input/artifact.txt)
-   * @param contents the contents of the artifact
+   * @param contents the contents of the artifact in String format
+   * @return a representation of the created artifact
+   */
+  Artifact createArtifact(String artifactName, String contents);
+
+  /**
+   * Creates a new artifact in whatever service is being used to store them.
+   *
+   * @param artifactName the name of the artifact. If this is supposed to go under an input/output
+   *     directory, then it should include that (example: input/artifact.txt)
+   * @param contents the contents of the artifact in byte array format
    * @return a representation of the created artifact
    */
   Artifact createArtifact(String artifactName, byte[] contents);
+
+  /**
+   * Uploads a local file to the service being used for storing artifacts.
+   *
+   * @param artifactName the name of the artifact. If this is supposed to go under an input/output
+   *     directory, then it should include that (example: input/artifact.txt)
+   * @param localPath the absolute local path to the file to upload
+   * @return a representation of the uploaded artifact
+   * @throws IOException if there is an issue reading the local file
+   */
+  Artifact uploadArtifact(String artifactName, String localPath) throws IOException;
 
   /**
    * Uploads a local file to the service being used for storing artifacts.
@@ -67,9 +90,18 @@ public interface ArtifactClient {
    * @return a representation of the uploaded artifact
    * @throws IOException if there is an issue reading the local file
    */
-  Artifact uploadArtifact(String artifactName, String localPath) throws IOException;
+  Artifact uploadArtifact(String artifactName, Path localPath) throws IOException;
 
   // TODO(zhoufek): Add equivalents for the above for uploading artifacts of a test method
+
+  /**
+   * Lists all artifacts under test-class-name/run-id/{@code prefix}.
+   *
+   * @param testName the test name to use as the prefix on the testing artifacts.
+   * @param regex a regex to use for filtering out unwanted artifacts
+   * @return all the artifacts whose name matches regex
+   */
+  List<Artifact> listArtifacts(TestName testName, Pattern regex);
 
   /**
    * Lists all artifacts under test-class-name/run-id/{@code prefix}.

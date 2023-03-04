@@ -16,8 +16,12 @@
 package com.google.cloud.teleport.v2.mongodb.templates;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.mongodb.options.BigQueryToMongoDbOptions.BigQueryReadOptions;
 import com.google.cloud.teleport.v2.mongodb.options.BigQueryToMongoDbOptions.MongoDbOptions;
+import com.google.cloud.teleport.v2.mongodb.templates.BigQueryToMongoDb.Options;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
@@ -31,6 +35,16 @@ import org.bson.Document;
  * The {@link BigQueryToMongoDb} pipeline is a batch pipeline which reads data from BigQuery and
  * outputs the resulting records to MongoDB.
  */
+@Template(
+    name = "BigQuery_to_MongoDB",
+    category = TemplateCategory.BATCH,
+    displayName = "BigQuery to MongoDB",
+    description =
+        "A batch pipeline which reads data rows from BigQuery and writes them to MongoDB as"
+            + " documents.",
+    optionsClass = Options.class,
+    flexContainerName = "bigquery-to-mongodb",
+    contactInformation = "https://cloud.google.com/support")
 public class BigQueryToMongoDb {
   /**
    * Options supported by {@link BigQueryToMongoDb}
@@ -48,6 +62,7 @@ public class BigQueryToMongoDb {
   }
 
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     run(options);

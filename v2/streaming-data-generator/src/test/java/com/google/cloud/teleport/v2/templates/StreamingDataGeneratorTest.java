@@ -74,7 +74,7 @@ public class StreamingDataGeneratorTest {
     expectedException.expectMessage(
         String.format(
             "Missing required value --topic for %s sink type", options.getSinkType().name()));
-    StreamingDataGenerator.createSink(options);
+    StreamingDataGenerator.createSink(options, getSimpleSchema());
   }
 
   /** Tests Creation of PubSub Sink based on Pipeline options. */
@@ -83,7 +83,7 @@ public class StreamingDataGeneratorTest {
     StreamingDataGenerator.StreamingDataGeneratorOptions options =
         getPipelineOptions(new String[] {"--topic=projects/demoproject/topics/testtopic"});
     assertTrue(
-        StreamingDataGenerator.createSink(options)
+        StreamingDataGenerator.createSink(options, getSimpleSchema())
             instanceof StreamingDataGeneratorWriteToPubSub.Writer);
   }
 
@@ -99,7 +99,7 @@ public class StreamingDataGeneratorTest {
             "Missing required value --outputTableSpec in format <project>:<dataset>.<table_name>"
                 + " for %s sink type",
             options.getSinkType().name()));
-    StreamingDataGenerator.createSink(options);
+    StreamingDataGenerator.createSink(options, getSimpleSchema());
 
     options =
         getPipelineOptions(
@@ -108,7 +108,7 @@ public class StreamingDataGeneratorTest {
               "--outputTableSpec=testproject:testds:demotable"
             });
     assertTrue(
-        StreamingDataGenerator.createSink(options)
+        StreamingDataGenerator.createSink(options, getSimpleSchema())
             instanceof StreamingDataGeneratorWriteToBigQuery);
   }
 
@@ -123,7 +123,7 @@ public class StreamingDataGeneratorTest {
         String.format(
             "Missing required value --outputDirectory in format gs:// for %s sink type",
             options.getSinkType().name()));
-    StreamingDataGenerator.createSink(options);
+    StreamingDataGenerator.createSink(options, getSimpleSchema());
 
     options =
         getPipelineOptions(
@@ -132,7 +132,8 @@ public class StreamingDataGeneratorTest {
               "--outputDirectory=gs://demobucket/testprefix/"
             });
     assertTrue(
-        StreamingDataGenerator.createSink(options) instanceof StreamingDataGeneratorWriteToGcs);
+        StreamingDataGenerator.createSink(options, getSimpleSchema())
+            instanceof StreamingDataGeneratorWriteToGcs);
   }
 
   /** Tests generation of fake Json data message without attributes. */
@@ -183,25 +184,16 @@ public class StreamingDataGeneratorTest {
             + "\t\t\"teamavg\": {{get(\"teamavg\")}}\n"
             + "\t}\n"
             + "}";
-    File file = tempFolder.newFile();
-    writeToFile(file.getAbsolutePath(), schema);
-    StreamingDataGenerator.StreamingDataGeneratorOptions options =
-        getPipelineOptions(
-            new String[] {"--schemaLocation=" + file.getAbsolutePath(), "--topic=test"});
 
     // Act
     PCollection<PubsubMessage> results =
         pipeline
             .apply("CreateInput", Create.of(0L))
             .apply(
-                "GenerateMessage",
-                ParDo.of(
-                    new StreamingDataGenerator.MessageGeneratorFn(options.getSchemaLocation())))
+                "GenerateMessage", ParDo.of(new StreamingDataGenerator.MessageGeneratorFn(schema)))
             .apply(
                 "Generate JSON PubSub Messages",
-                ParDo.of(
-                    new StreamingDataGeneratorWriteToPubSub.JsonPubSubMessageFn(
-                        options.getSchemaLocation())));
+                ParDo.of(new StreamingDataGeneratorWriteToPubSub.JsonPubSubMessageFn(schema)));
 
     // Assert
     PAssert.that(results)
@@ -248,23 +240,16 @@ public class StreamingDataGeneratorTest {
             + "}";
     File file = tempFolder.newFile();
     writeToFile(file.getAbsolutePath(), schema);
-    StreamingDataGenerator.StreamingDataGeneratorOptions options =
-        getPipelineOptions(
-            new String[] {"--schemaLocation=" + file.getAbsolutePath(), "--topic=test"});
 
     // Act
     PCollection<PubsubMessage> results =
         pipeline
             .apply("CreateInput", Create.of(0L))
             .apply(
-                "GenerateMessage",
-                ParDo.of(
-                    new StreamingDataGenerator.MessageGeneratorFn(options.getSchemaLocation())))
+                "GenerateMessage", ParDo.of(new StreamingDataGenerator.MessageGeneratorFn(schema)))
             .apply(
                 "Generate JSON PubSub Messages",
-                ParDo.of(
-                    new StreamingDataGeneratorWriteToPubSub.JsonPubSubMessageFn(
-                        options.getSchemaLocation())));
+                ParDo.of(new StreamingDataGeneratorWriteToPubSub.JsonPubSubMessageFn(schema)));
 
     // Assert
     PAssert.that(results)
@@ -312,9 +297,6 @@ public class StreamingDataGeneratorTest {
   public void testAvroMessageGenerator_returnsAvroMessage() throws IOException {
     // Arrange
     String schema = getSimpleSchema();
-    File schemaFile = tempFolder.newFile();
-    writeToFile(schemaFile.getAbsolutePath(), schema);
-
     String avroSchema =
         "{\n"
             + "  \"type\" : \"record\",\n"
@@ -342,26 +324,17 @@ public class StreamingDataGeneratorTest {
     File avroSchemaFile = tempFolder.newFile();
     writeToFile(avroSchemaFile.getAbsolutePath(), avroSchema);
 
-    StreamingDataGenerator.StreamingDataGeneratorOptions options =
-        getPipelineOptions(
-            new String[] {
-              "--outputType=AVRO",
-              "--schemaLocation=" + schemaFile.getAbsolutePath(),
-              "--avroSchemaLocation=" + avroSchemaFile.getAbsolutePath()
-            });
     // Act
     PCollection<PubsubMessage> results =
         pipeline
             .apply("CreateInput", Create.of(0L))
             .apply(
-                "GenerateMessage",
-                ParDo.of(
-                    new StreamingDataGenerator.MessageGeneratorFn(options.getSchemaLocation())))
+                "GenerateMessage", ParDo.of(new StreamingDataGenerator.MessageGeneratorFn(schema)))
             .apply(
                 "Generate JSON PubSub Messages",
                 ParDo.of(
                     new StreamingDataGeneratorWriteToPubSub.AvroPubSubMessageFn(
-                        options.getSchemaLocation(), options.getAvroSchemaLocation())));
+                        schema, avroSchemaFile.getAbsolutePath())));
 
     // Assert
     PAssert.that(results)
@@ -394,20 +367,12 @@ public class StreamingDataGeneratorTest {
   }
 
   /** Helper method to run pipeline to generate Json Message. */
-  private PCollection<byte[]> generateJsonMessage(String schema) throws IOException {
-    File file = tempFolder.newFile();
-    writeToFile(file.getAbsolutePath(), schema);
-
-    StreamingDataGenerator.StreamingDataGeneratorOptions options =
-        getPipelineOptions(new String[] {"--schemaLocation=" + file.getAbsolutePath()});
-
+  private PCollection<byte[]> generateJsonMessage(String schema) {
     PCollection<byte[]> results =
         pipeline
             .apply("CreateInput", Create.of(0L))
             .apply(
-                "GenerateMessage",
-                ParDo.of(
-                    new StreamingDataGenerator.MessageGeneratorFn(options.getSchemaLocation())));
+                "GenerateMessage", ParDo.of(new StreamingDataGenerator.MessageGeneratorFn(schema)));
     return results;
   }
 

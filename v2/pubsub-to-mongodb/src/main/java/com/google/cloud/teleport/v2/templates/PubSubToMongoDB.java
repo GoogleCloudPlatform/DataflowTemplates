@@ -16,7 +16,12 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.templates.PubSubToMongoDB.Options;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
@@ -37,7 +42,6 @@ import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
@@ -95,6 +99,17 @@ import org.slf4j.LoggerFactory;
  *  --deadletterTable=${DEADLETTERTABLE}"
  * </pre>
  */
+@Template(
+    name = "Cloud_PubSub_to_MongoDB",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub to MongoDB",
+    description =
+        "Streaming pipeline that reads JSON encoded messages from a Pub/Sub subscription,"
+            + " transforms them using a JavaScript user-defined function (UDF), and writes them to"
+            + " a MongoDB as documents.",
+    optionsClass = Options.class,
+    flexContainerName = "pubsub-to-mongodb",
+    contactInformation = "https://cloud.google.com/support")
 public class PubSubToMongoDB {
   /**
    * Options supported by {@link PubSubToMongoDB}
@@ -130,81 +145,129 @@ public class PubSubToMongoDB {
    */
   public interface Options
       extends JavascriptTextTransformer.JavascriptTextTransformerOptions, PipelineOptions {
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from."
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscriptions-name>")
+    @TemplateParameter.PubsubSubscription(
+        order = 1,
+        description = "Pub/Sub input subscription",
+        helpText =
+            "Pub/Sub subscription to read the input from, in the format of"
+                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
+        example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     String getInputSubscription();
 
     void setInputSubscription(String inputSubscription);
 
-    @Description("The MongoDB database to push the Documents to.")
-    @Validation.Required
-    String getDatabase();
-
-    void setDatabase(String database);
-
-    @Description(
-        "The host addresses of the MongoDB"
-            + "Multiple addresses to be specified with a comma separated value e.g."
-            + "host1:port,host2:port,host3:port")
+    @TemplateParameter.Text(
+        order = 2,
+        description = "MongoDB Connection URI",
+        helpText = "List of Mongo DB nodes separated by comma.",
+        example = "host1:port,host2:port,host3:port")
     @Validation.Required
     String getMongoDBUri();
 
     void setMongoDBUri(String mongoDBUri);
 
-    @Description("The Collection in mongoDB to put documents to.")
+    @TemplateParameter.Text(
+        order = 3,
+        description = "MongoDB Database",
+        helpText = "Database in MongoDB to store the collection.",
+        example = "my-db")
+    @Validation.Required
+    String getDatabase();
+
+    void setDatabase(String database);
+
+    @TemplateParameter.Text(
+        order = 4,
+        description = "MongoDB collection",
+        helpText = "Name of the collection inside MongoDB database to put the documents to.",
+        example = "my-collection")
     @Validation.Required
     String getCollection();
 
     void setCollection(String collection);
 
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format.")
+    @TemplateParameter.BigQueryTable(
+        order = 5,
+        description = "The dead-letter table name to output failed messages to BigQuery",
+        helpText =
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
+                + " schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution. If not specified,"
+                + " \"outputTableSpec_error_records\" is used instead.",
+        example = "your-project-id:your-dataset.your-table-name")
     @Validation.Required
     String getDeadletterTable();
 
     void setDeadletterTable(String deadletterTable);
 
-    @Description("Batch size in number of documents. Default: 1000")
-    @Default.Long(1024)
+    @TemplateParameter.Long(
+        order = 6,
+        optional = true,
+        description = "Batch Size",
+        helpText = "Batch Size used for batch insertion of documents into MongoDB.")
+    @Default.Long(1000)
     Long getBatchSize();
 
     void setBatchSize(Long batchSize);
 
-    @Description("Batch size in number of bytes. Default: 5242880 (5mb)")
+    @TemplateParameter.Long(
+        order = 7,
+        optional = true,
+        description = "Batch Size in Bytes",
+        helpText =
+            "Batch Size in bytes used for batch insertion of documents into MongoDB. Default:"
+                + " 5242880 (5mb)")
     @Default.Long(5242880)
     Long getBatchSizeBytes();
 
     void setBatchSizeBytes(Long batchSizeBytes);
 
-    @Description("Maximum Connection idle time in ms. Default: 60000")
+    @TemplateParameter.Integer(
+        order = 8,
+        optional = true,
+        description = "Max Connection idle time",
+        helpText = "Maximum idle time allowed in seconds before connection timeout occurs.")
     @Default.Integer(60000)
     int getMaxConnectionIdleTime();
 
     void setMaxConnectionIdleTime(int maxConnectionIdleTime);
 
-    @Description("Specify if SSL is enabled. Default: true")
+    @TemplateParameter.Boolean(
+        order = 9,
+        optional = true,
+        description = "SSL Enabled",
+        helpText = "Indicates whether connection to MongoDB is ssl enabled.")
     @Default.Boolean(true)
     Boolean getSslEnabled();
 
     void setSslEnabled(Boolean sslEnabled);
 
-    @Description("Specify whether to ignore SSL certificate. Default: true")
+    @TemplateParameter.Boolean(
+        order = 10,
+        optional = true,
+        description = "Ignore SSL Certificate",
+        helpText = "Indicates whether SSL certificate should be ignored.")
     @Default.Boolean(true)
     Boolean getIgnoreSSLCertificate();
 
     void setIgnoreSSLCertificate(Boolean ignoreSSLCertificate);
 
-    @Description("Enable ordered bulk insertions. Default: true")
+    @TemplateParameter.Boolean(
+        order = 11,
+        optional = true,
+        description = "withOrdered",
+        helpText = "Enables ordered bulk insertions into MongoDB.")
     @Default.Boolean(true)
     Boolean getWithOrdered();
 
     void setWithOrdered(Boolean withOrdered);
 
-    @Description("Enable invalidHostNameAllowed for ssl connection. Default: true")
+    @TemplateParameter.Boolean(
+        order = 12,
+        optional = true,
+        description = "withSSLInvalidHostNameAllowed",
+        helpText = "Indicates whether invalid host name is allowed for ssl connection.")
     @Default.Boolean(true)
     Boolean getWithSSLInvalidHostNameAllowed();
 
@@ -226,6 +289,7 @@ public class PubSubToMongoDB {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     // Parse the user options passed from the command-line.
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);

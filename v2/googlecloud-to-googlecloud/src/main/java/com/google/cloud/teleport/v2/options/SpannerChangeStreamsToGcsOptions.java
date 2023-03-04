@@ -16,12 +16,12 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToGcsAvro;
 import com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToGcsText;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility.FileFormat;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Validation;
 
 /**
@@ -33,95 +33,146 @@ public interface SpannerChangeStreamsToGcsOptions
         WriteDataChangeRecordsToGcsAvro.WriteToGcsAvroOptions,
         WriteDataChangeRecordsToGcsText.WriteToGcsTextOptions {
 
-  @Description(
-      "Project to read change streams from. The default for this parameter is the project where the"
-          + " Dataflow pipeline is running.")
+  @TemplateParameter.ProjectId(
+      order = 1,
+      optional = true,
+      description = "Spanner Project ID",
+      helpText =
+          "Project to read change streams from. The default for this parameter is the project "
+              + "where the Dataflow pipeline is running.")
   @Default.String("")
   String getSpannerProjectId();
 
   void setSpannerProjectId(String projectId);
 
-  @Description("The Spanner instance to read from.")
+  @TemplateParameter.Text(
+      order = 2,
+      description = "Spanner instance ID",
+      helpText = "The Spanner instance to read change streams from.")
   @Validation.Required
   String getSpannerInstanceId();
 
   void setSpannerInstanceId(String spannerInstanceId);
 
-  @Description("The Spanner database to read from.")
+  @TemplateParameter.Text(
+      order = 3,
+      description = "Spanner database",
+      helpText = "The Spanner database to read change streams from.")
   @Validation.Required
   String getSpannerDatabase();
 
   void setSpannerDatabase(String spannerDatabase);
 
-  @Description("The Spanner instance to use for the change stream metadata table.")
+  @TemplateParameter.Text(
+      order = 4,
+      description = "Spanner metadata instance ID",
+      helpText = "The Spanner instance to use for the change streams connector metadata table.")
   @Validation.Required
   String getSpannerMetadataInstanceId();
 
   void setSpannerMetadataInstanceId(String spannerMetadataInstanceId);
 
-  @Description("The Spanner database to use for the change stream metadata table.")
+  @TemplateParameter.Text(
+      order = 5,
+      description = "Spanner metadata database",
+      helpText =
+          "The Spanner database to use for the change streams connector metadata table. For change streams tracking all tables in a database, we recommend putting the metadata table in a separate database.")
   @Validation.Required
   String getSpannerMetadataDatabase();
 
   void setSpannerMetadataDatabase(String spannerMetadataDatabase);
 
-  @Description(
-      "The Cloud Spanner change streams Connector metadata table name to use. If not provided, a"
-          + " Cloud Spanner change streams Connector metadata table will automatically be created"
-          + " during the pipeline flow.")
+  @TemplateParameter.Text(
+      order = 6,
+      optional = true,
+      description = "Cloud Spanner metadata table name",
+      helpText =
+          "The Cloud Spanner change streams connector metadata table name to use. If not "
+              + "provided, a Cloud Spanner change streams connector metadata table will automatically be "
+              + "created during the pipeline flow. This parameter must be provided when updating an "
+              + "existing pipeline and should not be provided otherwise.")
   String getSpannerMetadataTableName();
 
   void setSpannerMetadataTableName(String value);
 
-  @Description("The Spanner change stream to read from.")
+  @TemplateParameter.Text(
+      order = 7,
+      description = "Spanner change stream",
+      helpText = "The name of the Spanner change stream to read from.")
   @Validation.Required
   String getSpannerChangeStreamName();
 
   void setSpannerChangeStreamName(String spannerChangeStreamName);
 
-  @Description(
-      "The starting DateTime to use for reading change streams"
-          + " (https://tools.ietf.org/html/rfc3339). Defaults to now.")
+  @TemplateParameter.DateTime(
+      order = 8,
+      optional = true,
+      description = "The timestamp to read change streams from",
+      helpText =
+          "The starting DateTime, inclusive, to use for reading change streams "
+              + "(https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the "
+              + "timestamp when the pipeline starts.")
   @Default.String("")
   String getStartTimestamp();
 
   void setStartTimestamp(String startTimestamp);
 
-  @Description(
-      "The ending DateTime to use for reading change streams"
-          + " (https://tools.ietf.org/html/rfc3339). The default value is \"max\", which represents"
-          + " an infinite time in the future.")
+  @TemplateParameter.DateTime(
+      order = 9,
+      optional = true,
+      description = "The timestamp to read change streams to",
+      helpText =
+          "The ending DateTime, inclusive, to use for reading change streams "
+              + "(https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an infinite "
+              + "time in the future.")
   @Default.String("")
   String getEndTimestamp();
 
   void setEndTimestamp(String startTimestamp);
 
-  @Description("Spanner host endpoint (only used for testing).")
+  @TemplateParameter.Text(
+      order = 10,
+      optional = true,
+      description = "Cloud Spanner Endpoint to call",
+      helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
+      example = "https://spanner.googleapis.com")
   @Default.String("https://spanner.googleapis.com")
   String getSpannerHost();
 
   void setSpannerHost(String value);
 
-  @Description("The format of the output GCS file. Allowed formats are TEXT, AVRO. Default is AVRO")
+  @TemplateParameter.Enum(
+      order = 11,
+      enumOptions = {"TEXT", "AVRO"},
+      optional = true,
+      description = "Output file format",
+      helpText =
+          "The format of the output Cloud Storage file. Allowed formats are TEXT, AVRO. Default is AVRO.")
   @Default.Enum("AVRO")
   FileFormat getOutputFileFormat();
 
   void setOutputFileFormat(FileFormat outputFileFormat);
 
-  @Description(
-      "The window duration in which data will be written. Defaults to 5m. "
-          + "Allowed formats are: "
-          + "<int>s (for seconds, example: 5s), "
-          + "<int>m (for minutes, example: 12m), "
-          + "<int>h (for hours, example: 2h).")
+  @TemplateParameter.Duration(
+      order = 12,
+      optional = true,
+      description = "Window duration",
+      helpText =
+          "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for "
+              + "seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h).",
+      example = "5m")
   @Default.String("5m")
   String getWindowDuration();
 
   void setWindowDuration(String windowDuration);
 
-  @Description(
-      "Priority for Spanner RPC invocations. Defaults to HIGH. Allowed priorites are LOW, MEDIUM,"
-          + " HIGH.")
+  @TemplateParameter.Enum(
+      order = 13,
+      enumOptions = {"LOW", "MEDIUM", "HIGH"},
+      optional = true,
+      description = "Priority for Spanner RPC invocations",
+      helpText =
+          "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
   @Default.Enum("HIGH")
   RpcPriority getRpcPriority();
 
