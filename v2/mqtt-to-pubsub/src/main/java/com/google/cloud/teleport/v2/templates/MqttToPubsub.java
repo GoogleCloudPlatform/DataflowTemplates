@@ -107,8 +107,8 @@ public class MqttToPubsub {
     @TemplateParameter.Text(
         order = 1,
         optional = true,
-        regexes = {"[,:a-zA-Z0-9._-]+"},
-        description = "MQTT Borker IP",
+        regexes = {"[,\\/:a-zA-Z0-9._-]+"},
+        description = "MQTT Broker IP",
         helpText = "Server IP for MQTT broker",
         example = "tcp://host:1883")
     @Validation.Required
