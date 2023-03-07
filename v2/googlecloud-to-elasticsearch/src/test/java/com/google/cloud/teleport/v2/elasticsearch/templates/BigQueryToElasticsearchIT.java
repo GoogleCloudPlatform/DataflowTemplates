@@ -23,8 +23,10 @@ import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRe
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.Tuple;
+import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.TestProperties;
@@ -40,6 +42,7 @@ import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
@@ -85,27 +88,25 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   @Test
   public void testBigQueryToElasticsearch() throws IOException {
     // Arrange
-    String tableName = testName;
     Tuple<Schema, List<RowToInsert>> generatedTable =
         BigQueryTestUtils.generateBigQueryTable(
             BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
     Schema bigQuerySchema = generatedTable.x();
     List<RowToInsert> bigQueryRows = generatedTable.y();
-    TableId table = bigQueryClient.createTable(tableName, bigQuerySchema);
-    bigQueryClient.write(tableName, bigQueryRows);
+    TableId table = bigQueryClient.createTable(testName, bigQuerySchema);
+    bigQueryClient.write(testName, bigQueryRows);
     String indexName = createJobName(testName);
     elasticsearchResourceManager.createIndex(indexName);
 
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, specPath)
-            .addParameter("inputTableSpec", toTableSpec(table))
-            .addParameter("outputDeadletterTable", toTableSpec(table) + "_dlq")
-            .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
-            .addParameter("index", indexName)
-            .addParameter("apiKey", "elastic");
-
     // Act
-    LaunchInfo info = launchTemplate(options);
+    LaunchInfo info =
+        launchTemplate(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputTableSpec", toTableSpec(table))
+                .addParameter("outputDeadletterTable", toTableSpec(table) + "_dlq")
+                .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
+                .addParameter("index", indexName)
+                .addParameter("apiKey", "elastic"));
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info));
@@ -122,28 +123,27 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   @Test
   public void testBigQueryToElasticsearchQuery() throws IOException {
     // Arrange
-    String tableName = testName;
     Tuple<Schema, List<RowToInsert>> generatedTable =
         BigQueryTestUtils.generateBigQueryTable(
             BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
     Schema bigQuerySchema = generatedTable.x();
     List<RowToInsert> bigQueryRows = generatedTable.y();
-    TableId table = bigQueryClient.createTable(tableName, bigQuerySchema);
-    bigQueryClient.write(tableName, bigQueryRows);
+    TableId table = bigQueryClient.createTable(testName, bigQuerySchema);
+    bigQueryClient.write(testName, bigQueryRows);
     String indexName = createJobName(testName);
     elasticsearchResourceManager.createIndex(indexName);
 
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, specPath)
-            .addParameter("inputTableSpec", toTableSpec(table))
-            .addParameter("query", "SELECT * FROM `" + toTableSpec(table).replace(':', '.') + "`")
-            .addParameter("outputDeadletterTable", toTableSpec(table) + "_dlq")
-            .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
-            .addParameter("index", indexName)
-            .addParameter("apiKey", "elastic");
-
     // Act
-    LaunchInfo info = launchTemplate(options);
+    LaunchInfo info =
+        launchTemplate(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputTableSpec", toTableSpec(table))
+                .addParameter(
+                    "query", "SELECT * FROM `" + toTableSpec(table).replace(':', '.') + "`")
+                .addParameter("outputDeadletterTable", toTableSpec(table) + "_dlq")
+                .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
+                .addParameter("index", indexName)
+                .addParameter("apiKey", "elastic"));
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info));
@@ -155,5 +155,52 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
         .hasRecordsUnordered(
             bigQueryRows.stream().map(RowToInsert::getContent).collect(Collectors.toList()));
+  }
+
+  @Test
+  public void testBigQueryToElasticsearchUdf() throws IOException {
+    // Arrange
+    artifactClient.createArtifact(
+        "udf.js",
+        "function uppercaseName(value) {\n"
+            + "  const data = JSON.parse(value);\n"
+            + "  data.name = data.name.toUpperCase();\n"
+            + "  return JSON.stringify(data);\n"
+            + "}");
+    Schema bigQuerySchema =
+        Schema.of(
+            Field.of("id", StandardSQLTypeName.INT64),
+            Field.of("name", StandardSQLTypeName.STRING));
+    List<RowToInsert> bigQueryRows =
+        List.of(
+            RowToInsert.of(Map.of("id", 1, "name", "Dataflow")),
+            RowToInsert.of(Map.of("id", 2, "name", "Pub/Sub")));
+    TableId table = bigQueryClient.createTable(testName, bigQuerySchema);
+    bigQueryClient.write(testName, bigQueryRows);
+    String indexName = createJobName(testName);
+    elasticsearchResourceManager.createIndex(indexName);
+
+    // Act
+    LaunchInfo info =
+        launchTemplate(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputTableSpec", toTableSpec(table))
+                .addParameter("outputDeadletterTable", toTableSpec(table) + "_dlq")
+                .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
+                .addParameter("index", indexName)
+                .addParameter("apiKey", "elastic")
+                .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(2);
+    assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
+        .hasRecordsUnordered(
+            List.of(Map.of("id", 1, "name", "DATAFLOW"), Map.of("id", 2, "name", "PUB/SUB")));
   }
 }

@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearc
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQuery;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.TableRowToJsonFn;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.TransformTextViaJavascript;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -91,7 +92,16 @@ public class BigQueryToElasticsearch {
         .apply("TableRowsToJsonDocument", ParDo.of(new TableRowToJsonFn()))
 
         /*
-         * Step #3: Write converted records to Elasticsearch
+         * Step #3: Apply UDF functions (if specified)
+         */
+        .apply(
+            TransformTextViaJavascript.newBuilder()
+                .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                .build())
+
+        /*
+         * Step #4: Write converted records to Elasticsearch
          */
         .apply(
             "WriteToElasticsearch",
