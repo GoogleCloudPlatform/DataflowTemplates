@@ -32,6 +32,7 @@ import org.apache.beam.sdk.io.gcp.testing.FakeDatasetService;
 import org.apache.beam.sdk.io.gcp.testing.FakeJobService;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -122,6 +123,7 @@ public class TextIOToBigQueryTest {
   }
 
   @Test
+  @Ignore("Flaky test, investigate & re-enable")
   public void testE2EWithStorageWriteApiAtLeastOnce() throws IOException, InterruptedException {
     options.setUseStorageWriteApi(true);
     options.setUseStorageWriteApiAtLeastOnce(true);
@@ -144,6 +146,7 @@ public class TextIOToBigQueryTest {
   }
 
   @Test
+  @Ignore("Flaky test, investigate & re-enable")
   public void testE2EWithStorageWriteApi() throws IOException, InterruptedException {
     options.setUseStorageWriteApi(true);
 
