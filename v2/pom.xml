@@ -686,6 +686,7 @@
     </profiles>
 
     <modules>
+        <module>bigtable-common</module>
         <module>bigquery-to-bigtable</module>
         <module>bigquery-to-parquet</module>
         <module>cdc-parent</module>

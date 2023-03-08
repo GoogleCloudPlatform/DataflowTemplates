@@ -51,13 +51,13 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class BigQueryToBigtableIT extends TemplateTestBase {
 
-  private static final String READ_QUERY = "readQuery";
+  private static final String READ_QUERY = "query";
+  private static final String READ_TABLE_SPEC = "inputTableSpec";
+  private static final String USE_LEGACY_SQL = "useLegacySql";
   private static final String READ_ID_COL = "readIdColumn";
-  private static final String WRITE_PROJECT_ID = "bigtableWriteProjectId";
   private static final String WRITE_INSTANCE_ID = "bigtableWriteInstanceId";
   private static final String WRITE_TABLE_ID = "bigtableWriteTableId";
   private static final String WRITE_COL_FAMILY = "bigtableWriteColumnFamily";
-  private static final String WRITE_APP_PROFILE = "bigtableWriteAppProfile";
 
   // Define a set of parameters used to allow configuration of the test size being run.
   private static final String BIGQUERY_ID_COL = "test_id";
@@ -89,10 +89,10 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
     ResourceManagerUtils.cleanResources(bigtableClient, bigQueryClient);
   }
 
-  @Test
-  public void testBigQueryToBigtable() throws IOException {
+  private void simpleBigQueryToBigtableTest(PipelineLauncher.LaunchConfig.Builder options)
+      throws IOException {
     // Arrange
-    String tableName = "test_table";
+    String tableName = options.getParameter(WRITE_TABLE_ID);
     Tuple<Schema, List<RowToInsert>> generatedTable =
         BigQueryTestUtils.generateBigQueryTable(
             BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
@@ -101,22 +101,8 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
     bigQueryClient.createTable(tableName, bigQuerySchema);
     bigQueryClient.write(tableName, bigQueryRows);
 
-    String colFamily = "names";
+    String colFamily = options.getParameter(WRITE_COL_FAMILY);
     bigtableClient.createTable(tableName, ImmutableList.of(colFamily));
-
-    PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter(
-                READ_QUERY,
-                "SELECT * FROM `"
-                    + String.join(".", PROJECT, bigQueryClient.getDatasetId(), tableName)
-                    + "`")
-            .addParameter(READ_ID_COL, BIGQUERY_ID_COL)
-            .addParameter(WRITE_PROJECT_ID, PROJECT)
-            .addParameter(WRITE_INSTANCE_ID, bigtableClient.getInstanceId())
-            .addParameter(WRITE_APP_PROFILE, "default")
-            .addParameter(WRITE_TABLE_ID, tableName)
-            .addParameter(WRITE_COL_FAMILY, colFamily);
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -142,5 +128,67 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
                     assertEquals(bqRow.getContent().get(col), val);
                   });
         });
+  }
+
+  @Test
+  public void testBigQueryToBigtableWithQuery() throws IOException {
+    String tableName = "test_table";
+    String colFamily = "names";
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter(
+                READ_QUERY,
+                "SELECT * FROM `"
+                    + String.join(".", PROJECT, bigQueryClient.getDatasetId(), tableName)
+                    + "`")
+            .addParameter(READ_ID_COL, BIGQUERY_ID_COL)
+            .addParameter(WRITE_INSTANCE_ID, bigtableClient.getInstanceId())
+            .addParameter(WRITE_TABLE_ID, tableName)
+            .addParameter(WRITE_COL_FAMILY, colFamily);
+
+    simpleBigQueryToBigtableTest(options);
+  }
+
+  @Test
+  public void testBigQueryToBigtableWithLegacyQuery() throws IOException {
+    String tableName = "test_table";
+    String colFamily = "names";
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter(
+                READ_QUERY,
+                "SELECT * FROM ["
+                    + PROJECT
+                    + ":"
+                    + bigQueryClient.getDatasetId()
+                    + "."
+                    + tableName
+                    + "]")
+            .addParameter(USE_LEGACY_SQL, "true")
+            .addParameter(READ_ID_COL, BIGQUERY_ID_COL)
+            .addParameter(WRITE_INSTANCE_ID, bigtableClient.getInstanceId())
+            .addParameter(WRITE_TABLE_ID, tableName)
+            .addParameter(WRITE_COL_FAMILY, colFamily);
+
+    simpleBigQueryToBigtableTest(options);
+  }
+
+  @Test
+  public void testBigQueryToBigtableWithTableSpec() throws IOException {
+    String tableName = "test_table";
+    String colFamily = "names";
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter(
+                READ_TABLE_SPEC, PROJECT + ":" + bigQueryClient.getDatasetId() + "." + tableName)
+            .addParameter(READ_ID_COL, BIGQUERY_ID_COL)
+            .addParameter(WRITE_INSTANCE_ID, bigtableClient.getInstanceId())
+            .addParameter(WRITE_TABLE_ID, tableName)
+            .addParameter(WRITE_COL_FAMILY, colFamily);
+
+    simpleBigQueryToBigtableTest(options);
   }
 }
