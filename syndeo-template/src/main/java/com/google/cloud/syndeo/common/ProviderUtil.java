@@ -98,7 +98,8 @@ public class ProviderUtil {
           SchemaUtil.addNullsToMatchSchema(
               (Row)
                   SchemaTranslation.rowFromProto(
-                      ProtoTranslation.fromSyndeoProtos(schemaTransform.getConfigurationValues()),
+                      SyndeoApiProtoTranslation.fromSyndeoProtos(
+                          schemaTransform.getConfigurationValues()),
                       FieldType.row(provider.configurationSchema())),
               provider.configurationSchema());
     }
@@ -106,9 +107,9 @@ public class ProviderUtil {
     public ConfiguredSchemaTransform toProto() {
       ConfiguredSchemaTransform.Builder inst = ConfiguredSchemaTransform.newBuilder();
       inst.setConfigurationValues(
-          ProtoTranslation.toSyndeoProtos(SchemaTranslation.rowToProto(configuration)));
+          SyndeoApiProtoTranslation.toSyndeoProtos(SchemaTranslation.rowToProto(configuration)));
       inst.setConfigurationOptions(
-          ProtoTranslation.toSyndeoProtos(
+          SyndeoApiProtoTranslation.toSyndeoProtos(
               SchemaTranslation.schemaToProto(configuration.getSchema(), true)));
       inst.setTransformUrn(inputId);
       return inst.build();
