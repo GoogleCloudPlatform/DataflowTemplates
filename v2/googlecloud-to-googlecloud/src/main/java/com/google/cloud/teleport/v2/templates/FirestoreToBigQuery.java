@@ -45,7 +45,7 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
     flexContainerName = "firestore-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class FirestoreToBigQuery {
-  interface FirestoreToBigQueryOptions
+  public interface FirestoreToBigQueryOptions
       extends PipelineOptions, FirestoreReadOptions, JavascriptTextTransformerOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,

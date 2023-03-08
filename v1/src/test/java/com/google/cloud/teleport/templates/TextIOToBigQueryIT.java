@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.templates;
 
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
@@ -36,7 +36,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import java.io.IOException;
-import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,11 +43,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Integration test for {@link TextIOToBigQuery} (GCS_Text_to_BigQuery_Flex).
- *
- * <p>Example Usage:
- */
+/** Integration test for {@link TextIOToBigQuery} (GCS_Text_to_BigQuery_Flex). */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(TextIOToBigQuery.class)
 @RunWith(JUnit4.class)
@@ -57,6 +52,7 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
   private static final String SCHEMA_PATH = "TextIOToBigQueryTest/schema.json";
   private static final String INPUT_PATH = "TextIOToBigQueryTest/input.txt";
   private static final String UDF_PATH = "TextIOToBigQueryTest/udf.js";
+
   private BigQueryResourceManager bigQueryClient;
 
   @Before
@@ -74,17 +70,9 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
 
   @Test
   public void testTextIOToBigQuery() throws IOException {
-    testTextIOToBigQuery(Function.identity());
-  }
-
-  @Test
-  public void testTextIOToBigQueryWithStorageApi() throws IOException {
-    testTextIOToBigQuery(b -> b.addParameter("useStorageWriteApi", "true"));
-  }
-
-  private void testTextIOToBigQuery(
-      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
+    String bqTable = testName;
+
     artifactClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
     artifactClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
     artifactClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
@@ -92,7 +80,7 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
     bigQueryClient.createDataset(REGION);
     TableId table =
         bigQueryClient.createTable(
-            testName,
+            bqTable,
             Schema.of(
                 Field.of("book_id", StandardSQLTypeName.INT64),
                 Field.of("title", StandardSQLTypeName.STRING),
@@ -107,21 +95,20 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
     // Act
     LaunchInfo info =
         launchTemplate(
-            paramsAdder.apply(
-                LaunchConfig.builder(testName, specPath)
-                    .addParameter("JSONPath", getGcsPath("schema.json"))
-                    .addParameter("inputFilePattern", getGcsPath("input.txt"))
-                    .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                    .addParameter("javascriptTextTransformFunctionName", "identity")
-                    .addParameter("outputTable", toTableSpec(table))
-                    .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp"))));
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("JSONPath", getGcsPath("schema.json"))
+                .addParameter("inputFilePattern", getGcsPath("input.txt"))
+                .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                .addParameter("javascriptTextTransformFunctionName", "identity")
+                .addParameter("outputTable", toTableSpec(table))
+                .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp")));
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     // Assert
     assertThatResult(result).isLaunchFinished();
-    TableResult tableRows = bigQueryClient.readTable(testName);
+    TableResult tableRows = bigQueryClient.readTable(bqTable);
     assertThatRecords(tableRows)
         .hasRecordUnordered(
             ImmutableMap.of(
