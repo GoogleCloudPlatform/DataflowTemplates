@@ -83,7 +83,7 @@ public class BigQueryToMongoDb {
                     TableRow row = c.element();
                     row.forEach(
                         (key, value) -> {
-                          if (key != "_id") {
+                          if (!key.equals("_id")) {
                             doc.append(key, value);
                           }
                         });
