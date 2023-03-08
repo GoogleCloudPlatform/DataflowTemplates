@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
@@ -94,6 +95,12 @@ public class SyndeoPubsubReadSchemaTransformProvider
             e);
       }
     } else {
+      if (!Set.of("JSON", "AVRO").contains(configuration.getDataFormat())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Only JSON and AVRO formats are supported. Received format: %s",
+                configuration.getDataFormat()));
+      }
       beamSchema =
           Objects.equals(configuration.getDataFormat(), "JSON")
               ? JsonUtils.beamSchemaFromJsonSchema(configuration.getSchema())
