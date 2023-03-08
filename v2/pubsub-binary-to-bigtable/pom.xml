@@ -31,7 +31,7 @@
     <junit.version>4.13.1</junit.version>
     <avro.version>1.8.2</avro.version>
     <protoc.version>3.15.8</protoc.version>
-    <bigtable.version>1.15.0</bigtable.version>
+    <bigtable-hbase.version>2.7.0</bigtable-hbase.version>
   </properties>
 
   <dependencies>
@@ -59,10 +59,25 @@
       <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>com.google.cloud.bigtable</groupId>
+      <artifactId>bigtable-hbase-beam</artifactId>
+      <version>${bigtable-hbase.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 
   <build>
-    <directory>${mvn-target-dir}</directory>
     <plugins>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -72,18 +87,6 @@
           <skip>false</skip>
           <executable>java</executable>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>com.google.cloud.tools</groupId>
-        <artifactId>jib-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>build</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.avro</groupId>

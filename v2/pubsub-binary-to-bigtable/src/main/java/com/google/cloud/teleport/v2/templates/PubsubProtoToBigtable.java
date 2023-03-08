@@ -17,6 +17,9 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.bigtable.beam.CloudBigtableIO;
 import com.google.cloud.bigtable.beam.CloudBigtableTableConfiguration;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.options.BigtableCommonOptions.WriteOptions;
 import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
 import com.google.cloud.teleport.v2.proto.BigtableRow;
@@ -24,7 +27,6 @@ import com.google.cloud.teleport.v2.transforms.ProtoToBigtableMutation;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -37,6 +39,16 @@ import org.apache.beam.sdk.transforms.ParDo;
  * <p>If the pipeline fails to acknowledge the packet received, PubSubIO will forward this
  * unprocessed packet to a dead-letter topic.
  */
+@Template(
+    name = "PubSub_Proto_to_Bigtable",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub Proto to Bigtable",
+    description =
+        "A streaming pipeline which inserts Proto records from a Pub/Sub subscription into a"
+            + " Bigtable table.",
+    optionsClass = PubsubProtoToBigtable.PubsubProtoToBigtableOptions.class,
+    flexContainerName = "pubsub-proto-to-bigtable",
+    contactInformation = "https://cloud.google.com/support")
 public final class PubsubProtoToBigtable {
 
   /**
@@ -58,10 +70,12 @@ public final class PubsubProtoToBigtable {
    * {@link PubsubProtoToBigtable} pipeline.
    */
   public interface PubsubProtoToBigtableOptions extends ReadSubscriptionOptions, WriteOptions {
-    @Description(
-        "Pub/Sub topic to write dead-letter records. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/topics/<topic-name>.")
+    @TemplateParameter.PubsubTopic(
+        order = 1,
+        description = "Dead Letter Pub/Sub topic",
+        helpText =
+            "The name of the topic to write dead-letter records, in the format of 'projects/your-project-id/topics/your-topic-name'",
+        example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     String getDeadLetterTopic();
 

@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation.Required;
 
@@ -31,25 +31,42 @@ public final class BigtableCommonOptions {
   /** Provides {@link PipelineOptions} to write records to a Bigtable's table. */
   public interface WriteOptions extends PipelineOptions {
 
-    @Description("GCP Project Id of where to write the Bigtable rows")
+    @TemplateParameter.ProjectId(
+        order = 1,
+        description = "Project ID",
+        helpText =
+            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to"
+                + " write data to")
     @Required
     String getBigtableWriteProjectId();
 
     void setBigtableWriteProjectId(String value);
 
-    @Description("Bigtable Instance Id")
+    @TemplateParameter.Text(
+        order = 2,
+        regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
+        description = "Instance ID",
+        helpText = "The ID of the Cloud Bigtable instance that contains the table")
     @Required
     String getBigtableWriteInstanceId();
 
     void setBigtableWriteInstanceId(String value);
 
-    @Description("Bigtable Table Id")
+    @TemplateParameter.Text(
+        order = 3,
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        description = "Table ID",
+        helpText = "The ID of the Cloud Bigtable table to write")
     @Required
     String getBigtableWriteTableId();
 
     void setBigtableWriteTableId(String value);
 
-    @Description("Bigtable App Profile")
+    @TemplateParameter.Text(
+        order = 4,
+        regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
+        description = "Bigtable App Profile",
+        helpText = "Bigtable App Profile to use for the export")
     @Default.String("default")
     String getBigtableWriteAppProfile();
 
