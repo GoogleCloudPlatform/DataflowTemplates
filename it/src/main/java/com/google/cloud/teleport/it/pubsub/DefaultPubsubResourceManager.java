@@ -19,6 +19,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.cloud.pubsub.v1.Publisher;
+import com.google.cloud.pubsub.v1.SchemaServiceClient;
+import com.google.cloud.pubsub.v1.SchemaServiceSettings;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.cloud.pubsub.v1.SubscriptionAdminSettings;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
@@ -26,13 +28,19 @@ import com.google.cloud.pubsub.v1.TopicAdminSettings;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.Encoding;
+import com.google.pubsub.v1.ProjectName;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.PushConfig;
+import com.google.pubsub.v1.Schema;
+import com.google.pubsub.v1.SchemaName;
+import com.google.pubsub.v1.SchemaSettings;
 import com.google.pubsub.v1.Subscription;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.Topic;
 import com.google.pubsub.v1.TopicName;
+import com.google.pubsub.v1.UpdateTopicRequest;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
@@ -60,8 +68,12 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
   private final TopicAdminClient topicAdminClient;
   private final SubscriptionAdminClient subscriptionAdminClient;
 
+  private final SchemaServiceClient schemaServiceClient;
+
   private final Set<TopicName> createdTopics;
   private final Set<SubscriptionName> createdSubscriptions;
+
+  private final Set<SchemaName> createdSchemas;
 
   private DefaultPubsubResourceManager(Builder builder) throws IOException {
     this(
@@ -75,6 +87,10 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
         SubscriptionAdminClient.create(
             SubscriptionAdminSettings.newBuilder()
                 .setCredentialsProvider(builder.credentialsProvider)
+                .build()),
+        SchemaServiceClient.create(
+            SchemaServiceSettings.newBuilder()
+                .setCredentialsProvider(builder.credentialsProvider)
                 .build()));
   }
 
@@ -84,7 +100,8 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
       String projectId,
       PubsubPublisherFactory publisherFactory,
       TopicAdminClient topicAdminClient,
-      SubscriptionAdminClient subscriptionAdminClient) {
+      SubscriptionAdminClient subscriptionAdminClient,
+      SchemaServiceClient schemaServiceClient) {
     this.projectId = projectId;
     this.testId = PubsubUtils.createTestId(testName);
     this.publisherFactory = publisherFactory;
@@ -92,6 +109,8 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
     this.subscriptionAdminClient = subscriptionAdminClient;
     this.createdTopics = Collections.synchronizedSet(new HashSet<>());
     this.createdSubscriptions = Collections.synchronizedSet(new HashSet<>());
+    this.createdSchemas = Collections.synchronizedSet(new HashSet<>());
+    this.schemaServiceClient = schemaServiceClient;
   }
 
   public static Builder builder(String testName, String projectId) {
@@ -118,7 +137,7 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
     TopicName reference = PubsubUtils.toTopicName(topic);
     createdTopics.add(reference);
 
-    LOG.info("Topic '{}' was created successfully!", name);
+    LOG.info("Topic '{}' was created successfully!", reference);
 
     return reference;
   }
@@ -150,8 +169,7 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
     SubscriptionName reference = PubsubUtils.toSubscriptionName(subscription);
     createdSubscriptions.add(reference);
 
-    LOG.info(
-        "Subscription '{}' for topic '{}' was created successfully!", topicName, subscriptionName);
+    LOG.info("Subscription '{}' for topic '{}' was created successfully!", reference, topicName);
 
     return reference;
   }
@@ -194,6 +212,33 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
   }
 
   @Override
+  public String createSchema(
+      Schema.Type schemaType,
+      String schemaDefinition,
+      Encoding dataEncoding,
+      TopicName schemaTopic) {
+    Schema schema =
+        schemaServiceClient.createSchema(
+            ProjectName.newBuilder().setProject(projectId).build(),
+            Schema.newBuilder().setType(schemaType).setDefinition(schemaDefinition).build(),
+            "schema-" + testId + "-" + schemaTopic.getTopic());
+    createdSchemas.add(SchemaName.parse(schema.getName()));
+    topicAdminClient.updateTopic(
+        UpdateTopicRequest.newBuilder()
+            .setTopic(
+                Topic.newBuilder()
+                    .setName(schemaTopic.toString())
+                    .setSchemaSettings(
+                        SchemaSettings.newBuilder()
+                            .setSchema(schema.getName())
+                            .setEncoding(dataEncoding)
+                            .build())
+                    .build())
+            .build());
+    return schema.getName();
+  }
+
+  @Override
   public synchronized void cleanupAll() {
     // Ignore call if it was cleaned up before
     if (isNotUsable()) {
@@ -211,6 +256,11 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
       for (TopicName topic : createdTopics) {
         LOG.info("Deleting topic '{}'", topic);
         topicAdminClient.deleteTopic(topic);
+      }
+
+      for (SchemaName schemaName : createdSchemas) {
+        LOG.info("Deleting schema '{}'", schemaName);
+        schemaServiceClient.deleteSchema(schemaName);
       }
     } finally {
       subscriptionAdminClient.close();
