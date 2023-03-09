@@ -19,10 +19,17 @@ import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
 import static com.google.common.truth.Truth.assertThat;
 
 import avro.shaded.com.google.common.collect.Lists;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.gax.paging.Page;
 import com.google.cloud.Timestamp;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.Storage.BlobListOption;
+import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManagerCluster;
@@ -41,9 +48,11 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Assert;
@@ -53,7 +62,9 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for {@link BigtableChangeStreamsToBigQuery}. */
+/**
+ * Integration test for {@link BigtableChangeStreamsToBigQuery}.
+ */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableChangeStreamsToBigQuery.class)
 @RunWith(JUnit4.class)
@@ -72,7 +83,7 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
   private JobInfo jobInfo;
 
   @Test
-  public void testBigtableChangeStreamsToBigQuerySingleMutationEndToEnd() throws IOException {
+  public void testBigtableChangeStreamsToBigQuerySingleMutationE2E() throws IOException {
     long timeNowMicros = System.currentTimeMillis() * 1000;
 
     String name = testName.getMethodName();
@@ -86,11 +97,11 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[]{}));
     bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[] {}));
+        APP_PROFILE_ID, true, true, Lists.asList(clusterName, new String[]{}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 
@@ -137,7 +148,7 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
 
     Result result =
         new DataflowOperator(getDataflowClient())
-            .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query));
+            .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query, 1));
 
     assertThat(result).isEqualTo(Result.CONDITION_MET);
 
@@ -167,7 +178,7 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
   }
 
   @Test
-  public void testBigtableChangeStreamsToBigQuerySingleMutationBoundedEndToEnd() throws Exception {
+  public void testBigtableChangeStreamsToBigQueryMutationsStartTimeE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
 
     String name = testName.getMethodName();
@@ -181,11 +192,11 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[]{}));
     bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[] {}));
+        APP_PROFILE_ID, true, true, Lists.asList(clusterName, new String[]{}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 
@@ -193,10 +204,11 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
     String column = UUID.randomUUID().toString();
     String tooEarlyValue = UUID.randomUUID().toString();
     String valueToBeRead = UUID.randomUUID().toString();
-    String tooLateValue  = UUID.randomUUID().toString();
+    String nextValueToBeRead = UUID.randomUUID().toString();
 
     RowMutation earlyMutation =
-        RowMutation.create(SOURCE_CDC_TABLE, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, tooEarlyValue);
+        RowMutation.create(SOURCE_CDC_TABLE, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, tooEarlyValue);
     bigtableResourceManager.write(earlyMutation);
 
     Thread.sleep(10000L);
@@ -205,17 +217,16 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
     Thread.sleep(10000L);
 
     RowMutation toBeReadMutation =
-        RowMutation.create(SOURCE_CDC_TABLE, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, valueToBeRead);
+        RowMutation.create(SOURCE_CDC_TABLE, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, valueToBeRead);
     bigtableResourceManager.write(toBeReadMutation);
 
     Thread.sleep(10000L);
-    long afterSecondMutation = System.currentTimeMillis();
-    afterSecondMutation -= (afterSecondMutation % 1000);
-    Thread.sleep(10000L);
 
-    RowMutation tooLateMutation =
-        RowMutation.create(SOURCE_CDC_TABLE, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, tooLateValue);
-    bigtableResourceManager.write(tooLateMutation);
+    RowMutation nextToBeReadMutation =
+        RowMutation.create(SOURCE_CDC_TABLE, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, nextValueToBeRead);
+    bigtableResourceManager.write(nextToBeReadMutation);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(jobName, specPath)
@@ -224,15 +235,11 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
             .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
             .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
             .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
-            .addParameter("startTimestamp", Timestamp.of(new Date(afterFirstMutation)).toString())
-            .addParameter("endTimestamp", Timestamp.of(new Date(afterSecondMutation)).toString());
+            .addParameter("startTimestamp", Timestamp.of(new Date(afterFirstMutation)).toString());
 
     jobInfo = launchTemplate(options);
 
-    List<JobState> activeOrFinished = new ArrayList<>();
-    activeOrFinished.addAll(JobState.ACTIVE_STATES);
-    activeOrFinished.addAll(JobState.FINISHING_STATES);
-    assertThat(jobInfo.state()).isIn(activeOrFinished);
+    assertThat(jobInfo.state()).isIn(JobState.ACTIVE_STATES);
 
     String query =
         String.format(
@@ -254,15 +261,20 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
 
     Result waitForData =
         new DataflowOperator(getDataflowClient())
-            .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query));
+            .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query, 2));
     assertThat(waitForData).isEqualTo(Result.CONDITION_MET);
+
+    HashSet<String> toBeReadValues = new HashSet<>();
+    toBeReadValues.add(valueToBeRead);
+    toBeReadValues.add(nextValueToBeRead);
 
     TableResult tableResult = bigQueryResourceManager.runQuery(query);
     tableResult
         .iterateAll()
         .forEach(
             fvl -> {
-              Assert.assertEquals(valueToBeRead, fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue());
+              Assert.assertTrue(toBeReadValues.contains(
+                  fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue()));
               Assert.assertTrue(
                   fvl.get(ChangelogColumn.TIMESTAMP.getBqColumnName()).getTimestampValue()
                       >= timeNowMicros);
@@ -280,12 +292,171 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
                   fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
               Assert.assertTrue(
                   fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
+
+              toBeReadValues.remove(
+                  fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue());
             });
 
-    Result waitForFinish =
+
+  }
+
+  @Test
+  public void testBigtableChangeStreamsToBigQueryDeadLetterQueueE2E() throws Exception {
+    long timeNowMicros = System.currentTimeMillis() * 1000;
+
+    String name = testName.getMethodName();
+    String jobName = createJobName(name);
+    String clusterName = "c1_cluster";
+
+    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
+    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
+
+    bigtableResourceManager.createInstance(clusters);
+
+    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
+    cdcTableSpec.setCdcEnabled(true);
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[]{}));
+    bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
+
+    bigtableResourceManager.createAppProfile(
+        APP_PROFILE_ID, true, true, Lists.asList(clusterName, new String[]{}));
+
+    bigQueryResourceManager.createDataset(TEST_REGION);
+
+    String rowkey = UUID.randomUUID().toString();
+    String column = UUID.randomUUID().toString();
+    String goodValue = UUID.randomUUID().toString();
+
+    // Making some 15MB value
+    String tooBigValue = StringUtils.repeat(UUID.randomUUID().toString(),
+        15 * 1024 * 1024 / goodValue.length());
+
+    long beforeMutations = System.currentTimeMillis();
+    beforeMutations -= (beforeMutations % 1000);
+
+    Thread.sleep(10000L);
+
+    RowMutation tooLargeMutation =
+        RowMutation.create(SOURCE_CDC_TABLE, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, tooBigValue);
+    bigtableResourceManager.write(tooLargeMutation);
+
+    RowMutation smallMutation =
+        RowMutation.create(SOURCE_CDC_TABLE, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, goodValue);
+    bigtableResourceManager.write(smallMutation);
+
+    Thread.sleep(10000L);
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(jobName, specPath)
+            .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
+            .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
+            .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+            .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
+            .addParameter("dlqRetryMinutes", "1")
+            .addParameter("dlqDirectory", getGcsPath("dlq"))
+            .addParameter("dlqMaxRetries", "1")
+            .addParameter("startTimestamp", Timestamp.of(new Date(beforeMutations)).toString());
+
+    jobInfo = launchTemplate(options);
+
+    System.out.println("Job DLQ: " + getGcsPath("dlq"));
+
+    assertThat(jobInfo.state()).isIn(JobState.ACTIVE_STATES);
+
+    String query =
+        String.format(
+            "SELECT * FROM `"
+                + bigQueryResourceManager.getDatasetId()
+                + "."
+                + SOURCE_CDC_TABLE
+                + "_changes`"
+                + " WHERE "
+                + ChangelogColumn.ROW_KEY_STRING.getBqColumnName()
+                + "='%s' AND "
+                + ChangelogColumn.COLUMN_FAMILY.getBqColumnName()
+                + "='%s' AND "
+                + ChangelogColumn.COLUMN.getBqColumnName()
+                + "='%s'",
+            rowkey,
+            SOURCE_COLUMN_FAMILY,
+            column);
+
+    Result waitForData =
         new DataflowOperator(getDataflowClient())
-            .waitUntilDone(getWaitForPipelineConfig(jobInfo));
-    assertThat(waitForFinish).isEqualTo(Result.JOB_FINISHED);
+            .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query, 1));
+    assertThat(waitForData).isEqualTo(Result.CONDITION_MET);
+
+    HashSet<String> toBeReadValues = new HashSet<>();
+    toBeReadValues.add(goodValue);
+
+    TableResult tableResult = bigQueryResourceManager.runQuery(query);
+    tableResult
+        .iterateAll()
+        .forEach(
+            fvl -> {
+              Assert.assertTrue(toBeReadValues.contains(
+                  fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue()));
+              Assert.assertTrue(
+                  fvl.get(ChangelogColumn.TIMESTAMP.getBqColumnName()).getTimestampValue()
+                      >= timeNowMicros);
+              Assert.assertFalse(
+                  fvl.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()).isNull());
+              Assert.assertFalse(
+                  fvl.get(ChangelogColumn.IS_GC.getBqColumnName()).getBooleanValue());
+              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
+              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
+              Assert.assertEquals(
+                  SOURCE_CDC_TABLE,
+                  fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
+              Assert.assertEquals(
+                  bigtableResourceManager.getInstanceId(),
+                  fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
+              Assert.assertTrue(
+                  fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
+
+              toBeReadValues.remove(
+                  fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue());
+            });
+
+    Storage storage = StorageOptions.newBuilder().build().getService();
+
+    long started = System.currentTimeMillis();
+    long waitForFile = Duration.ofMinutes(30).toMillis();
+
+    String filterPrefix = String.join("/", getClass().getSimpleName(), artifactClient.runId(),
+        "dlq", "severe");
+    BlobListOption listOptions = BlobListOption.prefix(filterPrefix);
+
+    boolean found = false;
+    while (!found && System.currentTimeMillis() <= (started + waitForFile)) {
+      Page<Blob> blobs = storage.list(artifactBucketName, listOptions);
+
+      for (Blob blob : blobs.iterateAll()) {
+        byte[] content = storage.readAllBytes(blob.getBlobId());
+        ObjectMapper om = new ObjectMapper();
+        JsonNode severeError = om.readTree(content);
+        Assert.assertNotNull(severeError);
+
+        String errorMessage = severeError.get("error_message").asText();
+        Assert.assertEquals(
+            "GenericData{classInfo=[errors, index], {errors=[GenericData{classInfo="
+                + "[debugInfo, location, message, reason], {reason=row-too-large}}]}}",
+            errorMessage);
+        found = true;
+      }
+
+      if (!found) {
+        Thread.sleep(1000);
+      }
+    }
+
+    if (!found) {
+      // Might be due to might be due to b/272500246
+      Assert.fail("The failed message was not found in DLQ");
+    }
   }
 
   @Before
@@ -294,13 +465,13 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
         DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT).build();
     // TODO: StaticBigtableResourceManager has to be replaced with DefaultBigtableResourceManager
     // when it supports CDC configs
-    bigtableResourceManager =
-        StaticBigtableResourceManager.builder(/* testName.getMethodName(), */ PROJECT)
-            .setCredentialsProvider(credentialsProvider)
-            .setInstanceId(System.getProperty("bigtableInstanceId"))
-            .setTableId(System.getProperty("bigtableTableId"))
-            .setAppProfileId(System.getProperty("bigtableAppProfileId"))
-            .build();
+    bigtableResourceManager = StaticBigtableResourceManager.builder(/* testName.getMethodName(), */
+            PROJECT)
+        .setCredentialsProvider(credentialsProvider)
+        .setInstanceId(System.getProperty("bigtableInstanceId"))
+        .setTableId(System.getProperty("bigtableTableId"))
+        .setAppProfileId(System.getProperty("bigtableAppProfileId"))
+        .build();
   }
 
   @After
@@ -324,10 +495,10 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
   }
 
   @NotNull
-  private Supplier<Boolean> dataShownUp(String query) {
+  private Supplier<Boolean> dataShownUp(String query, int minRows) {
     return () -> {
       try {
-        return bigQueryResourceManager.runQuery(query).getTotalRows() != 0;
+        return bigQueryResourceManager.runQuery(query).getTotalRows() >= minRows;
       } catch (Exception e) {
         if (ExceptionMessageUtils.underlyingErrorContains(e, "Not found: Table")) {
           return false;
