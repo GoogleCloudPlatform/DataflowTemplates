@@ -165,12 +165,13 @@ public class TemplateDefinitions {
           }
         }
 
-        // Ignore non-annotated params in this criteria
+        // Ignore non-annotated params in this criteria (non-options params)
         if (runtime
             || methodName.startsWith("set")
             || IGNORED_FIELDS.contains(methodName)
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.sdk")
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.runners")
+            || method.getReturnType() == void.class
             || IGNORED_DECLARING_CLASSES.contains(method.getDeclaringClass().getSimpleName())) {
           continue;
         }
