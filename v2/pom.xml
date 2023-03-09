@@ -708,6 +708,7 @@
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
         <module>kafka-to-pubsub</module>
+        <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>
         <module>mongodb-to-googlecloud</module>
         <module>mqtt-to-pubsub</module>
@@ -716,7 +717,6 @@
         <module>pubsub-to-kafka</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
-
-    </modules>
+ </modules>
 
 </project>
