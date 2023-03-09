@@ -362,8 +362,7 @@ public class BigQueryUtils implements Serializable {
     @Override
     public TableDestination getTable(KV<TableId, TableRow> destination) {
       TableId tableId = BigQueryUtils.this.destination.getBigQueryTableId();
-      String tableName =
-          String.format("%s:%s.%s", tableId.getProject(), tableId.getDataset(), tableId.getTable());
+      String tableName = String.format("%s.%s.%s", tableId.getProject(), tableId.getDataset(), tableId.getTable());
 
       TimePartitioning timePartitioning = null;
       if (BigQueryUtils.this.destination.isPartitioned()) {

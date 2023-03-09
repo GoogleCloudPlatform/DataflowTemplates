@@ -230,7 +230,8 @@ public class StaticBigtableResourceManager implements BigtableResourceManager {
   }
 
   public void createAppProfile(
-      String newAppProfile, boolean singleClusterRouting, List<String> clusters) {
+      String newAppProfile, boolean singleClusterRouting, boolean allowTransactionWrites,
+      List<String> clusters) {
     if (!Objects.equals(appProfileId, newAppProfile)) {
       LOG.warn(
           "Test tries to create appProfile named differently from static appProfile: {}",
