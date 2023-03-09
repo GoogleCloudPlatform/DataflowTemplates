@@ -26,6 +26,10 @@ import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminSettings;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings;
+import com.google.cloud.bigtable.admin.v2.models.AppProfile.MultiClusterRoutingPolicy;
+import com.google.cloud.bigtable.admin.v2.models.AppProfile.RoutingPolicy;
+import com.google.cloud.bigtable.admin.v2.models.AppProfile.SingleClusterRoutingPolicy;
+import com.google.cloud.bigtable.admin.v2.models.CreateAppProfileRequest;
 import com.google.cloud.bigtable.admin.v2.models.CreateInstanceRequest;
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
 import com.google.cloud.bigtable.admin.v2.models.GCRules;
@@ -39,6 +43,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.threeten.bp.Duration;
@@ -259,6 +265,39 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
     spec.setMaxAge(maxAge);
     createTable(tableId, spec);
   }
+
+
+  public synchronized void createAppProfile(String appProfileId, boolean singleClusterRouting,
+      boolean allowTransactionWrites, List<String> clusters) {
+    checkHasInstance();
+    if (clusters == null || clusters.isEmpty()) {
+      throw new IllegalArgumentException("Cluster list cannot be empty");
+    }
+
+    RoutingPolicy routingPolicy;
+
+    if (singleClusterRouting) {
+      if (clusters.size() != 1) {
+        throw new IllegalArgumentException(
+            "Cluster list should contain exactly 1 cluster for a single cluster routing policy");
+      }
+      routingPolicy = SingleClusterRoutingPolicy.of(clusters.get(0), allowTransactionWrites);
+    } else {
+      routingPolicy = MultiClusterRoutingPolicy.of(new HashSet<>(clusters));
+    }
+
+    // Send the instance request to Google Cloud
+    try (BigtableInstanceAdminClient instanceAdminClient =
+        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
+      CreateAppProfileRequest request = CreateAppProfileRequest.of(instanceId, appProfileId)
+          .setRoutingPolicy(routingPolicy);
+      instanceAdminClient.createAppProfile(request);
+    } catch (Exception e) {
+      throw new BigtableResourceManagerException(
+          "Failed to create appProfile " + appProfileId + ".", e);
+    }
+  }
+
 
   @Override
   public void write(RowMutation tableRow) {

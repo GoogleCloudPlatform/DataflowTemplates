@@ -36,7 +36,7 @@ public final class ArtifactUtils {
     return String.format(
         "%s-%s",
         DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneId.of("UTC")).format(Instant.now()),
-        UUID.randomUUID());
+        generateSafeRandomUUID());
   }
 
   /**
@@ -71,5 +71,13 @@ public final class ArtifactUtils {
       builder.setCredentials(credentials);
     }
     return builder.build().getService();
+  }
+
+  // Due to various bugs, UUID is not always safe to pass as parameters to DF pipelines
+  // if the value has characters which might be interpreted as SimpleDateFormat string.
+  // Currently, the main concern is 'd' and 'a', see the following for details:
+  // https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/text/SimpleDateFormat.html
+  private static UUID generateSafeRandomUUID() {
+    return UUID.fromString(UUID.randomUUID().toString().replaceAll("[da]", "f"));
   }
 }

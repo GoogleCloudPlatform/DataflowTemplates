@@ -132,21 +132,8 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
 
   void setStartTimestamp(String startTimestamp);
 
-  @TemplateParameter.DateTime(
-      order = 11,
-      optional = true,
-      description = "The timestamp to read change streams to",
-      helpText =
-          "The ending DateTime, inclusive, to use for reading change streams "
-              + "(https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an infinite "
-              + "time in the future.")
-  @Default.String("")
-  String getEndTimestamp();
-
-  void setEndTimestamp(String startTimestamp);
-
   @TemplateParameter.Boolean(
-      order = 12,
+      order = 11,
       optional = true,
       description = "Write values as BigQuery BYTES",
       helpText =
@@ -158,7 +145,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setWriteRowkeyAsBytes(Boolean value);
 
   @TemplateParameter.Boolean(
-      order = 13,
+      order = 12,
       optional = true,
       description = "Write values as BigQuery BYTES",
       helpText =
@@ -170,7 +157,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setWriteValuesAsBytes(Boolean value);
 
   @TemplateParameter.Boolean(
-      order = 14,
+      order = 13,
       optional = true,
       description = "Write Bigtable timestamp as BigQuery INT",
       helpText =
@@ -183,7 +170,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setWriteNumericTimestamps(Boolean value);
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 14,
       optional = true,
       description = "BigQuery charset name when reading values and column qualifiers",
       helpText =
@@ -194,7 +181,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigtableCharset(String value);
 
   @TemplateParameter.ProjectId(
-      order = 16,
+      order = 15,
       optional = true,
       description = "BigQuery project ID",
       helpText = "The BigQuery Project. Default is the project for the Dataflow job.")
@@ -204,7 +191,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryProjectId(String value);
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 16,
       optional = true,
       description = "BigQuery table name",
       helpText =
@@ -215,7 +202,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryChangelogTableName(String value);
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 17,
       optional = true,
       description = "Changelog table will be partitioned at specified granularity",
       helpText =
@@ -227,7 +214,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryChangelogTablePartitionGranularity(String value);
 
   @TemplateParameter.Long(
-      order = 19,
+      order = 18,
       optional = true,
       description = "Sets partition expiration time in milliseconds",
       helpText =
@@ -238,7 +225,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryChangelogTablePartitionExpirationMs(Long value);
 
   @TemplateParameter.Text(
-      order = 20,
+      order = 19,
       optional = true,
       description = "Optional changelog table columns to be disabled",
       helpText =
@@ -251,7 +238,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryChangelogTableFieldsToIgnore(String value);
 
   @TemplateParameter.GcsWriteFolder(
-      order = 21,
+      order = 20,
       optional = true,
       description = "Dead letter queue directory",
       helpText =
@@ -262,7 +249,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setDlqDirectory(String value);
 
   @TemplateParameter.Integer(
-      order = 22,
+      order = 21,
       optional = true,
       description = "Dead letter queue retry minutes",
       helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
@@ -270,4 +257,14 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   Integer getDlqRetryMinutes();
 
   void setDlqRetryMinutes(Integer value);
+
+  @TemplateParameter.Integer(
+      order = 22,
+      optional = true,
+      description = "Dead letter maximum retries",
+      helpText = "The number of attempts to process change stream mutations. Defaults to 5.")
+  @Default.Integer(5)
+  Integer getDlqMaxRetries();
+
+  void setDlqMaxRetries(Integer value);
 }

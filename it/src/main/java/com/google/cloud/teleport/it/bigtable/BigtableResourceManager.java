@@ -18,6 +18,7 @@ package com.google.cloud.teleport.it.bigtable;
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.common.collect.ImmutableList;
+import java.util.List;
 import org.threeten.bp.Duration;
 
 /** Interface for managing bigtable resources in integration tests. */
@@ -64,6 +65,27 @@ public interface BigtableResourceManager {
    * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
    */
   void createTable(String tableId, Iterable<String> columnFamilies, Duration maxAge);
+
+
+  /**
+   * Creates a table within the current instance given a table ID and a collection of column family
+   * names.
+   *
+   * <p>The columns in this table will be automatically garbage collected once they reach the age
+   * specified by {@code maxAge}.
+   *
+   * <p>Note: Implementations may do instance creation here, if one does not already exist.
+   *
+   * @param appProfileId The id of the app profile.
+   * @param singleClusterRouting Whether to use single cluster routing policy. When false a
+   * multi-cluster routing policy is used
+   * @param allowTransactionWrites Allows transactional writes when single cluster routing is
+   * enabled
+   * @param clusters Clusters where traffic is going to be routed
+   * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
+   */
+  void createAppProfile(String appProfileId, boolean singleClusterRouting,
+      boolean allowTransactionWrites, List<String> clusters);
 
   /**
    * Writes a given row into a table. This method requires {@link

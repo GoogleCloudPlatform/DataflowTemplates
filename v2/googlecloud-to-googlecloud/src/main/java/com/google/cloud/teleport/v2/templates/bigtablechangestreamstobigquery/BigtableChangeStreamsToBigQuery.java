@@ -33,6 +33,7 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.mo
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ModType;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.TransientColumn;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.UnsupportedEntryException;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -65,9 +66,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This pipeline ingests {@link ChangeStreamMutation} from Bigtable change stream. The {@link
- * ChangeStreamMutation} is then broken into {@link Mod}, which converted into {@link TableRow} and
- * inserted into BigQuery table.
+ * This pipeline ingests {@link ChangeStreamMutation} from Bigtable change stream. The
+ * {@link ChangeStreamMutation} is then broken into {@link Mod}, which converted into
+ * {@link TableRow} and inserted into BigQuery table.
  */
 @Template(
     name = "Bigtable_Change_Streams_to_BigQuery",
@@ -80,14 +81,13 @@ import org.slf4j.LoggerFactory;
     contactInformation = "https://cloud.google.com/support")
 public final class BigtableChangeStreamsToBigQuery {
 
-  /** String/String Coder for {@link FailsafeElement}. */
+  /**
+   * String/String Coder for {@link FailsafeElement}.
+   */
   public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToBigQuery.class);
-
-  // Max number of deadletter queue retries.
-  private static final int DLQ_MAX_RETRIES = 5;
 
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
 
@@ -110,6 +110,9 @@ public final class BigtableChangeStreamsToBigQuery {
   private static void validateOptions(BigtableChangeStreamsToBigQueryOptions options) {
     if (options.getDlqRetryMinutes() <= 0) {
       throw new IllegalArgumentException("dlqRetryMinutes must be positive.");
+    }
+    if (options.getDlqMaxRetries() < 0) {
+      throw new IllegalArgumentException("dlqMaxRetries cannot be negative.");
     }
   }
 
@@ -149,15 +152,14 @@ public final class BigtableChangeStreamsToBigQuery {
     String changelogTableName = getBigQueryChangelogTableName(options);
     String bigtableProject = getBigtableProjectId(options);
 
-    // Retrieve and parse the startTimestamp and endTimestamp.
+    // Retrieve and parse the startTimestamp
     Timestamp startTimestamp =
         options.getStartTimestamp().isEmpty()
             ? Timestamp.now()
             : Timestamp.parseTimestamp(options.getStartTimestamp());
-    Timestamp endTimestamp =
-        options.getEndTimestamp().isEmpty()
-            ? Timestamp.MAX_VALUE
-            : Timestamp.parseTimestamp(options.getEndTimestamp());
+
+    // end timestamp might be supported later
+    Timestamp endTimestamp = Timestamp.MAX_VALUE;
 
     BigtableSource sourceInfo =
         new BigtableSource(
@@ -244,15 +246,15 @@ public final class BigtableChangeStreamsToBigQuery {
 
     FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions
         failsafeModJsonToTableRowOptions =
-            FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
-                .setCoder(FAILSAFE_ELEMENT_CODER)
-                .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
-                .build();
+        FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
+            .setCoder(FAILSAFE_ELEMENT_CODER)
+            .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
+            .build();
 
     FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow
         failsafeModJsonToTableRow =
-            new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
-                bigQuery, failsafeModJsonToTableRowOptions);
+        new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
+            bigQuery, failsafeModJsonToTableRowOptions);
 
     PCollectionTuple tableRowTuple =
         failsafeModJson.apply("Mod JSON To TableRow", failsafeModJsonToTableRow);
@@ -326,7 +328,7 @@ public final class BigtableChangeStreamsToBigQuery {
         options.getDlqDirectory().isEmpty() ? tempLocation + "dlq/" : options.getDlqDirectory();
 
     LOG.info("Dead letter queue directory: {}", dlqDirectory);
-    return DeadLetterQueueManager.create(dlqDirectory, DLQ_MAX_RETRIES);
+    return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetries());
   }
 
   private static String getBigtableCharset(BigtableChangeStreamsToBigQueryOptions options) {
@@ -384,7 +386,8 @@ public final class BigtableChangeStreamsToBigQuery {
     }
 
     @ProcessElement
-    public void process(@Element ChangeStreamMutation input, OutputReceiver<String> receiver) {
+    public void process(@Element ChangeStreamMutation input, OutputReceiver<String> receiver)
+        throws Exception {
       for (Entry entry : input.getEntries()) {
         ModType modType = getModType(entry);
 
@@ -401,21 +404,21 @@ public final class BigtableChangeStreamsToBigQuery {
             break;
           default:
           case UNKNOWN:
-            // TODO: skip and complain
-            break;
+            throw new UnsupportedEntryException("Cloud Bigtable change stream entry of type " +
+                entry.getClass().getName()
+                + " is not supported. The entry was put into a dead letter queue directory. "
+                + "Please update your Dataflow template with the latest template version");
         }
 
-        if (mod != null) {
-          String modJsonString;
+        String modJsonString;
 
-          try {
-            modJsonString = mod.toJson();
-          } catch (IOException e) {
-            // Ignore exception and print bad format.
-            modJsonString = String.format("\"%s\"", input);
-          }
-          receiver.output(modJsonString);
+        try {
+          modJsonString = mod.toJson();
+        } catch (IOException e) {
+          // Ignore exception and print bad format.
+          modJsonString = String.format("\"%s\"", input);
         }
+        receiver.output(modJsonString);
       }
     }
 
