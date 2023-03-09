@@ -49,6 +49,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -60,7 +61,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Base class for Templates. It wraps around tests that extend it to stage the Templates when
@@ -279,7 +279,7 @@ public abstract class TemplateTestBase {
       // Do not make all dependencies every time. Faster but requires prior `mvn install`.
       //      "-am",
       "-PtemplatesStage,pluginOutputDir",
-      "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(0, 20),
+      "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
       "-DskipShade",
       "-DskipTests",
       "-Dcheckstyle.skip",

@@ -90,7 +90,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
   @Test
   @TemplateIntegrationTest(value = PubSubToBigQuery.class, template = "PubSub_to_BigQuery")
-  public void testTopicToBigQuery() throws IOException {
+  public void testTopicToBigQueryClassic() throws IOException {
     // Arrange
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -140,7 +140,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
   @TemplateIntegrationTest(
       value = PubSubToBigQuery.class,
       template = "PubSub_Subscription_to_BigQuery")
-  public void testSubscriptionToBigQuery() throws IOException {
+  public void testSubscriptionToBigQueryClassic() throws IOException {
     // Arrange
     List<Field> bqSchemaFields =
         Arrays.asList(
