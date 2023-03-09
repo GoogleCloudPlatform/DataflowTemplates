@@ -31,7 +31,7 @@
 
   <properties>
     <json-data-generator.version>1.10</json-data-generator.version>
-    <snakeyaml.version>1.33</snakeyaml.version>
+    <snakeyaml.version>2.0</snakeyaml.version>
    </properties>
 
   <dependencies>
