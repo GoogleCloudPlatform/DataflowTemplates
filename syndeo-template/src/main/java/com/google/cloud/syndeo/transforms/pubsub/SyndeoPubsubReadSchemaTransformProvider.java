@@ -15,6 +15,7 @@
  */
 package com.google.cloud.syndeo.transforms.pubsub;
 
+import com.google.api.client.util.Clock;
 import com.google.auto.service.AutoService;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.syndeo.transforms.TypedSchemaTransformProvider;
@@ -26,6 +27,9 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubTestClient.PubsubTestClientFactory;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
@@ -34,13 +38,16 @@ import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.schemas.utils.JsonUtils;
-import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.FinishBundle;
+import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
-import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Sets;
 import org.checkerframework.checker.initialization.qual.Initialized;
@@ -118,8 +125,18 @@ public class SyndeoPubsubReadSchemaTransformProvider
               : AvroUtils.getAvroBytesToRowFunction(beamSchema);
     }
 
-    return new PubsubReadSchemaTransform(
-        configuration.getTopic(), configuration.getSubscription(), beamSchema, valueMapper);
+    PubsubReadSchemaTransform transform =
+        new PubsubReadSchemaTransform(
+            configuration.getTopic(), configuration.getSubscription(), beamSchema, valueMapper);
+
+    if (configuration.getClientFactory() != null) {
+      transform.setClientFactory(configuration.getClientFactory());
+    }
+    if (configuration.getClock() != null) {
+      transform.setClock(configuration.getClock());
+    }
+
+    return transform;
   }
 
   private static class PubsubReadSchemaTransform implements SchemaTransform, Serializable {
@@ -127,6 +144,8 @@ public class SyndeoPubsubReadSchemaTransformProvider
     final SerializableFunction<byte[], Row> valueMapper;
     final @Nullable String topic;
     final @Nullable String subscription;
+    @Nullable PubsubTestClientFactory clientFactory;
+    @Nullable Clock clock;
 
     PubsubReadSchemaTransform(
         String topic,
@@ -139,26 +158,75 @@ public class SyndeoPubsubReadSchemaTransformProvider
       this.valueMapper = valueMapper;
     }
 
+    private static class ErrorCounterFn extends DoFn<PubsubMessage, Row> {
+      private Counter pubsubErrorCounter;
+      private Long errorsInBundle = 0L;
+      private SerializableFunction<byte[], Row> valueMapper;
+
+      ErrorCounterFn(String name, SerializableFunction<byte[], Row> valueMapper) {
+        this.pubsubErrorCounter =
+            Metrics.counter(SyndeoPubsubReadSchemaTransformProvider.class, name);
+        this.valueMapper = valueMapper;
+      }
+
+      @ProcessElement
+      public void process(ProcessContext c) {
+        PubsubMessage message = c.element();
+
+        try {
+          c.output(valueMapper.apply(message.getPayload()));
+        } catch (Exception e) {
+          errorsInBundle += 1;
+        }
+      }
+
+      @FinishBundle
+      public void finish(FinishBundleContext c) {
+        pubsubErrorCounter.inc(errorsInBundle);
+        errorsInBundle = 0L;
+      }
+    }
+
+    void setClientFactory(PubsubTestClientFactory factory) {
+      this.clientFactory = factory;
+    }
+
+    void setClock(Clock clock) {
+      this.clock = clock;
+    }
+
+    PubsubIO.Read<PubsubMessage> buildPubsubRead() {
+      PubsubIO.Read<PubsubMessage> pubsubRead = PubsubIO.readMessages();
+      if (!Strings.isNullOrEmpty(topic)) {
+        pubsubRead = pubsubRead.fromTopic(topic);
+      } else {
+        pubsubRead = pubsubRead.fromSubscription(subscription);
+      }
+      if (clientFactory != null && clock != null) {
+        pubsubRead = pubsubRead.withClientFactory(clientFactory);
+        pubsubRead = clientFactory.setClock(pubsubRead, clock);
+      } else if (clientFactory != null || clock != null) {
+        throw new IllegalArgumentException(
+            "Both PubsubTestClientFactory and Clock need to be specified for testing, but only one is provided");
+      }
+      return pubsubRead;
+    }
+
     @Override
     public PTransform<PCollectionRowTuple, PCollectionRowTuple> buildTransform() {
       return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
         @Override
         public PCollectionRowTuple expand(PCollectionRowTuple input) {
-          PubsubIO.Read<PubsubMessage> pubsubRead = PubsubIO.readMessages();
-          if (!Strings.isNullOrEmpty(topic)) {
-            pubsubRead = pubsubRead.fromTopic(topic);
-          } else {
-            pubsubRead = pubsubRead.fromSubscription(subscription);
-          }
-          return PCollectionRowTuple.of(
-              "output",
+          PubsubIO.Read<PubsubMessage> pubsubRead = buildPubsubRead();
+
+          PCollection<Row> result =
               input
                   .getPipeline()
                   .apply(pubsubRead)
-                  .apply(
-                      MapElements.into(TypeDescriptors.rows())
-                          .via(message -> valueMapper.apply(message.getPayload())))
-                  .setRowSchema(beamSchema));
+                  .apply(ParDo.of(new ErrorCounterFn("PubSub-read-error-counter", valueMapper)))
+                  .setRowSchema(beamSchema);
+
+          return PCollectionRowTuple.of("output", result);
         }
       };
     }
@@ -209,6 +277,11 @@ public class SyndeoPubsubReadSchemaTransformProvider
             + "For JSON data, this is a schema defined with JSON-schema syntax (https://json-schema.org/).")
     public abstract String getSchema();
 
+    // Used for testing only.
+    public abstract @Nullable PubsubTestClientFactory getClientFactory();
+    // Used for testing only.
+    public abstract @Nullable Clock getClock();
+
     public static Builder builder() {
       return new AutoValue_SyndeoPubsubReadSchemaTransformProvider_SyndeoPubsubReadSchemaTransformConfiguration
           .Builder();
@@ -223,6 +296,11 @@ public class SyndeoPubsubReadSchemaTransformProvider
       public abstract Builder setFormat(String format);
 
       public abstract Builder setSchema(String schema);
+
+      // Used for testing only.
+      public abstract Builder setClientFactory(PubsubTestClientFactory clientFactory);
+      // Used for testing only.
+      public abstract Builder setClock(Clock clock);
 
       public abstract SyndeoPubsubReadSchemaTransformConfiguration build();
     }
