@@ -147,15 +147,17 @@ public abstract class JavascriptDocumentTransformer {
         throw new RuntimeException("No udf was loaded");
       }
 
-      Object result = getInvocable().invokeFunction(functionName(), data);
+      Object result = getInvocable().invokeFunction(functionName(), data.toJson());
       if (result == null || ScriptObjectMirror.isUndefined(result)) {
         return null;
       } else if (result instanceof Document) {
         return (Document) result;
+      } else if (result instanceof String) {
+        return Document.parse(result.toString());
       } else {
         String className = result.getClass().getName();
         throw new RuntimeException(
-            "UDF Function did not return a String. Instead got: " + className);
+            "UDF Function did not return a valid Mongo Document. Instead got: " + className);
       }
     }
 
