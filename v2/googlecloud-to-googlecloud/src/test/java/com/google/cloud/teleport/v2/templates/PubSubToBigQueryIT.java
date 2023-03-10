@@ -76,7 +76,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
             .setCredentials(credentials)
             .build();
 
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "udf.js",
         "function uppercaseName(value) {\n"
             + "  const data = JSON.parse(value);\n"

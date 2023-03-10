@@ -106,7 +106,7 @@ public final class PubsubToTextIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  artifacts.set(artifactClient.listArtifacts(testName, expectedFilePattern));
+                  artifacts.set(gcsClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
 
@@ -153,7 +153,7 @@ public final class PubsubToTextIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  artifacts.set(artifactClient.listArtifacts(testName, expectedFilePattern));
+                  artifacts.set(gcsClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
 

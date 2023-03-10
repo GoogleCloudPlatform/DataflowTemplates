@@ -107,7 +107,7 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    List<Artifact> artifacts = artifactClient.listArtifacts(testName, expectedFilePattern);
+    List<Artifact> artifacts = gcsClient.listArtifacts(testName, expectedFilePattern);
     assertThat(artifacts).hasSize(5);
     assertThatArtifacts(artifacts)
         .asParquetRecords()

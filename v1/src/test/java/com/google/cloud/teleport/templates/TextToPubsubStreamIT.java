@@ -105,7 +105,7 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
                 createConfig(info),
                 () -> {
                   try {
-                    artifactClient.uploadArtifact(messageString, file.getAbsolutePath());
+                    gcsClient.uploadArtifact(messageString, file.getAbsolutePath());
                   } catch (IOException e) {
                     LOG.error("Error encountered when trying to upload artifact.", e);
                   }
@@ -122,7 +122,7 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
   }
 
   private String getInputFilePattern() {
-    return getFullGcsPath(artifactBucketName, TEST_ROOT_DIR, artifactClient.runId(), "*");
+    return getFullGcsPath(artifactBucketName, TEST_ROOT_DIR, gcsClient.runId(), "*");
   }
 
   /**

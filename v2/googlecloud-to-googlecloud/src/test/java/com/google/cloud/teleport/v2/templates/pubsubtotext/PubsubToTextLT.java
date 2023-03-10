@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.pubsubtotext;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
+import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
@@ -75,7 +75,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   private static final long NUM_MESSAGES = 35000000L;
 
   private static PubsubResourceManager pubsubResourceManager;
-  private static ArtifactClient artifactClient;
+  private static ArtifactClient gcsClient;
 
   @Before
   public void setup() throws IOException {
@@ -84,13 +84,13 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
         DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
-    Storage gcsClient = createGcsClient(CREDENTIALS);
-    artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    Storage storageClient = createStorageClient(CREDENTIALS);
+    gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(artifactClient, pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(gcsClient, pubsubResourceManager);
   }
 
   @Test
@@ -178,7 +178,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
+    assertThat(gcsClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
@@ -221,13 +221,13 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, expectedMessages));
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
+    assertThat(gcsClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
   private String getTestMethodDirPath() {
-    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName);
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, gcsClient.runId(), testName);
   }
 }

@@ -86,10 +86,10 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
       String csvFileName, String udfFileName, List<Map<String, Object>> expectedRecords)
       throws IOException {
     // Arrange
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/" + csvFileName,
         Resources.getResource("GCSToElasticsearch/" + csvFileName).getPath());
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/" + udfFileName,
         Resources.getResource("GCSToElasticsearch/" + udfFileName).getPath());
     String indexName = createJobName(testName);
@@ -126,7 +126,7 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
   @Test
   public void testElasticsearchCsvWithHeaders() throws IOException {
     // Arrange
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/with_headers_10.csv",
         Resources.getResource("GCSToElasticsearch/with_headers_10.csv").getPath());
     String indexName = createJobName(testName);

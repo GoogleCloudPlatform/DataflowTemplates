@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
+import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.bigquery.BigQueryResourceManagerUtils.toTableSpec;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
@@ -69,14 +69,14 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   // 35,000,000 messages of the given schema make up approximately 10GB
   private static final String NUM_MESSAGES = "35000000";
   private static PubsubResourceManager pubsubResourceManager;
-  private static ArtifactClient artifactClient;
+  private static ArtifactClient gcsClient;
   private static BigQueryResourceManager bigQueryResourceManager;
   private static SpannerResourceManager spannerResourceManager;
 
   @After
   public void cleanup() {
     ResourceManagerUtils.cleanResources(
-        pubsubResourceManager, artifactClient, bigQueryResourceManager, spannerResourceManager);
+        pubsubResourceManager, gcsClient, bigQueryResourceManager, spannerResourceManager);
   }
 
   @Test
@@ -118,10 +118,10 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGenerateGcs10gb() throws IOException, ParseException, InterruptedException {
     String artifactBucket = TestProperties.artifactBucket();
     // Set up resource manager
-    Storage gcsClient = createGcsClient(CREDENTIALS);
-    artifactClient = GcsArtifactClient.builder(gcsClient, artifactBucket, TEST_ROOT_DIR).build();
+    Storage storageClient = createStorageClient(CREDENTIALS);
+    gcsClient = GcsArtifactClient.builder(storageClient, artifactBucket, TEST_ROOT_DIR).build();
     String outputDirectory =
-        getFullGcsPath(artifactBucket, TEST_ROOT_DIR, artifactClient.runId(), testName);
+        getFullGcsPath(artifactBucket, TEST_ROOT_DIR, gcsClient.runId(), testName);
     // Arrange
     Pattern expectedPattern = Pattern.compile(".*output-.*");
     LaunchConfig options =
@@ -143,7 +143,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
     assertThatResult(result).isLaunchFinished();
-    assertThat(artifactClient.listArtifacts(testName, expectedPattern)).isNotEmpty();
+    assertThat(gcsClient.listArtifacts(testName, expectedPattern)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, FAKE_DATA_PCOLLECTION));

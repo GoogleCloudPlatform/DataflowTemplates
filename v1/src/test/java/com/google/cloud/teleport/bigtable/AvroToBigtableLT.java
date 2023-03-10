@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.bigtable;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
+import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.bigtable.BigtableResourceManagerUtils.generateTableId;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
@@ -64,7 +64,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   private static final String OUTPUT_PCOLLECTION =
       "Transform to Bigtable/ParMultiDo(AvroToBigtable).out0";
   private static BigtableResourceManager bigtableResourceManager;
-  private static ArtifactClient artifactClient;
+  private static ArtifactClient gcsClient;
   private static String generatorSchemaPath;
   private static String avroSchemaPath;
 
@@ -72,13 +72,13 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     bigtableResourceManager = DefaultBigtableResourceManager.builder(testName, PROJECT).build();
-    Storage gcsClient = createGcsClient(CREDENTIALS);
-    artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    Storage storageClient = createStorageClient(CREDENTIALS);
+    gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
     // upload schema files and save path
     generatorSchemaPath =
         getFullGcsPath(
             ARTIFACT_BUCKET,
-            artifactClient
+            gcsClient
                 .uploadArtifact(
                     "input/schema.json",
                     Resources.getResource("AvroToBigtablePerformanceIT/schema.json").getPath())
@@ -86,7 +86,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
     avroSchemaPath =
         getFullGcsPath(
             ARTIFACT_BUCKET,
-            artifactClient
+            gcsClient
                 .uploadArtifact(
                     "input/bigtable.avsc",
                     Resources.getResource("schema/avro/bigtable.avsc").getPath())
@@ -95,7 +95,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
 
   @After
   public void teardown() {
-    ResourceManagerUtils.cleanResources(bigtableResourceManager, artifactClient);
+    ResourceManagerUtils.cleanResources(bigtableResourceManager, gcsClient);
   }
 
   @Test
@@ -148,6 +148,6 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   }
 
   private String getTestMethodDirPath() {
-    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName);
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, gcsClient.runId(), testName);
   }
 }

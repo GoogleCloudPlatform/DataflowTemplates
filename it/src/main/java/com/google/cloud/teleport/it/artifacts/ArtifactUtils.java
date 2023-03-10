@@ -68,7 +68,7 @@ public final class ArtifactUtils {
    *     it is best to pass in a short-lived access token.
    * @return a {@link Storage} client for running GCS operations
    */
-  public static Storage createGcsClient(Credentials credentials) {
+  public static Storage createStorageClient(Credentials credentials) {
     StorageOptions.Builder builder = StorageOptions.newBuilder();
     if (credentials != null) {
       builder.setCredentials(credentials);

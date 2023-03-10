@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
+import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
@@ -25,7 +25,6 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.DataGenerator;
 import com.google.cloud.teleport.it.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.TestProperties;
-import com.google.cloud.teleport.it.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
@@ -62,20 +61,20 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
   private static final String OUTPUT_PCOLLECTION =
       "Write to storage/WriteFiles/RewindowIntoGlobal/Window.Assign.out0";
   private static SpannerResourceManager spannerResourceManager;
-  private static ArtifactClient artifactClient;
+  private static GcsArtifactClient gcsClient;
 
   @Before
   public void setup() throws IOException {
     // Set up resource managers
     spannerResourceManager =
         DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
-    Storage gcsClient = createGcsClient(CREDENTIALS);
-    artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    Storage storageClient = createStorageClient(CREDENTIALS);
+    gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
   }
 
   @After
   public void teardown() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, artifactClient);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, gcsClient);
   }
 
   @Test
@@ -135,13 +134,13 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
     // check to see if messages reached the output bucket
-    assertThat(artifactClient.listArtifacts(name, Pattern.compile(".*"))).isNotEmpty();
+    assertThat(gcsClient.listArtifacts(name, Pattern.compile(".*"))).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
   private String getTestMethodDirPath() {
-    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName);
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, gcsClient.runId(), testName);
   }
 }

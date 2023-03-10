@@ -46,7 +46,7 @@ public final class BulkCompressorIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException, URISyntaxException {
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/lipsum.txt", Resources.getResource("BulkCompressorIT/lipsum.txt").getPath());
   }
 
@@ -80,8 +80,7 @@ public final class BulkCompressorIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    List<Artifact> artifacts =
-        artifactClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
+    List<Artifact> artifacts = gcsClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
     assertThat(artifacts).hasSize(1);
     assertThatArtifacts(artifacts).hasHash(expectedSha256);
   }

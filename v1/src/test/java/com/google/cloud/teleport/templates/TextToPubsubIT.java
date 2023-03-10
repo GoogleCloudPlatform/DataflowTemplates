@@ -105,11 +105,11 @@ public class TextToPubsubIT extends TemplateTestBase {
 
   private void createArtifacts(List<String> expectedArtifacts) {
     for (String artifact : expectedArtifacts) {
-      artifactClient.createArtifact(artifact, artifact.getBytes());
+      gcsClient.createArtifact(artifact, artifact.getBytes());
     }
   }
 
   private String getInputFilePattern() {
-    return getFullGcsPath(artifactBucketName, TEST_ROOT_DIR, artifactClient.runId(), "*");
+    return getFullGcsPath(artifactBucketName, TEST_ROOT_DIR, gcsClient.runId(), "*");
   }
 }

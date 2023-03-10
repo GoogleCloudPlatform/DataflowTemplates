@@ -84,7 +84,7 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
         DefaultBigQueryResourceManager.builder(testId, PROJECT).setCredentials(credentials).build();
 
     URL avroSchemaResource = Resources.getResource("PubsubAvroToBigQueryIT/avro_schema.avsc");
-    artifactClient.uploadArtifact("schema.avsc", avroSchemaResource.getPath());
+    gcsClient.uploadArtifact("schema.avsc", avroSchemaResource.getPath());
     avroSchema = new Schema.Parser().parse(avroSchemaResource.openStream());
 
     bigQuerySchema =

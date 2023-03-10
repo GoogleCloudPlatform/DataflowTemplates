@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
+import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
 
 import com.google.api.gax.core.CredentialsProvider;
@@ -102,7 +102,16 @@ public abstract class TemplateTestBase {
 
   protected Template template;
   private Class<?> templateClass;
-  protected GcsArtifactClient artifactClient;
+
+  /** Client to interact with GCS. */
+  protected GcsArtifactClient gcsClient;
+
+  /**
+   * Client to interact with GCS.
+   *
+   * @deprecated Will be removed in favor of {@link #gcsClient}.
+   */
+  @Deprecated protected GcsArtifactClient artifactClient;
 
   @Before
   public void setUpBase() throws IOException {
@@ -141,13 +150,17 @@ public abstract class TemplateTestBase {
       artifactBucketName = TestProperties.stageBucket();
     }
     if (artifactBucketName != null) {
-      Storage gcsClient = createGcsClient(credentials);
-      artifactClient =
-          GcsArtifactClient.builder(gcsClient, artifactBucketName, getClass().getSimpleName())
+      Storage storageClient = createStorageClient(credentials);
+      gcsClient =
+          GcsArtifactClient.builder(storageClient, artifactBucketName, getClass().getSimpleName())
               .build();
+
+      // Keep name compatibility, for now
+      artifactClient = gcsClient;
+
     } else {
       LOG.warn(
-          "Both -DartifactBucket and -DstageBucket were not given. ArtifactClient will not be"
+          "Both -DartifactBucket and -DstageBucket were not given. Storage Client will not be"
               + " created automatically.");
     }
 
@@ -316,8 +329,8 @@ public abstract class TemplateTestBase {
 
   @After
   public void tearDownBase() {
-    if (artifactClient != null) {
-      artifactClient.cleanupAll();
+    if (gcsClient != null) {
+      gcsClient.cleanupAll();
     }
   }
 
@@ -402,7 +415,7 @@ public abstract class TemplateTestBase {
 
   /** Get the Cloud Storage base path for this test suite. */
   protected String getGcsBasePath() {
-    return getFullGcsPath(artifactBucketName, getClass().getSimpleName(), artifactClient.runId());
+    return getFullGcsPath(artifactBucketName, getClass().getSimpleName(), gcsClient.runId());
   }
 
   /** Get the Cloud Storage base path for a specific test. */
@@ -413,7 +426,7 @@ public abstract class TemplateTestBase {
   /** Get the Cloud Storage base path for a specific testing method or artifact id. */
   protected String getGcsPath(String artifactId) {
     return getFullGcsPath(
-        artifactBucketName, getClass().getSimpleName(), artifactClient.runId(), artifactId);
+        artifactBucketName, getClass().getSimpleName(), gcsClient.runId(), artifactId);
   }
 
   /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */

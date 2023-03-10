@@ -81,7 +81,7 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
 
   @Test
   public void testPubSubToElasticsearchWithUdf() throws IOException {
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "udf-name-upper-case.js",
         "function transform(inJson) {\n"
             + "  var obj = JSON.parse(inJson);\n"

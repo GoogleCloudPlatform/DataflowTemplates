@@ -86,13 +86,13 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(
-        pubsubResourceManager, artifactClient, bigQueryResourceManager, spannerResourceManager);
+        pubsubResourceManager, gcsClient, bigQueryResourceManager, spannerResourceManager);
   }
 
   @Test
   public void testFakeMessagesToGcs() throws IOException {
     // Arrange
-    artifactClient.uploadArtifact(SCHEMA_FILE, LOCAL_SCHEMA_PATH);
+    gcsClient.uploadArtifact(SCHEMA_FILE, LOCAL_SCHEMA_PATH);
     String name = testName;
 
     LaunchConfig.Builder options =
@@ -115,7 +115,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
                 createConfig(info),
                 () -> {
                   List<Artifact> outputFiles =
-                      artifactClient.listArtifacts(name, Pattern.compile(".*output-.*"));
+                      gcsClient.listArtifacts(name, Pattern.compile(".*output-.*"));
                   return !outputFiles.isEmpty();
                 });
 
@@ -142,10 +142,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
         pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
-                () ->
-                    !artifactClient
-                        .listArtifacts(testName, Pattern.compile(".*output-.*"))
-                        .isEmpty());
+                () -> !gcsClient.listArtifacts(testName, Pattern.compile(".*output-.*")).isEmpty());
 
     // Assert
     assertThatResult(result).meetsConditions();
