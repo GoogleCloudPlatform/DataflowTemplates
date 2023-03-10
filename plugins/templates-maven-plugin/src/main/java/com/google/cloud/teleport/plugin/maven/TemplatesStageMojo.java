@@ -232,7 +232,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             "--labels={\"goog-dataflow-provided-template-name\":\""
                 + currentTemplateName
                 + "\", \"goog-dataflow-provided-template-version\":\""
-                + stagePrefix.toLowerCase()
+                + TemplateDefinitionsParser.parseVersion(stagePrefix)
                 + "\", \"goog-dataflow-provided-template-type\":\"legacy\"}"));
 
     for (Map.Entry<String, String> runtimeParameter :
@@ -373,7 +373,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "goog-dataflow-provided-template-name="
               + currentTemplateName.toLowerCase()
               + ",goog-dataflow-provided-template-version="
-              + stagePrefix.toLowerCase()
+              + TemplateDefinitionsParser.parseVersion(stagePrefix)
               + ",goog-dataflow-provided-template-type=flex"
         };
     LOG.info("Running: {}", String.join(" ", flexTemplateBuildCmd));
