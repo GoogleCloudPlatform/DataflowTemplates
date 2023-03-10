@@ -84,7 +84,7 @@ public class CdcToBigQueryChangeApplierPipeline {
 
     @TemplateParameter.Text(
         order = 1,
-        optional = false,
+        optional = true,
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Pub/Sub topic(s) to read from",
         helpText = "Comma-separated list of PubSub topics to where CDC data is being pushed.")

@@ -157,7 +157,7 @@ import org.slf4j.LoggerFactory;
  * </pre>
  */
 @Template(
-    name = "Stream_DLP_GCS_Text_to_BigQuery",
+    name = "Stream_DLP_GCS_Text_to_BigQuery_Flex",
     category = TemplateCategory.STREAMING,
     displayName = "Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP)",
     description =
@@ -168,6 +168,7 @@ import org.slf4j.LoggerFactory;
             + " environment and data needs. More details here:"
             + " https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp",
     optionsClass = TokenizePipelineOptions.class,
+    flexContainerName = "dlptext-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class DLPTextToBigQueryStreaming {
 

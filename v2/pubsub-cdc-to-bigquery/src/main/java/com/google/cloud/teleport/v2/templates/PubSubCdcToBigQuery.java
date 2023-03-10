@@ -177,6 +177,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Boolean(
         order = 2,
+        optional = true,
         description = "Auto Map Tables",
         helpText =
             "Determines if new columns and tables should be automatically created in BigQuery")
@@ -219,6 +220,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 6,
+        optional = true,
         description = "BigQuery output table (Deprecated)",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format "
@@ -229,6 +231,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 7,
+        optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
             "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"

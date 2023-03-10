@@ -243,8 +243,6 @@
       <properties>
         <!-- Skip coverage checks, unit tests are skipped -->
         <jacoco.skip>true</jacoco.skip>
-        <!-- Skip shade for faster runs -->
-        <skipShade>true</skipShade>
         <!-- Some modules may yield no integration tests -->
         <failIfNoTests>false</failIfNoTests>
         <!-- Parallelism settings. Default is 2, set to consider methods -->

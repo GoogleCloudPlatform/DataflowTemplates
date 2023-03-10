@@ -102,6 +102,7 @@ public class BigQueryConverters {
     @TemplateParameter.GcsWriteFolder(
         order = 3,
         description = "Invalid rows output path",
+        optional = true,
         helpText =
             "Cloud Storage path where to write BigQuery rows that cannot be converted to target entities.",
         example = "gs://your-bucket/your-path")

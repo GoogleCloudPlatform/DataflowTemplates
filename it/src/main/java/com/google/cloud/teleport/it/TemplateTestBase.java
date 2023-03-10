@@ -280,7 +280,8 @@ public abstract class TemplateTestBase {
       //      "-am",
       "-PtemplatesStage,pluginOutputDir",
       "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
-      "-DskipShade",
+      // We are not going to shade on Dataflow tests so it resembles production.
+      // "-DskipShade",
       "-DskipTests",
       "-Dcheckstyle.skip",
       "-Dmdep.analyze.skip",

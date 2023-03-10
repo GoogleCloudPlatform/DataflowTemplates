@@ -93,6 +93,7 @@ public class DatastoreConverters {
     /** @deprecated Please use getFirestoreReadNamespace() instead. */
     @TemplateParameter.Text(
         order = 3,
+        optional = true,
         regexes = {"^[0-9A-Za-z._-]{0,100}$"},
         description = "Namespace",
         helpText =
@@ -154,6 +155,7 @@ public class DatastoreConverters {
     /** @deprecated Please use getFirestoreWriteEntityKind() instead. */
     @TemplateParameter.Text(
         order = 2,
+        optional = true,
         description = "Datastore entity kind",
         helpText =
             "Datastore kind under which entities will be written in the output Google Cloud project")
@@ -210,6 +212,7 @@ public class DatastoreConverters {
 
     @TemplateParameter.Text(
         order = 6,
+        optional = true,
         description = "Firestore entity kind",
         helpText =
             "Firestore kind under which entities will be written in the output Google Cloud project")

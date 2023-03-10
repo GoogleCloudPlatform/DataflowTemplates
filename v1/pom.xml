@@ -1074,7 +1074,7 @@
         <activeByDefault>false</activeByDefault>
       </activation>
       <properties>
-        <jib.skip>true</jib.skip>
+        <jib.skip>false</jib.skip>
       </properties>
       <build>
         <plugins>

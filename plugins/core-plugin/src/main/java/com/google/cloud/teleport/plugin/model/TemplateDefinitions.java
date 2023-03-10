@@ -252,7 +252,13 @@ public class TemplateDefinitions {
       if (!helpText.endsWith(".")) {
         helpText += ".";
       }
-      helpText += " Defaults to: " + defaultValue;
+
+      if (defaultValue instanceof String && defaultValue.equals("")) {
+        helpText += " Defaults to empty.";
+      } else {
+        helpText += " Defaults to: " + defaultValue + ".";
+      }
+
       parameter.setHelpText(helpText);
     }
 

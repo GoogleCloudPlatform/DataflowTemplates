@@ -226,6 +226,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     arguments.add(element("argument", "--templateLocation=" + templatePath));
     arguments.add(element("argument", "--project=" + projectId));
     arguments.add(element("argument", "--region=" + region));
+    arguments.add(
+        element(
+            "argument",
+            "--labels={\"goog-dataflow-provided-template-name\":\""
+                + currentTemplateName
+                + "\", \"goog-dataflow-provided-template-version\":\""
+                + stagePrefix.toLowerCase()
+                + "\", \"goog-dataflow-provided-template-type\":\"legacy\"}"));
 
     for (Map.Entry<String, String> runtimeParameter :
         imageSpec.getMetadata().getRuntimeParameters().entrySet()) {
@@ -361,6 +369,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "--sdk-language=JAVA",
           "--metadata-file",
           outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
+          "--additional-user-labels",
+          "goog-dataflow-provided-template-name="
+              + currentTemplateName.toLowerCase()
+              + ",goog-dataflow-provided-template-version="
+              + stagePrefix.toLowerCase()
+              + ",goog-dataflow-provided-template-type=flex"
         };
     LOG.info("Running: {}", String.join(" ", flexTemplateBuildCmd));
 

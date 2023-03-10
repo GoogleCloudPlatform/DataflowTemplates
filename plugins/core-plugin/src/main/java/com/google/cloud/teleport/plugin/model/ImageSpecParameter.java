@@ -59,7 +59,11 @@ public class ImageSpecParameter {
   }
 
   public void setOptional(Boolean optional) {
-    isOptional = optional;
+    if (optional == null || !optional) {
+      isOptional = null;
+    } else {
+      isOptional = true;
+    }
   }
 
   public List<String> getRegexes() {
@@ -248,7 +252,7 @@ public class ImageSpecParameter {
             bigQueryTableParam.helpText(),
             bigQueryTableParam.example());
         this.setOptional(bigQueryTableParam.optional());
-        this.setParamType(ImageSpecParameterType.TEXT);
+        this.setParamType(ImageSpecParameterType.BIGQUERY_TABLE);
         break;
       case "KmsEncryptionKey":
         TemplateParameter.KmsEncryptionKey kmsEncryptionKeyParam =

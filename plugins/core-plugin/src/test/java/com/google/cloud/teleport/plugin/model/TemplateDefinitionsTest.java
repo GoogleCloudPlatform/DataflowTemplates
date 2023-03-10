@@ -53,7 +53,7 @@ public class TemplateDefinitionsTest {
     assertEquals(ImageSpecParameterType.TEXT, from.getParamType());
 
     ImageSpecParameter to = metadata.getParameter("to").get();
-    assertEquals(ImageSpecParameterType.TEXT, to.getParamType());
+    assertEquals(ImageSpecParameterType.BIGQUERY_TABLE, to.getParamType());
 
     ImageSpecParameter logical = metadata.getParameter("logical").get();
     assertEquals(ImageSpecParameterType.TEXT, logical.getParamType());
