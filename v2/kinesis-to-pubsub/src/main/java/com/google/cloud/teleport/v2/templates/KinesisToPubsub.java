@@ -119,7 +119,7 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Kinesis To Pubsub",
     description = "A pipeline which sends Kinesis Datastream records into a Pubsub topic.",
-    optionsClass = KinesisToPubsub.class,
+    optionsClass = KinesisToPubsubOptions.class,
     flexContainerName = "kinesis-to-pubsub")
 public class KinesisToPubsub {
   private static final Logger logger = LoggerFactory.getLogger(KinesisToPubsub.class);
