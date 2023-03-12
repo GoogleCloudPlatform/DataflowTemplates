@@ -25,7 +25,7 @@
       "configurationParameters": {
         "topic": "mytopic123",
         "bootstrapServers": "123.123.123.123:12345",
-        "format": "JSON",
+        "format": "AVRO",
         "schema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
       }
     },
