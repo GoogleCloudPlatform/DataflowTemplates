@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.SchemaTranslation;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
@@ -82,7 +83,10 @@ public class ProviderUtil {
         throw new IllegalArgumentException(
             String.format(
                 "Given config schema %s, and configuration %s, we're unable to configure transform.",
-                provider.configurationSchema(), configurationAsList),
+                provider.configurationSchema().getFields().stream()
+                    .map(Schema.Field::getName)
+                    .collect(Collectors.toList()),
+                configurationAsList),
             e);
       }
     }
