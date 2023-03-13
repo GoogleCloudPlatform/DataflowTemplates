@@ -1,0 +1,40 @@
+{
+  "BigQuery Schema": [
+    {
+      "name": "eventId",
+      "type": "STRING"
+    },
+    {
+      "name": "eventTimestamp",
+      "type": "INT64"
+    },
+    {
+      "name": "ipv4",
+      "type": "STRING"
+    },
+    {
+      "name": "ipv6",
+      "type": "STRING"
+    },
+    {
+      "name": "country",
+      "type": "STRING"
+    },
+    {
+      "name": "username",
+      "type": "STRING"
+    },
+    {
+      "name": "quest",
+      "type": "STRING"
+    },
+    {
+      "name": "score",
+      "type": "INT64"
+    },
+    {
+      "name": "completed",
+      "type": "BOOL"
+    }
+  ]
+}
