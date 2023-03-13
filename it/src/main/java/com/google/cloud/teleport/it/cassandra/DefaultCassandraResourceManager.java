@@ -18,6 +18,7 @@ package com.google.cloud.teleport.it.cassandra;
 import static com.google.cloud.teleport.it.cassandra.CassandraResourceManagerUtils.generateKeyspaceName;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.DriverTimeoutException;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
@@ -178,13 +179,17 @@ public class DefaultCassandraResourceManager
     boolean producedError = false;
 
     // First, delete the database if it was not given as a static argument
-    try {
-      if (!usingStaticDatabase) {
+    if (!usingStaticDatabase) {
+      try {
         executeStatement(String.format("DROP KEYSPACE IF EXISTS %s", this.keyspaceName));
+      } catch (Exception e) {
+        LOG.error("Failed to drop Cassandra keyspace {}.", keyspaceName, e);
+
+        // Only bubble exception if the cause is not timeout, as it will be dropped with container.
+        if (e.getCause() == null || !(e.getCause() instanceof DriverTimeoutException)) {
+          producedError = true;
+        }
       }
-    } catch (Exception e) {
-      LOG.error("Failed to delete Cassandra keyspace {}.", keyspaceName, e);
-      producedError = true;
     }
 
     // Next, try to close the Cassandra client connection
