@@ -196,7 +196,7 @@ public final class PipelineOperator {
           return Result.CONDITION_MET;
         }
       } catch (Exception e) {
-        LOG.warn("Error happened when checking for condition: {}", e);
+        LOG.warn("Error happened when checking for condition", e);
       }
 
       LOG.info("Condition was not met yet. Checking if job is finished.");

@@ -300,6 +300,20 @@ public class DataStreamToSpanner {
     String getDatastreamSourceType();
 
     void setDatastreamSourceType(String value);
+
+    @TemplateParameter.Boolean(
+        order = 19,
+        optional = true,
+        description =
+            "If true, rounds the decimal values in json columns to a number that can be stored"
+                + " without loss of precision.",
+        helpText =
+            "This flag if set, rounds the decimal values in json columns to a number that can be"
+                + " stored without loss of precision.")
+    @Default.Boolean(false)
+    Boolean getRoundJsonDecimals();
+
+    void setRoundJsonDecimals(Boolean value);
   }
 
   private static void validateSourceType(Options options) {
@@ -454,7 +468,8 @@ public class DataStreamToSpanner {
                 ddlView,
                 session,
                 options.getShadowTablePrefix(),
-                options.getDatastreamSourceType()));
+                options.getDatastreamSourceType(),
+                options.getRoundJsonDecimals()));
 
     /*
      * Stage 3: Write failures to GCS Dead Letter Queue
