@@ -29,6 +29,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
+import org.apache.beam.sdk.schemas.annotations.SchemaFieldDescription;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
@@ -41,6 +42,7 @@ import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Sets;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -50,6 +52,10 @@ import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 public class SyndeoPubsubReadSchemaTransformProvider
     extends TypedSchemaTransformProvider<
         SyndeoPubsubReadSchemaTransformProvider.SyndeoPubsubReadSchemaTransformConfiguration> {
+
+  public static final String VALID_FORMATS_STR = "AVRO,JSON";
+  public static final Set<String> VALID_DATA_FORMATS =
+      Sets.newHashSet(VALID_FORMATS_STR.split(","));
 
   @Override
   public Class<SyndeoPubsubReadSchemaTransformConfiguration> configurationClass() {
@@ -69,9 +75,9 @@ public class SyndeoPubsubReadSchemaTransformProvider
     }
 
     if ((Strings.isNullOrEmpty(configuration.getSchema())
-            && !Strings.isNullOrEmpty(configuration.getDataFormat()))
+            && !Strings.isNullOrEmpty(configuration.getFormat()))
         || (!Strings.isNullOrEmpty(configuration.getSchema())
-            && Strings.isNullOrEmpty(configuration.getDataFormat()))) {
+            && Strings.isNullOrEmpty(configuration.getFormat()))) {
       throw new IllegalArgumentException(
           "A schema was provided without a data format (or viceversa). Please provide "
               + "both of these parameters to read from Pubsub, or if you would like to use the Pubsub schema service,"
@@ -80,7 +86,7 @@ public class SyndeoPubsubReadSchemaTransformProvider
 
     Schema beamSchema;
     SerializableFunction<byte[], Row> valueMapper;
-    if (configuration.getSchema() == null && configuration.getDataFormat() == null) {
+    if (configuration.getSchema() == null && configuration.getFormat() == null) {
       try {
         KV<Schema, SerializableFunction<byte[], Row>> schemaFunctionPair =
             SyndeoPubsubUtils.getTopicInfo(
@@ -95,19 +101,19 @@ public class SyndeoPubsubReadSchemaTransformProvider
             e);
       }
     } else {
-      if (!Set.of("JSON", "AVRO").contains(configuration.getDataFormat())) {
+      if (!VALID_DATA_FORMATS.contains(configuration.getFormat())) {
         throw new IllegalArgumentException(
             String.format(
-                "Only JSON and AVRO formats are supported. Received format: %s",
-                configuration.getDataFormat()));
+                "Format %s not supported. Only supported formats are %s",
+                configuration.getFormat(), VALID_FORMATS_STR));
       }
       beamSchema =
-          Objects.equals(configuration.getDataFormat(), "JSON")
+          Objects.equals(configuration.getFormat(), "JSON")
               ? JsonUtils.beamSchemaFromJsonSchema(configuration.getSchema())
               : AvroUtils.toBeamSchema(
                   new org.apache.avro.Schema.Parser().parse(configuration.getSchema()));
       valueMapper =
-          Objects.equals(configuration.getDataFormat(), "JSON")
+          Objects.equals(configuration.getFormat(), "JSON")
               ? JsonUtils.getJsonBytesToRowFunction(beamSchema)
               : AvroUtils.getAvroBytesToRowFunction(beamSchema);
     }
@@ -178,12 +184,29 @@ public class SyndeoPubsubReadSchemaTransformProvider
   @DefaultSchema(AutoValueSchema.class)
   @AutoValue
   public abstract static class SyndeoPubsubReadSchemaTransformConfiguration {
+    @SchemaFieldDescription(
+        "The name of the topic to consume data from. If a topic is specified, Syndeo"
+            + " will create a new subscription for that topic and start consuming from that point. "
+            + "Either a topic or a subscription must be provided. "
+            + "Format: projects/${PROJECT}/topics/${TOPIC}")
     public abstract @Nullable String getTopic();
 
+    @SchemaFieldDescription(
+        "The name of the subscription to consume data. "
+            + "Either a topic or subscription must be provided. "
+            + "Format: projects/${PROJECT}/subscriptions/${SUBSCRIPTION}")
     public abstract @Nullable String getSubscription();
 
-    public abstract String getDataFormat(); // AVRO, JSON
+    @SchemaFieldDescription(
+        "The encoding format for the data stored in Pubsub. Valid options are: "
+            + VALID_FORMATS_STR)
+    public abstract String getFormat(); // AVRO, JSON
 
+    @SchemaFieldDescription(
+        "The schema in which the data is encoded in the Pubsub topic. "
+            + "For AVRO data, this is a schema defined with AVRO schema syntax "
+            + "(https://avro.apache.org/docs/1.10.2/spec.html#schemas). "
+            + "For JSON data, this is a schema defined with JSON-schema syntax (https://json-schema.org/).")
     public abstract String getSchema();
 
     public static Builder builder() {
@@ -197,7 +220,7 @@ public class SyndeoPubsubReadSchemaTransformProvider
 
       public abstract Builder setSubscription(String subscription);
 
-      public abstract Builder setDataFormat(String dataFormat);
+      public abstract Builder setFormat(String format);
 
       public abstract Builder setSchema(String schema);
 
