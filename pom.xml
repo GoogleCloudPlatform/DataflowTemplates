@@ -66,6 +66,13 @@
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.0.1</truth.version>
+
+    <!-- JDBC driver / Connector versions -->
+    <mysql-connector-java.version>8.0.30</mysql-connector-java.version>
+    <postgresql.version>42.2.27</postgresql.version>
+    <ojdbc8.version>19.3.0.0</ojdbc8.version>
+    <mssql-jdbc.version>6.4.0.jre8</mssql-jdbc.version>
+
     <integration.tests>
       com.google.cloud.teleport.metadata.TemplateIntegrationTest
     </integration.tests>
