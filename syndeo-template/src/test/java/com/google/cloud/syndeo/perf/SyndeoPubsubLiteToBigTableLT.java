@@ -199,7 +199,7 @@ public class SyndeoPubsubLiteToBigTableLT {
                             LOCATION,
                             "project",
                             PROJECT,
-                            "dataFormat",
+                            "format",
                             "AVRO",
                             "schema",
                             AvroUtils.toAvroSchema(SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA)
