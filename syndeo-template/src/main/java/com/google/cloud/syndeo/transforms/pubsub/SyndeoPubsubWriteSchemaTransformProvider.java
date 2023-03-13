@@ -119,8 +119,7 @@ public class SyndeoPubsubWriteSchemaTransformProvider
     public abstract String getFormat();
 
     @SchemaFieldDescription(
-        "The name of the topic to write data into. "
-            + "Format: projects/${PROJECT}/topics/${TOPIC}")
+        "The name of the topic to write data to. " + "Format: projects/${PROJECT}/topics/${TOPIC}")
     public abstract String getTopic();
 
     public static SyndeoPubsubWriteConfiguration create(String format, String topic) {

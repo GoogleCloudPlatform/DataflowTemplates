@@ -187,11 +187,13 @@ public class SyndeoPubsubReadSchemaTransformProvider
     @SchemaFieldDescription(
         "The name of the topic to consume data from. If a topic is specified, Syndeo"
             + " will create a new subscription for that topic and start consuming from that point. "
+            + "Either a topic or a subscription must be provided. "
             + "Format: projects/${PROJECT}/topics/${TOPIC}")
     public abstract @Nullable String getTopic();
 
     @SchemaFieldDescription(
         "The name of the subscription to consume data. "
+            + "Either a topic or subscription must be provided. "
             + "Format: projects/${PROJECT}/subscriptions/${SUBSCRIPTION}")
     public abstract @Nullable String getSubscription();
 
@@ -201,7 +203,7 @@ public class SyndeoPubsubReadSchemaTransformProvider
     public abstract String getFormat(); // AVRO, JSON
 
     @SchemaFieldDescription(
-        "The schema in which the data is encoded in the Kafka topic. "
+        "The schema in which the data is encoded in the Pubsub topic. "
             + "For AVRO data, this is a schema defined with AVRO schema syntax "
             + "(https://avro.apache.org/docs/1.10.2/spec.html#schemas). "
             + "For JSON data, this is a schema defined with JSON-schema syntax (https://json-schema.org/).")
