@@ -142,7 +142,7 @@ public class TemplateSpecsGenerator {
               + "  \"defaultParameterValues\": {\n"
               + "    \"labels\": \"{\\\"goog-dataflow-provided-template-type\\\":\\\"flex\\\","
               + " \\\"goog-dataflow-provided-template-name\\\":\\\""
-              + templateAnnotation.flexContainerName()
+              + templateAnnotation.flexContainerName().toLowerCase()
               + "\\\"}\"\n"
               + "  }\n"
               + "}\n");

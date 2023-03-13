@@ -230,7 +230,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         element(
             "argument",
             "--labels={\"goog-dataflow-provided-template-name\":\""
-                + currentTemplateName
+                + currentTemplateName.toLowerCase()
                 + "\", \"goog-dataflow-provided-template-version\":\""
                 + TemplateDefinitionsParser.parseVersion(stagePrefix)
                 + "\", \"goog-dataflow-provided-template-type\":\"legacy\"}"));
