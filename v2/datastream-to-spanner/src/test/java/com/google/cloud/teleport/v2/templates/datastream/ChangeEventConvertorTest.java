@@ -439,7 +439,6 @@ public class ChangeEventConvertorTest {
     changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "DELETE");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
-    Map<String, Value> expected = getExpectedMapForTestChangeEvent();
 
     assertEquals(mutation.getTable(), "Users2");
     assertEquals(mutation.getOperation(), Mutation.Op.DELETE);
