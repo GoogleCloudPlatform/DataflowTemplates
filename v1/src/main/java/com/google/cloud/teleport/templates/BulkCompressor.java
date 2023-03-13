@@ -53,11 +53,10 @@ import org.slf4j.LoggerFactory;
  * The {@link BulkCompressor} is a batch pipeline that compresses files on matched by an input file
  * pattern and outputs them to a specified file location. This pipeline can be useful when you need
  * to compress large batches of files as part of a perodic archival process. The supported
- * compression modes are: <code>BZIP2</code>, <code>DEFLATE</code>, <code>GZIP</code>, <code>ZIP
- * </code>. Files output to the destination location will follow a naming schema of original
- * filename appended with the compression mode extension. The extensions appended will be one of:
- * <code>.bzip2</code>, <code>.deflate</code>, <code>.gz</code>, <code>.zip</code> as determined by
- * the compression type.
+ * compression modes are: <code>BZIP2</code>, <code>DEFLATE</code>, <code>GZIP</code>. Files output
+ * to the destination location will follow a naming schema of original filename appended with the
+ * compression mode extension. The extensions appended will be one of: <code>.bzip2</code>, <code>
+ * .deflate</code>, <code>.gz</code> as determined by the compression type.
  *
  * <p>Any errors which occur during the compression process will be output to the failure file in
  * CSV format of filename, error message. If no failures occur during execution, the error file will
