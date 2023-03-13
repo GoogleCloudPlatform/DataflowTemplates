@@ -60,7 +60,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
           TestProperties.specPath(),
           "gs://dataflow-templates/latest/flex/GCS_Text_to_BigQuery_Flex");
   // 35,000,000 messages of the given schema make up approximately 10GB
-  private static final Long NUM_MESSAGES = 35000000L;
+  private static final Long NUM_MESSAGES = 35_000_000L;
   // schema should match schema supplied to generate fake records.
   private static final Schema SCHEMA =
       Schema.of(

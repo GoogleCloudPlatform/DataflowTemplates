@@ -65,6 +65,7 @@ public abstract class LoadTestBase {
   private static final double SHUFFLE_PER_GB_STREAMING = 0.018;
   protected static final String PROJECT = TestProperties.project();
   protected static final String REGION = TestProperties.region();
+  protected static final String HOST_IP = TestProperties.hostIp();
   protected static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   protected static final CredentialsProvider CREDENTIALS_PROVIDER =
       FixedCredentialsProvider.create(CREDENTIALS);
