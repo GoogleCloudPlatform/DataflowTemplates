@@ -119,7 +119,8 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
         IllegalArgumentException.class,
         () ->
             testManager.createTable(
-                "invalid/name", new JDBCResourceManager.JDBCSchema(ImmutableMap.of())));
+                "invalid/name",
+                new JDBCResourceManager.JDBCSchema(ImmutableMap.of("id", "INTEGER"), "id")));
   }
 
   @Test
@@ -129,13 +130,15 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
     when(driver.getConnection(any(), any(), any())).thenReturn(connection);
     when(connection.createStatement()).thenReturn(statement);
 
-    testManager.createTable(TABLE_NAME, new JDBCResourceManager.JDBCSchema(ImmutableMap.of()));
+    testManager.createTable(
+        TABLE_NAME, new JDBCResourceManager.JDBCSchema(ImmutableMap.of("id", "INTEGER"), "id"));
 
     assertThrows(
         IllegalStateException.class,
         () ->
             testManager.createTable(
-                TABLE_NAME, new JDBCResourceManager.JDBCSchema(ImmutableMap.of())));
+                TABLE_NAME,
+                new JDBCResourceManager.JDBCSchema(ImmutableMap.of("id", "INTEGER"), "id")));
   }
 
   @Test
@@ -149,7 +152,8 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
         JDBCResourceManagerException.class,
         () ->
             testManager.createTable(
-                TABLE_NAME, new JDBCResourceManager.JDBCSchema(ImmutableMap.of())));
+                TABLE_NAME,
+                new JDBCResourceManager.JDBCSchema(ImmutableMap.of("id", "INTEGER"), "id")));
   }
 
   @Test
@@ -164,7 +168,8 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
         JDBCResourceManagerException.class,
         () ->
             testManager.createTable(
-                TABLE_NAME, new JDBCResourceManager.JDBCSchema(ImmutableMap.of())));
+                TABLE_NAME,
+                new JDBCResourceManager.JDBCSchema(ImmutableMap.of("id", "INTEGER"), "id")));
   }
 
   @Test
@@ -175,7 +180,9 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
     when(connection.createStatement()).thenReturn(statement);
 
     assertTrue(
-        testManager.createTable(TABLE_NAME, new JDBCResourceManager.JDBCSchema(ImmutableMap.of())));
+        testManager.createTable(
+            TABLE_NAME,
+            new JDBCResourceManager.JDBCSchema(ImmutableMap.of("id", "INTEGER"), "id")));
 
     verify(statement).executeUpdate(anyString());
   }
@@ -256,7 +263,7 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
     doThrow(SQLException.class).when(driver).getConnection(any(), any(), any());
 
     assertThrows(
-        JDBCResourceManagerException.class, () -> testManager.runSQLStatement("SQL statement"));
+        JDBCResourceManagerException.class, () -> testManager.runSQLQuery("SQL statement"));
   }
 
   @Test
@@ -268,7 +275,7 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
     doThrow(SQLException.class).when(statement).executeQuery(anyString());
 
     assertThrows(
-        JDBCResourceManagerException.class, () -> testManager.runSQLStatement("SQL statement"));
+        JDBCResourceManagerException.class, () -> testManager.runSQLQuery("SQL statement"));
   }
 
   @Test
@@ -280,7 +287,7 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
     when(connection.createStatement()).thenReturn(statement);
     when(statement.executeQuery(anyString())).thenReturn(result);
 
-    testManager.runSQLStatement("SQL statement");
+    testManager.runSQLQuery("SQL statement");
 
     verify(statement).executeQuery(anyString());
   }

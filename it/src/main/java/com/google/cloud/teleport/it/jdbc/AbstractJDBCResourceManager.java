@@ -172,7 +172,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
   }
 
   @Override
-  public boolean write(String tableName, Map<Integer, List<Object>> rows) {
+  public boolean write(String tableName, Map<Object, List<Object>> rows) {
     return write(tableName, rows, ImmutableList.of());
   }
 
@@ -191,7 +191,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
    *     if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  public boolean write(String tableName, Map<Integer, List<Object>> rows, List<String> columns) {
+  public boolean write(String tableName, Map<Object, List<Object>> rows, List<String> columns) {
     LOG.info("Attempting to write {} rows to {}.{}.", rows.size(), databaseName, tableName);
 
     if (rows.size() == 0) {
@@ -207,7 +207,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
       }
       sql.append(" VALUES ");
 
-      for (Integer rowId : rows.keySet()) {
+      for (Object rowId : rows.keySet()) {
         StringBuilder valueList = new StringBuilder("(");
 
         List<String> rowToInsert = new ArrayList<>();
@@ -301,10 +301,20 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
   }
 
   @Override
-  public synchronized ResultSet runSQLStatement(String sql) {
+  public synchronized ResultSet runSQLQuery(String sql) {
     try (Connection con = driver.getConnection(getUri(), username, password)) {
       Statement stmt = con.createStatement();
       return stmt.executeQuery(sql);
+    } catch (Exception e) {
+      throw new JDBCResourceManagerException("Failed to execute SQL statement: " + sql, e);
+    }
+  }
+
+  @Override
+  public synchronized void runSQLUpdate(String sql) {
+    try (Connection con = driver.getConnection(getUri(), username, password)) {
+      Statement stmt = con.createStatement();
+      stmt.executeUpdate(sql);
     } catch (Exception e) {
       throw new JDBCResourceManagerException("Failed to execute SQL statement: " + sql, e);
     }

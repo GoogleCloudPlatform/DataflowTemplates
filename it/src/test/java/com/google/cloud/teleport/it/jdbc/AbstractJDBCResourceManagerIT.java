@@ -78,20 +78,20 @@ public class AbstractJDBCResourceManagerIT {
   private <T extends AbstractJDBCResourceManager<?>> void simpleTest(T rm) {
     try {
       Map<String, String> columns = new LinkedHashMap<>();
+      columns.put("id", "INTEGER");
       columns.put("first", "VARCHAR(32)");
       columns.put("last", "VARCHAR(32)");
       columns.put("age", "VARCHAR(32)");
       JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
       rm.createTable(TABLE_NAME, schema);
 
-      Map<Integer, List<Object>> rows = new LinkedHashMap<>();
+      Map<Object, List<Object>> rows = new LinkedHashMap<>();
       rows.put(0, ImmutableList.of("John", "Doe", 23));
       rows.put(1, ImmutableList.of("Jane", "Doe", 42L));
       rows.put(2, List.of('A', 'B', 1));
       rm.write(TABLE_NAME, rows, ImmutableList.of());
 
       List<String> validateSchema = new ArrayList<>(columns.keySet());
-      validateSchema.add(schema.getIdColumn());
       List<Map<String, Object>> fetchRows = rm.readTable(TABLE_NAME);
 
       // toUpperCase expected because some databases (Postgres, Oracle) transform column names
