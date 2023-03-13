@@ -186,7 +186,7 @@ public class PubsubToAvro {
         optional = true,
         description = "Output filename prefix of the files to write",
         helpText = "The prefix to place on each windowed file.",
-        regexes = "^[a-zA-Z]+$")
+        regexes = "^[a-zA-Z\\-]+$")
     @Default.String("output")
     ValueProvider<String> getOutputFilenamePrefix();
 
