@@ -55,6 +55,12 @@
        </exclusion>
       </exclusions>
     </dependency>
+    <!-- Jdbc dependencies -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql.version}</version>
+    </dependency>
 
     <!-- json-data-generator dependency javafaker depends on snakeyaml  -->
     <dependency>
