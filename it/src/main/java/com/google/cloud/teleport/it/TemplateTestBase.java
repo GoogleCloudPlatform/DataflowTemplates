@@ -321,6 +321,9 @@ public abstract class TemplateTestBase {
     if (pomPath.contains("elasticsearch")) {
       modules.add("v2/elasticsearch-common");
     }
+    if (pomPath.contains("bigtable")) {
+      modules.add("v2/bigtable-common");
+    }
 
     modules.add(pomPath.substring(pomPath.indexOf("v2/")).replace("/pom.xml", ""));
 
