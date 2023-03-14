@@ -51,7 +51,7 @@ public final class MergeInfoTest {
   private static final String MERGE_SQL =
       "BEGIN BEGIN TRANSACTION; MERGE `projectId.dataset.table` AS replica USING (SELECT `id,"
           + " cola`,`colb`,`timestamp`,`other` FROM (SELECT `id, cola`,`colb`,`timestamp`,`other`,"
-          + " ROW_NUMBER() OVER (PARTITION BY id ORDER BY timestamp DESC, other DESC,"
+          + " ROW_NUMBER() OVER (PARTITION BY `id` ORDER BY timestamp DESC, other DESC,"
           + " metadata_deleteField ASC) as row_num FROM `projectId.dataset.staging_table` WHERE"
           + " COALESCE(_PARTITIONTIME, CURRENT_TIMESTAMP()) >= TIMESTAMP(DATE_ADD(CURRENT_DATE(),"
           + " INTERVAL -2 DAY)) AND (COALESCE(_PARTITIONTIME, CURRENT_TIMESTAMP()) >="
