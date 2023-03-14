@@ -28,6 +28,8 @@ on:
       # This will make it easier to verify action changes don't break anything.
       - '.github/actions/setup-env/*'
       - '.github/workflows/java-pr.yml'
+  schedule:
+    - cron: "0 */12 * * *"
 
 env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
