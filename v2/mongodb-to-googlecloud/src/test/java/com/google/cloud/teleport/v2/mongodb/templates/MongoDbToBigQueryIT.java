@@ -155,7 +155,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
             .addParameter(MONGO_URI, mongoDbClient.getUri())
             .addParameter(MONGO_DB, mongoDbClient.getDatabaseName())
             .addParameter(MONGO_COLLECTION, collectionName)
-            .addParameter(BIGQUERY_TABLE, toTableSpec(table))
+            .addParameter(BIGQUERY_TABLE, toTableSpecLegacy(table))
             .addParameter(USER_OPTION, "FLATTEN")
             .addParameter("javascriptDocumentTransformGcsPath", getGcsPath("input/" + udfFileName))
             .addParameter("javascriptDocumentTransformFunctionName", "transform");

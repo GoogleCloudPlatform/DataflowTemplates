@@ -105,7 +105,7 @@ public class PubSubSubscriptionToBigQueryIT extends TemplateTestBase {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("inputSubscription", subscription.toString())
-            .addParameter("outputTableSpec", toTableSpec(table));
+            .addParameter("outputTableSpec", toTableSpecLegacy(table));
 
     // Act
     LaunchInfo info = launchTemplate(options);

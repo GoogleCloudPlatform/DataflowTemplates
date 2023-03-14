@@ -128,7 +128,7 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
             LaunchConfig.builder(testName, specPath)
                 .addParameter("schemaPath", getGcsPath("schema.avsc"))
                 .addParameter("inputSubscription", subscription.toString())
-                .addParameter("outputTableSpec", toTableSpec(people))
+                .addParameter("outputTableSpec", toTableSpecLegacy(people))
                 .addParameter("outputTopic", dlqTopic.toString()));
     assertThatPipeline(info).isRunning();
 

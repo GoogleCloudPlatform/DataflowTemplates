@@ -28,7 +28,6 @@
     <properties>
         <bigtable.version>2.7.0</bigtable.version>
         <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
-        <kafka-clients.version>2.3.0</kafka-clients.version>
     </properties>
 
     <dependencies>

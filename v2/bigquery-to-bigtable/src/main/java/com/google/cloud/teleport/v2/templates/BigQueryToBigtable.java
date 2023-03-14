@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.bigtable.utils.BigtableConfig.generateCloudBigtableWriteConfiguration;
 
+import com.google.cloud.bigtable.beam.CloudBigtableIO;
 import com.google.cloud.bigtable.beam.CloudBigtableTableConfiguration;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -49,6 +50,7 @@ import org.apache.hadoop.hbase.client.Mutation;
       BigtableCommonOptions.class,
       BigtableCommonOptions.WriteOptions.class
     },
+    optionalOptions = {"inputTableSpec"},
     flexContainerName = "bigquery-to-bigtable",
     contactInformation = "https://cloud.google.com/support")
 public class BigQueryToBigtable {
@@ -89,17 +91,19 @@ public class BigQueryToBigtable {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    pipeline.apply(
-        "AvroToMutation",
-        BigQueryConverters.ReadBigQuery.<Mutation>newBuilder()
-            .setOptions(options.as(BigQueryToBigtableOptions.class))
-            .setReadFunction(
-                BigQueryIO.read(
-                    BigtableConverters.AvroToMutation.newBuilder()
-                        .setColumnFamily(options.getBigtableWriteColumnFamily())
-                        .setRowkey(options.getReadIdColumn())
-                        .build()))
-            .build());
+    pipeline
+        .apply(
+            "AvroToMutation",
+            BigQueryConverters.ReadBigQuery.<Mutation>newBuilder()
+                .setOptions(options.as(BigQueryToBigtableOptions.class))
+                .setReadFunction(
+                    BigQueryIO.read(
+                        BigtableConverters.AvroToMutation.newBuilder()
+                            .setColumnFamily(options.getBigtableWriteColumnFamily())
+                            .setRowkey(options.getReadIdColumn())
+                            .build()))
+                .build())
+        .apply("WriteToTable", CloudBigtableIO.writeToTable(bigtableTableConfig));
 
     pipeline.run();
   }

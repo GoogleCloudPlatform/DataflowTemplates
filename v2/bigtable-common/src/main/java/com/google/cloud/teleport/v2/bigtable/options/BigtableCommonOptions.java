@@ -88,6 +88,7 @@ public interface BigtableCommonOptions extends GcpOptions {
 
     @TemplateParameter.Text(
         order = 4,
+        optional = true,
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
         description = "Bigtable App Profile",
         helpText =

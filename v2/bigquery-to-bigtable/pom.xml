@@ -25,37 +25,16 @@
     <artifactId>bigquery-to-bigtable</artifactId>
     <modelVersion>4.0.0</modelVersion>
 
-    <properties>
-        <bigtable-hbase.version>2.7.0</bigtable-hbase.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>com.google.cloud.bigtable</groupId>
-            <artifactId>bigtable-hbase-beam</artifactId>
-            <version>${bigtable-hbase.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>log4j</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>bigtable-common</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 </project>

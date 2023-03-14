@@ -92,7 +92,7 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
         bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
 
     baseKafkaToBigQuery(
-        b -> b.addParameter("outputDeadletterTable", toTableSpec(deadletterTableId)));
+        b -> b.addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
   }
 
   @Test
@@ -114,7 +114,7 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
             b.addParameter("useStorageWriteApi", "true")
                 .addParameter("numStorageWriteApiStreams", "3")
                 .addParameter("storageWriteApiTriggeringFrequencySec", "3")
-                .addParameter("outputDeadletterTable", toTableSpec(deadletterTableId)));
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
   }
 
   private Schema getDeadletterSchema() {
@@ -170,8 +170,8 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
                     "bootstrapServers",
                     kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
                 .addParameter("inputTopics", topicName)
-                .addParameter("outputTableSpec", toTableSpec(tableId))
-                .addParameter("outputDeadletterTable", toTableSpec(deadletterTableId)));
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
 
     // Act
     LaunchInfo info = launchTemplate(options);
