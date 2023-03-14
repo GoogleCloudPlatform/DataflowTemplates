@@ -18,6 +18,7 @@ package com.google.cloud.syndeo.transforms.pubsub;
 import com.google.cloud.pubsub.v1.SchemaServiceClient;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
+import com.google.cloud.syndeo.common.ProtoSchemaUtils;
 import com.google.pubsub.v1.Encoding;
 import com.google.pubsub.v1.Schema;
 import com.google.pubsub.v1.Topic;
@@ -70,14 +71,21 @@ public class SyndeoPubsubUtils {
             AvroUtils.toBeamSchema(
                 new org.apache.avro.Schema.Parser().parse(fullSchema.getDefinition()));
         return KV.of(beamSchema, JsonUtils.getJsonBytesToRowFunction(beamSchema));
+      } else if (topicDataEncoding == Encoding.JSON
+          && fullSchema.getType() == Schema.Type.PROTOCOL_BUFFER) {
+        org.apache.beam.sdk.schemas.Schema beamSchema =
+            ProtoSchemaUtils.beamSchemaFromProtoSchemaDescription(fullSchema.getDefinition());
+        return KV.of(beamSchema, JsonUtils.getJsonBytesToRowFunction(beamSchema));
       } else {
         throw new IllegalArgumentException(
             String.format(
                 "The schema for topic %s in Pubsub's schema service is of type %s, "
                     + "and the encoding is %s. At this moment, only AVRO schemas with BINARY or "
-                    + "JSON encoding are supported.",
+                    + "JSON encoding, or PROTOBUF schemas with JSON encoding are supported.",
                 topicName, fullSchema.getType(), topicDataEncoding));
       }
+    } catch (ProtoSchemaUtils.SyndeoSchemaParseException e) {
+      throw new IllegalArgumentException("Unable to parse input schema for topic " + topicName, e);
     }
   }
 

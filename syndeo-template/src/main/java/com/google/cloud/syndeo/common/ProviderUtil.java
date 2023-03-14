@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.SchemaTranslation;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
@@ -82,7 +83,10 @@ public class ProviderUtil {
         throw new IllegalArgumentException(
             String.format(
                 "Given config schema %s, and configuration %s, we're unable to configure transform.",
-                provider.configurationSchema(), configurationAsList),
+                provider.configurationSchema().getFields().stream()
+                    .map(Schema.Field::getName)
+                    .collect(Collectors.toList()),
+                configurationAsList),
             e);
       }
     }
@@ -98,7 +102,8 @@ public class ProviderUtil {
           SchemaUtil.addNullsToMatchSchema(
               (Row)
                   SchemaTranslation.rowFromProto(
-                      ProtoTranslation.fromSyndeoProtos(schemaTransform.getConfigurationValues()),
+                      SyndeoApiProtoTranslation.fromSyndeoProtos(
+                          schemaTransform.getConfigurationValues()),
                       FieldType.row(provider.configurationSchema())),
               provider.configurationSchema());
     }
@@ -106,9 +111,9 @@ public class ProviderUtil {
     public ConfiguredSchemaTransform toProto() {
       ConfiguredSchemaTransform.Builder inst = ConfiguredSchemaTransform.newBuilder();
       inst.setConfigurationValues(
-          ProtoTranslation.toSyndeoProtos(SchemaTranslation.rowToProto(configuration)));
+          SyndeoApiProtoTranslation.toSyndeoProtos(SchemaTranslation.rowToProto(configuration)));
       inst.setConfigurationOptions(
-          ProtoTranslation.toSyndeoProtos(
+          SyndeoApiProtoTranslation.toSyndeoProtos(
               SchemaTranslation.schemaToProto(configuration.getSchema(), true)));
       inst.setTransformUrn(inputId);
       return inst.build();
