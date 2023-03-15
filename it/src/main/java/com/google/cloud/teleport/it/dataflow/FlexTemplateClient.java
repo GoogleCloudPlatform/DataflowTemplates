@@ -91,6 +91,11 @@ public final class FlexTemplateClient extends AbstractPipelineLauncher {
   private FlexTemplateRuntimeEnvironment buildEnvironment(LaunchConfig options) {
     FlexTemplateRuntimeEnvironment environment = new FlexTemplateRuntimeEnvironment();
     environment.putAll(options.environment());
+
+    if (System.getProperty("launcherMachineType") != null) {
+      environment.setLauncherMachineType(System.getProperty("launcherMachineType"));
+    }
+
     return environment;
   }
 

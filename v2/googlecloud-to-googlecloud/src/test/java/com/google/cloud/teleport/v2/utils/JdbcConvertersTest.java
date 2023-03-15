@@ -162,6 +162,35 @@ public class JdbcConvertersTest {
   }
 
   @Test
+  public void testMSSQLDateTime() throws Exception {
+    // Must use TimeZone.getDefault() time zone here because JdbcConverters will convert timestamps
+    // to string in the *default* time zone, which we don't know (may be different depending on the
+    // time zone of the machine that runs the test).
+    ZonedDateTime zdt =
+        LocalDateTime.parse("2023-01-02T13:14:15.666777888")
+            .atZone(TimeZone.getDefault().toZoneId());
+
+    Timestamp timestampObj = Timestamp.from(zdt.toInstant());
+
+    when(resultSet.getObject(1)).thenReturn(timestampObj);
+    when(resultSet.getTimestamp(1)).thenReturn(timestampObj);
+    when(resultSet.getMetaData()).thenReturn(resultSetMetaData);
+
+    when(resultSetMetaData.getColumnCount()).thenReturn(1);
+    when(resultSetMetaData.getColumnName(1)).thenReturn("datetime_column");
+    when(resultSetMetaData.getColumnTypeName(1)).thenReturn("datetime");
+
+    expectedTableRow = new TableRow();
+    expectedTableRow.set("datetime_column", "2023-01-02 13:14:15.666777" + zdt.getOffset().getId());
+
+    JdbcIO.RowMapper<TableRow> resultSetConverters = JdbcConverters.getResultSetToTableRow(false);
+    TableRow actualTableRow = resultSetConverters.mapRow(resultSet);
+
+    assertThat(expectedTableRow.size(), equalTo(actualTableRow.size()));
+    assertThat(actualTableRow, equalTo(expectedTableRow));
+  }
+
+  @Test
   public void testNullFields() throws Exception {
     when(resultSet.getObject(1)).thenReturn(null);
     when(resultSet.getObject(2)).thenReturn(null);

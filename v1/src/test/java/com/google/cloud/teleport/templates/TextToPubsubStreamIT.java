@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRe
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -63,30 +64,30 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(TextToPubsubStreamIT.class);
   private static final String TEST_ROOT_DIR = TextToPubsubStreamIT.class.getSimpleName();
 
-  private static PubsubResourceManager pubsubResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
 
   @ClassRule public static TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
   }
 
   @After
   public void tearDown() {
-    pubsubResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager);
   }
 
   @Test
-  public void testTextToTopic() throws IOException {
+  public void testTextStreamToTopic() throws IOException {
     // Arrange
     TopicName outputTopic = pubsubResourceManager.createTopic("topic");
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
-    String messageString = String.format("msg-%s", testName.getMethodName());
+    String messageString = String.format("msg-%s", testName);
     File file = tempFolder.newFile();
     writeToFile(file.getAbsolutePath(), messageString);
     LaunchConfig.Builder options =
@@ -104,7 +105,7 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
                 createConfig(info),
                 () -> {
                   try {
-                    artifactClient.uploadArtifact(messageString, file.getAbsolutePath());
+                    gcsClient.uploadArtifact(messageString, file.getAbsolutePath());
                   } catch (IOException e) {
                     LOG.error("Error encountered when trying to upload artifact.", e);
                   }
@@ -121,7 +122,7 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
   }
 
   private String getInputFilePattern() {
-    return getFullGcsPath(artifactBucketName, TEST_ROOT_DIR, artifactClient.runId(), "*");
+    return getFullGcsPath(artifactBucketName, TEST_ROOT_DIR, gcsClient.runId(), "*");
   }
 
   /**

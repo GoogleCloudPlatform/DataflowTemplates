@@ -157,7 +157,7 @@ public final class DefaultKafkaResourceManagerTest {
     DefaultKafkaResourceManager tm =
         new DefaultKafkaResourceManager(kafkaClient, container, builder);
 
-    assertThat(tm.cleanupAll()).isEqualTo(true);
+    tm.cleanupAll();
 
     verify(kafkaClient, never()).deleteTopics(any(Collection.class));
   }
@@ -170,7 +170,7 @@ public final class DefaultKafkaResourceManagerTest {
     DefaultKafkaResourceManager tm =
         new DefaultKafkaResourceManager(kafkaClient, container, builder);
 
-    assertThat(tm.cleanupAll()).isEqualTo(true);
+    tm.cleanupAll();
     verify(kafkaClient).deleteTopics(argThat(list -> list.size() == numTopics));
   }
 

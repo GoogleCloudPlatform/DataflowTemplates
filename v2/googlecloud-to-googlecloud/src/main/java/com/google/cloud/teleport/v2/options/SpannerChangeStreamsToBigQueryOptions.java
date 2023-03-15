@@ -25,7 +25,8 @@ import org.apache.beam.sdk.options.Validation;
  * The {@link SpannerChangeStreamsToBigQueryOptions} class provides the custom execution options
  * passed by the executor at the command-line.
  */
-public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineOptions {
+public interface SpannerChangeStreamsToBigQueryOptions
+    extends DataflowPipelineOptions, BigQueryStorageApiStreamingOptions {
 
   @TemplateParameter.ProjectId(
       order = 1,
@@ -182,9 +183,9 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
       helpText =
           "The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.")
   @Default.String("")
-  String getDlqDirectory();
+  String getDeadLetterQueueDirectory();
 
-  void setDlqDirectory(String value);
+  void setDeadLetterQueueDirectory(String value);
 
   @TemplateParameter.Integer(
       order = 16,

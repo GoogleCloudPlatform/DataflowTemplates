@@ -83,7 +83,8 @@ public class SpannerRecordConverter {
         case LONG:
           if ((dialect == Dialect.GOOGLE_STANDARD_SQL && spannerType.equals("TIMESTAMP"))
               || (dialect == Dialect.POSTGRESQL
-                  && spannerType.equals("timestamp with time zone"))) {
+                  && (spannerType.equals("timestamp with time zone")
+                      || spannerType.equals("spanner.commit_timestamp")))) {
             long microSeconds = 0L;
             if (!nullValue) {
               Timestamp ts = row.getTimestamp(fieldName);
@@ -137,6 +138,8 @@ public class SpannerRecordConverter {
                 || spannerType.equals("text")) {
               builder.set(field, nullValue ? null : row.getString(fieldName));
             } else if (spannerType.equals("timestamp with time zone")) {
+              builder.set(field, nullValue ? null : row.getTimestamp(fieldName).toString());
+            } else if (spannerType.equals("spanner.commit_timestamp")) {
               builder.set(field, nullValue ? null : row.getTimestamp(fieldName).toString());
             } else if (spannerType.equals("date")) {
               builder.set(field, nullValue ? null : row.getDate(fieldName).toString());

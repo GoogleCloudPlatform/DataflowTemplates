@@ -27,11 +27,12 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
+    <avro.version>1.8.2</avro.version>
+    <commons-math3.version>3.6.1</commons-math3.version>
+    <cassandra.driver.version>4.15.0</cassandra.driver.version>
     <cloud-storage.version>2.2.2</cloud-storage.version>
     <elasticsearch.version>7.9.2</elasticsearch.version>
     <kafka.version>2.4.1</kafka.version>
-    <mockito.version>3.7.7</mockito.version>
-    <mockito-inline.version>4.5.1</mockito-inline.version>
     <mongodb.version>3.12.10</mongodb.version>
     <dataflow-api.version>v1b3-rev20220920-2.0.0</dataflow-api.version>
     <parquet-avro.version>1.12.0</parquet-avro.version>
@@ -115,7 +116,12 @@
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-core</artifactId>
     </dependency>
-
+    <!-- transitive dependencies need to pin version -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math3</artifactId>
+      <version>${commons-math3.version}</version>
+    </dependency>
     <!-- Test Containers -->
     <dependency>
       <groupId>org.testcontainers</groupId>
@@ -135,6 +141,31 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>elasticsearch</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>cassandra</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mysql</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>oracle-xe</artifactId>
+      <version>${testcontainers.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mssqlserver</artifactId>
       <version>${testcontainers.version}</version>
     </dependency>
 
@@ -159,6 +190,31 @@
       <groupId>org.elasticsearch.client</groupId>
       <artifactId>elasticsearch-rest-high-level-client</artifactId>
       <version>${elasticsearch.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-core</artifactId>
+      <version>${cassandra.driver.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>${mysql-connector-java.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.oracle.ojdbc</groupId>
+      <artifactId>ojdbc8</artifactId>
+      <version>${ojdbc8.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>${mssql-jdbc.version}</version>
     </dependency>
 
     <!-- File Formats -->
@@ -188,6 +244,10 @@
           <groupId>com.sun.jersey</groupId>
           <artifactId>*</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.apache.common3</groupId>
+          <artifactId>commons-math3</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
 
@@ -211,7 +271,33 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-inline</artifactId>
-      <version>${mockito-inline.version}</version>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- testing - load tests -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-synthetic</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-test-utils</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-direct-java</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

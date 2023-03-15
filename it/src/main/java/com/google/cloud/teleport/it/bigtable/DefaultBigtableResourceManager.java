@@ -300,12 +300,14 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
   @Override
   public synchronized void cleanupAll() {
     LOG.info("Attempting to cleanup manager.");
-    try (BigtableInstanceAdminClient instanceAdminClient =
-        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
-      instanceAdminClient.deleteInstance(instanceId);
-      hasInstance = false;
-    } catch (Exception e) {
-      throw new BigtableResourceManagerException("Failed to delete resources.", e);
+    if (hasInstance) {
+      try (BigtableInstanceAdminClient instanceAdminClient =
+          bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
+        instanceAdminClient.deleteInstance(instanceId);
+        hasInstance = false;
+      } catch (Exception e) {
+        throw new BigtableResourceManagerException("Failed to delete resources.", e);
+      }
     }
 
     LOG.info("Manager successfully cleaned up.");

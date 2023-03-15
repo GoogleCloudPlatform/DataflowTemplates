@@ -34,7 +34,7 @@
     <java.version>11</java.version>
 
     <!-- Plugins -->
-    <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
+    <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
@@ -45,28 +45,34 @@
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.44.0</beam.version>
-    <cloud-libraries-bom.version>26.1.5</cloud-libraries-bom.version>
+    <beam.version>2.45.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.8.2</autovalue.version>
-    <checkstyle.version>8.7</checkstyle.version>
+    <checkstyle.version>10.7.0</checkstyle.version>
     <commons-codec.version>1.15</commons-codec.version>
     <commons-io.version>2.11.0</commons-io.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <hadoop.version>2.10.2</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <guava.version>31.0.1-jre</guava.version>
-    <mockito-core.version>3.0.0</mockito-core.version>
+    <mockito.version>4.11.0</mockito.version>
     <log4j-2.version>2.17.2</log4j-2.version>
     <json.version>20200518</json.version>
-    <junit.version>4.13.1</junit.version>
+    <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>1.7.25</slf4j.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.0.1</truth.version>
+
+    <!-- JDBC driver / Connector versions -->
+    <mysql-connector-java.version>8.0.30</mysql-connector-java.version>
+    <postgresql.version>42.2.27</postgresql.version>
+    <ojdbc8.version>19.3.0.0</ojdbc8.version>
+    <mssql-jdbc.version>6.4.0.jre8</mssql-jdbc.version>
+
     <integration.tests>
       com.google.cloud.teleport.metadata.TemplateIntegrationTest
     </integration.tests>
@@ -79,15 +85,8 @@
     <dependencies>
       <dependency>
         <groupId>org.apache.beam</groupId>
-        <artifactId>beam-sdks-java-bom</artifactId>
+        <artifactId>beam-sdks-java-google-cloud-platform-bom</artifactId>
         <version>${beam.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>com.google.cloud</groupId>
-        <artifactId>libraries-bom</artifactId>
-        <version>${cloud-libraries-bom.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -251,10 +250,11 @@
       <properties>
         <!-- Skip coverage checks, unit tests are skipped -->
         <jacoco.skip>true</jacoco.skip>
-        <!-- Skip shade for faster runs -->
-        <skipShade>true</skipShade>
         <!-- Some modules may yield no integration tests -->
         <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
       </properties>
       <build>
         <plugins>
@@ -270,6 +270,9 @@
               <groups>
                 com.google.cloud.teleport.metadata.TemplateIntegrationTest
               </groups>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
             </configuration>
           </plugin>
         </plugins>

@@ -137,7 +137,7 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>${mockito-core.version}</version>
+            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -539,9 +539,7 @@
                                             <path>${basedir}/target/extra_libs</path>
                                         </paths>
                                     </extraDirectories>
-                                    <dependencyReducedPomLocation>
-                                        ${basedir}/target/dependency-reduced-pom.xml
-                                    </dependencyReducedPomLocation>
+                                    <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <shadeTestJar>true</shadeTestJar>
                                     <artifactSet>
                                         <excludes>
@@ -666,7 +664,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <jib.skip>true</jib.skip>
+                <jib.skip>false</jib.skip>
             </properties>
             <build>
                 <plugins>
@@ -688,6 +686,7 @@
     </profiles>
 
     <modules>
+        <module>bigtable-common</module>
         <module>bigquery-to-bigtable</module>
         <module>bigquery-to-parquet</module>
         <module>cdc-parent</module>
@@ -708,12 +707,15 @@
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
         <module>kafka-to-pubsub</module>
+        <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>
         <module>mongodb-to-googlecloud</module>
+        <module>mqtt-to-pubsub</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
+        <module>pubsub-to-kafka</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
-    </modules>
+ </modules>
 
 </project>

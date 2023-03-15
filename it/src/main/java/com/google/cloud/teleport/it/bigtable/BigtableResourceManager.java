@@ -17,11 +17,12 @@ package com.google.cloud.teleport.it.bigtable;
 
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.common.collect.ImmutableList;
 import org.threeten.bp.Duration;
 
 /** Interface for managing bigtable resources in integration tests. */
-public interface BigtableResourceManager {
+public interface BigtableResourceManager extends ResourceManager {
 
   /**
    * Creates a Bigtable instance in which all clusters, nodes and tables will exist.

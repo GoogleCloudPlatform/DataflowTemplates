@@ -32,6 +32,7 @@ import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,26 +72,43 @@ public class SyndeoTemplate {
     void setJsonSpecPayload(String jsonSpecPayload);
   }
 
-  public static final Map<String, Set<String>> SUPPORTED_URNS =
+  public static final Map<String, Set<String>> SUPPORTED_SCALAR_TRANSFORM_URNS =
       Map.of(
-          // Old names:
-          "bigquery:read",
-          Set.of("table"),
-          "kafka:read",
+          "syndeo:schematransform:com.google.cloud:sql_transform:v1",
           Set.of(),
-          "bigtable:write",
-          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
-          "schemaIO:bigquery:write",
-          Set.of("table", "createDisposition", "writeDisposition"),
-          // New names:
-          "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-          Set.of(),
-          "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
-          Set.of(),
-          "beam:schematransform:org.apache.beam:kafka_read:v1",
-          Set.of(),
-          "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
-          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"));
+          "syndeo:schematransform:com.google.cloud:sql_scalar_transform:v1",
+          Set.of());
+
+  public static final Map<String, Set<String>> SUPPORTED_URNS =
+      new HashMap<>(
+          Map.of(
+              // New names:
+              "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:spanner_write:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:kafka_read:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:kafka_write:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:file_write:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:pubsublite_write:v1",
+              Set.of(),
+              "beam:schematransform:org.apache.beam:pubsublite_read:v1",
+              Set.of()));
+
+  static {
+    SUPPORTED_URNS.putAll(
+        Map.of(
+            "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+            Set.of(),
+            "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
+            Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId")));
+    SUPPORTED_URNS.putAll(SUPPORTED_SCALAR_TRANSFORM_URNS);
+  }
 
   public static void main(String[] args) throws Exception {
     run(args);
@@ -175,12 +193,30 @@ public class SyndeoTemplate {
     ObjectMapper om = new ObjectMapper();
     JsonNode config = om.readTree(jsonPayload);
     LOG.info("Initializing with JSON Config: {}", config);
-    return PipelineDescription.newBuilder()
-        .addTransforms(buildFromJsonConfig(config.get("source")))
-        // TODO(pabloem): Add stats for other
-        .addTransforms(buildSyndeoStats(config.get("source").get("urn").asText()))
-        .addTransforms(buildFromJsonConfig(config.get("sink")))
-        .build();
+    List<ConfiguredSchemaTransform> transforms = new ArrayList<>();
+
+    // Adding the source transform
+    transforms.add(buildFromJsonConfig(config.get("source")));
+    transforms.add(buildSyndeoStats(config.get("source").get("urn").asText()));
+
+    if (config.has("transform")) {
+      if (!SUPPORTED_SCALAR_TRANSFORM_URNS.containsKey(
+          config.get("transform").get("urn").asText())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Intermediate transform with URN %s not supported. Only %s are supported.",
+                config.get("transform").get("urn"),
+                SUPPORTED_SCALAR_TRANSFORM_URNS.keySet().stream()
+                    .sorted()
+                    .collect(Collectors.toList())));
+      }
+      // Adding the intermediate transform
+      transforms.add(buildFromJsonConfig(config.get("transform")));
+      transforms.add(buildSyndeoStats(config.get("transform").get("urn").asText()));
+    }
+    // Add the sink transform
+    transforms.add(buildFromJsonConfig(config.get("sink")));
+    return PipelineDescription.newBuilder().addAllTransforms(transforms).build();
   }
 
   public static PipelineDescription readFromFile(String filename) {

@@ -31,7 +31,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
  */
 public class PubsubToDatastore {
-  interface PubsubToDatastoreOptions
+  public interface PubsubToDatastoreOptions
       extends PipelineOptions,
           PubsubReadOptions,
           JavascriptTextTransformerOptions,

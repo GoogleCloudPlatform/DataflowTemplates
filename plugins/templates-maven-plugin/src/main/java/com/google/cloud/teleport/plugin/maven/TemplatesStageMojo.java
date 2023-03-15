@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.execution.MavenSession;
@@ -84,6 +85,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
   @Parameter(defaultValue = "${artifactRegion}", readonly = true, required = false)
   protected String artifactRegion;
+
+  @Parameter(defaultValue = "${artifactRegistry}", readonly = true, required = false)
+  protected String artifactRegistry;
 
   @Parameter(
       name = "baseContainerImage",
@@ -222,6 +226,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     arguments.add(element("argument", "--templateLocation=" + templatePath));
     arguments.add(element("argument", "--project=" + projectId));
     arguments.add(element("argument", "--region=" + region));
+    arguments.add(
+        element(
+            "argument",
+            "--labels={\"goog-dataflow-provided-template-name\":\""
+                + currentTemplateName.toLowerCase()
+                + "\", \"goog-dataflow-provided-template-version\":\""
+                + TemplateDefinitionsParser.parseVersion(stagePrefix)
+                + "\", \"goog-dataflow-provided-template-type\":\"legacy\"}"));
 
     for (Map.Entry<String, String> runtimeParameter :
         imageSpec.getMetadata().getRuntimeParameters().entrySet()) {
@@ -296,7 +308,25 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // GCR paths can not contain ":", if the project id has it, it should be converted to "/".
     String projectIdUrl = projectId.replace(':', '/');
     String imagePath =
-        prefix + "gcr.io/" + projectIdUrl + "/" + stagePrefix.toLowerCase() + "/" + containerName;
+        Optional.ofNullable(artifactRegistry)
+            .map(
+                value ->
+                    value
+                        + "/"
+                        + projectIdUrl
+                        + "/"
+                        + stagePrefix.toLowerCase()
+                        + "/"
+                        + containerName)
+            .orElse(
+                prefix
+                    + "gcr.io/"
+                    + projectIdUrl
+                    + "/"
+                    + stagePrefix.toLowerCase()
+                    + "/"
+                    + containerName);
+    ;
     LOG.info("Stage image to GCR: {}", imagePath);
 
     File metadataFile =
@@ -339,6 +369,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "--sdk-language=JAVA",
           "--metadata-file",
           outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
+          "--additional-user-labels",
+          "goog-dataflow-provided-template-name="
+              + currentTemplateName.toLowerCase()
+              + ",goog-dataflow-provided-template-version="
+              + TemplateDefinitionsParser.parseVersion(stagePrefix)
+              + ",goog-dataflow-provided-template-type=flex"
         };
     LOG.info("Running: {}", String.join(" ", flexTemplateBuildCmd));
 

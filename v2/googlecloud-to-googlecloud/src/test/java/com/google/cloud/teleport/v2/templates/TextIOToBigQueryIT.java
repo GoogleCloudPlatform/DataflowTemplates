@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRe
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.Field.Mode;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
@@ -27,6 +28,7 @@ import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -34,18 +36,13 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import java.io.IOException;
-import java.util.Map;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Integration test for {@link TextIOToBigQuery} (GCS_Text_to_BigQuery_Flex).
@@ -57,33 +54,22 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public final class TextIOToBigQueryIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TextIOToBigQueryIT.class);
-
   private static final String SCHEMA_PATH = "TextIOToBigQueryTest/schema.json";
   private static final String INPUT_PATH = "TextIOToBigQueryTest/input.txt";
   private static final String UDF_PATH = "TextIOToBigQueryTest/udf.js";
-  private static final Map<String, Object> EXPECTED = ImmutableMap.of("book_id", 1, "title", "ABC");
-
-  private static BigQueryResourceManager bigQueryClient;
-
-  @Rule public final TestName testName = new TestName();
+  private BigQueryResourceManager bigQueryClient;
 
   @Before
   public void setup() throws IOException {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
   }
 
   @After
-  public void tearDownClass() {
-    try {
-      bigQueryClient.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete BigQuery resources.", e);
-      throw new IllegalStateException("Failed to delete resources. Check above for errors.");
-    }
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(bigQueryClient);
   }
 
   @Test
@@ -99,19 +85,24 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
   private void testTextIOToBigQuery(
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
-    String bqTable = testName.getMethodName();
-
-    artifactClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
-    artifactClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
-    artifactClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
+    gcsClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
+    gcsClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
+    gcsClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
 
     bigQueryClient.createDataset(REGION);
     TableId table =
         bigQueryClient.createTable(
-            bqTable,
+            testName,
             Schema.of(
                 Field.of("book_id", StandardSQLTypeName.INT64),
-                Field.of("title", StandardSQLTypeName.STRING)));
+                Field.of("title", StandardSQLTypeName.STRING),
+                Field.newBuilder(
+                        "details",
+                        StandardSQLTypeName.STRUCT,
+                        Field.of("year", StandardSQLTypeName.INT64),
+                        Field.of("summary", StandardSQLTypeName.STRING))
+                    .setMode(Mode.NULLABLE)
+                    .build()));
 
     // Act
     LaunchInfo info =
@@ -122,7 +113,7 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
                     .addParameter("inputFilePattern", getGcsPath("input.txt"))
                     .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                     .addParameter("javascriptTextTransformFunctionName", "identity")
-                    .addParameter("outputTable", toTableSpec(table))
+                    .addParameter("outputTable", toTableSpecLegacy(table))
                     .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp"))));
     assertThatPipeline(info).isRunning();
 
@@ -130,7 +121,15 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).isLaunchFinished();
-    TableResult tableRows = bigQueryClient.readTable(bqTable);
-    assertThatRecords(tableRows).hasRecord(EXPECTED);
+    TableResult tableRows = bigQueryClient.readTable(testName);
+    assertThatRecords(tableRows)
+        .hasRecordUnordered(
+            ImmutableMap.of(
+                "book_id",
+                1,
+                "title",
+                "ABC",
+                "details",
+                ImmutableMap.of("year", "2023", "summary", "LOREM IPSUM LOREM IPSUM")));
   }
 }

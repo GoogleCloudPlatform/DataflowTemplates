@@ -53,6 +53,11 @@ import org.apache.beam.sdk.options.ValueProvider;
     description =
         "A pipeline which reads in Entities (via a GQL query) from Firestore, optionally passes in the JSON encoded Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
     optionsClass = DatastoreToDatastoreDeleteOptions.class,
+    optionsOrder = {
+      DatastoreReadOptions.class,
+      DatastoreDeleteOptions.class,
+      JavascriptTextTransformerOptions.class
+    },
     skipOptions = {
       "datastoreReadGqlQuery",
       "datastoreReadProjectId",
@@ -65,7 +70,7 @@ public class DatastoreToDatastoreDelete {
 
   public static <T> ValueProvider<T> selectProvidedInput(
       ValueProvider<T> datastoreInput, ValueProvider<T> firestoreInput) {
-    return new FirestoreNestedValueProvider(datastoreInput, firestoreInput);
+    return new FirestoreNestedValueProvider<T>(datastoreInput, firestoreInput);
   }
 
   /** Custom PipelineOptions. */

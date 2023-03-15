@@ -30,7 +30,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  * the v1/Entity rest format: https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
  */
 public class DatastoreToPubsub {
-  interface DatastoreToPubsubOptions
+  public interface DatastoreToPubsubOptions
       extends PipelineOptions,
           DatastoreReadOptions,
           JavascriptTextTransformerOptions,

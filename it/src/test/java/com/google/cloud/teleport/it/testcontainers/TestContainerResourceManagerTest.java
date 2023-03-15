@@ -32,7 +32,6 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MongoDBContainer;
 
 /**
  * Unit tests for {@link com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager}.
@@ -41,7 +40,7 @@ import org.testcontainers.containers.MongoDBContainer;
 public class TestContainerResourceManagerTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
-  @Mock private MongoDBContainer container;
+  @Mock private GenericContainer<?> container;
 
   private static final String TEST_ID = "test-id";
   private static final String HOST = "localhost";
@@ -62,9 +61,9 @@ public class TestContainerResourceManagerTest {
 
   @Test
   public void testCreateResourceManagerSetsCorrectDockerImageName() {
-    when(container.getDockerImageName()).thenReturn("mongo-test:test");
+    when(container.getDockerImageName()).thenReturn("container-test:test");
 
-    testManagerBuilder.setContainerImageName("mongo-test").setContainerImageTag("test").build();
+    testManagerBuilder.setContainerImageName("container-test").setContainerImageTag("test").build();
 
     assertThat(container.getDockerImageName())
         .isEqualTo(
@@ -146,7 +145,7 @@ public class TestContainerResourceManagerTest {
   public void testCleanupAllShouldCloseContainerWhenNotUsingStaticResource() {
     TestContainerResourceManager<?> testManager = testManagerBuilder.build();
 
-    assertThat(testManager.cleanupAll()).isEqualTo(true);
+    testManager.cleanupAll();
     verify(container).close();
   }
 
@@ -156,7 +155,7 @@ public class TestContainerResourceManagerTest {
 
     TestContainerResourceManager<?> testManager = testManagerBuilder.build();
 
-    assertThat(testManager.cleanupAll()).isEqualTo(false);
+    assertThrows(TestContainerResourceManagerException.class, () -> testManager.cleanupAll());
   }
 
   @Test
@@ -164,7 +163,7 @@ public class TestContainerResourceManagerTest {
     TestContainerResourceManager<?> testManager =
         testManagerBuilder.useStaticContainer().setHost(HOST).setPort(PORT).build();
 
-    assertThat(testManager.cleanupAll()).isEqualTo(true);
+    testManager.cleanupAll();
     verify(container, never()).close();
   }
 

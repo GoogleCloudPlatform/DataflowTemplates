@@ -586,6 +586,19 @@ public class InformationSchemaScannerIT {
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
 
+  @Test
+  public void pgCommitTimestamp() throws Exception {
+    String statement =
+        "CREATE TABLE \"Users\" ("
+            + " \"id\"                                    bigint NOT NULL,"
+            + " \"birthday\"                              spanner.commit_timestamp NOT NULL,"
+            + " PRIMARY KEY (\"id\") )";
+
+    spannerServer.createPgDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+  }
+
   // TODO: enable this test once generated columns are supported.
   // @Test
   public void generatedColumns() throws Exception {

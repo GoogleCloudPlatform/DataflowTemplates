@@ -15,16 +15,13 @@
  */
 package com.google.cloud.teleport.it;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
+import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.services.dataflow.model.Job;
 import com.google.auth.Credentials;
-import com.google.auth.oauth2.ComputeEngineCredentials;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
@@ -43,23 +40,27 @@ import com.google.cloud.teleport.metadata.TemplateCreationParameters;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.metadata.util.MetadataUtils;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TestName;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Base class for Templates. It wraps around tests that extend it to stage the Templates when
@@ -67,11 +68,24 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
  *
  * <p>It is required to use @TemplateIntegrationTest to specify which template is under test.
  */
+@RunWith(JUnit4.class)
 public abstract class TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(TemplateTestBase.class);
 
-  @Rule public final TestName testName = new TestName();
+  public String testName;
+
+  @Rule
+  public TestRule watcher =
+      new TestWatcher() {
+        protected void starting(Description description) {
+          LOG.info(
+              "Starting integration test {}.{}",
+              description.getClassName(),
+              description.getMethodName());
+          testName = description.getMethodName();
+        }
+      };
 
   protected static final String PROJECT = TestProperties.project();
   protected static final String REGION = TestProperties.region();
@@ -88,11 +102,30 @@ public abstract class TemplateTestBase {
 
   protected Template template;
   private Class<?> templateClass;
-  protected GcsArtifactClient artifactClient;
+
+  /** Client to interact with GCS. */
+  protected GcsArtifactClient gcsClient;
+
+  /**
+   * Client to interact with GCS.
+   *
+   * @deprecated Will be removed in favor of {@link #gcsClient}.
+   */
+  @Deprecated protected GcsArtifactClient artifactClient;
 
   @Before
   public void setUpBase() throws IOException {
-    TemplateIntegrationTest annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
+
+    TemplateIntegrationTest annotation = null;
+    try {
+      Method testMethod = getClass().getMethod(testName);
+      annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
+    } catch (NoSuchMethodException e) {
+      // ignore error
+    }
+    if (annotation == null) {
+      annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
+    }
     if (annotation == null) {
       LOG.warn(
           "{} did not specify which template is tested using @TemplateIntegrationTest, skipping.",
@@ -107,7 +140,7 @@ public abstract class TemplateTestBase {
     if (TestProperties.hasAccessToken()) {
       credentials = TestProperties.googleCredentials();
     } else {
-      credentials = buildCredentialsFromEnv();
+      credentials = TestProperties.buildCredentialsFromEnv();
     }
 
     // Prefer artifactBucket, but use the staging one if none given
@@ -117,13 +150,17 @@ public abstract class TemplateTestBase {
       artifactBucketName = TestProperties.stageBucket();
     }
     if (artifactBucketName != null) {
-      Storage gcsClient = createGcsClient(credentials);
-      artifactClient =
-          GcsArtifactClient.builder(gcsClient, artifactBucketName, getClass().getSimpleName())
+      Storage storageClient = createStorageClient(credentials);
+      gcsClient =
+          GcsArtifactClient.builder(storageClient, artifactBucketName, getClass().getSimpleName())
               .build();
+
+      // Keep name compatibility, for now
+      artifactClient = gcsClient;
+
     } else {
       LOG.warn(
-          "Both -DartifactBucket and -DstageBucket were not given. ArtifactClient will not be"
+          "Both -DartifactBucket and -DstageBucket were not given. Storage Client will not be"
               + " created automatically.");
     }
 
@@ -231,11 +268,10 @@ public abstract class TemplateTestBase {
     // Classic templates run on parent pom and -pl v1
     if (pomPath.endsWith("v1/pom.xml")) {
       pomPath = new File(pom.getParentFile().getParentFile(), "pom.xml").getAbsolutePath();
-      moduleBuild = "it,v1";
+      moduleBuild = String.join(",", List.of("metadata", "it", "v1"));
     } else if (pomPath.contains("v2/")) {
       // Flex templates run on parent pom and -pl {path-to-folder}
-      moduleBuild =
-          "it,v2/common," + pomPath.substring(pomPath.indexOf("v2/")).replace("/pom.xml", "");
+      moduleBuild = String.join(",", getModulesBuild(pomPath));
       pomPath = pomPath.replaceAll("/v2/.*", "/pom.xml");
     } else {
       LOG.warn(
@@ -256,7 +292,8 @@ public abstract class TemplateTestBase {
       // Do not make all dependencies every time. Faster but requires prior `mvn install`.
       //      "-am",
       "-PtemplatesStage,pluginOutputDir",
-      "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(0, 20),
+      "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
+      // Skip shading for now due to flakiness / slowness in the process.
       "-DskipShade",
       "-DskipTests",
       "-Dcheckstyle.skip",
@@ -271,10 +308,29 @@ public abstract class TemplateTestBase {
     };
   }
 
+  private List<String> getModulesBuild(String pomPath) {
+    List<String> modules = new ArrayList<>();
+    modules.add("metadata");
+    modules.add("it");
+    modules.add("v2/common");
+
+    // Force building specific common areas. This is much faster than using -am when staging.
+    if (pomPath.contains("kafka")) {
+      modules.add("v2/kafka-common");
+    }
+    if (pomPath.contains("elasticsearch")) {
+      modules.add("v2/elasticsearch-common");
+    }
+
+    modules.add(pomPath.substring(pomPath.indexOf("v2/")).replace("/pom.xml", ""));
+
+    return modules;
+  }
+
   @After
   public void tearDownBase() {
-    if (artifactClient != null) {
-      artifactClient.cleanupRun();
+    if (gcsClient != null) {
+      gcsClient.cleanupAll();
     }
   }
 
@@ -312,6 +368,10 @@ public abstract class TemplateTestBase {
     // Property allows testing with Runner v2 / Unified Worker
     if (System.getProperty("unifiedWorker") != null) {
       options.addEnvironment("experiments", "use_runner_v2");
+    }
+
+    if (System.getProperty("workerMachineType") != null) {
+      options.addEnvironment("workerMachineType", System.getProperty("workerMachineType"));
     }
 
     if (System.getProperty("directRunnerTest") != null) {
@@ -355,7 +415,7 @@ public abstract class TemplateTestBase {
 
   /** Get the Cloud Storage base path for this test suite. */
   protected String getGcsBasePath() {
-    return getFullGcsPath(artifactBucketName, getClass().getSimpleName(), artifactClient.runId());
+    return getFullGcsPath(artifactBucketName, getClass().getSimpleName(), gcsClient.runId());
   }
 
   /** Get the Cloud Storage base path for a specific test. */
@@ -366,7 +426,7 @@ public abstract class TemplateTestBase {
   /** Get the Cloud Storage base path for a specific testing method or artifact id. */
   protected String getGcsPath(String artifactId) {
     return getFullGcsPath(
-        artifactBucketName, getClass().getSimpleName(), artifactClient.runId(), artifactId);
+        artifactBucketName, getClass().getSimpleName(), gcsClient.runId(), artifactId);
   }
 
   /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */
@@ -384,71 +444,17 @@ public abstract class TemplateTestBase {
   }
 
   /**
-   * Infers the {@link Credentials} to use with Google services from the current environment
-   * settings.
+   * Convert a BigQuery TableId to a table spec string.
    *
-   * <p>First, checks if {@link ServiceAccountCredentials#getApplicationDefault()} returns Compute
-   * Engine credentials, which means that it is running from a GCE instance and can use the Service
-   * Account configured for that VM. Will use that
-   *
-   * <p>Secondly, it will try to get the environment variable
-   * <strong>GOOGLE_APPLICATION_CREDENTIALS</strong>, and use that Service Account if configured to
-   * doing so. The method {@link #getCredentialsStream()} will make sure to search for the specific
-   * file using both the file system and classpath.
-   *
-   * <p>If <strong>GOOGLE_APPLICATION_CREDENTIALS</strong> is not configured, it will return the
-   * application default, which is often setup through <strong>gcloud auth application-default
-   * login</strong>.
+   * @param table TableId to format.
+   * @return String in the format {project}.{dataset}.{table}.
    */
-  protected static Credentials buildCredentialsFromEnv() throws IOException {
-
-    // if on Compute Engine, return default credentials.
-    GoogleCredentials applicationDefault = ServiceAccountCredentials.getApplicationDefault();
-    try {
-      if (applicationDefault instanceof ComputeEngineCredentials) {
-        return applicationDefault;
-      }
-    } catch (Exception e) {
-      // no problem
-    }
-
-    InputStream credentialsStream = getCredentialsStream();
-    if (credentialsStream == null) {
-      return applicationDefault;
-    }
-    return ServiceAccountCredentials.fromStream(credentialsStream);
-  }
-
-  protected static InputStream getCredentialsStream() throws FileNotFoundException {
-    String credentialFile = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
-
-    if (credentialFile == null || credentialFile.isEmpty()) {
-      LOG.warn(
-          "Not found Google Cloud credentials: GOOGLE_APPLICATION_CREDENTIALS, assuming application"
-              + " default");
-      return null;
-    }
-
-    InputStream is = null;
-
-    File credentialFileRead = new File(credentialFile);
-    if (credentialFileRead.exists()) {
-      is = new FileInputStream(credentialFile);
-    }
-
-    if (is == null) {
-      is = TemplateTestBase.class.getResourceAsStream(credentialFile);
-    }
-
-    if (is == null) {
-      is = TemplateTestBase.class.getResourceAsStream("/" + credentialFile);
-    }
-
-    if (is == null) {
-      LOG.warn("Not found credentials with file name {}", credentialFile);
-      return null;
-    }
-    return is;
+  public static String toTableSpecStandard(TableId table) {
+    return String.format(
+        "%s.%s.%s",
+        table.getProject() != null ? table.getProject() : PROJECT,
+        table.getDataset(),
+        table.getTable());
   }
 
   /**
@@ -457,7 +463,7 @@ public abstract class TemplateTestBase {
    * @param table TableId to format.
    * @return String in the format {project}:{dataset}.{table}.
    */
-  public static String toTableSpec(TableId table) {
+  public static String toTableSpecLegacy(TableId table) {
     return String.format(
         "%s:%s.%s",
         table.getProject() != null ? table.getProject() : PROJECT,

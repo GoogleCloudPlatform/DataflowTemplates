@@ -25,12 +25,12 @@
     <properties>
         <auto-value.version>1.9</auto-value.version>
         <avro.version>1.8.2</avro.version>
-        <beam.version>2.44.0</beam.version>
+        <beam.version>2.45.0</beam.version>
+        <beam.snapshot.version>2.47.0-SNAPSHOT</beam.snapshot.version>
         <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.10.0</commons-text.version>
-        <libraries-bom.version>26.1.5</libraries-bom.version>
         <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
         <java.version>11</java.version>
         <kafka.version>2.4.1</kafka.version>
@@ -51,24 +51,38 @@
         <dependencies>
             <dependency>
                 <groupId>org.apache.beam</groupId>
-                <artifactId>beam-sdks-java-bom</artifactId>
+                <artifactId>beam-sdks-java-google-cloud-platform-bom</artifactId>
                 <version>${beam.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-                <dependency>
-                    <groupId>com.google.cloud</groupId>
-                    <artifactId>libraries-bom</artifactId>
-                    <version>${libraries-bom.version}</version>
-                    <type>pom</type>
-                    <scope>import</scope>
-                </dependency>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>google-cloud-pubsublite</artifactId>
+                <version>1.11.1</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.api.grpc</groupId>
+                <artifactId>grpc-google-cloud-pubsublite-v1</artifactId>
+                <version>1.11.1</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.api.grpc</groupId>
+                <artifactId>proto-google-cloud-pubsublite-v1</artifactId>
+                <version>1.11.1</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp-bom</artifactId>
+                <version>4.9.3</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>com.google.api-client</groupId>
                 <artifactId>google-api-client</artifactId>
                 <version>1.35.2</version>
             </dependency>
-
         </dependencies>
     </dependencyManagement>
     <!-- TODO(pabloem): Remove the following section before full support.
@@ -164,12 +178,27 @@
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-core</artifactId>
-            <version>${beam.version}</version>
+            <version>${beam.snapshot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-extensions-sql</artifactId>
+            <version>${beam.snapshot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-extensions-sql-expansion-service</artifactId>
+            <version>${beam.snapshot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-            <version>2.46.0-SNAPSHOT</version>
+            <version>${beam.snapshot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-file-schema-transform</artifactId>
+            <version>${beam.snapshot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -186,12 +215,29 @@
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
+            <artifactId>beam-model-pipeline</artifactId>
+            <version>${beam.snapshot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-model-job-management</artifactId>
+            <version>${beam.snapshot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-model-pipeline</artifactId>
+            <version>${beam.snapshot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
+            <version>${beam.snapshot.version}</version>
         </dependency>
         <dependency>
             <!-- Direct runner included for local development and testing. -->
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-direct-java</artifactId>
+            <version>${beam.snapshot.version}</version>
         </dependency>
 
         <dependency>
@@ -209,6 +255,12 @@
             <artifactId>protoc</artifactId>
             <version>${protobuf.version}</version>
             <type>pom</type>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.erosb</groupId>
+            <artifactId>everit-json-schema</artifactId>
+            <version>1.14.1</version>
         </dependency>
 
         <dependency>
@@ -243,6 +295,27 @@
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-memory-unsafe</artifactId>
             <version>9.0.0</version>
+        </dependency>
+
+        <!-- Proto schema support for pubsub and kafka -->
+        <dependency>
+            <groupId>com.squareup.wire</groupId>
+            <artifactId>wire-runtime-jvm</artifactId>
+            <version>4.5.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.wire</groupId>
+            <artifactId>wire-schema-jvm</artifactId>
+            <version>4.5.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio</artifactId>
+            <version>3.3.0</version>
         </dependency>
 
         <!-- Test dependencies -->

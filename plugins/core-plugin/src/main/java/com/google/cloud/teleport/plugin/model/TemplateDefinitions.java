@@ -165,12 +165,13 @@ public class TemplateDefinitions {
           }
         }
 
-        // Ignore non-annotated params in this criteria
+        // Ignore non-annotated params in this criteria (non-options params)
         if (runtime
             || methodName.startsWith("set")
             || IGNORED_FIELDS.contains(methodName)
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.sdk")
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.runners")
+            || method.getReturnType() == void.class
             || IGNORED_DECLARING_CLASSES.contains(method.getDeclaringClass().getSimpleName())) {
           continue;
         }
@@ -251,7 +252,13 @@ public class TemplateDefinitions {
       if (!helpText.endsWith(".")) {
         helpText += ".";
       }
-      helpText += " Defaults to: " + defaultValue;
+
+      if (defaultValue instanceof String && defaultValue.equals("")) {
+        helpText += " Defaults to empty.";
+      } else {
+        helpText += " Defaults to: " + defaultValue + ".";
+      }
+
       parameter.setHelpText(helpText);
     }
 

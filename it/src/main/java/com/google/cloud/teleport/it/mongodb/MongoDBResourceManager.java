@@ -15,12 +15,13 @@
  */
 package com.google.cloud.teleport.it.mongodb;
 
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.mongodb.client.FindIterable;
 import java.util.List;
 import org.bson.Document;
 
 /** Interface for managing MongoDB resources in integration tests. */
-public interface MongoDBResourceManager {
+public interface MongoDBResourceManager extends ResourceManager {
 
   /**
    * Returns the name of the Database that this MongoDB manager will operate in.
@@ -43,6 +44,17 @@ public interface MongoDBResourceManager {
    *     MongoDB.
    */
   boolean createCollection(String collectionName);
+
+  /**
+   * Inserts the given Document into a collection.
+   *
+   * <p>A database will be created here, if one does not already exist.
+   *
+   * @param collectionName The name of the collection to insert the document into.
+   * @param document The document to insert into the collection.
+   * @return A boolean indicating whether the Document was inserted successfully.
+   */
+  boolean insertDocument(String collectionName, Document document);
 
   /**
    * Inserts the given Documents into a collection.
@@ -71,5 +83,5 @@ public interface MongoDBResourceManager {
    *
    * @throws MongoDBResourceManagerException if there is an error deleting the MongoDB resources.
    */
-  boolean cleanupAll();
+  void cleanupAll();
 }

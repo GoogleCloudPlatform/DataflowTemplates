@@ -169,6 +169,17 @@ public class BigTableIOWriteSchemaBasedTransform
               }
             });
 
+    Set<String> inputFields =
+        inputData.getSchema().getFields().stream()
+            .map(field -> field.getName())
+            .collect(Collectors.toSet());
+    if (!inputFields.containsAll(keyColumns)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Key columns selected were %s, however input schema only contains columns %s",
+              keyColumns, inputFields));
+    }
+
     createTableIfNeeded(inputData.getSchema());
     verifyTableSchemaMatches(inputData.getSchema());
 

@@ -24,4 +24,8 @@ public class TestContainerResourceManagerException extends RuntimeException {
   public TestContainerResourceManagerException(String errorMessage) {
     super(errorMessage);
   }
+
+  public TestContainerResourceManagerException(String errorMessage, Exception cause) {
+    super(errorMessage, cause);
+  }
 }

@@ -33,7 +33,6 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
@@ -45,6 +44,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
 import org.bson.Document;
+import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -147,15 +147,17 @@ public abstract class JavascriptDocumentTransformer {
         throw new RuntimeException("No udf was loaded");
       }
 
-      Object result = getInvocable().invokeFunction(functionName(), data);
+      Object result = getInvocable().invokeFunction(functionName(), data.toJson());
       if (result == null || ScriptObjectMirror.isUndefined(result)) {
         return null;
       } else if (result instanceof Document) {
         return (Document) result;
+      } else if (result instanceof String) {
+        return Document.parse(result.toString());
       } else {
         String className = result.getClass().getName();
         throw new RuntimeException(
-            "UDF Function did not return a String. Instead got: " + className);
+            "UDF Function did not return a valid Mongo Document. Instead got: " + className);
       }
     }
 

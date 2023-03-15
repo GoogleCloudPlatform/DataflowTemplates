@@ -84,7 +84,7 @@ public class CdcToBigQueryChangeApplierPipeline {
 
     @TemplateParameter.Text(
         order = 1,
-        optional = false,
+        optional = true,
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Pub/Sub topic(s) to read from",
         helpText = "Comma-separated list of PubSub topics to where CDC data is being pushed.")
@@ -181,7 +181,8 @@ public class CdcToBigQueryChangeApplierPipeline {
           "Either an input topic or a subscription must be provided");
     }
 
-    if (options.getUpdateFrequencySecs() < MINIMUM_UPDATE_FREQUENCY_SECONDS) {
+    if (options.getUpdateFrequencySecs() != null
+        && options.getUpdateFrequencySecs() < MINIMUM_UPDATE_FREQUENCY_SECONDS) {
       throw new IllegalArgumentException(
           "BigQuery supports at most 1,000 MERGE statements per table per day. "
               + "Please select updateFrequencySecs of 100 or more to fit this limit");

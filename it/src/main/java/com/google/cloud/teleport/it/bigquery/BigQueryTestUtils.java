@@ -44,6 +44,22 @@ public final class BigQueryTestUtils {
   public static Tuple<Schema, List<RowToInsert>> generateBigQueryTable(
       String idColumn, int numRows, int numFields, int maxEntryLength) {
 
+    Schema schema = createSchema(idColumn, numFields, maxEntryLength);
+    List<RowToInsert> bigQueryRows = generateRandomData(schema, idColumn, numRows, maxEntryLength);
+
+    // Return tuple containing the randomly generated schema and table data
+    return Tuple.of(schema, bigQueryRows);
+  }
+
+  /**
+   * Utility method to create a schema based on the given constraints.
+   *
+   * @param idColumn Name of the id column to use.
+   * @param numFields Number of fields.
+   * @param maxEntryLength Maximum entry.
+   * @return Generated Schema.
+   */
+  public static Schema createSchema(String idColumn, int numFields, int maxEntryLength) {
     // List to store BigQuery schema fields
     List<Field> bqSchemaFields = new ArrayList<>();
 
@@ -66,8 +82,20 @@ public final class BigQueryTestUtils {
       bqSchemaFields.add(Field.of(randomField.toString(), StandardSQLTypeName.STRING));
     }
     // Create schema and BigQuery table
-    Schema schema = Schema.of(bqSchemaFields);
+    return Schema.of(bqSchemaFields);
+  }
 
+  /**
+   * Utility method to generate random data for a given schema.
+   *
+   * @param schema Schema to generate the data for.
+   * @param idColumn The name of the id column.
+   * @param numRows Number of rows to create.
+   * @param maxEntryLength Size of strings to use.
+   * @return Generated data, a {@link RowToInsert} list.
+   */
+  public static List<RowToInsert> generateRandomData(
+      Schema schema, String idColumn, int numRows, int maxEntryLength) {
     // Generate random data
     List<RowToInsert> bigQueryRows = new ArrayList<>();
     for (int i = 0; i < numRows; i++) {
@@ -77,15 +105,13 @@ public final class BigQueryTestUtils {
       content.put(idColumn, i);
 
       // Generate remaining cells in row
-      for (int j = 1; j < numFields; j++) {
+      for (int j = 1; j < schema.getFields().size(); j++) {
         content.put(
-            bqSchemaFields.get(j).getName(),
+            schema.getFields().get(j).getName(),
             RandomStringUtils.randomAlphanumeric(1, maxEntryLength));
       }
       bigQueryRows.add(RowToInsert.of(content));
     }
-
-    // Return tuple containing the randomly generated schema and table data
-    return Tuple.of(schema, bigQueryRows);
+    return bigQueryRows;
   }
 }

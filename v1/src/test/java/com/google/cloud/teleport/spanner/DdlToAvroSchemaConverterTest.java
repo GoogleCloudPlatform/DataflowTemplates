@@ -595,6 +595,9 @@ public class DdlToAvroSchemaConverterTest {
             .column("date_field")
             .pgDate()
             .endColumn()
+            .column("commit_timestamp_field")
+            .pgSpannerCommitTimestamp()
+            .endColumn()
             .column("arr_bool_field")
             .type(Type.pgArray(Type.pgBool()))
             .endColumn()
@@ -641,7 +644,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(18));
+    assertThat(fields, hasSize(19));
 
     assertThat(fields.get(0).name(), equalTo("bool_field"));
     assertThat(fields.get(0).schema(), equalTo(nullableUnion(Schema.Type.BOOLEAN)));
@@ -679,41 +682,45 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(8).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
     assertThat(fields.get(8).getProp("sqlType"), equalTo("date"));
 
-    assertThat(fields.get(9).name(), equalTo("arr_bool_field"));
-    assertThat(fields.get(9).schema(), equalTo(nullableArray(Schema.Type.BOOLEAN)));
-    assertThat(fields.get(9).getProp("sqlType"), equalTo("boolean[]"));
+    assertThat(fields.get(9).name(), equalTo("commit_timestamp_field"));
+    assertThat(fields.get(9).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(fields.get(9).getProp("sqlType"), equalTo("spanner.commit_timestamp"));
 
-    assertThat(fields.get(10).name(), equalTo("arr_int8_field"));
-    assertThat(fields.get(10).schema(), equalTo(nullableArray(Schema.Type.LONG)));
-    assertThat(fields.get(10).getProp("sqlType"), equalTo("bigint[]"));
+    assertThat(fields.get(10).name(), equalTo("arr_bool_field"));
+    assertThat(fields.get(10).schema(), equalTo(nullableArray(Schema.Type.BOOLEAN)));
+    assertThat(fields.get(10).getProp("sqlType"), equalTo("boolean[]"));
 
-    assertThat(fields.get(11).name(), equalTo("arr_float8_field"));
-    assertThat(fields.get(11).schema(), equalTo(nullableArray(Schema.Type.DOUBLE)));
-    assertThat(fields.get(11).getProp("sqlType"), equalTo("double precision[]"));
+    assertThat(fields.get(11).name(), equalTo("arr_int8_field"));
+    assertThat(fields.get(11).schema(), equalTo(nullableArray(Schema.Type.LONG)));
+    assertThat(fields.get(11).getProp("sqlType"), equalTo("bigint[]"));
 
-    assertThat(fields.get(12).name(), equalTo("arr_varchar_field"));
-    assertThat(fields.get(12).schema(), equalTo(nullableArray(Schema.Type.STRING)));
-    assertThat(fields.get(12).getProp("sqlType"), equalTo("character varying[]"));
+    assertThat(fields.get(12).name(), equalTo("arr_float8_field"));
+    assertThat(fields.get(12).schema(), equalTo(nullableArray(Schema.Type.DOUBLE)));
+    assertThat(fields.get(12).getProp("sqlType"), equalTo("double precision[]"));
 
-    assertThat(fields.get(13).name(), equalTo("arr_bytea_field"));
-    assertThat(fields.get(13).schema(), equalTo(nullableArray(Schema.Type.BYTES)));
-    assertThat(fields.get(13).getProp("sqlType"), equalTo("bytea[]"));
+    assertThat(fields.get(13).name(), equalTo("arr_varchar_field"));
+    assertThat(fields.get(13).schema(), equalTo(nullableArray(Schema.Type.STRING)));
+    assertThat(fields.get(13).getProp("sqlType"), equalTo("character varying[]"));
 
-    assertThat(fields.get(14).name(), equalTo("arr_timestamptz_field"));
-    assertThat(fields.get(14).schema(), equalTo(nullableArray(Schema.Type.STRING)));
-    assertThat(fields.get(14).getProp("sqlType"), equalTo("timestamp with time zone[]"));
+    assertThat(fields.get(14).name(), equalTo("arr_bytea_field"));
+    assertThat(fields.get(14).schema(), equalTo(nullableArray(Schema.Type.BYTES)));
+    assertThat(fields.get(14).getProp("sqlType"), equalTo("bytea[]"));
 
-    assertThat(fields.get(15).name(), equalTo("arr_numeric_field"));
-    assertThat(fields.get(15).schema(), equalTo(nullablePgNumericArray()));
-    assertThat(fields.get(15).getProp("sqlType"), equalTo("numeric[]"));
+    assertThat(fields.get(15).name(), equalTo("arr_timestamptz_field"));
+    assertThat(fields.get(15).schema(), equalTo(nullableArray(Schema.Type.STRING)));
+    assertThat(fields.get(15).getProp("sqlType"), equalTo("timestamp with time zone[]"));
 
-    assertThat(fields.get(16).name(), equalTo("arr_text_field"));
-    assertThat(fields.get(16).schema(), equalTo(nullableArray(Schema.Type.STRING)));
-    assertThat(fields.get(16).getProp("sqlType"), equalTo("text[]"));
+    assertThat(fields.get(16).name(), equalTo("arr_numeric_field"));
+    assertThat(fields.get(16).schema(), equalTo(nullablePgNumericArray()));
+    assertThat(fields.get(16).getProp("sqlType"), equalTo("numeric[]"));
 
-    assertThat(fields.get(17).name(), equalTo("arr_date_field"));
+    assertThat(fields.get(17).name(), equalTo("arr_text_field"));
     assertThat(fields.get(17).schema(), equalTo(nullableArray(Schema.Type.STRING)));
-    assertThat(fields.get(17).getProp("sqlType"), equalTo("date[]"));
+    assertThat(fields.get(17).getProp("sqlType"), equalTo("text[]"));
+
+    assertThat(fields.get(18).name(), equalTo("arr_date_field"));
+    assertThat(fields.get(18).schema(), equalTo(nullableArray(Schema.Type.STRING)));
+    assertThat(fields.get(18).getProp("sqlType"), equalTo("date[]"));
 
     assertThat(avroSchema.getProp("spannerPrimaryKey_0"), equalTo("\"bool_field\" ASC"));
     assertThat(avroSchema.getProp("spannerParent"), equalTo("ParentTable"));

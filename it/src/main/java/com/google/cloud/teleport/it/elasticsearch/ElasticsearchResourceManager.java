@@ -15,11 +15,12 @@
  */
 package com.google.cloud.teleport.it.elasticsearch;
 
+import com.google.cloud.teleport.it.common.ResourceManager;
 import java.util.List;
 import java.util.Map;
 
 /** Interface for managing Elasticsearch resources in integration tests. */
-public interface ElasticsearchResourceManager {
+public interface ElasticsearchResourceManager extends ResourceManager {
 
   /** Returns the URI connection string to the Elasticsearch service. */
   String getUri();
@@ -71,5 +72,5 @@ public interface ElasticsearchResourceManager {
    * @throws ElasticsearchResourceManagerException if there is an error deleting the Elasticsearch
    *     resources.
    */
-  boolean cleanupAll();
+  void cleanupAll();
 }

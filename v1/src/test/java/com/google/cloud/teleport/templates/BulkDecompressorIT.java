@@ -45,10 +45,10 @@ public final class BulkDecompressorIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException, URISyntaxException {
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/lipsum_gz.txt.gz",
         Resources.getResource("BulkCompressorIT/lipsum.txt.gz").getPath());
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/lipsum_bz.txt.bz2",
         Resources.getResource("BulkCompressorIT/lipsum.txt.bz2").getPath());
   }
@@ -72,8 +72,7 @@ public final class BulkDecompressorIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     // Two files are expected, one for each input (gzip, bz2)
-    List<Artifact> artifacts =
-        artifactClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
+    List<Artifact> artifacts = gcsClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
     assertThat(artifacts).hasSize(2);
 
     // However, they both have the same hash (based on the same text file)

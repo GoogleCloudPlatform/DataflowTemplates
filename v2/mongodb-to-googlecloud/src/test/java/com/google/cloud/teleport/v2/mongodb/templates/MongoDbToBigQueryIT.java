@@ -29,6 +29,8 @@ import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -44,10 +46,8 @@ import org.bson.types.ObjectId;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -97,8 +97,6 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @RunWith(JUnit4.class)
 public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
-  @Rule public final TestName testName = new TestName();
-
   private static final Logger LOG = LoggerFactory.getLogger(DefaultBigtableResourceManager.class);
 
   private static final String MONGO_URI = "mongoDbUri";
@@ -109,51 +107,39 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
   private static final String MONGO_DB_ID = "_id";
 
-  private static DefaultMongoDBResourceManager mongoDbClient;
-  private static BigQueryResourceManager bigQueryClient;
+  private DefaultMongoDBResourceManager mongoDbClient;
+  private BigQueryResourceManager bigQueryClient;
 
   @Before
   public void setup() throws IOException {
-    mongoDbClient =
-        DefaultMongoDBResourceManager.builder(testName.getMethodName()).setHost(HOST_IP).build();
-
+    mongoDbClient = DefaultMongoDBResourceManager.builder(testName).setHost(HOST_IP).build();
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
   }
 
   @After
-  public void tearDownClass() {
-    boolean producedError = false;
-
-    try {
-      mongoDbClient.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete MongoDB resources.", e);
-      producedError = true;
-    }
-
-    try {
-      bigQueryClient.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete BigQuery resources.", e);
-      producedError = true;
-    }
-
-    if (producedError) {
-      throw new IllegalStateException("Failed to delete resources. Check above for errors.");
-    }
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(mongoDbClient, bigQueryClient);
   }
 
   @Test
   public void testMongoDbToBigQuery() throws IOException {
     // Arrange
-    String collectionName = testName.getMethodName();
+    String collectionName = testName;
     List<Document> mongoDocuments = generateDocuments();
     mongoDbClient.insertDocuments(collectionName, mongoDocuments);
 
-    String bqTable = testName.getMethodName();
+    String bqTable = testName;
+    String udfFileName = "transform.js";
+    artifactClient.createArtifact(
+        "input/" + udfFileName,
+        "function transform(inJson) {\n"
+            + "    var outJson = JSON.parse(inJson);\n"
+            + "    outJson.udf = \"out\";\n"
+            + "    return JSON.stringify(outJson);\n"
+            + "}");
     List<Field> bqSchemaFields = new ArrayList<>();
     bqSchemaFields.add(Field.of("timestamp", StandardSQLTypeName.TIMESTAMP));
     mongoDocuments
@@ -169,8 +155,10 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
             .addParameter(MONGO_URI, mongoDbClient.getUri())
             .addParameter(MONGO_DB, mongoDbClient.getDatabaseName())
             .addParameter(MONGO_COLLECTION, collectionName)
-            .addParameter(BIGQUERY_TABLE, toTableSpec(table))
-            .addParameter(USER_OPTION, "FLATTEN");
+            .addParameter(BIGQUERY_TABLE, toTableSpecLegacy(table))
+            .addParameter(USER_OPTION, "FLATTEN")
+            .addParameter("javascriptDocumentTransformGcsPath", getGcsPath("input/" + udfFileName))
+            .addParameter("javascriptDocumentTransformFunctionName", "transform");
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -179,7 +167,8 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(info), () -> bigQueryClient.readTable(bqTable).getTotalRows() != 0);
+                createConfig(info),
+                BigQueryRowsCheck.builder(bigQueryClient, table).setMinRows(1).build());
 
     // Assert
     assertThatResult(result).meetsConditions();
@@ -189,6 +178,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
         mongoDocument -> {
           JSONObject mongoDbJson = new JSONObject(mongoDocument.toJson());
           String mongoId = mongoDbJson.getJSONObject(MONGO_DB_ID).getString("$oid");
+          mongoDbJson.put("udf", "out");
           mongoDbJson.put(MONGO_DB_ID, mongoId);
           mongoMap.put(mongoId, mongoDbJson);
         });
@@ -215,7 +205,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
             TestProperties.getProperty("numDocs", "100", TestProperties.Type.PROPERTY));
     int numFields =
         Integer.parseInt(
-            TestProperties.getProperty("numFields", "20", TestProperties.Type.PROPERTY));
+            TestProperties.getProperty("numFields", "200", TestProperties.Type.PROPERTY));
     int maxEntryLength =
         Integer.parseInt(
             TestProperties.getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY));
@@ -223,10 +213,17 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
     List<String> mongoDocumentKeys = new ArrayList<>();
     for (int j = 0; j < numFields; j++) {
-      mongoDocumentKeys.add(
-          RandomStringUtils.randomAlphabetic(2)
-              + RandomStringUtils.randomAlphanumeric(0, maxEntryLength - 2));
+
+      // Generate unique field name
+      String randomFieldName = null;
+      while (randomFieldName == null || mongoDocumentKeys.contains(randomFieldName.toLowerCase())) {
+        randomFieldName =
+            RandomStringUtils.randomAlphabetic(2)
+                + RandomStringUtils.randomAlphanumeric(0, maxEntryLength - 2);
+      }
+      mongoDocumentKeys.add(randomFieldName.toLowerCase());
     }
+    mongoDocumentKeys.add("udf");
 
     for (int i = 0; i < numDocuments; i++) {
       Document randomDocument = new Document().append(MONGO_DB_ID, new ObjectId());
@@ -235,6 +232,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
         randomDocument.append(
             mongoDocumentKeys.get(j), RandomStringUtils.randomAlphanumeric(0, 20));
       }
+      randomDocument.append("udf", "in");
 
       mongoDocuments.add(randomDocument);
     }

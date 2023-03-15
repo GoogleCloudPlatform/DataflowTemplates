@@ -61,7 +61,7 @@ public final class GcsArtifactClientTest {
 
   @Mock private Storage client;
   @Mock private Blob blob;
-  private GcsArtifactClient artifactClient;
+  private GcsArtifactClient gcsClient;
 
   private static final String ARTIFACT_NAME = "test-artifact.txt";
   private static final Path LOCAL_PATH;
@@ -88,7 +88,7 @@ public final class GcsArtifactClientTest {
 
   @Before
   public void setUp() {
-    artifactClient = GcsArtifactClient.builder(client, BUCKET, TEST_CLASS).build();
+    gcsClient = GcsArtifactClient.builder(client, BUCKET, TEST_CLASS).build();
   }
 
   @Test
@@ -111,7 +111,7 @@ public final class GcsArtifactClientTest {
     byte[] contents = new byte[] {0, 1, 2};
     when(client.create(any(BlobInfo.class), any(byte[].class))).thenReturn(blob);
 
-    GcsArtifact actual = (GcsArtifact) artifactClient.createArtifact(artifactName, contents);
+    GcsArtifact actual = (GcsArtifact) gcsClient.createArtifact(artifactName, contents);
 
     verify(client).create(blobInfoCaptor.capture(), contentsCaptor.capture());
     BlobInfo actualInfo = blobInfoCaptor.getValue();
@@ -119,7 +119,7 @@ public final class GcsArtifactClientTest {
     assertThat(actual.blob).isSameInstanceAs(blob);
     assertThat(actualInfo.getBucket()).isEqualTo(BUCKET);
     assertThat(actualInfo.getName())
-        .isEqualTo(String.format("%s/%s/%s", TEST_CLASS, artifactClient.runId(), artifactName));
+        .isEqualTo(String.format("%s/%s/%s", TEST_CLASS, gcsClient.runId(), artifactName));
     assertThat(contentsCaptor.getValue()).isEqualTo(contents);
   }
 
@@ -127,7 +127,7 @@ public final class GcsArtifactClientTest {
   public void testUploadArtifact() throws IOException {
     when(client.create(any(BlobInfo.class), any(byte[].class))).thenReturn(blob);
 
-    GcsArtifact actual = (GcsArtifact) artifactClient.uploadArtifact(ARTIFACT_NAME, LOCAL_PATH);
+    GcsArtifact actual = (GcsArtifact) gcsClient.uploadArtifact(ARTIFACT_NAME, LOCAL_PATH);
 
     verify(client).create(blobInfoCaptor.capture(), contentsCaptor.capture());
     BlobInfo actualInfo = blobInfoCaptor.getValue();
@@ -135,7 +135,7 @@ public final class GcsArtifactClientTest {
     assertThat(actual.blob).isSameInstanceAs(blob);
     assertThat(actualInfo.getBucket()).isEqualTo(BUCKET);
     assertThat(actualInfo.getName())
-        .isEqualTo(String.format("%s/%s/%s", TEST_CLASS, artifactClient.runId(), ARTIFACT_NAME));
+        .isEqualTo(String.format("%s/%s/%s", TEST_CLASS, gcsClient.runId(), ARTIFACT_NAME));
     assertThat(contentsCaptor.getValue()).isEqualTo(TEST_ARTIFACT_CONTENTS);
   }
 
@@ -143,8 +143,7 @@ public final class GcsArtifactClientTest {
   public void testUploadArtifactInvalidLocalPath() {
     when(client.create(any(BlobInfo.class), any())).thenReturn(blob);
     assertThrows(
-        IOException.class,
-        () -> artifactClient.uploadArtifact(ARTIFACT_NAME, "/" + UUID.randomUUID()));
+        IOException.class, () -> gcsClient.uploadArtifact(ARTIFACT_NAME, "/" + UUID.randomUUID()));
   }
 
   @Test
@@ -165,7 +164,7 @@ public final class GcsArtifactClientTest {
     Pattern pattern = Pattern.compile(".*blob[13].*");
 
     // Act
-    List<Artifact> actual = artifactClient.listArtifacts(TEST_METHOD, pattern);
+    List<Artifact> actual = gcsClient.listArtifacts(TEST_METHOD, pattern);
 
     // Assert
     verify(client).list(bucketCaptor.capture(), listOptionsCaptor.capture());
@@ -180,7 +179,7 @@ public final class GcsArtifactClientTest {
     assertThat(actualOptions)
         .isEqualTo(
             BucketListOption.prefix(
-                String.format("%s/%s/%s", TEST_CLASS, artifactClient.runId(), TEST_METHOD)));
+                String.format("%s/%s/%s", TEST_CLASS, gcsClient.runId(), TEST_METHOD)));
   }
 
   @Test
@@ -201,7 +200,7 @@ public final class GcsArtifactClientTest {
     Pattern pattern = Pattern.compile(".*blob[13].*");
 
     // Act
-    List<Artifact> actual = artifactClient.listArtifacts(TEST_METHOD, pattern);
+    List<Artifact> actual = gcsClient.listArtifacts(TEST_METHOD, pattern);
 
     // Assert
     verify(client).list(bucketCaptor.capture(), listOptionsCaptor.capture());
@@ -216,7 +215,7 @@ public final class GcsArtifactClientTest {
     assertThat(actualOptions)
         .isEqualTo(
             BucketListOption.prefix(
-                String.format("%s/%s/%s", TEST_CLASS, artifactClient.runId(), TEST_METHOD)));
+                String.format("%s/%s/%s", TEST_CLASS, gcsClient.runId(), TEST_METHOD)));
   }
 
   @Test
@@ -225,7 +224,7 @@ public final class GcsArtifactClientTest {
     when(client.list(anyString(), any(BlobListOption.class))).thenReturn(allPages);
     Pattern pattern = Pattern.compile(".*blob[13].*");
 
-    List<Artifact> actual = artifactClient.listArtifacts(TEST_METHOD, pattern);
+    List<Artifact> actual = gcsClient.listArtifacts(TEST_METHOD, pattern);
 
     verify(client).list(anyString(), any(BlobListOption.class));
     assertThat(actual).isEmpty();
@@ -249,7 +248,7 @@ public final class GcsArtifactClientTest {
     when(client.delete(anyIterable())).thenReturn(ImmutableList.of(true, false, true));
 
     // Act
-    artifactClient.cleanupRun();
+    gcsClient.cleanupAll();
 
     // Assert
     verify(client).list(bucketCaptor.capture(), listOptionsCaptor.capture());
@@ -261,8 +260,7 @@ public final class GcsArtifactClientTest {
 
     assertThat(actualBucket).isEqualTo(BUCKET);
     assertThat(actualOption)
-        .isEqualTo(
-            BucketListOption.prefix(String.format("%s/%s", TEST_CLASS, artifactClient.runId())));
+        .isEqualTo(BucketListOption.prefix(String.format("%s/%s", TEST_CLASS, gcsClient.runId())));
     assertThat(actualIds).containsExactly(id1, id2, id3);
   }
 
@@ -286,7 +284,7 @@ public final class GcsArtifactClientTest {
         .thenReturn(ImmutableList.of(true));
 
     // Act
-    artifactClient.cleanupRun();
+    gcsClient.cleanupAll();
 
     // Assert
     verify(client).list(bucketCaptor.capture(), listOptionsCaptor.capture());
@@ -298,8 +296,7 @@ public final class GcsArtifactClientTest {
 
     assertThat(actualBucket).isEqualTo(BUCKET);
     assertThat(actualOption)
-        .isEqualTo(
-            BucketListOption.prefix(String.format("%s/%s", TEST_CLASS, artifactClient.runId())));
+        .isEqualTo(BucketListOption.prefix(String.format("%s/%s", TEST_CLASS, gcsClient.runId())));
     assertThat(actualBlobIds.get(0)).containsExactly(id1, id2);
     assertThat(actualBlobIds.get(1)).containsExactly(id3);
   }
@@ -309,7 +306,7 @@ public final class GcsArtifactClientTest {
     TestBlobPage allPages = createPages(ImmutableList.of());
     when(client.list(anyString(), any(BlobListOption.class))).thenReturn(allPages);
 
-    artifactClient.cleanupRun();
+    gcsClient.cleanupAll();
 
     verify(client, never()).delete(anyIterable());
   }

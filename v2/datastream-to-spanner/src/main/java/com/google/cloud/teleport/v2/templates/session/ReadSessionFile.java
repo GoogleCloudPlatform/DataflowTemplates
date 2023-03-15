@@ -46,24 +46,34 @@ public class ReadSessionFile {
     return readFileIntoMemory(this.sessionFilePath);
   }
 
+  private static void validateSessionFields(JsonObject sessionJSON) {
+    if (!sessionJSON.has("SpSchema")) {
+      throw new IllegalArgumentException("Cannot find \"SpSchema\" field in session file.");
+    }
+    if (!sessionJSON.has("SrcSchema")) {
+      throw new IllegalArgumentException("Cannot find \"SrcSchema\" field in session file.");
+    }
+    if (!sessionJSON.has("SyntheticPKeys")) {
+      throw new IllegalArgumentException("Cannot find \"SyntheticPKeys\" field in session file.");
+    }
+  }
+
   private static Session readFileIntoMemory(String filePath) {
     try (InputStream stream =
         Channels.newInputStream(FileSystems.open(FileSystems.matchNewResource(filePath, false)))) {
       String result = IOUtils.toString(stream, StandardCharsets.UTF_8);
       JsonParser parser = new JsonParser();
       JsonObject sessionJSON = parser.parseString(result).getAsJsonObject();
-      if (!sessionJSON.has("ToSpanner")) {
-        throw new RuntimeException("Cannot find \"ToSpanner\" field in session file.");
-      }
-      if (!sessionJSON.has("SyntheticPKeys")) {
-        throw new RuntimeException("Cannot find \"SyntheticPKeys\" field in session file.");
-      }
+      validateSessionFields(sessionJSON);
+
       Session session =
           new GsonBuilder()
               .setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE)
               .create()
               .fromJson(result, Session.class);
       session.setEmpty(false);
+      session.computeToSpanner();
+      session.computeSrcToID();
       LOG.info("Session obj: " + session.toString());
       return session;
     } catch (IOException e) {

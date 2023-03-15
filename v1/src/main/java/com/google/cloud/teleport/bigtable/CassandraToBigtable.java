@@ -38,8 +38,8 @@ import org.apache.beam.sdk.values.Row;
 /**
  * This Dataflow Template performs a one off copy of one table from Apache Cassandra to Cloud
  * Bigtable. It is designed to require minimal configuration and aims to replicate the table
- * structure in Cassandra as closely as possible in Cloud Bigtable. To run the pipeline go to <link>
- * enter the required configuration and press <run>
+ * structure in Cassandra as closely as possible in Cloud Bigtable. To run the pipeline go to
+ * "Create a job from Template", enter the required configuration and press "Run job"
  *
  * <p>The minimum required configuration required to run the pipeline is:
  *
@@ -65,6 +65,10 @@ import org.apache.beam.sdk.values.Row;
     contactInformation = "https://cloud.google.com/support")
 final class CassandraToBigtable {
 
+  /**
+   * TODO - refactor to extend {@link
+   * com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.WriteOptions}.
+   */
   public interface Options extends PipelineOptions {
 
     @TemplateParameter.Text(

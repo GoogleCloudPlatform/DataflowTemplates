@@ -22,6 +22,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
@@ -53,22 +54,22 @@ public final class TextImportPipelineIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException, URISyntaxException {
     spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName.getMethodName(), PROJECT, REGION).build();
+        DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
   }
 
   @After
   public void tearDown() {
-    spannerResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
   @Test
   public void testImportCsv() throws IOException {
     // Arrange
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "input/singers1.csv",
         "1,John,Doe,TRUE,1.5,2023-02-01,2023-01-01T17:22:00\n"
             + "2,Jane,Doe,TRUE,2.1,2021-02-03,2023-01-01T17:23:01\n");
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "input/singers2.csv", "3,Elvis,Presley,FALSE,3.99,2020-03-05,2023-01-01T17:24:02\n");
 
     String statement =
@@ -105,8 +106,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "    }\n"
             + "  ]\n"
             + "}";
-    artifactClient.createArtifact(
-        "input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
+    gcsClient.createArtifact("input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)

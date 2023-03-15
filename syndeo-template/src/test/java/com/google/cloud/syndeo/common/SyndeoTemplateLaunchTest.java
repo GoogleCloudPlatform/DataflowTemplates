@@ -15,10 +15,13 @@
  */
 package com.google.cloud.syndeo.common;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.syndeo.SyndeoTemplate;
+import java.util.stream.Collectors;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -39,7 +42,7 @@ public class SyndeoTemplateLaunchTest {
 
   private static final String BQ_TO_BQ_CONFIG =
       "{ \"source\": "
-          + "{ \"urn\": \"bigquery:read\", "
+          + "{ \"urn\": \"beam:schematransform:org.apache.beam:bigquery_storage_read:v1\", "
           + "\"configurationParameters\": { \"tableSpec\": \"dataflow-syndeo:test_dataset.kafka_table\" } }, "
           + "\"sink\": { \"urn\": \"bigquery:write\", "
           + "\"configurationParameters\": { \"tableSpec\": \"dataflow-syndeo:test_dataset.source_table\" } } }";
@@ -63,5 +66,14 @@ public class SyndeoTemplateLaunchTest {
     // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1" for Beam  2.45.0.
     SyndeoTemplate.buildFromJsonPayload(
         BQ_TO_BQ_CONFIG.replace("bigquery:write", "schemaIO:bigquery:write"));
+  }
+
+  @Test
+  public void testVerifyAllSupportedTransformsAreAvailable() {
+    assertThat(
+            ProviderUtil.getProviders().stream()
+                .map(prov -> prov.identifier())
+                .collect(Collectors.toSet()))
+        .containsAtLeastElementsIn(SyndeoTemplate.SUPPORTED_URNS.keySet());
   }
 }

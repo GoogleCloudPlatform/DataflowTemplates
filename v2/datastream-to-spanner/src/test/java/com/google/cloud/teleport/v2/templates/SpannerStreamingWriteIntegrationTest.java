@@ -150,7 +150,8 @@ public class SpannerStreamingWriteIntegrationTest {
 
     jsonRecords.apply(
         "Write events to Cloud Spanner",
-        new SpannerTransactionWriter(sourceConfig, ddlView, session, shadowTablePrefix, "oracle"));
+        new SpannerTransactionWriter(
+            sourceConfig, ddlView, session, shadowTablePrefix, "oracle", false));
 
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();

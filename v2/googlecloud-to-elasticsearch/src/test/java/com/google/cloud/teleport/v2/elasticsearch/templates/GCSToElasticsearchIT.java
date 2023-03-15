@@ -24,6 +24,7 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.elasticsearch.DefaultElasticsearchResourceManager;
 import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
@@ -47,13 +48,13 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class GCSToElasticsearchIT extends TemplateTestBase {
 
-  private static BigQueryResourceManager bigQueryClient;
-  private static ElasticsearchResourceManager elasticsearchResourceManager;
+  private BigQueryResourceManager bigQueryClient;
+  private ElasticsearchResourceManager elasticsearchResourceManager;
 
   @Before
   public void setup() {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
     elasticsearchResourceManager =
@@ -62,8 +63,7 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
 
   @After
   public void tearDown() {
-    bigQueryClient.cleanupAll();
-    elasticsearchResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(bigQueryClient, elasticsearchResourceManager);
   }
 
   @Test
@@ -86,13 +86,13 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
       String csvFileName, String udfFileName, List<Map<String, Object>> expectedRecords)
       throws IOException {
     // Arrange
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/" + csvFileName,
         Resources.getResource("GCSToElasticsearch/" + csvFileName).getPath());
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/" + udfFileName,
         Resources.getResource("GCSToElasticsearch/" + udfFileName).getPath());
-    String indexName = createJobName(testName.getMethodName());
+    String indexName = createJobName(testName);
     elasticsearchResourceManager.createIndex(indexName);
     bigQueryClient.createDataset(REGION);
 
@@ -126,10 +126,10 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
   @Test
   public void testElasticsearchCsvWithHeaders() throws IOException {
     // Arrange
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/with_headers_10.csv",
         Resources.getResource("GCSToElasticsearch/with_headers_10.csv").getPath());
-    String indexName = createJobName(testName.getMethodName());
+    String indexName = createJobName(testName);
     elasticsearchResourceManager.createIndex(indexName);
     bigQueryClient.createDataset(REGION);
 

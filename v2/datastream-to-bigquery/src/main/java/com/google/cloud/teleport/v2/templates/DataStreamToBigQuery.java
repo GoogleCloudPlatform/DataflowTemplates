@@ -359,18 +359,6 @@ public class DataStreamToBigQuery {
     Integer getPartitionRetentionDays();
 
     void setPartitionRetentionDays(Integer value);
-
-    @TemplateParameter.Boolean(
-        order = 20,
-        optional = true,
-        description =
-            "Use deterministic jobId for merge jobs. If false, uses random JobId genration",
-        helpText =
-            "If set to true, merge job IDs will be deterministically generated. default: false")
-    @Default.Boolean(false)
-    Boolean getUseDeterministicJobId();
-
-    void setUseDeterministicJobId(Boolean useDeterministicJobId);
   }
 
   /**
@@ -571,11 +559,11 @@ public class DataStreamToBigQuery {
               "BigQuery Merge/Merge into Replica Tables",
               BigQueryMerger.of(
                   MergeConfiguration.bigQueryConfiguration()
+                      .withProjectId(bigqueryProjectId)
                       .withMergeWindowDuration(
                           Duration.standardMinutes(options.getMergeFrequencyMinutes()))
                       .withMergeConcurrency(options.getMergeConcurrency())
-                      .withPartitionRetention(options.getPartitionRetentionDays())
-                      .withUseDeterministicJobId(options.getUseDeterministicJobId())));
+                      .withPartitionRetention(options.getPartitionRetentionDays())));
     }
 
     /*

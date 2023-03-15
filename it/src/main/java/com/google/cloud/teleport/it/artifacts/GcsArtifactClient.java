@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  * Client for working with test artifacts stored in Google Cloud Storage.
  *
  * <p>Tests should store this as a static value of the class and call {@link
- * ArtifactClient#cleanupRun()} in the {@code @AfterClass} method.
+ * ArtifactClient#cleanupAll()} in the {@code @AfterClass} method.
  */
 public final class GcsArtifactClient implements ArtifactClient {
   private static final Logger LOG = LoggerFactory.getLogger(GcsArtifactClient.class);
@@ -142,7 +142,7 @@ public final class GcsArtifactClient implements ArtifactClient {
   }
 
   @Override
-  public void cleanupRun() {
+  public void cleanupAll() {
     String path = joinPathParts(testClassName, runId);
     LOG.info("Cleaning up everything under '{}' under bucket '{}'", path, bucket);
 

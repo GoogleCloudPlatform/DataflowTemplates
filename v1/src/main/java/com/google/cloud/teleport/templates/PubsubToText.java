@@ -115,6 +115,7 @@ import org.apache.beam.sdk.values.PCollection;
             + " newlines in the body of the Pub/Sub message and thus each message becomes a single"
             + " line in the output file.",
     optionsClass = Options.class,
+    skipOptions = {"inputSubscription"},
     contactInformation = "https://cloud.google.com/support")
 public class PubsubToText {
 

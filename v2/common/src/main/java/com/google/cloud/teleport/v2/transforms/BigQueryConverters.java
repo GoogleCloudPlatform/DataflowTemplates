@@ -19,7 +19,6 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.client.json.JsonFactory;
-import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.Field;
@@ -54,7 +53,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
-import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -80,9 +78,6 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Suppliers;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.apache.commons.text.StringSubstitutor;
-import org.apache.hadoop.hbase.client.Mutation;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,51 +91,6 @@ public class BigQueryConverters {
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryConverters.class);
 
   private static final JsonFactory JSON_FACTORY = Transport.getJsonFactory();
-
-  /** Converts from the BigQuery Avro format into Bigtable mutation. */
-  @AutoValue
-  public abstract static class AvroToMutation
-      implements SerializableFunction<SchemaAndRecord, Mutation> {
-
-    public abstract String columnFamily();
-
-    public abstract String rowkey();
-
-    /** Builder for AvroToEntity. */
-    @AutoValue.Builder
-    public abstract static class Builder {
-
-      public abstract Builder setColumnFamily(String value);
-
-      public abstract Builder setRowkey(String rowkey);
-
-      public abstract AvroToMutation build();
-    }
-
-    public static Builder newBuilder() {
-      return new AutoValue_BigQueryConverters_AvroToMutation.Builder();
-    }
-
-    public Mutation apply(SchemaAndRecord record) {
-      GenericRecord row = record.getRecord();
-      String rowkey = row.get(rowkey()).toString();
-      Put put = new Put(Bytes.toBytes(rowkey));
-
-      List<TableFieldSchema> columns = record.getTableSchema().getFields();
-      for (TableFieldSchema column : columns) {
-        String columnName = column.getName();
-        if (columnName.equals(rowkey())) {
-          continue;
-        }
-
-        Object columnObj = row.get(columnName);
-        byte[] columnValue = columnObj == null ? null : Bytes.toBytes(columnObj.toString());
-        // TODO(billyjacobson): handle other types and column families
-        put.addColumn(Bytes.toBytes(columnFamily()), Bytes.toBytes(columnName), columnValue);
-      }
-      return put;
-    }
-  }
 
   /**
    * Converts a JSON string to a {@link TableRow} object. If the data fails to convert, a {@link
@@ -312,30 +262,55 @@ public class BigQueryConverters {
   }
 
   /**
-   * The {@link ReadBigQuery} class reads from BigQuery using {@link BigQueryIO}. The transform
-   * returns a {@link PCollection} of {@link TableRow}.
+   * The {@link ReadBigQueryTableRows} class reads from BigQuery using {@link BigQueryIO}. The
+   * transform returns a {@link PCollection} of {@link TableRow}.
    */
-  @AutoValue
-  public abstract static class ReadBigQuery extends PTransform<PBegin, PCollection<TableRow>> {
+  public abstract static class ReadBigQueryTableRows
+      extends PTransform<PBegin, PCollection<TableRow>> {
 
-    public static Builder newBuilder() {
-      return new AutoValue_BigQueryConverters_ReadBigQuery.Builder();
+    private final PTransform<PBegin, PCollection<TableRow>> inner;
+
+    public ReadBigQueryTableRows(BigQueryReadOptions options) {
+      inner =
+          ReadBigQuery.<TableRow>newBuilder()
+              .setOptions(options.as(BigQueryReadOptions.class))
+              .setReadFunction(BigQueryIO.readTableRows().withCoder(TableRowJsonCoder.of()))
+              .build();
+    }
+
+    public static ReadBigQuery.Builder<TableRow> newBuilder() {
+      return ReadBigQuery.<TableRow>newBuilder()
+          .setReadFunction(BigQueryIO.readTableRows().withCoder(TableRowJsonCoder.of()));
+    }
+
+    @Override
+    public PCollection<TableRow> expand(PBegin pipeline) {
+      return inner.expand(pipeline);
+    }
+  }
+
+  @AutoValue
+  public abstract static class ReadBigQuery<T> extends PTransform<PBegin, PCollection<T>> {
+
+    public static <T> ReadBigQuery.Builder<T> newBuilder() {
+      return new AutoValue_BigQueryConverters_ReadBigQuery.Builder<>();
     }
 
     public abstract BigQueryReadOptions options();
 
+    public abstract BigQueryIO.TypedRead<T> readFunction();
+
     @Override
-    public PCollection<TableRow> expand(PBegin pipeline) {
+    public PCollection<T> expand(PBegin pipeline) {
 
       if (options().getQuery() == null) {
         LOG.info("No query provided, reading directly from: " + options().getInputTableSpec());
         return pipeline.apply(
             "ReadFromBigQuery",
-            BigQueryIO.readTableRows()
+            readFunction()
                 .from(options().getInputTableSpec())
                 .withTemplateCompatibility()
-                .withMethod(Method.DIRECT_READ)
-                .withCoder(TableRowJsonCoder.of()));
+                .withMethod(Method.DIRECT_READ));
 
       } else {
         LOG.info("Using query: " + options().getQuery());
@@ -345,34 +320,32 @@ public class BigQueryConverters {
           LOG.info("Using Standard SQL");
           return pipeline.apply(
               "ReadFromBigQueryWithQuery",
-              BigQueryIO.readTableRows()
+              readFunction()
                   .fromQuery(options().getQuery())
                   .withTemplateCompatibility()
-                  .usingStandardSql()
-                  .withCoder(TableRowJsonCoder.of()));
+                  .usingStandardSql());
         } else {
 
           LOG.info("Using Legacy SQL");
           return pipeline.apply(
               "ReadFromBigQueryWithQuery",
-              BigQueryIO.readTableRows()
-                  .fromQuery(options().getQuery())
-                  .withTemplateCompatibility()
-                  .withCoder(TableRowJsonCoder.of()));
+              readFunction().fromQuery(options().getQuery()).withTemplateCompatibility());
         }
       }
     }
 
-    /** Builder for {@link ReadBigQuery}. */
+    /** Builder for {@link ReadBigQueryTableRows}. */
     @AutoValue.Builder
-    public abstract static class Builder {
-      public abstract Builder setOptions(BigQueryReadOptions options);
+    public abstract static class Builder<T> {
+      public abstract Builder<T> setOptions(BigQueryReadOptions options);
 
-      abstract ReadBigQuery autoBuild();
+      public abstract Builder<T> setReadFunction(BigQueryIO.TypedRead<T> readFn);
 
-      public ReadBigQuery build() {
+      abstract ReadBigQuery<T> autoBuild();
 
-        ReadBigQuery readBigQuery = autoBuild();
+      public ReadBigQuery<T> build() {
+
+        ReadBigQuery<T> readBigQuery = autoBuild();
 
         if (readBigQuery.options().getInputTableSpec() == null) {
           checkArgument(
@@ -745,7 +718,8 @@ public class BigQueryConverters {
       };
 
   /**
-   * The {@link SchemaUtils} Class to easily convert from a json string to a BigQuery List<Field>.
+   * The {@link SchemaUtils} Class to easily convert from a json string to a BigQuery
+   * List&lt;Field&gt;.
    */
   public static class SchemaUtils {
 

@@ -148,6 +148,8 @@ public class TextIOToBigQuery {
   private static final String NAME = "name";
   private static final String TYPE = "type";
   private static final String MODE = "mode";
+  private static final String RECORD_TYPE = "RECORD";
+  private static final String FIELDS_ENTRY = "fields";
 
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
@@ -205,33 +207,48 @@ public class TextIOToBigQuery {
   private static TableSchema parseSchema(String jsonPath) {
     TableSchema tableSchema = new TableSchema();
     List<TableFieldSchema> fields = new ArrayList<>();
-    JSONObject jsonSchema;
 
-    try {
+    JSONObject jsonSchema = parseJson(jsonPath);
 
-      jsonSchema = parseJson(jsonPath);
+    JSONArray bqSchemaJsonArray = jsonSchema.getJSONArray(BIGQUERY_SCHEMA);
 
-      JSONArray bqSchemaJsonArray = jsonSchema.getJSONArray(BIGQUERY_SCHEMA);
-
-      for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
-        JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
-        TableFieldSchema field =
-            new TableFieldSchema()
-                .setName(inputField.getString(NAME))
-                .setType(inputField.getString(TYPE));
-
-        if (inputField.has(MODE)) {
-          field.setMode(inputField.getString(MODE));
-        }
-
-        fields.add(field);
-      }
-      tableSchema.setFields(fields);
-
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
+      JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
+      fields.add(convertToTableFieldSchema(inputField));
     }
+    tableSchema.setFields(fields);
+
     return tableSchema;
+  }
+
+  /**
+   * Convert a JSONObject from the Schema JSON to a TableFieldSchema. In case of RECORD, it handles
+   * it recursively.
+   *
+   * @param inputField Input field to convert.
+   * @return TableFieldSchema instance to populate the schema.
+   */
+  private static TableFieldSchema convertToTableFieldSchema(JSONObject inputField) {
+    TableFieldSchema field =
+        new TableFieldSchema()
+            .setName(inputField.getString(NAME))
+            .setType(inputField.getString(TYPE));
+
+    if (inputField.has(MODE)) {
+      field.setMode(inputField.getString(MODE));
+    }
+
+    if (inputField.getString(TYPE) != null && inputField.getString(TYPE).equals(RECORD_TYPE)) {
+      List<TableFieldSchema> nestedFields = new ArrayList<>();
+      JSONArray fieldsArr = inputField.getJSONArray(FIELDS_ENTRY);
+      for (int i = 0; i < fieldsArr.length(); i++) {
+        JSONObject nestedJSON = fieldsArr.getJSONObject(i);
+        nestedFields.add(convertToTableFieldSchema(nestedJSON));
+      }
+      field.setFields(nestedFields);
+    }
+
+    return field;
   }
 
   /**

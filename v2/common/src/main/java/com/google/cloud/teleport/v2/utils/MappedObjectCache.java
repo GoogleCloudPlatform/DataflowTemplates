@@ -23,12 +23,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link MappedObjectCache} allows you to easily create a Map<Key,Value> cache where each
- * element expires and is re-acquied on a configurable basis.
+ * The {@link MappedObjectCache} allows you to easily create a Map&lt;Key,Value&gt; cache where each
+ * element expires and is re-acquired on a configurable basis.
  *
  * <p>The key factors addressed are ensuring expiration of cached objects, consistent update
  * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
- * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
+ * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
  * continuous.
  */
 public abstract class MappedObjectCache<KeyT, ValueT> implements Serializable {

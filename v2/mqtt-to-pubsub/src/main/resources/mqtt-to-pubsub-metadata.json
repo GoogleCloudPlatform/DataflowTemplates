@@ -1,0 +1,45 @@
+{
+  "name": "Mqtt to Pub/Sub",
+  "description": "Streaming pipeline. Ingests UTF8-encoded messages from MQTT to a Pub/Sub topic",
+  "parameters": [
+    {
+      "name": "brokerServer",
+      "label": "Mqtt Broker Server IP",
+      "helpText": "Mqtt broker servers IP in format ip:port",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "inputTopic",
+      "label": "Mqtt input topic",
+      "helpText": "Input MQTT topic to read data",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputTopic",
+      "label": "Pub/Sub output topic",
+      "helpText": "Pub/Sub topic to write the output, in the format of 'projects/yourproject/topics/yourtopic'",
+      "regexes": [
+        "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "username",
+      "isOptional": true,
+      "label": "Mqtt Username",
+      "helpText": "Username to authenticate with MQTT server",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "password",
+      "isOptional": true,
+      "label": "Mqtt Password",
+      "helpText": "Password for the username with MQTT server",
+      "regexes": [],
+      "paramType": "TEXT"
+    }
+  ]
+}

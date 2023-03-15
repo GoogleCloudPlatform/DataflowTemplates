@@ -162,9 +162,9 @@ public class ImportPipeline {
         description = "DDL Creation timeout in minutes",
         helpText = "DDL Creation timeout in minutes.")
     @Default.Integer(30)
-    ValueProvider<Integer> getDDLCreationTimeoutInMinutes();
+    ValueProvider<Integer> getDdlCreationTimeoutInMinutes();
 
-    void setDDLCreationTimeoutInMinutes(ValueProvider<Integer> value);
+    void setDdlCreationTimeoutInMinutes(ValueProvider<Integer> value);
 
     @TemplateParameter.Enum(
         order = 11,
@@ -210,7 +210,7 @@ public class ImportPipeline {
             options.getWaitForForeignKeys(),
             options.getWaitForChangeStreams(),
             options.getEarlyIndexCreateFlag(),
-            options.getDDLCreationTimeoutInMinutes()));
+            options.getDdlCreationTimeoutInMinutes()));
 
     PipelineResult result = p.run();
 

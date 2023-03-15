@@ -63,4 +63,18 @@ public final class TemplateDefinitionsParser {
 
     return definitions;
   }
+
+  /**
+   * Parse the version of a template, given the stage prefix.
+   *
+   * @param stagePrefix GCS path to store the templates (e.g., templates/2023-03-03_RC00).
+   * @return Only the last part, after replacing characters not allowed in labels.
+   */
+  public static String parseVersion(String stagePrefix) {
+    String[] parts = stagePrefix.split("/");
+    String lastPart = parts[parts.length - 1];
+
+    // Replace not allowed chars (anything other than letters, digits, hyphen and underscore)
+    return lastPart.toLowerCase().replaceAll("[^\\p{Ll}\\p{Lo}\\p{N}_-]", "_");
+  }
 }

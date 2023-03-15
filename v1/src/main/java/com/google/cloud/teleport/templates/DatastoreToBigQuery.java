@@ -32,7 +32,7 @@ import org.apache.beam.sdk.options.ValueProvider;
 
 /** Dataflow template which copies Datastore Entities to a BigQuery table. */
 public class DatastoreToBigQuery {
-  interface DatastoreToBigQueryOptions
+  public interface DatastoreToBigQueryOptions
       extends PipelineOptions, DatastoreReadOptions, JavascriptTextTransformerOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,

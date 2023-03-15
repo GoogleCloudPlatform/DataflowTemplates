@@ -30,7 +30,7 @@ import org.apache.beam.sdk.options.Default;
     optionsClass = AtoBOptions.class)
 public class AtoBOk {
 
-  interface AtoBOptions {
+  public interface AtoBOptions {
     @TemplateParameter.BigQueryTable(
         order = 2,
         name = "to",

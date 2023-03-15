@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_METADATA_KEY_PREFIX;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_UUID_KEY;
 
@@ -23,26 +24,38 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.templates.session.ColumnDef;
 import com.google.cloud.teleport.v2.templates.session.NameAndCols;
 import com.google.cloud.teleport.v2.templates.session.Session;
+import com.google.cloud.teleport.v2.templates.session.SrcSchema;
 import com.google.cloud.teleport.v2.templates.session.SyntheticPKey;
+import com.google.cloud.teleport.v2.templates.spanner.common.Type;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
-import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -87,6 +100,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   // The source database type.
   private final String sourceType;
 
+  // If set to true, round decimals inside jsons.
+  private final Boolean roundJsonDecimals;
+
   // Jackson Object mapper.
   private transient ObjectMapper mapper;
 
@@ -119,7 +135,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       PCollectionView<Ddl> ddlView,
       Session session,
       String shadowTablePrefix,
-      String sourceType) {
+      String sourceType,
+      Boolean roundJsonDecimals) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
@@ -127,6 +144,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     this.shadowTablePrefix =
         (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
     this.sourceType = sourceType;
+    this.roundJsonDecimals = roundJsonDecimals;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -156,7 +174,11 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
      */
     try {
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
-      changeEvent = transformChangeEvent(changeEvent, session);
+      if (!session.isEmpty()) {
+        verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
+        changeEvent = transformChangeEventViaSessionFile(changeEvent);
+      }
+      changeEvent = transformChangeEventData(changeEvent, spannerAccessor.getDatabaseClient(), ddl);
       ChangeEventContext changeEventContext =
           ChangeEventContextFactory.createChangeEventContext(
               changeEvent, ddl, shadowTablePrefix, sourceType);
@@ -194,6 +216,11 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
       sucessfulEvents.inc();
+    } catch (DroppedTableException e) {
+      // Errors when table exists in source but was dropped during conversion. We do not output any
+      // errors to dlq for this.
+      LOG.warn(e.getMessage());
+      skippedEvents.inc();
     } catch (InvalidChangeEventException e) {
       // Errors that result from invalid change events.
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
@@ -220,27 +247,136 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     }
   }
 
-  JsonNode transformChangeEvent(JsonNode changeEvent, Session session) {
-    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
-    if (!session.isEmpty()) {
-      NameAndCols nameAndCols = session.getToSpanner().get(tableName);
-      String spTableName = nameAndCols.getName();
-      HashMap<String, String> cols = nameAndCols.getCols();
+  void verifyTableInSession(String tableName)
+      throws IllegalArgumentException, DroppedTableException {
+    if (!session.getSrcToID().containsKey(tableName)) {
+      throw new IllegalArgumentException(
+          "Missing entry for " + tableName + " in srcToId map , provide a valid session file.");
+    }
+    if (!session.getToSpanner().containsKey(tableName)) {
+      throw new DroppedTableException(
+          "Cannot find entry for "
+              + tableName
+              + " in toSpanner map, it is likely this table was dropped");
+    }
+    String tableId = session.getSrcToID().get(tableName).getName();
+    if (!session.getSpSchema().containsKey(tableId)) {
+      throw new IllegalArgumentException(
+          "Missing entry for " + tableId + " in spSchema, provide a valid session file.");
+    }
+  }
 
-      // Convert the table name to corresponding Spanner table name.
-      ((ObjectNode) changeEvent).put(EVENT_TABLE_NAME_KEY, spTableName);
-      // Convert the column names to corresponding Spanner column names.
-      for (Map.Entry<String, String> col : cols.entrySet()) {
-        String srcCol = col.getKey(), spCol = col.getValue();
-        if (!srcCol.equals(spCol)) {
-          ((ObjectNode) changeEvent).set(spCol, changeEvent.get(srcCol));
-          ((ObjectNode) changeEvent).remove(srcCol);
-        }
+  /**
+   * This function modifies the change event using transformations based on the session file. This
+   * includes column/table name changes and adding of synthetic Primary Keys.
+   */
+  JsonNode transformChangeEventViaSessionFile(JsonNode changeEvent) {
+    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
+    String tableId = session.getSrcToID().get(tableName).getName();
+
+    // Convert table and column names in change event.
+    changeEvent = convertTableAndColumnNames(changeEvent, tableName);
+
+    // Add synthetic PK to change event.
+    changeEvent = addSyntheticPKs(changeEvent, tableId);
+
+    // Remove columns present in change event that were dropped in Spanner.
+    changeEvent = removeDroppedColumns(changeEvent, tableId);
+
+    return changeEvent;
+  }
+
+  JsonNode convertTableAndColumnNames(JsonNode changeEvent, String tableName) {
+    NameAndCols nameAndCols = session.getToSpanner().get(tableName);
+    String spTableName = nameAndCols.getName();
+    Map<String, String> cols = nameAndCols.getCols();
+
+    // Convert the table name to corresponding Spanner table name.
+    ((ObjectNode) changeEvent).put(EVENT_TABLE_NAME_KEY, spTableName);
+    // Convert the column names to corresponding Spanner column names.
+    for (Map.Entry<String, String> col : cols.entrySet()) {
+      String srcCol = col.getKey(), spCol = col.getValue();
+      if (!srcCol.equals(spCol)) {
+        ((ObjectNode) changeEvent).set(spCol, changeEvent.get(srcCol));
+        ((ObjectNode) changeEvent).remove(srcCol);
       }
-      HashMap<String, SyntheticPKey> synthPks = session.getSyntheticPks();
-      if (synthPks.containsKey(spTableName)) {
-        ((ObjectNode) changeEvent)
-            .put(synthPks.get(spTableName).getCol(), changeEvent.get(EVENT_UUID_KEY).asText());
+    }
+    return changeEvent;
+  }
+
+  JsonNode addSyntheticPKs(JsonNode changeEvent, String tableId) {
+    Map<String, ColumnDef> spCols = session.getSpSchema().get(tableId).getColDefs();
+    Map<String, SyntheticPKey> synthPks = session.getSyntheticPks();
+    if (synthPks.containsKey(tableId)) {
+      String colID = synthPks.get(tableId).getColId();
+      if (!spCols.containsKey(colID)) {
+        throw new IllegalArgumentException(
+            "Missing entry for "
+                + colID
+                + " in colDefs for tableId: "
+                + tableId
+                + ", provide a valid session file.");
+      }
+      ((ObjectNode) changeEvent)
+          .put(spCols.get(colID).getName(), changeEvent.get(EVENT_UUID_KEY).asText());
+    }
+    return changeEvent;
+  }
+
+  JsonNode removeDroppedColumns(JsonNode changeEvent, String tableId) {
+    Map<String, ColumnDef> spCols = session.getSpSchema().get(tableId).getColDefs();
+    SrcSchema srcSchema = session.getSrcSchema().get(tableId);
+    Map<String, ColumnDef> srcCols = srcSchema.getColDefs();
+    for (String colId : srcSchema.getColIds()) {
+      // If spanner columns do not contain this column Id, drop from change event.
+      if (!spCols.containsKey(colId)) {
+        ((ObjectNode) changeEvent).remove(srcCols.get(colId).getName());
+      }
+    }
+    return changeEvent;
+  }
+
+  /**
+   * This function changes the modifies and data of the change event. Currently, only supports a
+   * single transformation set by roundJsonDecimals.
+   */
+  JsonNode transformChangeEventData(JsonNode changeEvent, DatabaseClient dbClient, Ddl ddl)
+      throws Exception {
+    if (!roundJsonDecimals) {
+      return changeEvent;
+    }
+    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
+    if (ddl.table(tableName) == null) {
+      throw new Exception("Table from change event does not exist in Spanner. table=" + tableName);
+    }
+    Iterator<String> fieldNames = changeEvent.fieldNames();
+    List<String> columnNames =
+        StreamSupport.stream(
+                Spliterators.spliteratorUnknownSize(fieldNames, Spliterator.ORDERED), false)
+            .filter(f -> !f.startsWith(EVENT_METADATA_KEY_PREFIX))
+            .collect(Collectors.toList());
+    for (String columnName : columnNames) {
+      Type columnType = ddl.table(tableName).column(columnName).type();
+      if (columnType.getCode() == Type.Code.JSON || columnType.getCode() == Type.Code.PG_JSONB) {
+        // JSON type cannot be a key column, hence setting requiredField to false.
+        String jsonStr =
+            ChangeEventTypeConvertor.toString(
+                changeEvent, columnName.toLowerCase(), /* requiredField= */ false);
+        if (jsonStr != null) {
+          Statement statement =
+              Statement.newBuilder(
+                      "SELECT PARSE_JSON(@jsonStr, wide_number_mode=>'round') as newJson")
+                  .bind("jsonStr")
+                  .to(jsonStr)
+                  .build();
+          ResultSet resultSet = dbClient.singleUse().executeQuery(statement);
+          while (resultSet.next()) {
+            // We want to send the errors to the severe error queue, hence we do not catch any error
+            // here.
+            String val = resultSet.getJson("newJson");
+            ((ObjectNode) changeEvent).put(columnName.toLowerCase(), val);
+          }
+        }
       }
     }
     return changeEvent;

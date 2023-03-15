@@ -29,6 +29,8 @@ import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -45,10 +47,8 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -60,8 +60,6 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public final class KafkaToBigQueryIT extends TemplateTestBase {
 
-  @Rule public final TestName testName = new TestName();
-
   private static final Logger LOG = LoggerFactory.getLogger(DefaultBigtableResourceManager.class);
 
   private DefaultKafkaResourceManager kafkaResourceManager;
@@ -70,39 +68,17 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
     bigQueryClient.createDataset(REGION);
 
-    kafkaResourceManager =
-        DefaultKafkaResourceManager.builder(testName.getMethodName())
-            .setNumTopics(0)
-            .setHost(HOST_IP)
-            .build();
+    kafkaResourceManager = DefaultKafkaResourceManager.builder(testName).setHost(HOST_IP).build();
   }
 
   @After
-  public void tearDownClass() {
-    boolean producedError = false;
-
-    try {
-      kafkaResourceManager.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete Kafka resources.", e);
-      producedError = true;
-    }
-
-    try {
-      bigQueryClient.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete BigQuery resources.", e);
-      producedError = true;
-    }
-
-    if (producedError) {
-      throw new IllegalStateException("Failed to delete resources. Check above for errors.");
-    }
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(kafkaResourceManager, bigQueryClient);
   }
 
   @Test
@@ -113,10 +89,10 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
   @Test
   public void testKafkaToBigQueryWithExistingDLQ() throws IOException {
     TableId deadletterTableId =
-        bigQueryClient.createTable(testName.getMethodName() + "_dlq", getDeadletterSchema());
+        bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
 
     baseKafkaToBigQuery(
-        b -> b.addParameter("outputDeadletterTable", toTableSpec(deadletterTableId)));
+        b -> b.addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
   }
 
   @Test
@@ -131,14 +107,14 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
   @Test
   public void testKafkaToBigQueryWithStorageApiExistingDLQ() throws IOException {
     TableId deadletterTableId =
-        bigQueryClient.createTable(testName.getMethodName() + "_dlq", getDeadletterSchema());
+        bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
 
     baseKafkaToBigQuery(
         b ->
             b.addParameter("useStorageWriteApi", "true")
                 .addParameter("numStorageWriteApiStreams", "3")
                 .addParameter("storageWriteApiTriggeringFrequencySec", "3")
-                .addParameter("outputDeadletterTable", toTableSpec(deadletterTableId)));
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
   }
 
   private Schema getDeadletterSchema() {
@@ -176,9 +152,9 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
   public void baseKafkaToBigQuery(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
     // Arrange
-    String topicName = kafkaResourceManager.createTopic(testName.getMethodName(), 5);
+    String topicName = kafkaResourceManager.createTopic(testName, 5);
 
-    String bqTable = testName.getMethodName();
+    String bqTable = testName;
     Schema bqSchema =
         Schema.of(
             Field.of("id", StandardSQLTypeName.INT64),
@@ -194,8 +170,8 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
                     "bootstrapServers",
                     kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
                 .addParameter("inputTopics", topicName)
-                .addParameter("outputTableSpec", toTableSpec(tableId))
-                .addParameter("outputDeadletterTable", toTableSpec(deadletterTableId)));
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -221,10 +197,10 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(info),
-                () ->
-                    bigQueryClient.readTable(tableId.getTable()).getTotalRows() >= 20
-                        && bigQueryClient.readTable(deadletterTableId.getTable()).getTotalRows()
-                            >= 10);
+                BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(20).build(),
+                BigQueryRowsCheck.builder(bigQueryClient, deadletterTableId)
+                    .setMinRows(10)
+                    .build());
 
     // Assert
     assertThatResult(result).meetsConditions();

@@ -1,11 +1,11 @@
 [
   {
     "source": {
-      "urn": "kafka:read",
+      "urn": "beam:schematransform:org.apache.beam:kafka_read:v1",
       "configurationParameters": {
         "topic": "mytopic123",
         "bootstrapServers": "123.123.123.123:12345",
-        "dataFormat": "AVRO",
+        "format": "AVRO",
         "confluentSchemaRegistryUrl": "https://localhost/schema/provider/url",
         "confluentSchemaRegistrySubject": "somesubject"
       }
@@ -21,12 +21,12 @@
   },
   {
     "source": {
-      "urn": "kafka:read",
+      "urn": "beam:schematransform:org.apache.beam:kafka_read:v1",
       "configurationParameters": {
         "topic": "mytopic123",
         "bootstrapServers": "123.123.123.123:12345",
-        "dataFormat": "JSON",
-        "avroSchema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
+        "format": "AVRO",
+        "schema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
       }
     },
     "sink": {
@@ -40,12 +40,37 @@
   },
   {
     "source": {
-      "urn": "kafka:read",
+      "urn": "beam:schematransform:org.apache.beam:kafka_read:v1",
       "configurationParameters": {
         "topic": "mytopic123_avro",
         "bootstrapServers": "123.123.123.123:12345",
-        "dataFormat": "AVRO",
-        "avroSchema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
+        "format": "AVRO",
+        "schema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
+      }
+    },
+    "sink": {
+      "urn": "schemaIO:bigquery:write",
+      "configurationParameters": {
+        "table": "project:dataset.table",
+        "createDisposition": "CREATE_IF_NECESSARY",
+        "writeDisposition": "WRITE_APPEND"
+      }
+    }
+  },
+  {
+    "source": {
+      "urn": "beam:schematransform:org.apache.beam:kafka_read:v1",
+      "configurationParameters": {
+        "topic": "mytopic123_avro",
+        "bootstrapServers": "123.123.123.123:12345",
+        "format": "AVRO",
+        "schema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
+      }
+    },
+    "transform": {
+      "urn": "syndeo:schematransform:com.google.cloud:sql_transform:v1",
+      "configurationParameters": {
+        "query": "SELECT first, last FROM input"
       }
     },
     "sink": {

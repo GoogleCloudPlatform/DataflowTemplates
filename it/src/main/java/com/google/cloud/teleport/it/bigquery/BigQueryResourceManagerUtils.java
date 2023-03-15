@@ -17,6 +17,7 @@ package com.google.cloud.teleport.it.bigquery;
 
 import static com.google.cloud.teleport.it.common.ResourceManagerUtils.generateResourceId;
 
+import com.google.cloud.bigquery.TableId;
 import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 
@@ -58,7 +59,7 @@ public final class BigQueryResourceManagerUtils {
    */
   static void checkValidTableId(String idToCheck) {
     if (idToCheck.length() < MIN_TABLE_ID_LENGTH) {
-      throw new IllegalArgumentException("Table ID " + idToCheck + " cannot be empty. ");
+      throw new IllegalArgumentException("Table ID cannot be empty. ");
     }
     if (idToCheck.length() > MAX_TABLE_ID_LENGTH) {
       throw new IllegalArgumentException(
@@ -74,5 +75,20 @@ public final class BigQueryResourceManagerUtils {
               + idToCheck
               + " is not a valid ID. Only letters, numbers, hyphens and underscores are allowed.");
     }
+  }
+
+  /**
+   * Convert a BigQuery TableId to a table spec string.
+   *
+   * @param project project in which the table exists.
+   * @param table TableId to format.
+   * @return String in the format {project}:{dataset}.{table}.
+   */
+  public static String toTableSpec(String project, TableId table) {
+    return String.format(
+        "%s:%s.%s",
+        table.getProject() != null ? table.getProject() : project,
+        table.getDataset(),
+        table.getTable());
   }
 }
