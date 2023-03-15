@@ -94,7 +94,7 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("tableRef", toTableSpec(table))
+            .addParameter("tableRef", toTableSpecLegacy(table))
             .addParameter("bucket", getGcsPath(testName))
             .addParameter("numShards", "5");
 

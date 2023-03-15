@@ -128,7 +128,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
         paramsAdder.apply(
             LaunchConfig.builder(testName, specPath)
                 .addParameter("inputSubscription", subscription.toString())
-                .addParameter("outputTableSpec", toTableSpec(table))
+                .addParameter("outputTableSpec", toTableSpecLegacy(table))
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                 .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
 

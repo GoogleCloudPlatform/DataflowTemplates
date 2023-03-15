@@ -94,7 +94,7 @@ public final class PubSubTopicToBigQueryIT extends TemplateTestBase {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("inputTopic", topic.toString())
-            .addParameter("outputTableSpec", toTableSpec(table));
+            .addParameter("outputTableSpec", toTableSpecLegacy(table));
 
     // Act
     LaunchInfo info = launchTemplate(options);

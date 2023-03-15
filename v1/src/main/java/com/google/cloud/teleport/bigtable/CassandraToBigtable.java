@@ -65,6 +65,10 @@ import org.apache.beam.sdk.values.Row;
     contactInformation = "https://cloud.google.com/support")
 final class CassandraToBigtable {
 
+  /**
+   * TODO - refactor to extend {@link
+   * com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.WriteOptions}.
+   */
   public interface Options extends PipelineOptions {
 
     @TemplateParameter.Text(

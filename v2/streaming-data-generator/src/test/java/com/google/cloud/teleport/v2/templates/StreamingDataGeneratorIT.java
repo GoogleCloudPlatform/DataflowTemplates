@@ -204,7 +204,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             .addParameter(SCHEMA_TEMPLATE_KEY, String.valueOf(SchemaTemplate.GAME_EVENT))
             .addParameter(QPS_KEY, HIGH_QPS)
             .addParameter(SINK_TYPE_KEY, "BIGQUERY")
-            .addParameter(OUTPUT_TABLE_SPEC, toTableSpec(table));
+            .addParameter(OUTPUT_TABLE_SPEC, toTableSpecLegacy(table));
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -243,8 +243,8 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             .addParameter(SCHEMA_TEMPLATE_KEY, String.valueOf(SchemaTemplate.GAME_EVENT))
             .addParameter(QPS_KEY, HIGH_QPS)
             .addParameter(SINK_TYPE_KEY, "BIGQUERY")
-            .addParameter(OUTPUT_TABLE_SPEC, toTableSpec(table))
-            .addParameter(OUTPUT_DEADLETTER_TABLE, toTableSpec(dlq));
+            .addParameter(OUTPUT_TABLE_SPEC, toTableSpecLegacy(table))
+            .addParameter(OUTPUT_DEADLETTER_TABLE, toTableSpecLegacy(dlq));
 
     // Act
     LaunchInfo info = launchTemplate(options);

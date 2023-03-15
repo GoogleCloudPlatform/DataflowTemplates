@@ -20,7 +20,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
-import com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQuery;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQueryTableRows;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.TableRowToJsonFn;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.TransformTextViaJavascript;
 import org.apache.beam.sdk.Pipeline;
@@ -82,7 +82,7 @@ public class BigQueryToElasticsearch {
     pipeline
         .apply(
             "ReadFromBigQuery",
-            ReadBigQuery.newBuilder()
+            ReadBigQueryTableRows.newBuilder()
                 .setOptions(options.as(BigQueryToElasticsearchOptions.class))
                 .build())
 

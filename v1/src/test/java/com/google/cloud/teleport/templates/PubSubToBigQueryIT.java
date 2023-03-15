@@ -108,7 +108,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
         launchTemplate(
             LaunchConfig.builder(testName, specPath)
                 .addParameter("inputTopic", topic.toString())
-                .addParameter("outputTableSpec", toTableSpec(table))
+                .addParameter("outputTableSpec", toTableSpecLegacy(table))
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                 .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
     assertThatPipeline(info).isRunning();
@@ -164,7 +164,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
         launchTemplate(
             LaunchConfig.builder(testName, specPath)
                 .addParameter("inputSubscription", subscription.toString())
-                .addParameter("outputTableSpec", toTableSpec(table))
+                .addParameter("outputTableSpec", toTableSpecLegacy(table))
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                 .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
     assertThatPipeline(info).isRunning();

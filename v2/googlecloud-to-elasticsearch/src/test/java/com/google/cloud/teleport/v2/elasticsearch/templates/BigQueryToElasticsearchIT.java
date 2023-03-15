@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.elasticsearch.templates;
 
 import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.TestProperties.getProperty;
+import static com.google.cloud.teleport.it.matchers.RecordsSubject.bigQueryRowsToRecords;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
@@ -43,7 +44,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -102,8 +102,8 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     LaunchInfo info =
         launchTemplate(
             LaunchConfig.builder(testName, specPath)
-                .addParameter("inputTableSpec", toTableSpec(table))
-                .addParameter("outputDeadletterTable", toTableSpec(table) + "_dlq")
+                .addParameter("inputTableSpec", toTableSpecLegacy(table))
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(table) + "_dlq")
                 .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
                 .addParameter("index", indexName)
                 .addParameter("apiKey", "elastic"));
@@ -116,8 +116,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
 
     assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(20);
     assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
-        .hasRecordsUnordered(
-            bigQueryRows.stream().map(RowToInsert::getContent).collect(Collectors.toList()));
+        .hasRecordsUnordered(bigQueryRowsToRecords(bigQueryRows));
   }
 
   @Test
@@ -137,10 +136,10 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     LaunchInfo info =
         launchTemplate(
             LaunchConfig.builder(testName, specPath)
-                .addParameter("inputTableSpec", toTableSpec(table))
+                .addParameter("inputTableSpec", toTableSpecLegacy(table))
                 .addParameter(
-                    "query", "SELECT * FROM `" + toTableSpec(table).replace(':', '.') + "`")
-                .addParameter("outputDeadletterTable", toTableSpec(table) + "_dlq")
+                    "query", "SELECT * FROM `" + toTableSpecLegacy(table).replace(':', '.') + "`")
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(table) + "_dlq")
                 .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
                 .addParameter("index", indexName)
                 .addParameter("apiKey", "elastic"));
@@ -153,8 +152,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
 
     assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(20);
     assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
-        .hasRecordsUnordered(
-            bigQueryRows.stream().map(RowToInsert::getContent).collect(Collectors.toList()));
+        .hasRecordsUnordered(bigQueryRowsToRecords(bigQueryRows));
   }
 
   @Test
@@ -184,8 +182,8 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     LaunchInfo info =
         launchTemplate(
             LaunchConfig.builder(testName, specPath)
-                .addParameter("inputTableSpec", toTableSpec(table))
-                .addParameter("outputDeadletterTable", toTableSpec(table) + "_dlq")
+                .addParameter("inputTableSpec", toTableSpecLegacy(table))
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(table) + "_dlq")
                 .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
                 .addParameter("index", indexName)
                 .addParameter("apiKey", "elastic")

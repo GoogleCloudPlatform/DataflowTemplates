@@ -447,9 +447,23 @@ public abstract class TemplateTestBase {
    * Convert a BigQuery TableId to a table spec string.
    *
    * @param table TableId to format.
+   * @return String in the format {project}.{dataset}.{table}.
+   */
+  public static String toTableSpecStandard(TableId table) {
+    return String.format(
+        "%s.%s.%s",
+        table.getProject() != null ? table.getProject() : PROJECT,
+        table.getDataset(),
+        table.getTable());
+  }
+
+  /**
+   * Convert a BigQuery TableId to a table spec string.
+   *
+   * @param table TableId to format.
    * @return String in the format {project}:{dataset}.{table}.
    */
-  public static String toTableSpec(TableId table) {
+  public static String toTableSpecLegacy(TableId table) {
     return String.format(
         "%s:%s.%s",
         table.getProject() != null ? table.getProject() : PROJECT,

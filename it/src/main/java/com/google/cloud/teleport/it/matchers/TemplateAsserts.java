@@ -15,23 +15,19 @@
  */
 package com.google.cloud.teleport.it.matchers;
 
+import static com.google.cloud.teleport.it.matchers.RecordsSubject.bigtableRowsToRecords;
+import static com.google.cloud.teleport.it.matchers.RecordsSubject.cassandraRowsToRecords;
+import static com.google.cloud.teleport.it.matchers.RecordsSubject.genericRecordToRecords;
+import static com.google.cloud.teleport.it.matchers.RecordsSubject.structsToRecords;
+import static com.google.cloud.teleport.it.matchers.RecordsSubject.tableResultToRecords;
 import static com.google.common.truth.Truth.assertAbout;
 
-import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
 import com.datastax.oss.driver.api.core.cql.Row;
-import com.datastax.oss.driver.api.core.type.DataTypes;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.spanner.Type.StructField;
-import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.it.artifacts.Artifact;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.generic.GenericRecord;
@@ -39,10 +35,6 @@ import org.jetbrains.annotations.Nullable;
 
 /** Assert utilities for Template DSL-like tests. */
 public final class TemplateAsserts {
-
-  private static TypeReference<Map<String, Object>> recordTypeReference = new TypeReference<>() {};
-
-  private static ObjectMapper objectMapper = new ObjectMapper();
 
   /**
    * Creates a {@link LaunchInfoSubject} to assert information returned from pipeline launches.
@@ -82,6 +74,19 @@ public final class TemplateAsserts {
    */
   public static RecordsSubject assertThatRecords(@Nullable TableResult tableResult) {
     return assertThatRecords(tableResultToRecords(tableResult));
+  }
+
+  /**
+   * Creates a {@link RecordsSubject} to assert information within a list of records.
+   *
+   * @param rows Records in Bigtable's {@link com.google.cloud.bigtable.data.v2.models.Row} format
+   *     to use in the comparison.
+   * @param family The column family to read records from.
+   * @return Truth Subject to chain assertions.
+   */
+  public static RecordsSubject assertThatBigtableRecords(
+      @Nullable Iterable<com.google.cloud.bigtable.data.v2.models.Row> rows, String family) {
+    return assertThatRecords(bigtableRowsToRecords(rows, family));
   }
 
   /**
@@ -134,107 +139,5 @@ public final class TemplateAsserts {
    */
   public static ArtifactsSubject assertThatArtifact(@Nullable Artifact artifact) {
     return assertAbout(ArtifactsSubject.records()).that(List.of(artifact));
-  }
-
-  /**
-   * Convert BigQuery {@link TableResult} to a list of maps.
-   *
-   * @param tableResult Table Result to parse
-   * @return List of maps to use in {@link RecordsSubject}
-   */
-  private static List<Map<String, Object>> tableResultToRecords(TableResult tableResult) {
-    try {
-      List<Map<String, Object>> records = new ArrayList<>();
-
-      for (FieldValueList row : tableResult.iterateAll()) {
-        String jsonRow = row.get(0).getStringValue();
-        Map<String, Object> converted = objectMapper.readValue(jsonRow, recordTypeReference);
-        records.add(converted);
-      }
-
-      return records;
-    } catch (Exception e) {
-      throw new RuntimeException("Error converting TableResult to Records", e);
-    }
-  }
-
-  /**
-   * Convert Spanner {@link Struct} list to a list of maps.
-   *
-   * @param structs Structs to parse
-   * @return List of maps to use in {@link RecordsSubject}
-   */
-  private static List<Map<String, Object>> structsToRecords(List<Struct> structs) {
-    try {
-      List<Map<String, Object>> records = new ArrayList<>();
-
-      for (Struct struct : structs) {
-        Map<String, Object> record = new HashMap<>();
-
-        for (StructField field : struct.getType().getStructFields()) {
-          Value fieldValue = struct.getValue(field.getName());
-          // May need to explore using typed methods instead of .toString()
-          record.put(field.getName(), fieldValue.toString());
-        }
-
-        records.add(record);
-      }
-
-      return records;
-    } catch (Exception e) {
-      throw new RuntimeException("Error converting TableResult to Records", e);
-    }
-  }
-
-  /**
-   * Convert Avro {@link GenericRecord} to a list of maps.
-   *
-   * @param avroRecords Avro Records to parse
-   * @return List of maps to use in {@link RecordsSubject}
-   */
-  private static List<Map<String, Object>> genericRecordToRecords(List<GenericRecord> avroRecords) {
-    try {
-      List<Map<String, Object>> records = new ArrayList<>();
-
-      for (GenericRecord row : avroRecords) {
-        Map<String, Object> converted = objectMapper.readValue(row.toString(), recordTypeReference);
-        records.add(converted);
-      }
-
-      return records;
-    } catch (Exception e) {
-      throw new RuntimeException("Error converting Avro Record to Map", e);
-    }
-  }
-
-  /**
-   * Convert Cassandra {@link Row} list to a list of maps.
-   *
-   * @param rows Rows to parse
-   * @return List of maps to use in {@link RecordsSubject}
-   */
-  private static List<Map<String, Object>> cassandraRowsToRecords(Iterable<Row> rows) {
-    try {
-      List<Map<String, Object>> records = new ArrayList<>();
-
-      for (Row row : rows) {
-        Map<String, Object> converted = new HashMap<>();
-        for (ColumnDefinition columnDefinition : row.getColumnDefinitions()) {
-
-          Object value = null;
-          if (columnDefinition.getType().equals(DataTypes.TEXT)) {
-            value = row.getString(columnDefinition.getName());
-          } else if (columnDefinition.getType().equals(DataTypes.INT)) {
-            value = row.getInt(columnDefinition.getName());
-          }
-          converted.put(columnDefinition.getName().toString(), value);
-        }
-        records.add(converted);
-      }
-
-      return records;
-    } catch (Exception e) {
-      throw new RuntimeException("Error converting Cassandra Rows to Records", e);
-    }
   }
 }

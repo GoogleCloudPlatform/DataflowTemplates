@@ -100,7 +100,7 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
                 .addParameter("inputFilePattern", getGcsPath("input.txt"))
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                 .addParameter("javascriptTextTransformFunctionName", "identity")
-                .addParameter("outputTable", toTableSpec(table))
+                .addParameter("outputTable", toTableSpecLegacy(table))
                 .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp")));
     assertThatPipeline(info).isRunning();
 
