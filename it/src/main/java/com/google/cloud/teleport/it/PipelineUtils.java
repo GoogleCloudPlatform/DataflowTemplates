@@ -59,7 +59,7 @@ public class PipelineUtils {
     String convertedPrefix =
         CaseFormat.UPPER_CAMEL.converterTo(CaseFormat.LOWER_HYPHEN).convert(prefix);
     String formattedTimestamp =
-        DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+        DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")
             .withZone(ZoneId.of("UTC"))
             .format(Instant.now());
     return String.format("%s-%s", convertedPrefix, formattedTimestamp);

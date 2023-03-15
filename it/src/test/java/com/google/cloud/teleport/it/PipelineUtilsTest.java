@@ -28,11 +28,11 @@ public class PipelineUtilsTest {
   @Test
   public void testCreateJobName() {
     String name = "create-job-name";
-    assertThat(createJobName(name)).matches(name + "-\\d{14}");
+    assertThat(createJobName(name)).matches(name + "-\\d{17}");
   }
 
   @Test
   public void testCreateJobNameWithUppercase() {
-    assertThat(createJobName("testWithUpperCase")).matches("test-with-upper-case" + "-\\d{14}");
+    assertThat(createJobName("testWithUpperCase")).matches("test-with-upper-case" + "-\\d{17}");
   }
 }

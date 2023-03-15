@@ -82,7 +82,7 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
   }
 
   @Test
-  public void testTextToTopic() throws IOException {
+  public void testTextStreamToTopic() throws IOException {
     // Arrange
     TopicName outputTopic = pubsubResourceManager.createTopic("topic");
     SubscriptionName outputSubscription =
