@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -225,7 +226,6 @@ public class KafkaToBigQuery {
      * Get bootstrap server across releases.
      *
      * @deprecated This method is no longer acceptable to set bootstrap servers.
-     *     <p>Use {@link KafkaToBQOptions#setReadBootstrapServers()} instead.
      */
     @Deprecated
     void setBootstrapServers(String bootstrapServers);
@@ -351,7 +351,11 @@ public class KafkaToBigQuery {
                     bootstrapServers,
                     topicsList,
                     ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
-                    null))
+                    Map.of(
+                            "bucket", "shopify-dataflow-demo",
+                            "ssl.keystore.location", "dataflow-kafka.p12",
+                            "ssl.keystore.password", "changeit"
+                    )))
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows

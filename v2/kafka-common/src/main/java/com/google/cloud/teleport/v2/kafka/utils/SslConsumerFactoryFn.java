@@ -38,7 +38,7 @@ public class SslConsumerFactoryFn
     implements SerializableFunction<Map<String, Object>, Consumer<byte[], byte[]>> {
   private final Map<String, String> sslConfig;
   private static final String TRUSTSTORE_LOCAL_PATH = "/tmp/kafka.truststore.jks";
-  private static final String KEYSTORE_LOCAL_PATH = "/tmp/kafka.keystore.jks";
+  private static final String KEYSTORE_LOCAL_PATH = "/tmp/kafka.keystore.p12";
 
   /* Logger for class.*/
   private static final Logger LOG = LoggerFactory.getLogger(SslConsumerFactoryFn.class);
@@ -60,19 +60,20 @@ public class SslConsumerFactoryFn
     try {
       outputTrustStoreFilePath = TRUSTSTORE_LOCAL_PATH;
       outputKeyStoreFilePath = KEYSTORE_LOCAL_PATH;
-      getGcsFileAsLocal(bucket, trustStorePath, outputTrustStoreFilePath);
+      //getGcsFileAsLocal(bucket, trustStorePath, outputTrustStoreFilePath);
       getGcsFileAsLocal(bucket, keyStorePath, outputKeyStoreFilePath);
     } catch (IOException e) {
       LOG.error("Failed to retrieve data for SSL", e);
       return new KafkaConsumer<>(config);
     }
 
-    config.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SecurityProtocol.SASL_SSL.name());
-    config.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, outputTrustStoreFilePath);
+    config.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SecurityProtocol.SSL.name());
+    config.put(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, "PKCS12");
+    //config.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, outputTrustStoreFilePath);
     config.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, outputKeyStoreFilePath);
-    config.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, trustStorePassword);
+    //config.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, trustStorePassword);
     config.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, keyStorePassword);
-    config.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, keyPassword);
+    //config.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, keyPassword);
 
     return new KafkaConsumer<>(config);
   }
