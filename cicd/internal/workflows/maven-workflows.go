@@ -209,6 +209,21 @@ func RunForChangedModules(cmd string, args ...string) error {
 		log.Println("All modules were filtered out.")
 		return nil
 	}
+
+	has_it := false
+	has_common := false
+	for _, module := range modules {
+		if len(module) > 1 && module[:2] == "it" {
+			has_it = true
+		}
+		if module == "v2/common" {
+			has_common = true
+		}
+	}
+	if has_it && !has_common {
+		modules = append(modules, "v2/common")
+	}
+
 	modules = append(modules, "plugins/templates-maven-plugin")
 
 	if !build_syndeo {
