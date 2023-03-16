@@ -1,0 +1,194 @@
+Datastream to Cloud Spanner Template
+---
+Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and writes them to a pre-existing set of tables in Cloud Spanner.
+
+:memo: This is a Google-provided template! Please
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+on how to use it without having to build from sources.
+
+:bulb: This is a generated documentation based
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+. Do not change this file directly.
+
+## Parameters
+
+### Mandatory Parameters
+
+* **inputFilePattern** (File location for Datastream file output in Cloud Storage.): This is the file location for Datastream file output in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/.
+* **instanceId** (Cloud Spanner Instance Id.): This is the name of the Cloud Spanner instance where the changes are replicated.
+* **databaseId** (Cloud Spanner Database Id.): This is the name of the Cloud Spanner database where the changes are replicated.
+* **streamName** (Datastream stream name.): This is the Datastream stream name used to get information.
+
+### Optional Parameters
+
+* **inputFileFormat** (Datastream output file format (avro/json).): This is the format of the output file produced by Datastream. By default this will be avro.
+* **sessionFilePath** (Session File Path in Cloud Storage): Session file path in Cloud Storage that contains mapping information from HarbourBridge.
+* **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
+* **spannerHost** (The Cloud Spanner Endpoint to call): The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
+* **gcsPubSubSubscription** (The Pub/Sub subscription being used in a Cloud Storage notification policy.): The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
+* **shadowTablePrefix** (Cloud Spanner shadow table prefix.): The prefix used for the shadow table. Defaults to: shadow_.
+* **shouldCreateShadowTables** (If true, create shadow tables in Cloud Spanner.): This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
+* **rfcStartDateTime** (The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339).): The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
+* **fileReadConcurrency** (File read concurrency): The number of concurrent DataStream files to read. Defaults to: 30.
+* **deadLetterQueueDirectory** (Dead letter queue directory.): This is the file path to store the deadletter queue output. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
+* **dlqRetryMinutes** (Dead letter queue retry minutes): The number of minutes between dead letter queue retries. Defaults to 10.
+* **dlqMaxRetryCount** (Dead letter queue maximum retry count): The max number of times temporary errors can be retried through DLQ. Defaults to 500.
+* **dataStreamRootUrl** (Datastream API Root URL (only required for testing)): Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
+* **datastreamSourceType** (Datastream source type (only required for testing)): This is the type of source used for Datastream. Example - mysql/oracle.
+
+## Getting Started
+
+### Requirements
+
+* Java 11
+* Maven
+* Valid resources for mandatory parameters.
+* [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
+  following command:
+    * `gcloud auth login`
+
+This README uses
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+. Install the plugin with the following command to proceed:
+
+```shell
+mvn clean install -pl plugins/templates-maven-plugin -am
+```
+
+### Building Template
+
+This template is a Flex Template, meaning that the pipeline code will be
+containerized and the container will be executed on Dataflow. Please
+check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+for more information.
+
+#### Staging the Template
+
+If the plan is to just stage the template (i.e., make it available to use) by
+the `gcloud` command or Dataflow "Create job from template" UI,
+the `-PtemplatesStage` profile should be used:
+
+```shell
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+
+mvn clean package -PtemplatesStage  \
+-DskipTests \
+-DprojectId="$PROJECT" \
+-DbucketName="$BUCKET_NAME" \
+-DstagePrefix="templates" \
+-DtemplateName="Cloud_Datastream_to_Spanner" \
+-pl v2/datastream-to-spanner -am
+```
+
+The command should print what is the template location on Cloud Storage:
+
+```
+Flex Template was staged! gs://{BUCKET}/{PATH}
+```
+
+
+#### Running the Template
+
+**Using the staged template**:
+
+You can use the path above to share or run the template.
+
+To start a job with the template at any time using `gcloud`, you can use:
+
+```shell
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Datastream_to_Spanner"
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
+
+### Mandatory
+export INPUT_FILE_PATTERN=<inputFilePattern>
+export INSTANCE_ID=<instanceId>
+export DATABASE_ID=<databaseId>
+export STREAM_NAME=<streamName>
+
+### Optional
+export INPUT_FILE_FORMAT="avro"
+export SESSION_FILE_PATH=<sessionFilePath>
+export PROJECT_ID=<projectId>
+export SPANNER_HOST="https://batch-spanner.googleapis.com"
+export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
+export SHADOW_TABLE_PREFIX="shadow_"
+export SHOULD_CREATE_SHADOW_TABLES=true
+export RFC_START_DATE_TIME="1970-01-01T00:00:00.00Z"
+export FILE_READ_CONCURRENCY=30
+export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DLQ_RETRY_MINUTES=10
+export DLQ_MAX_RETRY_COUNT=500
+export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
+export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
+
+gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
+  --project "$PROJECT" \
+  --region "$REGION" \
+  --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "inputFilePattern=$INPUT_FILE_PATTERN" \
+  --parameters "inputFileFormat=$INPUT_FILE_FORMAT" \
+  --parameters "sessionFilePath=$SESSION_FILE_PATH" \
+  --parameters "instanceId=$INSTANCE_ID" \
+  --parameters "databaseId=$DATABASE_ID" \
+  --parameters "projectId=$PROJECT_ID" \
+  --parameters "spannerHost=$SPANNER_HOST" \
+  --parameters "gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION" \
+  --parameters "streamName=$STREAM_NAME" \
+  --parameters "shadowTablePrefix=$SHADOW_TABLE_PREFIX" \
+  --parameters "shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES" \
+  --parameters "rfcStartDateTime=$RFC_START_DATE_TIME" \
+  --parameters "fileReadConcurrency=$FILE_READ_CONCURRENCY" \
+  --parameters "deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY" \
+  --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
+  --parameters "dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT" \
+  --parameters "dataStreamRootUrl=$DATA_STREAM_ROOT_URL" \
+  --parameters "datastreamSourceType=$DATASTREAM_SOURCE_TYPE"
+```
+
+
+**Using the plugin**:
+
+Instead of just generating the template in the folder, it is possible to stage
+and run the template in a single command. This may be useful for testing when
+changing the templates.
+
+```shell
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
+
+### Mandatory
+export INPUT_FILE_PATTERN=<inputFilePattern>
+export INSTANCE_ID=<instanceId>
+export DATABASE_ID=<databaseId>
+export STREAM_NAME=<streamName>
+
+### Optional
+export INPUT_FILE_FORMAT="avro"
+export SESSION_FILE_PATH=<sessionFilePath>
+export PROJECT_ID=<projectId>
+export SPANNER_HOST="https://batch-spanner.googleapis.com"
+export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
+export SHADOW_TABLE_PREFIX="shadow_"
+export SHOULD_CREATE_SHADOW_TABLES=true
+export RFC_START_DATE_TIME="1970-01-01T00:00:00.00Z"
+export FILE_READ_CONCURRENCY=30
+export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DLQ_RETRY_MINUTES=10
+export DLQ_MAX_RETRY_COUNT=500
+export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
+export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
+
+mvn clean package -PtemplatesRun \
+-DskipTests \
+-DprojectId="$PROJECT" \
+-DbucketName="$BUCKET_NAME" \
+-Dregion="$REGION" \
+-DjobName="cloud-datastream-to-spanner-job" \
+-DtemplateName="Cloud_Datastream_to_Spanner" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE" \
+-pl v2/datastream-to-spanner -am
+```
