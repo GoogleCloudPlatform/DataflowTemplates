@@ -40,7 +40,7 @@ public class TemplateSpecsGenerator {
    * Scan the classloader for all Template classes, and then builds spec + saves the metadata for
    * every Template.
    */
-  public void generateSpecs(ClassLoader classLoader, File targetDirectory) {
+  public void generateSpecs(ClassLoader classLoader, File baseDirectory, File targetDirectory) {
 
     List<TemplateDefinitions> templateDefinitions =
         TemplateDefinitionsParser.scanDefinitions(classLoader);
@@ -52,6 +52,7 @@ public class TemplateSpecsGenerator {
 
       if (definition.isFlex()) {
         saveImageSpec(definition, imageSpec, targetDirectory);
+        saveDocs(definition, imageSpec, baseDirectory);
       }
     }
   }
@@ -148,6 +149,25 @@ public class TemplateSpecsGenerator {
               + "}\n");
     } catch (IOException e) {
       throw new RuntimeException("Error writing command spec", e);
+    }
+
+    return file;
+  }
+
+  private File saveDocs(TemplateDefinitions definition, ImageSpec imageSpec, File targetDirectory) {
+
+    Template templateAnnotation = definition.getTemplateAnnotation();
+
+    File file = new File(targetDirectory, "README_" + templateAnnotation.name() + ".md");
+    LOG.info("Saving docs " + file.getAbsolutePath());
+
+    try {
+      String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec);
+      try (FileWriter out = new FileWriter(file)) {
+        out.write(markdown);
+      }
+    } catch (Exception e) {
+      LOG.warning("Error generating markdown docs");
     }
 
     return file;

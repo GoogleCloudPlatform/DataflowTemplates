@@ -56,6 +56,9 @@ public abstract class TemplatesBaseMojo extends AbstractMojo {
   @Parameter(defaultValue = "${project.build.directory}", property = "buildDir", required = true)
   protected File targetDirectory;
 
+  @Parameter(defaultValue = "${project.basedir}", property = "baseDir", required = true)
+  protected File baseDirectory;
+
   protected URLClassLoader buildClassloader()
       throws DependencyResolutionRequiredException, MalformedURLException, MojoExecutionException {
     List<String> classpathElements = project.getCompileClasspathElements();

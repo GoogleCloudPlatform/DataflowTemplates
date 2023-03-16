@@ -43,7 +43,7 @@ public class TemplateDefinitionsTest {
     assertNotNull(metadata);
 
     assertEquals("A to B", metadata.getName());
-    assertEquals("Send A to B", metadata.getDescription());
+    assertEquals("Streaming Template that sends A to B", metadata.getDescription());
     assertEquals("com.google.cloud.teleport.plugin.sample.AtoBOk", metadata.getMainClass());
 
     // Make sure metadata follows stable order

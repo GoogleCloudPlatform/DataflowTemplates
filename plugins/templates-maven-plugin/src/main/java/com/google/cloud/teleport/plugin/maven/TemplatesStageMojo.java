@@ -133,6 +133,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (librariesBucketName == null || librariesBucketName.isEmpty()) {
       librariesBucketName = bucketName;
     }
+    // Remove trailing slash if given
+    if (stagePrefix.endsWith("/")) {
+      stagePrefix = stagePrefix.substring(0, stagePrefix.length() - 1);
+    }
 
     try {
       URLClassLoader loader = buildClassloader();

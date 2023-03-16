@@ -29,6 +29,7 @@ public class ImageSpecParameter {
   private Boolean isOptional;
   private List<String> regexes;
   private ImageSpecParameterType paramType;
+  private Object defaultValue;
 
   public String getName() {
     return name;
@@ -82,6 +83,18 @@ public class ImageSpecParameter {
     this.paramType = parameterType;
   }
 
+  public Boolean getOptional() {
+    return isOptional;
+  }
+
+  public Object getDefaultValue() {
+    return defaultValue;
+  }
+
+  public void setDefaultValue(Object defaultValue) {
+    this.defaultValue = defaultValue;
+  }
+
   public void processParamType(Annotation parameterAnnotation) {
     switch (parameterAnnotation.annotationType().getSimpleName()) {
       case "Text":
@@ -93,6 +106,7 @@ public class ImageSpecParameter {
             simpleTextParam.description(), simpleTextParam.helpText(), simpleTextParam.example());
         this.setOptional(simpleTextParam.optional());
         this.setParamType(ImageSpecParameterType.TEXT);
+
         break;
       case "GcsReadFile":
         TemplateParameter.GcsReadFile gcsReadFileParam =

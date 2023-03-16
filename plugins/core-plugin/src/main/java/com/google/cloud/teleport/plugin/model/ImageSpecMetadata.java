@@ -29,6 +29,9 @@ public class ImageSpecMetadata {
   private String mainClass;
   private List<ImageSpecParameter> parameters = new ArrayList<>();
   private Map<String, String> runtimeParameters = new HashMap<>();
+  private String internalName;
+  private String module;
+  private boolean googleReleased;
 
   public String getDescription() {
     return description;
@@ -68,6 +71,30 @@ public class ImageSpecMetadata {
 
   public void setRuntimeParameters(Map<String, String> runtimeParameters) {
     this.runtimeParameters = runtimeParameters;
+  }
+
+  public String getInternalName() {
+    return internalName;
+  }
+
+  public void setInternalName(String internalName) {
+    this.internalName = internalName;
+  }
+
+  public String getModule() {
+    return module;
+  }
+
+  public void setModule(String module) {
+    this.module = module;
+  }
+
+  public boolean isGoogleReleased() {
+    return googleReleased;
+  }
+
+  public void setGoogleReleased(boolean googleReleased) {
+    this.googleReleased = googleReleased;
   }
 
   public Optional<ImageSpecParameter> getParameter(String name) {
