@@ -35,6 +35,9 @@ public class TemplateDocsGenerator {
 
   public static String readmeMarkdown(ImageSpec imageSpec) throws IOException, TemplateException {
 
+    LOG.info(
+        "Generating documentation for template {}...", imageSpec.getMetadata().getInternalName());
+
     Configuration freemarkerConfig = new Configuration(Configuration.VERSION_2_3_32);
     freemarkerConfig.setDefaultEncoding("UTF-8");
     freemarkerConfig.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);

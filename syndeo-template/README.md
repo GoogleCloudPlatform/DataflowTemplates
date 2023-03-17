@@ -14,7 +14,7 @@ The template works by relying on Beam transforms that implement the `SchemaTrans
 template's classpath.
 
 The template receives a *pipeline spec*, which is a specification defining the pipeline's source, sink, and intermediate
-transforms. 
+transforms.
 
 The simplest way to configure and launch a template is using the `jsonSpecPayload` parameter, which expects a
 JSON payload with the following shape:

@@ -16,12 +16,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Mandatory Parameters
 
-<#list spec.metadata.parameters as parameter><#if !parameter.optional>* **${parameter.name}** (${parameter.label}): ${parameter.helpText?ensure_ends_with(".")}
+<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>* **${parameter.name}** (${parameter.label}): ${parameter.helpText?ensure_ends_with(".")}
 </#if></#list>
 
 ### Optional Parameters
 
-<#list spec.metadata.parameters as parameter><#if parameter.optional>* **${parameter.name}** (${parameter.label}): ${parameter.helpText?ensure_ends_with(".")}
+<#list spec.metadata.parameters as parameter><#if parameter.optional!false>* **${parameter.name}** (${parameter.label}): ${parameter.helpText?ensure_ends_with(".")}
 </#if></#list>
 
 ## Getting Started
@@ -32,8 +32,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * Maven
 * Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
-  following command:
-    * `gcloud auth login`
+  following commands:
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
 This README uses
 the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
@@ -91,11 +92,11 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Mandatory
-<#list spec.metadata.parameters as parameter><#if !parameter.optional>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
+<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
 </#if></#list>
 
 ### Optional
-<#list spec.metadata.parameters as parameter><#if parameter.optional>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
+<#list spec.metadata.parameters as parameter><#if parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
 </#if></#list>
 
 gcloud dataflow flex-template run "${spec.metadata.internalName?lower_case?replace("_", "-")}-job" \
@@ -120,11 +121,11 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Mandatory
-<#list spec.metadata.parameters as parameter><#if !parameter.optional>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
+<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
 </#if></#list>
 
 ### Optional
-<#list spec.metadata.parameters as parameter><#if parameter.optional>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
+<#list spec.metadata.parameters as parameter><#if parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
 </#if></#list>
 
 mvn clean package -PtemplatesRun \
