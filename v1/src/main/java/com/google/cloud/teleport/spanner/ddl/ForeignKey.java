@@ -22,9 +22,12 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.stream.Collectors;
 
-/** Cloud Spanner foreign key definition. */
+/**
+ * Cloud Spanner foreign key definition.
+ */
 @AutoValue
 public abstract class ForeignKey implements Serializable {
+
   private static final long serialVersionUID = 286089905L;
 
   abstract String name();
@@ -39,8 +42,10 @@ public abstract class ForeignKey implements Serializable {
 
   abstract Dialect dialect();
 
+  abstract boolean onDeleteCascade();
+
   public static Builder builder(Dialect dialect) {
-    return new AutoValue_ForeignKey.Builder().dialect(dialect);
+    return new AutoValue_ForeignKey.Builder().dialect(dialect).onDeleteCascade(false);
   }
 
   public static Builder builder() {
@@ -69,6 +74,9 @@ public abstract class ForeignKey implements Serializable {
         .append((identifierQuote + " ("))
         .append(referencedColumnsString)
         .append(")");
+    if (onDeleteCascade()) {
+      appendable.append(" ON DELETE CASCADE");
+    }
   }
 
   public String prettyPrint() {
@@ -101,6 +109,8 @@ public abstract class ForeignKey implements Serializable {
     public abstract ImmutableList.Builder<String> columnsBuilder();
 
     public abstract ImmutableList.Builder<String> referencedColumnsBuilder();
+
+    public abstract Builder onDeleteCascade(boolean value);
 
     public abstract ForeignKey build();
   }

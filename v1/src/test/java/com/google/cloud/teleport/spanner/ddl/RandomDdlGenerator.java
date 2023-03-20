@@ -136,7 +136,7 @@ public abstract class RandomDdlGenerator {
         .setArrayChance(20)
         .setMaxPkComponents(3)
         .setMaxBranchPerLevel(new int[] {2, 2, 1, 1, 1, 1, 1})
-        // TODO(b/187873097): Enable views here once supported in production.
+        // TODO(b/187873097): Enable views here once supported in production. // TODO(gunjj) Cleanup reference to fixed bug
         .setMaxViews(0)
         .setMaxIndex(2)
         .setMaxForeignKeys(2)
@@ -470,7 +470,8 @@ public abstract class RandomDdlGenerator {
             ForeignKey.builder(getDialect())
                 .name(generateIdentifier(getMaxIdLength()))
                 .table(name)
-                .referencedTable(parent.name());
+                .referencedTable(parent.name())
+                .onDeleteCascade(rnd.nextBoolean());
         for (IndexColumn pk : parent.primaryKeys()) {
           foreignKeyBuilder.columnsBuilder().add(pk.name());
           foreignKeyBuilder.referencedColumnsBuilder().add(pk.name());

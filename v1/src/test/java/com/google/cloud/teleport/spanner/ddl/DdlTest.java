@@ -99,7 +99,9 @@ public class DdlTest {
         .foreignKeys(
             ImmutableList.of(
                 "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
-                    + " REFERENCES `AllowedNames` (`first_name`)"))
+                    + " REFERENCES `AllowedNames` (`first_name`)",
+                "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
+                    + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"))
         .checkConstraints(ImmutableList.of("CONSTRAINT `ck` CHECK (`first_name` != `last_name`)"))
         .endTable();
     Export export =
@@ -127,9 +129,11 @@ public class DdlTest {
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
-                + " REFERENCES `AllowedNames` (`first_name`)"));
+                + " REFERENCES `AllowedNames` (`first_name`)"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
+                + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"));
     List<String> statements = ddl.statements();
-    assertEquals(4, statements.size());
+    assertEquals(5, statements.size());
     assertThat(
         statements.get(0),
         equalToCompressingWhiteSpace(
@@ -151,6 +155,11 @@ public class DdlTest {
                 + " `AllowedNames` (`first_name`)"));
     assertThat(
         statements.get(3),
+        equalToCompressingWhiteSpace(
+            "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`) REFERENCES"
+                + " `AllowedNames` (`last_name`) ON DELETE CASCADE"));
+    assertThat(
+        statements.get(4),
         equalToCompressingWhiteSpace(
             "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"));
     assertNotNull(ddl.hashCode());
@@ -200,7 +209,9 @@ public class DdlTest {
         .foreignKeys(
             ImmutableList.of(
                 "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
-                    + " REFERENCES \"AllowedNames\" (\"first_name\")"))
+                    + " REFERENCES \"AllowedNames\" (\"first_name\")",
+                "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
+                    + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"))
         .checkConstraints(
             ImmutableList.of("CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\")"))
         .endTable();
@@ -232,7 +243,9 @@ public class DdlTest {
                 + " ) "
                 + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
-                + " REFERENCES \"AllowedNames\" (\"first_name\")"));
+                + " REFERENCES \"AllowedNames\" (\"first_name\")"
+                + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
+                + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"));
     assertNotNull(ddl.hashCode());
   }
 
@@ -537,6 +550,8 @@ public class DdlTest {
             "ALTER TABLE \"Account\" ADD CONSTRAINT \"account_to_user\" FOREIGN KEY"
                 + " (\"account_id\", \"owner_name\") REFERENCES \"User\" (\"user_id\","
                 + " \"full_name\")"));
+    // TODO(gunjj) Consider moving FK ON DELETE CASCADE test from simple()/pgSimple() to this method for
+    //  PG and for a separate such method for GSQL
     assertNotNull(foreignKey.hashCode());
   }
 
