@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.templates;
 
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifacts;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatStructs;
@@ -22,6 +23,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.artifacts.Artifact;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -31,6 +33,7 @@ import com.google.cloud.teleport.it.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.TextImportPipeline;
 import com.google.common.collect.ImmutableList;
+import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -154,6 +157,92 @@ public final class TextImportPipelineIT extends TemplateTestBase {
                     "3.99",
                     "2020-03-05",
                     "2023-01-01T17:24:02Z")));
+  }
+
+  @Test
+  public void testImportCsvBadRows() throws IOException {
+    // Arrange
+    gcsClient.createArtifact(
+        "input/singers1.csv",
+        "1,John,Doe,TRUE,1.5,2023-02-01,2023-01-01T17:22:00\n" + "2,Jane,Doe,5,A\n");
+
+    String statement =
+        "CREATE TABLE Singers (\n"
+            + "  SingerId      INT64 NOT NULL,\n"
+            + "  FirstName     STRING(1024),\n"
+            + "  LastName      STRING(1024),\n"
+            + "  Active        BOOL,\n"
+            + "  Score         FLOAT64,\n"
+            + "  BirthDate     DATE,\n"
+            + "  LastModified  TIMESTAMP,\n"
+            + ") PRIMARY KEY (SingerId)";
+    spannerResourceManager.createTable(statement);
+
+    String manifestJson =
+        "{\n"
+            + "  \"tables\": [\n"
+            + "    {\n"
+            + "      \"table_name\": \"Singers\",\n"
+            + "      \"file_patterns\": [\n"
+            + "        \""
+            + getGcsPath("input")
+            + "/*.csv\"\n"
+            + "      ],\n"
+            + "      \"columns\": [\n"
+            + "        {\"column_name\": \"SingerId\", \"type_name\": \"INT64\"},\n"
+            + "        {\"column_name\": \"FirstName\", \"type_name\": \"STRING\"},\n"
+            + "        {\"column_name\": \"LastName\", \"type_name\": \"STRING\"},\n"
+            + "        {\"column_name\": \"Active\", \"type_name\": \"BOOL\"},\n"
+            + "        {\"column_name\": \"Score\", \"type_name\": \"FLOAT64\"},\n"
+            + "        {\"column_name\": \"BirthDate\", \"type_name\": \"DATE\"},\n"
+            + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"}\n"
+            + "      ]\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+    gcsClient.createArtifact("input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("importManifest", getGcsPath("input/manifest.json"))
+            .addParameter("columnDelimiter", ",")
+            .addParameter("fieldQualifier", "\"")
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+            .addParameter("invalidOutputPath", getGcsPath("invalid/bad"));
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    ImmutableList<Struct> structs =
+        spannerResourceManager.readTableRecords(
+            "Singers",
+            List.of(
+                "SingerId",
+                "FirstName",
+                "LastName",
+                "Active",
+                "Score",
+                "BirthDate",
+                "LastModified"));
+    assertThat(structs).hasSize(1);
+    assertThatStructs(structs)
+        .hasRecordsUnordered(
+            List.of(
+                createRecordMap(
+                    "1", "John", "Doe", "true", "1.5", "2023-02-01", "2023-01-01T17:22:00Z")));
+
+    List<Artifact> artifacts = gcsClient.listArtifacts("invalid/", Pattern.compile(".*bad.*"));
+    assertThat(artifacts).hasSize(1);
+    assertThatArtifacts(artifacts).hasContent("2,Jane,Doe,5,A");
   }
 
   private Map<String, Object> createRecordMap(

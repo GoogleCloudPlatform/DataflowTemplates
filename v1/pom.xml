@@ -205,6 +205,11 @@
       <artifactId>auto-service</artifactId>
       <version>${autovalue.service.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons-lang3.version}</version>
+    </dependency>
 
     <!-- Dependencies needed for Splunk -->
     <dependency>
