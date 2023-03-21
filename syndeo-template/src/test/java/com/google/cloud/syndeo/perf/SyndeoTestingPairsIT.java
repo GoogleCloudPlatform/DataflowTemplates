@@ -71,10 +71,10 @@ public class SyndeoTestingPairsIT {
         new HashSet<>(
             List.of(
                 // We test all sinks against a Pubsub source
-                SourceSinkUrns.create(
-                    "beam:schematransform:org.apache.beam:kafka_read:v1",
-                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                    true)
+//                SourceSinkUrns.create(
+//                    "beam:schematransform:org.apache.beam:kafka_read:v1",
+//                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+//                    true)
                 //                SourceSinkUrns.create(
                 //                        "beam:schematransform:org.apache.beam:kafka_read:v1",
                 //                    "beam:schematransform:org.apache.beam:spanner_write:v1",
@@ -97,27 +97,27 @@ public class SyndeoTestingPairsIT {
                 //                    true),
                 //
                 //                // We test all sources against a BigQuery sink
-                //                SourceSinkUrns.create(
-                //
-                // "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
-                //
-                // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                //                    false),
+                                SourceSinkUrns.create(
+
+                 "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+
+                 "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                                    false),
                 //                SourceSinkUrns.create(
                 //                    "beam:schematransform:org.apache.beam:kafka_read:v1",
                 //
                 // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
                 //                    true),
-                //                SourceSinkUrns.create(
-                //                    "beam:schematransform:org.apache.beam:pubsublite_read:v1",
-                //
-                // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                //                        true),
-                //                SourceSinkUrns.create(
-                //                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                //
-                // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                //                        true)
+                                SourceSinkUrns.create(
+                                    "beam:schematransform:org.apache.beam:pubsublite_read:v1",
+
+                 "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                                        true),
+                                SourceSinkUrns.create(
+                                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+
+                 "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                                        true)
                 )));
   }
 
@@ -211,16 +211,6 @@ public class SyndeoTestingPairsIT {
     LOG.info("Building syndeo test pipeline from configuration: {}", syndeoPipelinePayload);
     SyndeoTemplate.buildPipeline(syndeoPipeline, syndeoPipeDescription);
 
-    LOG.info("Starting data generation pipeline");
-    PipelineResult generatorResult = dataGenerator.run(options);
-
-    if (!pairToTest.getIsStreaming()) {
-      LOG.info(
-          "Waiting for data generation pipeline to finish before starting Syndeo pipeline"
-              + " because the source is a batch source.");
-      generatorResult.waitUntilFinish();
-    }
-
     LOG.info("Starting syndeo test pipeline");
     PipelineResult syndeoResult = syndeoPipeline.run(options);
 
@@ -235,8 +225,7 @@ public class SyndeoTestingPairsIT {
         "Waiting up to 4 minutes for syndeo test pipeline to finish processing all the input."
             + " Input size: {} elements",
         getCounterValue("elementsProcessed", generatorResult));
-    boolean completed =
-        PipelineUtils.waitUntil(
+        boolean completed = PipelineUtils.waitUntil(
             syndeoResult,
             () -> getCounterValue("elementsProcessed", syndeoResult).equals(NUM_ROWS_FOR_TEST),
             4 * timeoutMultiplier.toMillis());

@@ -51,7 +51,6 @@ public class SyndeoStatsSchemaTransformProvider
 
   @Override
   public SchemaTransform from(SyndeoStatsConfiguration configuration) {
-    System.out.println("ADDING SYNDEO STATS!" + configuration.getParent());
     return new SchemaTransform() {
       @Override
       public @UnknownKeyFor @NonNull @Initialized PTransform<
@@ -116,7 +115,6 @@ public class SyndeoStatsSchemaTransformProvider
     @DoFn.ProcessElement
     public void process(@DoFn.Element Row elm, OutputReceiver<Row> receiver) {
       elementsProcessed += 1;
-      if ((elementsProcessed + 1) % 10 == 0) System.out.println("element " + elementsProcessed);
       receiver.output(elm);
     }
 
