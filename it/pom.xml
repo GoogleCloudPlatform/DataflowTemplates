@@ -200,6 +200,8 @@
       <artifactId>java-driver-core</artifactId>
       <version>${cassandra.driver.version}</version>
     </dependency>
+
+    <!-- JDBC drivers -->
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>

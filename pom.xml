@@ -69,6 +69,8 @@
     <truth.version>1.0.1</truth.version>
 
     <!-- JDBC driver / Connector versions -->
+    <!-- Note: File it/src/main/java/com/google/cloud/teleport/it/common/JDBCBaseIT.java -->
+    <!-- should be updated when these versions are changed. -->
     <mysql-connector-java.version>8.0.30</mysql-connector-java.version>
     <postgresql.version>42.2.27</postgresql.version>
     <ojdbc8.version>19.3.0.0</ojdbc8.version>
@@ -269,7 +271,8 @@
               </includes>
               <excludedGroups></excludedGroups>
               <groups>
-                com.google.cloud.teleport.metadata.TemplateIntegrationTest
+                ${integration.tests}
+                com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest
               </groups>
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>
@@ -336,7 +339,7 @@
                 com.google.cloud.teleport.metadata.SkipDirectRunnerTest
               </excludedGroups>
               <groups>
-                com.google.cloud.teleport.metadata.TemplateIntegrationTest
+                ${integration.tests}
               </groups>
               <systemProperties>
                 <!-- Pass on the flag directRunnerTest to the templates test base -->

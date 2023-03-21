@@ -28,7 +28,6 @@ import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
@@ -97,7 +96,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @RunWith(JUnit4.class)
 public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultBigtableResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQueryIT.class);
 
   private static final String MONGO_URI = "mongoDbUri";
   private static final String MONGO_DB = "database";

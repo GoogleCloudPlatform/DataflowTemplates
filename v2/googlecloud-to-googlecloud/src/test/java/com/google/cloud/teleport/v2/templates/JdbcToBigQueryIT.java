@@ -86,7 +86,8 @@ public class JdbcToBigQueryIT extends TemplateTestBase {
             "id");
     jdbcResourceManager.createTable(testName, jdbcSchema);
     jdbcResourceManager.write(
-        testName, Map.of(1, List.of("Jake Peralta"), 2, List.of("Amy Santiago")));
+        testName,
+        List.of(Map.of("id", 1, "name", "Jake Peralta"), Map.of("id", 2, "name", "Amy Santiago")));
     Schema bqSchema =
         Schema.of(
             Field.of("id", StandardSQLTypeName.INT64),

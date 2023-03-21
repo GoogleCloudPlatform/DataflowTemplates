@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.it.bigquery;
+package com.google.cloud.teleport.it.common;
 
 import com.google.cloud.Tuple;
 import com.google.cloud.bigquery.Field;
@@ -27,9 +27,9 @@ import java.util.Map;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Utilities for BigQuery tests. */
-public final class BigQueryTestUtils {
+public final class BigQueryTestUtil {
 
-  private BigQueryTestUtils() {}
+  private BigQueryTestUtil() {}
 
   /**
    * Generate data to be persisted to a BigQuery table for testing.

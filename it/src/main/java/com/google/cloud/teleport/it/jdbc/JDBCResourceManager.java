@@ -60,36 +60,20 @@ public interface JDBCResourceManager extends ResourceManager {
   boolean createTable(String tableName, JDBCSchema schema);
 
   /**
-   * Writes a given row into a table at the given id. This method requires {@link
+   * Writes the given mapped rows into the specified columns. This method requires {@link
    * JDBCResourceManager#createTable(String, JDBCSchema)} to be called for the target table
    * beforehand.
    *
-   * <p>The values given in the row must match the schema by which the table is defined by.
-   *
-   * @param tableName The name of the table to insert the given row into.
-   * @param id The row id to add or edit
-   * @param row The values to write to the row.
-   * @throws JDBCResourceManagerException if method is called after resources have been cleaned up,
-   *     if the manager object has no dataset, if the table does not exist or if there is an
-   *     Exception when attempting to insert the rows.
-   */
-  boolean write(String tableName, Integer id, Object... row);
-
-  /**
-   * Writes the given mapped rows into a table. This method requires {@link
-   * JDBCResourceManager#createTable(String, JDBCSchema)} to be called for the target table
-   * beforehand.
-   *
-   * <p>The rows map must use the row id as the key, and the values will be inserted into the row at
-   * that id. i.e. {0: [val1, val2, ...], 1: [val1, val2, ...], ...}
+   * <p>The maps in the rows list must use the column name as the key. i.e. [{col1: val1, col2:
+   * val2, ...}, {col1: val3, col2: val4, ...}, ...]
    *
    * @param tableName The name of the table to insert the given rows into.
-   * @param rows A map representing the rows to be inserted into the table.
+   * @param rows A list of maps representing the rows to be inserted into the table.
    * @throws JDBCResourceManagerException if method is called after resources have been cleaned up,
    *     if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  boolean write(String tableName, Map<Object, List<Object>> rows);
+  boolean write(String tableName, List<Map<String, Object>> rows);
 
   /**
    * Reads all the rows in a table and returns in the format of a list of Maps, which contain all
@@ -164,9 +148,12 @@ public interface JDBCResourceManager extends ResourceManager {
      * @return this schema object as a SQL statement.
      */
     public String toSqlStatement() {
-      StringBuilder sql = new StringBuilder(idColumn + " " + columns.get(idColumn) + " not NULL");
+      StringBuilder sql = new StringBuilder(idColumn + " " + columns.get(idColumn));
+      if (!columns.get(idColumn).toUpperCase().contains(" NOT NULL")) {
+        sql.append(" NOT NULL");
+      }
       for (String colKey : columns.keySet()) {
-        if (colKey.equals(idColumn)) {
+        if (colKey.contains(idColumn)) {
           continue;
         }
         sql.append(", ");
