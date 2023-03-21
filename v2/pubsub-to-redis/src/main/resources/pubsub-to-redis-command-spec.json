@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.PubSubToRedis",
+  "classPath": "/template/pubsub-to-redis/*:/template/pubsub-to-redis/libs/*:/template/pubsub-to-redis/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"pubsub_to_redis\"}"
+  }
+}

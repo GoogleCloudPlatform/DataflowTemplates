@@ -1,0 +1,147 @@
+{
+  "name": "PubSub To Redis",
+  "description": "A pipeline reads from pubsub and writes to redis.",
+  "parameters": [
+    {
+      "name": "inputSubscription",
+      "label": "PubSub Subscription name",
+      "helpText": "Name of pubsub Subscription. ex: projects/<project-id>/subscriptions/<subscription-name>",
+      "is_optional": false,
+      "regexes": [
+        "^projects\\/[^\\n\\r\\/]+\\/subscriptions\\/[^\\n\\r\\/]+$"
+      ],
+      "paramType": "PUBSUB_SUBSCRIPTION"
+    },
+    {
+      "name": "useSubscription",
+      "label": "Use PubSub Subscription",
+      "helpText": "Option to use pubsub subscription or topic.",
+      "is_optional": true,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "inputTopic",
+      "label": "PubSub Topic name",
+      "helpText": "Name of pubsub Topic. ex: projects/<project-id>/topics/<topic-name>",
+      "is_optional": true,
+      "regexes": [
+        "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
+      ],
+      "paramType": "PUBSUB_SUBSCRIPTION"
+    },
+    {
+      "name": "redisHost",
+      "label": "Redis database host",
+      "helpText": "Redis database endpoint host",
+      "is_optional": false,
+      "regexes": [
+        "[a-zA-Z0-9._\\-]+"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "redisPort",
+      "label": "Redis database port",
+      "helpText": "Redis database endpoint port",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "redisAuth",
+      "label": "Redis database auth",
+      "helpText": "Redis database endpoint auth",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "batchSize",
+      "label": "Batch Size",
+      "helpText": "Batch Size used for batch insertion of documents into redis.",
+      "is_optional": true,
+      "regexes": [
+        "^[0-9]+$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "batchSizeBytes",
+      "label": "Batch Size in Bytes",
+      "helpText": "Batch Size in bytes used for batch insertion of documents into redis.",
+      "is_optional": true,
+      "regexes": [
+        "^[0-9]+$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "maxConnectionIdleTime",
+      "label": "Max Connection idle time",
+      "helpText": "Maximum idle time allowed in seconds before connection time out occurs.",
+      "is_optional": true,
+      "regexes": [
+        "^[0-9]+$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "sslEnabled",
+      "label": "SSL Enabled",
+      "helpText": "Indicates whether connection to redis is ssl enabled or not.",
+      "is_optional": true,
+      "regexes": [
+        "^(true|false)$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "ignoreSSLCertificate",
+      "label": "Ignore SSL Certificate",
+      "helpText": "Indicates whether ssl certificate should be ignored or not.",
+      "is_optional": true,
+      "regexes": [
+        "^(true|false)$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "withOrdered",
+      "label": "withOrdered",
+      "helpText": "Enables ordered bulk insertions into redis.",
+      "is_optional": true,
+      "regexes": [
+        "^(true|false)$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "withSSLInvalidHostNameAllowed",
+      "label": "withSSLInvalidHostNameAllowed",
+      "helpText": "Indicates whether invalid host name is allowed for ssl connection.",
+      "is_optional": true,
+      "regexes": [
+        "^(true|false)$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "javascriptTextTransformGcsPath",
+      "label": "GCS location of your JavaScript UDF",
+      "helpText": "The full URL of your .js file. Example: gs://your-bucket/your-function.js",
+      "is_optional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_READ_FILE"
+    },
+    {
+      "name": "javascriptTextTransformFunctionName",
+      "label": "The name of the JavaScript function you wish to call as your UDF",
+      "helpText": "The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'.",
+      "is_optional": true,
+      "regexes": [
+        "[a-zA-Z0-9_]+"
+      ],
+      "paramType": "TEXT"
+    }
+  ]
+}

@@ -715,6 +715,7 @@
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-kafka</module>
         <module>pubsub-to-mongodb</module>
+        <module>pubsub-to-redis</module>
         <module>streaming-data-generator</module>
  </modules>
 
