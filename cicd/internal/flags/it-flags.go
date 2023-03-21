@@ -34,7 +34,7 @@ var (
 // Registers all common flags. Must be called before flag.Parse().
 func RegisterItFlags() {
 	flag.StringVar(&dRegion, "it-region", "", "The GCP region to use for storing test artifacts")
-	flag.StringVar(&dProject, "it-project", "", "The GCP region to run the integration tests in")
+	flag.StringVar(&dProject, "it-project", "", "The GCP project to run the integration tests in")
 	flag.StringVar(&dArtifactBucket, "it-artifact-bucket", "", "A GCP bucket to store test artifacts")
 	flag.StringVar(&dStageBucket, "it-stage-bucket", "", "(optional) A GCP bucket to stage templates")
 	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on)")

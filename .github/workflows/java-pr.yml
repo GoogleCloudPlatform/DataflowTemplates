@@ -79,7 +79,8 @@ jobs:
     name: Dataflow Templates Integration Tests
     needs: [spotless_check, java_build, java_unit_tests]
     timeout-minutes: 180
-    runs-on: self-hosted
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2.6.0
@@ -95,3 +96,27 @@ jobs:
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
+  java_load_tests_templates:
+    if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
+    name: Dataflow Templates Load Tests
+    needs: [spotless_check, java_build, java_unit_tests, java_integration_tests_templates]
+    timeout-minutes: 600
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [self-hosted, perf]
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2.6.0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Load Tests
+      run: |
+        ./cicd/run-load-tests \
+        --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
+        --lt-exportDataset="performance_tests"
+        --lt-exportTable="template_performance_metrics"
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env

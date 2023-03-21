@@ -54,8 +54,18 @@
   </dependencies>
 
   <profiles>
+    <!-- These are placeholders to prevent failures -->
     <profile>
       <id>templatesIntegrationTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <failIfNoTests>false</failIfNoTests>
+      </properties>
+    </profile>
+    <profile>
+      <id>templatesLoadTests</id>
       <activation>
         <activeByDefault>false</activeByDefault>
       </activation>
