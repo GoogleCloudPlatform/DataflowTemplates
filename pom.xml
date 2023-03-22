@@ -186,7 +186,7 @@
             </excludes>
             <toggleOffOn/>
             <googleJavaFormat>
-              <version>1.8</version>
+              <version>1.16.0</version>
               <style>GOOGLE</style>
             </googleJavaFormat>
             <licenseHeader>

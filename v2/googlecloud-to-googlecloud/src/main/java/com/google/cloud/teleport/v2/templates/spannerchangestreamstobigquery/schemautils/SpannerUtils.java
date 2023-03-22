@@ -266,7 +266,9 @@ public class SpannerUtils {
     return constraintName.startsWith("PK");
   }
 
-  /** @return the Spanner table names that are tracked by the change stream. */
+  /**
+   * @return the Spanner table names that are tracked by the change stream.
+   */
   private Set<String> getSpannerTableNamesTrackedByChangeStreams() {
     boolean isChangeStreamForAll = isChangeStreamForAll();
 
@@ -306,7 +308,9 @@ public class SpannerUtils {
     return result;
   }
 
-  /** @return if the change stream tracks all the tables in the database. */
+  /**
+   * @return if the change stream tracks all the tables in the database.
+   */
   private boolean isChangeStreamForAll() {
     Boolean result = null;
 

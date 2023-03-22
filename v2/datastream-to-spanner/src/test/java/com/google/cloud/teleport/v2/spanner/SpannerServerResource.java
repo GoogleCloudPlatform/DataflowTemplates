@@ -57,7 +57,7 @@ public class SpannerServerResource extends ExternalResource {
 
   public void updateDatabase(String dbName, Iterable<String> ddlStatements) throws Exception {
     databaseAdminClient
-        .updateDatabaseDdl(instanceId, dbName, ddlStatements, /*operationId=*/ null)
+        .updateDatabaseDdl(instanceId, dbName, ddlStatements, /* operationId= */ null)
         .get();
   }
 

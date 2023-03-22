@@ -231,12 +231,16 @@ public final class GoogleIamV1Policy extends com.google.api.client.json.GenericJ
     return this;
   }
 
-  /** @return value or {@code null} for none */
+  /**
+   * @return value or {@code null} for none
+   */
   public java.lang.Boolean getIamOwned() {
     return iamOwned;
   }
 
-  /** @param iamOwned iamOwned or {@code null} for none */
+  /**
+   * @param iamOwned iamOwned or {@code null} for none
+   */
   public GoogleIamV1Policy setIamOwned(java.lang.Boolean iamOwned) {
     this.iamOwned = iamOwned;
     return this;

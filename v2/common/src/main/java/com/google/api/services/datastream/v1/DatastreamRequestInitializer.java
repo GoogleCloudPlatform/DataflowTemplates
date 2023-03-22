@@ -74,7 +74,9 @@ public class DatastreamRequestInitializer
     super();
   }
 
-  /** @param key API key or {@code null} to leave it unchanged */
+  /**
+   * @param key API key or {@code null} to leave it unchanged
+   */
   public DatastreamRequestInitializer(String key) {
     super(key);
   }

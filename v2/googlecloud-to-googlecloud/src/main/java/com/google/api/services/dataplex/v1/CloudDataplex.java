@@ -118,7 +118,9 @@ public class CloudDataplex
     this(new Builder(transport, jsonFactory, httpRequestInitializer));
   }
 
-  /** @param builder builder */
+  /**
+   * @param builder builder
+   */
   CloudDataplex(Builder builder) {
     super(builder);
   }

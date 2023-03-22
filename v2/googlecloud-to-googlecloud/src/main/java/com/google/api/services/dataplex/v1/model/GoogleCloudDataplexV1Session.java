@@ -84,12 +84,16 @@ public final class GoogleCloudDataplexV1Session extends com.google.api.client.js
     return this;
   }
 
-  /** @return value or {@code null} for none */
+  /**
+   * @return value or {@code null} for none
+   */
   public java.lang.String getState() {
     return state;
   }
 
-  /** @param state state or {@code null} for none */
+  /**
+   * @param state state or {@code null} for none
+   */
   public GoogleCloudDataplexV1Session setState(java.lang.String state) {
     this.state = state;
     return this;

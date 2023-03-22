@@ -34,7 +34,7 @@ public class FileSystemUtils {
   public static String getPathContents(String gsPath) throws IOException {
 
     try (ReadableByteChannel chan =
-            FileSystems.open(FileSystems.matchNewResource(gsPath, /*isDirectory=*/ false));
+            FileSystems.open(FileSystems.matchNewResource(gsPath, /* isDirectory= */ false));
         InputStream inputStream = Channels.newInputStream(chan)) {
 
       return new String(ByteStreams.toByteArray(inputStream), StandardCharsets.UTF_8);

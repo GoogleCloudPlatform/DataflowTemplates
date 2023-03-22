@@ -579,7 +579,7 @@ public class StreamingDataGenerator {
     checkNotNull(options, "options argument to createTrigger method cannot be null.");
     GenerateSequence generateSequence =
         GenerateSequence.from(0L)
-            .withRate(options.getQps(), /* periodLength = */ Duration.standardSeconds(1L));
+            .withRate(options.getQps(), /* periodLength= */ Duration.standardSeconds(1L));
 
     return options.getMessagesLimit() > 0
         ? generateSequence.to(options.getMessagesLimit())

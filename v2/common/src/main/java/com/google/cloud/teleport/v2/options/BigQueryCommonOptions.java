@@ -66,7 +66,9 @@ public final class BigQueryCommonOptions {
 
     void setCreateDisposition(String createDisposition);
 
-    /** @deprecated Not being used. */
+    /**
+     * @deprecated Not being used.
+     */
     @Description(
         "Set partition type to use for BigQuery.  "
             + "Currently 'None' or 'Time' can be available"
@@ -75,17 +77,23 @@ public final class BigQueryCommonOptions {
     @Deprecated
     String getPartitionType();
 
-    /** @deprecated Not being used. */
+    /**
+     * @deprecated Not being used.
+     */
     @Deprecated
     void setPartitionType(String partitionType);
 
-    /** @deprecated Not being used. */
+    /**
+     * @deprecated Not being used.
+     */
     @Description("Set partition column name.  " + "Default: _PARTITIONTIME")
     @Default.String("_PARTITIONTIME")
     @Deprecated
     String getPartitionCol();
 
-    /** @deprecated Not being used. */
+    /**
+     * @deprecated Not being used.
+     */
     @Deprecated
     void setPartitionCol(String partitionCol);
   }

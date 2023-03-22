@@ -108,7 +108,9 @@ public class Datastream
     this(new Builder(transport, jsonFactory, httpRequestInitializer));
   }
 
-  /** @param builder builder */
+  /**
+   * @param builder builder
+   */
   Datastream(Builder builder) {
     super(builder);
   }

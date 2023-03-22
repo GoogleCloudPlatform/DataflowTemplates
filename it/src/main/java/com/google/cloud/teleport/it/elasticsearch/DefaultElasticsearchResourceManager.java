@@ -80,7 +80,7 @@ public class DefaultElasticsearchResourceManager
 
   private DefaultElasticsearchResourceManager(DefaultElasticsearchResourceManager.Builder builder) {
     this(
-        /*elasticsearchClient=*/ null,
+        /* elasticsearchClient= */ null,
         builder.useStaticContainer
             ? null
             : new ElasticsearchContainer(

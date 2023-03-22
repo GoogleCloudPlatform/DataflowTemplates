@@ -66,7 +66,7 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
 
   private DefaultMongoDBResourceManager(DefaultMongoDBResourceManager.Builder builder) {
     this(
-        /*mongoClient=*/ null,
+        /* mongoClient= */ null,
         new MongoDBContainer(
             DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
         builder);
@@ -177,7 +177,7 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
         collectionName);
 
     try {
-      getMongoDBCollection(collectionName, /*createCollection=*/ true).insertMany(documents);
+      getMongoDBCollection(collectionName, /* createCollection= */ true).insertMany(documents);
     } catch (Exception e) {
       throw new MongoDBResourceManagerException("Error inserting documents.", e);
     }
@@ -194,7 +194,7 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
 
     FindIterable<Document> documents;
     try {
-      documents = getMongoDBCollection(collectionName, /*createCollection=*/ false).find();
+      documents = getMongoDBCollection(collectionName, /* createCollection= */ false).find();
     } catch (Exception e) {
       throw new MongoDBResourceManagerException("Error reading collection.", e);
     }
