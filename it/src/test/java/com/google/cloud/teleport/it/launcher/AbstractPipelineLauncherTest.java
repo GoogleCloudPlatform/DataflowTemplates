@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,7 +29,9 @@ import com.google.api.services.dataflow.Dataflow.Projects.Locations.Jobs.Get;
 import com.google.api.services.dataflow.Dataflow.Projects.Locations.Jobs.Update;
 import com.google.api.services.dataflow.model.Job;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.JobState;
+import dev.failsafe.FailsafeException;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -61,12 +64,14 @@ public final class AbstractPipelineLauncherTest {
   public void testGetJobStatus() throws IOException {
     Get get = mock(Get.class);
     Job job = new Job().setCurrentState(JobState.RUNNING.toString());
-    when(getLocationJobs(client).get(any(), any(), any())).thenReturn(get);
-    when(get.execute()).thenReturn(job);
+    when(getLocationJobs(client).get(any(), any(), any()))
+        .thenThrow(new RuntimeException("Server is not responding"))
+        .thenReturn(get);
+    when(get.execute()).thenThrow(new IOException("Connection reset")).thenReturn(job);
 
     JobState actual = new FakePipelineLauncher(client).getJobStatus(PROJECT, REGION, JOB_ID);
 
-    verify(getLocationJobs(client))
+    verify(getLocationJobs(client), times(3))
         .get(projectCaptor.capture(), regionCaptor.capture(), jobIdCaptor.capture());
     assertThat(projectCaptor.getValue()).isEqualTo(PROJECT);
     assertThat(regionCaptor.getValue()).isEqualTo(REGION);
@@ -78,19 +83,22 @@ public final class AbstractPipelineLauncherTest {
   public void testGetJobThrowsException() throws IOException {
     when(getLocationJobs(client).get(any(), any(), any())).thenThrow(new IOException());
     assertThrows(
-        IOException.class,
+        FailsafeException.class,
         () -> new FakePipelineLauncher(client).getJobStatus(PROJECT, REGION, JOB_ID));
   }
 
   @Test
   public void testCancelJob() throws IOException {
     Update update = mock(Update.class);
-    when(getLocationJobs(client).update(any(), any(), any(), any())).thenReturn(update);
-    when(update.execute()).thenReturn(new Job());
+    when(getLocationJobs(client).update(any(), any(), any(), any()))
+        .thenThrow(new IOException("Connection reset"))
+        .thenThrow(new SocketTimeoutException("Read timed out"))
+        .thenReturn(update);
+    when(update.execute()).thenThrow(new IOException("Connection reset")).thenReturn(new Job());
 
     new FakePipelineLauncher(client).cancelJob(PROJECT, REGION, JOB_ID);
 
-    verify(getLocationJobs(client))
+    verify(getLocationJobs(client), times(4))
         .update(
             projectCaptor.capture(),
             regionCaptor.capture(),
@@ -106,19 +114,21 @@ public final class AbstractPipelineLauncherTest {
   public void testCancelJobThrowsException() throws IOException {
     when(getLocationJobs(client).update(any(), any(), any(), any())).thenThrow(new IOException());
     assertThrows(
-        IOException.class,
+        FailsafeException.class,
         () -> new FakePipelineLauncher(client).cancelJob(PROJECT, REGION, JOB_ID));
   }
 
   @Test
   public void testDrainJob() throws IOException {
     Update update = mock(Update.class);
-    when(getLocationJobs(client).update(any(), any(), any(), any())).thenReturn(update);
-    when(update.execute()).thenReturn(new Job());
+    when(getLocationJobs(client).update(any(), any(), any(), any()))
+        .thenThrow(new IOException("Connection reset"))
+        .thenReturn(update);
+    when(update.execute()).thenThrow(new IOException("Connection reset")).thenReturn(new Job());
 
     new FakePipelineLauncher(client).drainJob(PROJECT, REGION, JOB_ID);
 
-    verify(getLocationJobs(client))
+    verify(getLocationJobs(client), times(3))
         .update(
             projectCaptor.capture(),
             regionCaptor.capture(),
@@ -134,7 +144,7 @@ public final class AbstractPipelineLauncherTest {
   public void testDrainJobThrowsException() throws IOException {
     when(getLocationJobs(client).update(any(), any(), any(), any())).thenThrow(new IOException());
     assertThrows(
-        IOException.class,
+        FailsafeException.class,
         () -> new FakePipelineLauncher(client).drainJob(PROJECT, REGION, JOB_ID));
   }
 

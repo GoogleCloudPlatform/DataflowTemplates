@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.it.dataflow;
 
+import static com.google.cloud.teleport.it.common.RetryUtil.clientRetryPolicy;
 import static com.google.cloud.teleport.it.logging.LogStrings.formatForLogging;
 import static com.google.common.base.Preconditions.checkState;
 
@@ -26,6 +27,7 @@ import com.google.api.services.dataflow.model.RuntimeEnvironment;
 import com.google.auth.Credentials;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.cloud.teleport.it.launcher.AbstractPipelineLauncher;
+import dev.failsafe.Failsafe;
 import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,7 +75,15 @@ public final class ClassicTemplateClient extends AbstractPipelineLauncher {
     LOG.info("Sending request:\n{}", formatForLogging(parameter));
 
     Job job =
-        client.projects().locations().templates().create(project, region, parameter).execute();
+        Failsafe.with(clientRetryPolicy())
+            .get(
+                () ->
+                    client
+                        .projects()
+                        .locations()
+                        .templates()
+                        .create(project, region, parameter)
+                        .execute());
     printJobResponse(job);
 
     // Wait until the job is active to get more information

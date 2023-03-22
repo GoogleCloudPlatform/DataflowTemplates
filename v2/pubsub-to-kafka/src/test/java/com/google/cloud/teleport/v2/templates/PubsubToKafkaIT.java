@@ -33,10 +33,11 @@ import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -121,18 +122,21 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
     assertThatPipeline(info).isRunning();
 
     List<String> inMessages = Arrays.asList("first message", "second message");
-    for (final String message : inMessages) {
-      ByteString data = ByteString.copyFromUtf8(message);
-      pubsubResourceManager.publish(tc, ImmutableMap.of(), data);
-    }
-    LOG.info("Published messages to Pubsub Topic");
 
-    List<String> outMessages = new ArrayList<>();
+    Set<String> outMessages = new HashSet<>();
     Result result =
         pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
+
+                  // For tests that run against topics, sending repeatedly will make it work for
+                  // cases in which the on-demand subscription is created after sending messages.
+                  for (final String message : inMessages) {
+                    ByteString data = ByteString.copyFromUtf8(message);
+                    pubsubResourceManager.publish(tc, ImmutableMap.of(), data);
+                  }
+
                   ConsumerRecords<String, String> outMessage =
                       consumer.poll(Duration.ofMillis(100));
                   for (ConsumerRecord<String, String> message : outMessage) {

@@ -30,8 +30,8 @@
     <avro.version>1.8.2</avro.version>
     <commons-math3.version>3.6.1</commons-math3.version>
     <cassandra.driver.version>4.15.0</cassandra.driver.version>
-    <cloud-storage.version>2.2.2</cloud-storage.version>
     <elasticsearch.version>7.9.2</elasticsearch.version>
+    <failsafe.version>3.3.0</failsafe.version>
     <kafka.version>2.4.1</kafka.version>
     <mongodb.version>3.12.10</mongodb.version>
     <dataflow-api.version>v1b3-rev20220920-2.0.0</dataflow-api.version>
@@ -249,6 +249,11 @@
           <artifactId>commons-math3</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>dev.failsafe</groupId>
+      <artifactId>failsafe</artifactId>
+      <version>${failsafe.version}</version>
     </dependency>
 
     <!-- Testing -->
