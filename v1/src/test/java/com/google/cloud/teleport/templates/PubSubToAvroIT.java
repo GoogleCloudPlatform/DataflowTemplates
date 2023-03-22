@@ -93,8 +93,6 @@ public class PubSubToAvroIT extends TemplateTestBase {
 
     ImmutableSet<String> messages =
         ImmutableSet.of("message1-" + name, "message2-" + name, "message3-" + name);
-    messages.forEach(
-        m -> pubsubResourceManager.publish(topic, ImmutableMap.of(), ByteString.copyFromUtf8(m)));
 
     AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
     Result result =
@@ -102,6 +100,14 @@ public class PubSubToAvroIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
+
+                  // For tests that run against topics, sending repeatedly will make it work for
+                  // cases in which the on-demand subscription is created after sending messages.
+                  for (String message : messages) {
+                    pubsubResourceManager.publish(
+                        topic, ImmutableMap.of(), ByteString.copyFromUtf8(message));
+                  }
+
                   artifacts.set(gcsClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
