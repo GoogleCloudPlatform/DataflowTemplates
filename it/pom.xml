@@ -292,7 +292,6 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-synthetic</artifactId>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
@@ -302,7 +301,6 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>

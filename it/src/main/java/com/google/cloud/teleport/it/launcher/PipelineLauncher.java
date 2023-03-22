@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
+import org.apache.beam.sdk.testing.TestPipeline;
 
 /** Client for working with Cloud Dataflow. */
 public interface PipelineLauncher {
@@ -110,7 +111,7 @@ public interface PipelineLauncher {
     @Nullable private final String specPath;
     @Nullable private final Sdk sdk;
     @Nullable private final String executable;
-    @Nullable private final String mainClassname;
+    @Nullable private final TestPipeline pipeline;
 
     private LaunchConfig(Builder builder) {
       this.jobName = builder.jobName;
@@ -119,7 +120,7 @@ public interface PipelineLauncher {
       this.specPath = builder.specPath;
       this.sdk = builder.sdk;
       this.executable = builder.executable;
-      this.mainClassname = builder.mainClassname;
+      this.pipeline = builder.pipeline;
     }
 
     public String jobName() {
@@ -151,8 +152,8 @@ public interface PipelineLauncher {
       return executable;
     }
 
-    public String mainClassname() {
-      return mainClassname;
+    public TestPipeline pipeline() {
+      return pipeline;
     }
 
     public static Builder builderWithName(String jobName, String specPath) {
@@ -175,7 +176,7 @@ public interface PipelineLauncher {
       private Map<String, String> parameters;
       private Sdk sdk;
       private String executable;
-      private String mainClassname;
+      private TestPipeline pipeline;
 
       private Builder(String jobName, String specPath) {
         this.jobName = jobName;
@@ -239,12 +240,12 @@ public interface PipelineLauncher {
       }
 
       @Nullable
-      public String getMainClassname() {
-        return mainClassname;
+      public TestPipeline getPipeline() {
+        return pipeline;
       }
 
-      public Builder setMainClassname(String mainClassname) {
-        this.mainClassname = mainClassname;
+      public Builder setPipeline(TestPipeline pipeline) {
+        this.pipeline = pipeline;
         return this;
       }
 
@@ -404,4 +405,6 @@ public interface PipelineLauncher {
    * @throws IOException if there is an issue sending the request
    */
   Map<String, Double> getMetrics(String project, String region, String jobId) throws IOException;
+
+  JobState waitUntilActive(String project, String region, String jobId) throws IOException;
 }

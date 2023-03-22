@@ -45,10 +45,12 @@ import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance tests for {@link AvroToBigtable GCS Avro to Bigtable} template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(AvroToBigtable.class)
 @RunWith(JUnit4.class)
 public class AvroToBigtableLT extends TemplateLoadTestBase {
@@ -71,7 +73,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    bigtableResourceManager = DefaultBigtableResourceManager.builder(testName, PROJECT).build();
+    bigtableResourceManager = DefaultBigtableResourceManager.builder(testName, project).build();
     Storage storageClient = createStorageClient(CREDENTIALS);
     gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
     // upload schema files and save path
@@ -81,7 +83,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
             gcsClient
                 .uploadArtifact(
                     "input/schema.json",
-                    Resources.getResource("AvroToBigtablePerformanceIT/schema.json").getPath())
+                    Resources.getResource("AvroToBigtableLT/schema.json").getPath())
                 .name());
     avroSchemaPath =
         getFullGcsPath(
@@ -127,14 +129,14 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addParameter("bigtableProjectId", PROJECT)
+                    .addParameter("bigtableProjectId", project)
                     .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
                     .addParameter("bigtableTableId", tableId)
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*"))
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 

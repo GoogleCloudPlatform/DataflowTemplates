@@ -1,5 +1,5 @@
 {
-  "key": "server{{integer(1,50)}}",
+  "key": "server{{integer(1,500)}}",
   "cells": [{
       "family": "SystemMetrics",
       "qualifier": "{{random("cpu", "memory")}}",

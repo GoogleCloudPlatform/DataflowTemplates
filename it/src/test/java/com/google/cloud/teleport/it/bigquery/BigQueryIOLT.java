@@ -89,10 +89,10 @@ public class BigQueryIOLT extends IOLoadTestBase {
   @BeforeClass
   public static void beforeClass() {
     resourceManager =
-        DefaultBigQueryResourceManager.builder("io-bigquery-lt", PROJECT)
+        DefaultBigQueryResourceManager.builder("io-bigquery-lt", project)
             .setCredentials(CREDENTIALS)
             .build();
-    resourceManager.createDataset(REGION);
+    resourceManager.createDataset(region);
   }
 
   @Before
@@ -103,7 +103,7 @@ public class BigQueryIOLT extends IOLoadTestBase {
                 .withZone(ZoneId.of("UTC"))
                 .format(java.time.Instant.now())
             + UUID.randomUUID().toString().substring(0, 10);
-    tableQualifier = String.format("%s:%s.%s", PROJECT, resourceManager.getDatasetId(), tableName);
+    tableQualifier = String.format("%s:%s.%s", project, resourceManager.getDatasetId(), tableName);
 
     String testConfig =
         TestProperties.getProperty("configuration", "local", TestProperties.Type.PROPERTY);

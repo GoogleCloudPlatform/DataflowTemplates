@@ -42,10 +42,12 @@ import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance test for {@link SpannerToText Spanner to GCS Text} template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(SpannerToText.class)
 @RunWith(JUnit4.class)
 public class SpannerToTextLT extends TemplateLoadTestBase {
@@ -67,7 +69,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
+        DefaultSpannerResourceManager.builder(testName, project, region).build();
     Storage storageClient = createStorageClient(CREDENTIALS);
     gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
   }
@@ -107,7 +109,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
             .setQPS("1000000")
             .setMessagesLimit(NUM_MESSAGES)
             .setSinkType("SPANNER")
-            .setProjectId(PROJECT)
+            .setProjectId(project)
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
             .setSpannerTableName(name)
@@ -119,7 +121,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerProjectId", project)
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabaseId", spannerResourceManager.getDatabaseId())
                     .addParameter("spannerTable", name)
@@ -127,7 +129,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 
