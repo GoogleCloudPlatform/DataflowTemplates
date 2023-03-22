@@ -79,6 +79,11 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
+                <groupId>org.apache.beam</groupId>
+                <artifactId>beam-sdks-java-io-kafka</artifactId>
+                <version>${beam.snapshot.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.google.api-client</groupId>
                 <artifactId>google-api-client</artifactId>
                 <version>1.35.2</version>
@@ -414,6 +419,18 @@
                                 </includes>
                             </artifactSet>
                             <filters>
+                                <filter>
+                                    <artifact>org.apache.beam:beam-sdks-java-extensions-sql-expansion-service</artifact>
+                                    <excludes>
+                                        <exclude>org/apache/beam/sdk/io/kafka/**</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.apache.beam:beam-sdks-java-io-kafka</artifact>
+                                    <includes>
+                                        <include>org/apache/beam/sdk/io/kafka/**</include>
+                                    </includes>
+                                </filter>
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
