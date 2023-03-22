@@ -79,7 +79,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
     testBacklog10gb(Function.identity());
   }
 
-  @Ignore
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testBacklog10gbUsingStreamingEngine()
       throws IOException, ParseException, InterruptedException {
@@ -91,7 +91,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
     testSteadyState1hr(Function.identity());
   }
 
-  @Ignore
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testSteadyState1hrUsingStreamingEngine()
       throws IOException, ParseException, InterruptedException {

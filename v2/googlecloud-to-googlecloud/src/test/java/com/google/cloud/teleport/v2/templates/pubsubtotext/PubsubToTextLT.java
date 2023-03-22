@@ -101,21 +101,21 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
     testBacklog10gb(Function.identity());
   }
 
-  @Ignore
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testBacklog10gbUsingStreamingEngine()
       throws IOException, InterruptedException, ParseException {
     testBacklog10gb(config -> config.addEnvironment("enableStreamingEngine", true));
   }
 
-  @Ignore
+  @Ignore("Test fails, sickbay")
   @Test
   public void testBacklog10gbUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
     testBacklog10gb(config -> config.addParameter("experiments", "use_runner_v2"));
   }
 
-  @Ignore
+  @Ignore("Test fails, sickbay")
   @Test
   public void testBacklog10gbUsingPrime() throws IOException, ParseException, InterruptedException {
     testBacklog10gb(config -> config.addParameter("experiments", "enable_prime"));
@@ -126,21 +126,21 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
     testSteadyState1hr(Function.identity());
   }
 
-  @Ignore
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testSteadyState1hrUsingStreamingEngine()
       throws IOException, InterruptedException, ParseException {
     testSteadyState1hr(config -> config.addEnvironment("enableStreamingEngine", true));
   }
 
-  @Ignore
+  @Ignore("Test fails, sickbay")
   @Test
   public void testSteadyState1hrUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
     testSteadyState1hr(config -> config.addParameter("experiments", "use_runner_v2"));
   }
 
-  @Ignore
+  @Ignore("Test fails, sickbay")
   @Test
   public void testSteadyState1hrUsingPrime()
       throws IOException, ParseException, InterruptedException {

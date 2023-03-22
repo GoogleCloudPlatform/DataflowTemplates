@@ -106,14 +106,14 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
     testBacklog10gb(Function.identity());
   }
 
-  @Ignore
+  @Ignore("Test fails, sickbay")
   @Test
   public void testBacklog10gbUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
     testBacklog10gb(config -> config.addParameter("experiments", "use_runner_v2"));
   }
 
-  @Ignore
+  @Ignore("Test fails, sickbay")
   @Test
   public void testBacklog10gbUsingPrime() throws IOException, ParseException, InterruptedException {
     testBacklog10gb(config -> config.addParameter("experiments", "enable_prime"));
