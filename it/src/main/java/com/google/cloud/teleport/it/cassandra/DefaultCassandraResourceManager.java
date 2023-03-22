@@ -66,7 +66,7 @@ public class DefaultCassandraResourceManager
 
   private DefaultCassandraResourceManager(Builder builder) {
     this(
-        /*cassandraClient=*/ null,
+        /* cassandraClient= */ null,
         new CassandraContainer(
             DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
         builder);

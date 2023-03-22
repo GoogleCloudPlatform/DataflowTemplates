@@ -134,12 +134,16 @@ public final class GoogleCloudDataplexV1TaskInfrastructureSpec
     return this;
   }
 
-  /** @return value or {@code null} for none */
+  /**
+   * @return value or {@code null} for none
+   */
   public GoogleCloudDataplexV1TaskInfrastructureSpecVpcNetwork getVpcNetwork() {
     return vpcNetwork;
   }
 
-  /** @param vpcNetwork vpcNetwork or {@code null} for none */
+  /**
+   * @param vpcNetwork vpcNetwork or {@code null} for none
+   */
   public GoogleCloudDataplexV1TaskInfrastructureSpec setVpcNetwork(
       GoogleCloudDataplexV1TaskInfrastructureSpecVpcNetwork vpcNetwork) {
     this.vpcNetwork = vpcNetwork;

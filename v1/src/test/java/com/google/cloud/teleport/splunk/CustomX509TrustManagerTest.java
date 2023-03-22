@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.splunk;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -39,8 +38,7 @@ public final class CustomX509TrustManagerTest {
 
   @Before
   public void setUp()
-      throws NoSuchAlgorithmException, CertificateException, FileNotFoundException,
-          KeyStoreException, IOException {
+      throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException {
     CertificateFactory cf = CertificateFactory.getInstance("X.509");
     ClassLoader classLoader = this.getClass().getClassLoader();
     FileInputStream rootCaInputStream =

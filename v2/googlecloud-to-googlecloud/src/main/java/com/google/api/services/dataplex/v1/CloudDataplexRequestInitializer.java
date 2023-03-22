@@ -74,7 +74,9 @@ public class CloudDataplexRequestInitializer
     super();
   }
 
-  /** @param key API key or {@code null} to leave it unchanged */
+  /**
+   * @param key API key or {@code null} to leave it unchanged
+   */
   public CloudDataplexRequestInitializer(String key) {
     super(key);
   }

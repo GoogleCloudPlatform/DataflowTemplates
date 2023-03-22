@@ -49,7 +49,7 @@ class OracleChangeEventContext extends ChangeEventContext {
     // Add timestamp information to shadow table mutation
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
-            changeEvent, DatastreamConstants.ORACLE_TIMESTAMP_KEY, /*requiredField=*/ true);
+            changeEvent, DatastreamConstants.ORACLE_TIMESTAMP_KEY, /* requiredField= */ true);
     builder
         .set(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft())
         .to(Value.int64(changeEventTimestamp));
@@ -59,7 +59,7 @@ class OracleChangeEventContext extends ChangeEventContext {
      */
     Long changeEventSCN =
         ChangeEventTypeConvertor.toLong(
-            changeEvent, DatastreamConstants.ORACLE_SCN_KEY, /*requiredField=*/ false);
+            changeEvent, DatastreamConstants.ORACLE_SCN_KEY, /* requiredField= */ false);
     if (changeEventSCN == null) {
       changeEventSCN = new Long(-1);
     }

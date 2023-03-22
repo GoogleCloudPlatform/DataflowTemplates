@@ -32,12 +32,16 @@ public final class GoogleIamV1LogConfigDataAccessOptions
   /** The value may be {@code null}. */
   @com.google.api.client.util.Key private java.lang.String logMode;
 
-  /** @return value or {@code null} for none */
+  /**
+   * @return value or {@code null} for none
+   */
   public java.lang.String getLogMode() {
     return logMode;
   }
 
-  /** @param logMode logMode or {@code null} for none */
+  /**
+   * @param logMode logMode or {@code null} for none
+   */
   public GoogleIamV1LogConfigDataAccessOptions setLogMode(java.lang.String logMode) {
     this.logMode = logMode;
     return this;

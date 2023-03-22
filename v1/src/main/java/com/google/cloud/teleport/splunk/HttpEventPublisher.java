@@ -320,8 +320,11 @@ public abstract class HttpEventPublisher {
      * @return {@link HttpEventPublisher}
      */
     public HttpEventPublisher build()
-        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException,
-            CertificateException, IOException {
+        throws NoSuchAlgorithmException,
+            KeyStoreException,
+            KeyManagementException,
+            CertificateException,
+            IOException {
 
       checkNotNull(token(), "Authentication token needs to be specified via withToken(token).");
       checkNotNull(genericUrl(), "URL needs to be specified via withUrl(url).");
@@ -369,8 +372,11 @@ public abstract class HttpEventPublisher {
      */
     private CloseableHttpClient getHttpClient(
         int maxConnections, boolean disableCertificateValidation, byte[] rootCaCertificate)
-        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException,
-            CertificateException, IOException {
+        throws NoSuchAlgorithmException,
+            KeyStoreException,
+            KeyManagementException,
+            CertificateException,
+            IOException {
 
       HttpClientBuilder builder = ApacheHttpTransport.newDefaultHttpClientBuilder();
 

@@ -72,12 +72,16 @@ public final class GoogleIamV1AuditConfig extends com.google.api.client.json.Gen
     return this;
   }
 
-  /** @return value or {@code null} for none */
+  /**
+   * @return value or {@code null} for none
+   */
   public java.util.List<java.lang.String> getExemptedMembers() {
     return exemptedMembers;
   }
 
-  /** @param exemptedMembers exemptedMembers or {@code null} for none */
+  /**
+   * @param exemptedMembers exemptedMembers or {@code null} for none
+   */
   public GoogleIamV1AuditConfig setExemptedMembers(
       java.util.List<java.lang.String> exemptedMembers) {
     this.exemptedMembers = exemptedMembers;

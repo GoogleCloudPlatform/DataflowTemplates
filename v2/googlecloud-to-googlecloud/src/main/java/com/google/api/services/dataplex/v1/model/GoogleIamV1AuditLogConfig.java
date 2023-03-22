@@ -65,12 +65,16 @@ public final class GoogleIamV1AuditLogConfig extends com.google.api.client.json.
     return this;
   }
 
-  /** @return value or {@code null} for none */
+  /**
+   * @return value or {@code null} for none
+   */
   public java.lang.Boolean getIgnoreChildExemptions() {
     return ignoreChildExemptions;
   }
 
-  /** @param ignoreChildExemptions ignoreChildExemptions or {@code null} for none */
+  /**
+   * @param ignoreChildExemptions ignoreChildExemptions or {@code null} for none
+   */
   public GoogleIamV1AuditLogConfig setIgnoreChildExemptions(
       java.lang.Boolean ignoreChildExemptions) {
     this.ignoreChildExemptions = ignoreChildExemptions;

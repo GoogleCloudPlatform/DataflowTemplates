@@ -131,7 +131,7 @@ public final class ChangeEventSequenceFactoryTest {
   public void canCreateMySqlChangeEventSequenceFromChangeEvent() throws Exception {
 
     ChangeEventContext mockContext =
-        getMockMySqlChangeEventContext(/*addMysqlPositionFields=*/ true, /*cdcEvent=*/ true);
+        getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ true);
 
     ChangeEventSequence changeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
@@ -148,7 +148,7 @@ public final class ChangeEventSequenceFactoryTest {
   public void canCreateMySqlChangeEventSequenceFromBackfillEvent() throws Exception {
 
     ChangeEventContext mockContext =
-        getMockMySqlChangeEventContext(/*addMysqlPositionFields=*/ true, /*cdcEvent=*/ false);
+        getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ false);
 
     ChangeEventSequence changeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
@@ -166,7 +166,7 @@ public final class ChangeEventSequenceFactoryTest {
       throws Exception {
 
     ChangeEventContext mockContext =
-        getMockMySqlChangeEventContext(/*addMysqlPositionFields=*/ false, /*cdcEvent=*/ false);
+        getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ false, /* cdcEvent= */ false);
 
     ChangeEventSequence changeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
@@ -361,7 +361,7 @@ public final class ChangeEventSequenceFactoryTest {
       throws Exception {
 
     ChangeEventContext mockContext =
-        getMockOracleChangeEventContext(/*addOraclePositionFields=*/ true, /*cdcEvent=*/ true);
+        getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ true);
 
     // mock transaction which cannot find a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);

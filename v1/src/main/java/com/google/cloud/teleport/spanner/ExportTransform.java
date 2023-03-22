@@ -142,10 +142,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         spannerConfig,
         outputDir,
         testJobId,
-        /*snapshotTime=*/ ValueProvider.StaticValueProvider.of(""),
-        /*tableNames=*/ ValueProvider.StaticValueProvider.of(""),
-        /*exportRelatedTables=*/ ValueProvider.StaticValueProvider.of(false),
-        /*shouldExportTimestampAsLogicalType=*/ ValueProvider.StaticValueProvider.of(false),
+        /* snapshotTime= */ ValueProvider.StaticValueProvider.of(""),
+        /* tableNames= */ ValueProvider.StaticValueProvider.of(""),
+        /* exportRelatedTables= */ ValueProvider.StaticValueProvider.of(false),
+        /* shouldExportTimestampAsLogicalType= */ ValueProvider.StaticValueProvider.of(false),
         outputDir);
   }
 
