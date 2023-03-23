@@ -26,6 +26,8 @@ on:
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
       - '.github/workflows/syndeo-pr.yml'
+  schedule:
+    - cron: "0 */12 * * *"
 
 env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
