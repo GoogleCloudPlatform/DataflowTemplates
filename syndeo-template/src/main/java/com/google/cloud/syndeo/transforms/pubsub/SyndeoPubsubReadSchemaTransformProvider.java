@@ -45,9 +45,11 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
+import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Sets;
 import org.checkerframework.checker.initialization.qual.Initialized;
@@ -63,6 +65,11 @@ public class SyndeoPubsubReadSchemaTransformProvider
   public static final String VALID_FORMATS_STR = "AVRO,JSON";
   public static final Set<String> VALID_DATA_FORMATS =
       Sets.newHashSet(VALID_FORMATS_STR.split(","));
+
+  public static final TupleTag<Row> OUTPUT_TAG = new TupleTag<>() {};
+  public static final TupleTag<Row> ERROR_TAG = new TupleTag<>() {};
+  public static final Schema ERROR_SCHEMA =
+      Schema.builder().addStringField("error").addNullableByteArrayField("row").build();
 
   @Override
   public Class<SyndeoPubsubReadSchemaTransformConfiguration> configurationClass() {
@@ -170,13 +177,19 @@ public class SyndeoPubsubReadSchemaTransformProvider
       }
 
       @ProcessElement
-      public void process(ProcessContext c) {
-        PubsubMessage message = c.element();
+      public void process(@DoFn.Element PubsubMessage message, MultiOutputReceiver receiver) {
 
         try {
-          c.output(valueMapper.apply(message.getPayload()));
+          receiver.get(OUTPUT_TAG).output(valueMapper.apply(message.getPayload()));
         } catch (Exception e) {
           errorsInBundle += 1;
+          System.out.println("Error while parsing the element" + e.toString());
+          receiver
+              .get(ERROR_TAG)
+              .output(
+                  Row.withSchema(ERROR_SCHEMA)
+                      .addValues(e.toString(), message.getPayload())
+                      .build());
         }
       }
 
@@ -219,14 +232,19 @@ public class SyndeoPubsubReadSchemaTransformProvider
         public PCollectionRowTuple expand(PCollectionRowTuple input) {
           PubsubIO.Read<PubsubMessage> pubsubRead = buildPubsubRead();
 
-          PCollection<Row> result =
+          PCollectionTuple outputTuple =
               input
                   .getPipeline()
                   .apply(pubsubRead)
-                  .apply(ParDo.of(new ErrorCounterFn("PubSub-read-error-counter", valueMapper)))
-                  .setRowSchema(beamSchema);
+                  .apply(
+                      ParDo.of(new ErrorCounterFn("PubSub-read-error-counter", valueMapper))
+                          .withOutputTags(OUTPUT_TAG, TupleTagList.of(ERROR_TAG)));
 
-          return PCollectionRowTuple.of("output", result);
+          return PCollectionRowTuple.of(
+              "output",
+              outputTuple.get(OUTPUT_TAG).setRowSchema(beamSchema),
+              "errors",
+              outputTuple.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA));
         }
       };
     }
@@ -246,7 +264,7 @@ public class SyndeoPubsubReadSchemaTransformProvider
   @Override
   public @UnknownKeyFor @NonNull @Initialized List<@UnknownKeyFor @NonNull @Initialized String>
       outputCollectionNames() {
-    return Collections.singletonList("output");
+    return List.of("output", "errors");
   }
 
   @DefaultSchema(AutoValueSchema.class)

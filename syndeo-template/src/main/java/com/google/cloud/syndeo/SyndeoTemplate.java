@@ -105,6 +105,10 @@ public class SyndeoTemplate {
         Map.of(
             "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
             Set.of(),
+            "syndeo:schematransform:com.google.cloud:pubsub_write:v1",
+            Set.of(),
+            "syndeo:schematransform:com.google.cloud:pubsub_dlq_write:v1",
+            Set.of(),
             "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
             Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId")));
     SUPPORTED_URNS.putAll(SUPPORTED_SCALAR_TRANSFORM_URNS);
@@ -216,6 +220,12 @@ public class SyndeoTemplate {
     }
     // Add the sink transform
     transforms.add(buildFromJsonConfig(config.get("sink")));
+
+    // Adding the dlq transform, if present
+    if (config.get("dlq") != null) {
+      transforms.add(buildFromJsonConfig(config.get("dlq")));
+    }
+
     return PipelineDescription.newBuilder().addAllTransforms(transforms).build();
   }
 

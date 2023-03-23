@@ -26,6 +26,8 @@ import java.util.Map;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubClient;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.schemas.AutoValueSchema;
+import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -124,6 +126,7 @@ public class PubsubDlqSchemaTransformProvider
     }
   }
 
+  @DefaultSchema(AutoValueSchema.class)
   @AutoValue
   public abstract static class PubsubDlqWriteConfiguration {
     public abstract String getTopic();
