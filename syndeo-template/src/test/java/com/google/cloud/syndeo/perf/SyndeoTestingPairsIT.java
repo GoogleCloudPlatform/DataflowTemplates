@@ -225,8 +225,8 @@ public class SyndeoTestingPairsIT {
     PipelineResult syndeoResult = syndeoPipeline.run(syndeoOptions);
 
     if (pairToTest.getIsStreaming()) {
-      // Data generator will finish at some point because it creates a limited amount of data (300
-      // rows).
+      // Data generator will finish at some point because it creates a limited amount of data
+      // NUM_ROWS_FOR_TEST rows.
       LOG.info("Waiting for data generation pipeline to finish.");
       generatorResult.waitUntilFinish();
     }
