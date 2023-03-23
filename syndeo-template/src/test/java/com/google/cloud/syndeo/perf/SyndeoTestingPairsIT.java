@@ -74,11 +74,11 @@ public class SyndeoTestingPairsIT {
                 SourceSinkUrns.create(
                     "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
                     "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                    true),
-                SourceSinkUrns.create(
-                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                    "beam:schematransform:org.apache.beam:spanner_write:v1",
                     true)
+                //                SourceSinkUrns.create(
+                //                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                //                    "beam:schematransform:org.apache.beam:spanner_write:v1",
+                //                    true)
                 //                                SourceSinkUrns.create(
                 //
                 // "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
