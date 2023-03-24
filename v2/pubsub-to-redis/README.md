@@ -117,6 +117,5 @@ gcloud dataflow flex-template run pubsub-to-redis-$(date +'%Y%m%d%H%M%S') \
 --parameters inputSubscription=projects/central-beach-194106/subscriptions/pubsub-to-redis, \
 --parameters redisHost=<REDIS_DB_HOST>, \
 --parameters redisPort=<REDIS_DB_PORT>, \
---parameters redisAuth=<REDIS_DB_PASSWORD> \
---service-account-email=<YOUR_GCP_SERVICE_ACCOUNT>
+--parameters redisAuth=<REDIS_DB_PASSWORD>
 ```
