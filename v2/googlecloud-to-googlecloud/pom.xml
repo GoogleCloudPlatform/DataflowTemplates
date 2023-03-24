@@ -29,6 +29,7 @@
   <artifactId>googlecloud-to-googlecloud</artifactId>
 
   <properties>
+    <dataplex.api.version>v1-rev20230308-2.0.0</dataplex.api.version>
     <derby.version>10.14.2.0</derby.version>
     <avro.version>1.8.2</avro.version>
     <dlp.version>2.1.0</dlp.version>
@@ -47,13 +48,13 @@
 
   <build>
     <plugins>
-        <plugin>
-          <groupId>org.apache.avro</groupId>
-          <artifactId>avro-maven-plugin</artifactId>
-          <version>${avro.version}</version>
-          <!-- For compatibility reasons (e.g. IntelliJ), the configuration must be duplicated here
-            and under execution. -->
-          <configuration>
+      <plugin>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro-maven-plugin</artifactId>
+        <version>${avro.version}</version>
+        <!-- For compatibility reasons (e.g. IntelliJ), the configuration must be duplicated here
+          and under execution. -->
+        <configuration>
           <sourceDirectory>${project.basedir}/src/main/resources/schema/avro
           </sourceDirectory>
         </configuration>
@@ -96,6 +97,11 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-pubsub</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-dataplex</artifactId>
+      <version>${dataplex.api.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
