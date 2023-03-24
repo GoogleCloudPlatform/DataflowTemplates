@@ -15,17 +15,21 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.redis.RedisConnectionConfiguration;
 import org.apache.beam.sdk.io.redis.RedisIO;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -43,7 +47,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link PubSubToRedis} pipeline is a streaming pipeline which ingests data in Bytes from
- * PubSub, applies a Javascript UDF if provided and inserts resulting records as KV in Redis.
+ * PubSub, and inserts resulting records as KV in Redis.
  *
  * <p><b>Pipeline Requirements</b>
  *
@@ -61,6 +65,7 @@ import org.slf4j.LoggerFactory;
  * INPUT_SUBSCRIPTION=my-subscription
  * REDIS_HOST=my-host
  * REDIS_PORT=my-port
+ * REDIS_AUTH=my-auth
  *
  * mvn compile exec:java \
  *  -Dexec.mainClass=com.google.cloud.teleport.v2.templates.PubSubToRedis \
@@ -72,9 +77,20 @@ import org.slf4j.LoggerFactory;
  *  --runner=DataflowRunner \
  *  --inputSubscription=${INPUT_SUBSCRIPTION} \
  *  --redisHost=${REDIS_HOST}
- *  --redisPort=${REDIS_PORT}"
+ *  --redisPort=${REDIS_PORT}
+ *  --redisAuth=${REDIS_AUTH}"
  * </pre>
  */
+@Template(
+    name = "Cloud_PubSub_to_Redis",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub to Redis",
+    description =
+        "A streaming pipeline which inserts data from a Pub/Sub Topic "
+            + "and writes them to Redis",
+    optionsClass = PubSubToRedis.PubSubToRedisOptions.class,
+    flexContainerName = "pubsub-to-redis",
+    contactInformation = "https://github.com/redis-field-engineering/DataflowTemplates/issues")
 public class PubSubToRedis {
   /**
    * Options supported by {@link PubSubToRedis}
@@ -98,45 +114,54 @@ public class PubSubToRedis {
    */
   public interface PubSubToRedisOptions
       extends JavascriptTextTransformer.JavascriptTextTransformerOptions, PipelineOptions {
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
-    ValueProvider<String> getInputSubscription();
+    @TemplateParameter.PubsubSubscription(
+        order = 1,
+        description = "Pub/Sub input subscription",
+        helpText =
+            "Pub/Sub subscription to read the input from, in the format of"
+                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
+        example = "projects/your-project-id/subscriptions/your-subscription-name")
+    String getInputSubscription();
 
-    void setInputSubscription(ValueProvider<String> value);
+    void setInputSubscription(String value);
 
-    @Description("The Cloud Pub/Sub topic to read from.")
-    ValueProvider<String> getInputTopic();
-
-    void setInputTopic(ValueProvider<String> value);
-
-    @Description(
-        "This determines whether the template reads from " + "a pub/sub subscription or a topic")
-    @Default.Boolean(true)
-    Boolean getUseSubscription();
-
-    void setUseSubscription(Boolean value);
-
-    @Description("Redis Host")
+    @TemplateParameter.Text(
+        order = 2,
+        description = "Redis DB Host",
+        helpText = "Redis database host.",
+        example = "redis-10422.c289.us-east-1-2.ec2.cloud.redislabs.com")
     @Default.String("127.0.0.1")
-    ValueProvider<String> getRedisHost();
+    @Validation.Required
+    String getRedisHost();
 
-    void setRedisHost(ValueProvider<String> redisHost);
+    void setRedisHost(String redisHost);
 
-    @Description("Redis Port")
+    @TemplateParameter.Integer(
+        order = 3,
+        description = "Redis DB Port",
+        helpText = "Redis database port.",
+        example = "10422")
     @Default.Integer(6379)
-    ValueProvider<Integer> getRedisPort();
+    @Validation.Required
+    int getRedisPort();
 
-    void setRedisPort(ValueProvider<Integer> redisPort);
+    void setRedisPort(int redisPort);
 
-    @Description("Redis Auth")
+    @TemplateParameter.Text(
+        order = 4,
+        description = "Redis DB Password",
+        helpText = "Redis database password.")
     @Default.String("")
-    ValueProvider<String> getRedisAuth();
+    @Validation.Required
+    String getRedisAuth();
 
-    void setRedisAuth(ValueProvider<String> redisAuth);
+    void setRedisAuth(String redisAuth);
 
-    @Description("Duration in seconds of a pane in a Global window")
+    @TemplateParameter.Long(
+        order = 5,
+        optional = true,
+        description = "Duration in seconds of a pane in a Global window",
+        helpText = "Windowing pipeline with sessions window")
     @Default.Long(5)
     Long getWindowDuration();
 
@@ -149,13 +174,24 @@ public class PubSubToRedis {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     // Parse the user options passed from the command-line.
-    PubSubToRedisOptions pubSubToRedisOptions =
+    PubSubToRedisOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(PubSubToRedisOptions.class);
+    run(options);
+  }
+
+  /**
+   * Runs the pipeline with the supplied options.
+   *
+   * @param options The execution parameters to the pipeline.
+   * @return The result of the pipeline execution.
+   */
+  public static PipelineResult run(PubSubToRedisOptions options) {
 
     // Create the pipeline
-    Pipeline pipeline = Pipeline.create(pubSubToRedisOptions);
+    Pipeline pipeline = Pipeline.create(options);
 
     PCollection<PubsubMessage> input;
 
@@ -167,21 +203,13 @@ public class PubSubToRedis {
      *
      */
 
-    LOG.info("Reading from subscription: " + pubSubToRedisOptions.getInputSubscription());
+    LOG.info("Starting PubSub-To-Redis Pipeline. Reading from subscription: {}", options.getInputSubscription());
 
-    if (pubSubToRedisOptions.getUseSubscription()) {
-      input =
-          pipeline.apply(
-              "Read PubSub Events",
-              PubsubIO.readMessagesWithAttributesAndMessageId()
-                  .fromSubscription(pubSubToRedisOptions.getInputSubscription()));
-    } else {
-      input =
-          pipeline.apply(
-              "Read PubSub Events",
-              PubsubIO.readMessagesWithAttributesAndMessageId()
-                  .fromTopic(pubSubToRedisOptions.getInputTopic()));
-    }
+    input =
+        pipeline.apply(
+            "Read PubSub Events",
+            PubsubIO.readMessagesWithAttributesAndMessageId()
+                .fromSubscription(options.getInputSubscription()));
 
     // Create a PCollection from string a transform to pubsub message format
     input
@@ -191,9 +219,7 @@ public class PubSubToRedis {
                 .triggering(
                     Repeatedly.forever(
                         AfterProcessingTime.pastFirstElementInPane()
-                            .plusDelayOf(
-                                Duration.standardSeconds(
-                                    pubSubToRedisOptions.getWindowDuration()))))
+                            .plusDelayOf(Duration.standardSeconds(options.getWindowDuration()))))
                 .discardingFiredPanes())
         .apply(
             "PubSubMessage payload extraction",
@@ -204,11 +230,11 @@ public class PubSubToRedis {
                       @Element PubsubMessage pubsubMessage, OutputReceiver<String> receiver) {
                     String element = new String(pubsubMessage.getPayload());
                     messageId = pubsubMessage.getMessageId();
-                    LOG.info("PubSubMessage messageId: " + messageId);
-                    LOG.info("PubSubMessage payload: " + element);
+                    LOG.debug("PubSubMessage messageId: " + messageId);
+                    LOG.debug("PubSubMessage payload: " + element);
                     if (pubsubMessage.getAttribute("key") != null) {
                       attributeKey = pubsubMessage.getAttribute("key");
-                      LOG.info("PubSubMessage attributeKey: " + attributeKey);
+                      LOG.debug("PubSubMessage attributeKey: " + attributeKey);
                       key = attributeKey + ":" + messageId;
                     } else {
                       attributeKey = "";
@@ -228,12 +254,12 @@ public class PubSubToRedis {
                 .withMethod(RedisIO.Write.Method.SET)
                 .withConnectionConfiguration(
                     RedisConnectionConfiguration.create()
-                        .withHost(pubSubToRedisOptions.getRedisHost())
-                        .withPort(pubSubToRedisOptions.getRedisPort())
-                        .withAuth(pubSubToRedisOptions.getRedisAuth())));
+                        .withHost(options.getRedisHost())
+                        .withPort(options.getRedisPort())
+                        .withAuth(options.getRedisAuth())));
 
-    // run the pipeline
-    pipeline.run(pubSubToRedisOptions);
+    // Execute the pipeline and return the result.
+    return pipeline.run();
   }
 
   static class FormatAsPubSubMessage extends SimpleFunction<Long, PubsubMessage> {
