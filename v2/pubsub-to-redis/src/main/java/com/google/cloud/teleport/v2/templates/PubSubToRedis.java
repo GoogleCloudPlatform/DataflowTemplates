@@ -203,7 +203,9 @@ public class PubSubToRedis {
      *
      */
 
-    LOG.info("Starting PubSub-To-Redis Pipeline. Reading from subscription: {}", options.getInputSubscription());
+    LOG.info(
+        "Starting PubSub-To-Redis Pipeline. Reading from subscription: {}",
+        options.getInputSubscription());
 
     input =
         pipeline.apply(
