@@ -111,7 +111,7 @@ The template has the following optional parameters:
 Template can be executed using the following gcloud command.
 ```sh
 gcloud dataflow flex-template run pubsub-to-redis-$(date +'%Y%m%d%H%M%S') \
---template-file-gcs-location gs://pubsub-to-redis/redis-field-engineering/pubsub-to-redis/flex/Cloud_PubSub_to_Redis \
+--template-file-gcs-location gs://redis-field-engineering/redis-field-engineering/pubsub-to-redis/flex/Cloud_PubSub_to_Redis \
 --project central-beach-194106 \
 --region us-central1 \
 --parameters inputSubscription=projects/central-beach-194106/subscriptions/pubsub-to-redis, \
