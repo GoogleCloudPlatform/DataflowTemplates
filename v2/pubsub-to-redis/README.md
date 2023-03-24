@@ -1,7 +1,7 @@
 # PubSub to Redis Dataflow Template
 
 The [PubSubToRedis](src/main/java/com/google/cloud/teleport/v2/templates/PubSubToRedis.java) pipeline
-ingests data from a PubSub subscription, optionally applies a Javascript UDF if supplied and writes the data to Redis.
+ingests data from a PubSub subscription and writes the data to Redis.
 
 ## Getting Started
 
