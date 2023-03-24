@@ -110,9 +110,13 @@ The template has the following optional parameters:
 
 Template can be executed using the following gcloud command.
 ```sh
-export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
-gcloud beta dataflow flex-template run ${JOB_NAME} \
-        --project=${PROJECT} --region=us-central1 \
-        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputSubscription=${SUBSCRIPTION},redisHost=${REDIS_HOST},redisPort=${REDIS_PORT},redisAuth=${REDIS_AUTH}
+gcloud dataflow flex-template run pubsub-to-redis-$(date +'%Y%m%d%H%M%S') \
+--template-file-gcs-location gs://pubsub-to-redis/redis-field-engineering/pubsub-to-redis/flex/Cloud_PubSub_to_Redis \
+--project central-beach-194106 \
+--region us-central1 \
+--parameters inputSubscription=projects/central-beach-194106/subscriptions/pubsub-to-redis, \
+--parameters redisHost=<REDIS_DB_HOST>, \
+--parameters redisPort=<REDIS_DB_PORT>, \
+--parameters redisAuth=<REDIS_DB_PASSWORD> \
+--service-account-email=<YOUR_GCP_SERVICE_ACCOUNT>
 ```
