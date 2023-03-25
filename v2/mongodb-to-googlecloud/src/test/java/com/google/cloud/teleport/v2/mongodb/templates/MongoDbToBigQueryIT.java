@@ -224,6 +224,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
       mongoDocumentKeys.add(randomFieldName.toLowerCase());
     }
     mongoDocumentKeys.add("udf");
+    mongoDocumentKeys.add("nullonly");
 
     for (int i = 0; i < numDocuments; i++) {
       Document randomDocument = new Document().append(MONGO_DB_ID, new ObjectId());
@@ -233,6 +234,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
             mongoDocumentKeys.get(j), RandomStringUtils.randomAlphanumeric(0, 20));
       }
       randomDocument.append("udf", "in");
+      randomDocument.append("nullonly", null);
 
       mongoDocuments.add(randomDocument);
     }
