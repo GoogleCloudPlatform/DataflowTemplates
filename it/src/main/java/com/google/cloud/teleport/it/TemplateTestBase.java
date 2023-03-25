@@ -95,7 +95,7 @@ public abstract class TemplateTestBase {
   protected Credentials credentials;
   protected CredentialsProvider credentialsProvider;
   protected String artifactBucketName;
-  protected String testId = PipelineUtils.createJobName("");
+  protected String testId;
 
   /** Cache to avoid staging the same template multiple times on the same execution. */
   private static final Map<String, String> stagedTemplates = new HashMap<>();
@@ -114,7 +114,9 @@ public abstract class TemplateTestBase {
   @Deprecated protected GcsArtifactClient artifactClient;
 
   @Before
-  public void setUpBase() throws IOException {
+  public void setUpBase() {
+
+    testId = PipelineUtils.createJobName("test");
 
     TemplateIntegrationTest annotation = null;
     try {

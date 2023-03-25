@@ -24,6 +24,7 @@ import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.bigtable.data.v2.models.RowCell;
+import com.google.cloud.datastore.Entity;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
@@ -31,6 +32,7 @@ import com.google.common.truth.Fact;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -343,8 +345,8 @@ public final class RecordsSubject extends Subject {
   /**
    * Convert Cassandra {@link Row} list to a list of maps.
    *
-   * @param rows Rows to parse
-   * @return List of maps to use in {@link RecordsSubject}
+   * @param rows Rows to parse.
+   * @return List of maps to use in {@link RecordsSubject}.
    */
   public static List<Map<String, Object>> cassandraRowsToRecords(Iterable<Row> rows) {
     try {
@@ -368,6 +370,32 @@ public final class RecordsSubject extends Subject {
       return records;
     } catch (Exception e) {
       throw new RuntimeException("Error converting Cassandra Rows to Records", e);
+    }
+  }
+
+  /**
+   * Convert Datastore {@link com.google.cloud.datastore.QueryResults} to a list of maps.
+   *
+   * @param results Results to parse.
+   * @return List of maps to use in {@link RecordsSubject}.
+   */
+  public static List<Map<String, Object>> datastoreResultsToRecords(Collection<Entity> results) {
+    try {
+      List<Map<String, Object>> records = new ArrayList<>();
+
+      for (Entity entity : results) {
+        Map<String, Object> converted = new HashMap<>();
+
+        for (Map.Entry<String, com.google.cloud.datastore.Value<?>> entry :
+            entity.getProperties().entrySet()) {
+          converted.put(entry.getKey(), entry.getValue().get());
+        }
+        records.add(converted);
+      }
+
+      return records;
+    } catch (Exception e) {
+      throw new RuntimeException("Error converting Datastore Entities to Records", e);
     }
   }
 }
