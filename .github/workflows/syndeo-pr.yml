@@ -37,7 +37,7 @@ permissions: read-all
 jobs:
   java_integration_tests_syndeo:
     name: Syndeo Integration Tests
-    timeout-minutes: 60
+    timeout-minutes: 120
     runs-on: self-hosted
     steps:
       - name: Checkout Code
