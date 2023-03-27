@@ -33,13 +33,21 @@ import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
+/** Integration test for {@link JdbcToBigQuery} Flex template. */
+@Category(TemplateIntegrationTest.class)
+@TemplateIntegrationTest(JdbcToBigQuery.class)
+@RunWith(JUnit4.class)
 public class JdbcToBigQueryIT extends TemplateTestBase {
 
   private static final String QUERY = "select * from %s";
