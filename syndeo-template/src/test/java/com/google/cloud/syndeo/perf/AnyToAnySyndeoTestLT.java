@@ -15,6 +15,8 @@
  */
 package com.google.cloud.syndeo.perf;
 
+import static com.google.cloud.syndeo.transforms.bigtable.BigTableIOWriteSchemaBasedTransform.flattenSchema;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
@@ -349,7 +351,8 @@ public class AnyToAnySyndeoTestLT {
                             StorageType.SSD)));
                 String tableName = ("table-" + TEST_ID).substring(0, 29);
                 btrm.createTable(
-                    tableName, SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA.getFieldNames()); // TODO
+                    tableName,
+                    flattenSchema(SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA).getFieldNames()); // TODO
                 return SinkAndSourceConfigs.create(
                     buildJsonConfig(
                         "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
@@ -358,6 +361,7 @@ public class AnyToAnySyndeoTestLT {
                                 .setInstanceId(btrm.getInstanceId())
                                 .setTableId(tableName)
                                 .setProjectId(PROJECT)
+                                .setFlattenInputSchema(true)
                                 .setKeyColumns(List.of("commit")) // TODO(pabloem): Figure this out
                                 .build())),
                     null);

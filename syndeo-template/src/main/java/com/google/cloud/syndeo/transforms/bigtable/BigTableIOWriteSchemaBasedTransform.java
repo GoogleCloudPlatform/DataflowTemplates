@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -43,6 +44,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,13 +64,16 @@ public class BigTableIOWriteSchemaBasedTransform
   private final Instant timestampForRows;
   private final String appProfileId;
 
+  private final Boolean flattenInputSchema;
+
   BigTableIOWriteSchemaBasedTransform(
       String projectId,
       String instanceId,
       String tableId,
       List<String> keyColumns,
       String bigTableEndpoint,
-      String appProfileId) {
+      String appProfileId,
+      Boolean flattenInputSchema) {
     this.projectId = projectId;
     this.instanceId = instanceId;
     this.tableId = tableId;
@@ -76,6 +81,7 @@ public class BigTableIOWriteSchemaBasedTransform
     this.bigTableEndpoint = bigTableEndpoint;
     this.timestampForRows = Instant.now();
     this.appProfileId = appProfileId;
+    this.flattenInputSchema = flattenInputSchema;
   }
 
   @Override
@@ -153,21 +159,95 @@ public class BigTableIOWriteSchemaBasedTransform
     }
   }
 
+  public static Schema flattenSchema(Schema unflattenedSchema) {
+    Schema.Builder newSchemaBuilder = Schema.builder();
+    unflattenedSchema.getFields().forEach(f -> addFieldOrFlatten(newSchemaBuilder, f, ""));
+    return newSchemaBuilder.build();
+  }
+
+  private static void addFieldOrFlatten(
+      Schema.Builder topSchemaBuilder, Schema.Field f, String fieldNamePrefix) {
+    if (f.getType().getTypeName().equals(Schema.TypeName.ROW)) {
+      for (Schema.Field nestedField : f.getType().getRowSchema().getFields()) {
+        addFieldOrFlatten(topSchemaBuilder, nestedField, f.getName() + "__");
+      }
+    } else {
+      topSchemaBuilder.addField(fieldNamePrefix + f.getName(), f.getType());
+    }
+  }
+
+  static class RowFlattener implements SerializableFunction<Row, Row> {
+    private final Schema flattenedSchema;
+
+    RowFlattener(Schema flattenedSchema) {
+      this.flattenedSchema = flattenedSchema;
+    }
+
+    @Override
+    public Row apply(Row row) {
+      Row.Builder rowBuilder = Row.withSchema(flattenedSchema);
+
+      for (Schema.Field f : row.getSchema().getFields()) {
+        if (f.getType().getTypeName().equals(Schema.TypeName.ROW)) {
+          for (Schema.Field nestedField : f.getType().getRowSchema().getFields()) {
+            rowBuilder =
+                addFieldOrFlatten(rowBuilder, row.getRow(f.getName()), nestedField.getName());
+          }
+        } else {
+          rowBuilder = rowBuilder.addValue(row.getValue(f.getName()));
+        }
+      }
+      return rowBuilder.build();
+    }
+
+    private Row.Builder addFieldOrFlatten(Row.Builder rowBuilder, Row nestedRow, String fieldName) {
+      if (nestedRow
+          .getSchema()
+          .getField(fieldName)
+          .getType()
+          .getTypeName()
+          .equals(Schema.TypeName.ROW)) {
+        for (Schema.Field nestedField :
+            nestedRow.getSchema().getField(fieldName).getType().getRowSchema().getFields()) {
+          rowBuilder =
+              addFieldOrFlatten(rowBuilder, nestedRow.getRow(fieldName), nestedField.getName());
+        }
+      } else {
+        rowBuilder = rowBuilder.addValue(nestedRow.getValue(fieldName));
+      }
+      return rowBuilder;
+    }
+  }
+
   @Override
   public PCollectionRowTuple expand(PCollectionRowTuple input) {
     PCollection<Row> inputData = input.get(INPUT_TAG);
 
+    AtomicBoolean schemaIsNested = new AtomicBoolean(false);
     inputData
         .getSchema()
         .getFields()
         .forEach(
             f -> {
               if (f.getType().getTypeName().equals(Schema.TypeName.ROW)) {
+                schemaIsNested.set(true);
+              }
+              if ((flattenInputSchema == null || !flattenInputSchema)
+                  && f.getType().getTypeName().equals(Schema.TypeName.ROW)) {
                 throw new UnsupportedOperationException(
                     String.format(
                         "Nested fields are not supported. Field %s is of type ROW.", f.getName()));
               }
             });
+
+    if (flattenInputSchema != null && flattenInputSchema && schemaIsNested.get()) {
+      Schema flattenedSchema = flattenSchema(inputData.getSchema());
+      inputData =
+          inputData
+              .apply(
+                  MapElements.into(TypeDescriptors.rows()).via(new RowFlattener(flattenedSchema)))
+              .setRowSchema(flattenedSchema);
+    }
 
     Set<String> inputFields =
         inputData.getSchema().getFields().stream()
@@ -184,11 +264,12 @@ public class BigTableIOWriteSchemaBasedTransform
     verifyTableSchemaMatches(inputData.getSchema());
 
     // STEP 1: Select the key columns from the input Rows
+    final PCollection<Row> inputPcoll = inputData;
     final Schema keySchema =
         Schema.builder()
             .addFields(
                 keyColumns.stream()
-                    .map(colName -> inputData.getSchema().getField(colName))
+                    .map(colName -> inputPcoll.getSchema().getField(colName))
                     .collect(Collectors.toList()))
             .build();
 

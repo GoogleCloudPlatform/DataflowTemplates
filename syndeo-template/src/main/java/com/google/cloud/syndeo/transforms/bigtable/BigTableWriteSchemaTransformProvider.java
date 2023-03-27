@@ -54,6 +54,7 @@ public class BigTableWriteSchemaTransformProvider
         configuration.getTableId(),
         configuration.getKeyColumns(),
         configuration.getEndpoint(),
-        configuration.getAppProfileId());
+        configuration.getAppProfileId(),
+        configuration.getFlattenInputSchema());
   }
 }
