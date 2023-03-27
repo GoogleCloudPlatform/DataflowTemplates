@@ -32,6 +32,8 @@ import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableWriteResult;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.schemas.FieldAccessDescriptor;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.SchemaCoder;
@@ -174,10 +176,28 @@ public class BigTableIOWriteSchemaBasedTransform
             .map(field -> field.getName())
             .collect(Collectors.toSet());
     if (!inputFields.containsAll(keyColumns)) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Key columns selected were %s, however input schema only contains columns %s",
-              keyColumns, inputFields));
+      inputData.apply(
+          ParDo.of(
+              new DoFn<Row, Row>() {
+                private Counter errorCounter =
+                    Metrics.counter(
+                        BigTableIOWriteSchemaBasedTransform.class,
+                        "BigTable-write-KeyColumnsNotFound-error-counter");
+
+                @ProcessElement
+                void process(ProcessContext c) {
+                  errorCounter.inc();
+                  throw new IllegalArgumentException(
+                      String.format(
+                          "Key columns selected were %s, however input schema only contains columns %s",
+                          keyColumns, inputFields));
+                }
+              }));
+
+      // throw new IllegalArgumentException(
+      //     String.format(
+      //         "Key columns selected were %s, however input schema only contains columns %s",
+      //         keyColumns, inputFields));
     }
 
     createTableIfNeeded(inputData.getSchema());
