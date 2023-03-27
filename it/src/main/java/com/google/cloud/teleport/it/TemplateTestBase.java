@@ -232,30 +232,28 @@ public abstract class TemplateTestBase {
     String templateName = annotation.template();
     Template[] templateAnnotations = templateClass.getAnnotationsByType(Template.class);
     if (templateAnnotations.length == 0) {
-      LOG.warn(
-          "Template mentioned in @TemplateIntegrationTest for {} does not contain a @Template"
-              + " annotation, skipping.",
-          getClass());
-      return null;
+      throw new RuntimeException(
+          String.format(
+              "Template mentioned in @TemplateIntegrationTest for %s does not contain a @Template"
+                  + " annotation.",
+              getClass()));
     } else if (templateAnnotations.length == 1) {
       return templateAnnotations[0];
     } else if (templateName.isEmpty()) {
-      LOG.warn(
-          "Template mentioned in @TemplateIntegrationTest for {} contains multiple @Template"
-              + " annotations. Please provide templateName field in @TemplateIntegrationTest,"
-              + " skipping.",
-          getClass());
-      return null;
+      throw new RuntimeException(
+          String.format(
+              "Template mentioned in @TemplateIntegrationTest for %s contains multiple @Template"
+                  + " annotations. Please provide templateName field in @TemplateIntegrationTest.",
+              getClass()));
     }
     for (Template template : templateAnnotations) {
       if (template.name().equals(templateName)) {
         return template;
       }
     }
-    LOG.warn(
+    throw new RuntimeException(
         "templateName does not match any Template annotations. Please recheck"
-            + " @TemplateIntegrationTest, skipping");
-    return null;
+            + " @TemplateIntegrationTest.");
   }
 
   /**
