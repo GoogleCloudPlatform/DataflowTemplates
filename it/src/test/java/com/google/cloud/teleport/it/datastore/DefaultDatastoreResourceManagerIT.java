@@ -30,7 +30,8 @@ public class DefaultDatastoreResourceManagerIT {
   @Test
   public void testInsert() throws IOException {
     DefaultDatastoreResourceManager resourceManager =
-        DefaultDatastoreResourceManager.builder(DatastoreUtils.createTestId("testInsert"))
+        DefaultDatastoreResourceManager.builder(
+                TestProperties.project(), DatastoreUtils.createTestId("testInsert"))
             .credentials(TestProperties.credentials())
             .build();
     List<Entity> entities =
@@ -49,7 +50,8 @@ public class DefaultDatastoreResourceManagerIT {
   @Test
   public void testInsertQuery() throws IOException {
     DefaultDatastoreResourceManager resourceManager =
-        DefaultDatastoreResourceManager.builder(DatastoreUtils.createTestId("testInsertQuery"))
+        DefaultDatastoreResourceManager.builder(
+                TestProperties.project(), DatastoreUtils.createTestId("testInsertQuery"))
             .credentials(TestProperties.buildCredentialsFromEnv())
             .build();
 
@@ -71,7 +73,8 @@ public class DefaultDatastoreResourceManagerIT {
   @Test
   public void testInsertCleanUp() throws IOException {
     DefaultDatastoreResourceManager resourceManager =
-        DefaultDatastoreResourceManager.builder(DatastoreUtils.createTestId("testInsertCleanUp"))
+        DefaultDatastoreResourceManager.builder(
+                TestProperties.project(), DatastoreUtils.createTestId("testInsertCleanUp"))
             .credentials(TestProperties.buildCredentialsFromEnv())
             .build();
     resourceManager.insert(

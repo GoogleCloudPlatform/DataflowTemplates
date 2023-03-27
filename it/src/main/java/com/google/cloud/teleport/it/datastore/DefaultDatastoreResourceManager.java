@@ -45,7 +45,11 @@ public class DefaultDatastoreResourceManager implements DatastoreResourceManager
     this.namespace = builder.namespace;
 
     this.datastore =
-        DatastoreOptions.newBuilder().setCredentials(builder.credentials).build().getService();
+        DatastoreOptions.newBuilder()
+            .setProjectId(builder.project)
+            .setCredentials(builder.credentials)
+            .build()
+            .getService();
     this.keys = new HashSet<>();
   }
 
@@ -111,17 +115,20 @@ public class DefaultDatastoreResourceManager implements DatastoreResourceManager
     keys.clear();
   }
 
-  public static Builder builder(String namespace) {
+  public static Builder builder(String project, String namespace) {
+    checkArgument(!Strings.isNullOrEmpty(project), "project can not be empty");
     checkArgument(!Strings.isNullOrEmpty(namespace), "namespace can not be empty");
-    return new Builder(namespace);
+    return new Builder(project, namespace);
   }
 
   public static final class Builder {
 
+    private final String project;
     private final String namespace;
     private Credentials credentials;
 
-    private Builder(String namespace) {
+    private Builder(String project, String namespace) {
+      this.project = project;
       this.namespace = namespace;
     }
 
