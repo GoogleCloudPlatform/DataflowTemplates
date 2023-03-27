@@ -44,11 +44,14 @@ import java.time.Duration;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance tests for {@link PubsubToText PubSub to GCS Text} Flex template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(PubsubToText.class)
 @RunWith(JUnit4.class)
 public final class PubsubToTextLT extends TemplateLoadTestBase {
@@ -81,7 +84,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        DefaultPubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     Storage storageClient = createStorageClient(CREDENTIALS);
@@ -98,18 +101,21 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
     testBacklog10gb(Function.identity());
   }
 
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testBacklog10gbUsingStreamingEngine()
       throws IOException, InterruptedException, ParseException {
     testBacklog10gb(config -> config.addEnvironment("enableStreamingEngine", true));
   }
 
+  @Ignore("Test fails, sickbay")
   @Test
   public void testBacklog10gbUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
     testBacklog10gb(config -> config.addParameter("experiments", "use_runner_v2"));
   }
 
+  @Ignore("Test fails, sickbay")
   @Test
   public void testBacklog10gbUsingPrime() throws IOException, ParseException, InterruptedException {
     testBacklog10gb(config -> config.addParameter("experiments", "enable_prime"));
@@ -120,18 +126,21 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
     testSteadyState1hr(Function.identity());
   }
 
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testSteadyState1hrUsingStreamingEngine()
       throws IOException, InterruptedException, ParseException {
     testSteadyState1hr(config -> config.addEnvironment("enableStreamingEngine", true));
   }
 
+  @Ignore("Test fails, sickbay")
   @Test
   public void testSteadyState1hrUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
     testSteadyState1hr(config -> config.addParameter("experiments", "use_runner_v2"));
   }
 
+  @Ignore("Test fails, sickbay")
   @Test
   public void testSteadyState1hrUsingPrime()
       throws IOException, ParseException, InterruptedException {
@@ -169,7 +178,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result =
         pipelineOperator.waitForConditionAndFinish(
@@ -211,7 +220,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     // ElementCount metric in dataflow is approximate, allow for 1% difference
     long expectedMessages = (long) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);

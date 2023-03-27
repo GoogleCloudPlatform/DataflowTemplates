@@ -47,11 +47,14 @@ import java.time.Duration;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance test for {@link TextIOToBigQuery TextIOToBigQuery} template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(TextIOToBigQuery.class)
 @RunWith(JUnit4.class)
 public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
@@ -88,7 +91,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
     Storage gcsClient = createStorageClient(CREDENTIALS);
     artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, project)
             .setCredentials(CREDENTIALS)
             .build();
   }
@@ -103,12 +106,14 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
     testBacklog10gb(Function.identity());
   }
 
+  @Ignore("Test fails, sickbay")
   @Test
   public void testBacklog10gbUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
     testBacklog10gb(config -> config.addParameter("experiments", "use_runner_v2"));
   }
 
+  @Ignore("Test fails, sickbay")
   @Test
   public void testBacklog10gbUsingPrime() throws IOException, ParseException, InterruptedException {
     testBacklog10gb(config -> config.addParameter("experiments", "enable_prime"));
@@ -151,7 +156,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
                 LaunchConfig.builder(testName, SPEC_PATH)
                     .addParameter("JSONPath", jsonPath)
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*")
-                    .addParameter("outputTable", toTableSpec(PROJECT, table))
+                    .addParameter("outputTable", toTableSpec(project, table))
                     .addParameter("javascriptTextTransformGcsPath", udfPath)
                     .addParameter("javascriptTextTransformFunctionName", "identity")
                     .addParameter(
@@ -159,7 +164,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));

@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it;
 
-import com.google.cloud.teleport.it.dataflow.DirectRunnerClient;
+import com.google.cloud.teleport.it.launcher.DefaultPipelineLauncher;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -47,11 +47,6 @@ public class IOLoadTestBase extends LoadTestBase {
 
   @Override
   PipelineLauncher launcher() {
-    // TODO: the return value is a placeholder currently. Return a pipeline launcher object once
-    // there is a generic, non-template launcher available.
-    LOG.warn("launcher not fully supported yet.");
-    // DirectRunnerClient currently requires a template class as argument. Pass the test class for
-    // now.
-    return DirectRunnerClient.builder(this.getClass()).setCredentials(CREDENTIALS).build();
+    return DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
   }
 }

@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
  * launching a specific type of template.
  */
 public abstract class AbstractPipelineLauncher implements PipelineLauncher {
+
   private static final Logger LOG = LoggerFactory.getLogger(AbstractPipelineLauncher.class);
   private static final Pattern CURRENT_METRICS = Pattern.compile(".*Current.*");
 
@@ -224,6 +225,8 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   }
 
   /** Waits until the specified job is not in a pending state. */
+  // TODO(pranavbhandari): This method fails if any request to dataflow fails. Make this method more
+  // robust.
   public JobState waitUntilActive(String project, String region, String jobId) throws IOException {
     JobState state = getJobStatus(project, region, jobId);
     while (PENDING_STATES.contains(state)) {
