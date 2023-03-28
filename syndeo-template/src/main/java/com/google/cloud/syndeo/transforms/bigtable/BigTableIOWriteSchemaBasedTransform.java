@@ -193,11 +193,6 @@ public class BigTableIOWriteSchemaBasedTransform
                           keyColumns, inputFields));
                 }
               }));
-
-      // throw new IllegalArgumentException(
-      //     String.format(
-      //         "Key columns selected were %s, however input schema only contains columns %s",
-      //         keyColumns, inputFields));
     }
 
     createTableIfNeeded(inputData.getSchema());
@@ -256,10 +251,10 @@ public class BigTableIOWriteSchemaBasedTransform
                                           .containsKey(field.getType().getTypeName())) {
                                         try {
                                           return BeamSchemaToBytesTransformers
-                                          .TYPE_TO_BYTES_TRANSFORMATIONS
-                                          .get(field.getType().getTypeName())
-                                          .apply(elm.getValue(), field);
-                                        } catch(Exception e) {
+                                              .TYPE_TO_BYTES_TRANSFORMATIONS
+                                              .get(field.getType().getTypeName())
+                                              .apply(elm.getValue(), field);
+                                        } catch (Exception e) {
                                           errorCounter.inc();
                                           throw e;
                                         }
