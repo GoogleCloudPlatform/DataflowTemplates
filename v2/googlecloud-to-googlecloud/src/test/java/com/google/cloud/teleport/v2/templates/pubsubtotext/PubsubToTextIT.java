@@ -106,6 +106,11 @@ public final class PubsubToTextIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
+
+                  // For tests that run against topics, sending repeatedly will make it work for
+                  // cases in which the on-demand subscription is created after sending messages.
+                  pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+
                   artifacts.set(gcsClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });

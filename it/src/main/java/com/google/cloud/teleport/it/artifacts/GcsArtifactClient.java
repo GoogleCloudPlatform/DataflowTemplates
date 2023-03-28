@@ -124,7 +124,11 @@ public final class GcsArtifactClient implements ArtifactClient {
   @Override
   public List<Artifact> listArtifacts(String prefix, Pattern regex) {
     String listFrom = joinPathParts(testClassName, runId, prefix);
-    LOG.info("Listing everything under '{}' that matches '{}'", listFrom, regex.pattern());
+    LOG.info(
+        "Listing everything under 'gs://{}/{}' that matches '{}'",
+        bucket,
+        listFrom,
+        regex.pattern());
 
     List<Artifact> matched = new ArrayList<>();
     Page<Blob> firstPage = getFirstPage(listFrom);
