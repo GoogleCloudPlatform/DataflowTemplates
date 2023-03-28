@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.function.Supplier;
 import org.apache.beam.sdk.PipelineResult;
 
 /** Utilities to make working with Dataflow easier. */
@@ -27,13 +28,38 @@ public class PipelineUtils {
 
   private PipelineUtils() {}
 
+  /**
+   * Waits for a specified pipeline to reach a particular state, up to a specified timeout.
+   *
+   * @param pipeline the PipelineResult object to monitor
+   * @param expectedState the pipeline state to wait for
+   * @param timeoutMillis the maximum amount of time to wait for the expected state, in milliseconds
+   * @return true if the pipeline reaches the expected state within the timeout, false otherwise
+   * @throws InterruptedException if the thread is interrupted while waiting
+   */
   public static boolean waitUntilState(
       PipelineResult pipeline, PipelineResult.State expectedState, Long timeoutMillis)
+      throws InterruptedException {
+    return waitUntil(pipeline, () -> pipeline.getState().equals(expectedState), timeoutMillis);
+  }
+
+  /**
+   * Waits until a specified condition is true, up to a specified timeout.
+   *
+   * @param pipeline the PipelineResult object to monitor
+   * @param lambda a Supplier that returns a boolean indicating whether the condition is true
+   * @param timeoutMillis the maximum amount of time to wait for the condition to be true, in
+   *     milliseconds
+   * @return true if the condition becomes true within the timeout, false otherwise
+   * @throws InterruptedException if the thread is interrupted while waiting
+   */
+  public static boolean waitUntil(
+      PipelineResult pipeline, Supplier<Boolean> lambda, Long timeoutMillis)
       throws InterruptedException {
     Instant start = Instant.now();
     while (true) {
       Thread.sleep(5_000);
-      if (pipeline.getState().equals(expectedState)) {
+      if (lambda.get()) {
         return true;
       }
       if (Duration.between(start, Instant.now()).compareTo(Duration.ofMillis(timeoutMillis)) > 0) {

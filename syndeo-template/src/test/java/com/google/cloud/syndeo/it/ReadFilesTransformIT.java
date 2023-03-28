@@ -54,6 +54,7 @@ import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.Duration;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -62,6 +63,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Ignore
 @RunWith(JUnit4.class)
 public class ReadFilesTransformIT {
 

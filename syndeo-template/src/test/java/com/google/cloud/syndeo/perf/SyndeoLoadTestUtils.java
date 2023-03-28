@@ -21,6 +21,7 @@ import com.google.cloud.syndeo.transforms.SyndeoStatsSchemaTransformProvider;
 import com.google.cloud.syndeo.transforms.TypedSchemaTransformProvider;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -48,10 +49,20 @@ import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public class SyndeoLoadTestUtils {
 
   public static final Long MAX_ROWS_PER_SPLIT = 1500L;
+
+  public static String mapToJsonPayload(Map<String, Object> syndeoPipelineDefinition) {
+    try {
+      return new ObjectMapper().writeValueAsString(syndeoPipelineDefinition);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   private static PCollection<Long> longSequence(
       Pipeline dataGenerator, Long numRows, Long runtimeSeconds) {
