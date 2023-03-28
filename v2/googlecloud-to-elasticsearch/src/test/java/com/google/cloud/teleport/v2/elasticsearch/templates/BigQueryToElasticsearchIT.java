@@ -158,7 +158,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   @Test
   public void testBigQueryToElasticsearchUdf() throws IOException {
     // Arrange
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "udf.js",
         "function uppercaseName(value) {\n"
             + "  const data = JSON.parse(value);\n"

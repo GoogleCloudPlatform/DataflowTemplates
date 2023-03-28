@@ -55,7 +55,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class BigQueryToParquetIT extends TemplateTestBase {
 
-  private static BigQueryResourceManager bigQueryResourceManager;
+  private BigQueryResourceManager bigQueryResourceManager;
 
   // Define a set of parameters used to allow configuration of the test size being run.
   private static final String BIGQUERY_ID_COL = "test_id";

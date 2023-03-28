@@ -133,7 +133,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
     String bqTable = testName;
     String udfFileName = "transform.js";
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "input/" + udfFileName,
         "function transform(inJson) {\n"
             + "    var outJson = JSON.parse(inJson);\n"
