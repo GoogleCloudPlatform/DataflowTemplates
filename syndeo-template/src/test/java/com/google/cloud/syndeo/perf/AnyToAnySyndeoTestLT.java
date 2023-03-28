@@ -81,6 +81,8 @@ public class AnyToAnySyndeoTestLT {
   private static final String ZONE_SUFFIX = "-c";
   private static final String TEST_ID = "syndeo-any-to-any-" + UUID.randomUUID();
 
+  private static final String HOST_IP = TestProperties.hostIp();
+
   protected static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   protected static final CredentialsProvider CREDENTIALS_PROVIDER =
       FixedCredentialsProvider.create(CREDENTIALS);
@@ -133,7 +135,7 @@ public class AnyToAnySyndeoTestLT {
               }),
           "beam:schematransform:org.apache.beam:kafka_read:v1",
           TransformProvider.create(
-              wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).build()),
+              wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).setHost(HOST_IP).build()),
               (ResourceManager rm) -> {
                 assert rm instanceof KafkaResourceManager;
                 KafkaResourceManager krm = (KafkaResourceManager) rm;
@@ -282,7 +284,7 @@ public class AnyToAnySyndeoTestLT {
               }),
           "beam:schematransform:org.apache.beam:kafka_write:v1",
           TransformProvider.create(
-              wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).build()),
+              wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).setHost(HOST_IP).build()),
               (ResourceManager rm) -> {
                 assert rm instanceof KafkaResourceManager;
                 KafkaResourceManager krm = (KafkaResourceManager) rm;
