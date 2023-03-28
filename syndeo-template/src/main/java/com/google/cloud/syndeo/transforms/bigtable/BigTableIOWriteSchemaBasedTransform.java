@@ -181,7 +181,7 @@ public class BigTableIOWriteSchemaBasedTransform
               new DoFn<Row, Row>() {
                 private Counter errorCounter =
                     Metrics.counter(
-                        BigTableIOWriteSchemaBasedTransform.class,
+                        BigTableWriteSchemaTransformProvider.class,
                         "BigTable-write-KeyColumnsNotFound-error-counter");
 
                 @ProcessElement
@@ -238,6 +238,11 @@ public class BigTableIOWriteSchemaBasedTransform
                 "encodeKeys",
                 ParDo.of(
                     new DoFn<KV<Row, Row>, KV<byte[], Row>>() {
+                      private Counter errorCounter =
+                          Metrics.counter(
+                              BigTableWriteSchemaTransformProvider.class,
+                              "BigTable-write-ByteStringEncodingFailure-error-counter");
+
                       @ProcessElement
                       public void process(
                           @DoFn.Element KV<Row, Row> elm,
@@ -249,11 +254,17 @@ public class BigTableIOWriteSchemaBasedTransform
                                       if (BeamSchemaToBytesTransformers
                                           .TYPE_TO_BYTES_TRANSFORMATIONS
                                           .containsKey(field.getType().getTypeName())) {
-                                        return BeamSchemaToBytesTransformers
-                                            .TYPE_TO_BYTES_TRANSFORMATIONS
-                                            .get(field.getType().getTypeName())
-                                            .apply(elm.getValue(), field);
+                                        try {
+                                          return BeamSchemaToBytesTransformers
+                                          .TYPE_TO_BYTES_TRANSFORMATIONS
+                                          .get(field.getType().getTypeName())
+                                          .apply(elm.getValue(), field);
+                                        } catch(Exception e) {
+                                          errorCounter.inc();
+                                          throw e;
+                                        }
                                       } else {
+                                        errorCounter.inc();
                                         throw new IllegalArgumentException(
                                             "Unsupported column type: "
                                                 + field.getType().getTypeName().toString());
