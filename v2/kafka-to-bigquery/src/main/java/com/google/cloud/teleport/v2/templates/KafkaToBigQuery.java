@@ -156,6 +156,8 @@ import org.slf4j.LoggerFactory;
             + " table.",
     optionsClass = KafkaToBQOptions.class,
     flexContainerName = "kafka-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class KafkaToBigQuery {
 

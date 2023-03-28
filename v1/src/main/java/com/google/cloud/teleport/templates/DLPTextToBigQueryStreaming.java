@@ -143,6 +143,8 @@ import org.slf4j.LoggerFactory;
     description =
         "An example pipeline that reads CSV files from Cloud Storage, uses Cloud DLP API to mask and tokenize data based on the DLP templates provided and stores output in BigQuery. Note, not all configuration settings are available in this default template. You may need to deploy a custom template to accommodate your specific environment and data needs. More details here: https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp",
     optionsClass = TokenizePipelineOptions.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/dlp-text-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class DLPTextToBigQueryStreaming {
 

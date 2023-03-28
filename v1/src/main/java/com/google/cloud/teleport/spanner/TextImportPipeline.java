@@ -96,6 +96,8 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
         "A pipeline to import a Cloud Spanner database from a set of Text (CSV) files in Cloud"
             + " Storage.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-cloud-spanner",
     contactInformation = "https://cloud.google.com/support")
 public class TextImportPipeline {
 

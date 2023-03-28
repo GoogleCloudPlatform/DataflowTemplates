@@ -110,6 +110,8 @@ import org.slf4j.LoggerFactory;
     displayName = "Bulk Compress Files on Cloud Storage",
     description = "Batch pipeline. Compresses files on Cloud Storage to a specified location.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bulk-compress-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 public class BulkCompressor {
 

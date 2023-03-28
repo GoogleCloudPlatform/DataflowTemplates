@@ -96,6 +96,8 @@ import org.slf4j.LoggerFactory;
             + " writes them to a pre-existing set of tables in Cloud Spanner.",
     optionsClass = Options.class,
     flexContainerName = "datastream-to-spanner",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-cloud-spanner",
     contactInformation = "https://cloud.google.com/support")
 public class DataStreamToSpanner {
 

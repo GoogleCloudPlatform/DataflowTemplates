@@ -29,16 +29,17 @@ import org.junit.Test;
 public class TemplateDocsGeneratorTest {
 
   @Test
-  public void testSimpleMarkdown() throws TemplateException, IOException {
+  public void testSimpleMarkdownClassic() throws TemplateException, IOException {
 
     TemplateDefinitions definitions =
         new TemplateDefinitions(AtoBOk.class, AtoBOk.class.getAnnotation(Template.class));
     ImageSpec imageSpec = definitions.buildSpecModel(false);
 
-    String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec);
+    String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec, false);
 
     FileWriter out =
-        new FileWriter("target/README-" + imageSpec.getMetadata().getInternalName() + ".md");
+        new FileWriter(
+            "target/README-" + imageSpec.getMetadata().getInternalName() + "-classic.md");
     out.write(markdown);
     out.close();
 
@@ -47,5 +48,28 @@ public class TemplateDocsGeneratorTest {
     assertThat(markdown).contains("A to B Template");
     assertThat(markdown).contains("Streaming Template that sends A to B");
     assertThat(markdown).contains("inputSubscription");
+    assertThat(markdown).contains("gcloud dataflow jobs run");
+  }
+
+  @Test
+  public void testSimpleMarkdownFlex() throws TemplateException, IOException {
+
+    TemplateDefinitions definitions =
+        new TemplateDefinitions(AtoBOk.class, AtoBOk.class.getAnnotation(Template.class));
+    ImageSpec imageSpec = definitions.buildSpecModel(false);
+
+    String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec, true);
+
+    FileWriter out =
+        new FileWriter("target/README-" + imageSpec.getMetadata().getInternalName() + "-flex.md");
+    out.write(markdown);
+    out.close();
+
+    // Just check if specific pieces are present
+    // We should not gatekeep / slow specific formatting down
+    assertThat(markdown).contains("A to B Template");
+    assertThat(markdown).contains("Streaming Template that sends A to B");
+    assertThat(markdown).contains("inputSubscription");
+    assertThat(markdown).contains("gcloud dataflow flex-template run");
   }
 }

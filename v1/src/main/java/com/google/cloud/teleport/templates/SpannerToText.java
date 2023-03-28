@@ -81,6 +81,8 @@ import org.slf4j.LoggerFactory;
     description =
         "A pipeline which reads in Cloud Spanner table and writes it to Cloud Storage as CSV text files.",
     optionsClass = SpannerToTextOptions.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 public class SpannerToText {
 

@@ -43,6 +43,8 @@ import org.apache.beam.sdk.transforms.ParDo;
         "A pipeline which sends BigQuery records into an Elasticsearch instance as json documents.",
     optionsClass = BigQueryToElasticsearchOptions.class,
     flexContainerName = "bigquery-to-elasticsearch",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-elasticsearch",
     contactInformation = "https://cloud.google.com/support")
 public class BigQueryToElasticsearch {
   /**

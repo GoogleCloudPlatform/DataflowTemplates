@@ -54,6 +54,8 @@ import org.slf4j.LoggerFactory;
             + " writes the resulting records to BigQuery.",
     optionsClass = Options.class,
     flexContainerName = "mongodb-to-bigquery-cdc",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/mongodb-change-stream-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class MongoDbToBigQueryCdc {
 

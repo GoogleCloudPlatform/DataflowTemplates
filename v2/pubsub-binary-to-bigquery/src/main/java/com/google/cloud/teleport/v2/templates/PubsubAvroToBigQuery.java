@@ -56,6 +56,8 @@ import org.apache.beam.sdk.values.Row;
             + " BigQuery table.",
     optionsClass = PubsubAvroToBigQueryOptions.class,
     flexContainerName = "pubsub-avro-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-avro-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public final class PubsubAvroToBigQuery {
   /**

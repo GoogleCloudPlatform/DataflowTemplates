@@ -58,6 +58,8 @@ import org.tensorflow.example.Features;
         "A pipeline that reads rows from BigQuery and writes them as TFRecords in Cloud Storage. (NOTE: Nested BigQuery columns are currently not supported and should be unnested within the SQL query.)",
     optionsClass = Options.class,
     optionsOrder = {BigQueryReadOptions.class, Options.class},
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-tfrecords",
     contactInformation = "https://cloud.google.com/support")
 public class BigQueryToTFRecord {
 

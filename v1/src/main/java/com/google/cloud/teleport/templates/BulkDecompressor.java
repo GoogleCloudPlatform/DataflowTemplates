@@ -123,6 +123,8 @@ import org.slf4j.LoggerFactory;
     description =
         "A pipeline which decompresses files on Cloud Storage to a specified location. Supported formats: Bzip2, deflate, and gzip.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bulk-decompress-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 public class BulkDecompressor {
 

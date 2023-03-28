@@ -124,6 +124,8 @@ import org.slf4j.LoggerFactory;
     optionsClass = FileFormatConversionOptions.class,
     optionalOptions = {"deadletterTable"},
     flexContainerName = "file-format-conversion",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/file-format-conversion",
     contactInformation = "https://cloud.google.com/support")
 public class FileFormatConversion {
 

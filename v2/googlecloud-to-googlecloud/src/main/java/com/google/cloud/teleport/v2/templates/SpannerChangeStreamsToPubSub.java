@@ -47,6 +47,8 @@ import org.slf4j.LoggerFactory;
             + " Pub/Sub topic using Dataflow Runner V2.",
     optionsClass = SpannerChangeStreamsToPubSubOptions.class,
     flexContainerName = "spanner-changestreams-to-pubsub",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-pubsub",
     contactInformation = "https://cloud.google.com/support")
 public class SpannerChangeStreamsToPubSub {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToPubSub.class);

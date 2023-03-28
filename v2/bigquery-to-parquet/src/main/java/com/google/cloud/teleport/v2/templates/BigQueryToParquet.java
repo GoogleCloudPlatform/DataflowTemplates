@@ -125,6 +125,8 @@ import org.slf4j.LoggerFactory;
         "A pipeline to export a BigQuery table into Parquet files using the BigQuery Storage API.",
     optionsClass = BigQueryToParquetOptions.class,
     flexContainerName = "bigquery-to-parquet",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-parquet",
     contactInformation = "https://cloud.google.com/support")
 public class BigQueryToParquet {
 

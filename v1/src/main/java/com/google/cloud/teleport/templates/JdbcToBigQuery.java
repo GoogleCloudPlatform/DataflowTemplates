@@ -40,6 +40,8 @@ import org.slf4j.LoggerFactory;
     description =
         "A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\"  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\" -H \"Authorization: Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type: application/json\"",
     optionsClass = JdbcConverters.JdbcToBigQueryOptions.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class JdbcToBigQuery {
 

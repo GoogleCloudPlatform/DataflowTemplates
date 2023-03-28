@@ -43,6 +43,8 @@ import org.apache.beam.sdk.options.ValueProvider;
         "Batch pipeline. Reads Datastore entities and writes them to Cloud Storage as text files.",
     optionsClass = DatastoreToTextOptions.class,
     skipOptions = {"firestoreReadNamespace", "firestoreReadGqlQuery", "firestoreReadProjectId"},
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-to-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 @Template(
     name = "Firestore_to_GCS_Text",
@@ -52,6 +54,8 @@ import org.apache.beam.sdk.options.ValueProvider;
         "Batch pipeline. Reads Firestore entities and writes them to Cloud Storage as text files.",
     optionsClass = DatastoreToTextOptions.class,
     skipOptions = {"datastoreReadNamespace", "datastoreReadGqlQuery", "datastoreReadProjectId"},
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/firestore-to-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 public class DatastoreToText {
 

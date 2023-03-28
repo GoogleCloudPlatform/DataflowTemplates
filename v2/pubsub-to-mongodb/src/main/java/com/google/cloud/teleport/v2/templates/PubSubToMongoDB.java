@@ -109,6 +109,8 @@ import org.slf4j.LoggerFactory;
             + " a MongoDB as documents.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-to-mongodb",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-mongodb",
     contactInformation = "https://cloud.google.com/support")
 public class PubSubToMongoDB {
   /**

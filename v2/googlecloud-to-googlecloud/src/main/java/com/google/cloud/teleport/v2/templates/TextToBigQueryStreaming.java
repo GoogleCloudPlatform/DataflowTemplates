@@ -130,6 +130,8 @@ import org.slf4j.LoggerFactory;
             + " TableSchema.",
     optionsClass = TextToBigQueryStreamingOptions.class,
     flexContainerName = "text-to-bigquery-streaming",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
     contactInformation = "https://cloud.google.com/support")
 public class TextToBigQueryStreaming {
 

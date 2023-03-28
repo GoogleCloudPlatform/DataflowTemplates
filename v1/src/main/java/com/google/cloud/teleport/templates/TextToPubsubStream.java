@@ -55,6 +55,8 @@ import org.joda.time.Duration;
     description =
         "A pipeline that polls every 10 seconds for new text files stored in Cloud Storage and outputs each line to a Pub/Sub topic.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-pubsub-stream",
     contactInformation = "https://cloud.google.com/support")
 public class TextToPubsubStream extends TextToPubsub {
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);

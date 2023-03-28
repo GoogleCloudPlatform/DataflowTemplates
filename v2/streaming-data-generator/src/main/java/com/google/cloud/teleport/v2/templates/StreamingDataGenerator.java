@@ -123,6 +123,8 @@ import org.slf4j.LoggerFactory;
             + " performance of streaming pipelines.",
     optionsClass = StreamingDataGeneratorOptions.class,
     flexContainerName = "streaming-data-generator",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/streaming-data-generator",
     contactInformation = "https://cloud.google.com/support")
 public class StreamingDataGenerator {
 

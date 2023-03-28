@@ -45,6 +45,8 @@ import org.apache.beam.sdk.options.ValueProvider;
       "firestoreDeleteProjectId",
       "firestoreHintNumWorkers"
     },
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-bulk-delete",
     contactInformation = "https://cloud.google.com/support")
 @Template(
     name = "Firestore_to_Firestore_Delete",
@@ -65,6 +67,8 @@ import org.apache.beam.sdk.options.ValueProvider;
       "datastoreDeleteProjectId",
       "datastoreHintNumWorkers"
     },
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/firestore-bulk-delete",
     contactInformation = "https://cloud.google.com/support")
 public class DatastoreToDatastoreDelete {
 

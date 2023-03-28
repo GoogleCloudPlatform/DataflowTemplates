@@ -94,7 +94,11 @@ public class TemplateDefinitions {
     metadata.setName(templateAnnotation.displayName());
     metadata.setDescription(templateAnnotation.description());
     metadata.setModule(getClassModule());
-    metadata.setGoogleReleased(!templateAnnotation.hidden());
+    metadata.setDocumentationLink(templateAnnotation.documentation());
+    metadata.setGoogleReleased(
+        (templateAnnotation.documentation() != null
+                && templateAnnotation.documentation().contains("cloud.google.com"))
+            || !templateAnnotation.hidden());
 
     if (isClassic()) {
 

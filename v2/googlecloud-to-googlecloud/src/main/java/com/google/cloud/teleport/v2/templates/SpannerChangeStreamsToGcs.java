@@ -50,6 +50,8 @@ import org.slf4j.LoggerFactory;
             + " Cloud Storage bucket using Dataflow Runner V2.",
     optionsClass = SpannerChangeStreamsToGcsOptions.class,
     flexContainerName = "spanner-changestreams-to-gcs",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 public class SpannerChangeStreamsToGcs {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToGcs.class);

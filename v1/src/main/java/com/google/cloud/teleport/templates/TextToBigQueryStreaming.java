@@ -99,6 +99,8 @@ import org.slf4j.LoggerFactory;
     description =
         "A streaming pipeline that can read text files stored in Cloud Storage, perform a transform via a user defined JavaScript function, and stream the results into BigQuery. This pipeline requires a JavaScript function and a JSON representation of the BigQuery TableSchema.",
     optionsClass = TextToBigQueryStreamingOptions.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
     contactInformation = "https://cloud.google.com/support")
 public class TextToBigQueryStreaming {
 

@@ -53,6 +53,8 @@ import org.apache.beam.sdk.values.TupleTag;
         "firestoreWriteNamespace",
         "firestoreHintNumWorkers"
       },
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-datastore",
       contactInformation = "https://cloud.google.com/support"),
   @Template(
       name = "GCS_Text_to_Firestore",
@@ -67,6 +69,8 @@ import org.apache.beam.sdk.values.TupleTag;
         "datastoreWriteNamespace",
         "datastoreHintNumWorkers"
       },
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-firestore",
       contactInformation = "https://cloud.google.com/support")
 })
 public class TextToDatastore {

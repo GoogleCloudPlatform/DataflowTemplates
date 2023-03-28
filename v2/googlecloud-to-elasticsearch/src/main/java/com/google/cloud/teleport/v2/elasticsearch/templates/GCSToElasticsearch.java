@@ -59,6 +59,8 @@ import org.slf4j.LoggerFactory;
             + " as a json document.",
     optionsClass = GCSToElasticsearchOptions.class,
     flexContainerName = "gcs-to-elasticsearch",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-elasticsearch",
     contactInformation = "https://cloud.google.com/support")
 public class GCSToElasticsearch {
 

@@ -55,6 +55,8 @@ import org.apache.beam.sdk.options.ValueProvider;
     description =
         "Batch pipeline. Reads records from text files stored in Cloud Storage and publishes them to a Pub/Sub topic.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-pubsub",
     contactInformation = "https://cloud.google.com/support")
 public class TextToPubsub {
 

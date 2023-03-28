@@ -52,6 +52,8 @@ import org.apache.hadoop.hbase.client.Mutation;
     },
     optionalOptions = {"inputTableSpec"},
     flexContainerName = "bigquery-to-bigtable",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-bigtable",
     contactInformation = "https://cloud.google.com/support")
 public class BigQueryToBigtable {
 

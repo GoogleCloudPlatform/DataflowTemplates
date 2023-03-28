@@ -136,6 +136,8 @@ import org.slf4j.LoggerFactory;
       JavascriptTextTransformerOptions.class,
       PubsubWriteDeadletterTopicOptions.class
     },
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-splunk",
     contactInformation = "https://cloud.google.com/support")
 public class PubSubToSplunk {
 

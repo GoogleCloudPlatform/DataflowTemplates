@@ -116,6 +116,8 @@ import org.apache.beam.sdk.values.PCollection;
             + " line in the output file.",
     optionsClass = Options.class,
     skipOptions = {"inputSubscription"},
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-topic-to-text",
     contactInformation = "https://cloud.google.com/support")
 public class PubsubToText {
 

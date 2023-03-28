@@ -144,7 +144,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       BuildPluginManager pluginManager =
           (BuildPluginManager) session.lookup("org.apache.maven.plugin.BuildPluginManager");
 
-      LOG.info("Staging Templates to bucket {}...", bucketNameOnly(bucketName));
+      LOG.info("Staging Templates to bucket '{}'...", bucketNameOnly(bucketName));
 
       List<TemplateDefinitions> templateDefinitions =
           TemplateDefinitionsParser.scanDefinitions(loader);

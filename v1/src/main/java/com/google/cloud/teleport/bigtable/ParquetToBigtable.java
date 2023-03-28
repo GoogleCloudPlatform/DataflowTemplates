@@ -102,6 +102,8 @@ import org.slf4j.LoggerFactory;
     description =
         "A pipeline which reads data from Parquet files in Cloud Storage and writes it to Cloud Bigtable table.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/parquet-to-bigtable",
     contactInformation = "https://cloud.google.com/support")
 public class ParquetToBigtable {
   private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);

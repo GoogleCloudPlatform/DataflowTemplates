@@ -138,6 +138,8 @@ import org.slf4j.LoggerFactory;
             + " pre-existing BigQuery table as BigQuery elements.",
     optionsClass = Options.class,
     skipOptions = "inputTopic",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-subscription-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 @Template(
     name = "PubSub_to_BigQuery",
@@ -149,6 +151,8 @@ import org.slf4j.LoggerFactory;
             + " BigQuery table as BigQuery elements.",
     optionsClass = Options.class,
     skipOptions = "inputSubscription",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class PubSubToBigQuery {
 

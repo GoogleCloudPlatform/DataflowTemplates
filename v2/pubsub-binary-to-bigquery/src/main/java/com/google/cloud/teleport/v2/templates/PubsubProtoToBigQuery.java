@@ -78,6 +78,8 @@ import org.apache.commons.lang3.ArrayUtils;
             + " them to a BigQuery table.",
     optionsClass = PubSubProtoToBigQueryOptions.class,
     flexContainerName = "pubsub-proto-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-proto-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public final class PubsubProtoToBigQuery {
   private static final TupleTag<FailsafeElement<String, String>> UDF_SUCCESS_TAG = new TupleTag<>();

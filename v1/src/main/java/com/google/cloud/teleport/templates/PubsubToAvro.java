@@ -131,6 +131,8 @@ import org.apache.beam.sdk.values.PCollection;
             + " the specified directory.",
     optionsClass = Options.class,
     skipOptions = "inputSubscription",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-avro",
     contactInformation = "https://cloud.google.com/support")
 public class PubsubToAvro {
 

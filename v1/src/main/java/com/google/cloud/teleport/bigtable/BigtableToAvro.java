@@ -58,6 +58,8 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
         "A pipeline which reads in Cloud Bigtable table and writes it to Cloud Storage in Avro"
             + " format.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-avro",
     contactInformation = "https://cloud.google.com/support")
 public class BigtableToAvro {
 

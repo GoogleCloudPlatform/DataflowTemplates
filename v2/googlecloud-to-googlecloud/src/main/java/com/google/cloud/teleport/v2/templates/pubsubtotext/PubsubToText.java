@@ -138,6 +138,8 @@ import org.apache.beam.sdk.values.PCollection;
             + " message becomes a single line in the output file.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-to-text",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-topic-subscription-to-text",
     contactInformation = "https://cloud.google.com/support")
 public class PubsubToText {
 

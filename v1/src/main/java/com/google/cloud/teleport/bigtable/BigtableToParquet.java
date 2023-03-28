@@ -56,6 +56,8 @@ import org.apache.beam.sdk.values.PCollection;
     description =
         "A pipeline which reads in Cloud Bigtable table and writes it to Cloud Storage in Parquet format.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-parquet",
     contactInformation = "https://cloud.google.com/support")
 public class BigtableToParquet {
 

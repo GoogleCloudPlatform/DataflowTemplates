@@ -50,6 +50,8 @@ import org.bson.Document;
         "A batch pipeline which reads data documents from MongoDB and writes them to BigQuery.",
     optionsClass = Options.class,
     flexContainerName = "mongodb-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/mongodb-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class MongoDbToBigQuery {
   /**

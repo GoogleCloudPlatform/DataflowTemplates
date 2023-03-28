@@ -62,6 +62,8 @@ import org.slf4j.LoggerFactory;
     optionsClass = PubSubToElasticsearchOptions.class,
     skipOptions = "index", // Template just ignores what is sent as "index"
     flexContainerName = "pubsub-to-elasticsearch",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-elasticsearch",
     contactInformation = "https://cloud.google.com/support")
 public class PubSubToElasticsearch {
 

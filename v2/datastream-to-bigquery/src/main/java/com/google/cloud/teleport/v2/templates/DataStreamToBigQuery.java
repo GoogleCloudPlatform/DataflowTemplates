@@ -116,6 +116,8 @@ import org.slf4j.LoggerFactory;
             + " writes them to a pre-existing BigQuery dataset as a set of tables.",
     optionsClass = Options.class,
     flexContainerName = "datastream-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class DataStreamToBigQuery {
 

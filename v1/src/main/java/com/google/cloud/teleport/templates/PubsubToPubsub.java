@@ -50,6 +50,8 @@ import org.slf4j.LoggerFactory;
     description =
         "Streaming pipeline. Reads from a Pub/Sub subscription and writes to a Pub/Sub topic. ",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-pubsub",
     contactInformation = "https://cloud.google.com/support")
 public class PubsubToPubsub {
 

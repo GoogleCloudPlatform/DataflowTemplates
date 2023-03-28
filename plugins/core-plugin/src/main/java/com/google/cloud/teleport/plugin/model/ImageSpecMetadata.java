@@ -31,6 +31,7 @@ public class ImageSpecMetadata {
   private Map<String, String> runtimeParameters = new HashMap<>();
   private String internalName;
   private String module;
+  private String documentationLink;
   private boolean googleReleased;
 
   public String getDescription() {
@@ -79,6 +80,14 @@ public class ImageSpecMetadata {
 
   public void setInternalName(String internalName) {
     this.internalName = internalName;
+  }
+
+  public String getDocumentationLink() {
+    return documentationLink;
+  }
+
+  public void setDocumentationLink(String documentationLink) {
+    this.documentationLink = documentationLink;
   }
 
   public String getModule() {

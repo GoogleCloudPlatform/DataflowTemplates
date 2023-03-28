@@ -35,6 +35,8 @@ import org.apache.beam.sdk.options.ValueProvider;
         "A pipeline which reads in Cloud Bigtable table and writes it to Cloud Storage in SequenceFile format.",
     placeholderClass = ExportJob.class,
     optionsClass = ExportJobPlaceholderOptions.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-sequencefile",
     contactInformation = "https://cloud.google.com/support")
 public class ExportJobPlaceholder {
 

@@ -53,6 +53,8 @@ import org.slf4j.LoggerFactory;
     description =
         "A pipeline which reads data from Avro files in Cloud Storage and writes it to Cloud Bigtable table.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-bigtable",
     contactInformation = "https://cloud.google.com/support")
 public final class AvroToBigtable {
   private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);

@@ -51,6 +51,8 @@ import org.slf4j.LoggerFactory;
     description =
         "Batch pipeline. Reads text files stored in Cloud Storage, transforms them using a JavaScript user-defined function (UDF), and outputs the result to BigQuery.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class TextIOToBigQuery {
 

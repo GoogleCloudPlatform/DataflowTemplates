@@ -42,6 +42,8 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
     description =
         "A pipeline to export a Cloud Spanner database to a set of Avro files in Cloud Storage.",
     optionsClass = ExportPipelineOptions.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-avro",
     contactInformation = "https://cloud.google.com/support")
 public class ExportPipeline {
 

@@ -63,6 +63,9 @@ public @interface Template {
   /** An array that specifies the orders. */
   Class<?>[] optionsOrder() default void.class;
 
+  /** Link to the documentation. */
+  String documentation() default "";
+
   /** Contact information for the Template. */
   String contactInformation() default "";
 }

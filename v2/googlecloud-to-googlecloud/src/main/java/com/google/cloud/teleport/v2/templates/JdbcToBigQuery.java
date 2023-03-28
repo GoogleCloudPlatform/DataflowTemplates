@@ -54,6 +54,8 @@ import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
             + " application/json\"",
     optionsClass = JdbcToBigQueryOptions.class,
     flexContainerName = "jdbc-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class JdbcToBigQuery {
 

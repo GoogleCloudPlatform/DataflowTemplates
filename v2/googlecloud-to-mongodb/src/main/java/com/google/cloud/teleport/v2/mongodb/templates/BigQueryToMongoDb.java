@@ -44,6 +44,8 @@ import org.bson.Document;
             + " documents.",
     optionsClass = Options.class,
     flexContainerName = "bigquery-to-mongodb",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-mongodb",
     contactInformation = "https://cloud.google.com/support")
 public class BigQueryToMongoDb {
   /**

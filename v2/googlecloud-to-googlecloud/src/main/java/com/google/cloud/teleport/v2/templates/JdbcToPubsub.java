@@ -57,6 +57,8 @@ import org.slf4j.LoggerFactory;
             + " application/json\"",
     optionsClass = JdbcToPubsubOptions.class,
     flexContainerName = "jdbc-to-pubsub",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-pubsub",
     contactInformation = "https://cloud.google.com/support")
 public class JdbcToPubsub {
 
