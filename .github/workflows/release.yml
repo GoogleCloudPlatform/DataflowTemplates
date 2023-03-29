@@ -40,6 +40,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
+        token: ${{ secrets.RELEASE_TOKEN }}
     - name: Create release branch
       run: git checkout -b $RELEASE_BRANCH_NAME $BRANCH_COMMIT
       env:
