@@ -185,7 +185,7 @@ public class BigTableIOWriteSchemaBasedTransform
                         "BigTable-write-KeyColumnsNotFound-error-counter");
 
                 @ProcessElement
-                void process(ProcessContext c) {
+                public void process(ProcessContext c) {
                   errorCounter.inc();
                   throw new IllegalArgumentException(
                       String.format(
