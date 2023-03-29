@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -30,8 +32,12 @@ import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.Javascr
 import com.google.cloud.teleport.v2.transforms.SplunkConverters;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.FailsafeStringToSplunkEvent;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
+import com.google.cloud.teleport.v2.utils.KMSUtils;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.cloud.teleport.v2.values.SplunkTokenSource;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.repackaged.core.org.apache.commons.lang3.EnumUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -146,6 +152,7 @@ public final class GCSToSplunk {
    * @return The pipeline result.
    */
   public static PipelineResult run(GCSToSplunkOptions options) {
+    String token = getMaybeDecryptedToken(options);
     Pipeline pipeline = Pipeline.create(options);
 
     CoderRegistry registry = pipeline.getCoderRegistry();
@@ -164,7 +171,9 @@ public final class GCSToSplunk {
             .apply("Convert to Splunk Event", convertToSplunkEvent());
 
     PCollection<SplunkWriteError> wrappedSplunkWriteErrors =
-        splunkEventTuple.get(SPLUNK_EVENT_OUT).apply("Write to Splunk", writeToSplunk(options));
+        splunkEventTuple
+            .get(SPLUNK_EVENT_OUT)
+            .apply("Write to Splunk", writeToSplunk(options, token));
 
     flattenErrorsAndConvertToString(
             failsafeTransformedLines.get(UDF_ERROR_OUT),
@@ -204,11 +213,14 @@ public final class GCSToSplunk {
     return SplunkConverters.failsafeStringToSplunkEvent(SPLUNK_EVENT_OUT, SPLUNK_EVENT_ERROR_OUT);
   }
 
-  static SplunkIO.Write writeToSplunk(GCSToSplunkOptions options) {
-    return SplunkIO.write(options.getUrl(), options.getToken())
+  static SplunkIO.Write writeToSplunk(GCSToSplunkOptions options, String token) {
+    return SplunkIO.write(options.getUrl(), token)
         .withBatchCount(options.getBatchCount())
         .withParallelism(options.getParallelism())
-        .withDisableCertificateValidation(options.getDisableCertificateValidation());
+        .withDisableCertificateValidation(options.getDisableCertificateValidation())
+        .withRootCaCertificatePath(options.getRootCaCertificatePath())
+        .withEnableBatchLogs(options.getEnableBatchLogs())
+        .withEnableGzipHttpCompression(options.getEnableGzipHttpCompression());
   }
 
   static PCollectionTuple flattenErrorsAndConvertToString(
@@ -274,6 +286,32 @@ public final class GCSToSplunk {
         errorString += "Error Message: " + error.getErrorMessage() + ".";
       }
       context.output(errorString);
+    }
+  }
+
+  private static String getMaybeDecryptedToken(GCSToSplunkOptions options) {
+    SplunkTokenSource splunkTokenSource =
+        EnumUtils.getEnum(SplunkTokenSource.class, options.getTokenSource());
+    switch (splunkTokenSource) {
+      case SECRET_MANAGER:
+        checkArgument(
+            options.getTokenSecretId() != null,
+            "tokenSecretId is required to retrieve token from Secret Manager");
+        LOG.info("Using token secret stored in Secret Manager");
+        return SecretManagerUtils.getSecret(options.getTokenSecretId());
+      case KMS:
+        checkArgument(
+            options.getToken() != null && options.getTokenKMSEncryptionKey() != null,
+            "token and tokenKmsEncryptionKey are required while decrypting using KMS Key");
+        LOG.info("Using KMS Key to decrypt token");
+        return KMSUtils.maybeDecrypt(options.getToken(), options.getTokenKMSEncryptionKey());
+      case PLAINTEXT:
+      default:
+        checkArgument(options.getToken() != null, "token is required for writing events");
+        LOG.warn(
+            "Using plaintext token. Consider storing the token in Secret Manager or "
+                + "pass an encrypted token and a KMS Key to decrypt it");
+        return options.getToken();
     }
   }
 }
