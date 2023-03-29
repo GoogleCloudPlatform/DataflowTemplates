@@ -20,6 +20,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **inputFileSpec** (The input filepattern to read from.): Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv.
 * **deadletterTable** (BigQuery Deadletter table to send failed inserts.): Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. (Example: your-project:your-dataset.your-table-name).
 * **url** (Splunk HEC URL.): Splunk Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs. (Example: https://splunk-hec-host:8088).
+* **tokenSource** (Source of the token passed. One of PLAINTEXT, KMS or SECRET_MANAGER.): Source of the token. One of PLAINTEXT, KMS or SECRET_MANAGER. If tokenSource is set to KMS, tokenKMSEncryptionKey and encrypted token must be provided. If tokenSource is set to SECRET_MANAGER, tokenSecretId must be provided. If tokenSource is set to PLAINTEXT, token must be provided.
 
 ### Optional Parameters
 
@@ -34,6 +35,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **batchCount** (Batch size for sending multiple events to Splunk HEC.): Batch size for sending multiple events to Splunk HEC. Default 1 (no batching).
 * **disableCertificateValidation** (Disable SSL certificate validation.): Disable SSL certificate validation (true/false). Default false (validation enabled). If true, the certificates are not validated (all certificates are trusted) and  `rootCaCertificatePath` parameter is ignored.
 * **parallelism** (Maximum number of parallel requests.): Maximum number of parallel requests. Default: 1 (no parallelism).
+* **tokenKMSEncryptionKey** (Google Cloud KMS encryption key for the token): The Cloud KMS key to decrypt the HEC token string. This parameter must be provided if the tokenSource is set to KMS. If this parameter is provided, token string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
+* **tokenSecretId** (Google Cloud Secret Manager ID.): Secret Manager secret ID for the token. This parameter should be provided if the tokenSource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
+* **rootCaCertificatePath** (Cloud Storage path to root CA certificate.): The full URL to root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and may be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file will be fetched and added to Dataflow worker's trust store in order to verify Splunk HEC endpoint's SSL certificate which is signed by that private CA. If this parameter is not provided, the default trust store is used. (Example: gs://mybucket/mycerts/privateCA.crt).
+* **enableBatchLogs** (Enable logs for batches written to Splunk.): Parameter which specifies if logs should be enabled for batches written to Splunk. Defaults to: true.
+* **enableGzipHttpCompression** (Enable compression (gzip content encoding) in HTTP requests sent to Splunk HEC.): Parameter which specifies if HTTP requests sent to Splunk HEC should be GZIP encoded. Defaults to: true.
 * **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
 * **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
 
@@ -132,6 +138,7 @@ export INVALID_OUTPUT_PATH=<invalidOutputPath>
 export INPUT_FILE_SPEC=<inputFileSpec>
 export DEADLETTER_TABLE=<deadletterTable>
 export URL=<url>
+export TOKEN_SOURCE=<tokenSource>
 
 ### Optional
 export CONTAINS_HEADERS=false
@@ -145,6 +152,11 @@ export TOKEN=<token>
 export BATCH_COUNT=<batchCount>
 export DISABLE_CERTIFICATE_VALIDATION=<disableCertificateValidation>
 export PARALLELISM=<parallelism>
+export TOKEN_KMSENCRYPTION_KEY=<tokenKMSEncryptionKey>
+export TOKEN_SECRET_ID=<tokenSecretId>
+export ROOT_CA_CERTIFICATE_PATH=<rootCaCertificatePath>
+export ENABLE_BATCH_LOGS=true
+export ENABLE_GZIP_HTTP_COMPRESSION=true
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 
@@ -167,6 +179,12 @@ gcloud dataflow flex-template run "gcs-to-splunk-job" \
   --parameters "batchCount=$BATCH_COUNT" \
   --parameters "disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION" \
   --parameters "parallelism=$PARALLELISM" \
+  --parameters "tokenSource=$TOKEN_SOURCE" \
+  --parameters "tokenKMSEncryptionKey=$TOKEN_KMSENCRYPTION_KEY" \
+  --parameters "tokenSecretId=$TOKEN_SECRET_ID" \
+  --parameters "rootCaCertificatePath=$ROOT_CA_CERTIFICATE_PATH" \
+  --parameters "enableBatchLogs=$ENABLE_BATCH_LOGS" \
+  --parameters "enableGzipHttpCompression=$ENABLE_GZIP_HTTP_COMPRESSION" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME"
 ```
@@ -191,6 +209,7 @@ export INVALID_OUTPUT_PATH=<invalidOutputPath>
 export INPUT_FILE_SPEC=<inputFileSpec>
 export DEADLETTER_TABLE=<deadletterTable>
 export URL=<url>
+export TOKEN_SOURCE=<tokenSource>
 
 ### Optional
 export CONTAINS_HEADERS=false
@@ -204,6 +223,11 @@ export TOKEN=<token>
 export BATCH_COUNT=<batchCount>
 export DISABLE_CERTIFICATE_VALIDATION=<disableCertificateValidation>
 export PARALLELISM=<parallelism>
+export TOKEN_KMSENCRYPTION_KEY=<tokenKMSEncryptionKey>
+export TOKEN_SECRET_ID=<tokenSecretId>
+export ROOT_CA_CERTIFICATE_PATH=<rootCaCertificatePath>
+export ENABLE_BATCH_LOGS=true
+export ENABLE_GZIP_HTTP_COMPRESSION=true
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 
@@ -214,7 +238,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-to-splunk-job" \
 -DtemplateName="GCS_To_Splunk" \
--Dparameters="invalidOutputPath=$INVALID_OUTPUT_PATH,inputFileSpec=$INPUT_FILE_SPEC,containsHeaders=$CONTAINS_HEADERS,deadletterTable=$DEADLETTER_TABLE,delimiter=$DELIMITER,csvFormat=$CSV_FORMAT,jsonSchemaPath=$JSON_SCHEMA_PATH,largeNumFiles=$LARGE_NUM_FILES,csvFileEncoding=$CSV_FILE_ENCODING,logDetailedCsvConversionErrors=$LOG_DETAILED_CSV_CONVERSION_ERRORS,token=$TOKEN,url=$URL,batchCount=$BATCH_COUNT,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,parallelism=$PARALLELISM,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+-Dparameters="invalidOutputPath=$INVALID_OUTPUT_PATH,inputFileSpec=$INPUT_FILE_SPEC,containsHeaders=$CONTAINS_HEADERS,deadletterTable=$DEADLETTER_TABLE,delimiter=$DELIMITER,csvFormat=$CSV_FORMAT,jsonSchemaPath=$JSON_SCHEMA_PATH,largeNumFiles=$LARGE_NUM_FILES,csvFileEncoding=$CSV_FILE_ENCODING,logDetailedCsvConversionErrors=$LOG_DETAILED_CSV_CONVERSION_ERRORS,token=$TOKEN,url=$URL,batchCount=$BATCH_COUNT,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,parallelism=$PARALLELISM,tokenSource=$TOKEN_SOURCE,tokenKMSEncryptionKey=$TOKEN_KMSENCRYPTION_KEY,tokenSecretId=$TOKEN_SECRET_ID,rootCaCertificatePath=$ROOT_CA_CERTIFICATE_PATH,enableBatchLogs=$ENABLE_BATCH_LOGS,enableGzipHttpCompression=$ENABLE_GZIP_HTTP_COMPRESSION,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
 -pl v2/googlecloud-to-splunk \
 -am
 ```
