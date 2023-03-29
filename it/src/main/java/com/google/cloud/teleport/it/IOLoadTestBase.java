@@ -17,6 +17,10 @@ package com.google.cloud.teleport.it;
 
 import com.google.cloud.teleport.it.launcher.DefaultPipelineLauncher;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -48,5 +52,20 @@ public class IOLoadTestBase extends LoadTestBase {
   @Override
   PipelineLauncher launcher() {
     return DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
+  }
+
+  /** a utility DoFn that count element passed. */
+  protected static final class CountingFn<T> extends DoFn<T, Void> {
+
+    private final Counter elementCounter;
+
+    public CountingFn(String namespace, String name) {
+      elementCounter = Metrics.counter(namespace, name);
+    }
+
+    @ProcessElement
+    public void processElement() {
+      elementCounter.inc(1L);
+    }
   }
 }

@@ -22,6 +22,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.function.Supplier;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.PipelineRunner;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
 /** Utilities to make working with Dataflow easier. */
 public class PipelineUtils {
@@ -89,5 +92,19 @@ public class PipelineUtils {
             .withZone(ZoneId.of("UTC"))
             .format(Instant.now());
     return String.format("%s-%s", convertedPrefix, formattedTimestamp);
+  }
+
+  /*
+   * Get runner class from name.
+   *
+   * <p>This avoids to have all runner dependency (e.g. Dataflow, Flink, etc) explicitly in specific
+   * test.
+   *
+   * @param runner The runner name string
+   * @return runner class
+   */
+  public static Class<? extends PipelineRunner<?>> getRunnerClass(String runner) {
+    PipelineOptions options = PipelineOptionsFactory.fromArgs("--runner=" + runner).create();
+    return options.getRunner();
   }
 }
