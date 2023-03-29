@@ -3,7 +3,7 @@ Pub/Sub to Elasticsearch Template
 A pipeline to read messages from Pub/Sub and writes into an Elasticsearch instance as json documents with optional intermediate transformations using Javascript Udf.
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-elasticsearch)
 on how to use it without having to build from sources.
 
 :bulb: This is a generated documentation based
@@ -44,6 +44,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **javaScriptIsDeleteFnName** (UDF JavaScript Function Name for isDelete): UDF JavaScript Function Name for function that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false".
 * **usePartialUpdate** (Use partial updates): Whether to use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests. Defaults to: false.
 * **bulkInsertMethod** (Build insert method): Whether to use INDEX (index, allows upsert) or CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to: CREATE.
+* **trustSelfSignedCerts** (Trust self-signed certificate): Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to True to by-pass the validation on SSL certificate. (default is False).
 
 ## Getting Started
 
@@ -53,11 +54,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * Maven
 * Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
-  following command:
+  following commands:
     * `gcloud auth login`
+    * `gcloud auth application-default login`
 
-This README uses
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+The following instructions use the
+[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
 . Install the plugin with the following command to proceed:
 
 ```shell
@@ -69,6 +71,7 @@ mvn clean install -pl plugins/templates-maven-plugin -am
 This template is a Flex Template, meaning that the pipeline code will be
 containerized and the container will be executed on Dataflow. Please
 check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+and [Configure Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates)
 for more information.
 
 #### Staging the Template
@@ -87,29 +90,32 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="PubSub_to_Elasticsearch" \
--pl v2/googlecloud-to-elasticsearch -am
+-pl v2/googlecloud-to-elasticsearch \
+-am
 ```
 
-The command should print what is the template location on Cloud Storage:
+The command should build and save the template to Google Cloud, and then print
+the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://{BUCKET}/{PATH}
+Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_to_Elasticsearch
 ```
 
+The specific path should be copied as it will be used in the following steps.
 
 #### Running the Template
 
 **Using the staged template**:
 
-You can use the path above to share or run the template.
+You can use the path above run the template (or share with others for execution).
 
-To start a job with the template at any time using `gcloud`, you can use:
+To start a job with that template at any time using `gcloud`, you can use:
 
 ```shell
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_to_Elasticsearch"
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_to_Elasticsearch"
 
 ### Mandatory
 export INPUT_SUBSCRIPTION=<inputSubscription>
@@ -141,6 +147,7 @@ export JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH=<javaScriptIsDeleteFnGcsPath>
 export JAVA_SCRIPT_IS_DELETE_FN_NAME=<javaScriptIsDeleteFnName>
 export USE_PARTIAL_UPDATE=false
 export BULK_INSERT_METHOD="CREATE"
+export TRUST_SELF_SIGNED_CERTS=false
 
 gcloud dataflow flex-template run "pubsub-to-elasticsearch-job" \
   --project "$PROJECT" \
@@ -172,8 +179,12 @@ gcloud dataflow flex-template run "pubsub-to-elasticsearch-job" \
   --parameters "javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH" \
   --parameters "javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME" \
   --parameters "usePartialUpdate=$USE_PARTIAL_UPDATE" \
-  --parameters "bulkInsertMethod=$BULK_INSERT_METHOD"
+  --parameters "bulkInsertMethod=$BULK_INSERT_METHOD" \
+  --parameters "trustSelfSignedCerts=$TRUST_SELF_SIGNED_CERTS"
 ```
+
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
 
 
 **Using the plugin**:
@@ -217,6 +228,7 @@ export JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH=<javaScriptIsDeleteFnGcsPath>
 export JAVA_SCRIPT_IS_DELETE_FN_NAME=<javaScriptIsDeleteFnName>
 export USE_PARTIAL_UPDATE=false
 export BULK_INSERT_METHOD="CREATE"
+export TRUST_SELF_SIGNED_CERTS=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -225,6 +237,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-to-elasticsearch-job" \
 -DtemplateName="PubSub_to_Elasticsearch" \
--Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,dataset=$DATASET,namespace=$NAMESPACE,errorOutputTopic=$ERROR_OUTPUT_TOPIC,elasticsearchTemplateVersion=$ELASTICSEARCH_TEMPLATE_VERSION,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,connectionUrl=$CONNECTION_URL,apiKey=$API_KEY,elasticsearchUsername=$ELASTICSEARCH_USERNAME,elasticsearchPassword=$ELASTICSEARCH_PASSWORD,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxRetryAttempts=$MAX_RETRY_ATTEMPTS,maxRetryDuration=$MAX_RETRY_DURATION,propertyAsIndex=$PROPERTY_AS_INDEX,javaScriptIndexFnGcsPath=$JAVA_SCRIPT_INDEX_FN_GCS_PATH,javaScriptIndexFnName=$JAVA_SCRIPT_INDEX_FN_NAME,propertyAsId=$PROPERTY_AS_ID,javaScriptIdFnGcsPath=$JAVA_SCRIPT_ID_FN_GCS_PATH,javaScriptIdFnName=$JAVA_SCRIPT_ID_FN_NAME,javaScriptTypeFnGcsPath=$JAVA_SCRIPT_TYPE_FN_GCS_PATH,javaScriptTypeFnName=$JAVA_SCRIPT_TYPE_FN_NAME,javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH,javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME,usePartialUpdate=$USE_PARTIAL_UPDATE,bulkInsertMethod=$BULK_INSERT_METHOD" \
--pl v2/googlecloud-to-elasticsearch -am
+-Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,dataset=$DATASET,namespace=$NAMESPACE,errorOutputTopic=$ERROR_OUTPUT_TOPIC,elasticsearchTemplateVersion=$ELASTICSEARCH_TEMPLATE_VERSION,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,connectionUrl=$CONNECTION_URL,apiKey=$API_KEY,elasticsearchUsername=$ELASTICSEARCH_USERNAME,elasticsearchPassword=$ELASTICSEARCH_PASSWORD,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxRetryAttempts=$MAX_RETRY_ATTEMPTS,maxRetryDuration=$MAX_RETRY_DURATION,propertyAsIndex=$PROPERTY_AS_INDEX,javaScriptIndexFnGcsPath=$JAVA_SCRIPT_INDEX_FN_GCS_PATH,javaScriptIndexFnName=$JAVA_SCRIPT_INDEX_FN_NAME,propertyAsId=$PROPERTY_AS_ID,javaScriptIdFnGcsPath=$JAVA_SCRIPT_ID_FN_GCS_PATH,javaScriptIdFnName=$JAVA_SCRIPT_ID_FN_NAME,javaScriptTypeFnGcsPath=$JAVA_SCRIPT_TYPE_FN_GCS_PATH,javaScriptTypeFnName=$JAVA_SCRIPT_TYPE_FN_NAME,javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH,javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME,usePartialUpdate=$USE_PARTIAL_UPDATE,bulkInsertMethod=$BULK_INSERT_METHOD,trustSelfSignedCerts=$TRUST_SELF_SIGNED_CERTS" \
+-pl v2/googlecloud-to-elasticsearch \
+-am
 ```

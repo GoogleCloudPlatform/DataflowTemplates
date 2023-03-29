@@ -3,7 +3,7 @@ Datastream to BigQuery Template
 Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and writes them to a pre-existing BigQuery dataset as a set of tables.
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-bigquery)
 on how to use it without having to build from sources.
 
 :bulb: This is a generated documentation based
@@ -19,7 +19,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **gcsPubSubSubscription** (The Pub/Sub subscription on the Cloud Storage bucket.): The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: projects/{PROJECT_NAME}/subscriptions/{SUBSCRIPTION_NAME}.
 * **outputStagingDatasetTemplate** (Name or template for the dataset to contain staging tables.): This is the name for the dataset to contain staging tables. This parameter supports templates (e.g. {_metadata_dataset}_log or my_dataset_log). Normally, this parameter is a dataset name. Defaults to: {_metadata_dataset}.
 * **outputDatasetTemplate** (Template for the dataset to contain replica tables.): This is the name for the dataset to contain replica tables. This parameter supports templates (e.g. {_metadata_dataset} or my_dataset). Normally, this parameter is a dataset name. Defaults to: {_metadata_dataset}.
-* **deadLetterQueueDirectory** (Dead letter queue directory.): This is the file path for Dataflow to write the dead letter queue output. This path should not be in the same path as the Datastream file output. Defaults to: .
+* **deadLetterQueueDirectory** (Dead letter queue directory.): This is the file path for Dataflow to write the dead letter queue output. This path should not be in the same path as the Datastream file output. Defaults to empty.
 
 ### Optional Parameters
 
@@ -55,11 +55,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * Maven
 * Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
-  following command:
+  following commands:
     * `gcloud auth login`
+    * `gcloud auth application-default login`
 
-This README uses
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+The following instructions use the
+[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
 . Install the plugin with the following command to proceed:
 
 ```shell
@@ -71,6 +72,7 @@ mvn clean install -pl plugins/templates-maven-plugin -am
 This template is a Flex Template, meaning that the pipeline code will be
 containerized and the container will be executed on Dataflow. Please
 check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+and [Configure Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates)
 for more information.
 
 #### Staging the Template
@@ -89,29 +91,32 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Datastream_to_BigQuery" \
--pl v2/datastream-to-bigquery -am
+-pl v2/datastream-to-bigquery \
+-am
 ```
 
-The command should print what is the template location on Cloud Storage:
+The command should build and save the template to Google Cloud, and then print
+the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://{BUCKET}/{PATH}
+Flex Template was staged! gs://<bucket-name>/templates/flex/Cloud_Datastream_to_BigQuery
 ```
 
+The specific path should be copied as it will be used in the following steps.
 
 #### Running the Template
 
 **Using the staged template**:
 
-You can use the path above to share or run the template.
+You can use the path above run the template (or share with others for execution).
 
-To start a job with the template at any time using `gcloud`, you can use:
+To start a job with that template at any time using `gcloud`, you can use:
 
 ```shell
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Datastream_to_BigQuery"
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Datastream_to_BigQuery"
 
 ### Mandatory
 export INPUT_FILE_PATTERN=<inputFilePattern>
@@ -181,6 +186,9 @@ gcloud dataflow flex-template run "cloud-datastream-to-bigquery-job" \
   --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC"
 ```
 
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
+
 
 **Using the plugin**:
 
@@ -234,5 +242,6 @@ mvn clean package -PtemplatesRun \
 -DjobName="cloud-datastream-to-bigquery-job" \
 -DtemplateName="Cloud_Datastream_to_BigQuery" \
 -Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,outputProjectId=$OUTPUT_PROJECT_ID,outputStagingDatasetTemplate=$OUTPUT_STAGING_DATASET_TEMPLATE,outputStagingTableNameTemplate=$OUTPUT_STAGING_TABLE_NAME_TEMPLATE,outputDatasetTemplate=$OUTPUT_DATASET_TEMPLATE,outputTableNameTemplate=$OUTPUT_TABLE_NAME_TEMPLATE,ignoreFields=$IGNORE_FIELDS,mergeFrequencyMinutes=$MERGE_FREQUENCY_MINUTES,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,applyMerge=$APPLY_MERGE,mergeConcurrency=$MERGE_CONCURRENCY,partitionRetentionDays=$PARTITION_RETENTION_DAYS,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,pythonTextTransformGcsPath=$PYTHON_TEXT_TRANSFORM_GCS_PATH,pythonRuntimeVersion=$PYTHON_RUNTIME_VERSION,pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME,runtimeRetries=$RUNTIME_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
--pl v2/datastream-to-bigquery -am
+-pl v2/datastream-to-bigquery \
+-am
 ```

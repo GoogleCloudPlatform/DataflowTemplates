@@ -15,16 +15,16 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Mandatory Parameters
 
 * **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **autoMapTables** (Auto Map Tables): Determines if new columns and tables should be automatically created in BigQuery. Defaults to: true.
 * **outputDatasetTemplate** (BigQuery Dataset Name or Template: dataset_name or {column_name}): The name for the dataset to contain the replica table. Defaults to: {_metadata_dataset}.
 * **outputTableNameTemplate** (BigQuery Table Name or Template: table_name or {column_name}): The location of the BigQuery table to write the output to. If a table does not already exist one will be created automatically. Defaults to: _metadata_table.
-* **outputTableSpec** (BigQuery output table (Deprecated)): BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.
-* **outputDeadletterTable** (The dead-letter table name to output failed messages to BigQuery): Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
 
 ### Optional Parameters
 
+* **autoMapTables** (Auto Map Tables): Determines if new columns and tables should be automatically created in BigQuery. Defaults to: true.
 * **schemaFilePath** (Cloud Storage file with BigQuery schema fields to be used in DDL): This is the file location that contains the table definition to be used when creating the table in BigQuery. If left blank the table will get created with generic string typing.
-* **deadLetterQueueDirectory** (Dead Letter Queue Directory): The name of the directory on Cloud Storage you want to write dead letters messages to. Defaults to: .
+* **outputTableSpec** (BigQuery output table (Deprecated)): BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.
+* **outputDeadletterTable** (The dead-letter table name to output failed messages to BigQuery): Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
+* **deadLetterQueueDirectory** (Dead Letter Queue Directory): The name of the directory on Cloud Storage you want to write dead letters messages to. Defaults to empty.
 * **windowDuration** (Window duration): The window duration/size in which DLQ data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5s.
 * **threadCount** (Thread Number): The number of parallel threads you want to split your data into. Defaults to: 100.
 * **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
@@ -46,11 +46,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * Maven
 * Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
-  following command:
+  following commands:
     * `gcloud auth login`
+    * `gcloud auth application-default login`
 
-This README uses
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+The following instructions use the
+[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
 . Install the plugin with the following command to proceed:
 
 ```shell
@@ -62,6 +63,7 @@ mvn clean install -pl plugins/templates-maven-plugin -am
 This template is a Flex Template, meaning that the pipeline code will be
 containerized and the container will be executed on Dataflow. Please
 check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+and [Configure Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates)
 for more information.
 
 #### Staging the Template
@@ -80,40 +82,43 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="PubSub_CDC_to_BigQuery" \
--pl v2/pubsub-cdc-to-bigquery -am
+-pl v2/pubsub-cdc-to-bigquery \
+-am
 ```
 
-The command should print what is the template location on Cloud Storage:
+The command should build and save the template to Google Cloud, and then print
+the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://{BUCKET}/{PATH}
+Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_CDC_to_BigQuery
 ```
 
+The specific path should be copied as it will be used in the following steps.
 
 #### Running the Template
 
 **Using the staged template**:
 
-You can use the path above to share or run the template.
+You can use the path above run the template (or share with others for execution).
 
-To start a job with the template at any time using `gcloud`, you can use:
+To start a job with that template at any time using `gcloud`, you can use:
 
 ```shell
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_CDC_to_BigQuery"
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_CDC_to_BigQuery"
 
 ### Mandatory
 export INPUT_SUBSCRIPTION=<inputSubscription>
-export AUTO_MAP_TABLES=true
 export OUTPUT_DATASET_TEMPLATE="{_metadata_dataset}"
 export OUTPUT_TABLE_NAME_TEMPLATE="_metadata_table"
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
-export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 
 ### Optional
+export AUTO_MAP_TABLES=true
 export SCHEMA_FILE_PATH=<schemaFilePath>
+export OUTPUT_TABLE_SPEC=<outputTableSpec>
+export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 export WINDOW_DURATION="5s"
 export THREAD_COUNT=100
@@ -154,6 +159,9 @@ gcloud dataflow flex-template run "pubsub-cdc-to-bigquery-job" \
   --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC"
 ```
 
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
+
 
 **Using the plugin**:
 
@@ -168,14 +176,14 @@ export REGION=us-central1
 
 ### Mandatory
 export INPUT_SUBSCRIPTION=<inputSubscription>
-export AUTO_MAP_TABLES=true
 export OUTPUT_DATASET_TEMPLATE="{_metadata_dataset}"
 export OUTPUT_TABLE_NAME_TEMPLATE="_metadata_table"
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
-export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 
 ### Optional
+export AUTO_MAP_TABLES=true
 export SCHEMA_FILE_PATH=<schemaFilePath>
+export OUTPUT_TABLE_SPEC=<outputTableSpec>
+export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 export WINDOW_DURATION="5s"
 export THREAD_COUNT=100
@@ -198,5 +206,6 @@ mvn clean package -PtemplatesRun \
 -DjobName="pubsub-cdc-to-bigquery-job" \
 -DtemplateName="PubSub_CDC_to_BigQuery" \
 -Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,autoMapTables=$AUTO_MAP_TABLES,schemaFilePath=$SCHEMA_FILE_PATH,outputDatasetTemplate=$OUTPUT_DATASET_TEMPLATE,outputTableNameTemplate=$OUTPUT_TABLE_NAME_TEMPLATE,outputTableSpec=$OUTPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,windowDuration=$WINDOW_DURATION,threadCount=$THREAD_COUNT,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,pythonTextTransformGcsPath=$PYTHON_TEXT_TRANSFORM_GCS_PATH,pythonRuntimeVersion=$PYTHON_RUNTIME_VERSION,pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME,runtimeRetries=$RUNTIME_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
--pl v2/pubsub-cdc-to-bigquery -am
+-pl v2/pubsub-cdc-to-bigquery \
+-am
 ```

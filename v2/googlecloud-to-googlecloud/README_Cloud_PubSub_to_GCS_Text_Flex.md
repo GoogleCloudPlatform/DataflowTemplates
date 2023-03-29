@@ -3,7 +3,7 @@ Pub/Sub Subscription or Topic to Text Files on Cloud Storage Template
 Streaming pipeline. Reads records from Pub/Sub Subscription or Topic and writes them to Cloud Storage, creating a text file for each five minute window. Note that this pipeline assumes no newlines in the body of the Pub/Sub message and thus each message becomes a single line in the output file.
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-topic-subscription-to-text)
 on how to use it without having to build from sources.
 
 :bulb: This is a generated documentation based
@@ -22,7 +22,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
 * **userTempLocation** (User provided temp location): The user provided directory to output temporary files to. Must end with a slash.
 * **outputFilenamePrefix** (Output filename prefix of the files to write): The prefix to place on each windowed file. (Example: output-). Defaults to: output.
-* **outputFilenameSuffix** (Output filename suffix of the files to write): The suffix to place on each windowed file. Typically a file extension such as .txt or .csv. (Example: .txt). Defaults to: .
+* **outputFilenameSuffix** (Output filename suffix of the files to write): The suffix to place on each windowed file. Typically a file extension such as .txt or .csv. (Example: .txt). Defaults to empty.
 * **outputShardTemplate** (Shard template): Defines the unique/dynamic portion of each windowed file. Recommended: use the default (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are replaced with the shard number and number of shards respectively. The pipeline assumes a single file output and will produce the text of '00-of-01' by default.
 * **numShards** (Number of shards): The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 1.
 * **windowDuration** (Window duration): The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5m.
@@ -40,11 +40,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * Maven
 * Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
-  following command:
+  following commands:
     * `gcloud auth login`
+    * `gcloud auth application-default login`
 
-This README uses
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+The following instructions use the
+[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
 . Install the plugin with the following command to proceed:
 
 ```shell
@@ -56,6 +57,7 @@ mvn clean install -pl plugins/templates-maven-plugin -am
 This template is a Flex Template, meaning that the pipeline code will be
 containerized and the container will be executed on Dataflow. Please
 check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+and [Configure Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates)
 for more information.
 
 #### Staging the Template
@@ -74,29 +76,32 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
--pl v2/googlecloud-to-googlecloud -am
+-pl v2/googlecloud-to-googlecloud \
+-am
 ```
 
-The command should print what is the template location on Cloud Storage:
+The command should build and save the template to Google Cloud, and then print
+the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://{BUCKET}/{PATH}
+Flex Template was staged! gs://<bucket-name>/templates/flex/Cloud_PubSub_to_GCS_Text_Flex
 ```
 
+The specific path should be copied as it will be used in the following steps.
 
 #### Running the Template
 
 **Using the staged template**:
 
-You can use the path above to share or run the template.
+You can use the path above run the template (or share with others for execution).
 
-To start a job with the template at any time using `gcloud`, you can use:
+To start a job with that template at any time using `gcloud`, you can use:
 
 ```shell
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_PubSub_to_GCS_Text_Flex"
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_PubSub_to_GCS_Text_Flex"
 
 ### Mandatory
 export OUTPUT_DIRECTORY=<outputDirectory>
@@ -136,6 +141,9 @@ gcloud dataflow flex-template run "cloud-pubsub-to-gcs-text-flex-job" \
   --parameters "minutePattern=$MINUTE_PATTERN"
 ```
 
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
+
 
 **Using the plugin**:
 
@@ -174,5 +182,6 @@ mvn clean package -PtemplatesRun \
 -DjobName="cloud-pubsub-to-gcs-text-flex-job" \
 -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
 -Dparameters="inputTopic=$INPUT_TOPIC,inputSubscription=$INPUT_SUBSCRIPTION,outputDirectory=$OUTPUT_DIRECTORY,userTempLocation=$USER_TEMP_LOCATION,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,outputFilenameSuffix=$OUTPUT_FILENAME_SUFFIX,outputShardTemplate=$OUTPUT_SHARD_TEMPLATE,numShards=$NUM_SHARDS,windowDuration=$WINDOW_DURATION,yearPattern=$YEAR_PATTERN,monthPattern=$MONTH_PATTERN,dayPattern=$DAY_PATTERN,hourPattern=$HOUR_PATTERN,minutePattern=$MINUTE_PATTERN" \
--pl v2/googlecloud-to-googlecloud -am
+-pl v2/googlecloud-to-googlecloud \
+-am
 ```

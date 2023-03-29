@@ -3,7 +3,7 @@ Kafka to BigQuery Template
 A streaming pipeline which ingests data in JSON format from Kafka, performs a transform via a user defined JavaScript function, and writes to a pre-existing BigQuery table.
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery)
 on how to use it without having to build from sources.
 
 :bulb: This is a generated documentation based
@@ -15,11 +15,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Mandatory Parameters
 
 * **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.
-* **inputTopics** (Kafka topic(s) to read the input from): Kafka topic(s) to read the input from. (Example: topic1,topic2).
 
 ### Optional Parameters
 
 * **bootstrapServers** (Kafka Bootstrap Server list): Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093).
+* **inputTopics** (Kafka topic(s) to read the input from): Kafka topic(s) to read the input from. (Example: topic1,topic2).
 * **outputDeadletterTable** (The dead-letter table name to output failed messages to BigQuery): Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. (Example: your-project-id:your-dataset.your-table-name).
 * **readBootstrapServers** (Kafka Bootstrap Server list): Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093).
 * **kafkaReadTopics** (Kafka topic(s) to read input from.): Kafka topic(s) to read input from. (Example: topic1,topic2).
@@ -38,11 +38,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * Maven
 * Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
-  following command:
+  following commands:
     * `gcloud auth login`
+    * `gcloud auth application-default login`
 
-This README uses
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+The following instructions use the
+[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
 . Install the plugin with the following command to proceed:
 
 ```shell
@@ -54,6 +55,7 @@ mvn clean install -pl plugins/templates-maven-plugin -am
 This template is a Flex Template, meaning that the pipeline code will be
 containerized and the container will be executed on Dataflow. Please
 check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+and [Configure Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates)
 for more information.
 
 #### Staging the Template
@@ -72,36 +74,39 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Kafka_to_BigQuery" \
--pl v2/kafka-to-bigquery -am
+-pl v2/kafka-to-bigquery \
+-am
 ```
 
-The command should print what is the template location on Cloud Storage:
+The command should build and save the template to Google Cloud, and then print
+the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://{BUCKET}/{PATH}
+Flex Template was staged! gs://<bucket-name>/templates/flex/Kafka_to_BigQuery
 ```
 
+The specific path should be copied as it will be used in the following steps.
 
 #### Running the Template
 
 **Using the staged template**:
 
-You can use the path above to share or run the template.
+You can use the path above run the template (or share with others for execution).
 
-To start a job with the template at any time using `gcloud`, you can use:
+To start a job with that template at any time using `gcloud`, you can use:
 
 ```shell
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_BigQuery"
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_BigQuery"
 
 ### Mandatory
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
-export INPUT_TOPICS=<inputTopics>
 
 ### Optional
 export BOOTSTRAP_SERVERS=<bootstrapServers>
+export INPUT_TOPICS=<inputTopics>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
 export KAFKA_READ_TOPICS=<kafkaReadTopics>
@@ -130,6 +135,9 @@ gcloud dataflow flex-template run "kafka-to-bigquery-job" \
   --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC"
 ```
 
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
+
 
 **Using the plugin**:
 
@@ -144,10 +152,10 @@ export REGION=us-central1
 
 ### Mandatory
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
-export INPUT_TOPICS=<inputTopics>
 
 ### Optional
 export BOOTSTRAP_SERVERS=<bootstrapServers>
+export INPUT_TOPICS=<inputTopics>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
 export KAFKA_READ_TOPICS=<kafkaReadTopics>
@@ -166,5 +174,6 @@ mvn clean package -PtemplatesRun \
 -DjobName="kafka-to-bigquery-job" \
 -DtemplateName="Kafka_to_BigQuery" \
 -Dparameters="outputTableSpec=$OUTPUT_TABLE_SPEC,bootstrapServers=$BOOTSTRAP_SERVERS,inputTopics=$INPUT_TOPICS,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,readBootstrapServers=$READ_BOOTSTRAP_SERVERS,kafkaReadTopics=$KAFKA_READ_TOPICS,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
--pl v2/kafka-to-bigquery -am
+-pl v2/kafka-to-bigquery \
+-am
 ```
