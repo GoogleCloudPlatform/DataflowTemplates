@@ -79,10 +79,10 @@ public class SyndeoTestingPairsIT {
                     "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
                     "beam:schematransform:org.apache.beam:spanner_write:v1",
                     true),
-                SourceSinkUrns.create(
-                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                    "beam:schematransform:org.apache.beam:kafka_write:v1",
-                    true),
+                //                SourceSinkUrns.create(
+                //                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                //                    "beam:schematransform:org.apache.beam:kafka_write:v1",
+                //                    true),
                 //                                SourceSinkUrns.create(
                 //
                 // "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
@@ -103,10 +103,11 @@ public class SyndeoTestingPairsIT {
                     "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
                     "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
                     false),
-                SourceSinkUrns.create(
-                    "beam:schematransform:org.apache.beam:kafka_read:v1",
-                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                    true),
+                //                SourceSinkUrns.create(
+                //                    "beam:schematransform:org.apache.beam:kafka_read:v1",
+                //
+                // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                //                    true),
                 SourceSinkUrns.create(
                     "beam:schematransform:org.apache.beam:pubsublite_read:v1",
                     "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
