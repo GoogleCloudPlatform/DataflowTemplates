@@ -45,6 +45,7 @@ import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -304,7 +305,9 @@ public abstract class TemplateTestBase {
       "-Dregion=" + TestProperties.region(),
       "-DbucketName=" + bucketName,
       "-DstagePrefix=" + prefix,
-      "-DtemplateName=" + template.name()
+      "-DtemplateName=" + template.name(),
+      // Print stacktrace when command fails
+      "-e"
     };
   }
 
@@ -370,7 +373,11 @@ public abstract class TemplateTestBase {
 
     // Property allows testing with Runner v2 / Unified Worker
     if (System.getProperty("unifiedWorker") != null) {
-      options.addEnvironment("experiments", "use_runner_v2");
+      options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+    }
+    // Property allows testing with Streaming Engine Enabled
+    if (System.getProperty("enableStreamingEngine") != null) {
+      options.addEnvironment("enableStreamingEngine", true);
     }
 
     if (System.getProperty("workerMachineType") != null) {
