@@ -32,8 +32,8 @@ jobs:
     - name: Declare release branch name and tag name
       id: variables
       run: |
-        echo "releaseBranchName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
-        echo "tagName=release_${CANDIDATE_NAME,,}" >> $GITHUB_OUTPUT
+        echo "releaseBranchName=release_${CANDIDATE_NAME,,}" >> $GITHUB_OUTPUT
+        echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
       env:
         CANDIDATE_NAME: ${{ inputs.candidateName }}
     - name: Checkout code
