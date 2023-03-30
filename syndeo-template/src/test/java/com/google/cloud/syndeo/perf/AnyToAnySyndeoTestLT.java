@@ -122,7 +122,7 @@ public class AnyToAnySyndeoTestLT {
                         configToMap(
                             BigQueryStorageWriteApiSchemaTransformProvider
                                 .BigQueryStorageWriteApiSchemaTransformConfiguration.builder()
-                                .setTable(String.format("%s.%s", bqrm.getDatasetId(), TEST_ID))
+                                .setTable(String.format("%s:%s.%s", PROJECT, bqrm.getDatasetId(), TEST_ID))
                                 .setAutoSharding(true)
                                 .build())),
                     buildJsonConfig(
@@ -130,7 +130,7 @@ public class AnyToAnySyndeoTestLT {
                         configToMap(
                             BigQueryDirectReadSchemaTransformProvider
                                 .BigQueryDirectReadSchemaTransformConfiguration.builder()
-                                .setTableSpec(String.format("%s.%s", bqrm.getDatasetId(), TEST_ID))
+                                .setTableSpec(String.format("%s:%s.%s", PROJECT, bqrm.getDatasetId(), TEST_ID))
                                 .build())));
               }),
           "beam:schematransform:org.apache.beam:kafka_read:v1",
@@ -177,7 +177,7 @@ public class AnyToAnySyndeoTestLT {
                 assert rm instanceof PubsubLiteResourceManager;
                 PubsubLiteResourceManager psrm = (PubsubLiteResourceManager) rm;
                 ReservationPath rpath =
-                    psrm.createReservation("resrv-" + TEST_ID, REGION, PROJECT, 100L);
+                    psrm.createReservation("resrv-rd-" + TEST_ID, REGION, PROJECT, 100L);
                 TopicName tname = psrm.createTopic("topic-" + TEST_ID, rpath);
                 String subsName = "sub-" + TEST_ID;
                 com.google.cloud.pubsublite.SubscriptionName sname =
@@ -259,7 +259,7 @@ public class AnyToAnySyndeoTestLT {
                                 .setAutoSharding(true)
                                 .setTable(
                                     String.format(
-                                        "%s.%s.%s", PROJECT, bqrm.getDatasetId(), TEST_ID))
+                                        "%s:%s.%s", PROJECT, bqrm.getDatasetId(), TEST_ID))
                                 .build())),
                     null);
               }),
