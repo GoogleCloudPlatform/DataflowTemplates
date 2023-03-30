@@ -427,9 +427,21 @@
                                     </excludes>
                                 </filter>
                                 <filter>
+                                    <artifact>org.apache.beam:beam-sdks-java-extensions-sql-expansion-service</artifact>
+                                    <excludes>
+                                        <exclude>org/apache/beam/sdk/io/gcp/**</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
                                     <artifact>org.apache.beam:beam-sdks-java-io-kafka</artifact>
                                     <includes>
                                         <include>org/apache/beam/sdk/io/kafka/**</include>
+                                    </includes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.apache.beam:beam-sdks-java-io-google-cloud-platform</artifact>
+                                    <includes>
+                                        <include>org/apache/beam/sdk/io/gcp/**</include>
                                     </includes>
                                 </filter>
                                 <filter>
