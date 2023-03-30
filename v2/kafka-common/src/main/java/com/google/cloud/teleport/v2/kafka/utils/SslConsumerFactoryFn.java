@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.kafka.utils;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
@@ -85,18 +86,20 @@ public class SslConsumerFactoryFn
    * @param outputFilePath path where to save file locally
    * @throws IOException thrown if not able to read or write file
    */
-  public static void getGcsFileAsLocal(String bucket, String filePath, String outputFilePath)
-      throws IOException {
+  public static synchronized void getGcsFileAsLocal(
+      String bucket, String filePath, String outputFilePath) throws IOException {
     String gcsFilePath = String.format("gs://%s/%s", bucket, filePath);
-    LOG.info("Reading contents from GCS file: {}", gcsFilePath);
-    Set<StandardOpenOption> options = new HashSet<>(2);
-    options.add(StandardOpenOption.CREATE);
-    options.add(StandardOpenOption.APPEND);
-    // Copy the GCS file into a local file and will throw an I/O exception in case file not found.
-    try (ReadableByteChannel readerChannel =
-        FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
-      try (FileChannel writeChannel = FileChannel.open(Paths.get(outputFilePath), options)) {
-        writeChannel.transferFrom(readerChannel, 0, Long.MAX_VALUE);
+    // create the file only if it doesn't exist
+    if (!new File(outputFilePath).exists()) {
+      LOG.info("Reading contents from GCS file: {}", gcsFilePath);
+      Set<StandardOpenOption> options = new HashSet<>(1);
+      options.add(StandardOpenOption.CREATE);
+      // Copy the GCS file into a local file and will throw an I/O exception in case file not found.
+      try (ReadableByteChannel readerChannel =
+          FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
+        try (FileChannel writeChannel = FileChannel.open(Paths.get(outputFilePath), options)) {
+          writeChannel.transferFrom(readerChannel, 0, Long.MAX_VALUE);
+        }
       }
     }
   }
