@@ -29,9 +29,9 @@ import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.bigquery.BigQueryTestUtils;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.common.BigQueryTestUtil;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
@@ -97,7 +97,7 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
     // Arrange
     String tableName = options.getParameter(WRITE_TABLE_ID);
     Tuple<Schema, List<RowToInsert>> generatedTable =
-        BigQueryTestUtils.generateBigQueryTable(
+        BigQueryTestUtil.generateBigQueryTable(
             BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
     Schema bigQuerySchema = generatedTable.x();
     List<RowToInsert> bigQueryRows = generatedTable.y();
