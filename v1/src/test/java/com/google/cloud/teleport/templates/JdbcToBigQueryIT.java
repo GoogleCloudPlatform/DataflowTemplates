@@ -109,7 +109,12 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     // Run a simple IT
     simpleJdbcToBigQueryTest(
-        testName, schema, MYSQL_DRIVER, mySqlDriverGCSPath(), mySQLResourceManager);
+        testName,
+        schema,
+        MYSQL_DRIVER,
+        mySqlDriverGCSPath(),
+        mySQLResourceManager,
+        "SELECT * FROM " + testName);
   }
 
   @Test
@@ -130,7 +135,12 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     // Run a simple IT
     simpleJdbcToBigQueryTest(
-        testName, schema, POSTGRES_DRIVER, postgresDriverGCSPath(), postgresResourceManager);
+        testName,
+        schema,
+        POSTGRES_DRIVER,
+        postgresDriverGCSPath(),
+        postgresResourceManager,
+        "SELECT * FROM " + testName);
   }
 
   @Test
@@ -158,7 +168,12 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     // Run a simple IT
     simpleJdbcToBigQueryTest(
-        testName, schema, ORACLE_DRIVER, oracleDriverGCSPath(), oracleResourceManager);
+        testName,
+        schema,
+        ORACLE_DRIVER,
+        oracleDriverGCSPath(),
+        oracleResourceManager,
+        "SELECT * FROM " + testName);
   }
 
   @Test
@@ -180,7 +195,39 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     // Run a simple IT
     simpleJdbcToBigQueryTest(
-        testName, schema, MSSQL_DRIVER, msSqlDriverGCSPath(), msSQLResourceManager);
+        testName,
+        schema,
+        MSSQL_DRIVER,
+        msSqlDriverGCSPath(),
+        msSQLResourceManager,
+        "SELECT * FROM " + testName);
+  }
+
+  @Test
+  public void testPostgresToBigQueryGcsQuery() throws IOException {
+    // Create postgres Resource manager
+    postgresResourceManager =
+        ((DefaultPostgresResourceManager.Builder)
+                DefaultPostgresResourceManager.builder(testName).setHost(HOST_IP))
+            .build();
+    gcsClient.createArtifact("input/query.sql", "SELECT * FROM " + testName);
+
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "INTEGER NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "INTEGER");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        testName,
+        schema,
+        POSTGRES_DRIVER,
+        postgresDriverGCSPath(),
+        postgresResourceManager,
+        getGcsPath("input/query.sql"));
   }
 
   private void simpleJdbcToBigQueryTest(
@@ -188,7 +235,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
       JDBCResourceManager.JDBCSchema schema,
       String driverClassName,
       String driverJars,
-      JDBCResourceManager jdbcResourceManager)
+      JDBCResourceManager jdbcResourceManager,
+      String query)
       throws IOException {
 
     // Arrange
@@ -214,7 +262,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         PipelineLauncher.LaunchConfig.builder(jobName, specPath)
             .addParameter("connectionURL", jdbcResourceManager.getUri())
             .addParameter("driverClassName", driverClassName)
-            .addParameter("query", "SELECT * FROM " + testName)
+            .addParameter("query", query)
             .addParameter("outputTable", tableSpec)
             .addParameter("driverJars", driverJars)
             .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")

@@ -20,6 +20,7 @@ import com.google.cloud.teleport.io.DynamicJdbcIO;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.templates.common.JdbcConverters;
+import com.google.cloud.teleport.util.GCSAwareValueProvider;
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -103,7 +104,7 @@ public class JdbcToBigQuery {
                             maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
                         .withDriverJars(options.getDriverJars())
                         .withConnectionProperties(options.getConnectionProperties()))
-                .withQuery(options.getQuery())
+                .withQuery(new GCSAwareValueProvider(options.getQuery()))
                 .withCoder(TableRowJsonCoder.of())
                 .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())))
         /*
