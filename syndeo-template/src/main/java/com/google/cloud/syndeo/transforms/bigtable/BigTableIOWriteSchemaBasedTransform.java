@@ -243,10 +243,9 @@ public class BigTableIOWriteSchemaBasedTransform
                                               .apply(elm.getValue(), field);
                                         } catch (Exception e) {
                                           errorCounter.inc();
-                                          throw e;
+                                          return e.toString().getBytes(StandardCharsets.UTF_8);
                                         }
                                       } else {
-                                        errorCounter.inc();
                                         throw new IllegalArgumentException(
                                             "Unsupported column type: "
                                                 + field.getType().getTypeName().toString());
