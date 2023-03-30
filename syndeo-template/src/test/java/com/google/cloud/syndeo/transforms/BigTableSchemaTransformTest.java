@@ -222,8 +222,8 @@ public class BigTableSchemaTransformTest {
           SyndeoV1.PipelineDescription.newBuilder()
               .addTransforms(
                   new ProviderUtil.TransformSpec(
-                        //   "org.apache.beam:schematransform:bigquery_storage_read:v1",
-                    "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+                          //   "org.apache.beam:schematransform:bigquery_storage_read:v1",
+                          "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
                           Arrays.asList(bigQueryName, null, "DEFAULT", null, null))
                       .toProto())
               .addTransforms(

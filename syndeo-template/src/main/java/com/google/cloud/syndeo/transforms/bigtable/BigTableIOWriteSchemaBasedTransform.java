@@ -176,23 +176,10 @@ public class BigTableIOWriteSchemaBasedTransform
             .map(field -> field.getName())
             .collect(Collectors.toSet());
     if (!inputFields.containsAll(keyColumns)) {
-      inputData.apply(
-          ParDo.of(
-              new DoFn<Row, Row>() {
-                private Counter errorCounter =
-                    Metrics.counter(
-                        BigTableWriteSchemaTransformProvider.class,
-                        "BigTable-write-KeyColumnsNotFound-error-counter");
-
-                @ProcessElement
-                public void process(ProcessContext c) {
-                  errorCounter.inc();
-                  throw new IllegalArgumentException(
-                      String.format(
-                          "Key columns selected were %s, however input schema only contains columns %s",
-                          keyColumns, inputFields));
-                }
-              }));
+      throw new IllegalArgumentException(
+          String.format(
+              "Key columns selected were %s, however input schema only contains columns %s",
+              keyColumns, inputFields));
     }
 
     createTableIfNeeded(inputData.getSchema());
