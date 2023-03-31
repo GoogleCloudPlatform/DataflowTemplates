@@ -242,6 +242,9 @@ public class BigTableIOWriteSchemaBasedTransform
                                               .get(field.getType().getTypeName())
                                               .apply(elm.getValue(), field);
                                         } catch (Exception e) {
+                                          if(e instanceof UnsupportedOperationException) {
+                                            throw e;
+                                          }
                                           errorCounter.inc();
                                           return e.toString().getBytes(StandardCharsets.UTF_8);
                                         }
