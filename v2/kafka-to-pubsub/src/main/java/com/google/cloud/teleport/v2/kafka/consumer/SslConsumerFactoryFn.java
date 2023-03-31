@@ -92,8 +92,9 @@ public class SslConsumerFactoryFn
     // create the file only if it doesn't exist
     if (!new File(outputFilePath).exists()) {
       LOG.info("Reading contents from GCS file: {}", gcsFilePath);
-      Set<StandardOpenOption> options = new HashSet<>(1);
+      Set<StandardOpenOption> options = new HashSet<>(2);
       options.add(StandardOpenOption.CREATE);
+      options.add(StandardOpenOption.WRITE);
       // Copy the GCS file into a local file and will throw an I/O exception in case file not found.
       try (ReadableByteChannel readerChannel =
           FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
