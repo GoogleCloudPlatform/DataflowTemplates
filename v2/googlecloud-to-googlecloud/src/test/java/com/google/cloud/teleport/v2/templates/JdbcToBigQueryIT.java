@@ -15,56 +15,65 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
-import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.JDBCBaseIT;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.jdbc.DefaultMSSQLResourceManager;
+import com.google.cloud.teleport.it.jdbc.DefaultMySQLResourceManager;
+import com.google.cloud.teleport.it.jdbc.DefaultOracleResourceManager;
 import com.google.cloud.teleport.it.jdbc.DefaultPostgresResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
-import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher;
+import com.google.cloud.teleport.it.launcher.PipelineOperator;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link JdbcToBigQuery} Flex template. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(JdbcToBigQuery.class)
 @RunWith(JUnit4.class)
-public class JdbcToBigQueryIT extends TemplateTestBase {
+public class JdbcToBigQueryIT extends JDBCBaseIT {
 
-  private static final String QUERY = "select * from %s";
-  private static final String DRIVER_CLASS_NAME = "org.postgresql.Driver";
-  private static JDBCResourceManager jdbcResourceManager;
-  private static BigQueryResourceManager bigQueryResourceManager;
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcToBigQueryIT.class);
+
+  private static final String ROW_ID = "row_id";
+  private static final String NAME = "name";
+  private static final String AGE = "age";
+  private static final String MEMBER = "member";
+  private static final String ENTRY_ADDED = "entry_added";
+
+  private DefaultMySQLResourceManager mySQLResourceManager;
+  private DefaultPostgresResourceManager postgresResourceManager;
+  private DefaultOracleResourceManager oracleResourceManager;
+  private DefaultMSSQLResourceManager msSQLResourceManager;
+  private BigQueryResourceManager bigQueryResourceManager;
 
   @Before
-  public void setup() {
-    jdbcResourceManager =
-        DefaultPostgresResourceManager.builder(testName)
-            // Have to manually set username and password since sometimes, the password characters
-            // are not supported by the driver
-            .setUsername("test")
-            .setPassword("Password")
-            .setHost(HOST_IP)
-            .build();
+  public void setUp() {
     bigQueryResourceManager =
         DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
@@ -72,46 +81,199 @@ public class JdbcToBigQueryIT extends TemplateTestBase {
   }
 
   @After
-  public void teardown() {
-    ResourceManagerUtils.cleanResources(jdbcResourceManager, bigQueryResourceManager);
+  public void cleanUp() {
+    ResourceManagerUtils.cleanResources(
+        mySQLResourceManager,
+        msSQLResourceManager,
+        postgresResourceManager,
+        oracleResourceManager,
+        bigQueryResourceManager);
   }
 
   @Test
-  public void testJdbcToBigQuery() throws IOException {
-    JDBCSchema jdbcSchema =
-        new JDBCSchema(
-            Map.of(
-                "id", "INTEGER",
-                "name", "VARCHAR(100)"),
-            "id");
-    jdbcResourceManager.createTable(testName, jdbcSchema);
-    jdbcResourceManager.write(
+  public void testMySqlToBigQuery() throws IOException {
+    // Create mySql Resource manager
+    mySQLResourceManager =
+        ((DefaultMySQLResourceManager.Builder)
+                DefaultMySQLResourceManager.builder(testName).setHost(HOST_IP))
+            .build();
+
+    // Arrange mySql-compatible schema
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "NUMERIC NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "NUMERIC");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
         testName,
-        List.of(Map.of("id", 1, "name", "Jake Peralta"), Map.of("id", 2, "name", "Amy Santiago")));
-    Schema bqSchema =
-        Schema.of(
-            Field.of("id", StandardSQLTypeName.INT64),
-            Field.of("name", StandardSQLTypeName.STRING));
-    TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, specPath)
-            // TODO(pranavbhandari): Change this, find a way to not hardcode
-            .addParameter("driverJars", "gs://cloud-teleport-testing-it/postgresql-42.2.27.jar")
-            .addParameter("driverClassName", DRIVER_CLASS_NAME)
-            .addParameter("username", jdbcResourceManager.getUsername())
-            .addParameter("password", jdbcResourceManager.getPassword())
+        schema,
+        MYSQL_DRIVER,
+        mySqlDriverGCSPath(),
+        mySQLResourceManager,
+        "SELECT * FROM " + testName);
+  }
+
+  @Test
+  public void testPostgresToBigQuery() throws IOException {
+    // Create postgres Resource manager
+    postgresResourceManager =
+        ((DefaultPostgresResourceManager.Builder)
+                DefaultPostgresResourceManager.builder(testName).setHost(HOST_IP))
+            .build();
+
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "INTEGER NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "INTEGER");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        testName,
+        schema,
+        POSTGRES_DRIVER,
+        postgresDriverGCSPath(),
+        postgresResourceManager,
+        "SELECT * FROM " + testName);
+  }
+
+  @Test
+  public void testOracleToBigQuery() throws IOException {
+    // Oracle image does not work on M1
+    if (System.getProperty("testOnM1") != null) {
+      LOG.info("M1 is being used, Oracle tests are not being executed.");
+      return;
+    }
+
+    // Create oracle Resource manager
+    oracleResourceManager =
+        ((DefaultOracleResourceManager.Builder)
+                DefaultOracleResourceManager.builder(testName).setHost(HOST_IP))
+            .build();
+
+    // Arrange oracle-compatible schema
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "NUMERIC NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "NUMERIC");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        testName,
+        schema,
+        ORACLE_DRIVER,
+        oracleDriverGCSPath(),
+        oracleResourceManager,
+        "SELECT * FROM " + testName);
+  }
+
+  @Test
+  public void testMsSqlToBigQuery() throws IOException {
+    // Create msSql Resource manager
+    msSQLResourceManager =
+        ((DefaultMSSQLResourceManager.Builder)
+                DefaultMSSQLResourceManager.builder(testName).setHost(HOST_IP))
+            .build();
+
+    // Arrange msSql-compatible schema
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "NUMERIC NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "NUMERIC");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        testName,
+        schema,
+        MSSQL_DRIVER,
+        msSqlDriverGCSPath(),
+        msSQLResourceManager,
+        "SELECT * FROM " + testName);
+  }
+
+  private void simpleJdbcToBigQueryTest(
+      String testName,
+      JDBCResourceManager.JDBCSchema schema,
+      String driverClassName,
+      String driverJars,
+      JDBCResourceManager jdbcResourceManager,
+      String query)
+      throws IOException {
+
+    // Arrange
+    jdbcResourceManager.createTable(testName, schema);
+    jdbcResourceManager.write(
+        testName, getJdbcData(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED)));
+
+    List<Field> bqSchemaFields =
+        Arrays.asList(
+            Field.of(ROW_ID, StandardSQLTypeName.INT64),
+            Field.of(NAME, StandardSQLTypeName.STRING),
+            Field.of(AGE, StandardSQLTypeName.FLOAT64),
+            Field.of(MEMBER, StandardSQLTypeName.STRING),
+            Field.of(ENTRY_ADDED, StandardSQLTypeName.STRING));
+    Schema bqSchema = Schema.of(bqSchemaFields);
+
+    bigQueryResourceManager.createDataset(REGION);
+    bigQueryResourceManager.createTable(testName, bqSchema);
+    String tableSpec = PROJECT + ":" + bigQueryResourceManager.getDatasetId() + "." + testName;
+
+    String jobName = createJobName(testName);
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(jobName, specPath)
             .addParameter("connectionURL", jdbcResourceManager.getUri())
-            .addParameter("query", String.format(QUERY, testName))
-            .addParameter("outputTable", toTableSpecLegacy(table))
-            .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath(testName));
+            .addParameter("driverClassName", driverClassName)
+            .addParameter("query", query)
+            .addParameter("outputTable", tableSpec)
+            .addParameter("driverJars", driverJars)
+            .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
+            .addParameter("username", jdbcResourceManager.getUsername())
+            .addParameter("password", jdbcResourceManager.getPassword());
 
     // Act
-    LaunchInfo info = launchTemplate(options);
-    assertThatPipeline(info).isRunning();
-    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThat(info.state()).isIn(PipelineLauncher.JobState.ACTIVE_STATES);
+
+    PipelineOperator.Result result =
+        new PipelineOperator(launcher()).waitUntilDoneAndFinish(createConfig(info));
 
     // Assert
-    assertThatResult(result).isLaunchFinished();
-    assertThat(bigQueryResourceManager.getRowCount(table.getTable())).isAtLeast(2);
+    assertThat(result).isEqualTo(PipelineOperator.Result.LAUNCH_FINISHED);
+
+    assertThatRecords(bigQueryResourceManager.readTable(testName))
+        .hasRecordsUnorderedCaseInsensitiveColumns(jdbcResourceManager.readTable(testName));
+  }
+
+  /**
+   * Helper function for generating data according to the common schema for the IT's in this class.
+   *
+   * @param columns List of column names.
+   * @return A map containing the rows of data to be stored in each JDBC table.
+   */
+  private List<Map<String, Object>> getJdbcData(List<String> columns) {
+    List<Map<String, Object>> data = new ArrayList<>();
+    for (int i = 0; i < 100; i++) {
+      Map<String, Object> values = new HashMap<>();
+      values.put(columns.get(0), i);
+      values.put(columns.get(1), RandomStringUtils.randomAlphabetic(10));
+      values.put(columns.get(2), new Random().nextInt(100));
+      values.put(columns.get(3), i % 2 == 0 ? "Y" : "N");
+      values.put(columns.get(4), Instant.now().toString());
+      data.add(values);
+    }
+
+    return data;
   }
 }

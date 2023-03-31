@@ -54,7 +54,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link JdbcToBigQuery} (JdbcToBigQuery). */
 @Category(TemplateIntegrationTest.class)
-@TemplateIntegrationTest(value = JdbcToBigQuery.class, template = "Jdbc_to_BigQuery")
+@TemplateIntegrationTest(JdbcToBigQuery.class)
 @RunWith(JUnit4.class)
 public class JdbcToBigQueryIT extends JDBCBaseIT {
 
