@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -94,7 +94,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
               + "provided, a Cloud Bigtable change streams connector metadata table will automatically be "
               + "created during the pipeline flow. This parameter must be provided when updating an "
               + "existing pipeline and should not be provided otherwise.")
-  @Default.String("__change_stream_md_table")
+  @Default.String("")
   String getBigtableMetadataTableTableId();
 
   void setBigtableMetadataTableTableId(String value);
@@ -135,7 +135,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   @TemplateParameter.Boolean(
       order = 11,
       optional = true,
-      description = "Write values as BigQuery BYTES",
+      description = "Write rowkeys as BigQuery BYTES",
       helpText =
           "When set true rowkeys are written to BYTES column, otherwise to STRING column. "
               + "Defaults to false.")
@@ -163,7 +163,8 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
       helpText =
           "When set true values are written to INT column, otherwise to TIMESTAMP column. "
               + "Columns affected: `timestamp`, `timestamp_from`, `timestamp_to`. "
-              + "Defaults to false.")
+              + "Defaults to false. When set to true the value is a number of microseconds "
+              + "since midnight of 01-JAN-1970")
   @Default.Boolean(false)
   Boolean getWriteNumericTimestamps();
 
@@ -172,9 +173,9 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   @TemplateParameter.Text(
       order = 14,
       optional = true,
-      description = "BigQuery charset name when reading values and column qualifiers",
+      description = "Bigtable charset name when reading values and column qualifiers",
       helpText =
-          "BigQuery charset name when reading values and column qualifiers. " + "Default is UTF-8")
+          "Bigtable charset name when reading values and column qualifiers. " + "Default is UTF-8")
   @Default.String("UTF-8")
   String getBigtableCharset();
 
@@ -193,9 +194,10 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   @TemplateParameter.Text(
       order = 16,
       optional = true,
-      description = "BigQuery table name",
+      description = "BigQuery changelog table name",
       helpText =
-          "The BigQuery table name that contains the change log. Default: {bigtableTableId}_changelog")
+          "The BigQuery table name that contains the changelog records."
+              + " Default: {bigtableTableId}_changelog")
   @Default.String("")
   String getBigQueryChangelogTableName();
 

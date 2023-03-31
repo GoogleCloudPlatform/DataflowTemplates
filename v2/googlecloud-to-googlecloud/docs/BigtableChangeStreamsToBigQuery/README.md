@@ -3,8 +3,7 @@ NOTE: This template is currently unreleased. If you wish to use it now, you
 will need to follow the steps outlined below to add it to and run it from
 your own Google Cloud project. Make sure to be in the /v2 directory.
 
-The [BigtableChangeStreamsToGCS]
-(src/main/java/com/google/cloud/teleport/v2/templates/bigtablechangestreamstobigquery/BigtableChangeStreamsToBigQuery.java)
+The [BigtableChangeStreamsToBigQuery](src/main/java/com/google/cloud/teleport/v2/templates/bigtablechangestreamstobigquery/BigtableChangeStreamsToBigQuery.java)
 pipeline reads messages from Cloud Bigtable Change Streams and stores them in a
 BigQuery table having a changelog schema.
 
@@ -27,6 +26,7 @@ Changelog schema is defined as follows:
 | timestamp_to | TIMESTAMP/INT | N | Time range end (exclusive) for a DeleteFromColumn mutation. Type is determined by _writeNumericTimestamps_ pipeline option                            |                             
 | value | STRING/BYTES | N | Bigtable cell value. Not specified for delete operations                                                                                              |
 | big_query_commit_timestamp* | TIMESTAMP | N | BQ auto-generated field describing the time when the record was written to BigQuery                                                                   |
+* Populating these columns can be skipped using pipeline options configuration. 
 
 ## Getting started
 
@@ -36,8 +36,7 @@ Changelog schema is defined as follows:
 * Cloud Bigtable Instance exists
 * Cloud Bigtable table exists
 * Cloud Bigtable metadata Instance exists
-* Cloud Bigtable metadata table exists
-* Cloud Bigtable CDC is enabled for the Cloud Bigtable table
+* Cloud Bigtable Change Streams feature is enabled for the Cloud Bigtable table
 * BigQuery dataset exists
 
 ### Building Template
@@ -57,7 +56,7 @@ export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/images/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=v2/googlecloud-to-googlecloud
-export COMMAND_MODULE=bigtable-changestreams-to-gcs
+export COMMAND_MODULE=bigtable-changestreams-to-bigquery
 export APP_ROOT=/template/${COMMAND_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${COMMAND_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${COMMAND_MODULE}-image-spec.json
@@ -76,18 +75,6 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
 #### Creating Image Spec
 
 Create file in Cloud Storage with path to container image in Google Container Repository.
-
-
-
-@TemplateParameter.Integer(
-order = 22,
-optional = true,
-description = "Dead letter queue retry minutes",
-helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
-@Default.Integer(10)
-Integer getDlqRetryMinutes();
-
-
 
 ```sh
 echo '{
@@ -118,7 +105,7 @@ echo '{
         },
         {
             "label": "Cloud Bigtable application profile ID",
-            "help_text": "The application profile is used to distinguish workload in Cloud Bigtable",
+            "help_text": "The application profile is used to distinguish workload in Cloud Bigtable. The application profile needs to be single-cluster routing and have single-row transactions enabled",
             "name": "bigtableAppProfileId",
             "is_optional": false,
             "param_type": "TEXT"
@@ -162,13 +149,6 @@ echo '{
             "label": "The timestamp to read change streams from",
             "help_text": "The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.",
             "name": "startTimestamp",
-            "is_optional": true,
-            "param_type": "TEXT"
-        },
-        {
-            "label": "The timestamp to read change streams to",
-            "help_text": "The ending DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an infinite time in the future.",
-            "name": "endTimestamp",
             "is_optional": true,
             "param_type": "TEXT"
         },
@@ -277,12 +257,11 @@ The template requires the following parameters:
 The template has the following optional parameters:
 * bigtableProjectId: Default: The project where the Dataflow pipeline is running.
 * bigQueryTableChangelogName: Default: bigtableTableId + “_changelog”. Destination BQ table
-* metadataInstanceId: Default: the same as bigtableInstanceId. CDC metadata table.
-* metadataTableTableId: Default: “__change_stream_md_table”. CDC metadata table.
+* metadataInstanceId: Default: the same as bigtableInstanceId. Change streams metadata table.
+* metadataTableTableId: Default: “__change_stream_md_table”. Change streams metadata table.
 * ignoreColumnFamilies: Default: empty. A comma-separated list of column families for which changes are to be skipped.
 * ignoreColumns: Default: empty. A comma-separated list of columnFamily:columnName values for which changes are to be skipped.
-* startTimestamp: Default: current wall time. Starting point of CDC stream.
-* endTimestamp: Default empty - pipeline reads Change Streams from startTimestamp to infinite in the future.
+* startTimestamp: Default: current wall time. Starting point of Change stream.
 * writeNumericTimestamps: Default: false. If true, timestamp, timestamp_from, timestamp_to changelog table columns will use INT type.
 * writeRowkeyAsBytes: Default: false. If true, the rowkey will be written as BYTES BQ type.
 * writeValuesAsBytes: Default: false. If true, the value will be written as BYTES BQ type.
@@ -297,7 +276,7 @@ The template has the following optional parameters:
 Template can be executed using the following gcloud command:
 
 ```sh
-export JOB_NAME="bigtable-changestreams-to-gcs-`date +%Y%m%d-%H%M%S-%N`"
+export JOB_NAME="bigtable-changestreams-to-bigquery-`date +%Y%m%d-%H%M%S-%N`"
 export BIGTABLE_INSTANCE_ID=bigtable-instance
 export BIGTABLE_TABLE_ID=table-id
 export BIGTABLE_APP_PROFILE_ID=app-profile-id

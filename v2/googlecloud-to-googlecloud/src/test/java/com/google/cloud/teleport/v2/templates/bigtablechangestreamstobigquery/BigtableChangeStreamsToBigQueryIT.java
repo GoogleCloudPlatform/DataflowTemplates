@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -36,6 +36,7 @@ import com.google.cloud.teleport.it.bigtable.BigtableResourceManagerCluster;
 import com.google.cloud.teleport.it.bigtable.BigtableTableSpec;
 import com.google.cloud.teleport.it.bigtable.StaticBigtableResourceManager;
 import com.google.cloud.teleport.it.common.ExceptionMessageUtils;
+import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
 import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
 import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
@@ -68,7 +69,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableChangeStreamsToBigQuery.class)
 @RunWith(JUnit4.class)
-public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
+public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
   public static final String SOURCE_CDC_TABLE = "source_cdc_table";
   public static final String SOURCE_COLUMN_FAMILY = "cf";
@@ -114,8 +115,7 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
             .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes");
 
     jobInfo = launchTemplate(options);
-
-    assertThat(jobInfo.state()).isIn(JobState.ACTIVE_STATES);
+    assertThatPipeline(jobInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
     String column = UUID.randomUUID().toString();
@@ -150,7 +150,7 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
         new DataflowOperator(getDataflowClient())
             .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query, 1));
 
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
 
     TableResult tableResult = bigQueryResourceManager.runQuery(query);
     tableResult
@@ -362,8 +362,6 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
 
     jobInfo = launchTemplate(options);
 
-    System.out.println("Job DLQ: " + getGcsPath("dlq"));
-
     assertThat(jobInfo.state()).isIn(JobState.ACTIVE_STATES);
 
     String query =
@@ -454,7 +452,6 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
     }
 
     if (!found) {
-      // Might be due to might be due to b/272500246
       Assert.fail("The failed message was not found in DLQ");
     }
   }
@@ -486,12 +483,7 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
       }
     }
 
-    if (bigtableResourceManager != null) {
-      bigtableResourceManager.cleanupAll();
-    }
-    if (bigQueryResourceManager != null) {
-      bigQueryResourceManager.cleanupAll();
-    }
+    ResourceManagerUtils.cleanResources(bigtableResourceManager, bigQueryResourceManager);
   }
 
   @NotNull
