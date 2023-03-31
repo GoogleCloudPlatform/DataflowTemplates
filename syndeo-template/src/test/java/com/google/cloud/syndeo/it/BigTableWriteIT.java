@@ -35,14 +35,13 @@ import org.apache.beam.sdk.io.gcp.testing.BigqueryClient;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore
+// @Ignore
 @RunWith(JUnit4.class)
 public class BigTableWriteIT {
 
@@ -63,11 +62,12 @@ public class BigTableWriteIT {
         SyndeoV1.PipelineDescription.newBuilder()
             .addTransforms(
                 new ProviderUtil.TransformSpec(
-                        "bigquery:read", Arrays.asList(bigQueryName, null, null, null, null))
+                        "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+                        Arrays.asList(null, null, null, bigQueryName))
                     .toProto())
             .addTransforms(
                 new ProviderUtil.TransformSpec(
-                        "bigtable:write",
+                        "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
                         BigTableWriteSchemaTransformConfiguration.builder()
                             .setProjectId(PROJECT)
                             .setInstanceId("teleport")
