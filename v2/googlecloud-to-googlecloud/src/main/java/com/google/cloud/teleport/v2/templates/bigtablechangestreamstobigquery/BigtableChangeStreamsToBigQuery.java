@@ -201,7 +201,6 @@ public final class BigtableChangeStreamsToBigQuery {
     BigtableIO.ReadChangeStream readChangeStream =
         BigtableIO.readChangeStream()
             .withProjectId(bigtableProject)
-            // TODO .withBigtableClientOverride()
             .withMetadataTableTableId(options.getBigtableMetadataTableTableId())
             .withMetadataTableInstanceId(options.getBigtableMetadataInstanceId())
             .withInstanceId(options.getBigtableInstanceId())
@@ -209,6 +208,12 @@ public final class BigtableChangeStreamsToBigQuery {
             .withAppProfileId(options.getBigtableAppProfileId())
             .withStartTime(startTimestamp)
             .withEndTime(endTimestamp);
+
+    if (!StringUtils.isBlank(options.getBigtableMetadataTableTableId())) {
+      readChangeStream = readChangeStream.withMetadataTableTableId(
+          options.getBigtableMetadataTableTableId()
+      );
+    }
 
     PCollection<ChangeStreamMutation> dataChangeRecord =
         pipeline
