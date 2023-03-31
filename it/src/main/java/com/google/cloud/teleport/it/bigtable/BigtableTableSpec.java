@@ -36,7 +36,7 @@ public class BigtableTableSpec {
   }
 
   public void setColumnFamilies(Set<String> columnFamilies) {
-    this.columnFamilies = columnFamilies;
+    this.columnFamilies = new HashSet<>(columnFamilies);
   }
 
   public void setColumnFamilies(Iterable<String> columnFamilies) {
