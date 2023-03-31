@@ -48,9 +48,9 @@ import org.slf4j.LoggerFactory;
  * Elasticsearch. If the element fails to be processed then it is written to an error output table
  * in BigQuery.
  *
- * <p>Please refer to <b><a href=
- * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/docs/PubSubToElasticsearch/README.md">
- * README.md</a></b> for further information.
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-elasticsearch/README_PubSub_to_Elasticsearch.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "PubSub_to_Elasticsearch",

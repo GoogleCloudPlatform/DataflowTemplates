@@ -33,20 +33,9 @@ import org.joda.time.Duration;
  * is fixed and equals to 10 seconds. At the moment, publishing messages with attributes is
  * unsupported.
  *
- * <p>Example Usage:
- *
- * <pre>
- * {@code mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.TextToPubsubStream \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${STAGING_BUCKET}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${STAGING_BUCKET}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --runner=DataflowRunner \
- * --inputFilePattern=gs://path/to/*.csv \
- * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
- * }
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Stream_GCS_Text_to_Cloud_PubSub.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Stream_GCS_Text_to_Cloud_PubSub",

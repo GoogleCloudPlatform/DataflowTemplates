@@ -102,39 +102,9 @@ import org.slf4j.LoggerFactory;
  *   <li>The BigQuery Dataset exists
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * BUCKET_NAME=BUCKET NAME HERE
- * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/dlp-text-to-bigquery
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.DLPTextToBigQueryStreaming \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}"
- *
- * # Execute the template
- * JOB_NAME=dlp-text-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputFilePattern=gs://{bucketName}/{fileName}.csv, batchSize=15,datasetName={BQDatasetId},
- *  dlpProjectId={projectId},
- *  deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Stream_DLP_GCS_Text_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Stream_DLP_GCS_Text_to_BigQuery",

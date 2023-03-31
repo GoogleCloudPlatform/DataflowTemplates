@@ -72,32 +72,9 @@ import org.slf4j.LoggerFactory;
  *   <li>The MongoDB is up and running
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_NAME=my-project
- * BUCKET_NAME=my-bucket
- * INPUT_SUBSCRIPTION=my-subscription
- * MONGODB_DATABASE_NAME=testdb
- * MONGODB_HOSTNAME=my-host:port
- * MONGODB_COLLECTION_NAME=testCollection
- * DEADLETTERTABLE=project:dataset.deadletter_table_name
- *
- * mvn compile exec:java \
- *  -Dexec.mainClass=com.google.cloud.teleport.v2.templates.PubSubToMongoDB \
- *  -Dexec.cleanupDaemonThreads=false \
- *  -Dexec.args=" \
- *  --project=${PROJECT_NAME} \
- *  --stagingLocation=gs://${BUCKET_NAME}/staging \
- *  --tempLocation=gs://${BUCKET_NAME}/temp \
- *  --runner=DataflowRunner \
- *  --inputSubscription=${INPUT_SUBSCRIPTION} \
- *  --mongoDBUri=${MONGODB_HOSTNAME} \
- *  --database=${MONGODB_DATABASE_NAME} \
- *  --collection=${MONGODB_COLLECTION_NAME} \
- *  --deadletterTable=${DEADLETTERTABLE}"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-to-mongodb/README_Cloud_PubSub_to_MongoDB.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_PubSub_to_MongoDB",

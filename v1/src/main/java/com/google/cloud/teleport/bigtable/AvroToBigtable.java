@@ -45,6 +45,10 @@ import org.slf4j.LoggerFactory;
  * Bigtable table must be created before running the pipeline and must have a compatible table
  * schema. For example, if {@link BigtableCell} from the Avro files has a 'family' of "f1", the
  * Bigtable table should have a column family of "f1".
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Avro_to_Cloud_Bigtable.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Avro_to_Cloud_Bigtable",

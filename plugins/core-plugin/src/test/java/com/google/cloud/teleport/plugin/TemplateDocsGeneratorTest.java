@@ -34,6 +34,7 @@ public class TemplateDocsGeneratorTest {
     TemplateDefinitions definitions =
         new TemplateDefinitions(AtoBOk.class, AtoBOk.class.getAnnotation(Template.class));
     ImageSpec imageSpec = definitions.buildSpecModel(false);
+    imageSpec.getMetadata().setSourceFilePath("README.md");
 
     String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec, false);
 
@@ -57,6 +58,7 @@ public class TemplateDocsGeneratorTest {
     TemplateDefinitions definitions =
         new TemplateDefinitions(AtoBOk.class, AtoBOk.class.getAnnotation(Template.class));
     ImageSpec imageSpec = definitions.buildSpecModel(false);
+    imageSpec.getMetadata().setSourceFilePath("README.md");
 
     String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec, true);
 

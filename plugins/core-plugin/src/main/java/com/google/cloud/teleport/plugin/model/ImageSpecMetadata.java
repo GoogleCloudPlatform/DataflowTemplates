@@ -26,6 +26,7 @@ public class ImageSpecMetadata {
 
   private String name;
   private String description;
+  private String additionalHelp;
   private String mainClass;
   private List<ImageSpecParameter> parameters = new ArrayList<>();
   private Map<String, String> runtimeParameters = new HashMap<>();
@@ -33,6 +34,9 @@ public class ImageSpecMetadata {
   private String module;
   private String documentationLink;
   private boolean googleReleased;
+  private boolean udfSupport;
+
+  private String sourceFilePath;
 
   public String getDescription() {
     return description;
@@ -40,6 +44,14 @@ public class ImageSpecMetadata {
 
   public void setDescription(String description) {
     this.description = description;
+  }
+
+  public String getAdditionalHelp() {
+    return additionalHelp;
+  }
+
+  public void setAdditionalHelp(String additionalHelp) {
+    this.additionalHelp = additionalHelp;
   }
 
   public String getName() {
@@ -104,6 +116,22 @@ public class ImageSpecMetadata {
 
   public void setGoogleReleased(boolean googleReleased) {
     this.googleReleased = googleReleased;
+  }
+
+  public boolean isUdfSupport() {
+    return udfSupport;
+  }
+
+  public void setUdfSupport(boolean udfSupport) {
+    this.udfSupport = udfSupport;
+  }
+
+  public String getSourceFilePath() {
+    return sourceFilePath;
+  }
+
+  public void setSourceFilePath(String sourceFilePath) {
+    this.sourceFilePath = sourceFilePath;
   }
 
   public Optional<ImageSpecParameter> getParameter(String name) {

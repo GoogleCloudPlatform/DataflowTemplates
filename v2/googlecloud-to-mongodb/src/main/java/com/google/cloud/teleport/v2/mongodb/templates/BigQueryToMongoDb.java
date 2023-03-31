@@ -34,6 +34,10 @@ import org.bson.Document;
 /**
  * The {@link BigQueryToMongoDb} pipeline is a batch pipeline which reads data from BigQuery and
  * outputs the resulting records to MongoDB.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-mongodb/README_BigQuery_to_MongoDB.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "BigQuery_to_MongoDB",

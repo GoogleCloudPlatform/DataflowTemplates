@@ -55,67 +55,9 @@ import org.slf4j.LoggerFactory;
  * The {@link BigQueryToParquet} pipeline exports data from a BigQuery table to Parquet file(s) in a
  * Google Cloud Storage bucket.
  *
- * <p><b>Pipeline Requirements</b>
- *
- * <ul>
- *   <li>BigQuery Table exists.
- *   <li>Google Cloud Storage bucket exists.
- * </ul>
- *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=my-project
- * BUCKET_NAME=my-bucket
- * TABLE={$PROJECT}:my-dataset.my-table
- *
- * # Set containerization vars
- * IMAGE_NAME=my-image-name
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=my-base-container-image
- * BASE_CONTAINER_IMAGE_VERSION=my-base-container-image-version
- * APP_ROOT=/path/to/app-root
- * COMMAND_SPEC=/path/to/command-spec
- *
- * # Build and upload image
- * mvn clean package \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${COMMAND_SPEC}
- *
- * # Create an image spec in GCS that contains the path to the image
- * {
- *    "docker_template_spec": {
- *       "docker_image": $TARGET_GCR_IMAGE
- *     }
- *  }
- *
- * # Execute template:
- * API_ROOT_URL="https://dataflow.googleapis.com"
- * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
- * JOB_NAME="bigquery-to-parquet-`date +%Y%m%d-%H%M%S-%N`"
- *
- * time curl -X POST -H "Content-Type: application/json"     \
- *     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
- *     "${TEMPLATES_LAUNCH_API}"`
- *     `"?validateOnly=false"`
- *     `"&dynamicTemplate.gcsPath=${BUCKET_NAME}/path/to/image-spec"`
- *     `"&dynamicTemplate.stagingLocation=${BUCKET_NAME}/staging" \
- *     -d '
- *      {
- *       "jobName":"'$JOB_NAME'",
- *       "parameters": {
- *           "tableRef":"'$TABLE'",
- *           "bucket":"'$BUCKET_NAME/results'",
- *           "numShards":"5",
- *           "fields":"field1,field2"
- *        }
- *       }
- *      '
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/bigquery-to-parquet/README_BigQuery_to_Parquet.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "BigQuery_to_Parquet",

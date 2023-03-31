@@ -70,39 +70,9 @@ import org.slf4j.LoggerFactory;
  *   <li>The output directory must exist prior to pipeline execution.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * PIPELINE_FOLDER=gs://${PROJECT_ID}/dataflow/pipelines/bulk-compressor
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.BulkCompressor \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}"
- *
- * # Execute the template
- * JOB_NAME=bulk-compressor-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputFilePattern=${PIPELINE_FOLDER}/test/uncompressed/*,\
- * outputDirectory=${PIPELINE_FOLDER}/test/compressed,\
- * outputFailureFile=${PIPELINE_FOLDER}/test/failure/failed-${JOB_NAME}.csv,\
- * compression=GZIP"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Bulk_Compress_GCS_Files.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Bulk_Compress_GCS_Files",

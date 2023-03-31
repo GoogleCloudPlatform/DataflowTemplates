@@ -159,6 +159,22 @@ public class TemplateSpecsGenerator {
 
     Template templateAnnotation = definition.getTemplateAnnotation();
 
+    // Find the project root folder
+    File projectRoot = targetDirectory;
+    while (projectRoot.getParentFile() != null
+        && new File(projectRoot.getParentFile(), "pom.xml").exists()) {
+      projectRoot = projectRoot.getParentFile();
+    }
+
+    // Construct the source file path, to be used in the Open in Cloud Shell button
+    File javaFile =
+        new File(
+            targetDirectory,
+            "src/main/java/" + imageSpec.getMetadata().getMainClass().replace('.', '/') + ".java");
+    imageSpec
+        .getMetadata()
+        .setSourceFilePath(javaFile.getAbsolutePath().replace(projectRoot.getAbsolutePath(), ""));
+
     File file = new File(targetDirectory, "README_" + templateAnnotation.name() + ".md");
     LOG.info("Creating docs: " + file.getAbsolutePath());
 

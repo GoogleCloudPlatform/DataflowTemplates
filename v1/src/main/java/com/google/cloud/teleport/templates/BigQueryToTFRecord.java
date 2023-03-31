@@ -49,13 +49,19 @@ import org.tensorflow.example.Features;
 /**
  * Dataflow template which reads BigQuery data and writes it to GCS as a set of TFRecords. The
  * source is a SQL query.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_BigQuery_to_GCS_TensorFlow_Records.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_BigQuery_to_GCS_TensorFlow_Records",
     category = TemplateCategory.BATCH,
     displayName = "BigQuery to TensorFlow Records",
     description =
-        "A pipeline that reads rows from BigQuery and writes them as TFRecords in Cloud Storage. (NOTE: Nested BigQuery columns are currently not supported and should be unnested within the SQL query.)",
+        "A pipeline that reads rows from BigQuery and writes them as TFRecords in Cloud Storage.",
+    additionalHelp =
+        "Note: Nested BigQuery columns are currently not supported and should be unnested within the SQL query.",
     optionsClass = Options.class,
     optionsOrder = {BigQueryReadOptions.class, Options.class},
     documentation =

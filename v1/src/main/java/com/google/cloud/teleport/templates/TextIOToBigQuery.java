@@ -42,7 +42,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Templated pipeline to read text from TextIO, apply a javascript UDF to it, and write it to GCS.
+ * Templated pipeline to read text from TextIO, apply a JavaScript UDF to it, and write it to GCS.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Text_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Text_to_BigQuery",

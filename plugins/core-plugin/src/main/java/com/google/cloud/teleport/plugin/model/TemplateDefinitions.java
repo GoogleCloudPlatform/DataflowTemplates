@@ -95,19 +95,17 @@ public class TemplateDefinitions {
     metadata.setDescription(templateAnnotation.description());
     metadata.setModule(getClassModule());
     metadata.setDocumentationLink(templateAnnotation.documentation());
+    metadata.setAdditionalHelp(templateAnnotation.additionalHelp());
     metadata.setGoogleReleased(
         (templateAnnotation.documentation() != null
                 && templateAnnotation.documentation().contains("cloud.google.com"))
             || !templateAnnotation.hidden());
 
-    if (isClassic()) {
-
-      if (templateAnnotation.placeholderClass() != null
-          && templateAnnotation.placeholderClass() != void.class) {
-        metadata.setMainClass(templateAnnotation.placeholderClass().getName());
-      } else {
-        metadata.setMainClass(templateClass.getName());
-      }
+    if (templateAnnotation.placeholderClass() != null
+        && templateAnnotation.placeholderClass() != void.class) {
+      metadata.setMainClass(templateAnnotation.placeholderClass().getName());
+    } else {
+      metadata.setMainClass(templateClass.getName());
     }
 
     LOG.info(
@@ -250,6 +248,13 @@ public class TemplateDefinitions {
                 isFlex ? "flex" : "classic")));
     imageSpec.setImage("gcr.io/{project-id}/" + templateAnnotation.flexContainerName());
     imageSpec.setMetadata(metadata);
+
+    metadata.setUdfSupport(
+        metadata.getParameters().stream()
+            .anyMatch(
+                parameter ->
+                    parameter.getName().equals("javascriptTextTransformGcsPath")
+                        || parameter.getName().equals("javascriptTextTransformFunctionName")));
 
     return imageSpec;
   }
