@@ -128,7 +128,7 @@ You can use the path above run the template (or share with others for execution)
 To start a job with the template at any time using `gcloud`, you are going to
 need valid resources for the required parameters.
 
-Provided that, the command line below can be used:
+Provided that, the following command line can be used:
 
 ```shell
 export PROJECT=<my-project>
