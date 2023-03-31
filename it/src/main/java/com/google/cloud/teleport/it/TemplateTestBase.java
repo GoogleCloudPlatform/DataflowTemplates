@@ -177,7 +177,7 @@ public abstract class TemplateTestBase {
     } else if (System.getProperty("directRunnerTest") == null) {
       LOG.info("Preparing test for {} ({})", template.name(), templateClass);
 
-      String prefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm").format(new Date()) + "_IT";
+      String prefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_IT";
 
       File pom = new File("pom.xml").getAbsoluteFile();
       if (!pom.exists()) {

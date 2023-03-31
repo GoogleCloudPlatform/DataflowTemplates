@@ -118,7 +118,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
       String currentTemplateName = imageSpec.getMetadata().getName();
 
       if (stagePrefix == null || stagePrefix.isEmpty()) {
-        stagePrefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm").format(new Date()) + "_RC01";
+        stagePrefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_RC01";
       }
 
       LOG.info("Staging template {}...", currentTemplateName);
