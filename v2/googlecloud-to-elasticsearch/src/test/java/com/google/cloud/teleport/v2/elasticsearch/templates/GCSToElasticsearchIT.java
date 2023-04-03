@@ -127,8 +127,8 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
   public void testElasticsearchCsvWithHeaders() throws IOException {
     // Arrange
     gcsClient.uploadArtifact(
-        "input/with_headers_10.csv",
-        Resources.getResource("GCSToElasticsearch/with_headers_10.csv").getPath());
+        "input/no_header_10.csv",
+        Resources.getResource("GCSToElasticsearch/no_header_10.csv").getPath());
     String indexName = createJobName(testName);
     elasticsearchResourceManager.createIndex(indexName);
     bigQueryClient.createDataset(REGION);
@@ -138,6 +138,54 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
             .addParameter("inputFileSpec", getGcsPath("input") + "/*.csv")
             .addParameter("inputFormat", "csv")
             .addParameter("containsHeaders", "true")
+            .addParameter("deadletterTable", PROJECT + ":" + bigQueryClient.getDatasetId() + ".dlq")
+            .addParameter("delimiter", ",")
+            .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
+            .addParameter("index", indexName)
+            .addParameter("apiKey", "elastic");
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(10);
+    assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
+        .hasRecordsUnordered(List.of(Map.of("id", "001", "state", "CA", "price", 3.65)));
+  }
+
+  @Test
+  public void testElasticsearchCsvWithoutHeadersWithJsonSchema() throws IOException {
+    // Arrange
+    gcsClient.uploadArtifact(
+        "input/no_header_10.csv",
+        Resources.getResource("GCSToElasticsearch/no_header_10.csv").getPath());
+    gcsClient.createArtifact(
+        "input/schema.json",
+        "[{\n"
+            + "    \"name\": \"id\",\n"
+            + "    \"type\": \"STRING\"\n"
+            + "}, {\n"
+            + "    \"name\": \"state\",\n"
+            + "    \"type\": \"STRING\"\n"
+            + "}, {\n"
+            + "    \"name\": \"price\",\n"
+            + "    \"type\": \"DOUBLE\"\n"
+            + "}]");
+    String indexName = createJobName(testName);
+    elasticsearchResourceManager.createIndex(indexName);
+    bigQueryClient.createDataset(REGION);
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("inputFileSpec", getGcsPath("input") + "/*.csv")
+            .addParameter("inputFormat", "csv")
+            .addParameter("containsHeaders", "false")
+            .addParameter("jsonSchemaPath", getGcsPath("input/schema.json"))
             .addParameter("deadletterTable", PROJECT + ":" + bigQueryClient.getDatasetId() + ".dlq")
             .addParameter("delimiter", ",")
             .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
