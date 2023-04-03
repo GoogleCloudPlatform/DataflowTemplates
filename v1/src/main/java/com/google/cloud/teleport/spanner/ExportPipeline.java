@@ -34,7 +34,13 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 
-/** Dataflow template that exports a Cloud Spanner database to Avro files in GCS. */
+/**
+ * Dataflow template that exports a Cloud Spanner database to Avro files in GCS.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_Spanner_to_GCS_Avro.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Cloud_Spanner_to_GCS_Avro",
     category = TemplateCategory.BATCH,

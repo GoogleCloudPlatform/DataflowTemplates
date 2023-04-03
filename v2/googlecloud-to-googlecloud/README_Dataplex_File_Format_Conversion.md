@@ -4,7 +4,8 @@ A pipeline that converts file format of Cloud Storage files, registering metadat
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources.
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Dataplex_File_Format_Conversion).
+
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -12,7 +13,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Mandatory Parameters
+### Required Parameters
 
 * **inputAssetOrEntitiesList** (Dataplex asset name or Dataplex entity names for the files to be converted.): Dataplex asset or Dataplex entities that contain the input files. Format: projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset name> OR projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/entities/<entity 1 name>,projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/entities/<entity 2 name>... .
 * **outputFileFormat** (Output file format in Cloud Storage.): Output file format in Cloud Storage. Format: PARQUET or AVRO.
@@ -24,21 +25,27 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **writeDisposition** (Action that occurs if a destination file already exists.): Specifies the action that occurs if a destination file already exists. Format: OVERWRITE, FAIL, SKIP. If SKIP, only files that don't exist in the destination directory will be processed. If FAIL and at least one file already exists, no data will be processed and an error will be produced. Defaults to: SKIP.
 * **updateDataplexMetadata** (Update Dataplex metadata.): Whether to update Dataplex metadata for the newly created entities. Only supported for Cloud Storage destination. If enabled, the pipeline will automatically copy the schema from source to the destination Dataplex entities, and the automated Dataplex Discovery won't run for them. Use this flag in cases where you have managed schema at the source. Defaults to: false.
 
+
+
 ## Getting Started
 
 ### Requirements
 
 * Java 11
 * Maven
-* Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
-    * `gcloud auth login`
-    * `gcloud auth application-default login`
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
-The following instructions use the
-[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command to proceed:
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/DataplexFileFormatConversion.java)
+
+### Templates Plugin
+
+This README provides instructions using
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+. Install the plugin with the following command before proceeding:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am
@@ -87,7 +94,10 @@ The specific path should be copied as it will be used in the following steps.
 
 You can use the path above run the template (or share with others for execution).
 
-To start a job with that template at any time using `gcloud`, you can use:
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
 
 ```shell
 export PROJECT=<my-project>
@@ -95,7 +105,7 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Dataplex_File_Format_Conversion"
 
-### Mandatory
+### Required
 export INPUT_ASSET_OR_ENTITIES_LIST=<inputAssetOrEntitiesList>
 export OUTPUT_FILE_FORMAT=<outputFileFormat>
 export OUTPUT_ASSET=<outputAsset>
@@ -132,7 +142,7 @@ export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
-### Mandatory
+### Required
 export INPUT_ASSET_OR_ENTITIES_LIST=<inputAssetOrEntitiesList>
 export OUTPUT_FILE_FORMAT=<outputFileFormat>
 export OUTPUT_ASSET=<outputAsset>

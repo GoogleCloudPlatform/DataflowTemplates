@@ -36,7 +36,13 @@ import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 
-/** Dataflow template which copies Firestore Entities to a BigQuery table. */
+/**
+ * Dataflow template which copies Firestore Entities to a BigQuery table.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Firestore_to_BigQuery_Flex.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Firestore_to_BigQuery_Flex",
     category = TemplateCategory.BATCH,

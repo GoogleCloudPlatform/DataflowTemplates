@@ -4,7 +4,8 @@ Streaming pipeline. Reads records from Pub/Sub Subscription or Topic and writes 
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-topic-subscription-to-text)
-on how to use it without having to build from sources.
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_PubSub_to_GCS_Text_Flex).
+
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -12,7 +13,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Mandatory Parameters
+### Required Parameters
 
 * **outputDirectory** (Output file directory in Cloud Storage): The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).
 
@@ -32,21 +33,27 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **hourPattern** (Custom Hour Pattern to use for the output directory): Pattern for formatting the hour. Must be one or more of the 'H' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'HH'.
 * **minutePattern** (Custom Minute Pattern to use for the output directory): Pattern for formatting the minute. Must be one or more of the 'm' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'mm'.
 
+
+
 ## Getting Started
 
 ### Requirements
 
 * Java 11
 * Maven
-* Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
-    * `gcloud auth login`
-    * `gcloud auth application-default login`
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
-The following instructions use the
-[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command to proceed:
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/pubsubtotext/PubsubToText.java)
+
+### Templates Plugin
+
+This README provides instructions using
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+. Install the plugin with the following command before proceeding:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am
@@ -95,7 +102,10 @@ The specific path should be copied as it will be used in the following steps.
 
 You can use the path above run the template (or share with others for execution).
 
-To start a job with that template at any time using `gcloud`, you can use:
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
 
 ```shell
 export PROJECT=<my-project>
@@ -103,7 +113,7 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_PubSub_to_GCS_Text_Flex"
 
-### Mandatory
+### Required
 export OUTPUT_DIRECTORY=<outputDirectory>
 
 ### Optional
@@ -156,7 +166,7 @@ export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
-### Mandatory
+### Required
 export OUTPUT_DIRECTORY=<outputDirectory>
 
 ### Optional

@@ -65,59 +65,9 @@ import org.slf4j.LoggerFactory;
  * continuously polls for new files, reads them row-by-row and processes each record into BigQuery.
  * The polling interval is set at 10 seconds.
  *
- * <p>Example Usage:
- *
- * <pre>
- * # Set the pipeline vars
- * export PROJECT={project id}
- * export TEMPLATE_MODULE=googlecloud-to-googlecloud
- * export TEMPLATE_NAME=text-to-bigquery-streaming
- * export BUCKET_NAME=gs://{bucket name}
- * export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${TEMPLATE_NAME}-image
- * export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
- * export BASE_CONTAINER_IMAGE_VERSION=latest
- * export APP_ROOT=/template/${TEMPLATE_NAME}
- * export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_NAME}-command-spec.json
- * export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_NAME}-image-spec.json
- *
- * gcloud config set project ${PROJECT}
- *
- * # Build and push image to Google Container Repository
- * mvn package \
- *   -Dimage=${TARGET_GCR_IMAGE} \
- *   -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- *   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- *   -Dapp-root=${APP_ROOT} \
- *   -Dcommand-spec=${COMMAND_SPEC} \
- *   -Djib.applicationCache=/tmp/jib-cache \
- *   -am -pl ${TEMPLATE_MODULE}
- *
- * # Create and upload image spec
- * echo '{
- *  "image":"'${TARGET_GCR_IMAGE}'",
- *  "metadata":{
- *    "name":"Text To BigQuery Streaming",
- *    "description":"Poll GCS text files and write to BigQuery"
- *  },
- *  "sdk_info":{"language":"JAVA"}
- * }' > image_spec.json
- * gsutil cp image_spec.json ${TEMPLATE_IMAGE_SPEC}
- * rm image_spec.json
- *
- * # Run template
- * export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
- * gcloud beta dataflow flex-template run ${JOB_NAME} \
- *       --project=${PROJECT} --region=us-central1 \
- *       --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
- *       --parameters \
- *       "inputFilePattern=gs://path/to/input*,\
- *        JSONPath=gs://path/to/json/schema.json,\
- *        outputTable={$PROJECT_ID}:${OUTPUT_DATASET}.${OUTPUT_TABLE},\
- *        javascriptTextTransformGcsPath=gs://path/to/transform/udf.js,\
- *        javascriptTextTransformFunctionName=${TRANSFORM_NAME},\
- *        bigQueryLoadingTemporaryDirectory=gs://${STAGING_BUCKET}/tmp,\
- *        outputDeadletterTable=${PROJECT_ID}:${ERROR_DATASET}.${ERROR_TABLE}"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Stream_GCS_Text_to_BigQuery_Flex.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Stream_GCS_Text_to_BigQuery_Flex",

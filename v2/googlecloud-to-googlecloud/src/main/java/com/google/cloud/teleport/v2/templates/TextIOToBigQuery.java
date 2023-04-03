@@ -53,6 +53,10 @@ import org.json.JSONObject;
 
 /**
  * Templated pipeline to read text from TextIO, apply a javascript UDF to it, and write it to GCS.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_GCS_Text_to_BigQuery_Flex.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Text_to_BigQuery_Flex",

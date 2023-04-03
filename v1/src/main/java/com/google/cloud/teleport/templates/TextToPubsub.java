@@ -33,20 +33,9 @@ import org.apache.beam.sdk.options.ValueProvider;
  * pipeline reads each file row-by-row and publishes each record as a string message. At the moment,
  * publishing messages with attributes is unsupported.
  *
- * <p>Example Usage:
- *
- * <pre>
- * {@code mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.TextToPubsub \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --runner=DataflowRunner \
- * --inputFilePattern=gs://path/to/demo_file.csv \
- * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
- * }
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Text_to_Cloud_PubSub.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Text_to_Cloud_PubSub",

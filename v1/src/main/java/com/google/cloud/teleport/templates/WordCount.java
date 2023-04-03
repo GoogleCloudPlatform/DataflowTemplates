@@ -35,7 +35,13 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 
-/** A template that counts words in text files. */
+/**
+ * A template that counts words in text files.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Word_Count.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Word_Count",
     category = TemplateCategory.GET_STARTED,

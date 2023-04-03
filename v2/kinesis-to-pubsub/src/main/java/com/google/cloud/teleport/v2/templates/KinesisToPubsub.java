@@ -54,65 +54,9 @@ import org.slf4j.LoggerFactory;
  *   <li>Name of the Pub/Sub Topic to which data needs to be written
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=id-of-my-project
- * BUCKET_NAME=my-bucket
- * REGION=my-region
- *
- * # Set containerization vars
- * IMAGE_NAME="$USERNAME-kinesis-to-pubsub"
- * MODULE_NAME=kinesis-to-pubsub
- * TARGET_GCR_IMAGE="gcr.io/$PROJECT/$IMAGE_NAME"
- * BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
- * BASE_CONTAINER_IMAGE_VERSION=latest
- * APP_ROOT="/template/$MODULE_NAME"
- * COMMAND_SPEC="$APP_ROOT/resources/$MODULE_NAME-command-spec.json"
- *
- * # Create bucket in the cloud storage
- * gsutil mb gs://${BUCKET_NAME}
- *
- * # Go to the beam folder
- * cd /path/to/DataflowTemplates/v2
- *
- * <b>FLEX TEMPLATE</b>
- * # Assemble jar with dependencies
- * mvn package -am -pl kinesis-to-pubsub \
- *    -Dimage="$TARGET_GCR_IMAGE" \
- *   -Dbase-container-image="$BASE_CONTAINER_IMAGE" \
- *   -Dbase-container-image.version="$BASE_CONTAINER_IMAGE_VERSION" \
- *   -Dapp-root="$APP_ROOT" \
- *   -Dcommand-spec="$COMMAND_SPEC" \
- *   -Djib.applicationCache="/tmp/" \
- *
- * # Go to the template folder
- * cd /path/to/DataflowTemplates/v2/kinesis-to-pubsub
- *
- * # Build the flex template
- * gcloud dataflow flex-template build "$TEMPLATE_SPEC_PUBSUB_PATH" \
- *     --image "$TARGET_GCR_IMAGE" \
- *     --sdk-language "JAVA" \
- *     --metadata-file "$METADATA_FILEPATH"
- *
- * # Execute template:
- * API_ROOT_URL="https://dataflow.googleapis.com"
- * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/locations/${REGION}/flexTemplates:launch"
- * JOB_NAME=""kinesis-to-pubsub-`date +%Y%m%d-%H%M%S-%N`"
- *
- * gcloud dataflow flex-template run "$JOB_NAME-$(date +'%Y%m%d%H%M%S')" \
- *   --project "$PROJECT" --region "$REGION" \
- *   --template-file-gcs-location "$TEMPLATE_SPEC_PUBSUB_PATH" \
- *   --parameters secretId1="secret_id_1"\
- *   --parameters secretId2="secret_id_2" \
- *   --parameters r="us-west-2" \
- *   --parameters awsDataFormat="json" \
- *   --parameters kinesisDataStream="kinesis-input-datastream-name" \
- *   --parameters outputPubsubTopic="projects/'$PROJECT'/topics/your-topic-name"
- *
- *
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/kinesis-to-pubsub/README_Kinesis_To_Pubsub.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Kinesis_To_Pubsub",

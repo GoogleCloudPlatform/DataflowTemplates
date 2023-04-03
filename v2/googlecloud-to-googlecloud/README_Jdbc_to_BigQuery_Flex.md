@@ -1,10 +1,12 @@
 JDBC to BigQuery with BigQuery Storage API support Template
 ---
-A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST "https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt"  -d "{\"plaintext\":\"PasteBase64EncodedString\"}" -H "Authorization: Bearer $(gcloud auth application-default print-access-token)" -H "Content-Type: application/json".
+A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format.
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-bigquery)
-on how to use it without having to build from sources.
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Jdbc_to_BigQuery_Flex).
+
+A sample curl command for the KMS API encrypt endpoint: curl -s -X POST "https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt"  -d "{\"plaintext\":\"PasteBase64EncodedString\"}" -H "Authorization: Bearer $(gcloud auth application-default print-access-token)" -H "Content-Type: application/json".
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -12,7 +14,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Mandatory Parameters
+### Required Parameters
 
 * **driverJars** (Cloud Storage paths for JDBC drivers): Comma separate Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
 * **driverClassName** (JDBC driver class name.): JDBC driver class name to use. (Example: com.mysql.jdbc.Driver).
@@ -34,21 +36,27 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
 * **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
 
+
+
 ## Getting Started
 
 ### Requirements
 
 * Java 11
 * Maven
-* Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
-    * `gcloud auth login`
-    * `gcloud auth application-default login`
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
-The following instructions use the
-[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command to proceed:
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/JdbcToBigQuery.java)
+
+### Templates Plugin
+
+This README provides instructions using
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+. Install the plugin with the following command before proceeding:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am
@@ -97,7 +105,10 @@ The specific path should be copied as it will be used in the following steps.
 
 You can use the path above run the template (or share with others for execution).
 
-To start a job with that template at any time using `gcloud`, you can use:
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
 
 ```shell
 export PROJECT=<my-project>
@@ -105,7 +116,7 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Jdbc_to_BigQuery_Flex"
 
-### Mandatory
+### Required
 export DRIVER_JARS=<driverJars>
 export DRIVER_CLASS_NAME=<driverClassName>
 export CONNECTION_URL=<connectionURL>
@@ -162,7 +173,7 @@ export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
-### Mandatory
+### Required
 export DRIVER_JARS=<driverJars>
 export DRIVER_CLASS_NAME=<driverClassName>
 export CONNECTION_URL=<connectionURL>

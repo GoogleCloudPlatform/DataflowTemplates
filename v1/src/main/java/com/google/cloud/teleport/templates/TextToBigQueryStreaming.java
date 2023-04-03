@@ -72,25 +72,9 @@ import org.slf4j.LoggerFactory;
  * continuously polls for new files, reads them row-by-row and processes each record into BigQuery.
  * The polling interval is set at 10 seconds.
  *
- * <p>Example Usage:
- *
- * <pre>
- * {@code mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.TextToBigQueryStreaming \
- * -Dexec.args="\
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${STAGING_BUCKET}/staging \
- * --tempLocation=gs://${STAGING_BUCKET}/tmp \
- * --runner=DataflowRunner \
- * --inputFilePattern=gs://path/to/input* \
- * --JSONPath=gs://path/to/json/schema.json \
- * --outputTable={$PROJECT_ID}:${OUTPUT_DATASET}.${OUTPUT_TABLE} \
- * --javascriptTextTransformGcsPath=gs://path/to/transform/udf.js \
- * --javascriptTextTransformFunctionName=${TRANSFORM_NAME} \
- * --bigQueryLoadingTemporaryDirectory=gs://${STAGING_BUCKET}/tmp \
- * --outputDeadletterTable=${PROJECT_ID}:${ERROR_DATASET}.${ERROR_TABLE}"
- * }
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Stream_GCS_Text_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Stream_GCS_Text_to_BigQuery",

@@ -31,9 +31,9 @@ import org.apache.beam.sdk.transforms.ParDo;
 /**
  * The {@link BigQueryToElasticsearch} pipeline exports data from a BigQuery table to Elasticsearch.
  *
- * <p>Please refer to <b><a href=
- * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/docs/BigQueryToElasticsearch/README.md">
- * README.md</a></b> for further information.
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-elasticsearch/README_BigQuery_to_Elasticsearch.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "BigQuery_to_Elasticsearch",

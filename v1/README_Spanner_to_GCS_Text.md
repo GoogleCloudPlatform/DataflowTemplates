@@ -4,7 +4,8 @@ A pipeline which reads in Cloud Spanner table and writes it to Cloud Storage as 
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-cloud-storage)
-on how to use it without having to build from sources.
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Spanner_to_GCS_Text).
+
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -12,7 +13,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Mandatory Parameters
+### Required Parameters
 
 * **spannerTable** (Spanner Table): Spanner Table to read from.
 * **spannerProjectId** (Read data from Cloud Spanner Project Id): The Google Cloud Project Id of the Cloud Spanner database that you want to read data from.
@@ -27,21 +28,27 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerHost** (Cloud Spanner Endpoint to call): The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
 * **spannerSnapshotTime** (Snapshot time): If set, specifies the time when the snapshot must be taken. String is in the RFC 3339 format in UTC time.  Timestamp must be in the past and Maximum timestamp staleness applies.https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness (Example: 1990-12-31T23:59:60Z). Defaults to empty.
 
+
+
 ## Getting Started
 
 ### Requirements
 
 * Java 11
 * Maven
-* Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
-    * `gcloud auth login`
-    * `gcloud auth application-default login`
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
-The following instructions use the
-[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command to proceed:
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
+
+### Templates Plugin
+
+This README provides instructions using
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+. Install the plugin with the following command before proceeding:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am
@@ -90,7 +97,10 @@ The specific path should be copied as it will be used in the following steps.
 
 You can use the path above run the template (or share with others for execution).
 
-To start a job with that template at any time using `gcloud`, you can use:
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
 
 ```shell
 export PROJECT=<my-project>
@@ -98,7 +108,7 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/Spanner_to_GCS_Text"
 
-### Mandatory
+### Required
 export SPANNER_TABLE=<spannerTable>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export SPANNER_INSTANCE_ID=<spannerInstanceId>
@@ -141,7 +151,7 @@ export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
-### Mandatory
+### Required
 export SPANNER_TABLE=<spannerTable>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export SPANNER_INSTANCE_ID=<spannerInstanceId>

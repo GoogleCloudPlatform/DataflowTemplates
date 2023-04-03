@@ -61,31 +61,11 @@ import org.slf4j.LoggerFactory;
  * This pipeline ingests DataStream data from GCS as events. The events are written to Cloud
  * Spanner.
  *
- * <p>NOTE: Future versiosn will support: Pub/Sub, GCS, or Kafka as per DataStream
+ * <p>NOTE: Future versions will support: Pub/Sub, GCS, or Kafka as per DataStream
  *
- * <p>Example Usage: TODO: FIX EXMAPLE USAGE
- *
- * <pre>
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --templateLocation=gs://$BUCKET_NAME/templates/${PIPELINE_NAME}.json \
- * --instanceId=test-instance \
- * --databaseId=test-database \
- * --inputFilePattern=${GCS_AVRO_FILE_PATTERN} \
- * --deadLetterQueueDirectory=${DLQ_GCS_PATH} \
- * --runner=(DirectRunner|DataflowRunner)"
- *
- * OPTIONAL Dataflow Params:
- * --autoscalingAlgorithm=THROUGHPUT_BASED \
- * --numWorkers=2 \
- * --maxNumWorkers=10 \
- * --workerMachineType=n1-highcpu-4 \
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_Datastream_to_Spanner",

@@ -84,7 +84,9 @@ import org.slf4j.LoggerFactory;
  * <p>Accepts a Dataplex asset as the destination, which will be resolved to the corresponding
  * BigQuery dataset/Storage bucket via Dataplex API.
  *
- * <p>TODO: add more comments later
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Dataplex_JDBC_Ingestion.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Dataplex_JDBC_Ingestion",

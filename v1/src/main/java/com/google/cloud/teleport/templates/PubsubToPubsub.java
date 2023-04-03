@@ -42,13 +42,21 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A template that copies messages from one Pubsub subscription to another Pubsub topic. */
+/**
+ * A template that copies messages from one Pubsub subscription to another Pubsub topic. Allows
+ * filtering specific messages.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_PubSub_to_Cloud_PubSub.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Cloud_PubSub_to_Cloud_PubSub",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Pub/Sub",
     description =
         "Streaming pipeline. Reads from a Pub/Sub subscription and writes to a Pub/Sub topic. ",
+    additionalHelp = "The template allows filtering specific messages.",
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-pubsub",
@@ -80,11 +88,15 @@ public class PubsubToPubsub {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
-    /**
-     * Steps: 1) Read PubSubMessage with attributes from input PubSub subscription. 2) Apply any
-     * filters if an attribute=value pair is provided. 3) Write each PubSubMessage to output PubSub
-     * topic.
-     */
+    /*
+     Steps:
+
+     <p>1) Read PubSubMessage with attributes from input PubSub subscription.
+
+     <p>2) Apply any filters if an attribute=value pair is provided.
+
+     <p>3) Write each PubSubMessage to output PubSub topic.
+    */
     pipeline
         .apply(
             "Read PubSub Events",

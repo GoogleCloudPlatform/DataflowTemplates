@@ -39,7 +39,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link PubsubToJdbc} streaming pipeline reads data from Google Cloud PubSub and publishes to
- * JDBC. <br>
+ * JDBC.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Pubsub_to_Jdbc.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Pubsub_to_Jdbc",

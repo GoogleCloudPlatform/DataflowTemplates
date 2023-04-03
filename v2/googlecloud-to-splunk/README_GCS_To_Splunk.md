@@ -4,7 +4,9 @@ A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to S
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources.
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_To_Splunk).
+
+The template creates the Splunk payload as a JSON element using either CSV headers (default), JSON schema or JavaScript UDF. If a Javascript UDF and JSON schema are both inputted as parameters, only the Javascript UDF will be executed.
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -12,7 +14,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Mandatory Parameters
+### Required Parameters
 
 * **invalidOutputPath** (Invalid events output path): Cloud Storage path where to write objects that could not be converted to Splunk objects or pushed to Splunk. (Example: gs://your-bucket/your-path).
 * **inputFileSpec** (The input filepattern to read from.): Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv.
@@ -35,21 +37,37 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
 * **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
 
+
+## User-Defined functions (UDFs)
+
+The Cloud Storage To Splunk Template supports User-Defined functions (UDFs).
+UDFs allow you to customize functionality by providing a JavaScript function
+without having to maintain or build the entire template code.
+
+Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
+and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
+for more information about how to create and test those functions.
+
+
 ## Getting Started
 
 ### Requirements
 
 * Java 11
 * Maven
-* Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
-    * `gcloud auth login`
-    * `gcloud auth application-default login`
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
-The following instructions use the
-[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command to proceed:
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-splunk/src/main/java/com/google/cloud/teleport/v2/templates/GCSToSplunk.java)
+
+### Templates Plugin
+
+This README provides instructions using
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+. Install the plugin with the following command before proceeding:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am
@@ -98,7 +116,10 @@ The specific path should be copied as it will be used in the following steps.
 
 You can use the path above run the template (or share with others for execution).
 
-To start a job with that template at any time using `gcloud`, you can use:
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
 
 ```shell
 export PROJECT=<my-project>
@@ -106,7 +127,7 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/GCS_To_Splunk"
 
-### Mandatory
+### Required
 export INVALID_OUTPUT_PATH=<invalidOutputPath>
 export INPUT_FILE_SPEC=<inputFileSpec>
 export DEADLETTER_TABLE=<deadletterTable>
@@ -165,7 +186,7 @@ export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
-### Mandatory
+### Required
 export INVALID_OUTPUT_PATH=<invalidOutputPath>
 export INPUT_FILE_SPEC=<inputFileSpec>
 export DEADLETTER_TABLE=<deadletterTable>

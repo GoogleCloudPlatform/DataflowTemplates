@@ -37,6 +37,10 @@ import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Jdbc_to_BigQuery_Flex.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Jdbc_to_BigQuery_Flex",
@@ -46,8 +50,9 @@ import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
         "A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection"
             + " string, user name and password can be passed in directly as plaintext or encrypted"
             + " using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified,"
-            + " connectionURL, username, and password should be all in encrypted format. A sample"
-            + " curl command for the KMS API encrypt endpoint: curl -s -X POST"
+            + " connectionURL, username, and password should be all in encrypted format.",
+    additionalHelp =
+        "A sample curl command for the KMS API encrypt endpoint: curl -s -X POST"
             + " \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\""
             + "  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\" -H \"Authorization:"
             + " Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type:"

@@ -4,7 +4,8 @@ Batch pipeline. Reads from text files stored in Cloud Storage and writes JSON-en
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-datastore)
-on how to use it without having to build from sources.
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Text_to_Datastore).
+
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -12,7 +13,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Mandatory Parameters
+### Required Parameters
 
 * **textReadPattern** (Input file(s) in Cloud Storage): The input file pattern Dataflow reads from. Ex: gs://your-bucket/.../*.json.
 * **datastoreWriteProjectId** (Project ID): The Google Cloud project ID of where to write Datastore entities.
@@ -26,21 +27,37 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **datastoreWriteNamespace** (Datastore namespace): Datastore namespace under which entities will be written in the output Google Cloud project.
 * **datastoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500.
 
+
+## User-Defined functions (UDFs)
+
+The Text Files on Cloud Storage to Datastore [Deprecated] Template supports User-Defined functions (UDFs).
+UDFs allow you to customize functionality by providing a JavaScript function
+without having to maintain or build the entire template code.
+
+Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
+and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
+for more information about how to create and test those functions.
+
+
 ## Getting Started
 
 ### Requirements
 
 * Java 11
 * Maven
-* Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
-    * `gcloud auth login`
-    * `gcloud auth application-default login`
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
-The following instructions use the
-[Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command to proceed:
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
+
+### Templates Plugin
+
+This README provides instructions using
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+. Install the plugin with the following command before proceeding:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am
@@ -89,7 +106,10 @@ The specific path should be copied as it will be used in the following steps.
 
 You can use the path above run the template (or share with others for execution).
 
-To start a job with that template at any time using `gcloud`, you can use:
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
 
 ```shell
 export PROJECT=<my-project>
@@ -97,7 +117,7 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/GCS_Text_to_Datastore"
 
-### Mandatory
+### Required
 export TEXT_READ_PATTERN=<textReadPattern>
 export DATASTORE_WRITE_PROJECT_ID=<datastoreWriteProjectId>
 export ERROR_WRITE_PATH=<errorWritePath>
@@ -138,7 +158,7 @@ export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
-### Mandatory
+### Required
 export TEXT_READ_PATTERN=<textReadPattern>
 export DATASTORE_WRITE_PROJECT_ID=<datastoreWriteProjectId>
 export ERROR_WRITE_PATH=<errorWritePath>

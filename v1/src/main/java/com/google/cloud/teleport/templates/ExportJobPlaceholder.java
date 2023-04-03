@@ -26,7 +26,13 @@ import org.apache.beam.sdk.options.Default.Integer;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.ValueProvider;
 
-/** Placeholder template class for {@link ExportJob}. */
+/**
+ * Placeholder template class for {@link ExportJob}.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_Bigtable_to_GCS_SequenceFile.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Cloud_Bigtable_to_GCS_SequenceFile",
     category = TemplateCategory.BATCH,

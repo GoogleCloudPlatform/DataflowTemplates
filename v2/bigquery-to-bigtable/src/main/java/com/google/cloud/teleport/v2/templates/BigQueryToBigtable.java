@@ -37,6 +37,10 @@ import org.apache.hadoop.hbase.client.Mutation;
 /**
  * Dataflow template which reads BigQuery data and writes it to Bigtable. The source data can be
  * either a BigQuery table or an SQL query.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/bigquery-to-bigtable/README_BigQuery_to_Bigtable.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "BigQuery_to_Bigtable",

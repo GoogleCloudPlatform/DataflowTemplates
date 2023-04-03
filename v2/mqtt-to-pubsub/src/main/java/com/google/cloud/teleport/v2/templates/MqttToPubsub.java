@@ -29,7 +29,13 @@ import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 
-/** Dataflow template which reads data from Mqtt Topic and writes it to Cloud PubSub. */
+/**
+ * Dataflow template which reads data from Mqtt Topic and writes it to Cloud PubSub.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/mqtt-to-pubsub/README_Mqtt_to_PubSub.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Mqtt_to_PubSub",
     category = TemplateCategory.STREAMING,

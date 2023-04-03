@@ -92,6 +92,10 @@ import org.slf4j.LoggerFactory;
  * The {@link DataplexFileFormatConversion} pipeline converts file format of the files from the
  * given asset or the list of entities to, the new converted files are stored in the bucket
  * referenced by the provided output asset.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Dataplex_File_Format_Conversion.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Dataplex_File_Format_Conversion",

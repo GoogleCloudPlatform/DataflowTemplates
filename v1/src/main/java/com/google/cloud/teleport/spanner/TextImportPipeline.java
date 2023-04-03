@@ -71,22 +71,9 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  *  PRIMARY KEY(Id)
  * </pre>
  *
- * <pre>
- * {@code mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.TextImportPipeline \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --runner=DataflowRunner \
- * --importManifest=gs://IMPORT_MANIFEST_FILE \
- * --spannerInstance=SPANNER_INSTANCE_NAME \
- * --databaseName=DATABASE_NAME \
- * --tableName=TABLE_NAME \
- * --columnDelimiter=',' \
- * --fieldQualifier='"'
- * }
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Text_to_Cloud_Spanner.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Text_to_Cloud_Spanner",
