@@ -257,7 +257,7 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
   }
 
 
-  public synchronized void createAppProfile(String appProfileId, boolean singleClusterRouting,
+  public synchronized void createAppProfile(String appProfileId,
       boolean allowTransactionWrites, List<String> clusters) {
     checkHasInstance();
     if (clusters == null || clusters.isEmpty()) {
@@ -266,11 +266,7 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
 
     RoutingPolicy routingPolicy;
 
-    if (singleClusterRouting) {
-      if (clusters.size() != 1) {
-        throw new IllegalArgumentException(
-            "Cluster list should contain exactly 1 cluster for a single cluster routing policy");
-      }
+    if (clusters.size() == 1) {
       routingPolicy = SingleClusterRoutingPolicy.of(clusters.get(0), allowTransactionWrites);
     } else {
       routingPolicy = MultiClusterRoutingPolicy.of(new HashSet<>(clusters));

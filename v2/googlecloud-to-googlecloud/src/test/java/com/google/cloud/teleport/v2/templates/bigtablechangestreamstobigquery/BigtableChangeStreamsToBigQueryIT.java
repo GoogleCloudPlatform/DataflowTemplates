@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 
 import avro.shaded.com.google.common.collect.Lists;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,18 +31,18 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManagerCluster;
 import com.google.cloud.teleport.it.bigtable.BigtableTableSpec;
 import com.google.cloud.teleport.it.bigtable.StaticBigtableResourceManager;
 import com.google.cloud.teleport.it.common.ExceptionMessageUtils;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Config;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Config;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ChangelogColumn;
 import java.io.IOException;
@@ -52,6 +52,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -62,6 +63,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Integration test for {@link BigtableChangeStreamsToBigQuery}.
@@ -70,6 +73,7 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(BigtableChangeStreamsToBigQuery.class)
 @RunWith(JUnit4.class)
 public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToBigQueryIT.class);
 
   public static final String SOURCE_CDC_TABLE = "source_cdc_table";
   public static final String SOURCE_COLUMN_FAMILY = "cf";
@@ -81,14 +85,14 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   private static StaticBigtableResourceManager bigtableResourceManager;
   private static DefaultBigQueryResourceManager bigQueryResourceManager;
 
-  private JobInfo jobInfo;
+  private LaunchInfo launchInfo;
 
   @Test
   public void testBigtableChangeStreamsToBigQuerySingleMutationE2E() throws IOException {
     long timeNowMicros = System.currentTimeMillis() * 1000;
 
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
+    //String name = testName.getMethodName();
+    //String jobName = createJobName(name);
     String clusterName = "c1_cluster";
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
@@ -102,20 +106,24 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        APP_PROFILE_ID, true, true, Lists.asList(clusterName, new String[]{}));
+        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[]{}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
-            .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
-            .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
-            .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
-            .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes");
+    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
+    launchInfo =
+        launchTemplate(
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
+                    .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
+                    .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
+                    .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+                    .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
+            )
+        );
 
-    jobInfo = launchTemplate(options);
-    assertThatPipeline(jobInfo).isRunning();
+    assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
     String column = UUID.randomUUID().toString();
@@ -146,10 +154,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
             column,
             value);
 
-    Result result =
-        new DataflowOperator(getDataflowClient())
-            .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query, 1));
-
+    Result result = pipelineOperator().waitForConditionAndCancel(createConfig(launchInfo), dataShownUp(query, 1));
     assertThatResult(result).meetsConditions();
 
     TableResult tableResult = bigQueryResourceManager.runQuery(query);
@@ -181,8 +186,6 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   public void testBigtableChangeStreamsToBigQueryMutationsStartTimeE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
 
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
     String clusterName = "c1_cluster";
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
@@ -196,7 +199,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        APP_PROFILE_ID, true, true, Lists.asList(clusterName, new String[]{}));
+        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[]{}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 
@@ -228,18 +231,21 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
             .setCell(SOURCE_COLUMN_FAMILY, column, nextValueToBeRead);
     bigtableResourceManager.write(nextToBeReadMutation);
 
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
-            .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
-            .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
-            .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
-            .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
-            .addParameter("startTimestamp", Timestamp.of(new Date(afterFirstMutation)).toString());
+    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
+    launchInfo =
+        launchTemplate(
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
+                    .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
+                    .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
+                    .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+                    .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
+                    .addParameter("startTimestamp", Timestamp.of(new Date(afterFirstMutation)).toString())
+            )
+        );
 
-    jobInfo = launchTemplate(options);
-
-    assertThat(jobInfo.state()).isIn(JobState.ACTIVE_STATES);
+    assertThatPipeline(launchInfo).isRunning();
 
     String query =
         String.format(
@@ -259,10 +265,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
             SOURCE_COLUMN_FAMILY,
             column);
 
-    Result waitForData =
-        new DataflowOperator(getDataflowClient())
-            .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query, 2));
-    assertThat(waitForData).isEqualTo(Result.CONDITION_MET);
+    Result result = pipelineOperator().waitForConditionAndCancel(createConfig(launchInfo), dataShownUp(query, 2));
+    assertThatResult(result).meetsConditions();
 
     HashSet<String> toBeReadValues = new HashSet<>();
     toBeReadValues.add(valueToBeRead);
@@ -304,8 +308,6 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   public void testBigtableChangeStreamsToBigQueryDeadLetterQueueE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
 
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
     String clusterName = "c1_cluster";
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
@@ -319,7 +321,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        APP_PROFILE_ID, true, true, Lists.asList(clusterName, new String[]{}));
+        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[]{}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 
@@ -348,21 +350,24 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
     Thread.sleep(10000L);
 
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
-            .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
-            .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
-            .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
-            .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
-            .addParameter("dlqRetryMinutes", "1")
-            .addParameter("dlqDirectory", getGcsPath("dlq"))
-            .addParameter("dlqMaxRetries", "1")
-            .addParameter("startTimestamp", Timestamp.of(new Date(beforeMutations)).toString());
+    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
+    launchInfo =
+        launchTemplate(
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
+                    .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
+                    .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
+                    .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+                    .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
+                    .addParameter("dlqRetryMinutes", "1")
+                    .addParameter("dlqDirectory", getGcsPath("dlq"))
+                    .addParameter("dlqMaxRetries", "1")
+                    .addParameter("startTimestamp", Timestamp.of(new Date(beforeMutations)).toString())
+            )
+        );
 
-    jobInfo = launchTemplate(options);
-
-    assertThat(jobInfo.state()).isIn(JobState.ACTIVE_STATES);
+    assertThatPipeline(launchInfo).isRunning();
 
     String query =
         String.format(
@@ -382,10 +387,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
             SOURCE_COLUMN_FAMILY,
             column);
 
-    Result waitForData =
-        new DataflowOperator(getDataflowClient())
-            .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query, 1));
-    assertThat(waitForData).isEqualTo(Result.CONDITION_MET);
+    Result result = pipelineOperator().waitForCondition(createConfig(launchInfo), dataShownUp(query, 1));
+    assertThatResult(result).meetsConditions();
 
     HashSet<String> toBeReadValues = new HashSet<>();
     toBeReadValues.add(goodValue);
@@ -428,6 +431,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         "dlq", "severe");
     BlobListOption listOptions = BlobListOption.prefix(filterPrefix);
 
+    LOG.info("Looking for files with a prefix: " + filterPrefix);
+
     boolean found = false;
     while (!found && System.currentTimeMillis() <= (started + waitForFile)) {
       Page<Blob> blobs = storage.list(artifactBucketName, listOptions);
@@ -459,7 +464,9 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT).build();
+        DefaultBigQueryResourceManager.builder(testName, PROJECT)
+            .setCredentials(credentials)
+            .build();
     // TODO: StaticBigtableResourceManager has to be replaced with DefaultBigtableResourceManager
     // when it supports CDC configs
     bigtableResourceManager = StaticBigtableResourceManager.builder(/* testName.getMethodName(), */
@@ -473,16 +480,6 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
   @After
   public void tearDownClass() {
-    // If we destroy Cloud Bigtable / BigQuery resources before cancelling job, it might get
-    // stuck in draining
-    if (jobInfo != null) {
-      try {
-        getDataflowClient().cancelJob(PROJECT, TEST_REGION, jobInfo.jobId());
-      } catch (Exception e) {
-        e.printStackTrace(System.err);
-      }
-    }
-
     ResourceManagerUtils.cleanResources(bigtableResourceManager, bigQueryResourceManager);
   }
 
@@ -501,12 +498,21 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     };
   }
 
-  public Config getWaitForPipelineConfig(JobInfo info) {
-    return Config.builder()
-        .setProject(PROJECT)
-        .setRegion(REGION)
-        .setJobId(info.jobId())
-        .setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME)
-        .build();
+  @Override
+  protected PipelineOperator.Config createConfig(LaunchInfo info) {
+    Config.Builder configBuilder =
+        Config.builder().setJobId(info.jobId()).setProject(PROJECT).setRegion(REGION);
+
+    // For DirectRunner tests, reduce the max time and the interval, as there is no worker required
+    if (System.getProperty("directRunnerTest") != null) {
+      configBuilder =
+          configBuilder.setTimeoutAfter(
+                  EXPECTED_REPLICATION_MAX_WAIT_TIME.minus(Duration.ofMinutes(3)))
+              .setCheckAfter(Duration.ofSeconds(5));
+    } else {
+      configBuilder.setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME);
+    }
+
+    return configBuilder.build();
   }
 }

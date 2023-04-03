@@ -63,6 +63,14 @@ public interface BigtableResourceManager extends ResourceManager {
    */
   void createTable(String tableId, Iterable<String> columnFamilies);
 
+  /**
+   * Creates a table within the current instance given a table ID and other configuration settings.
+   *
+   * <p>Note: Implementations may do instance creation here, if one does not already exist.
+   *
+   * @param tableId The id of the table.
+   * @param spec Other table configurations
+   */
   void createTable(String tableId, BigtableTableSpec spec);
 
   /**
@@ -92,15 +100,14 @@ public interface BigtableResourceManager extends ResourceManager {
    * <p>Note: Implementations may do instance creation here, if one does not already exist.
    *
    * @param appProfileId The id of the app profile.
-   * @param singleClusterRouting Whether to use single cluster routing policy. When false a
-   * multi-cluster routing policy is used
    * @param allowTransactionWrites Allows transactional writes when single cluster routing is
    * enabled
-   * @param clusters Clusters where traffic is going to be routed
+   * @param clusters Clusters where traffic is going to be routed. If more than one cluster is
+   * specified, a multi-cluster routing is used. A single-cluster routing is used when a single
+   * cluster is specified.
    * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
    */
-  void createAppProfile(String appProfileId, boolean singleClusterRouting,
-      boolean allowTransactionWrites, List<String> clusters);
+  void createAppProfile(String appProfileId, boolean allowTransactionWrites, List<String> clusters);
 
   /**
    * Writes a given row into a table. This method requires {@link
