@@ -127,8 +127,8 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
   public void testElasticsearchCsvWithHeaders() throws IOException {
     // Arrange
     gcsClient.uploadArtifact(
-        "input/no_header_10.csv",
-        Resources.getResource("GCSToElasticsearch/no_header_10.csv").getPath());
+        "input/with_headers_10.csv",
+        Resources.getResource("GCSToElasticsearch/with_headers_10.csv").getPath());
     String indexName = createJobName(testName);
     elasticsearchResourceManager.createIndex(indexName);
     bigQueryClient.createDataset(REGION);
