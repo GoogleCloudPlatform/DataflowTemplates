@@ -126,10 +126,20 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
     return new DefaultBigtableResourceManager.Builder(testId, projectId);
   }
 
+  /**
+   * Returns the project ID this Resource Manager is configured to operate on.
+   *
+   * @return the project ID.
+   */
   public String getProjectId() {
     return projectId;
   }
 
+  /**
+   * Return the instance ID this Resource Manager uses to create and manage tables in.
+   *
+   * @return the instance ID.
+   */
   public String getInstanceId() {
     return instanceId;
   }
