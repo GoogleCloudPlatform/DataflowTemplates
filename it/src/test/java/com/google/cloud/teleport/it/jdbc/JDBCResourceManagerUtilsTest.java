@@ -15,14 +15,13 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
+import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.ALLOWED_SPECIAL_CHARS;
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.checkValidTableName;
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generateDatabaseName;
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generatePassword;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import com.google.common.primitives.Chars;
-import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -30,9 +29,6 @@ import org.junit.runners.JUnit4;
 /** Unit tests for {@link com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils}. */
 @RunWith(JUnit4.class)
 public class JDBCResourceManagerUtilsTest {
-
-  private static final List<Character> specialChars =
-      Chars.asList("‘~!@#$%^&*()_\\-+={}[]/<>,.;?:| ".toCharArray());
 
   @Test
   public void testGenerateDatabaseNameShouldReplaceHyphen() {
@@ -60,7 +56,7 @@ public class JDBCResourceManagerUtilsTest {
         String s = String.valueOf(c);
         lower += s.toLowerCase().equals(s) ? 1 : 0;
         upper += s.toUpperCase().equals(s) ? 1 : 0;
-        special += specialChars.contains(c) ? 1 : 0;
+        special += ALLOWED_SPECIAL_CHARS.contains(c) ? 1 : 0;
       }
 
       assertThat(lower).isAtLeast(2);

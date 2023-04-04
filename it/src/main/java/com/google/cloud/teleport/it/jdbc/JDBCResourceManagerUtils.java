@@ -47,8 +47,8 @@ final class JDBCResourceManagerUtils {
   private static final DateTimeFormatter TIME_FORMAT =
       DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSSSSS");
 
-  private static final List<Character> specialChars =
-      Chars.asList("‘~!@#$%^&*()_\\-+={}[]/<>,.;?:| ".toCharArray());
+  public static final List<Character> ALLOWED_SPECIAL_CHARS =
+      Chars.asList("'~!@#$%^&*()_\\-+={}[]/<>,.;?:| ".toCharArray());
 
   private JDBCResourceManagerUtils() {}
 
@@ -84,7 +84,7 @@ final class JDBCResourceManagerUtils {
     for (int i = 0; i < numSpecial; i++) {
       password.insert(
           new Random().nextInt(password.length()),
-          specialChars.get(new Random().nextInt(specialChars.size())));
+          ALLOWED_SPECIAL_CHARS.get(new Random().nextInt(ALLOWED_SPECIAL_CHARS.size())));
     }
     for (int i = 0; i < numLower; i++) {
       password.insert(
