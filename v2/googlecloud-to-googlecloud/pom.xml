@@ -22,23 +22,6 @@
   <repositories>
     <repository>
       <id>artifact-registry</id>
-      <url>artifactregistry://us-central1-maven.pkg.dev/google.com%3Acloud-bigtable-dev/test-bigtable-change-stream-preview</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <!-- Required for io.confluent:kafka-avro-serializer artifact -->
-      <id>confluent</id>
-      <url>https://packages.confluent.io/maven/</url>
-    </repository>
-  </repositories>
-  <repositories>
-    <repository>
-      <id>artifact-registry</id>
       <url>${env.BEAM_ARTIFACT_REGISTRY_URI}</url>
       <releases>
         <enabled>true</enabled>
