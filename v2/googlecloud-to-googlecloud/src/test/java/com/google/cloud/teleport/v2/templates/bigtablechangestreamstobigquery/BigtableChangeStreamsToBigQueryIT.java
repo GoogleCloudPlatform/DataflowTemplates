@@ -31,7 +31,6 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManagerCluster;
 import com.google.cloud.teleport.it.bigtable.BigtableTableSpec;
@@ -133,29 +132,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         RowMutation.create(SOURCE_CDC_TABLE, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, value);
     bigtableResourceManager.write(rowMutation);
 
-    String query =
-        String.format(
-            "SELECT * FROM `"
-                + bigQueryResourceManager.getDatasetId()
-                + "."
-                + SOURCE_CDC_TABLE
-                + "_changes`"
-                + " WHERE "
-                + ChangelogColumn.ROW_KEY_STRING.getBqColumnName()
-                + "='%s' AND "
-                + ChangelogColumn.COLUMN_FAMILY.getBqColumnName()
-                + "='%s' AND "
-                + ChangelogColumn.COLUMN.getBqColumnName()
-                + "='%s' AND "
-                + ChangelogColumn.VALUE_STRING.getBqColumnName()
-                + "='%s'",
-            rowkey,
-            SOURCE_COLUMN_FAMILY,
-            column,
-            value);
-
-    Result result = pipelineOperator().waitForConditionAndCancel(createConfig(launchInfo), dataShownUp(query, 1));
-    assertThatResult(result).meetsConditions();
+    String query = newLookForValuesQuery(rowkey, column, value);
+    waitForQueryToReturnRows(query, 1, true);
 
     TableResult tableResult = bigQueryResourceManager.runQuery(query);
     tableResult
@@ -247,26 +225,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
     assertThatPipeline(launchInfo).isRunning();
 
-    String query =
-        String.format(
-            "SELECT * FROM `"
-                + bigQueryResourceManager.getDatasetId()
-                + "."
-                + SOURCE_CDC_TABLE
-                + "_changes`"
-                + " WHERE "
-                + ChangelogColumn.ROW_KEY_STRING.getBqColumnName()
-                + "='%s' AND "
-                + ChangelogColumn.COLUMN_FAMILY.getBqColumnName()
-                + "='%s' AND "
-                + ChangelogColumn.COLUMN.getBqColumnName()
-                + "='%s'",
-            rowkey,
-            SOURCE_COLUMN_FAMILY,
-            column);
-
-    Result result = pipelineOperator().waitForConditionAndCancel(createConfig(launchInfo), dataShownUp(query, 2));
-    assertThatResult(result).meetsConditions();
+    String query = newLookForValuesQuery(rowkey, column, null);
+    waitForQueryToReturnRows(query, 2, true);
 
     HashSet<String> toBeReadValues = new HashSet<>();
     toBeReadValues.add(valueToBeRead);
@@ -303,6 +263,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
 
   }
+
 
   @Test
   public void testBigtableChangeStreamsToBigQueryDeadLetterQueueE2E() throws Exception {
@@ -369,26 +330,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
     assertThatPipeline(launchInfo).isRunning();
 
-    String query =
-        String.format(
-            "SELECT * FROM `"
-                + bigQueryResourceManager.getDatasetId()
-                + "."
-                + SOURCE_CDC_TABLE
-                + "_changes`"
-                + " WHERE "
-                + ChangelogColumn.ROW_KEY_STRING.getBqColumnName()
-                + "='%s' AND "
-                + ChangelogColumn.COLUMN_FAMILY.getBqColumnName()
-                + "='%s' AND "
-                + ChangelogColumn.COLUMN.getBqColumnName()
-                + "='%s'",
-            rowkey,
-            SOURCE_COLUMN_FAMILY,
-            column);
-
-    Result result = pipelineOperator().waitForCondition(createConfig(launchInfo), dataShownUp(query, 1));
-    assertThatResult(result).meetsConditions();
+    String query = newLookForValuesQuery(rowkey, column, null);
+    waitForQueryToReturnRows(query, 1, false);
 
     HashSet<String> toBeReadValues = new HashSet<>();
     toBeReadValues.add(goodValue);
@@ -514,5 +457,32 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     }
 
     return configBuilder.build();
+  }
+
+
+  private void waitForQueryToReturnRows(String query, int resultsRequired, boolean cancelOnceDone)
+      throws IOException {
+    Config config = createConfig(launchInfo);
+    Result result = cancelOnceDone ? pipelineOperator().waitForConditionAndCancel(config,
+        dataShownUp(query, resultsRequired))
+        : pipelineOperator().waitForCondition(config, dataShownUp(query, resultsRequired));
+    assertThatResult(result).meetsConditions();
+  }
+
+  private String newLookForValuesQuery(String rowkey, String column, String value) {
+    return "SELECT * FROM `"
+        + bigQueryResourceManager.getDatasetId()
+        + "."
+        + SOURCE_CDC_TABLE
+        + "_changes`"
+        + " WHERE "
+        + String.format("%s = '%s'", ChangelogColumn.COLUMN_FAMILY.getBqColumnName(),
+        SOURCE_COLUMN_FAMILY)
+        + (rowkey != null ? String.format(" AND %s = '%s'",
+        ChangelogColumn.ROW_KEY_STRING.getBqColumnName(), rowkey) : "")
+        + (column != null ? String.format(" AND %s = '%s'",
+        ChangelogColumn.COLUMN.getBqColumnName(), column) : "")
+        + (value != null ? String.format(" AND %s = '%s'",
+        ChangelogColumn.VALUE_STRING.getBqColumnName(), value) : "");
   }
 }
