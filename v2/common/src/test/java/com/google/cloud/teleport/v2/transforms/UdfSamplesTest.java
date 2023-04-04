@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -83,7 +84,9 @@ public class UdfSamplesTest {
         "{\"insertId\":5,\"severity\":\"DEBUG\"}",
         javascriptRuntime.invoke("{\"insertId\":5,\"severity\":\"DEBUG\"}"));
 
-    assertThrows(ScriptException.class, () -> javascriptRuntime.invoke("{\"insertId\":5}"));
+    ScriptException scriptException =
+        assertThrows(ScriptException.class, () -> javascriptRuntime.invoke("{\"insertId\":5}"));
+    assertThat(scriptException).hasMessageThat().contains("Unrecognized event. eventId=");
   }
 
   @Test

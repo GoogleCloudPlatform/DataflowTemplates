@@ -68,6 +68,10 @@ import org.apache.commons.lang3.ArrayUtils;
  * records from Pub/Sub to BigQuery.
  *
  * <p>Persistent failures are written to a Pub/Sub unprocessed topic.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-binary-to-bigquery/README_PubSub_Proto_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "PubSub_Proto_to_BigQuery",
@@ -78,6 +82,8 @@ import org.apache.commons.lang3.ArrayUtils;
             + " them to a BigQuery table.",
     optionsClass = PubSubProtoToBigQueryOptions.class,
     flexContainerName = "pubsub-proto-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-proto-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public final class PubsubProtoToBigQuery {
   private static final TupleTag<FailsafeElement<String, String>> UDF_SUCCESS_TAG = new TupleTag<>();

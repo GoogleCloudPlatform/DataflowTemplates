@@ -45,11 +45,14 @@ import java.time.Duration;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance tests for {@link PubSubToBigQuery PubSub to BigQuery} template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(PubSubToBigQuery.class)
 @RunWith(JUnit4.class)
 public class PubsubToBigQueryLT extends TemplateLoadTestBase {
@@ -81,11 +84,11 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        DefaultPubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
+        DefaultBigQueryResourceManager.builder(testName, project)
             .setCredentials(CREDENTIALS)
             .build();
   }
@@ -100,6 +103,7 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
     testBacklog10gb(Function.identity());
   }
 
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testBacklog10gbUsingStreamingEngine()
       throws IOException, ParseException, InterruptedException {
@@ -111,6 +115,7 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
     testSteadyState1hr(Function.identity());
   }
 
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testSteadyState1hrUsingStreamingEngine()
       throws ParseException, IOException, InterruptedException {
@@ -140,11 +145,11 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
                 LaunchConfig.builder(testName, SPEC_PATH)
                     .addEnvironment("maxWorkers", 100)
                     .addParameter("inputSubscription", backlogSubscription.toString())
-                    .addParameter("outputTableSpec", toTableSpec(PROJECT, table)))
+                    .addParameter("outputTableSpec", toTableSpec(project, table)))
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result =
         pipelineOperator.waitForConditionAndFinish(
@@ -182,11 +187,11 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
                 LaunchConfig.builder(testName, SPEC_PATH)
                     .addEnvironment("maxWorkers", 100)
                     .addParameter("inputSubscription", inputSubscription.toString())
-                    .addParameter("outputTableSpec", toTableSpec(PROJECT, table)))
+                    .addParameter("outputTableSpec", toTableSpec(project, table)))
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     // ElementCount metric in dataflow is approximate, allow for 1% difference
     Integer expectedMessages = (int) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);

@@ -61,76 +61,9 @@ import org.slf4j.LoggerFactory;
  *   <li>(Optional) A configured secure SSL connection for Kafka
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=id-of-my-project
- * BUCKET_NAME=my-bucket
- * REGION=my-region
- *
- * # Set containerization vars
- * IMAGE_NAME=my-image-name
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=my-base-container-image
- * BASE_CONTAINER_IMAGE_VERSION=my-base-container-image-version
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- *
- * # Create bucket in the cloud storage
- * gsutil mb gs://${BUCKET_NAME}
- *
- * # Go to the beam folder
- * cd /path/to/DataflowTemplates/v2
- *
- * <b>FLEX TEMPLATE</b>
- * # Assemble jar with dependencies
- * mvn clean install --pl ${MODULE_NAME} -am \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${COMMAND_SPEC} \
- * -Djib.applicationCache="/tmp/"
- *
- * # Go to the template folder
- * cd /path/to/DataflowTemplates/v2/pubsub-to-kafka
- *
- * # Build the flex template
- * export METADATA_FILEPATH=/path/to/DataflowTemplates/v2/pubsub-to-kafka/src/main/resources/pubsub_to_kafka_metadata.json
- * export TEMPLATE_SPEC_GCSPATH=gs://${BUCKET_NAME}/templates/specs/pubsubtokafka
- *
- * gcloud beta dataflow flex-template build $TEMPLATE_SPEC_GCSPATH \
- *     --image "${TARGET_GCR_IMAGE}" \
- *     --sdk-language "JAVA" \
- *     --metadata-file "${METADATA_FILEPATH}"
- *
- * # Execute template:
- * API_ROOT_URL="https://dataflow.googleapis.com"
- * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/locations/${REGION}/flexTemplates:launch"
- * JOB_NAME="pubsub-to-kafka-`date +%Y%m%d-%H%M%S-%N`"
- *
- * time curl -X POST -H "Content-Type: application/json" \
- *         -H "Authorization: Bearer $(gcloud auth print-access-token)" \
- *         -d '
- *          {
- *              "launch_parameter": {
- *                  "jobName": "'$JOB_NAME'",
- *                  "containerSpecGcsPath": "'$TEMPLATE_PATH'",
- *                  "parameters": {
- *                      "inputTopic": "projects/'$PROJECT'/topics/your-topic-name",
- *                      "bootstrapServer": "broker:9092",
- *                      "outputTopic": "topic",
- *                  "outputDeadLetterTopic": "projects/'$PROJECT'/topics/dead-letter-topic-name",
- *                      "javascriptTextTransformGcsPath": "gs://path/to/udf",
- *                      "javascriptTextTransformFunctionName": "your-js-function",
- *                      "secretStoreUrl": "http(s)://host:port/path/to/credentials",
- *                      "vaultToken": "your-token"
- *                  }
- *              }
- *          }
- *         '
- *         "${TEMPLATES_LAUNCH_API}"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-to-kafka/README_PubSub_to_Kafka.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "PubSub_to_Kafka",

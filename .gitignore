@@ -13,3 +13,6 @@
 # MacOSX Files
 **/.DS_Store/**/*
 **/.DS_Store
+
+# vscode setting files
+.vscode/

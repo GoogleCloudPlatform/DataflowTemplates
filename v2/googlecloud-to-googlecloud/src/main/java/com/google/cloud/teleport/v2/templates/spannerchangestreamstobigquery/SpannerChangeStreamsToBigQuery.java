@@ -82,6 +82,8 @@ import org.slf4j.LoggerFactory;
             + " using Dataflow Runner V2.",
     optionsClass = SpannerChangeStreamsToBigQueryOptions.class,
     flexContainerName = "spanner-changestreams-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public final class SpannerChangeStreamsToBigQuery {
 

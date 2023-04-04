@@ -15,8 +15,12 @@
  */
 package com.google.cloud.teleport.it;
 
-import com.google.cloud.teleport.it.dataflow.DirectRunnerClient;
+import com.google.cloud.teleport.it.launcher.DefaultPipelineLauncher;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -47,11 +51,21 @@ public class IOLoadTestBase extends LoadTestBase {
 
   @Override
   PipelineLauncher launcher() {
-    // TODO: the return value is a placeholder currently. Return a pipeline launcher object once
-    // there is a generic, non-template launcher available.
-    LOG.warn("launcher not fully supported yet.");
-    // DirectRunnerClient currently requires a template class as argument. Pass the test class for
-    // now.
-    return DirectRunnerClient.builder(this.getClass()).setCredentials(CREDENTIALS).build();
+    return DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
+  }
+
+  /** a utility DoFn that count element passed. */
+  protected static final class CountingFn<T> extends DoFn<T, Void> {
+
+    private final Counter elementCounter;
+
+    public CountingFn(String namespace, String name) {
+      elementCounter = Metrics.counter(namespace, name);
+    }
+
+    @ProcessElement
+    public void processElement() {
+      elementCounter.inc(1L);
+    }
   }
 }

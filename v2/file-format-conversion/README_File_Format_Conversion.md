@@ -3,8 +3,9 @@ Convert file formats between Avro, Parquet & CSV Template
 A pipeline to convert file formats between Avro, Parquet & csv.
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources.
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/file-format-conversion)
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=File_Format_Conversion).
+
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -12,7 +13,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Mandatory Parameters
+### Required Parameters
 
 * **inputFileFormat** (File format of the input files.): File format of the input files. Needs to be either avro, parquet or csv.
 * **outputFileFormat** (File format of the output files.): File format of the output files. Needs to be either avro or parquet.
@@ -33,20 +34,27 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **numShards** (Maximum output shards): The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Default value is decided by the runner.
 * **outputFilePrefix** (Output file prefix.): The prefix of the files to write to. Defaults to: output.
 
+
+
 ## Getting Started
 
 ### Requirements
 
 * Java 11
 * Maven
-* Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
-  following command:
-    * `gcloud auth login`
+  following commands:
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
-This README uses
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/file-format-conversion/src/main/java/com/google/cloud/teleport/v2/templates/FileFormatConversion.java)
+
+### Templates Plugin
+
+This README provides instructions using
 the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command to proceed:
+. Install the plugin with the following command before proceeding:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am
@@ -57,6 +65,7 @@ mvn clean install -pl plugins/templates-maven-plugin -am
 This template is a Flex Template, meaning that the pipeline code will be
 containerized and the container will be executed on Dataflow. Please
 check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+and [Configure Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates)
 for more information.
 
 #### Staging the Template
@@ -75,31 +84,37 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="File_Format_Conversion" \
--pl v2/file-format-conversion -am
+-pl v2/file-format-conversion \
+-am
 ```
 
-The command should print what is the template location on Cloud Storage:
+The command should build and save the template to Google Cloud, and then print
+the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://{BUCKET}/{PATH}
+Flex Template was staged! gs://<bucket-name>/templates/flex/File_Format_Conversion
 ```
 
+The specific path should be copied as it will be used in the following steps.
 
 #### Running the Template
 
 **Using the staged template**:
 
-You can use the path above to share or run the template.
+You can use the path above run the template (or share with others for execution).
 
-To start a job with the template at any time using `gcloud`, you can use:
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
 
 ```shell
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/File_Format_Conversion"
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/File_Format_Conversion"
 
-### Mandatory
+### Required
 export INPUT_FILE_FORMAT=<inputFileFormat>
 export OUTPUT_FILE_FORMAT=<outputFileFormat>
 export INPUT_FILE_SPEC=<inputFileSpec>
@@ -139,6 +154,9 @@ gcloud dataflow flex-template run "file-format-conversion-job" \
   --parameters "outputFilePrefix=$OUTPUT_FILE_PREFIX"
 ```
 
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
+
 
 **Using the plugin**:
 
@@ -151,7 +169,7 @@ export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
-### Mandatory
+### Required
 export INPUT_FILE_FORMAT=<inputFileFormat>
 export OUTPUT_FILE_FORMAT=<outputFileFormat>
 export INPUT_FILE_SPEC=<inputFileSpec>
@@ -178,5 +196,6 @@ mvn clean package -PtemplatesRun \
 -DjobName="file-format-conversion-job" \
 -DtemplateName="File_Format_Conversion" \
 -Dparameters="inputFileFormat=$INPUT_FILE_FORMAT,outputFileFormat=$OUTPUT_FILE_FORMAT,inputFileSpec=$INPUT_FILE_SPEC,containsHeaders=$CONTAINS_HEADERS,deadletterTable=$DEADLETTER_TABLE,delimiter=$DELIMITER,csvFormat=$CSV_FORMAT,jsonSchemaPath=$JSON_SCHEMA_PATH,largeNumFiles=$LARGE_NUM_FILES,csvFileEncoding=$CSV_FILE_ENCODING,logDetailedCsvConversionErrors=$LOG_DETAILED_CSV_CONVERSION_ERRORS,outputBucket=$OUTPUT_BUCKET,schema=$SCHEMA,numShards=$NUM_SHARDS,outputFilePrefix=$OUTPUT_FILE_PREFIX" \
--pl v2/file-format-conversion -am
+-pl v2/file-format-conversion \
+-am
 ```

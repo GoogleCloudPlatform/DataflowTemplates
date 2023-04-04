@@ -23,6 +23,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.it.IOLoadTestBase;
+import com.google.cloud.teleport.it.PipelineUtils;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.common.base.Strings;
@@ -31,7 +32,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Map;
@@ -44,15 +44,12 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.synthetic.SyntheticBoundedSource;
 import org.apache.beam.sdk.io.synthetic.SyntheticOptions;
 import org.apache.beam.sdk.io.synthetic.SyntheticSourceOptions;
-import org.apache.beam.sdk.metrics.Counter;
-import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestPipelineOptions;
 import org.apache.beam.sdk.testutils.metrics.MetricsReader;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.joda.time.Duration;
@@ -71,7 +68,7 @@ import org.slf4j.LoggerFactory;
  * <p>Example trigger command: "mvn test -pl it -am -Dtest="BigQueryIOLT" -Dproject=[gcpProject] \
  * -DartifactBucket=[temp bucket] -DfailIfNoTests=false".
  */
-public class BigQueryIOLT extends IOLoadTestBase {
+public final class BigQueryIOLT extends IOLoadTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryIOLT.class);
 
@@ -89,10 +86,10 @@ public class BigQueryIOLT extends IOLoadTestBase {
   @BeforeClass
   public static void beforeClass() {
     resourceManager =
-        DefaultBigQueryResourceManager.builder("io-bigquery-lt", PROJECT)
+        DefaultBigQueryResourceManager.builder("io-bigquery-lt", project)
             .setCredentials(CREDENTIALS)
             .build();
-    resourceManager.createDataset(REGION);
+    resourceManager.createDataset(region);
   }
 
   @Before
@@ -103,7 +100,7 @@ public class BigQueryIOLT extends IOLoadTestBase {
                 .withZone(ZoneId.of("UTC"))
                 .format(java.time.Instant.now())
             + UUID.randomUUID().toString().substring(0, 10);
-    tableQualifier = String.format("%s:%s.%s", PROJECT, resourceManager.getDatasetId(), tableName);
+    tableQualifier = String.format("%s:%s.%s", project, resourceManager.getDatasetId(), tableName);
 
     String testConfig =
         TestProperties.getProperty("configuration", "local", TestProperties.Type.PROPERTY);
@@ -116,10 +113,14 @@ public class BigQueryIOLT extends IOLoadTestBase {
     }
     // tempLocation needs to be set for bigquery IO writes
     if (!Strings.isNullOrEmpty(tempBucketName)) {
-      tempLocation = String.format("gs://%s/", tempBucketName);
+      tempLocation = String.format("gs://%s/temp/", tempBucketName);
+      writePipeline.getOptions().as(TestPipelineOptions.class).setTempRoot(tempLocation);
+      writePipeline.getOptions().setTempLocation(tempLocation);
       readPipeline.getOptions().as(TestPipelineOptions.class).setTempRoot(tempLocation);
       readPipeline.getOptions().setTempLocation(tempLocation);
     }
+    writePipeline.getOptions().setRunner(PipelineUtils.getRunnerClass(configuration.getRunner()));
+    readPipeline.getOptions().setRunner(PipelineUtils.getRunnerClass(configuration.getRunner()));
   }
 
   @AfterClass
@@ -205,11 +206,8 @@ public class BigQueryIOLT extends IOLoadTestBase {
   private void testWrite(BigQueryIO.Write<byte[]> writeIO) throws IOException {
     BigQueryIO.Write.Method method =
         BigQueryIO.Write.Method.valueOf(configuration.getWriteMethod());
-    ArrayList<String> pipelineArgs = new ArrayList<String>();
-    pipelineArgs.add("--runner=" + configuration.getRunner());
     if (method == BigQueryIO.Write.Method.STREAMING_INSERTS) {
-      // set streaming for STREAMING_INSERTS write
-      pipelineArgs.add("--streaming");
+      writePipeline.getOptions().as(StreamingOptions.class).setStreaming(true);
     }
     SyntheticSourceOptions sourceOption =
         SyntheticOptions.fromJsonString(
@@ -228,7 +226,7 @@ public class BigQueryIOLT extends IOLoadTestBase {
                             Collections.singletonList(
                                 new TableFieldSchema().setName("data").setType("BYTES"))))
                 .withCustomGcsTempLocation(ValueProvider.StaticValueProvider.of(tempLocation)));
-    PipelineResult pipelineResult = writePipeline.runWithAdditionalOptionArgs(pipelineArgs);
+    PipelineResult pipelineResult = writePipeline.run();
     PipelineResult.State pipelineState =
         configuration.getPipelineTimeout() <= 0
             ? pipelineResult.waitUntilFinish()
@@ -239,11 +237,6 @@ public class BigQueryIOLT extends IOLoadTestBase {
   }
 
   private void testRead() throws IOException {
-    ArrayList<String> pipelineArgs = new ArrayList<String>();
-    pipelineArgs.add("--runner=" + configuration.getRunner());
-    if (!Strings.isNullOrEmpty(tempLocation)) {
-      pipelineArgs.add("--tempLocation=" + tempLocation);
-    }
     SyntheticSourceOptions sourceOption =
         SyntheticOptions.fromJsonString(
             configuration.getSourceOptions(), SyntheticSourceOptions.class);
@@ -252,7 +245,6 @@ public class BigQueryIOLT extends IOLoadTestBase {
         .apply("Read from BQ", BigQueryIO.readTableRows().from(tableQualifier))
         .apply("Counting element", ParDo.of(new CountingFn<>(NAMESPACE, READ_ELEMENT_METRIC_NAME)));
 
-    LOG.info("pipeline options: {}", readPipeline.getOptions());
     PipelineResult pipelineResult = readPipeline.run();
     PipelineResult.State pipelineState =
         configuration.getPipelineTimeout() <= 0
@@ -271,20 +263,6 @@ public class BigQueryIOLT extends IOLoadTestBase {
     @ProcessElement
     public void process(ProcessContext context) {
       context.output(context.element().getValue());
-    }
-  }
-
-  private static class CountingFn<T> extends DoFn<T, Void> {
-
-    private final Counter elementCounter;
-
-    CountingFn(String namespace, String name) {
-      elementCounter = Metrics.counter(namespace, name);
-    }
-
-    @ProcessElement
-    public void processElement() {
-      elementCounter.inc(1L);
     }
   }
 

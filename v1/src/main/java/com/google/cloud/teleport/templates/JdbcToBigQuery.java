@@ -20,6 +20,7 @@ import com.google.cloud.teleport.io.DynamicJdbcIO;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.templates.common.JdbcConverters;
+import com.google.cloud.teleport.util.GCSAwareValueProvider;
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -32,14 +33,22 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Jdbc_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Jdbc_to_BigQuery",
     category = TemplateCategory.BATCH,
     displayName = "JDBC to BigQuery",
     description =
-        "A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\"  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\" -H \"Authorization: Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type: application/json\"",
+        "A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format.",
+    additionalHelp =
+        "A sample curl command for the KMS API encrypt endpoint: curl -s -X POST \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\"  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\" -H \"Authorization: Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type: application/json\"",
     optionsClass = JdbcConverters.JdbcToBigQueryOptions.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class JdbcToBigQuery {
 
@@ -101,7 +110,7 @@ public class JdbcToBigQuery {
                             maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
                         .withDriverJars(options.getDriverJars())
                         .withConnectionProperties(options.getConnectionProperties()))
-                .withQuery(options.getQuery())
+                .withQuery(new GCSAwareValueProvider(options.getQuery()))
                 .withCoder(TableRowJsonCoder.of())
                 .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())))
         /*

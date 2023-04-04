@@ -40,6 +40,7 @@ import java.util.Map;
 import javax.annotation.Nullable;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
@@ -63,12 +64,12 @@ public abstract class LoadTestBase {
   private static final double PD_SSD_PER_GB_HR = 0.000298;
   private static final double SHUFFLE_PER_GB_BATCH = 0.011;
   private static final double SHUFFLE_PER_GB_STREAMING = 0.018;
-  protected static final String PROJECT = TestProperties.project();
-  protected static final String REGION = TestProperties.region();
-  protected static final String HOST_IP = TestProperties.hostIp();
   protected static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   protected static final CredentialsProvider CREDENTIALS_PROVIDER =
       FixedCredentialsProvider.create(CREDENTIALS);
+  protected static String project;
+  protected static String region;
+  protected static String hostIp;
   protected static MonitoringClient monitoringClient;
   protected static PipelineLauncher pipelineLauncher;
   protected static PipelineOperator pipelineOperator;
@@ -85,8 +86,15 @@ public abstract class LoadTestBase {
         }
       };
 
+  @BeforeClass
+  public static void setUpLoadTestBase() {
+    project = TestProperties.project();
+    region = TestProperties.region();
+    hostIp = TestProperties.hostIp();
+  }
+
   @Before
-  public void setUpPerformanceBenchmarkingBase() throws IOException {
+  public void setUp() throws IOException {
     monitoringClient =
         MonitoringClient.builder().setCredentialsProvider(CREDENTIALS_PROVIDER).build();
     pipelineLauncher = launcher();
@@ -110,9 +118,9 @@ public abstract class LoadTestBase {
     LOG.info("Exporting metrics:\n{}", formatForLogging(metrics));
     try {
       // either use the user specified project for exporting, or the same project
-      String project = MoreObjects.firstNonNull(TestProperties.exportProject(), PROJECT);
+      String exportProject = MoreObjects.firstNonNull(TestProperties.exportProject(), project);
       BigQueryResourceManager bigQueryResourceManager =
-          DefaultBigQueryResourceManager.builder(testName, project)
+          DefaultBigQueryResourceManager.builder(testName, exportProject)
               .setDatasetId(TestProperties.exportDataset())
               .setCredentials(CREDENTIALS)
               .build();
@@ -162,7 +170,7 @@ public abstract class LoadTestBase {
     try {
       // the element count metric always follows the pattern <pcollection name>-ElementCount
       String metricName = pcollection.replace(".", "-") + "-ElementCount";
-      Double metric = pipelineLauncher.getMetric(PROJECT, REGION, jobId, metricName);
+      Double metric = pipelineLauncher.getMetric(project, region, jobId, metricName);
       if ((metric != null) && (metric >= (double) expectedElements)) {
         return true;
       }
@@ -196,8 +204,8 @@ public abstract class LoadTestBase {
     // instead of hard coding X minutes.
     LOG.info("Sleeping for 4 minutes to query metrics.");
     Thread.sleep(Duration.ofMinutes(4).toMillis());
-    Map<String, Double> metrics = pipelineLauncher.getMetrics(PROJECT, REGION, launchInfo.jobId());
-    LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), PROJECT);
+    Map<String, Double> metrics = pipelineLauncher.getMetrics(project, region, launchInfo.jobId());
+    LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), project);
     double cost = 0;
     if (launchInfo.jobType().equals("JOB_TYPE_STREAMING")) {
       cost += metrics.get("TotalVcpuTime") / 3600 * VCPU_PER_HR_STREAMING;
@@ -214,8 +222,8 @@ public abstract class LoadTestBase {
     cost += metrics.get("TotalPdUsage") / 3600 * PD_PER_GB_HR;
     cost += metrics.get("TotalSsdUsage") / 3600 * PD_SSD_PER_GB_HR;
     metrics.put("EstimatedCost", cost);
-    metrics.put("ElapsedTime", monitoringClient.getElapsedTime(PROJECT, launchInfo));
-    Double dataProcessed = monitoringClient.getDataProcessed(PROJECT, launchInfo, inputPcollection);
+    metrics.put("ElapsedTime", monitoringClient.getElapsedTime(project, launchInfo));
+    Double dataProcessed = monitoringClient.getDataProcessed(project, launchInfo, inputPcollection);
     if (dataProcessed != null) {
       metrics.put("EstimatedDataProcessedGB", dataProcessed / 1e9d);
     }
@@ -264,7 +272,7 @@ public abstract class LoadTestBase {
    */
   protected Map<String, Double> getCpuUtilizationMetrics(LaunchInfo launchInfo)
       throws ParseException {
-    List<Double> cpuUtilization = monitoringClient.getCpuUtilization(PROJECT, launchInfo);
+    List<Double> cpuUtilization = monitoringClient.getCpuUtilization(project, launchInfo);
     Map<String, Double> cpuUtilizationMetrics = new HashMap<>();
     if (cpuUtilization == null) {
       return cpuUtilizationMetrics;
@@ -287,9 +295,9 @@ public abstract class LoadTestBase {
       LaunchInfo launchInfo, @Nullable String inputPtransform, @Nullable String outputPtransform)
       throws ParseException {
     List<Double> inputThroughput =
-        monitoringClient.getThroughputOfPtransform(PROJECT, launchInfo, inputPtransform);
+        monitoringClient.getThroughputOfPtransform(project, launchInfo, inputPtransform);
     List<Double> outputThroughput =
-        monitoringClient.getThroughputOfPtransform(PROJECT, launchInfo, outputPtransform);
+        monitoringClient.getThroughputOfPtransform(project, launchInfo, outputPtransform);
     return getThroughputMetrics(inputThroughput, outputThroughput);
   }
 
@@ -306,9 +314,9 @@ public abstract class LoadTestBase {
       LaunchInfo launchInfo, @Nullable String inputPcollection, @Nullable String outputPcollection)
       throws ParseException {
     List<Double> inputThroughput =
-        monitoringClient.getThroughputOfPcollection(PROJECT, launchInfo, inputPcollection);
+        monitoringClient.getThroughputOfPcollection(project, launchInfo, inputPcollection);
     List<Double> outputThroughput =
-        monitoringClient.getThroughputOfPcollection(PROJECT, launchInfo, outputPcollection);
+        monitoringClient.getThroughputOfPcollection(project, launchInfo, outputPcollection);
     return getThroughputMetrics(inputThroughput, outputThroughput);
   }
 
@@ -321,7 +329,7 @@ public abstract class LoadTestBase {
    */
   protected Map<String, Double> getDataFreshnessMetrics(LaunchInfo launchInfo)
       throws ParseException {
-    List<Double> dataFreshness = monitoringClient.getDataFreshness(PROJECT, launchInfo);
+    List<Double> dataFreshness = monitoringClient.getDataFreshness(project, launchInfo);
     Map<String, Double> dataFreshnessMetrics = new HashMap<>();
     if (dataFreshness == null) {
       return dataFreshnessMetrics;
@@ -340,7 +348,7 @@ public abstract class LoadTestBase {
    */
   protected Map<String, Double> getSystemLatencyMetrics(LaunchInfo launchInfo)
       throws ParseException {
-    List<Double> systemLatency = monitoringClient.getSystemLatency(PROJECT, launchInfo);
+    List<Double> systemLatency = monitoringClient.getSystemLatency(project, launchInfo);
     Map<String, Double> systemLatencyMetrics = new HashMap<>();
     if (systemLatency == null) {
       return systemLatencyMetrics;
@@ -371,8 +379,8 @@ public abstract class LoadTestBase {
   public static PipelineOperator.Config createConfig(LaunchInfo info, Duration timeout) {
     return PipelineOperator.Config.builder()
         .setJobId(info.jobId())
-        .setProject(PROJECT)
-        .setRegion(REGION)
+        .setProject(project)
+        .setRegion(region)
         .setTimeoutAfter(timeout)
         .build();
   }

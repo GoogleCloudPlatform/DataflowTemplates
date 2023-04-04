@@ -36,6 +36,9 @@ public @interface Template {
   /** The description of the template. */
   String description();
 
+  /** Additional help information to display on documentations. */
+  String additionalHelp() default "";
+
   /** Container name to stage (required for Flex templates). */
   String flexContainerName() default "";
 
@@ -62,6 +65,9 @@ public @interface Template {
 
   /** An array that specifies the orders. */
   Class<?>[] optionsOrder() default void.class;
+
+  /** Link to the documentation. */
+  String documentation() default "";
 
   /** Contact information for the Template. */
   String contactInformation() default "";

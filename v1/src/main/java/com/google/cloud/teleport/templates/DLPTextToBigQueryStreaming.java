@@ -102,39 +102,9 @@ import org.slf4j.LoggerFactory;
  *   <li>The BigQuery Dataset exists
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * BUCKET_NAME=BUCKET NAME HERE
- * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/dlp-text-to-bigquery
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.DLPTextToBigQueryStreaming \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}"
- *
- * # Execute the template
- * JOB_NAME=dlp-text-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputFilePattern=gs://{bucketName}/{fileName}.csv, batchSize=15,datasetName={BQDatasetId},
- *  dlpProjectId={projectId},
- *  deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Stream_DLP_GCS_Text_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Stream_DLP_GCS_Text_to_BigQuery",
@@ -143,6 +113,8 @@ import org.slf4j.LoggerFactory;
     description =
         "An example pipeline that reads CSV files from Cloud Storage, uses Cloud DLP API to mask and tokenize data based on the DLP templates provided and stores output in BigQuery. Note, not all configuration settings are available in this default template. You may need to deploy a custom template to accommodate your specific environment and data needs. More details here: https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp",
     optionsClass = TokenizePipelineOptions.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/dlp-text-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class DLPTextToBigQueryStreaming {
 

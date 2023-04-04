@@ -30,7 +30,15 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 
-/** Dataflow template which deletes pulled Datastore Entities. */
+/**
+ * Dataflow template which deletes pulled Datastore Entities.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Datastore_to_Datastore_Delete.md">README
+ * Datastore</a> or <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Firestore_to_Firestore_Delete.md">README
+ * Firestore</a> for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Datastore_to_Datastore_Delete",
     category = TemplateCategory.UTILITIES,
@@ -45,6 +53,8 @@ import org.apache.beam.sdk.options.ValueProvider;
       "firestoreDeleteProjectId",
       "firestoreHintNumWorkers"
     },
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-bulk-delete",
     contactInformation = "https://cloud.google.com/support")
 @Template(
     name = "Firestore_to_Firestore_Delete",
@@ -65,6 +75,8 @@ import org.apache.beam.sdk.options.ValueProvider;
       "datastoreDeleteProjectId",
       "datastoreHintNumWorkers"
     },
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/firestore-bulk-delete",
     contactInformation = "https://cloud.google.com/support")
 public class DatastoreToDatastoreDelete {
 

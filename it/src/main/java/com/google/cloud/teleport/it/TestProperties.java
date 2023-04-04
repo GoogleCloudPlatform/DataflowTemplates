@@ -77,6 +77,25 @@ public final class TestProperties {
     return getProperty(ACCESS_TOKEN_KEY, Type.ENVIRONMENT_VARIABLE, true);
   }
 
+  /**
+   * Create and return credentials based on whether access token was provided or not.
+   *
+   * <p>If access token was provided, use the token for Bearer authentication.
+   *
+   * <p>If not, use Application Default Credentials. Check
+   * https://cloud.google.com/docs/authentication/application-default-credentials for more
+   * information.
+   *
+   * @return Credentials.
+   */
+  public static Credentials credentials() {
+    if (hasAccessToken()) {
+      return googleCredentials();
+    } else {
+      return buildCredentialsFromEnv();
+    }
+  }
+
   public static Credentials googleCredentials() {
     Credentials credentials;
     try {
@@ -185,23 +204,29 @@ public final class TestProperties {
    * application default, which is often setup through <strong>gcloud auth application-default
    * login</strong>.
    */
-  public static Credentials buildCredentialsFromEnv() throws IOException {
-
-    // if on Compute Engine, return default credentials.
-    GoogleCredentials applicationDefault = ServiceAccountCredentials.getApplicationDefault();
+  public static Credentials buildCredentialsFromEnv() {
     try {
-      if (applicationDefault instanceof ComputeEngineCredentials) {
+
+      // if on Compute Engine, return default credentials.
+      GoogleCredentials applicationDefault = ServiceAccountCredentials.getApplicationDefault();
+      try {
+        if (applicationDefault instanceof ComputeEngineCredentials) {
+          return applicationDefault;
+        }
+      } catch (Exception e) {
+        // no problem
+      }
+
+      InputStream credentialsStream = getCredentialsStream();
+      if (credentialsStream == null) {
         return applicationDefault;
       }
-    } catch (Exception e) {
-      // no problem
+      return ServiceAccountCredentials.fromStream(credentialsStream);
+    } catch (IOException e) {
+      throw new RuntimeException(
+          "Unable to get application default credentials! \n"
+              + "Check https://cloud.google.com/docs/authentication/application-default-credentials for more information.");
     }
-
-    InputStream credentialsStream = getCredentialsStream();
-    if (credentialsStream == null) {
-      return applicationDefault;
-    }
-    return ServiceAccountCredentials.fromStream(credentialsStream);
   }
 
   private static InputStream getCredentialsStream() throws FileNotFoundException {

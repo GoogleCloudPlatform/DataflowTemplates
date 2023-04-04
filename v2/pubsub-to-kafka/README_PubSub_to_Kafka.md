@@ -2,6 +2,10 @@ Pub/Sub to Kafka Template
 ---
 A streaming pipeline which inserts data from a Pub/Sub Topic and transforms them using a JavaScript user-defined function (UDF)(Optional), and writes them to kafka topic.
 
+:memo: This is a Google-provided template! Please
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_to_Kafka).
+
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -9,7 +13,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Mandatory Parameters
+### Required Parameters
 
 * **inputTopic** (Input Pub/Sub topic): The name of the topic from which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
 * **outputTopic** (Kafka topic to write the input from pubsub): Kafka topic to write the input from pubsub. (Example: topic).
@@ -23,20 +27,37 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
 * **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
 
+
+## User-Defined functions (UDFs)
+
+The Pub/Sub to Kafka Template supports User-Defined functions (UDFs).
+UDFs allow you to customize functionality by providing a JavaScript function
+without having to maintain or build the entire template code.
+
+Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
+and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
+for more information about how to create and test those functions.
+
+
 ## Getting Started
 
 ### Requirements
 
 * Java 11
 * Maven
-* Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
-  following command:
-    * `gcloud auth login`
+  following commands:
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
-This README uses
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/pubsub-to-kafka/src/main/java/com/google/cloud/teleport/v2/templates/PubsubToKafka.java)
+
+### Templates Plugin
+
+This README provides instructions using
 the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command to proceed:
+. Install the plugin with the following command before proceeding:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am
@@ -47,6 +68,7 @@ mvn clean install -pl plugins/templates-maven-plugin -am
 This template is a Flex Template, meaning that the pipeline code will be
 containerized and the container will be executed on Dataflow. Please
 check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+and [Configure Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates)
 for more information.
 
 #### Staging the Template
@@ -65,31 +87,37 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="PubSub_to_Kafka" \
--pl v2/pubsub-to-kafka -am
+-pl v2/pubsub-to-kafka \
+-am
 ```
 
-The command should print what is the template location on Cloud Storage:
+The command should build and save the template to Google Cloud, and then print
+the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://{BUCKET}/{PATH}
+Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_to_Kafka
 ```
 
+The specific path should be copied as it will be used in the following steps.
 
 #### Running the Template
 
 **Using the staged template**:
 
-You can use the path above to share or run the template.
+You can use the path above run the template (or share with others for execution).
 
-To start a job with the template at any time using `gcloud`, you can use:
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
 
 ```shell
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_to_Kafka"
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_to_Kafka"
 
-### Mandatory
+### Required
 export INPUT_TOPIC=<inputTopic>
 export OUTPUT_TOPIC=<outputTopic>
 export OUTPUT_DEAD_LETTER_TOPIC=<outputDeadLetterTopic>
@@ -115,6 +143,9 @@ gcloud dataflow flex-template run "pubsub-to-kafka-job" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME"
 ```
 
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
+
 
 **Using the plugin**:
 
@@ -127,7 +158,7 @@ export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
-### Mandatory
+### Required
 export INPUT_TOPIC=<inputTopic>
 export OUTPUT_TOPIC=<outputTopic>
 export OUTPUT_DEAD_LETTER_TOPIC=<outputDeadLetterTopic>
@@ -147,5 +178,6 @@ mvn clean package -PtemplatesRun \
 -DjobName="pubsub-to-kafka-job" \
 -DtemplateName="PubSub_to_Kafka" \
 -Dparameters="inputTopic=$INPUT_TOPIC,bootstrapServer=$BOOTSTRAP_SERVER,outputTopic=$OUTPUT_TOPIC,outputDeadLetterTopic=$OUTPUT_DEAD_LETTER_TOPIC,secretStoreUrl=$SECRET_STORE_URL,vaultToken=$VAULT_TOKEN,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
--pl v2/pubsub-to-kafka -am
+-pl v2/pubsub-to-kafka \
+-am
 ```

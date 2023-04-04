@@ -46,9 +46,9 @@ import org.slf4j.LoggerFactory;
  * The {@link GCSToElasticsearch} pipeline exports data from one or more CSV files in Cloud Storage
  * to Elasticsearch.
  *
- * <p>Please refer to <b><a href=
- * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/docs/GCSToElasticsearch/README.md">
- * README.md</a></b> for further information.
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-elasticsearch/README_GCS_to_Elasticsearch.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_to_Elasticsearch",
@@ -59,6 +59,8 @@ import org.slf4j.LoggerFactory;
             + " as a json document.",
     optionsClass = GCSToElasticsearchOptions.class,
     flexContainerName = "gcs-to-elasticsearch",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-elasticsearch",
     contactInformation = "https://cloud.google.com/support")
 public class GCSToElasticsearch {
 

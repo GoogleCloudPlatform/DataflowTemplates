@@ -49,9 +49,9 @@ public class MqttToPubsubTestIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(MqttToPubsubTestIT.class);
 
-  private static HiveMQContainer hiveMQContainer;
-  private static PubsubResourceManager pubsubClient;
-  private static Mqtt5BlockingClient mqttClient;
+  private HiveMQContainer hiveMQContainer;
+  private PubsubResourceManager pubsubClient;
+  private Mqtt5BlockingClient mqttClient;
 
   @Before
   public void setup() throws IOException {

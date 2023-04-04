@@ -19,7 +19,6 @@ import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRe
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
-import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +30,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 /** Integration tests for JDBC Resource Managers. */
 @Category(TestContainersIntegrationTest.class)
@@ -85,11 +85,11 @@ public class AbstractJDBCResourceManagerIT {
       JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
       rm.createTable(TABLE_NAME, schema);
 
-      Map<Object, List<Object>> rows = new LinkedHashMap<>();
-      rows.put(0, ImmutableList.of("John", "Doe", 23));
-      rows.put(1, ImmutableList.of("Jane", "Doe", 42L));
-      rows.put(2, List.of('A', 'B', 1));
-      rm.write(TABLE_NAME, rows, ImmutableList.of());
+      List<Map<String, Object>> rows = new ArrayList<>();
+      rows.add(ImmutableMap.of("id", 0, "first", "John", "last", "Doe", "age", 23));
+      rows.add(ImmutableMap.of("id", 1, "first", "Jane", "last", "Doe", "age", 42));
+      rows.add(ImmutableMap.of("id", 2, "first", "A", "last", "B", "age", 1));
+      rm.write(TABLE_NAME, rows);
 
       List<String> validateSchema = new ArrayList<>(columns.keySet());
       List<Map<String, Object>> fetchRows = rm.readTable(TABLE_NAME);
@@ -98,12 +98,7 @@ public class AbstractJDBCResourceManagerIT {
       assertThat(toUpperCase(rm.getTableSchema(TABLE_NAME)))
           .containsExactlyElementsIn(toUpperCase(validateSchema));
       assertThat(fetchRows).hasSize(3);
-      assertThatRecords(fetchRows)
-          .hasRecordsUnorderedCaseInsensitiveColumns(
-              List.of(
-                  Map.of("id", 0, "first", "John", "last", "Doe", "age", "23"),
-                  Map.of("id", 1, "first", "Jane", "last", "Doe", "age", "42"),
-                  Map.of("id", 2, "first", "A", "last", "B", "age", "1")));
+      assertThatRecords(fetchRows).hasRecordsUnorderedCaseInsensitiveColumns(rows);
     } finally {
       rm.cleanupAll();
     }

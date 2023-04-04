@@ -43,10 +43,12 @@ import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance tests for {@link ExportPipeline Spanner to GCS Avro} template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(ExportPipeline.class)
 @RunWith(JUnit4.class)
 public class ExportPipelineLT extends TemplateLoadTestBase {
@@ -69,7 +71,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
+        DefaultSpannerResourceManager.builder(testName, project, region).build();
     Storage storageClient = createStorageClient(CREDENTIALS);
     gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
   }
@@ -109,7 +111,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
             .setQPS("1000000")
             .setMessagesLimit(NUM_MESSAGES)
             .setSinkType("SPANNER")
-            .setProjectId(PROJECT)
+            .setProjectId(project)
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
             .setSpannerTableName(name)
@@ -127,13 +129,13 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 
     // Assert
     assertThatResult(result).isLaunchFinished();
-    // check to see if messages reached the output topic
+    // check to see if messages reached the output bucket
     assertThat(gcsClient.listArtifacts(name, Pattern.compile(".*"))).isNotEmpty();
 
     // export results

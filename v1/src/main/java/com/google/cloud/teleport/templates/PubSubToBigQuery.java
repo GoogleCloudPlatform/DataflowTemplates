@@ -80,53 +80,11 @@ import org.slf4j.LoggerFactory;
  *   <li>The BigQuery output table exists.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * BUCKET_NAME=BUCKET NAME HERE
- * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/pubsub-to-bigquery
- * USE_SUBSCRIPTION=true or false depending on whether the pipeline should read
- *                  from a Pub/Sub Subscription or a Pub/Sub Topic.
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.PubSubToBigQuery \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}
- * --useSubscription=${USE_SUBSCRIPTION}
- * "
- *
- * # Execute the template
- * JOB_NAME=pubsub-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * # Execute a pipeline to read from a Topic.
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputTopic=projects/${PROJECT_ID}/topics/input-topic-name,\
- * outputTableSpec=${PROJECT_ID}:dataset-id.output-table,\
- * outputDeadletterTable=${PROJECT_ID}:dataset-id.deadletter-table"
- *
- * # Execute a pipeline to read from a Subscription.
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputSubscription=projects/${PROJECT_ID}/subscriptions/input-subscription-name,\
- * outputTableSpec=${PROJECT_ID}:dataset-id.output-table,\
- * outputDeadletterTable=${PROJECT_ID}:dataset-id.deadletter-table"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_PubSub_Subscription_to_BigQuery.md">README
+ * for Subscription</a> or <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_PubSub_to_BigQuery.md">README
+ * for Topic</a> for instructions on how to use or modify this template.
  */
 @Template(
     name = "PubSub_Subscription_to_BigQuery",
@@ -138,6 +96,8 @@ import org.slf4j.LoggerFactory;
             + " pre-existing BigQuery table as BigQuery elements.",
     optionsClass = Options.class,
     skipOptions = "inputTopic",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-subscription-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 @Template(
     name = "PubSub_to_BigQuery",
@@ -149,6 +109,8 @@ import org.slf4j.LoggerFactory;
             + " BigQuery table as BigQuery elements.",
     optionsClass = Options.class,
     skipOptions = "inputSubscription",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class PubSubToBigQuery {
 

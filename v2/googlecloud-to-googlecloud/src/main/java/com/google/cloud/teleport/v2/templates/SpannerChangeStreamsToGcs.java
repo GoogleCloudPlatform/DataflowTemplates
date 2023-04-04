@@ -40,6 +40,10 @@ import org.slf4j.LoggerFactory;
  * The {@link SpannerChangeStreamsToGcs} pipeline streams change stream record(s) and stores to
  * Google Cloud Storage bucket in user specified format. The sink data can be stored in a Text or
  * Avro file format.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Spanner_Change_Streams_to_Google_Cloud_Storage.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Spanner_Change_Streams_to_Google_Cloud_Storage",
@@ -50,6 +54,8 @@ import org.slf4j.LoggerFactory;
             + " Cloud Storage bucket using Dataflow Runner V2.",
     optionsClass = SpannerChangeStreamsToGcsOptions.class,
     flexContainerName = "spanner-changestreams-to-gcs",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 public class SpannerChangeStreamsToGcs {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToGcs.class);

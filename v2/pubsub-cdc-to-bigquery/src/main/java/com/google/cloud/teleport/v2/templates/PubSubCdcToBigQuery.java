@@ -89,47 +89,9 @@ import org.slf4j.LoggerFactory;
  *   <li>The BigQuery output table exists or auto-mapping parameter is enabled.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=project-id
- * BUCKET_NAME=gs://bucket-name
- * PIPELINE_FOLDER=${BUCKET_NAME}/dataflow/pipelines/pubsub-to-bigquery
- * SUBSCRIPTION=projects/${PROJECT}/subscriptions/pubsub-subscription-name
- * AUTOMAP_TABLES=false or true depedning if automatic new table/column handling is required.
- * DATASET_TEMPLATE=dataset-name
- * TABLE_NAME_TEMPLATE=table-name
- * DEADLETTER_TABLE=${PROJECT}:${DATASET_TEMPLATE}.dead_letter
- *
- * # Set containerization vars
- * IMAGE_NAME=pubsub-cdc-to-bigquery
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
- * BASE_CONTAINER_IMAGE_VERSION=latest
- * APP_ROOT=/template/pubsub-cdc-to-bigquery
- * DATAFLOW_JAVA_COMMAND_SPEC=${APP_ROOT}/resources/pubsub-cdc-to-bigquery-command-spec.json
- * TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/pubsub-cdc-to-bigquery-image-spec.json
- *
- * # Build and upload image
- * mvn clean package \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${DATAFLOW_JAVA_COMMAND_SPEC} \
- * -am -pl pubsub-cdc-to-bigquery
- *
- * # Create a template spec containing the details of image location and metadata in GCS
- *   as specified in README.md file
- *
- * # Execute template:
- * JOB_NAME="pubsub-cdc-to-bigquery-`date +%Y%m%d-%H%M%S-%N`"
- * gcloud beta dataflow flex-template run ${JOB_NAME} \
- *      --project=${PROJECT} --region=us-central1 \
- *      --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
- *      --parameters inputSubscription=${SUBSCRIPTION},outputDatasetTemplate=${DATASET_TEMPLATE},outputTableNameTemplate=${TABLE_NAME_TEMPLATE},autoMapTables=${AUTOMAP_TABLES}
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-cdc-to-bigquery/README_PubSub_CDC_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "PubSub_CDC_to_BigQuery",

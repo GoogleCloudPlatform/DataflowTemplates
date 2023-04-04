@@ -32,8 +32,8 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.bigquery.BigQueryTestUtils;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.common.BigQueryTestUtil;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.elasticsearch.DefaultElasticsearchResourceManager;
 import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
@@ -89,7 +89,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   public void testBigQueryToElasticsearch() throws IOException {
     // Arrange
     Tuple<Schema, List<RowToInsert>> generatedTable =
-        BigQueryTestUtils.generateBigQueryTable(
+        BigQueryTestUtil.generateBigQueryTable(
             BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
     Schema bigQuerySchema = generatedTable.x();
     List<RowToInsert> bigQueryRows = generatedTable.y();
@@ -123,7 +123,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   public void testBigQueryToElasticsearchQuery() throws IOException {
     // Arrange
     Tuple<Schema, List<RowToInsert>> generatedTable =
-        BigQueryTestUtils.generateBigQueryTable(
+        BigQueryTestUtil.generateBigQueryTable(
             BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
     Schema bigQuerySchema = generatedTable.x();
     List<RowToInsert> bigQueryRows = generatedTable.y();
@@ -158,7 +158,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   @Test
   public void testBigQueryToElasticsearchUdf() throws IOException {
     // Arrange
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "udf.js",
         "function uppercaseName(value) {\n"
             + "  const data = JSON.parse(value);\n"

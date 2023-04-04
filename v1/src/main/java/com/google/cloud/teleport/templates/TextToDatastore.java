@@ -36,8 +36,14 @@ import org.apache.beam.sdk.values.TupleTag;
 
 /**
  * Dataflow template which reads from a Text Source and writes JSON encoded Entities into Datastore.
- * The Json is expected to be in the format of:
- * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
+ * The JSON is expected to be in the format of: <a
+ * href="https://cloud.google.com/datastore/docs/reference/rest/v1/Entity">Entity</a>
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Text_to_Datastore.md">README
+ * Datastore</a> or <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Text_to_Firestore.md">README
+ * Firestore</a> for instructions on how to use or modify this template.
  */
 @MultiTemplate({
   @Template(
@@ -53,6 +59,8 @@ import org.apache.beam.sdk.values.TupleTag;
         "firestoreWriteNamespace",
         "firestoreHintNumWorkers"
       },
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-datastore",
       contactInformation = "https://cloud.google.com/support"),
   @Template(
       name = "GCS_Text_to_Firestore",
@@ -67,6 +75,8 @@ import org.apache.beam.sdk.values.TupleTag;
         "datastoreWriteNamespace",
         "datastoreHintNumWorkers"
       },
+      documentation =
+          "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-firestore",
       contactInformation = "https://cloud.google.com/support")
 })
 public class TextToDatastore {

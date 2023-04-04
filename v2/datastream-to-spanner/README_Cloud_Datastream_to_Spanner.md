@@ -3,8 +3,9 @@ Datastream to Cloud Spanner Template
 Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and writes them to a pre-existing set of tables in Cloud Spanner.
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources.
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-cloud-spanner)
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Datastream_to_Spanner).
+
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -12,7 +13,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## Parameters
 
-### Mandatory Parameters
+### Required Parameters
 
 * **inputFilePattern** (File location for Datastream file output in Cloud Storage.): This is the file location for Datastream file output in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/.
 * **instanceId** (Cloud Spanner Instance Id.): This is the name of the Cloud Spanner instance where the changes are replicated.
@@ -35,6 +36,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **dlqMaxRetryCount** (Dead letter queue maximum retry count): The max number of times temporary errors can be retried through DLQ. Defaults to 500.
 * **dataStreamRootUrl** (Datastream API Root URL (only required for testing)): Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
 * **datastreamSourceType** (Datastream source type (only required for testing)): This is the type of source used for Datastream. Example - mysql/oracle.
+* **roundJsonDecimals** (If true, rounds the decimal values in json columns to a number that can be stored without loss of precision.): This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
+
+
 
 ## Getting Started
 
@@ -42,14 +46,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * Java 11
 * Maven
-* Valid resources for mandatory parameters.
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
-  following command:
-    * `gcloud auth login`
+  following commands:
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
-This README uses
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/datastream-to-spanner/src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToSpanner.java)
+
+### Templates Plugin
+
+This README provides instructions using
 the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command to proceed:
+. Install the plugin with the following command before proceeding:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am
@@ -60,6 +69,7 @@ mvn clean install -pl plugins/templates-maven-plugin -am
 This template is a Flex Template, meaning that the pipeline code will be
 containerized and the container will be executed on Dataflow. Please
 check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+and [Configure Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates)
 for more information.
 
 #### Staging the Template
@@ -78,31 +88,37 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--pl v2/datastream-to-spanner -am
+-pl v2/datastream-to-spanner \
+-am
 ```
 
-The command should print what is the template location on Cloud Storage:
+The command should build and save the template to Google Cloud, and then print
+the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://{BUCKET}/{PATH}
+Flex Template was staged! gs://<bucket-name>/templates/flex/Cloud_Datastream_to_Spanner
 ```
 
+The specific path should be copied as it will be used in the following steps.
 
 #### Running the Template
 
 **Using the staged template**:
 
-You can use the path above to share or run the template.
+You can use the path above run the template (or share with others for execution).
 
-To start a job with the template at any time using `gcloud`, you can use:
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
 
 ```shell
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Datastream_to_Spanner"
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Datastream_to_Spanner"
 
-### Mandatory
+### Required
 export INPUT_FILE_PATTERN=<inputFilePattern>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
@@ -123,6 +139,7 @@ export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRY_COUNT=500
 export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
 export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
+export ROUND_JSON_DECIMALS=false
 
 gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --project "$PROJECT" \
@@ -145,8 +162,12 @@ gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
   --parameters "dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT" \
   --parameters "dataStreamRootUrl=$DATA_STREAM_ROOT_URL" \
-  --parameters "datastreamSourceType=$DATASTREAM_SOURCE_TYPE"
+  --parameters "datastreamSourceType=$DATASTREAM_SOURCE_TYPE" \
+  --parameters "roundJsonDecimals=$ROUND_JSON_DECIMALS"
 ```
+
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
 
 
 **Using the plugin**:
@@ -160,7 +181,7 @@ export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
-### Mandatory
+### Required
 export INPUT_FILE_PATTERN=<inputFilePattern>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
@@ -181,6 +202,7 @@ export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRY_COUNT=500
 export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
 export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
+export ROUND_JSON_DECIMALS=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -189,6 +211,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-spanner-job" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE" \
--pl v2/datastream-to-spanner -am
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS" \
+-pl v2/datastream-to-spanner \
+-am
 ```

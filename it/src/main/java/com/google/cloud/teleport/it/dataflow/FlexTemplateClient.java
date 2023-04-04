@@ -95,7 +95,7 @@ public final class FlexTemplateClient extends AbstractPipelineLauncher {
     // Wait until the job is active to get more information
     JobState state = waitUntilActive(project, region, job.getId());
     job = getJob(project, region, job.getId());
-    return getJobInfo(options, state, job, /*runner*/ "Dataflow");
+    return getJobInfo(options, state, job, /* runner= */ "Dataflow");
   }
 
   private FlexTemplateRuntimeEnvironment buildEnvironment(LaunchConfig options) {

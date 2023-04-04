@@ -37,14 +37,15 @@ import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
-import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance test for {@link BulkCompressor BulkCompressor} template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(BulkCompressor.class)
 @RunWith(JUnit4.class)
 public class BulkCompressorLT extends TemplateLoadTestBase {
@@ -53,8 +54,6 @@ public class BulkCompressorLT extends TemplateLoadTestBase {
           TestProperties.specPath(), "gs://dataflow-templates/latest/Bulk_Compress_GCS_Files");
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
   private static final String TEST_ROOT_DIR = BulkCompressorLT.class.getSimpleName().toLowerCase();
-  // 35,000,000 messages of the given schema make up approximately 10GB
-  private static final String NUM_MESSAGES = "35000000";
   private static ArtifactClient artifactClient;
 
   @Before
@@ -71,34 +70,38 @@ public class BulkCompressorLT extends TemplateLoadTestBase {
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(Function.identity());
+    // 35,000,000 messages of the given schema make up approximately 10GB
+    testBacklog("35000000");
   }
 
-  public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+  @Test
+  public void testBacklog100gb() throws IOException, ParseException, InterruptedException {
+    // 350,000,000 messages of the given schema make up approximately 100GB
+    testBacklog("350000000");
+  }
+
+  public void testBacklog(String numMessages)
       throws IOException, ParseException, InterruptedException {
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
             .setQPS("1000000")
-            .setMessagesLimit(NUM_MESSAGES)
+            .setMessagesLimit(numMessages)
             .setSinkType("GCS")
             .setOutputDirectory(getTestMethodDirPath() + "/input")
             .setNumShards("20")
             .setNumWorkers("20")
             .setMaxNumWorkers("100")
             .build();
-    dataGenerator.execute(Duration.ofMinutes(30));
+    dataGenerator.execute(Duration.ofMinutes(60));
     LaunchConfig options =
-        paramsAdder
-            .apply(
-                LaunchConfig.builder(testName, SPEC_PATH)
-                    .addParameter("inputFilePattern", getTestMethodDirPath() + "/input/*")
-                    .addParameter("outputDirectory", getTestMethodDirPath() + "/output")
-                    .addParameter("outputFailureFile", getTestMethodDirPath() + "/failed.csv")
-                    .addParameter("compression", "GZIP"))
+        LaunchConfig.builder(testName, SPEC_PATH)
+            .addParameter("inputFilePattern", getTestMethodDirPath() + "/input/*")
+            .addParameter("outputDirectory", getTestMethodDirPath() + "/output")
+            .addParameter("outputFailureFile", getTestMethodDirPath() + "/failed.csv")
+            .addParameter("compression", "GZIP")
             .build();
-
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 

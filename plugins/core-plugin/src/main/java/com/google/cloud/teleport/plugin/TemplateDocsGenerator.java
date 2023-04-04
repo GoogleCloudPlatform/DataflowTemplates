@@ -33,7 +33,8 @@ import org.slf4j.LoggerFactory;
 public class TemplateDocsGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(TemplateDocsGenerator.class);
 
-  public static String readmeMarkdown(ImageSpec imageSpec) throws IOException, TemplateException {
+  public static String readmeMarkdown(ImageSpec imageSpec, boolean flex)
+      throws IOException, TemplateException {
 
     LOG.info(
         "Generating documentation for template {}...", imageSpec.getMetadata().getInternalName());
@@ -46,6 +47,7 @@ public class TemplateDocsGenerator {
 
     Map<String, Object> parameters = new HashMap<>();
     parameters.put("spec", imageSpec);
+    parameters.put("flex", flex);
 
     Template template = freemarkerConfig.getTemplate("README-template.md");
 

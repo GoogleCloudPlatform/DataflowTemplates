@@ -167,9 +167,12 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
             PushConfig.getDefaultInstance(),
             DEFAULT_ACK_DEADLINE_SECONDS);
     SubscriptionName reference = PubsubUtils.toSubscriptionName(subscription);
-    createdSubscriptions.add(reference);
+    createdSubscriptions.add(getSubscriptionName(subscriptionName));
 
-    LOG.info("Subscription '{}' for topic '{}' was created successfully!", reference, topicName);
+    LOG.info(
+        "Subscription '{}' for topic '{}' was created successfully!",
+        subscription.getName(),
+        topicName);
 
     return reference;
   }

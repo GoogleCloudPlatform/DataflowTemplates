@@ -46,6 +46,10 @@ import org.apache.beam.sdk.values.Row;
  *
  * <p>Any persistent failures while writing to BigQuery will be written to a Pub/Sub dead-letter
  * topic.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-binary-to-bigquery/README_PubSub_Avro_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "PubSub_Avro_to_BigQuery",
@@ -56,6 +60,8 @@ import org.apache.beam.sdk.values.Row;
             + " BigQuery table.",
     optionsClass = PubsubAvroToBigQueryOptions.class,
     flexContainerName = "pubsub-avro-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-avro-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public final class PubsubAvroToBigQuery {
   /**

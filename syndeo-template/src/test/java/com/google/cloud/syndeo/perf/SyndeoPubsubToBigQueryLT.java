@@ -54,7 +54,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 @Category(TemplateLoadTest.class)
 @RunWith(JUnit4.class)
@@ -172,35 +171,34 @@ public class SyndeoPubsubToBigQueryLT {
 
     // Build JSON configuration for the template:
     String jsonPayload =
-        new ObjectMapper()
-            .writeValueAsString(
+        SyndeoLoadTestUtils.mapToJsonPayload(
+            Map.of(
+                "source",
                 Map.of(
-                    "source",
+                    "urn",
+                    // "beam:schematransform:org.apache.beam:pubsub_read:v1",
+                    "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+                    "configurationParameters",
                     Map.of(
-                        "urn",
-                        // "beam:schematransform:org.apache.beam:pubsub_read:v1",
-                        "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
-                        "configurationParameters",
-                        Map.of(
-                            "subscription",
-                            subscriptionPath.toString(),
-                            "format",
-                            "AVRO",
-                            "schema",
-                            AvroUtils.toAvroSchema(SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA)
-                                .toString())),
-                    "sink",
+                        "subscription",
+                        subscriptionPath.toString(),
+                        "format",
+                        "AVRO",
+                        "schema",
+                        AvroUtils.toAvroSchema(SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA)
+                            .toString())),
+                "sink",
+                Map.of(
+                    "urn",
+                    "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+                    "configurationParameters",
                     Map.of(
-                        "urn",
-                        "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-                        "configurationParameters",
-                        Map.of(
-                            "table",
-                            String.format("%s.%s.%s", PROJECT, bigquery.getDatasetId(), tableName),
-                            "createDisposition",
-                            "CREATE_IF_NEEDED",
-                            "triggeringFrequencySeconds",
-                            2))));
+                        "table",
+                        String.format("%s.%s.%s", PROJECT, bigquery.getDatasetId(), tableName),
+                        "createDisposition",
+                        "CREATE_IF_NEEDED",
+                        "triggeringFrequencySeconds",
+                        2))));
 
     SyndeoTemplate.buildPipeline(syndeoPipeline, SyndeoTemplate.buildFromJsonPayload(jsonPayload));
 

@@ -77,51 +77,9 @@ import org.slf4j.LoggerFactory;
  *   <li>Deadletter topic exists.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * BUCKET_NAME=BUCKET NAME HERE
- * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/pubsub-to-bigquery
- * USE_SUBSCRIPTION=true or false depending on whether the pipeline should read
- *                  from a Pub/Sub Subscription or a Pub/Sub Topic.
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.PubSubToSplunk \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template/PubSubToSplunk \
- * --runner=${RUNNER}
- * "
- *
- * # Execute the template
- * JOB_NAME=pubsub-to-splunk-$USER-`date +"%Y%m%d-%H%M%S%z"`
- * BATCH_COUNT=1
- * PARALLELISM=5
- *
- * # Execute the templated pipeline:
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template/PubSubToSplunk \
- * --zone=us-east1-d \
- * --parameters \
- * "inputSubscription=projects/${PROJECT_ID}/subscriptions/input-subscription-name,\
- * token=my-splunk-hec-token,\
- * url=http://splunk-hec-server-address:8088,\
- * batchCount=${BATCH_COUNT},\
- * parallelism=${PARALLELISM},\
- * disableCertificateValidation=false,\
- * outputDeadletterTopic=projects/${PROJECT_ID}/topics/deadletter-topic-name,\
- * javascriptTextTransformGcsPath=gs://${BUCKET_NAME}/splunk/js/my-js-udf.js,\
- * javascriptTextTransformFunctionName=myUdf"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_PubSub_to_Splunk.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_PubSub_to_Splunk",
@@ -136,6 +94,8 @@ import org.slf4j.LoggerFactory;
       JavascriptTextTransformerOptions.class,
       PubsubWriteDeadletterTopicOptions.class
     },
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-splunk",
     contactInformation = "https://cloud.google.com/support")
 public class PubSubToSplunk {
 

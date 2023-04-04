@@ -784,7 +784,7 @@ public class DatastoreConverters {
   public static class EntityJsonParser {
 
     // A cached jsonParser
-    private JsonFormat.Parser jsonParser;
+    private final JsonFormat.Parser jsonParser;
 
     public EntityJsonParser() {
       TypeRegistry typeRegistry = TypeRegistry.newBuilder().add(Entity.getDescriptor()).build();
@@ -798,9 +798,9 @@ public class DatastoreConverters {
     }
 
     public Entity parse(String json) throws InvalidProtocolBufferException {
-      Entity.Builder entityBuilter = Entity.newBuilder();
-      merge(json, entityBuilter);
-      return entityBuilter.build();
+      Entity.Builder entityBuilder = Entity.newBuilder();
+      merge(json, entityBuilder);
+      return entityBuilder.build();
     }
   }
 

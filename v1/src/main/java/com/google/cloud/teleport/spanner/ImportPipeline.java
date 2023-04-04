@@ -34,7 +34,13 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 
-/** Avro to Cloud Spanner Import pipeline. */
+/**
+ * Avro to Cloud Spanner Import pipeline.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Avro_to_Cloud_Spanner.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "GCS_Avro_to_Cloud_Spanner",
     category = TemplateCategory.BATCH,
@@ -42,6 +48,8 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
     description =
         "A pipeline to import a Cloud Spanner database from a set of Avro files in Cloud Storage.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-cloud-spanner",
     contactInformation = "https://cloud.google.com/support")
 public class ImportPipeline {
 
