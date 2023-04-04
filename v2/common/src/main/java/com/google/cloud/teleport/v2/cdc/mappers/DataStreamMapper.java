@@ -84,7 +84,7 @@ public class DataStreamMapper extends BigQueryMapper<TableRow, KV<TableId, Table
     String schemaName = (String) row.get("_metadata_schema");
     String tableName = (String) row.get("_metadata_table");
 
-    Map<String, StandardSQLTypeName> datastreamSchema = new HashMap<String, StandardSQLTypeName>();
+    Map<String, StandardSQLTypeName> datastreamSchema = new HashMap<>();
     try {
       datastreamSchema = getObjectSchema(streamName, schemaName, tableName, MAX_RETRIES);
     } catch (IOException e) {

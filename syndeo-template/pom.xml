@@ -24,7 +24,7 @@
 
     <properties>
         <auto-value.version>1.9</auto-value.version>
-        <avro.version>1.8.2</avro.version>
+        <avro.version>1.11.1</avro.version>
         <beam.version>2.46.0</beam.version>
         <beam.snapshot.version>2.47.0-SNAPSHOT</beam.snapshot.version>
         <bigtable.version>1.15.0</bigtable.version>

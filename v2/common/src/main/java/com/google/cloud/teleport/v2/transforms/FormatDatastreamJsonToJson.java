@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.time.Instant;
@@ -23,9 +26,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +77,7 @@ public final class FormatDatastreamJsonToJson
     outputObject.put("_metadata_stream", getStreamName(record));
     outputObject.put("_metadata_timestamp", getSourceTimestamp(record));
     outputObject.put("_metadata_read_timestamp", getMetadataTimestamp(record));
-    outputObject.put("_metadata_read_method", record.get("read_method").getTextValue());
+    outputObject.put("_metadata_read_method", record.get("read_method").textValue());
     outputObject.put("_metadata_source_type", sourceType);
 
     outputObject.put("_metadata_deleted", getMetadataIsDeleted(record));
@@ -103,7 +103,7 @@ public final class FormatDatastreamJsonToJson
 
     JsonNode payload = record.get("payload");
     if (payload != null) {
-      Iterator<String> dataKeys = payload.getFieldNames();
+      Iterator<String> dataKeys = payload.fieldNames();
 
       while (dataKeys.hasNext()) {
         String key = dataKeys.next();
@@ -127,13 +127,13 @@ public final class FormatDatastreamJsonToJson
 
   private String getStreamName(JsonNode record) {
     if (this.streamName == null) {
-      return record.get("stream_name").getTextValue();
+      return record.get("stream_name").textValue();
     }
     return this.streamName;
   }
 
   private String getSourceType(JsonNode record) {
-    String sourceType = record.get("read_method").getTextValue().split("-")[0];
+    String sourceType = record.get("read_method").textValue().split("-")[0];
     // TODO: consider validating the value is mysql or oracle
     return sourceType;
   }
@@ -160,23 +160,23 @@ public final class FormatDatastreamJsonToJson
 
   private long getMetadataTimestamp(JsonNode record) {
     if (record.get("read_timestamp").isLong()) {
-      long unixTimestampMilli = record.get("read_timestamp").getLongValue();
+      long unixTimestampMilli = record.get("read_timestamp").longValue();
       long unixTimestampSec = unixTimestampMilli / 1000;
 
       return unixTimestampSec;
     }
-    String timestamp = record.get("read_timestamp").getTextValue();
+    String timestamp = record.get("read_timestamp").textValue();
     return convertTimestampStringToSeconds(timestamp);
   }
 
   private long getSourceTimestamp(JsonNode record) {
     if (record.get("source_timestamp").isLong()) {
-      long unixTimestampMilli = record.get("source_timestamp").getLongValue();
+      long unixTimestampMilli = record.get("source_timestamp").longValue();
       long unixTimestampSec = unixTimestampMilli / 1000;
 
       return unixTimestampSec;
     }
-    String timestamp = record.get("source_timestamp").getTextValue();
+    String timestamp = record.get("source_timestamp").textValue();
     return convertTimestampStringToSeconds(timestamp);
   }
 
@@ -195,7 +195,7 @@ public final class FormatDatastreamJsonToJson
       return null;
     }
 
-    return value.getTextValue();
+    return value.textValue();
   }
 
   private JsonNode getPrimaryKeys(JsonNode record) {
@@ -218,7 +218,7 @@ public final class FormatDatastreamJsonToJson
       return null;
     }
 
-    return value.getLongValue();
+    return value.longValue();
   }
 
   private Boolean getMetadataIsDeleted(JsonNode record) {
@@ -233,6 +233,6 @@ public final class FormatDatastreamJsonToJson
       return isDeleted;
     }
 
-    return value.getBooleanValue();
+    return value.booleanValue();
   }
 }

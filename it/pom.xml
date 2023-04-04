@@ -27,7 +27,6 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <avro.version>1.8.2</avro.version>
     <commons-math3.version>3.6.1</commons-math3.version>
     <cassandra.driver.version>4.15.0</cassandra.driver.version>
     <elasticsearch.version>7.9.2</elasticsearch.version>

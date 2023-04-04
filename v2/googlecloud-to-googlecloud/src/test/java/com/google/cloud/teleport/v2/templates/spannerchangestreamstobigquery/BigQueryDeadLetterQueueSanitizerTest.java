@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.services.bigquery.model.ErrorProto;
 import com.google.api.services.bigquery.model.TableDataInsertAllResponse.InsertErrors;
 import com.google.api.services.bigquery.model.TableReference;
@@ -25,8 +27,6 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import java.util.Collections;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
-import org.codehaus.jackson.node.JsonNodeFactory;
-import org.codehaus.jackson.node.ObjectNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
