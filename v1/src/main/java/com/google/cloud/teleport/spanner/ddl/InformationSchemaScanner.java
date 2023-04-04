@@ -541,7 +541,7 @@ public class InformationSchemaScanner {
                     + " kcu1.column_name,"
                     + " kcu2.table_name,"
                     + " kcu2.column_name,"
-                    + " NULL as delete_rule"
+                    + " rc.delete_rule"
                     + " FROM information_schema.referential_constraints as rc"
                     + " INNER JOIN information_schema.key_column_usage as kcu1"
                     + " ON kcu1.constraint_catalog = rc.constraint_catalog"
