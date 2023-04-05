@@ -156,7 +156,9 @@ public final class Mod implements Serializable {
     return new ObjectMapper().readValue(json, Mod.class);
   }
 
-  /** @return JSON object as String representing the changelog record */
+  /**
+   * @return JSON object as String representing the changelog record
+   */
   public String getChangeJson() {
     return changeJson;
   }
