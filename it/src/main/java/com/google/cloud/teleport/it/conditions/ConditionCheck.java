@@ -39,12 +39,12 @@ public abstract class ConditionCheck implements Supplier<Boolean> {
 
     CheckResult result = check();
     if (!result.success) {
-      LOG.info("[-] Condition '{}' failed! {}", getDescription(), result.message);
+      LOG.info("[✗] Condition '{}' failed! {}", getDescription(), result.message);
       return false;
     }
 
     LOG.info(
-        "[+] Condition '{}' succeeded! {}",
+        "[✓] Condition '{}' succeeded! {}",
         getDescription(),
         result.message == null ? "" : result.message);
 

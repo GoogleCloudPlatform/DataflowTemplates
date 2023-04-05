@@ -140,6 +140,24 @@ public final class RecordsSubject extends Subject {
   }
 
   /**
+   * Check if the records list has specific strings. It may be useful to evaluate deeply nested
+   * structures, when a simple part must be matched.
+   *
+   * @param strings Expected strings to search.
+   */
+  public void hasRecordsWithStrings(List<String> strings) {
+
+    for (String expected : strings) {
+      if (actual.stream()
+          .noneMatch(candidate -> new TreeMap<>(candidate).toString().contains(expected))) {
+        failWithoutActual(
+            Fact.simpleFact(
+                "expected that contains the string " + expected + ", but only had " + actual));
+      }
+    }
+  }
+
+  /**
    * Check if the records list has specific rows, without guarantees of ordering. The way that
    * ordering is taken out of the equation is by converting all records to TreeMap, which guarantee
    * natural key ordering.

@@ -15,12 +15,12 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.codehaus.jackson.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

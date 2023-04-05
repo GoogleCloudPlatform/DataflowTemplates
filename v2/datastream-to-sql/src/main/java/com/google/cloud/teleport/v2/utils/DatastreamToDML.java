@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.io.CdcJdbcIO.DataSourceConfiguration;
 import com.google.cloud.teleport.v2.values.DatastreamRow;
 import com.google.cloud.teleport.v2.values.DmlInfo;
@@ -31,13 +33,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringSubstitutor;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -290,7 +291,7 @@ public abstract class DatastreamToDML
       return "";
     }
     if (columnObj.isTextual()) {
-      columnValue = "\'" + cleanSql(columnObj.getTextValue()) + "\'";
+      columnValue = "\'" + cleanSql(columnObj.textValue()) + "\'";
     } else {
       columnValue = columnObj.toString();
     }
@@ -334,7 +335,7 @@ public abstract class DatastreamToDML
   public String getColumnsListSql(JsonNode rowObj, Map<String, String> tableSchema) {
     String columnsListSql = "";
 
-    for (Iterator<String> fieldNames = rowObj.getFieldNames(); fieldNames.hasNext(); ) {
+    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
       if (!tableSchema.containsKey(columnName)) {
         continue;
@@ -342,7 +343,7 @@ public abstract class DatastreamToDML
 
       // Add column name
       String quotedColumnName = quote(columnName);
-      if (columnsListSql == "") {
+      if (Objects.equals(columnsListSql, "")) {
         columnsListSql = quotedColumnName;
       } else {
         columnsListSql = columnsListSql + "," + quotedColumnName;
@@ -355,14 +356,14 @@ public abstract class DatastreamToDML
   public String getColumnsValuesSql(JsonNode rowObj, Map<String, String> tableSchema) {
     String valuesInsertSql = "";
 
-    for (Iterator<String> fieldNames = rowObj.getFieldNames(); fieldNames.hasNext(); ) {
+    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
       if (!tableSchema.containsKey(columnName)) {
         continue;
       }
 
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
-      if (valuesInsertSql == "") {
+      if (Objects.equals(valuesInsertSql, "")) {
         valuesInsertSql = columnValue;
       } else {
         valuesInsertSql = valuesInsertSql + "," + columnValue;
@@ -374,7 +375,7 @@ public abstract class DatastreamToDML
 
   public String getColumnsUpdateSql(JsonNode rowObj, Map<String, String> tableSchema) {
     String onUpdateSql = "";
-    for (Iterator<String> fieldNames = rowObj.getFieldNames(); fieldNames.hasNext(); ) {
+    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
       if (!tableSchema.containsKey(columnName)) {
         continue;
@@ -383,7 +384,7 @@ public abstract class DatastreamToDML
       String quotedColumnName = quote(columnName);
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
 
-      if (onUpdateSql == "") {
+      if (onUpdateSql.equals("")) {
         onUpdateSql = quotedColumnName + "=" + columnValue;
       } else {
         onUpdateSql = onUpdateSql + "," + quotedColumnName + "=" + columnValue;
@@ -403,7 +404,7 @@ public abstract class DatastreamToDML
       }
 
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
-      if (pkToValueSql == "") {
+      if (pkToValueSql.equals("")) {
         pkToValueSql = columnName + "=" + columnValue;
       } else {
         pkToValueSql = pkToValueSql + " AND " + columnName + "=" + columnValue;

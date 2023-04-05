@@ -27,7 +27,6 @@
     <artifactId>common</artifactId>
 
     <properties>
-        <avro.version>1.8.2</avro.version>
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.10.0</commons-text.version>

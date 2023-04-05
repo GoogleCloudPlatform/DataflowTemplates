@@ -16,15 +16,18 @@
 package com.google.cloud.teleport.it.matchers;
 
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatGenericRecords;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
 import static com.google.common.hash.Hashing.sha256;
 
 import com.google.cloud.teleport.it.artifacts.Artifact;
 import com.google.cloud.teleport.it.common.AvroTestUtil;
+import com.google.cloud.teleport.it.common.JsonTestUtil;
 import com.google.cloud.teleport.it.common.ParquetTestUtil;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.jetbrains.annotations.Nullable;
@@ -113,5 +116,19 @@ public final class ArtifactsSubject extends Subject {
       }
     }
     return assertThatGenericRecords(allRecords);
+  }
+
+  /** Parse artifacts as Json records to be used for assertions. */
+  public RecordsSubject asJsonRecords() {
+    List<Map<String, Object>> allRecords = new ArrayList<>();
+
+    for (Artifact artifact : this.actual) {
+      try {
+        allRecords.addAll(JsonTestUtil.readRecords(artifact.contents()));
+      } catch (Exception e) {
+        throw new RuntimeException("Error reading " + artifact.name() + " as JSON.", e);
+      }
+    }
+    return assertThatRecords(allRecords);
   }
 }

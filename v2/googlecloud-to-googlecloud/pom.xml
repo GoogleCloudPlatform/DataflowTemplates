@@ -48,7 +48,6 @@
   <properties>
     <dataplex.api.version>v1-rev20230308-2.0.0</dataplex.api.version>
     <derby.version>10.14.2.0</derby.version>
-    <avro.version>1.8.2</avro.version>
     <dlp.version>2.1.0</dlp.version>
   </properties>
 

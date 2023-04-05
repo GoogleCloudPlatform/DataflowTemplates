@@ -50,6 +50,7 @@
 
     <!-- Common dependency versions -->
     <autovalue.version>1.8.2</autovalue.version>
+    <avro.version>1.11.1</avro.version>
     <checkstyle.version>10.7.0</checkstyle.version>
     <commons-codec.version>1.15</commons-codec.version>
     <commons-io.version>2.11.0</commons-io.version>
@@ -115,6 +116,12 @@
         <artifactId>commons-io</artifactId>
         <version>${commons-io.version}</version>
       </dependency>
+      <dependency>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro</artifactId>
+        <version>${avro.version}</version>
+      </dependency>
+
       <!-- If any module uses log4j 2.x, enforce it is patched by default -->
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
