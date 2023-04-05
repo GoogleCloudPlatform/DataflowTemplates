@@ -28,6 +28,7 @@ import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
 import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
+import com.google.cloud.teleport.it.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.it.jdbc.DefaultPostgresResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
@@ -178,11 +179,12 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
     // Act
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
-    Result result =
-        pipelineOperator()
-            .waitForConditionAndFinish(
-                createConfig(info),
-                () -> pubsubResourceManager.pull(subscription, 5).getReceivedMessagesCount() > 0);
+
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, subscription).setMinMessages(1).build();
+
+    Result result = pipelineOperator().waitForConditionAndFinish(createConfig(info), pubsubCheck);
+
     // Assert
     assertThatResult(result).meetsConditions();
   }

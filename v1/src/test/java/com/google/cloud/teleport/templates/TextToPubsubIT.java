@@ -22,17 +22,16 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.After;
@@ -80,27 +79,19 @@ public class TextToPubsubIT extends TemplateTestBase {
     // Act
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
-    List<String> records = new ArrayList<>();
-    Result result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(info),
-                () -> {
-                  PullResponse response =
-                      pubsubResourceManager.pull(outputSubscription, expectedArtifacts.size());
-                  if (response.getReceivedMessagesCount() > 0) {
-                    records.addAll(
-                        response.getReceivedMessagesList().stream()
-                            .map(
-                                receivedMessage ->
-                                    receivedMessage.getMessage().getData().toStringUtf8())
-                            .collect(Collectors.toList()));
-                  }
-                  return records.size() >= expectedArtifacts.size();
-                });
+
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, outputSubscription)
+            .setMinMessages(expectedArtifacts.size())
+            .build();
+    Result result = pipelineOperator().waitForCondition(createConfig(info), pubsubCheck);
 
     assertThatResult(result).meetsConditions();
-    assertThat(records).containsAtLeastElementsIn(expectedArtifacts);
+    assertThat(
+            pubsubCheck.getReceivedMessageList().stream()
+                .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
+                .collect(Collectors.toList()))
+        .containsAtLeastElementsIn(expectedArtifacts);
   }
 
   private void createArtifacts(List<String> expectedArtifacts) {
