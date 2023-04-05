@@ -89,7 +89,6 @@ public interface BigtableResourceManager extends ResourceManager {
    */
   void createTable(String tableId, Iterable<String> columnFamilies, Duration maxAge);
 
-
   /**
    * Creates a table within the current instance given a table ID and a collection of column family
    * names.
@@ -101,10 +100,10 @@ public interface BigtableResourceManager extends ResourceManager {
    *
    * @param appProfileId The id of the app profile.
    * @param allowTransactionWrites Allows transactional writes when single cluster routing is
-   * enabled
+   *     enabled
    * @param clusters Clusters where traffic is going to be routed. If more than one cluster is
-   * specified, a multi-cluster routing is used. A single-cluster routing is used when a single
-   * cluster is specified.
+   *     specified, a multi-cluster routing is used. A single-cluster routing is used when a single
+   *     cluster is specified.
    * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
    */
   void createAppProfile(String appProfileId, boolean allowTransactionWrites, List<String> clusters);

@@ -266,9 +266,8 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
     createTable(tableId, spec);
   }
 
-
-  public synchronized void createAppProfile(String appProfileId,
-      boolean allowTransactionWrites, List<String> clusters) {
+  public synchronized void createAppProfile(
+      String appProfileId, boolean allowTransactionWrites, List<String> clusters) {
     checkHasInstance();
     if (clusters == null || clusters.isEmpty()) {
       throw new IllegalArgumentException("Cluster list cannot be empty");
@@ -285,15 +284,14 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
     // Send the instance request to Google Cloud
     try (BigtableInstanceAdminClient instanceAdminClient =
         bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
-      CreateAppProfileRequest request = CreateAppProfileRequest.of(instanceId, appProfileId)
-          .setRoutingPolicy(routingPolicy);
+      CreateAppProfileRequest request =
+          CreateAppProfileRequest.of(instanceId, appProfileId).setRoutingPolicy(routingPolicy);
       instanceAdminClient.createAppProfile(request);
     } catch (Exception e) {
       throw new BigtableResourceManagerException(
           "Failed to create appProfile " + appProfileId + ".", e);
     }
   }
-
 
   @Override
   public void write(RowMutation tableRow) {

@@ -33,8 +33,8 @@ public class UnsupportedEntryException extends Exception {
     super(cause);
   }
 
-  protected UnsupportedEntryException(String message, Throwable cause, boolean enableSuppression,
-      boolean writableStackTrace) {
+  protected UnsupportedEntryException(
+      String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
     super(message, cause, enableSuppression, writableStackTrace);
   }
 }

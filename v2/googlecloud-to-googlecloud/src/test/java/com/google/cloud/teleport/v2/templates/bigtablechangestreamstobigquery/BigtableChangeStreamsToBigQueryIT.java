@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 
-import avro.shaded.com.google.common.collect.Lists;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.gax.paging.Page;
@@ -44,6 +43,7 @@ import com.google.cloud.teleport.it.launcher.PipelineOperator.Config;
 import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ChangelogColumn;
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -58,6 +58,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -65,14 +66,14 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Integration test for {@link BigtableChangeStreamsToBigQuery}.
- */
+/** Integration test for {@link BigtableChangeStreamsToBigQuery}. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableChangeStreamsToBigQuery.class)
 @RunWith(JUnit4.class)
 public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToBigQueryIT.class);
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(BigtableChangeStreamsToBigQueryIT.class);
 
   public static final String SOURCE_CDC_TABLE = "source_cdc_table";
   public static final String SOURCE_COLUMN_FAMILY = "cf";
@@ -87,11 +88,12 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   private LaunchInfo launchInfo;
 
   @Test
-  public void testBigtableChangeStreamsToBigQuerySingleMutationE2E() throws IOException {
+  @Ignore(
+      "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
+          + "relies on pre-existing static resources until a new admin API client is available for "
+          + "us to setup CDC-enabled resources")
+  public void testBigtableChangeStreamsToBigQuerySingleMutationE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
-
-    //String name = testName.getMethodName();
-    //String jobName = createJobName(name);
     String clusterName = "c1_cluster";
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
@@ -101,11 +103,11 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[]{}));
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
     bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[]{}));
+        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[] {}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 
@@ -118,9 +120,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
                     .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
                     .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
-                    .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
-            )
-        );
+                    .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -161,9 +161,12 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore(
+      "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
+          + "relies on pre-existing static resources until a new admin API client is available for "
+          + "us to setup CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQueryMutationsStartTimeE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
-
     String clusterName = "c1_cluster";
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
@@ -173,11 +176,11 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[]{}));
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
     bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[]{}));
+        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[] {}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 
@@ -219,9 +222,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
                     .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
                     .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
-                    .addParameter("startTimestamp", Timestamp.of(new Date(afterFirstMutation)).toString())
-            )
-        );
+                    .addParameter(
+                        "startTimestamp", Timestamp.of(new Date(afterFirstMutation)).toString())));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -237,8 +239,9 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         .iterateAll()
         .forEach(
             fvl -> {
-              Assert.assertTrue(toBeReadValues.contains(
-                  fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue()));
+              Assert.assertTrue(
+                  toBeReadValues.contains(
+                      fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue()));
               Assert.assertTrue(
                   fvl.get(ChangelogColumn.TIMESTAMP.getBqColumnName()).getTimestampValue()
                       >= timeNowMicros);
@@ -260,15 +263,15 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
               toBeReadValues.remove(
                   fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue());
             });
-
-
   }
 
-
   @Test
+  @Ignore(
+      "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
+          + "relies on pre-existing static resources until a new admin API client is available for "
+          + "us to setup CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQueryDeadLetterQueueE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
-
     String clusterName = "c1_cluster";
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
@@ -278,11 +281,11 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[]{}));
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
     bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[]{}));
+        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[] {}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 
@@ -291,8 +294,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     String goodValue = UUID.randomUUID().toString();
 
     // Making some 15MB value
-    String tooBigValue = StringUtils.repeat(UUID.randomUUID().toString(),
-        15 * 1024 * 1024 / goodValue.length());
+    String tooBigValue =
+        StringUtils.repeat(UUID.randomUUID().toString(), 15 * 1024 * 1024 / goodValue.length());
 
     long beforeMutations = System.currentTimeMillis();
     beforeMutations -= (beforeMutations % 1000);
@@ -324,9 +327,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
                     .addParameter("dlqRetryMinutes", "1")
                     .addParameter("dlqDirectory", getGcsPath("dlq"))
                     .addParameter("dlqMaxRetries", "1")
-                    .addParameter("startTimestamp", Timestamp.of(new Date(beforeMutations)).toString())
-            )
-        );
+                    .addParameter(
+                        "startTimestamp", Timestamp.of(new Date(beforeMutations)).toString())));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -341,8 +343,9 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         .iterateAll()
         .forEach(
             fvl -> {
-              Assert.assertTrue(toBeReadValues.contains(
-                  fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue()));
+              Assert.assertTrue(
+                  toBeReadValues.contains(
+                      fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue()));
               Assert.assertTrue(
                   fvl.get(ChangelogColumn.TIMESTAMP.getBqColumnName()).getTimestampValue()
                       >= timeNowMicros);
@@ -370,8 +373,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     long started = System.currentTimeMillis();
     long waitForFile = Duration.ofMinutes(30).toMillis();
 
-    String filterPrefix = String.join("/", getClass().getSimpleName(), artifactClient.runId(),
-        "dlq", "severe");
+    String filterPrefix =
+        String.join("/", getClass().getSimpleName(), artifactClient.runId(), "dlq", "severe");
     BlobListOption listOptions = BlobListOption.prefix(filterPrefix);
 
     LOG.info("Looking for files with a prefix: " + filterPrefix);
@@ -412,13 +415,15 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
             .build();
     // TODO: StaticBigtableResourceManager has to be replaced with DefaultBigtableResourceManager
     // when it supports CDC configs
-    bigtableResourceManager = StaticBigtableResourceManager.builder(/* testName.getMethodName(), */
-            PROJECT)
-        .setCredentialsProvider(credentialsProvider)
-        .setInstanceId(System.getProperty("bigtableInstanceId"))
-        .setTableId(System.getProperty("bigtableTableId"))
-        .setAppProfileId(System.getProperty("bigtableAppProfileId"))
-        .build();
+    bigtableResourceManager =
+        StaticBigtableResourceManager.builder(
+                /* testName.getMethodName(), */
+                PROJECT)
+            .setCredentialsProvider(credentialsProvider)
+            .setInstanceId(System.getProperty("bigtableInstanceId"))
+            .setTableId(System.getProperty("bigtableTableId"))
+            .setAppProfileId(System.getProperty("bigtableAppProfileId"))
+            .build();
   }
 
   @After
@@ -449,8 +454,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     // For DirectRunner tests, reduce the max time and the interval, as there is no worker required
     if (System.getProperty("directRunnerTest") != null) {
       configBuilder =
-          configBuilder.setTimeoutAfter(
-                  EXPECTED_REPLICATION_MAX_WAIT_TIME.minus(Duration.ofMinutes(3)))
+          configBuilder
+              .setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME.minus(Duration.ofMinutes(3)))
               .setCheckAfter(Duration.ofSeconds(5));
     } else {
       configBuilder.setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME);
@@ -459,13 +464,14 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     return configBuilder.build();
   }
 
-
   private void waitForQueryToReturnRows(String query, int resultsRequired, boolean cancelOnceDone)
       throws IOException {
     Config config = createConfig(launchInfo);
-    Result result = cancelOnceDone ? pipelineOperator().waitForConditionAndCancel(config,
-        dataShownUp(query, resultsRequired))
-        : pipelineOperator().waitForCondition(config, dataShownUp(query, resultsRequired));
+    Result result =
+        cancelOnceDone
+            ? pipelineOperator()
+                .waitForConditionAndCancel(config, dataShownUp(query, resultsRequired))
+            : pipelineOperator().waitForCondition(config, dataShownUp(query, resultsRequired));
     assertThatResult(result).meetsConditions();
   }
 
@@ -476,13 +482,17 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         + SOURCE_CDC_TABLE
         + "_changes`"
         + " WHERE "
-        + String.format("%s = '%s'", ChangelogColumn.COLUMN_FAMILY.getBqColumnName(),
-        SOURCE_COLUMN_FAMILY)
-        + (rowkey != null ? String.format(" AND %s = '%s'",
-        ChangelogColumn.ROW_KEY_STRING.getBqColumnName(), rowkey) : "")
-        + (column != null ? String.format(" AND %s = '%s'",
-        ChangelogColumn.COLUMN.getBqColumnName(), column) : "")
-        + (value != null ? String.format(" AND %s = '%s'",
-        ChangelogColumn.VALUE_STRING.getBqColumnName(), value) : "");
+        + String.format(
+            "%s = '%s'", ChangelogColumn.COLUMN_FAMILY.getBqColumnName(), SOURCE_COLUMN_FAMILY)
+        + (rowkey != null
+            ? String.format(
+                " AND %s = '%s'", ChangelogColumn.ROW_KEY_STRING.getBqColumnName(), rowkey)
+            : "")
+        + (column != null
+            ? String.format(" AND %s = '%s'", ChangelogColumn.COLUMN.getBqColumnName(), column)
+            : "")
+        + (value != null
+            ? String.format(" AND %s = '%s'", ChangelogColumn.VALUE_STRING.getBqColumnName(), value)
+            : "");
   }
 }

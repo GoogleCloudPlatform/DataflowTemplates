@@ -137,4 +137,95 @@ public interface BigtableCommonOptions extends GcpOptions {
 
     void setBigtableBulkWriteMaxRequestSizeBytes(Integer value);
   }
+
+  interface ReadChangeStreamsOptions extends BigtableCommonOptions {
+    @TemplateParameter.Text(
+        order = 1,
+        description = "Cloud Bigtable instance ID",
+        helpText = "The Cloud Bigtable instance to read change streams from.")
+    @Validation.Required
+    String getBigtableInstanceId();
+
+    void setBigtableInstanceId(String value);
+
+    @TemplateParameter.Text(
+        order = 2,
+        description = "Cloud Bigtable table ID",
+        helpText = "The Cloud Bigtable table to read change streams from.")
+    @Validation.Required
+    String getBigtableTableId();
+
+    void setBigtableTableId(String value);
+
+    @TemplateParameter.Text(
+        order = 3,
+        description = "Cloud Bigtable application profile ID",
+        helpText = "The application profile is used to distinguish workload in Cloud Bigtable")
+    @Validation.Required
+    String getBigtableAppProfileId();
+
+    void setBigtableAppProfileId(String value);
+
+    @TemplateParameter.ProjectId(
+        order = 4,
+        optional = true,
+        description = "Cloud Bigtable Project ID",
+        helpText =
+            "Project to read change streams from. The default for this parameter is the project "
+                + "where the Dataflow pipeline is running.")
+    @Default.String("")
+    String getBigtableProjectId();
+
+    void setBigtableProjectId(String projectId);
+
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        description = "Cloud Bigtable metadata instance ID",
+        helpText =
+            "The Cloud Bigtable instance to use for the change streams connector metadata table.")
+    @Default.String("")
+    String getBigtableMetadataInstanceId();
+
+    void setBigtableMetadataInstanceId(String value);
+
+    @TemplateParameter.Text(
+        order = 6,
+        optional = true,
+        description = "Cloud Bigtable metadata table ID",
+        helpText =
+            "The Cloud Bigtable change streams connector metadata table ID to use. If not "
+                + "provided, a Cloud Bigtable change streams connector metadata table will automatically be "
+                + "created during the pipeline flow. This parameter must be provided when updating an "
+                + "existing pipeline and should not be provided otherwise.")
+    @Default.String("")
+    String getBigtableMetadataTableTableId();
+
+    void setBigtableMetadataTableTableId(String value);
+
+    @TemplateParameter.Text(
+        order = 7,
+        optional = true,
+        description = "Bigtable charset name when reading values and column qualifiers",
+        helpText =
+            "Bigtable charset name when reading values and column qualifiers. "
+                + "Default is UTF-8")
+    @Default.String("UTF-8")
+    String getBigtableCharset();
+
+    void setBigtableCharset(String value);
+
+    @TemplateParameter.DateTime(
+        order = 8,
+        optional = true,
+        description = "The timestamp to read change streams from",
+        helpText =
+            "The starting DateTime, inclusive, to use for reading change streams "
+                + "(https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the "
+                + "timestamp when the pipeline starts.")
+    @Default.String("")
+    String getStartTimestamp();
+
+    void setStartTimestamp(String startTimestamp);
+  }
 }

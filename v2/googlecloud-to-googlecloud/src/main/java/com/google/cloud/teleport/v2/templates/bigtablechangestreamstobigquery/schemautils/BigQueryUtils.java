@@ -49,8 +49,7 @@ import org.apache.commons.lang3.Validate;
 import org.json.JSONObject;
 
 /**
- * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery
- * rows.
+ * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery rows.
  */
 public class BigQueryUtils implements Serializable {
 
@@ -350,8 +349,7 @@ public class BigQueryUtils implements Serializable {
   public final class BigQueryDynamicDestinations
       extends DynamicDestinations<TableRow, KV<TableId, TableRow>> {
 
-    private BigQueryDynamicDestinations() {
-    }
+    private BigQueryDynamicDestinations() {}
 
     @Override
     public KV<TableId, TableRow> getDestination(ValueInSingleWindow<TableRow> element) {
@@ -362,7 +360,8 @@ public class BigQueryUtils implements Serializable {
     @Override
     public TableDestination getTable(KV<TableId, TableRow> destination) {
       TableId tableId = BigQueryUtils.this.destination.getBigQueryTableId();
-      String tableName = String.format("%s.%s.%s", tableId.getProject(), tableId.getDataset(), tableId.getTable());
+      String tableName =
+          String.format("%s.%s.%s", tableId.getProject(), tableId.getDataset(), tableId.getTable());
 
       TimePartitioning timePartitioning = null;
       if (BigQueryUtils.this.destination.isPartitioned()) {

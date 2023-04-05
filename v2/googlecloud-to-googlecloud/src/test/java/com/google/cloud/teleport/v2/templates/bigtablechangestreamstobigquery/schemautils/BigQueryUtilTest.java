@@ -41,9 +41,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
-/**
- * Tests BigQueryUtil.
- */
+/** Tests BigQueryUtil. */
 @RunWith(JUnit4.class)
 @Category(IntegrationTest.class)
 public class BigQueryUtilTest {
@@ -515,8 +513,7 @@ public class BigQueryUtilTest {
         "cf",
         "*:col,*:badcol,specific:col_to_ignore",
         com.google.cloud.Timestamp.now(),
-        com.google.cloud.Timestamp.MAX_VALUE
-    );
+        com.google.cloud.Timestamp.MAX_VALUE);
   }
 
   private BigQueryDestination getNonDefaultDestinationInfo() {
@@ -534,7 +531,11 @@ public class BigQueryUtilTest {
 
   private BigtableSource getDefaultSourceInfo() {
     return new BigtableSource(
-        TestUtil.TEST_CBT_INSTANCE, TestUtil.TEST_CBT_TABLE, "UTF-8", null, null,
+        TestUtil.TEST_CBT_INSTANCE,
+        TestUtil.TEST_CBT_TABLE,
+        "UTF-8",
+        null,
+        null,
         com.google.cloud.Timestamp.now(),
         com.google.cloud.Timestamp.MAX_VALUE);
   }

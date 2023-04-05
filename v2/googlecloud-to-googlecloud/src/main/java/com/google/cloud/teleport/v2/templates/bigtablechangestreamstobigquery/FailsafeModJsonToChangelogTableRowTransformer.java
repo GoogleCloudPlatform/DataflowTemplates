@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
-import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.TransientColumn;
@@ -165,6 +164,7 @@ public final class FailsafeModJsonToChangelogTableRowTransformer {
   @AutoValue
   public abstract static class FailsafeModJsonToTableRowOptions implements Serializable {
     public abstract ImmutableSet<String> getIgnoreFields();
+
     public abstract FailsafeElementCoder<String, String> getCoder();
 
     static Builder builder() {

@@ -229,8 +229,8 @@ public class StaticBigtableResourceManager implements BigtableResourceManager {
     LOG.info("No cleanup for pre-created resources");
   }
 
-  public void createAppProfile(String newAppProfile, boolean allowTransactionWrites,
-      List<String> clusters) {
+  public void createAppProfile(
+      String newAppProfile, boolean allowTransactionWrites, List<String> clusters) {
     if (!Objects.equals(appProfileId, newAppProfile)) {
       LOG.warn(
           "Test tries to create appProfile named differently from static appProfile: {}",

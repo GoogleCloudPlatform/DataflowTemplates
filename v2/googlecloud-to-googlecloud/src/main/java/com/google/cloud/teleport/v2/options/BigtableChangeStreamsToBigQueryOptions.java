@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
@@ -24,28 +25,11 @@ import org.apache.beam.sdk.options.Validation;
  * The {@link BigtableChangeStreamsToBigQueryOptions} class provides the custom execution options
  * passed by the executor at the command-line.
  */
-public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipelineOptions {
+public interface BigtableChangeStreamsToBigQueryOptions
+    extends DataflowPipelineOptions, BigtableCommonOptions.ReadChangeStreamsOptions {
 
   @TemplateParameter.Text(
       order = 1,
-      description = "Cloud Bigtable instance ID",
-      helpText = "The Cloud Bigtable instance to read change streams from.")
-  @Validation.Required
-  String getBigtableInstanceId();
-
-  void setBigtableInstanceId(String value);
-
-  @TemplateParameter.Text(
-      order = 2,
-      description = "Cloud Bigtable table ID",
-      helpText = "The Cloud Bigtable table to read change streams from.")
-  @Validation.Required
-  String getBigtableTableId();
-
-  void setBigtableTableId(String value);
-
-  @TemplateParameter.Text(
-      order = 3,
       description = "BigQuery dataset",
       helpText = "The BigQuery dataset for change streams output.")
   @Validation.Required
@@ -54,53 +38,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryDataset(String value);
 
   @TemplateParameter.Text(
-      order = 4,
-      description = "Cloud Bigtable application profile ID",
-      helpText = "The application profile is used to distinguish workload in Cloud Bigtable")
-  @Validation.Required
-  String getBigtableAppProfileId();
-
-  void setBigtableAppProfileId(String value);
-
-  @TemplateParameter.ProjectId(
-      order = 5,
-      optional = true,
-      description = "Cloud Bigtable Project ID",
-      helpText =
-          "Project to read change streams from. The default for this parameter is the project "
-              + "where the Dataflow pipeline is running.")
-  @Default.String("")
-  String getBigtableProjectId();
-
-  void setBigtableProjectId(String projectId);
-
-  @TemplateParameter.Text(
-      order = 6,
-      optional = true,
-      description = "Cloud Bigtable metadata instance ID",
-      helpText =
-          "The Cloud Bigtable instance to use for the change streams connector metadata table.")
-  @Default.String("")
-  String getBigtableMetadataInstanceId();
-
-  void setBigtableMetadataInstanceId(String value);
-
-  @TemplateParameter.Text(
-      order = 7,
-      optional = true,
-      description = "Cloud Bigtable metadata table ID",
-      helpText =
-          "The Cloud Bigtable change streams connector metadata table ID to use. If not "
-              + "provided, a Cloud Bigtable change streams connector metadata table will automatically be "
-              + "created during the pipeline flow. This parameter must be provided when updating an "
-              + "existing pipeline and should not be provided otherwise.")
-  @Default.String("")
-  String getBigtableMetadataTableTableId();
-
-  void setBigtableMetadataTableTableId(String value);
-
-  @TemplateParameter.Text(
-      order = 8,
+      order = 2,
       optional = true,
       description = "Cloud Bigtable column families to ignore",
       helpText = "A comma-separated list of column family names changes to which won't be captured")
@@ -110,7 +48,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setIgnoreColumnFamilies(String value);
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 3,
       optional = true,
       description = "Cloud Bigtable columns to ignore",
       helpText = "A comma-separated list of column names changes to which won't be captured")
@@ -119,21 +57,8 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
 
   void setIgnoreColumns(String value);
 
-  @TemplateParameter.DateTime(
-      order = 10,
-      optional = true,
-      description = "The timestamp to read change streams from",
-      helpText =
-          "The starting DateTime, inclusive, to use for reading change streams "
-              + "(https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the "
-              + "timestamp when the pipeline starts.")
-  @Default.String("")
-  String getStartTimestamp();
-
-  void setStartTimestamp(String startTimestamp);
-
   @TemplateParameter.Boolean(
-      order = 11,
+      order = 4,
       optional = true,
       description = "Write rowkeys as BigQuery BYTES",
       helpText =
@@ -145,7 +70,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setWriteRowkeyAsBytes(Boolean value);
 
   @TemplateParameter.Boolean(
-      order = 12,
+      order = 5,
       optional = true,
       description = "Write values as BigQuery BYTES",
       helpText =
@@ -157,7 +82,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setWriteValuesAsBytes(Boolean value);
 
   @TemplateParameter.Boolean(
-      order = 13,
+      order = 6,
       optional = true,
       description = "Write Bigtable timestamp as BigQuery INT",
       helpText =
@@ -170,19 +95,8 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
 
   void setWriteNumericTimestamps(Boolean value);
 
-  @TemplateParameter.Text(
-      order = 14,
-      optional = true,
-      description = "Bigtable charset name when reading values and column qualifiers",
-      helpText =
-          "Bigtable charset name when reading values and column qualifiers. " + "Default is UTF-8")
-  @Default.String("UTF-8")
-  String getBigtableCharset();
-
-  void setBigtableCharset(String value);
-
   @TemplateParameter.ProjectId(
-      order = 15,
+      order = 7,
       optional = true,
       description = "BigQuery project ID",
       helpText = "The BigQuery Project. Default is the project for the Dataflow job.")
@@ -192,7 +106,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryProjectId(String value);
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 8,
       optional = true,
       description = "BigQuery changelog table name",
       helpText =
@@ -204,7 +118,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryChangelogTableName(String value);
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 9,
       optional = true,
       description = "Changelog table will be partitioned at specified granularity",
       helpText =
@@ -216,7 +130,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryChangelogTablePartitionGranularity(String value);
 
   @TemplateParameter.Long(
-      order = 18,
+      order = 10,
       optional = true,
       description = "Sets partition expiration time in milliseconds",
       helpText =
@@ -227,7 +141,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryChangelogTablePartitionExpirationMs(Long value);
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 11,
       optional = true,
       description = "Optional changelog table columns to be disabled",
       helpText =
@@ -240,7 +154,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setBigQueryChangelogTableFieldsToIgnore(String value);
 
   @TemplateParameter.GcsWriteFolder(
-      order = 20,
+      order = 12,
       optional = true,
       description = "Dead letter queue directory",
       helpText =
@@ -251,7 +165,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setDlqDirectory(String value);
 
   @TemplateParameter.Integer(
-      order = 21,
+      order = 13,
       optional = true,
       description = "Dead letter queue retry minutes",
       helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
@@ -261,7 +175,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   void setDlqRetryMinutes(Integer value);
 
   @TemplateParameter.Integer(
-      order = 22,
+      order = 14,
       optional = true,
       description = "Dead letter maximum retries",
       helpText = "The number of attempts to process change stream mutations. Defaults to 5.")

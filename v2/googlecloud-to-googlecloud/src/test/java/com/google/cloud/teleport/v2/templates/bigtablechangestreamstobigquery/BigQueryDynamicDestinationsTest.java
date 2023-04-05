@@ -56,8 +56,7 @@ public final class BigQueryDynamicDestinationsTest {
             null,
             null,
             Timestamp.now(),
-            Timestamp.MAX_VALUE
-        );
+            Timestamp.MAX_VALUE);
 
     tableRow = new TableRow();
     tableRow.set(ChangelogColumn.ROW_KEY_STRING.getBqColumnName(), "some key");
@@ -397,5 +396,3 @@ public final class BigQueryDynamicDestinationsTest {
                 + "name=big_query_commit_timestamp, type=TIMESTAMP}}]}}");
   }
 }
-
-

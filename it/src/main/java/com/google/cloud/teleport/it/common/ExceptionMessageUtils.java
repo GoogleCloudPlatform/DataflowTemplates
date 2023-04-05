@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.common;
 
-/** Utility class to search for certain error message in the exception chain */
+/** Utility class to search for certain error message in the exception chain. */
 public class ExceptionMessageUtils {
 
   private ExceptionMessageUtils() {

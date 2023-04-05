@@ -66,9 +66,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This pipeline ingests {@link ChangeStreamMutation} from Bigtable change stream. The
- * {@link ChangeStreamMutation} is then broken into {@link Mod}, which converted into
- * {@link TableRow} and inserted into BigQuery table.
+ * This pipeline ingests {@link ChangeStreamMutation} from Bigtable change stream. The {@link
+ * ChangeStreamMutation} is then broken into {@link Mod}, which converted into {@link TableRow} and
+ * inserted into BigQuery table.
  */
 @Template(
     name = "Bigtable_Change_Streams_to_BigQuery",
@@ -81,9 +81,7 @@ import org.slf4j.LoggerFactory;
     contactInformation = "https://cloud.google.com/support")
 public final class BigtableChangeStreamsToBigQuery {
 
-  /**
-   * String/String Coder for {@link FailsafeElement}.
-   */
+  /** String/String Coder for {@link FailsafeElement}. */
   public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
@@ -210,9 +208,8 @@ public final class BigtableChangeStreamsToBigQuery {
             .withEndTime(endTimestamp);
 
     if (!StringUtils.isBlank(options.getBigtableMetadataTableTableId())) {
-      readChangeStream = readChangeStream.withMetadataTableTableId(
-          options.getBigtableMetadataTableTableId()
-      );
+      readChangeStream =
+          readChangeStream.withMetadataTableTableId(options.getBigtableMetadataTableTableId());
     }
 
     PCollection<ChangeStreamMutation> dataChangeRecord =
@@ -251,15 +248,15 @@ public final class BigtableChangeStreamsToBigQuery {
 
     FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions
         failsafeModJsonToTableRowOptions =
-        FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
-            .setCoder(FAILSAFE_ELEMENT_CODER)
-            .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
-            .build();
+            FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
+                .setCoder(FAILSAFE_ELEMENT_CODER)
+                .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
+                .build();
 
     FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow
         failsafeModJsonToTableRow =
-        new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
-            bigQuery, failsafeModJsonToTableRowOptions);
+            new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
+                bigQuery, failsafeModJsonToTableRowOptions);
 
     PCollectionTuple tableRowTuple =
         failsafeModJson.apply("Mod JSON To TableRow", failsafeModJsonToTableRow);
@@ -409,10 +406,11 @@ public final class BigtableChangeStreamsToBigQuery {
             break;
           default:
           case UNKNOWN:
-            throw new UnsupportedEntryException("Cloud Bigtable change stream entry of type " +
-                entry.getClass().getName()
-                + " is not supported. The entry was put into a dead letter queue directory. "
-                + "Please update your Dataflow template with the latest template version");
+            throw new UnsupportedEntryException(
+                "Cloud Bigtable change stream entry of type "
+                    + entry.getClass().getName()
+                    + " is not supported. The entry was put into a dead letter queue directory. "
+                    + "Please update your Dataflow template with the latest template version");
         }
 
         String modJsonString;
