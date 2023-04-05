@@ -41,7 +41,7 @@ public class JsonStringToQueryMapper implements JdbcIO.PreparedStatementSetter<S
       JSONObject object = new JSONObject(element);
       for (int i = 0; i < keyOrder.size(); i++) {
         String key = keyOrder.get(i);
-        if (object.get(key) == JSONObject.NULL) {
+        if (!object.has(key) || object.get(key) == JSONObject.NULL) {
           query.setNull(i + 1, Types.NULL);
         } else {
           query.setObject(i + 1, object.get(key));
