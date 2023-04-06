@@ -66,7 +66,10 @@ public final class PubsubToJdbcIT extends JDBCBaseIT {
         DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
-    jdbcResourceManager = DefaultMySQLResourceManager.builder(testName).build();
+    jdbcResourceManager =
+        ((DefaultMySQLResourceManager.Builder)
+                DefaultMySQLResourceManager.builder(testName).setHost(HOST_IP))
+            .build();
   }
 
   @After
