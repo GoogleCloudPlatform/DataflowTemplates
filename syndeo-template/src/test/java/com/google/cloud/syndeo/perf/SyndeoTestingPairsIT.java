@@ -20,10 +20,10 @@ import static com.google.cloud.syndeo.perf.AnyToAnySyndeoTestLT.buildPipelinePay
 import com.google.auto.value.AutoValue;
 import com.google.cloud.syndeo.SyndeoTemplate;
 import com.google.cloud.syndeo.v1.SyndeoV1;
-import com.google.cloud.teleport.it.PipelineUtils;
-import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.PipelineUtils;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;

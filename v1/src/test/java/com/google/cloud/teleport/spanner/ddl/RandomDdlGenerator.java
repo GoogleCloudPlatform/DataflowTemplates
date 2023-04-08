@@ -18,6 +18,8 @@ package com.google.cloud.teleport.spanner.ddl;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.Type;
+import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import java.util.Arrays;
@@ -136,7 +138,6 @@ public abstract class RandomDdlGenerator {
         .setArrayChance(20)
         .setMaxPkComponents(3)
         .setMaxBranchPerLevel(new int[] {2, 2, 1, 1, 1, 1, 1})
-        // TODO(b/187873097): Enable views here once supported in production.
         .setMaxViews(0)
         .setMaxIndex(2)
         .setMaxForeignKeys(2)
@@ -475,6 +476,9 @@ public abstract class RandomDdlGenerator {
           foreignKeyBuilder.columnsBuilder().add(pk.name());
           foreignKeyBuilder.referencedColumnsBuilder().add(pk.name());
         }
+        if (rnd.nextBoolean()) {
+          foreignKeyBuilder.referentialAction(Optional.of(generateRandomReferentialAction(rnd)));
+        }
         ForeignKey foreignKey = foreignKeyBuilder.build();
         if (foreignKey.columns().size() > 0) {
           foreignKeys.add(foreignKey.prettyPrint());
@@ -521,6 +525,12 @@ public abstract class RandomDdlGenerator {
         && table.primaryKeys().size() < MAX_PKS) {
       generateTable(builder, table, nextLevel);
     }
+  }
+
+  private ReferentialAction generateRandomReferentialAction(Random rnd) {
+    return rnd.nextBoolean()
+        ? ReferentialAction.ON_DELETE_CASCADE
+        : ReferentialAction.ON_DELETE_NO_ACTION;
   }
 
   private String addDefaultValueToColumn(Type type) {

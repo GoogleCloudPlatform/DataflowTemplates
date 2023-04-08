@@ -155,6 +155,6 @@ public class PubsubToJdbc {
     int startIndex = statement.indexOf("(");
     int endIndex = statement.indexOf(")");
     String data = statement.substring(startIndex + 1, endIndex);
-    return Splitter.on(',').splitToList(data);
+    return Splitter.on(',').trimResults().splitToList(data);
   }
 }

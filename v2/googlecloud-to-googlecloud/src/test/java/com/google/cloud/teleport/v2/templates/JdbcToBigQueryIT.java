@@ -15,24 +15,24 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
+import static com.google.cloud.teleport.it.common.utils.PipelineUtils.createJobName;
+import static com.google.cloud.teleport.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
-import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.common.JDBCBaseIT;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.common.PipelineLauncher;
+import com.google.cloud.teleport.it.common.PipelineOperator;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.jdbc.DefaultMSSQLResourceManager;
 import com.google.cloud.teleport.it.jdbc.DefaultMySQLResourceManager;
 import com.google.cloud.teleport.it.jdbc.DefaultOracleResourceManager;
 import com.google.cloud.teleport.it.jdbc.DefaultPostgresResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher;
-import com.google.cloud.teleport.it.launcher.PipelineOperator;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.time.Instant;
@@ -252,7 +252,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Assert
     assertThat(result).isEqualTo(PipelineOperator.Result.LAUNCH_FINISHED);
 
-    assertThatRecords(bigQueryResourceManager.readTable(testName))
+    assertThatBigQueryRecords(bigQueryResourceManager.readTable(testName))
         .hasRecordsUnorderedCaseInsensitiveColumns(jdbcResourceManager.readTable(testName));
   }
 

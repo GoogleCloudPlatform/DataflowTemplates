@@ -31,7 +31,6 @@
   <properties>
     <dataplex.api.version>v1-rev20230308-2.0.0</dataplex.api.version>
     <derby.version>10.14.2.0</derby.version>
-    <avro.version>1.8.2</avro.version>
     <dlp.version>2.1.0</dlp.version>
   </properties>
 
@@ -176,6 +175,18 @@
     </dependency>
 
     <!-- Test Dependencies -->
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-google-cloud-platform</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-jdbc</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>com.google.truth</groupId>
       <artifactId>truth</artifactId>
