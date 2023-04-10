@@ -26,6 +26,8 @@ on:
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
       - '.github/workflows/syndeo-pr.yml'
+  schedule:
+    - cron: "0 */12 * * *"
 
 env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
@@ -49,7 +51,7 @@ jobs:
           java-version: '11'
           distribution: 'adopt'
       - name: Build with Maven
-        run: mvn install -f pom.xml -pl .,metadata,plaintext-logging,it,syndeo-template,v1 -DskipTests -Djib.skip=true
+        run: mvn install -f pom.xml -pl syndeo-template -am -DskipTests -Djib.skip=true
       - name: Run integration tests with Maven
         run: mvn failsafe:integration-test failsafe:verify -Djib.skip=true -DskipUnitTests -f pom.xml -pl syndeo-template -Dproject=cloud-teleport-testing -Dregion=us-east1 -DartifactBucket=cloud-teleport-testing-df-staging -DtempLocation=gs://cloud-teleport-testing-df-staging/${{ github.job }}/temp -DforkCount=1 -DbeamTestPipelineOptions="[]"
   java_load_tests_syndeo:
@@ -71,4 +73,7 @@ jobs:
         run: mvn install -f pom.xml -pl .,metadata,plaintext-logging,it,syndeo-template,v1 -DskipTests -Djib.skip=true
       - name: Run load tests with Maven
         run: mvn failsafe:integration-test failsafe:verify -Pload-tests -Dconfiguration=local -Djib.skip=true -DskipUnitTests -f pom.xml -pl syndeo-template -Dproject=cloud-teleport-testing -Dregion=us-east1 -DartifactBucket=cloud-teleport-testing-df-staging -DtempLocation=gs://cloud-teleport-testing-df-staging/${{ github.job }}/temp -DforkCount=4 -DbeamTestPipelineOptions="[]"
+      - name: Publish Load Test Report
+        if: success() || failure()
+        uses: scacap/action-surefire-report@v1
 

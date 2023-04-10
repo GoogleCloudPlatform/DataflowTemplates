@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.bigquery.BigQueryResourceManagerUtils.toTableSpec;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
+import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
+import static com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManagerUtils.toTableSpec;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.bigquery.Field;
@@ -27,20 +27,23 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Storage;
-import com.google.cloud.teleport.it.TemplateLoadTestBase;
-import com.google.cloud.teleport.it.TestProperties;
-import com.google.cloud.teleport.it.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
-import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.it.spanner.DefaultSpannerResourceManager;
-import com.google.cloud.teleport.it.spanner.SpannerResourceManager;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
+import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
+import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
+import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
+import com.google.cloud.teleport.it.jdbc.DefaultPostgresResourceManager;
+import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
+import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SchemaTemplate;
 import com.google.common.base.MoreObjects;
@@ -49,14 +52,19 @@ import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import com.google.re2j.Pattern;
 import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.time.Duration;
+import java.util.Map;
 import org.junit.After;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance test for {@link StreamingDataGenerator Streaming Data generator} template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(StreamingDataGenerator.class)
 @RunWith(JUnit4.class)
 public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
@@ -69,21 +77,26 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   // 35,000,000 messages of the given schema make up approximately 10GB
   private static final String NUM_MESSAGES = "35000000";
   private static PubsubResourceManager pubsubResourceManager;
-  private static ArtifactClient artifactClient;
+  private static ArtifactClient gcsClient;
   private static BigQueryResourceManager bigQueryResourceManager;
   private static SpannerResourceManager spannerResourceManager;
+  private static JDBCResourceManager jdbcResourceManager;
 
   @After
   public void cleanup() {
     ResourceManagerUtils.cleanResources(
-        pubsubResourceManager, artifactClient, bigQueryResourceManager, spannerResourceManager);
+        pubsubResourceManager,
+        gcsClient,
+        bigQueryResourceManager,
+        spannerResourceManager,
+        jdbcResourceManager);
   }
 
   @Test
   public void testGeneratePubsub10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        DefaultPubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     TopicName backlogTopic = pubsubResourceManager.createTopic("output");
@@ -102,7 +115,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
@@ -118,10 +131,10 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGenerateGcs10gb() throws IOException, ParseException, InterruptedException {
     String artifactBucket = TestProperties.artifactBucket();
     // Set up resource manager
-    Storage gcsClient = createGcsClient(CREDENTIALS);
-    artifactClient = GcsArtifactClient.builder(gcsClient, artifactBucket, TEST_ROOT_DIR).build();
+    Storage storageClient = createStorageClient(CREDENTIALS);
+    gcsClient = GcsArtifactClient.builder(storageClient, artifactBucket, TEST_ROOT_DIR).build();
     String outputDirectory =
-        getFullGcsPath(artifactBucket, TEST_ROOT_DIR, artifactClient.runId(), testName);
+        getFullGcsPath(artifactBucket, TEST_ROOT_DIR, gcsClient.runId(), testName);
     // Arrange
     Pattern expectedPattern = Pattern.compile(".*output-.*");
     LaunchConfig options =
@@ -138,12 +151,12 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
     assertThatResult(result).isLaunchFinished();
-    assertThat(artifactClient.listArtifacts(testName, expectedPattern)).isNotEmpty();
+    assertThat(gcsClient.listArtifacts(testName, expectedPattern)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, FAKE_DATA_PCOLLECTION));
@@ -154,7 +167,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
     // Set up resource manager
     String name = testName;
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(name, PROJECT).setCredentials(CREDENTIALS).build();
+        DefaultBigQueryResourceManager.builder(name, project).setCredentials(CREDENTIALS).build();
     // schema should match schema supplied to generate fake records.
     Schema schema =
         Schema.of(
@@ -175,14 +188,14 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", NUM_MESSAGES)
             .addParameter("sinkType", "BIGQUERY")
-            .addParameter("outputTableSpec", toTableSpec(PROJECT, table))
+            .addParameter("outputTableSpec", toTableSpec(project, table))
             .addParameter("numWorkers", "50")
             .addParameter("maxNumWorkers", "100")
             .addParameter("autoscalingAlgorithm", "THROUGHPUT_BASED")
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
@@ -197,7 +210,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGenerateSpanner10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     String name = testName;
-    spannerResourceManager = DefaultSpannerResourceManager.builder(name, PROJECT, REGION).build();
+    spannerResourceManager = DefaultSpannerResourceManager.builder(name, project, region).build();
     String createTableStatement =
         String.format(
             "CREATE TABLE `%s` (\n"
@@ -231,7 +244,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", NUM_MESSAGES)
             .addParameter("sinkType", "SPANNER")
-            .addParameter("projectId", PROJECT)
+            .addParameter("projectId", project)
             .addParameter("spannerInstanceName", spannerResourceManager.getInstanceId())
             .addParameter("spannerDatabaseName", spannerResourceManager.getDatabaseId())
             .addParameter("spannerTableName", name)
@@ -241,13 +254,69 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
 
     // Assert
     assertThatResult(result).isLaunchFinished();
     assertThat(spannerResourceManager.readTableRecords(name, columnNames)).isNotEmpty();
+    // export results
+    exportMetricsToBigQuery(info, getMetrics(info, FAKE_DATA_PCOLLECTION));
+  }
+
+  @Test
+  public void testGenerateJdbc10gb()
+      throws IOException, ParseException, InterruptedException, SQLException {
+    jdbcResourceManager = DefaultPostgresResourceManager.builder(testName).setHost(hostIp).build();
+    JDBCSchema jdbcSchema =
+        new JDBCSchema(
+            Map.of(
+                "eventId", "VARCHAR(100)",
+                "eventTimestamp", "TIMESTAMP",
+                "ipv4", "VARCHAR(100)",
+                "ipv6", "VARCHAR(100)",
+                "country", "VARCHAR(100)",
+                "username", "VARCHAR(100)",
+                "quest", "VARCHAR(100)",
+                "score", "INTEGER",
+                "completed", "BOOLEAN"),
+            "eventId");
+    jdbcResourceManager.createTable(testName, jdbcSchema);
+    String statement =
+        String.format(
+            "INSERT INTO %s (eventId,eventTimestamp,ipv4,ipv6,country,username,quest,score,completed) VALUES (?,to_timestamp(?/1000),?,?,?,?,?,?,?)",
+            testName);
+    String driverClassName = "org.postgresql.Driver";
+    // Arrange
+    LaunchConfig options =
+        LaunchConfig.builder(testName, SPEC_PATH)
+            .addParameter("schemaTemplate", SchemaTemplate.GAME_EVENT.name())
+            .addParameter("qps", "1000000")
+            .addParameter("messagesLimit", NUM_MESSAGES)
+            .addParameter("sinkType", "JDBC")
+            .addParameter("driverClassName", driverClassName)
+            .addParameter("connectionUrl", jdbcResourceManager.getUri())
+            .addParameter("statement", statement)
+            .addParameter("username", jdbcResourceManager.getUsername())
+            .addParameter("password", jdbcResourceManager.getPassword())
+            .addParameter("numWorkers", "50")
+            .addParameter("maxNumWorkers", "100")
+            .addParameter("autoscalingAlgorithm", "THROUGHPUT_BASED")
+            .build();
+
+    // Act
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    assertThatPipeline(info).isRunning();
+    Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+    ResultSet resultSet =
+        jdbcResourceManager.runSQLQuery(String.format("SELECT COUNT(*) FROM %s", testName));
+    resultSet.next();
+    int totalRows = resultSet.getInt(1);
+    assertThat(totalRows).isAtLeast(Integer.valueOf(NUM_MESSAGES));
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, FAKE_DATA_PCOLLECTION));
   }

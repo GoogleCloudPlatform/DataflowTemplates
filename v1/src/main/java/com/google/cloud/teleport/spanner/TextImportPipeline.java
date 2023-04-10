@@ -71,22 +71,9 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  *  PRIMARY KEY(Id)
  * </pre>
  *
- * <pre>
- * {@code mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.TextImportPipeline \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --runner=DataflowRunner \
- * --importManifest=gs://IMPORT_MANIFEST_FILE \
- * --spannerInstance=SPANNER_INSTANCE_NAME \
- * --databaseName=DATABASE_NAME \
- * --tableName=TABLE_NAME \
- * --columnDelimiter=',' \
- * --fieldQualifier='"'
- * }
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Text_to_Cloud_Spanner.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Text_to_Cloud_Spanner",
@@ -96,6 +83,8 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
         "A pipeline to import a Cloud Spanner database from a set of Text (CSV) files in Cloud"
             + " Storage.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-cloud-spanner",
     contactInformation = "https://cloud.google.com/support")
 public class TextImportPipeline {
 
@@ -273,6 +262,17 @@ public class TextImportPipeline {
     ValueProvider<Boolean> getHandleNewLine();
 
     void setHandleNewLine(ValueProvider<Boolean> value);
+
+    @TemplateParameter.GcsWriteFolder(
+        order = 16,
+        description = "Invalid rows output path",
+        optional = true,
+        helpText = "Cloud Storage path where to write rows that cannot be imported.",
+        example = "gs://your-bucket/your-path")
+    @Default.String("")
+    ValueProvider<String> getInvalidOutputPath();
+
+    void setInvalidOutputPath(ValueProvider<String> value);
   }
 
   public static void main(String[] args) {
@@ -299,7 +299,9 @@ public class TextImportPipeline {
             .withDatabaseId(options.getDatabaseId())
             .withRpcPriority(options.getSpannerPriority());
 
-    p.apply(new TextImportTransform(spannerConfig, options.getImportManifest()));
+    p.apply(
+        new TextImportTransform(
+            spannerConfig, options.getImportManifest(), options.getInvalidOutputPath()));
 
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()

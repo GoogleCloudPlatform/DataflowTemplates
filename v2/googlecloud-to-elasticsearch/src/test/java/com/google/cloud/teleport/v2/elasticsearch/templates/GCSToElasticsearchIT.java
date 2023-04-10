@@ -15,21 +15,21 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
-import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.utils.PipelineUtils.createJobName;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.elasticsearch.DefaultElasticsearchResourceManager;
 import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import java.io.IOException;
@@ -86,10 +86,10 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
       String csvFileName, String udfFileName, List<Map<String, Object>> expectedRecords)
       throws IOException {
     // Arrange
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/" + csvFileName,
         Resources.getResource("GCSToElasticsearch/" + csvFileName).getPath());
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/" + udfFileName,
         Resources.getResource("GCSToElasticsearch/" + udfFileName).getPath());
     String indexName = createJobName(testName);
@@ -126,7 +126,7 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
   @Test
   public void testElasticsearchCsvWithHeaders() throws IOException {
     // Arrange
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/with_headers_10.csv",
         Resources.getResource("GCSToElasticsearch/with_headers_10.csv").getPath());
     String indexName = createJobName(testName);
@@ -138,6 +138,54 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
             .addParameter("inputFileSpec", getGcsPath("input") + "/*.csv")
             .addParameter("inputFormat", "csv")
             .addParameter("containsHeaders", "true")
+            .addParameter("deadletterTable", PROJECT + ":" + bigQueryClient.getDatasetId() + ".dlq")
+            .addParameter("delimiter", ",")
+            .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
+            .addParameter("index", indexName)
+            .addParameter("apiKey", "elastic");
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(10);
+    assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
+        .hasRecordsUnordered(List.of(Map.of("id", "001", "state", "CA", "price", 3.65)));
+  }
+
+  @Test
+  public void testElasticsearchCsvWithoutHeadersWithJsonSchema() throws IOException {
+    // Arrange
+    gcsClient.uploadArtifact(
+        "input/no_header_10.csv",
+        Resources.getResource("GCSToElasticsearch/no_header_10.csv").getPath());
+    gcsClient.createArtifact(
+        "input/schema.json",
+        "[{\n"
+            + "    \"name\": \"id\",\n"
+            + "    \"type\": \"STRING\"\n"
+            + "}, {\n"
+            + "    \"name\": \"state\",\n"
+            + "    \"type\": \"STRING\"\n"
+            + "}, {\n"
+            + "    \"name\": \"price\",\n"
+            + "    \"type\": \"DOUBLE\"\n"
+            + "}]");
+    String indexName = createJobName(testName);
+    elasticsearchResourceManager.createIndex(indexName);
+    bigQueryClient.createDataset(REGION);
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("inputFileSpec", getGcsPath("input") + "/*.csv")
+            .addParameter("inputFormat", "csv")
+            .addParameter("containsHeaders", "false")
+            .addParameter("jsonSchemaPath", getGcsPath("input/schema.json"))
             .addParameter("deadletterTable", PROJECT + ":" + bigQueryClient.getDatasetId() + ".dlq")
             .addParameter("delimiter", ",")
             .addParameter("connectionUrl", elasticsearchResourceManager.getUri())

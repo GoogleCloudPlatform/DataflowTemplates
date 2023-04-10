@@ -33,20 +33,9 @@ import org.joda.time.Duration;
  * is fixed and equals to 10 seconds. At the moment, publishing messages with attributes is
  * unsupported.
  *
- * <p>Example Usage:
- *
- * <pre>
- * {@code mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.TextToPubsubStream \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${STAGING_BUCKET}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${STAGING_BUCKET}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --runner=DataflowRunner \
- * --inputFilePattern=gs://path/to/*.csv \
- * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
- * }
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Stream_GCS_Text_to_Cloud_PubSub.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Stream_GCS_Text_to_Cloud_PubSub",
@@ -55,6 +44,8 @@ import org.joda.time.Duration;
     description =
         "A pipeline that polls every 10 seconds for new text files stored in Cloud Storage and outputs each line to a Pub/Sub topic.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-pubsub-stream",
     contactInformation = "https://cloud.google.com/support")
 public class TextToPubsubStream extends TextToPubsub {
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);

@@ -55,6 +55,12 @@
        </exclusion>
       </exclusions>
     </dependency>
+    <!-- Jdbc dependencies -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql.version}</version>
+    </dependency>
 
     <!-- json-data-generator dependency javafaker depends on snakeyaml  -->
     <dependency>
@@ -68,6 +74,18 @@
       <groupId>com.google.truth</groupId>
       <artifactId>truth</artifactId>
       <version>${truth.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-google-cloud-platform</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-jdbc</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

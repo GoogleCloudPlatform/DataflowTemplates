@@ -15,16 +15,16 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifacts;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifacts;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.re2j.Pattern;
@@ -46,7 +46,7 @@ public final class BulkCompressorIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException, URISyntaxException {
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/lipsum.txt", Resources.getResource("BulkCompressorIT/lipsum.txt").getPath());
   }
 
@@ -80,8 +80,7 @@ public final class BulkCompressorIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    List<Artifact> artifacts =
-        artifactClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
+    List<Artifact> artifacts = gcsClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
     assertThat(artifacts).hasSize(1);
     assertThatArtifacts(artifacts).hasHash(expectedSha256);
   }

@@ -15,24 +15,24 @@
  */
 package com.google.cloud.teleport.spanner;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
+import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.storage.Storage;
-import com.google.cloud.teleport.it.DataGenerator;
-import com.google.cloud.teleport.it.TemplateLoadTestBase;
-import com.google.cloud.teleport.it.TestProperties;
-import com.google.cloud.teleport.it.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.spanner.DefaultSpannerResourceManager;
-import com.google.cloud.teleport.it.spanner.SpannerResourceManager;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
+import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
+import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
+import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
+import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
+import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.re2j.Pattern;
@@ -43,10 +43,12 @@ import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance tests for {@link ExportPipeline Spanner to GCS Avro} template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(ExportPipeline.class)
 @RunWith(JUnit4.class)
 public class ExportPipelineLT extends TemplateLoadTestBase {
@@ -63,20 +65,20 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
   private static final String OUTPUT_PCOLLECTION =
       "Run Export/Store Avro files/Write/RewindowIntoGlobal/Window.Assign.out0";
   private static SpannerResourceManager spannerResourceManager;
-  private static ArtifactClient artifactClient;
+  private static ArtifactClient gcsClient;
 
   @Before
   public void setup() throws IOException {
     // Set up resource managers
     spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
-    Storage gcsClient = createGcsClient(CREDENTIALS);
-    artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+        DefaultSpannerResourceManager.builder(testName, project, region).build();
+    Storage storageClient = createStorageClient(CREDENTIALS);
+    gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
   }
 
   @After
   public void teardown() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, artifactClient);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, gcsClient);
   }
 
   @Test
@@ -109,7 +111,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
             .setQPS("1000000")
             .setMessagesLimit(NUM_MESSAGES)
             .setSinkType("SPANNER")
-            .setProjectId(PROJECT)
+            .setProjectId(project)
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
             .setSpannerTableName(name)
@@ -127,20 +129,20 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 
     // Assert
     assertThatResult(result).isLaunchFinished();
-    // check to see if messages reached the output topic
-    assertThat(artifactClient.listArtifacts(name, Pattern.compile(".*"))).isNotEmpty();
+    // check to see if messages reached the output bucket
+    assertThat(gcsClient.listArtifacts(name, Pattern.compile(".*"))).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
   private String getTestMethodDirPath() {
-    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName);
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, gcsClient.runId(), testName);
   }
 }

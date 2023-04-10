@@ -1,9 +1,0 @@
-{
-  "key": "server{{integer(1,50)}}",
-  "cells": [{
-      "family": "SystemMetrics",
-      "qualifier": "{{random("cpu", "memory")}}",
-      "timestamp": {{timestamp()}}000,
-      "value": "{{double(0,100)}}"
-    }]
-}

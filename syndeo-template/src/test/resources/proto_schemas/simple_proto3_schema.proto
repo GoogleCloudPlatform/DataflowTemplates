@@ -1,0 +1,5 @@
+syntax = "proto3";
+message SampleProtobuf {
+  string message_type = 1;
+  string message = 2;
+}

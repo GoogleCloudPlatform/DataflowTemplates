@@ -38,23 +38,11 @@ import org.apache.beam.sdk.values.Row;
 /**
  * This Dataflow Template performs a one off copy of one table from Apache Cassandra to Cloud
  * Bigtable. It is designed to require minimal configuration and aims to replicate the table
- * structure in Cassandra as closely as possible in Cloud Bigtable. To run the pipeline go to
- * "Create a job from Template", enter the required configuration and press "Run job"
+ * structure in Cassandra as closely as possible in Cloud Bigtable.
  *
- * <p>The minimum required configuration required to run the pipeline is:
- *
- * <ul>
- *   <li><b>cassandraHosts:</b> The hosts of the Cassandra nodes in a comma separated value list.
- *   <li><b>cassandraPort:</b> The tcp port where Cassandra can be reached on the nodes.
- *   <li><b>cassandraKeyspace:</b> The Cassandra keyspace where the table is located.
- *   <li><b>cassandraTable:</b> The Cassandra table to be copied.
- *   <li><b>bigtableProjectId:</b> The Project ID of the Bigtable instance where the Cassandra table
- *       should be copied.
- *   <li><b>bigtableInstanceId:</b> The Bigtable Instance ID where the Cassandra table should be
- *       copied.
- *   <li><b>bigtableTableId:</b> The name of the Bigtable table where the Cassandra table should be
- *       copied.
- * </ul>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cassandra_To_Cloud_Bigtable.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cassandra_To_Cloud_Bigtable",
@@ -62,9 +50,15 @@ import org.apache.beam.sdk.values.Row;
     displayName = "Cassandra to Cloud Bigtable",
     description = "A pipeline to import a Apache Cassandra table into Cloud Bigtable.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cassandra-to-bigtable",
     contactInformation = "https://cloud.google.com/support")
 final class CassandraToBigtable {
 
+  /**
+   * TODO - refactor to extend {@link
+   * com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.WriteOptions}.
+   */
   public interface Options extends PipelineOptions {
 
     @TemplateParameter.Text(

@@ -77,35 +77,11 @@ import org.slf4j.LoggerFactory;
  * BigQuery Table. If new columns or tables appear, they are automatically added to BigQuery. The
  * data is then inserted into BigQuery staging tables and Merged into a final replica table.
  *
- * <p>NOTE: Future versiosn will support: Pub/Sub, GCS, or Kafka as per DataStream
+ * <p>NOTE: Future versions are planned to support: Pub/Sub, GCS, or Kafka as per DataStream
  *
- * <p>Example Usage: TODO: FIX EXAMPLE USAGE
- *
- * <pre>
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --templateLocation=gs://$BUCKET_NAME/templates/${PIPELINE_NAME}.json \
- * --inputFilePattern=${GCS_AVRO_FILE_PATTERN} \
- * --outputProjectId=${OUTPUT_PROJECT_ID} \
- * --outputStagingDatasetTemplate=${BQ_STAGING_DATASET_TEMPLATE} \
- * --outputStagingTableNameTemplate=${BQ_STAGING_TABLE_NAME_TEMPLATE} \
- * --outputDatasetTemplate=${BQ_DATASET_TEMPLATE} \
- * --outputTableNameTemplate=${BQ_TABLE_NAME_TEMPLATE} \
- * --deadLetterQueueDirectory=${DLQ_GCS_PATH} \
- * --runner=(DirectRunner|DataflowRunner)"
- * inputFileFormat
- * OPTIONAL Dataflow Params:
- * --inputFileFormat=${GCS_FILE_FORMAT}\
- * --autoscalingAlgorithm=THROUGHPUT_BASED \
- * --numWorkers=1 \
- * --maxNumWorkers=10 \
- * --workerMachineType=n1-highcpu-16 \
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-bigquery/README_Cloud_Datastream_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_Datastream_to_BigQuery",
@@ -116,6 +92,8 @@ import org.slf4j.LoggerFactory;
             + " writes them to a pre-existing BigQuery dataset as a set of tables.",
     optionsClass = Options.class,
     flexContainerName = "datastream-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class DataStreamToBigQuery {
 

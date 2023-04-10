@@ -47,6 +47,7 @@ import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -66,6 +67,8 @@ public final class CSVRecordToMutationTest {
   private final ValueProvider<String> nullString = StaticValueProvider.of(null);
   private final ValueProvider<String> dateFormat = StaticValueProvider.of(null);
   private final ValueProvider<String> timestampFormat = StaticValueProvider.of(null);
+  private final ValueProvider<String> invalidOutputPath = StaticValueProvider.of(null);
+  private final TupleTag<String> errorTag = new TupleTag<>();
 
   private final CSVFormat csvFormat =
       CSVFormat.newFormat(columnDelimiter.get())
@@ -116,7 +119,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -190,7 +195,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -263,7 +270,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
     // CSVRecordToMutation throws exception if it could not parse the data to corresponding type.
     // `NotBool` cannot be parsed to Boolean in this test case.
@@ -309,7 +318,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -376,7 +387,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -426,7 +439,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         StaticValueProvider.of("M/d/yyyy"),
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -473,7 +488,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        StaticValueProvider.of("MMM d yyyy HH:mm:ss.SSSVV")))
+                        StaticValueProvider.of("MMM d yyyy HH:mm:ss.SSSVV"),
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -528,7 +545,9 @@ public final class CSVRecordToMutationTest {
                         StaticValueProvider.of('`'),
                         StaticValueProvider.of("\\NA"),
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -593,7 +612,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     pipeline.run();
@@ -635,7 +656,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     pipeline.run();
@@ -675,7 +698,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
     pipeline.run();
   }
@@ -714,7 +739,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
     assertThrows(PipelineExecutionException.class, () -> pipeline.run());
   }
@@ -761,7 +788,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -829,7 +858,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     // Verify that int_col3 doesn't appear in the mutation column list.
@@ -878,7 +909,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     // Verify that int_col3 doesn't appear in the mutation column list.
@@ -930,7 +963,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     // Verify that gen_col doesn't appear in the mutation column list.
@@ -981,7 +1016,9 @@ public final class CSVRecordToMutationTest {
                         escape,
                         nullString,
                         dateFormat,
-                        timestampFormat))
+                        timestampFormat,
+                        invalidOutputPath,
+                        errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     // Verify that gen_col doesn't appear in the mutation column list.

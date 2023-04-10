@@ -24,9 +24,9 @@
 
     <properties>
         <auto-value.version>1.9</auto-value.version>
-        <avro.version>1.8.2</avro.version>
-        <beam.version>2.45.0</beam.version>
-        <beam.snapshot.version>2.47.0-SNAPSHOT</beam.snapshot.version>
+        <avro.version>1.11.1</avro.version>
+        <beam.version>2.46.0</beam.version>
+        <beam.snapshot.version>2.48.0-SNAPSHOT</beam.snapshot.version>
         <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
@@ -55,6 +55,33 @@
                 <version>${beam.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>google-cloud-pubsublite</artifactId>
+                <version>1.11.1</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.api.grpc</groupId>
+                <artifactId>grpc-google-cloud-pubsublite-v1</artifactId>
+                <version>1.11.1</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.api.grpc</groupId>
+                <artifactId>proto-google-cloud-pubsublite-v1</artifactId>
+                <version>1.11.1</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp-bom</artifactId>
+                <version>4.9.3</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.beam</groupId>
+                <artifactId>beam-sdks-java-io-kafka</artifactId>
+                <version>${beam.snapshot.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.api-client</groupId>
@@ -203,11 +230,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
-            <artifactId>beam-model-pipeline</artifactId>
-            <version>${beam.snapshot.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
             <version>${beam.snapshot.version}</version>
         </dependency>
@@ -275,6 +297,27 @@
             <version>9.0.0</version>
         </dependency>
 
+        <!-- Proto schema support for pubsub and kafka -->
+        <dependency>
+            <groupId>com.squareup.wire</groupId>
+            <artifactId>wire-runtime-jvm</artifactId>
+            <version>4.5.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.wire</groupId>
+            <artifactId>wire-schema-jvm</artifactId>
+            <version>4.5.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio</artifactId>
+            <version>3.3.0</version>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>com.google.truth</groupId>
@@ -284,7 +327,13 @@
         </dependency>
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>integration-testing-lib</artifactId>
+            <artifactId>it-google-cloud-platform</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-kafka</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
@@ -372,6 +421,18 @@
                             </artifactSet>
                             <filters>
                                 <filter>
+                                    <artifact>org.apache.beam:beam-sdks-java-extensions-sql-expansion-service</artifact>
+                                    <excludes>
+                                        <exclude>org/apache/beam/sdk/io/kafka/**</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.apache.beam:beam-sdks-java-io-kafka</artifact>
+                                    <includes>
+                                        <include>org/apache/beam/sdk/io/kafka/**</include>
+                                    </includes>
+                                </filter>
+                                <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
                                         <exclude>META-INF/*.SF</exclude>
@@ -441,7 +502,7 @@
                         </excludes>
                         <toggleOffOn/>
                         <googleJavaFormat>
-                            <version>1.8</version>
+                            <version>1.16.0</version>
                             <style>GOOGLE</style>
                         </googleJavaFormat>
                         <licenseHeader>

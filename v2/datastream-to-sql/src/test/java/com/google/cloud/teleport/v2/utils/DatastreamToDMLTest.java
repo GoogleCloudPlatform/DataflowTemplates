@@ -18,13 +18,13 @@ package com.google.cloud.teleport.v2.utils;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL;
 import com.google.cloud.teleport.v2.values.DatastreamRow;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

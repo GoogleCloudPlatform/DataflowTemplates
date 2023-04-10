@@ -50,6 +50,7 @@ import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
 import org.bson.Document;
+import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,9 +77,7 @@ public class MongoDbUtils implements Serializable {
       document.forEach(
           (key, value) -> {
             bigquerySchemaFields.add(
-                new TableFieldSchema()
-                    .setName(key)
-                    .setType(getTableSchemaDataType(value.getClass().getName())));
+                new TableFieldSchema().setName(key).setType(getTableSchemaDataType(value)));
           });
     } else {
       bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));
@@ -90,16 +89,18 @@ public class MongoDbUtils implements Serializable {
   }
 
   /** Maps and Returns the Datatype form MongoDb To BigQuery. */
-  public static String getTableSchemaDataType(String s) {
-    switch (s) {
-      case "java.lang.Boolean":
-        return "BOOLEAN";
-      case "java.lang.Double":
-        return "FLOAT";
-      case "java.lang.Long":
-      case "java.lang.Integer":
-        return "INT64";
+  public static String getTableSchemaDataType(Object value) {
+    if (value == null || value instanceof String) {
+      return "STRING";
+    } else if (value instanceof Boolean) {
+      return "BOOLEAN";
+    } else if (value instanceof Float || value instanceof Double) {
+      return "FLOAT";
+    } else if (value instanceof Long || value instanceof Integer) {
+      return "INT64";
     }
+
+    // Fallback type is string.
     return "STRING";
   }
 
@@ -117,6 +118,12 @@ public class MongoDbUtils implements Serializable {
     if (userOption.equals("FLATTEN")) {
       document.forEach(
           (key, value) -> {
+
+            // Null values will be ignored / not set on the TableRow
+            if (value == null) {
+              return;
+            }
+
             String valueClass = value.getClass().getName();
             switch (valueClass) {
               case "java.lang.Double":
@@ -163,15 +170,28 @@ public class MongoDbUtils implements Serializable {
       throw new RuntimeException("No udf was loaded");
     }
 
-    Object result = invocable.invokeFunction(udfFunctionName, document);
-    Document doc = (Document) result;
+    Document doc;
+    Object result = invocable.invokeFunction(udfFunctionName, document.toJson());
+    if (result == null || ScriptObjectMirror.isUndefined(result)) {
+      return null;
+    } else if (result instanceof Document) {
+      doc = (Document) result;
+    } else if (result instanceof String) {
+      doc = Document.parse(result.toString());
+    } else {
+      String className = result.getClass().getName();
+      throw new RuntimeException(
+          "UDF Function did not return a valid Mongo Document. Instead got: "
+              + className
+              + ": "
+              + result);
+    }
+
     if (userOption.equals("FLATTEN")) {
       doc.forEach(
           (key, value) -> {
             bigquerySchemaFields.add(
-                new TableFieldSchema()
-                    .setName(key)
-                    .setType(getTableSchemaDataType(value.getClass().getName())));
+                new TableFieldSchema().setName(key).setType(getTableSchemaDataType(value)));
           });
     } else {
       bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));

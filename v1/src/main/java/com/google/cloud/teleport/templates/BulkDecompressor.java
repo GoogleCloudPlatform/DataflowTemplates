@@ -100,21 +100,9 @@ import org.slf4j.LoggerFactory;
  * gs://docs-demo/compressedFile.gz, File is malformed or not compressed in BZIP2 format.
  * </pre>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.BulkDecompressor \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --runner=DataflowRunner \
- * --inputFilePattern=gs://${PROJECT_ID}/compressed-dir/*.gz \
- * --outputDirectory=gs://${PROJECT_ID}/decompressed-dir \
- * --outputFailureFile=gs://${PROJECT_ID}/decompressed-dir/failed.csv"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Bulk_Decompress_GCS_Files.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Bulk_Decompress_GCS_Files",
@@ -123,6 +111,8 @@ import org.slf4j.LoggerFactory;
     description =
         "A pipeline which decompresses files on Cloud Storage to a specified location. Supported formats: Bzip2, deflate, and gzip.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bulk-decompress-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 public class BulkDecompressor {
 

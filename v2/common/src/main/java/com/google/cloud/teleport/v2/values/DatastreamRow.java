@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.values;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.common.collect.ImmutableList;
@@ -24,8 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.text.StringSubstitutor;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.node.ArrayNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,7 +88,7 @@ public class DatastreamRow {
 
   public String getStringValue(String field) {
     if (this.jsonRow != null) {
-      return (String) jsonRow.get(field).getTextValue();
+      return jsonRow.get(field).textValue();
     } else {
       return (String) tableRow.get(field);
     }
@@ -105,9 +104,9 @@ public class DatastreamRow {
 
   /* Returns the list of primary keys for the given row from the Datastream data. */
   public List<String> getPrimaryKeys() {
-    List<String> primaryKeys = new ArrayList<String>();
+    List<String> primaryKeys = new ArrayList<>();
     if (this.jsonRow != null) {
-      for (JsonNode node : (ArrayNode) jsonRow.get("_metadata_primary_keys")) {
+      for (JsonNode node : jsonRow.get("_metadata_primary_keys")) {
         primaryKeys.add(node.asText());
       }
     } else {
@@ -157,7 +156,7 @@ public class DatastreamRow {
   /* Returns the list of field/column names for the given row. */
   public Iterable<String> getFieldNames() {
     if (this.jsonRow != null) {
-      return ImmutableList.copyOf(jsonRow.getFieldNames());
+      return ImmutableList.copyOf(jsonRow.fieldNames());
     } else {
       return tableRow.keySet();
     }

@@ -15,19 +15,19 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifacts;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifacts;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.common.AvroTestUtil;
-import com.google.cloud.teleport.it.common.ParquetTestUtil;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.matchers.RecordsSubject;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.matchers.RecordsSubject;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
+import com.google.cloud.teleport.it.gcp.artifacts.utils.AvroTestUtil;
+import com.google.cloud.teleport.it.gcp.artifacts.utils.ParquetTestUtil;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.re2j.Pattern;
@@ -76,7 +76,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
 
   @Before
   public void setUp() {
-    artifactClient.createArtifact("input/schema.json", SCHEMA_JSON);
+    gcsClient.createArtifact("input/schema.json", SCHEMA_JSON);
   }
 
   @Test
@@ -95,7 +95,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
       String toFormat, BiFunction<List<Artifact>, Schema, RecordsSubject> parseFunction)
       throws IOException {
     // Arrange
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "input/csv_file.csv",
         "id|state|price\n"
             + "007|CA|26.23\n"
@@ -130,8 +130,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     List<Artifact> artifacts =
-        artifactClient.listArtifacts(
-            "output/", Pattern.compile(".*" + testName + ".*\\." + toFormat));
+        gcsClient.listArtifacts("output/", Pattern.compile(".*" + testName + ".*\\." + toFormat));
     assertThat(artifacts).isNotEmpty();
     parseFunction.apply(artifacts, SCHEMA).hasRecordsUnordered(buildExpectedRows());
   }
@@ -139,7 +138,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
   @Test
   public void testAvroToParquet() throws IOException {
     // Arrange
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "input/data.avro", AvroTestUtil.createAvroFile(SCHEMA, createTestGenericRecords()));
 
     LaunchConfig.Builder options =
@@ -161,7 +160,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     List<Artifact> artifacts =
-        artifactClient.listArtifacts("output/", Pattern.compile(".*" + testName + ".*\\.parquet"));
+        gcsClient.listArtifacts("output/", Pattern.compile(".*" + testName + ".*\\.parquet"));
     assertThat(artifacts).isNotEmpty();
     assertThatArtifacts(artifacts).asParquetRecords().hasRecordsUnordered(buildExpectedRows());
   }
@@ -169,7 +168,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
   @Test
   public void testParquetToAvro() throws IOException {
     // Arrange
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "input/data.parquet",
         ParquetTestUtil.createParquetFile(SCHEMA, createTestGenericRecords()));
 
@@ -192,7 +191,7 @@ public final class FileFormatConversionIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     List<Artifact> artifacts =
-        artifactClient.listArtifacts("output/", Pattern.compile(".*" + testName + ".*\\.avro"));
+        gcsClient.listArtifacts("output/", Pattern.compile(".*" + testName + ".*\\.avro"));
     assertThat(artifacts).isNotEmpty();
     assertThatArtifacts(artifacts).asAvroRecords(SCHEMA).hasRecordsUnordered(buildExpectedRows());
   }

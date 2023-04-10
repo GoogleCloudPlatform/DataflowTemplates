@@ -112,7 +112,7 @@ public class ProcessInformationSchemaIntegrationTest {
     testPipeline.apply(
         "Process Information Schema",
         new ProcessInformationSchema(
-            sourceConfig, /*shouldCreateShadowTables=*/ true, "shadow", "oracle"));
+            sourceConfig, /* shouldCreateShadowTables= */ true, "shadow", "oracle"));
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();
     Ddl finalDdl = readDdl(testDb);
@@ -142,7 +142,7 @@ public class ProcessInformationSchemaIntegrationTest {
     testPipeline.apply(
         "Read Information Schema",
         new ProcessInformationSchema(
-            sourceConfig, /*shouldCreateShadowTables=*/ false, "shadow", "oracle"));
+            sourceConfig, /* shouldCreateShadowTables= */ false, "shadow", "oracle"));
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();
     Ddl finalDdl = readDdl(testDb);
@@ -176,7 +176,7 @@ public class ProcessInformationSchemaIntegrationTest {
     testPipeline.apply(
         "Process Information Schema",
         new ProcessInformationSchema(
-            sourceConfig, /*shouldCreateShadowTables=*/ true, "shadow", "oracle"));
+            sourceConfig, /* shouldCreateShadowTables= */ true, "shadow", "oracle"));
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();
     Ddl finalDdl = readDdl(testDb);

@@ -15,18 +15,18 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
 
-import com.google.cloud.teleport.it.DataGenerator;
-import com.google.cloud.teleport.it.TemplateLoadTestBase;
-import com.google.cloud.teleport.it.TestProperties;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
+import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
+import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
@@ -37,13 +37,16 @@ import java.time.Duration;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Performance tests for {@link PubsubToPubsub PubSub to PubSub} template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(PubsubToPubsub.class)
 @RunWith(JUnit4.class)
 public class PubsubToPubsubLT extends TemplateLoadTestBase {
@@ -61,7 +64,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        DefaultPubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
   }
@@ -76,6 +79,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
     testBacklog10gb(Function.identity());
   }
 
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testBacklog10gbUsingStreamingEngine()
       throws IOException, ParseException, InterruptedException {
@@ -87,6 +91,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
     testSteadyState1hr(Function.identity());
   }
 
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testSteadyState1hrUsingStreamingEngine()
       throws IOException, ParseException, InterruptedException {
@@ -122,7 +127,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result =
         pipelineOperator.waitForConditionAndFinish(
@@ -130,7 +135,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
             () -> {
               Long currentMessages =
                   monitoringClient.getNumMessagesInSubscription(
-                      PROJECT, outputSubscription.getSubscription());
+                      project, outputSubscription.getSubscription());
               LOG.info(
                   "Found {} messages in output subscription, expected {} messages.",
                   currentMessages,
@@ -171,7 +176,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     // ElementCount metric in dataflow is approximate, allow for 1% difference
     Integer expectedMessages = (int) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
@@ -181,7 +186,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
             () -> {
               Long currentMessages =
                   monitoringClient.getNumMessagesInSubscription(
-                      PROJECT, outputSubscription.getSubscription());
+                      project, outputSubscription.getSubscription());
               LOG.info(
                   "Found {} messages in output subscription, expected {} messages.",
                   currentMessages,

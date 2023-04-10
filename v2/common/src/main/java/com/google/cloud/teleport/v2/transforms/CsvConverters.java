@@ -365,6 +365,10 @@ public class CsvConverters {
       }
 
       // Run if using headers
+      if (!lines.has(headerTag())) {
+        throw new IllegalArgumentException(
+            "Headers are not provided for CSV import. Either provide a JSON schema, or set the 'containsHeader' parameter to true.");
+      }
       headersView = lines.get(headerTag()).apply(Sample.any(1)).apply(View.asSingleton());
 
       PCollectionView<String> finalHeadersView = headersView;

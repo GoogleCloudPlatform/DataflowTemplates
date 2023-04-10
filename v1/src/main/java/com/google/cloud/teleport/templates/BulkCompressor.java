@@ -53,11 +53,10 @@ import org.slf4j.LoggerFactory;
  * The {@link BulkCompressor} is a batch pipeline that compresses files on matched by an input file
  * pattern and outputs them to a specified file location. This pipeline can be useful when you need
  * to compress large batches of files as part of a perodic archival process. The supported
- * compression modes are: <code>BZIP2</code>, <code>DEFLATE</code>, <code>GZIP</code>, <code>ZIP
- * </code>. Files output to the destination location will follow a naming schema of original
- * filename appended with the compression mode extension. The extensions appended will be one of:
- * <code>.bzip2</code>, <code>.deflate</code>, <code>.gz</code>, <code>.zip</code> as determined by
- * the compression type.
+ * compression modes are: <code>BZIP2</code>, <code>DEFLATE</code>, <code>GZIP</code>. Files output
+ * to the destination location will follow a naming schema of original filename appended with the
+ * compression mode extension. The extensions appended will be one of: <code>.bzip2</code>, <code>
+ * .deflate</code>, <code>.gz</code> as determined by the compression type.
  *
  * <p>Any errors which occur during the compression process will be output to the failure file in
  * CSV format of filename, error message. If no failures occur during execution, the error file will
@@ -71,39 +70,9 @@ import org.slf4j.LoggerFactory;
  *   <li>The output directory must exist prior to pipeline execution.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * PIPELINE_FOLDER=gs://${PROJECT_ID}/dataflow/pipelines/bulk-compressor
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.BulkCompressor \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}"
- *
- * # Execute the template
- * JOB_NAME=bulk-compressor-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputFilePattern=${PIPELINE_FOLDER}/test/uncompressed/*,\
- * outputDirectory=${PIPELINE_FOLDER}/test/compressed,\
- * outputFailureFile=${PIPELINE_FOLDER}/test/failure/failed-${JOB_NAME}.csv,\
- * compression=GZIP"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Bulk_Compress_GCS_Files.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Bulk_Compress_GCS_Files",
@@ -111,6 +80,8 @@ import org.slf4j.LoggerFactory;
     displayName = "Bulk Compress Files on Cloud Storage",
     description = "Batch pipeline. Compresses files on Cloud Storage to a specified location.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bulk-compress-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 public class BulkCompressor {
 

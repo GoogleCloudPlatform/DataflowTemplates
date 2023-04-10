@@ -59,20 +59,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Schema file sample: { "id":"INT64", "name":"STRING(MAX)" }
  *
- * <p>A sample run:
- *
- * <pre>
- * mvn compile exec:java \
- *   -Dexec.mainClass=com.google.cloud.teleport.templates.SpannerToText \
- *   -Dexec.args="--runner=DataflowRunner \
- *                --spannerProjectId=projectId \
- *                --gcpTempLocation=gs://gsTmpLocation \
- *                --spannerInstanceId=instanceId \
- *                --spannerDatabaseId=databaseId \
- *                --spannerTable=table_name \
- *                --spannerSnapshotTime=snapshot_time \
- *                --textWritePrefix=gcsOutputPath"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Spanner_to_GCS_Text.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Spanner_to_GCS_Text",
@@ -81,6 +70,8 @@ import org.slf4j.LoggerFactory;
     description =
         "A pipeline which reads in Cloud Spanner table and writes it to Cloud Storage as CSV text files.",
     optionsClass = SpannerToTextOptions.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 public class SpannerToText {
 

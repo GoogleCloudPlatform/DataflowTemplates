@@ -14,7 +14,7 @@ The template works by relying on Beam transforms that implement the `SchemaTrans
 template's classpath.
 
 The template receives a *pipeline spec*, which is a specification defining the pipeline's source, sink, and intermediate
-transforms. Then, the template will take the pipeline spec, and
+transforms.
 
 The simplest way to configure and launch a template is using the `jsonSpecPayload` parameter, which expects a
 JSON payload with the following shape:
@@ -73,20 +73,25 @@ Supported `SchemaTransform` and configuration parameters are configured in `Synd
 
 ### Run tests (unit and integration tests)
 
-Note that syndeo depends of the teleport integration testing framework, so make sure to install that locally:
-
-```
-mvn install -DskipTests -f pom.xml -pl .,it/pom.xml
-```
-
 To **run unit tests** for the Syndeo template, run the following command. Note that this command knows to skip
 integration tests and only runs unit tests:
 
 ```shell
-mvn clean package test -f pom.xml -pl syndeo-template/pom.xml
+mvn clean package test -f pom.xml -pl syndeo-template -am -Djib.skip=true
 ```
 
-To set up your Google Cloud project for the integration tests, the following steps assume you have installed and setup [gcloud](https://cloud.google.com/sdk/gcloud).
+The command will compile and install necessary dependencies related to **syndeo-template**.
+
+
+Note that syndeo depends on the teleport integration testing framework, so make sure to install that locally if the previous command doesn't already:
+
+```shell
+mvn install -DskipTests -f pom.xml -pl .,metadata,it/pom.xml
+```
+
+Note that the unit tests make use of Testcontainer, which relies on Docker. So make sure Docker is configured locally.
+
+To set up your Google Cloud project for the **integration tests**, the following steps assume you have installed and setup [gcloud](https://cloud.google.com/sdk/gcloud).
 
 1. Set your default project.
 
@@ -116,7 +121,7 @@ gcloud dataflow flex-template build gs://$GCS_BUCKET_NAME/syndeo-template.json  
 
 ### Launch a job from a staged template
 
-After stacing a template in `gs://$GCS_BUCKET_NAME/syndeo-template.json`, you can then use that template to launch a Dataflow job.
+After staging a template in `gs://$GCS_BUCKET_NAME/syndeo-template.json`, you can then use that template to launch a Dataflow job.
 
 Using the [Google API Explorer on the Flex Template Launch API](https://cloud.google.com/dataflow/docs/reference/rest/v1b3/projects.locations.flexTemplates/launch?apix_params=%7B%22projectId%22%3A%22cloud-teleport-testing%22%2C%22location%22%3A%22us-central1%22%2C%22resource%22%3A%7B%22launchParameter%22%3A%7B%22jobName%22%3A%22jobname124385%22%2C%22containerSpecGcsPath%22%3A%22gs%3A%2F%2Fbeam-testing-templates%2Fsyndeo-template.json%22%2C%22parameters%22%3A%7B%22jsonSpecPayload%22%3A%22%7B%20%5C%22source%5C%22%3A%20%7B%20%20%20%5C%22urn%5C%22%3A%20%5C%22bigquery%3Aread%5C%22%2C%20%20%20%5C%22configurationParameters%5C%22%20%3A%20%7B%20%20%20%20%20%5C%22table%5C%22%3A%20%5C%22dataflow-syndeo.taxirides.realtime%5C%22%20%20%20%7D%20%20%20%7D%2C%20%5C%22sink%5C%22%3A%20%7B%20%20%20%5C%22urn%5C%22%3A%20%5C%22bigtable%3Awrite%5C%22%2C%20%20%20%5C%22configurationParameters%5C%22%3A%20%7B%20%20%20%20%20%5C%22projectId%5C%22%3A%20%5C%22dataflow-syndeo%5C%22%2C%20%20%20%20%20%5C%22instanceId%5C%22%3A%20%5C%22syndeo-bt-test%5C%22%2C%20%20%20%20%20%5C%22tableId%5C%22%3A%20%5C%22syndeo-demo-table%5C%22%2C%20%20%20%20%20%5C%22keyColumns%5C%22%3A%20%5B%5C%22ride_id%5C%22%5D%20%20%20%7D%20%7D%20%7D%22%2C%22stagingLocation%22%3A%22gs%3A%2F%2Fsyndeo-pabloem%2Fbtdemo1%2Fstaging%2F%22%7D%2C%22environment%22%3A%7B%22tempLocation%22%3A%22gs%3A%2F%2Fsyndeo-pabloem%2Fbtdemo1%2Ftemp%2F%22%2C%22additionalExperiments%22%3A%5B%5D%7D%7D%7D%7D)
 you can configure the parameters. Note that the **jsonSpecPayload** needs to be escaped and passed as a string (see the page).
@@ -147,6 +152,12 @@ task on the subproject, like so:
 
 ```sh
 ./gradlew :sdks:java:io:${SUBPROJECT}:publishMavenJavaPublicationToMavenLocal -Ppublishing
+```
+
+or
+
+```sh
+./gradlew -p sdks/java/io/${SUBPROJECT} -Ppublishing PublishToMavenLocal
 ```
 
 This will create the appropriate artifacts under `$USER/.m2/repository/org/apache/beam/beam-sdks-java-io-${SUBPROJECT}/`.

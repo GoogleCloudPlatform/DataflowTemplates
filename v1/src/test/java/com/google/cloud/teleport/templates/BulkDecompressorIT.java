@@ -15,16 +15,16 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifact;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifact;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.re2j.Pattern;
@@ -45,10 +45,10 @@ public final class BulkDecompressorIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException, URISyntaxException {
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/lipsum_gz.txt.gz",
         Resources.getResource("BulkCompressorIT/lipsum.txt.gz").getPath());
-    artifactClient.uploadArtifact(
+    gcsClient.uploadArtifact(
         "input/lipsum_bz.txt.bz2",
         Resources.getResource("BulkCompressorIT/lipsum.txt.bz2").getPath());
   }
@@ -72,8 +72,7 @@ public final class BulkDecompressorIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     // Two files are expected, one for each input (gzip, bz2)
-    List<Artifact> artifacts =
-        artifactClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
+    List<Artifact> artifacts = gcsClient.listArtifacts("output/", Pattern.compile(".*lipsum.*"));
     assertThat(artifacts).hasSize(2);
 
     // However, they both have the same hash (based on the same text file)

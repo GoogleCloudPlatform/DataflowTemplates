@@ -43,7 +43,7 @@ public class TemplateDefinitionsTest {
     assertNotNull(metadata);
 
     assertEquals("A to B", metadata.getName());
-    assertEquals("Send A to B", metadata.getDescription());
+    assertEquals("Streaming Template that sends A to B", metadata.getDescription());
     assertEquals("com.google.cloud.teleport.plugin.sample.AtoBOk", metadata.getMainClass());
 
     // Make sure metadata follows stable order
@@ -53,7 +53,7 @@ public class TemplateDefinitionsTest {
     assertEquals(ImageSpecParameterType.TEXT, from.getParamType());
 
     ImageSpecParameter to = metadata.getParameter("to").get();
-    assertEquals(ImageSpecParameterType.TEXT, to.getParamType());
+    assertEquals(ImageSpecParameterType.BIGQUERY_TABLE, to.getParamType());
 
     ImageSpecParameter logical = metadata.getParameter("logical").get();
     assertEquals(ImageSpecParameterType.TEXT, logical.getParamType());

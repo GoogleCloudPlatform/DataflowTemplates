@@ -44,33 +44,14 @@ import org.slf4j.LoggerFactory;
 /**
  * This pipeline ingests DataStream data from GCS. The data is then cleaned and converted from JSON
  * objects into DML statements. The DML is applied to the desired target database, which can be one
- * of MySQL or POstgreSQL. Replication maintains a 1:1 match between source and target by default.
+ * of MySQL or PostgreSQL. Replication maintains a 1:1 match between source and target by default.
  * No DDL is supported in the current version of this pipeline.
  *
- * <p>NOTE: Future versiosn will support: Pub/Sub, GCS, or Kafka as per DataStream
+ * <p>NOTE: Future versions will support: Pub/Sub, GCS, or Kafka as per DataStream
  *
- * <p>Example Usage: TODO: FIX EXMAPLE USAGE
- *
- * <pre>
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --templateLocation=gs://$BUCKET_NAME/templates/${PIPELINE_NAME}.json \
- * --gcsPubSubSubscription="projects/{project-id}/subscriptions/{subscription-name}" \
- * --inputFilePattern=${GCS_AVRO_FILE_PATTERN} \
- * --outputProjectId=${OUTPUT_PROJECT_ID} \
- * --runner=(DirectRunner|DataflowRunner)"
- *
- * OPTIONAL Dataflow Params:
- * --autoscalingAlgorithm=THROUGHPUT_BASED \
- * --numWorkers=2 \
- * --maxNumWorkers=10 \
- * --workerMachineType=n1-highcpu-4 \
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-sql/README_Cloud_Datastream_to_SQL.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_Datastream_to_SQL",

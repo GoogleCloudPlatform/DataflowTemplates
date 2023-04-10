@@ -35,7 +35,6 @@
 
   <properties>
     <autovalue.service.version>1.0-rc6</autovalue.service.version>
-    <avro.version>1.8.2</avro.version>
     <extra.enforcer.rules.version>1.3</extra.enforcer.rules.version>
     <mock-server-netty.version>5.14.0</mock-server-netty.version>
     <open-census.version>0.24.0</open-census.version>
@@ -205,6 +204,11 @@
       <artifactId>auto-service</artifactId>
       <version>${autovalue.service.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons-lang3.version}</version>
+    </dependency>
 
     <!-- Dependencies needed for Splunk -->
     <dependency>
@@ -226,15 +230,21 @@
     <!-- Test -->
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>integration-testing-lib</artifactId>
+      <artifactId>it-google-cloud-platform</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-simple</artifactId>
-        </exclusion>
-      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-jdbc</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-cassandra</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.hamcrest</groupId>
@@ -384,21 +394,10 @@
       <version>${autovalue.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-core-asl</artifactId>
-      <version>${codehaus-jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-mapper-asl</artifactId>
-      <version>${codehaus-jackson.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
       <version>${commons-csv.version}</version>
     </dependency>
-
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-text</artifactId>
@@ -534,7 +533,7 @@
             <configuration>
               <!-- Ignore runtime-only dependencies in analysis -->
               <ignoreNonCompile>true</ignoreNonCompile>
-              <failOnWarning>true</failOnWarning>
+              <failOnWarning>false</failOnWarning>
               <ignoredUsedUndeclaredDependencies>
                 <ignoredUsedUndeclaredDependency>
                   com.google.cloud:google-cloud-storage
@@ -947,9 +946,7 @@
                       <path>${basedir}/target/extra_libs</path>
                     </paths>
                   </extraDirectories>
-                  <dependencyReducedPomLocation>
-                    ${basedir}/target/dependency-reduced-pom.xml
-                  </dependencyReducedPomLocation>
+                  <createDependencyReducedPom>false</createDependencyReducedPom>
                   <shadeTestJar>true</shadeTestJar>
                   <artifactSet>
                     <excludes>
@@ -1074,7 +1071,7 @@
         <activeByDefault>false</activeByDefault>
       </activation>
       <properties>
-        <jib.skip>true</jib.skip>
+        <jib.skip>false</jib.skip>
       </properties>
       <build>
         <plugins>

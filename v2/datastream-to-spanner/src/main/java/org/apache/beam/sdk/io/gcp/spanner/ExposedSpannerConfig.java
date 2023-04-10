@@ -62,6 +62,10 @@ public class ExposedSpannerConfig extends SpannerConfig {
 
   private final ValueProvider<RpcPriority> rpcPriority;
 
+  private final ValueProvider<Duration> partitionQueryTimeout;
+
+  private final ValueProvider<Duration> partitionReadTimeout;
+
   private final ServiceFactory<Spanner, SpannerOptions> serviceFactory;
 
   private ExposedSpannerConfig(
@@ -78,6 +82,8 @@ public class ExposedSpannerConfig extends SpannerConfig {
       @Nullable RetrySettings commitRetrySettings,
       @Nullable ImmutableSet<Code> retryableCodes,
       @Nullable ValueProvider<RpcPriority> rpcPriority,
+      @Nullable ValueProvider<Duration> partitionQueryTimeout,
+      @Nullable ValueProvider<Duration> partitionReadTimeout,
       @Nullable ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
     this.projectId = projectId;
     this.instanceId = instanceId;
@@ -92,6 +98,8 @@ public class ExposedSpannerConfig extends SpannerConfig {
     this.commitRetrySettings = commitRetrySettings;
     this.retryableCodes = retryableCodes;
     this.rpcPriority = rpcPriority;
+    this.partitionQueryTimeout = partitionQueryTimeout;
+    this.partitionReadTimeout = partitionReadTimeout;
     this.serviceFactory = serviceFactory;
   }
 
@@ -171,6 +179,18 @@ public class ExposedSpannerConfig extends SpannerConfig {
   @Override
   public ValueProvider<RpcPriority> getRpcPriority() {
     return rpcPriority;
+  }
+
+  @Nullable
+  @Override
+  public ValueProvider<Duration> getPartitionQueryTimeout() {
+    return partitionQueryTimeout;
+  }
+
+  @Nullable
+  @Override
+  public ValueProvider<Duration> getPartitionReadTimeout() {
+    return partitionReadTimeout;
   }
 
   @Nullable
@@ -304,6 +324,8 @@ public class ExposedSpannerConfig extends SpannerConfig {
     private RetrySettings commitRetrySettings;
     private ImmutableSet<Code> retryableCodes;
     private ValueProvider<RpcPriority> rpcPriority;
+    private ValueProvider<Duration> partitionQueryTimeout;
+    private ValueProvider<Duration> partitionReadTimeout;
     private ServiceFactory<Spanner, SpannerOptions> serviceFactory;
 
     Builder() {}
@@ -322,6 +344,8 @@ public class ExposedSpannerConfig extends SpannerConfig {
       this.commitRetrySettings = source.getCommitRetrySettings();
       this.retryableCodes = source.getRetryableCodes();
       this.rpcPriority = source.getRpcPriority();
+      this.partitionQueryTimeout = source.getPartitionQueryTimeout();
+      this.partitionReadTimeout = source.getPartitionReadTimeout();
       this.serviceFactory = source.getServiceFactory();
     }
 
@@ -406,6 +430,18 @@ public class ExposedSpannerConfig extends SpannerConfig {
     }
 
     @Override
+    SpannerConfig.Builder setPartitionQueryTimeout(ValueProvider<Duration> partitionQueryTimeout) {
+      this.partitionQueryTimeout = partitionQueryTimeout;
+      return this;
+    }
+
+    @Override
+    SpannerConfig.Builder setPartitionReadTimeout(ValueProvider<Duration> partitionReadTimeout) {
+      this.partitionReadTimeout = partitionReadTimeout;
+      return this;
+    }
+
+    @Override
     ExposedSpannerConfig.Builder setServiceFactory(
         ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
       this.serviceFactory = serviceFactory;
@@ -428,6 +464,8 @@ public class ExposedSpannerConfig extends SpannerConfig {
           this.commitRetrySettings,
           this.retryableCodes,
           this.rpcPriority,
+          this.partitionQueryTimeout,
+          this.partitionReadTimeout,
           this.serviceFactory);
     }
   }

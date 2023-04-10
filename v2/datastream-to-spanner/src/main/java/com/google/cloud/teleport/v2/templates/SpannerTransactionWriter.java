@@ -77,18 +77,23 @@ public class SpannerTransactionWriter
   /* The datastream source database type. Eg, MySql or Oracle etc. */
   private final String sourceType;
 
+  // If set to true, round decimals inside jsons.
+  private final Boolean roundJsonDecimals;
+
   public SpannerTransactionWriter(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
       Session session,
       String shadowTablePrefix,
-      String sourceType) {
+      String sourceType,
+      Boolean roundJsonDecimals) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.session = session;
     this.shadowTablePrefix = shadowTablePrefix;
     this.sourceType = sourceType;
+    this.roundJsonDecimals = roundJsonDecimals;
   }
 
   @Override
@@ -99,7 +104,12 @@ public class SpannerTransactionWriter
             "Write Mutations",
             ParDo.of(
                     new SpannerTransactionWriterDoFn(
-                        spannerConfig, ddlView, session, shadowTablePrefix, sourceType))
+                        spannerConfig,
+                        ddlView,
+                        session,
+                        shadowTablePrefix,
+                        sourceType,
+                        roundJsonDecimals))
                 .withSideInputs(ddlView)
                 .withOutputTags(
                     SUCCESSFUL_EVENT_TAG,

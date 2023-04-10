@@ -37,7 +37,8 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
               + " (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is"
               + " replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are"
               + " replaced with the shard number and number of shards respectively. The pipeline"
-              + " assumes a single file output and will produce the text of '00-of-01' by default.")
+              + " assumes a single file output and will produce the text of '00-of-01' by default.",
+      regexes = "^W-P-(S){1,}-of-(N){1,}$")
   @Default.String("W-P-SS-of-NN")
   ValueProvider<String> getOutputShardTemplate();
 

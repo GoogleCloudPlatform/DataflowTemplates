@@ -40,7 +40,7 @@ public class TemplateSpecsGenerator {
    * Scan the classloader for all Template classes, and then builds spec + saves the metadata for
    * every Template.
    */
-  public void generateSpecs(ClassLoader classLoader, File targetDirectory) {
+  public void generateSpecs(ClassLoader classLoader, File baseDirectory, File targetDirectory) {
 
     List<TemplateDefinitions> templateDefinitions =
         TemplateDefinitionsParser.scanDefinitions(classLoader);
@@ -53,6 +53,8 @@ public class TemplateSpecsGenerator {
       if (definition.isFlex()) {
         saveImageSpec(definition, imageSpec, targetDirectory);
       }
+
+      saveDocs(definition, imageSpec, baseDirectory);
     }
   }
 
@@ -142,12 +144,47 @@ public class TemplateSpecsGenerator {
               + "  \"defaultParameterValues\": {\n"
               + "    \"labels\": \"{\\\"goog-dataflow-provided-template-type\\\":\\\"flex\\\","
               + " \\\"goog-dataflow-provided-template-name\\\":\\\""
-              + templateAnnotation.flexContainerName()
+              + templateAnnotation.flexContainerName().toLowerCase()
               + "\\\"}\"\n"
               + "  }\n"
               + "}\n");
     } catch (IOException e) {
       throw new RuntimeException("Error writing command spec", e);
+    }
+
+    return file;
+  }
+
+  private File saveDocs(TemplateDefinitions definition, ImageSpec imageSpec, File targetDirectory) {
+
+    Template templateAnnotation = definition.getTemplateAnnotation();
+
+    // Find the project root folder
+    File projectRoot = targetDirectory;
+    while (projectRoot.getParentFile() != null
+        && new File(projectRoot.getParentFile(), "pom.xml").exists()) {
+      projectRoot = projectRoot.getParentFile();
+    }
+
+    // Construct the source file path, to be used in the Open in Cloud Shell button
+    File javaFile =
+        new File(
+            targetDirectory,
+            "src/main/java/" + imageSpec.getMetadata().getMainClass().replace('.', '/') + ".java");
+    imageSpec
+        .getMetadata()
+        .setSourceFilePath(javaFile.getAbsolutePath().replace(projectRoot.getAbsolutePath(), ""));
+
+    File file = new File(targetDirectory, "README_" + templateAnnotation.name() + ".md");
+    LOG.info("Creating docs: " + file.getAbsolutePath());
+
+    try {
+      String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec, definition.isFlex());
+      try (FileWriter out = new FileWriter(file)) {
+        out.write(markdown);
+      }
+    } catch (Exception e) {
+      LOG.warning("Error generating markdown docs");
     }
 
     return file;

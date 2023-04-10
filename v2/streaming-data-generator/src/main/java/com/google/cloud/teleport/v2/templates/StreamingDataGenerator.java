@@ -60,9 +60,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link StreamingDataGenerator} is a streaming pipeline which generates messages at a
- * specified rate to either Pub/Sub topic or BigQuery/GCS. The messages are generated according to a
- * schema template which instructs the pipeline how to populate the messages with fake data
- * compliant to constraints.
+ * specified rate to either Pub/Sub, BigQuery, GCS, JDBC, or Spanner. The messages are generated
+ * according to a schema template which instructs the pipeline how to populate the messages with
+ * fake data compliant to constraints.
  *
  * <p>The number of workers executing the pipeline must be large enough to support the supplied QPS.
  * Use a general rule of 2,500 QPS per core in the worker pool.
@@ -70,49 +70,9 @@ import org.slf4j.LoggerFactory;
  * <p>See <a href="https://github.com/vincentrussell/json-data-generator">json-data-generator</a>
  * for instructions on how to construct the schema file.
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=my-project
- * BUCKET_NAME=my-bucket
- * SCHEMA_LOCATION=gs://{bucket}/{path}/{to}/game-event-schema.json
- * PUBSUB_TOPIC=projects/{project-id}/topics/{topic-id}
- * QPS=2500
- *
- * # Set containerization vars
- * IMAGE_NAME=my-image-name
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=my-base-container-image
- * BASE_CONTAINER_IMAGE_VERSION=my-base-container-image-version
- * APP_ROOT=/path/to/app-root
- * COMMAND_SPEC=/path/to/command-spec
- *
- * # Build and upload image
- * mvn clean package \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${COMMAND_SPEC}
- *
- * # Create a template spec containing the details of image location and metadata in GCS
- *   as specified in README.md file
- *
- * # Execute template:
- * JOB_NAME={job-name}
- * PROJECT={project-id}
- * TEMPLATE_SPEC_GCSPATH=gs://path/to/template-spec
- * SCHEMA_LOCATION=gs://path/to/schema.json
- * PUBSUB_TOPIC=projects/$PROJECT/topics/{topic-name}
- * QPS=1
- *
- * gcloud beta dataflow flex-template run $JOB_NAME \
- *         --project=$PROJECT --region=us-central1 --flex-template  \
- *         --template-file-gcs-location=$TEMPLATE_SPEC_GCSPATH \
- *         --parameters autoscalingAlgorithm="THROUGHPUT_BASED",schemaLocation=$SCHEMA_LOCATION,topic=$PUBSUB_TOPIC,qps=$QPS,maxNumWorkers=3
- *
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/streaming-data-generator/README_Streaming_Data_Generator.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Streaming_Data_Generator",
@@ -123,6 +83,8 @@ import org.slf4j.LoggerFactory;
             + " performance of streaming pipelines.",
     optionsClass = StreamingDataGeneratorOptions.class,
     flexContainerName = "streaming-data-generator",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/streaming-data-generator",
     contactInformation = "https://cloud.google.com/support")
 public class StreamingDataGenerator {
 
@@ -579,7 +541,7 @@ public class StreamingDataGenerator {
     checkNotNull(options, "options argument to createTrigger method cannot be null.");
     GenerateSequence generateSequence =
         GenerateSequence.from(0L)
-            .withRate(options.getQps(), /* periodLength = */ Duration.standardSeconds(1L));
+            .withRate(options.getQps(), /* periodLength= */ Duration.standardSeconds(1L));
 
     return options.getMessagesLimit() > 0
         ? generateSequence.to(options.getMessagesLimit())

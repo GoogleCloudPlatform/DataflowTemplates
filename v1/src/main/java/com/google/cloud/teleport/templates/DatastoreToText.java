@@ -32,8 +32,14 @@ import org.apache.beam.sdk.options.ValueProvider;
 
 /**
  * Dataflow template which copies Datastore Entities to a Text sink. Text is encoded using JSON
- * encoded entity in the v1/Entity rest format:
- * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
+ * encoded entity in the v1/Entity rest format: <a
+ * href="https://cloud.google.com/datastore/docs/reference/rest/v1/Entity">Entity</a>
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Datastore_to_GCS_Text.md">README_Datastore_to_GCS_Text</a>
+ * or <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Firestore_to_GCS_Text.md">README_Firestore_to_GCS_Text</a>
+ * for instructions on how to use or change this template.
  */
 @Template(
     name = "Datastore_to_GCS_Text",
@@ -43,6 +49,8 @@ import org.apache.beam.sdk.options.ValueProvider;
         "Batch pipeline. Reads Datastore entities and writes them to Cloud Storage as text files.",
     optionsClass = DatastoreToTextOptions.class,
     skipOptions = {"firestoreReadNamespace", "firestoreReadGqlQuery", "firestoreReadProjectId"},
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-to-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 @Template(
     name = "Firestore_to_GCS_Text",
@@ -52,6 +60,8 @@ import org.apache.beam.sdk.options.ValueProvider;
         "Batch pipeline. Reads Firestore entities and writes them to Cloud Storage as text files.",
     optionsClass = DatastoreToTextOptions.class,
     skipOptions = {"datastoreReadNamespace", "datastoreReadGqlQuery", "datastoreReadProjectId"},
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/firestore-to-cloud-storage",
     contactInformation = "https://cloud.google.com/support")
 public class DatastoreToText {
 

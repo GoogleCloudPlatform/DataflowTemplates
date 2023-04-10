@@ -104,60 +104,12 @@ import org.slf4j.LoggerFactory;
  *   <li>The BigQuery Dataset exists
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * export PROJECT={project id}
- * export TEMPLATE_MODULE=googlecloud-to-googlecloud
- * export TEMPLATE_NAME=dlptext-to-bigquery
- * export BUCKET_NAME=gs://{bucket name}
- * export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${TEMPLATE_NAME}-image
- * export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
- * export BASE_CONTAINER_IMAGE_VERSION=latest
- * export APP_ROOT=/template/${TEMPLATE_NAME}
- * export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_NAME}-command-spec.json
- * export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_NAME}-image-spec.json
- *
- * gcloud config set project ${PROJECT}
- *
- * # Build and push image to Google Container Repository
- * mvn package \
- *   -Dimage=${TARGET_GCR_IMAGE} \
- *   -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- *   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- *   -Dapp-root=${APP_ROOT} \
- *   -Dcommand-spec=${COMMAND_SPEC} \
- *   -Djib.applicationCache=/tmp/jib-cache \
- *   -am -pl ${TEMPLATE_MODULE}
- *
- * # Create and upload image spec
- * echo '{
- *  "image":"'${TARGET_GCR_IMAGE}'",
- *  "metadata":{
- *    "name":"DLP Text To BigQuery Streaming",
- *    "description":"Apply DLP to CSV files in GCS and store obfuscated data to BigQuery",
- *  },
- *  "sdk_info":{"language":"JAVA"}
- * }' > image_spec.json
- * gsutil cp image_spec.json ${TEMPLATE_IMAGE_SPEC}
- * rm image_spec.json
- *
- * # Run template
- * export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
- * gcloud beta dataflow flex-template run ${JOB_NAME} \
- *       --project=${PROJECT} --region=us-central1 \
- *       --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
- *       --parameters \
- *       "inputFilePattern=gs://{bucketName}/{fileName}.csv,\
- *        batchSize=15,\
- *        datasetName={BQDatasetId},\
- *        dlpProjectId={projectId},\
- *        deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Stream_DLP_GCS_Text_to_BigQuery_Flex.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
-    name = "Stream_DLP_GCS_Text_to_BigQuery",
+    name = "Stream_DLP_GCS_Text_to_BigQuery_Flex",
     category = TemplateCategory.STREAMING,
     displayName = "Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP)",
     description =
@@ -168,6 +120,7 @@ import org.slf4j.LoggerFactory;
             + " environment and data needs. More details here:"
             + " https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp",
     optionsClass = TokenizePipelineOptions.class,
+    flexContainerName = "dlptext-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class DLPTextToBigQueryStreaming {
 

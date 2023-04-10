@@ -95,7 +95,9 @@ public class DdlToAvroSchemaConverterTest {
             .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
-                        + " REFERENCES `AllowedNames` (`first_name`)"))
+                        + " REFERENCES `AllowedNames` (`first_name`)",
+                    "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
+                        + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"))
             .checkConstraints(ImmutableList.of("CONSTRAINT ck CHECK (`first_name` != `last_name`)"))
             .endTable()
             .build();
@@ -173,6 +175,11 @@ public class DdlToAvroSchemaConverterTest {
             "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                 + " REFERENCES `AllowedNames` (`first_name`)"));
     assertThat(
+        avroSchema.getProp("spannerForeignKey_1"),
+        equalTo(
+            "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
+                + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"));
+    assertThat(
         avroSchema.getProp("spannerCheckConstraint_0"),
         equalTo("CONSTRAINT ck CHECK (`first_name` != `last_name`)"));
 
@@ -221,7 +228,9 @@ public class DdlToAvroSchemaConverterTest {
             .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
-                        + " REFERENCES \"AllowedNames\" (\"first_name\")"))
+                        + " REFERENCES \"AllowedNames\" (\"first_name\")",
+                    "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
+                        + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"))
             .checkConstraints(
                 ImmutableList.of("CONSTRAINT ck CHECK (\"first_name\" != \"last_name\")"))
             .endTable()
@@ -299,6 +308,11 @@ public class DdlToAvroSchemaConverterTest {
         equalTo(
             "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
                 + " REFERENCES \"AllowedNames\" (\"first_name\")"));
+    assertThat(
+        avroSchema.getProp("spannerForeignKey_1"),
+        equalTo(
+            "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
+                + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"));
     assertThat(
         avroSchema.getProp("spannerCheckConstraint_0"),
         equalTo("CONSTRAINT ck CHECK (\"first_name\" != \"last_name\")"));

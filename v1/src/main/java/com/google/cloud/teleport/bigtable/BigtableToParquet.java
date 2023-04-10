@@ -48,6 +48,10 @@ import org.apache.beam.sdk.values.PCollection;
 /**
  * Dataflow pipeline that exports data from a Cloud Bigtable table to Parquet files in GCS.
  * Currently, filtering on Cloud Bigtable table is not supported.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_Bigtable_to_GCS_Parquet.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_Bigtable_to_GCS_Parquet",
@@ -56,6 +60,8 @@ import org.apache.beam.sdk.values.PCollection;
     description =
         "A pipeline which reads in Cloud Bigtable table and writes it to Cloud Storage in Parquet format.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-parquet",
     contactInformation = "https://cloud.google.com/support")
 public class BigtableToParquet {
 

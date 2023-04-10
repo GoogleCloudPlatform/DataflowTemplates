@@ -44,7 +44,9 @@ public abstract class BigQueryTable implements Serializable {
   @Nullable
   public abstract List<BigQueryTablePartition> getPartitions();
 
-  /** @return timestamp in microseconds since epoch (UNIX time) */
+  /**
+   * @return timestamp in microseconds since epoch (UNIX time)
+   */
   public abstract long getLastModificationTime();
 
   public abstract SerializableSchemaSupplier getSchemaSupplier();
@@ -101,7 +103,9 @@ public abstract class BigQueryTable implements Serializable {
      */
     public abstract long getLastModificationTime();
 
-    /** @param value timestamp in microseconds since epoch (UNIX time) */
+    /**
+     * @param value timestamp in microseconds since epoch (UNIX time)
+     */
     public abstract Builder setLastModificationTime(long value);
 
     public abstract SerializableSchemaSupplier getSchemaSupplier();

@@ -15,22 +15,22 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
@@ -91,9 +91,8 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
       throws IOException {
     // Arrange
     String bqTable = testName;
-
-    artifactClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
-    artifactClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
+    gcsClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
+    gcsClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
 
     bigQueryClient.createDataset(REGION);
     TableId tableId =
@@ -112,11 +111,11 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
                     .addParameter("inputFilePattern", getGcsPath("input.txt"))
                     .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                     .addParameter("javascriptTextTransformFunctionName", "identity")
-                    .addParameter("outputTable", toTableSpec(tableId))
+                    .addParameter("outputTable", toTableSpecLegacy(tableId))
                     .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp"))));
     assertThatPipeline(info).isRunning();
 
-    artifactClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
+    gcsClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
 
     Result result =
         pipelineOperator()
@@ -127,6 +126,6 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThatRecords(bigQueryClient.readTable(bqTable)).hasRecord(EXPECTED);
+    assertThatBigQueryRecords(bigQueryClient.readTable(bqTable)).hasRecord(EXPECTED);
   }
 }

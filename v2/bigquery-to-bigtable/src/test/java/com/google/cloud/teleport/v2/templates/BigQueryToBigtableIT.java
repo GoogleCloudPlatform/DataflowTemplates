@@ -15,27 +15,30 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.TestProperties.getProperty;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
-import static org.junit.Assert.assertEquals;
+import static com.google.cloud.teleport.it.common.TestProperties.getProperty;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.bigquery.matchers.BigQueryAsserts.bigQueryRowsToRecords;
+import static com.google.cloud.teleport.it.gcp.bigtable.matchers.BigtableAsserts.assertThatBigtableRecords;
 
 import com.google.cloud.Tuple;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigtable.data.v2.models.Row;
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.TestProperties;
-import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.bigquery.BigQueryTestUtils;
-import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator;
+import com.google.cloud.teleport.it.common.PipelineLauncher;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator;
+import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.utils.BigQueryTestUtil;
+import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
+import com.google.common.truth.Truth;
 import java.io.IOException;
 import java.util.List;
 import org.junit.After;
@@ -51,13 +54,13 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class BigQueryToBigtableIT extends TemplateTestBase {
 
-  private static final String READ_QUERY = "readQuery";
+  private static final String READ_QUERY = "query";
+  private static final String READ_TABLE_SPEC = "inputTableSpec";
+  private static final String USE_LEGACY_SQL = "useLegacySql";
   private static final String READ_ID_COL = "readIdColumn";
-  private static final String WRITE_PROJECT_ID = "bigtableWriteProjectId";
   private static final String WRITE_INSTANCE_ID = "bigtableWriteInstanceId";
   private static final String WRITE_TABLE_ID = "bigtableWriteTableId";
   private static final String WRITE_COL_FAMILY = "bigtableWriteColumnFamily";
-  private static final String WRITE_APP_PROFILE = "bigtableWriteAppProfile";
 
   // Define a set of parameters used to allow configuration of the test size being run.
   private static final String BIGQUERY_ID_COL = "test_id";
@@ -89,34 +92,21 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
     ResourceManagerUtils.cleanResources(bigtableClient, bigQueryClient);
   }
 
-  @Test
-  public void testBigQueryToBigtable() throws IOException {
+  private void simpleBigQueryToBigtableTest(PipelineLauncher.LaunchConfig.Builder options)
+      throws IOException {
     // Arrange
-    String tableName = "test_table";
+    String tableName = options.getParameter(WRITE_TABLE_ID);
     Tuple<Schema, List<RowToInsert>> generatedTable =
-        BigQueryTestUtils.generateBigQueryTable(
+        BigQueryTestUtil.generateBigQueryTable(
             BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
     Schema bigQuerySchema = generatedTable.x();
     List<RowToInsert> bigQueryRows = generatedTable.y();
     bigQueryClient.createTable(tableName, bigQuerySchema);
     bigQueryClient.write(tableName, bigQueryRows);
 
-    String colFamily = "names";
+    String colFamily = options.getParameter(WRITE_COL_FAMILY);
+    Truth.assertThat(colFamily).isNotNull();
     bigtableClient.createTable(tableName, ImmutableList.of(colFamily));
-
-    PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter(
-                READ_QUERY,
-                "SELECT * FROM `"
-                    + String.join(".", PROJECT, bigQueryClient.getDatasetId(), tableName)
-                    + "`")
-            .addParameter(READ_ID_COL, BIGQUERY_ID_COL)
-            .addParameter(WRITE_PROJECT_ID, PROJECT)
-            .addParameter(WRITE_INSTANCE_ID, bigtableClient.getInstanceId())
-            .addParameter(WRITE_APP_PROFILE, "default")
-            .addParameter(WRITE_TABLE_ID, tableName)
-            .addParameter(WRITE_COL_FAMILY, colFamily);
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -128,19 +118,70 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     List<Row> rows = bigtableClient.readTable(tableName);
-    rows.forEach(
-        row -> {
-          row.getCells(colFamily)
-              .forEach(
-                  rowCell -> {
-                    RowToInsert bqRow =
-                        bigQueryRows.get(Integer.parseInt(row.getKey().toStringUtf8()));
-                    String col = rowCell.getQualifier().toStringUtf8();
-                    String val = rowCell.getValue().toStringUtf8();
+    assertThatBigtableRecords(rows, colFamily)
+        .hasRecordsUnordered(
+            bigQueryRowsToRecords(bigQueryRows, ImmutableList.of(BIGQUERY_ID_COL)));
+  }
 
-                    assertEquals(rowCell.getFamily(), colFamily);
-                    assertEquals(bqRow.getContent().get(col), val);
-                  });
-        });
+  @Test
+  public void testBigQueryToBigtableWithQuery() throws IOException {
+    String tableName = "test_table";
+    String colFamily = "names";
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter(
+                READ_QUERY,
+                "SELECT * FROM `"
+                    + toTableSpecStandard(
+                        TableId.of(PROJECT, bigQueryClient.getDatasetId(), tableName))
+                    + "`")
+            .addParameter(READ_ID_COL, BIGQUERY_ID_COL)
+            .addParameter(WRITE_INSTANCE_ID, bigtableClient.getInstanceId())
+            .addParameter(WRITE_TABLE_ID, tableName)
+            .addParameter(WRITE_COL_FAMILY, colFamily);
+
+    simpleBigQueryToBigtableTest(options);
+  }
+
+  @Test
+  public void testBigQueryToBigtableWithLegacyQuery() throws IOException {
+    String tableName = "test_table";
+    String colFamily = "names";
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter(
+                READ_QUERY,
+                "SELECT * FROM ["
+                    + toTableSpecLegacy(
+                        TableId.of(PROJECT, bigQueryClient.getDatasetId(), tableName))
+                    + "]")
+            .addParameter(USE_LEGACY_SQL, "true")
+            .addParameter(READ_ID_COL, BIGQUERY_ID_COL)
+            .addParameter(WRITE_INSTANCE_ID, bigtableClient.getInstanceId())
+            .addParameter(WRITE_TABLE_ID, tableName)
+            .addParameter(WRITE_COL_FAMILY, colFamily);
+    toTableSpecLegacy(TableId.of(PROJECT, bigQueryClient.getDatasetId(), tableName));
+
+    simpleBigQueryToBigtableTest(options);
+  }
+
+  @Test
+  public void testBigQueryToBigtableWithTableSpec() throws IOException {
+    String tableName = "test_table";
+    String colFamily = "names";
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter(
+                READ_TABLE_SPEC,
+                toTableSpecLegacy(TableId.of(PROJECT, bigQueryClient.getDatasetId(), tableName)))
+            .addParameter(READ_ID_COL, BIGQUERY_ID_COL)
+            .addParameter(WRITE_INSTANCE_ID, bigtableClient.getInstanceId())
+            .addParameter(WRITE_TABLE_ID, tableName)
+            .addParameter(WRITE_COL_FAMILY, colFamily);
+
+    simpleBigQueryToBigtableTest(options);
   }
 }

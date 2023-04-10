@@ -85,66 +85,9 @@ import org.slf4j.LoggerFactory;
  *   <li>The Kafka brokers are reachable from the Dataflow worker machines.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- *
- * # Set some environment variables
- * PROJECT=my-project
- * TEMP_BUCKET=my-temp-bucket
- * OUTPUT_TABLE=${PROJECT}:my_dataset.my_table
- * TOPICS=my-topics
- * JS_PATH=my-js-path-on-gcs
- * JS_FUNC_NAME=my-js-func-name
- * BOOTSTRAP=my-comma-separated-bootstrap-servers
- *
- * # Set containerization vars
- * IMAGE_NAME=my-image-name
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=my-base-container-image
- * BASE_CONTAINER_IMAGE_VERSION=my-base-container-image-version
- * APP_ROOT=/path/to/app-root
- * COMMAND_SPEC=/path/to/command-spec
- *
- * # Build and upload image
- * mvn clean package \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${COMMAND_SPEC}
- *
- * # Create an image spec in GCS that contains the path to the image
- * {
- *    "docker_template_spec": {
- *       "docker_image": $TARGET_GCR_IMAGE
- *     }
- *  }
- *
- * # Execute template:
- * API_ROOT_URL="https://dataflow.googleapis.com"
- * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
- * JOB_NAME="kafka-to-bigquery`date +%Y%m%d-%H%M%S-%N`"
- *
- * time curl -X POST -H "Content-Type: application/json"     \
- *     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
- *     "${TEMPLATES_LAUNCH_API}"`
- *     `"?validateOnly=false"`
- *     `"&dynamicTemplate.gcsPath=${TEMP_BUCKET}/path/to/image-spec"`
- *     `"&dynamicTemplate.stagingLocation=${TEMP_BUCKET}/staging" \
- *     -d '
- *      {
- *       "jobName":"'$JOB_NAME'",
- *       "parameters": {
- *           "outputTableSpec":"'$OUTPUT_TABLE'",
- *           "inputTopics":"'$TOPICS'",
- *           "javascriptTextTransformGcsPath":"'$JS_PATH'",
- *           "javascriptTextTransformFunctionName":"'$JS_FUNC_NAME'",
- *           "bootstrapServers":"'$BOOTSTRAP'"
- *        }
- *       }
- *      '
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/kafka-to-bigquery/README_Kafka_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Kafka_to_BigQuery",
@@ -156,6 +99,8 @@ import org.slf4j.LoggerFactory;
             + " table.",
     optionsClass = KafkaToBQOptions.class,
     flexContainerName = "kafka-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class KafkaToBigQuery {
 
@@ -239,6 +184,7 @@ public class KafkaToBigQuery {
     @Deprecated
     @TemplateParameter.Text(
         order = 3,
+        optional = true,
         regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read the input from",
         helpText = "Kafka topic(s) to read the input from.",

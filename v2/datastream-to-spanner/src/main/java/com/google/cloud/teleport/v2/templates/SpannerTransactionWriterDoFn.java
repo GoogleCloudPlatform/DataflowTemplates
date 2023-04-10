@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_METADATA_KEY_PREFIX;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_UUID_KEY;
 
@@ -23,27 +24,38 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.templates.session.ColumnDef;
 import com.google.cloud.teleport.v2.templates.session.NameAndCols;
 import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.session.SrcSchema;
 import com.google.cloud.teleport.v2.templates.session.SyntheticPKey;
+import com.google.cloud.teleport.v2.templates.spanner.common.Type;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -88,6 +100,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   // The source database type.
   private final String sourceType;
 
+  // If set to true, round decimals inside jsons.
+  private final Boolean roundJsonDecimals;
+
   // Jackson Object mapper.
   private transient ObjectMapper mapper;
 
@@ -120,7 +135,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       PCollectionView<Ddl> ddlView,
       Session session,
       String shadowTablePrefix,
-      String sourceType) {
+      String sourceType,
+      Boolean roundJsonDecimals) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
@@ -128,6 +144,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     this.shadowTablePrefix =
         (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
     this.sourceType = sourceType;
+    this.roundJsonDecimals = roundJsonDecimals;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -159,8 +176,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
       if (!session.isEmpty()) {
         verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
-        changeEvent = transformChangeEvent(changeEvent);
+        changeEvent = transformChangeEventViaSessionFile(changeEvent);
       }
+      changeEvent = transformChangeEventData(changeEvent, spannerAccessor.getDatabaseClient(), ddl);
       ChangeEventContext changeEventContext =
           ChangeEventContextFactory.createChangeEventContext(
               changeEvent, ddl, shadowTablePrefix, sourceType);
@@ -248,7 +266,11 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     }
   }
 
-  JsonNode transformChangeEvent(JsonNode changeEvent) {
+  /**
+   * This function modifies the change event using transformations based on the session file. This
+   * includes column/table name changes and adding of synthetic Primary Keys.
+   */
+  JsonNode transformChangeEventViaSessionFile(JsonNode changeEvent) {
     String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
     String tableId = session.getSrcToID().get(tableName).getName();
 
@@ -309,6 +331,52 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // If spanner columns do not contain this column Id, drop from change event.
       if (!spCols.containsKey(colId)) {
         ((ObjectNode) changeEvent).remove(srcCols.get(colId).getName());
+      }
+    }
+    return changeEvent;
+  }
+
+  /**
+   * This function changes the modifies and data of the change event. Currently, only supports a
+   * single transformation set by roundJsonDecimals.
+   */
+  JsonNode transformChangeEventData(JsonNode changeEvent, DatabaseClient dbClient, Ddl ddl)
+      throws Exception {
+    if (!roundJsonDecimals) {
+      return changeEvent;
+    }
+    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
+    if (ddl.table(tableName) == null) {
+      throw new Exception("Table from change event does not exist in Spanner. table=" + tableName);
+    }
+    Iterator<String> fieldNames = changeEvent.fieldNames();
+    List<String> columnNames =
+        StreamSupport.stream(
+                Spliterators.spliteratorUnknownSize(fieldNames, Spliterator.ORDERED), false)
+            .filter(f -> !f.startsWith(EVENT_METADATA_KEY_PREFIX))
+            .collect(Collectors.toList());
+    for (String columnName : columnNames) {
+      Type columnType = ddl.table(tableName).column(columnName).type();
+      if (columnType.getCode() == Type.Code.JSON || columnType.getCode() == Type.Code.PG_JSONB) {
+        // JSON type cannot be a key column, hence setting requiredField to false.
+        String jsonStr =
+            ChangeEventTypeConvertor.toString(
+                changeEvent, columnName.toLowerCase(), /* requiredField= */ false);
+        if (jsonStr != null) {
+          Statement statement =
+              Statement.newBuilder(
+                      "SELECT PARSE_JSON(@jsonStr, wide_number_mode=>'round') as newJson")
+                  .bind("jsonStr")
+                  .to(jsonStr)
+                  .build();
+          ResultSet resultSet = dbClient.singleUse().executeQuery(statement);
+          while (resultSet.next()) {
+            // We want to send the errors to the severe error queue, hence we do not catch any error
+            // here.
+            String val = resultSet.getJson("newJson");
+            ((ObjectNode) changeEvent).put(columnName.toLowerCase(), val);
+          }
+        }
       }
     }
     return changeEvent;

@@ -15,26 +15,24 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.PullResponse;
-import com.google.pubsub.v1.ReceivedMessage;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.After;
@@ -86,21 +84,16 @@ public class PubSubToPubSubIT extends TemplateTestBase {
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
-    List<ReceivedMessage> receivedMessages = new ArrayList<>();
-    Result result =
-        pipelineOperator()
-            .waitForConditionAndFinish(
-                createConfig(info),
-                () -> {
-                  PullResponse response =
-                      pubsubResourceManager.pull(outputSubscription, expectedMessages.size());
-                  receivedMessages.addAll(response.getReceivedMessagesList());
-                  return receivedMessages.size() >= expectedMessages.size();
-                });
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, outputSubscription)
+            .setMinMessages(expectedMessages.size())
+            .build();
+
+    Result result = pipelineOperator().waitForConditionAndFinish(createConfig(info), pubsubCheck);
 
     // Assert
     List<String> actualMessages =
-        receivedMessages.stream()
+        pubsubCheck.getReceivedMessageList().stream()
             .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
             .collect(Collectors.toList());
     assertThatResult(result).meetsConditions();

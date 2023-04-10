@@ -42,8 +42,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link BigQueryToMongoDbCDC} pipeline is a streaming pipeline which reads data pushed to
+ * The {@link MongoDbToBigQueryCdc} pipeline is a streaming pipeline which reads data pushed to
  * PubSub from MongoDB Changestream and outputs the resulting records to BigQuery.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/mongodb-to-googlecloud/README_MongoDB_to_BigQuery_CDC.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "MongoDB_to_BigQuery_CDC",
@@ -54,6 +58,8 @@ import org.slf4j.LoggerFactory;
             + " writes the resulting records to BigQuery.",
     optionsClass = Options.class,
     flexContainerName = "mongodb-to-bigquery-cdc",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/mongodb-change-stream-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class MongoDbToBigQueryCdc {
 

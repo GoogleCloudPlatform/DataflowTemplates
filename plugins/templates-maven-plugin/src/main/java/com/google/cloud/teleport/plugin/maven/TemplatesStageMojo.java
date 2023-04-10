@@ -133,6 +133,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (librariesBucketName == null || librariesBucketName.isEmpty()) {
       librariesBucketName = bucketName;
     }
+    // Remove trailing slash if given
+    if (stagePrefix.endsWith("/")) {
+      stagePrefix = stagePrefix.substring(0, stagePrefix.length() - 1);
+    }
 
     try {
       URLClassLoader loader = buildClassloader();
@@ -140,7 +144,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       BuildPluginManager pluginManager =
           (BuildPluginManager) session.lookup("org.apache.maven.plugin.BuildPluginManager");
 
-      LOG.info("Staging Templates to bucket {}...", bucketNameOnly(bucketName));
+      LOG.info("Staging Templates to bucket '{}'...", bucketNameOnly(bucketName));
 
       List<TemplateDefinitions> templateDefinitions =
           TemplateDefinitionsParser.scanDefinitions(loader);
@@ -226,6 +230,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     arguments.add(element("argument", "--templateLocation=" + templatePath));
     arguments.add(element("argument", "--project=" + projectId));
     arguments.add(element("argument", "--region=" + region));
+    arguments.add(
+        element(
+            "argument",
+            "--labels={\"goog-dataflow-provided-template-name\":\""
+                + currentTemplateName.toLowerCase()
+                + "\", \"goog-dataflow-provided-template-version\":\""
+                + TemplateDefinitionsParser.parseVersion(stagePrefix)
+                + "\", \"goog-dataflow-provided-template-type\":\"legacy\"}"));
 
     for (Map.Entry<String, String> runtimeParameter :
         imageSpec.getMetadata().getRuntimeParameters().entrySet()) {
@@ -361,6 +373,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "--sdk-language=JAVA",
           "--metadata-file",
           outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
+          "--additional-user-labels",
+          "goog-dataflow-provided-template-name="
+              + currentTemplateName.toLowerCase()
+              + ",goog-dataflow-provided-template-version="
+              + TemplateDefinitionsParser.parseVersion(stagePrefix)
+              + ",goog-dataflow-provided-template-type=flex"
         };
     LOG.info("Running: {}", String.join(" ", flexTemplateBuildCmd));
 

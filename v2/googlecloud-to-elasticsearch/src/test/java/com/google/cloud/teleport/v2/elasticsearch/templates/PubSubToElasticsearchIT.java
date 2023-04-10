@@ -15,25 +15,24 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.elasticsearch.DefaultElasticsearchResourceManager;
 import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.matchers.ListAccumulator;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.ReceivedMessage;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
@@ -81,7 +80,7 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
 
   @Test
   public void testPubSubToElasticsearchWithUdf() throws IOException {
-    artifactClient.createArtifact(
+    gcsClient.createArtifact(
         "udf-name-upper-case.js",
         "function transform(inJson) {\n"
             + "  var obj = JSON.parse(inJson);\n"
@@ -133,18 +132,17 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
       pubsubResourceManager.publish(topic, ImmutableMap.of(), data);
     }
 
-    ListAccumulator<ReceivedMessage> accumulator = new ListAccumulator<>();
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, dlqSubscription)
+            .setMinMessages(MALFORMED_MESSAGES_TO_SEND)
+            .build();
+
     Result result =
         pipelineOperator()
-            .waitForConditionAndFinish(
+            .waitForConditionsAndFinish(
                 createConfig(info),
-                () ->
-                    elasticsearchResourceManager.count(indexName) >= MESSAGES_TO_SEND
-                        && accumulator.accumulate(
-                                pubsubResourceManager
-                                    .pull(dlqSubscription, MALFORMED_MESSAGES_TO_SEND + 1)
-                                    .getReceivedMessagesList())
-                            >= MALFORMED_MESSAGES_TO_SEND);
+                () -> elasticsearchResourceManager.count(indexName) >= MESSAGES_TO_SEND,
+                pubsubCheck);
 
     // Assert
     assertThatResult(result).meetsConditions();
@@ -152,6 +150,6 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
     assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(MESSAGES_TO_SEND);
     List<Map<String, Object>> records = elasticsearchResourceManager.fetchAll(indexName);
     assertThatRecords(records).hasRecordSubset(expectedRow);
-    assertThat(accumulator.count()).isEqualTo(MALFORMED_MESSAGES_TO_SEND);
+    assertThat(pubsubCheck.getReceivedMessageList().size()).isEqualTo(MALFORMED_MESSAGES_TO_SEND);
   }
 }

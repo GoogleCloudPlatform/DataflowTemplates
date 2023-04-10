@@ -358,7 +358,7 @@ public class ProcessInformationSchemaTest {
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
     ProcessInformationSchema.ProcessInformationSchemaFn processInformationSchema =
         new ProcessInformationSchema.ProcessInformationSchemaFn(
-            spannerConfig, /*shouldCreateShadowTables=*/ true, "shadow_", "oracle");
+            spannerConfig, /* shouldCreateShadowTables= */ true, "shadow_", "oracle");
     Set<String> shadowTables =
         processInformationSchema.getShadowTablesInDdl(getTestDdlWithGSqlDialect());
     assertThat(shadowTables, is(new HashSet<String>(Arrays.asList("shadow_Users"))));
@@ -369,7 +369,7 @@ public class ProcessInformationSchemaTest {
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
     ProcessInformationSchema.ProcessInformationSchemaFn processInformationSchema =
         new ProcessInformationSchema.ProcessInformationSchemaFn(
-            spannerConfig, /*shouldCreateShadowTables=*/ true, "shadow_", "oracle");
+            spannerConfig, /* shouldCreateShadowTables= */ true, "shadow_", "oracle");
     List<String> dataTablesWithNoShadowTables =
         processInformationSchema.getDataTablesWithNoShadowTables(getTestDdlWithGSqlDialect());
     assertThat(dataTablesWithNoShadowTables, is(Arrays.asList("Users_interleaved")));

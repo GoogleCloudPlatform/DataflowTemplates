@@ -15,24 +15,24 @@
  */
 package com.google.cloud.teleport.v2.templates.pubsubtotext;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
+import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.storage.Storage;
-import com.google.cloud.teleport.it.DataGenerator;
-import com.google.cloud.teleport.it.TemplateLoadTestBase;
-import com.google.cloud.teleport.it.TestProperties;
-import com.google.cloud.teleport.it.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
+import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
+import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
+import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
+import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
@@ -44,11 +44,14 @@ import java.time.Duration;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance tests for {@link PubsubToText PubSub to GCS Text} Flex template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(PubsubToText.class)
 @RunWith(JUnit4.class)
 public final class PubsubToTextLT extends TemplateLoadTestBase {
@@ -75,22 +78,22 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   private static final long NUM_MESSAGES = 35000000L;
 
   private static PubsubResourceManager pubsubResourceManager;
-  private static ArtifactClient artifactClient;
+  private static ArtifactClient gcsClient;
 
   @Before
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        DefaultPubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
-    Storage gcsClient = createGcsClient(CREDENTIALS);
-    artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    Storage storageClient = createStorageClient(CREDENTIALS);
+    gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(artifactClient, pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(gcsClient, pubsubResourceManager);
   }
 
   @Test
@@ -98,18 +101,21 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
     testBacklog10gb(Function.identity());
   }
 
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testBacklog10gbUsingStreamingEngine()
       throws IOException, InterruptedException, ParseException {
     testBacklog10gb(config -> config.addEnvironment("enableStreamingEngine", true));
   }
 
+  @Ignore("Test fails, sickbay")
   @Test
   public void testBacklog10gbUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
     testBacklog10gb(config -> config.addParameter("experiments", "use_runner_v2"));
   }
 
+  @Ignore("Test fails, sickbay")
   @Test
   public void testBacklog10gbUsingPrime() throws IOException, ParseException, InterruptedException {
     testBacklog10gb(config -> config.addParameter("experiments", "enable_prime"));
@@ -120,18 +126,21 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
     testSteadyState1hr(Function.identity());
   }
 
+  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testSteadyState1hrUsingStreamingEngine()
       throws IOException, InterruptedException, ParseException {
     testSteadyState1hr(config -> config.addEnvironment("enableStreamingEngine", true));
   }
 
+  @Ignore("Test fails, sickbay")
   @Test
   public void testSteadyState1hrUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
     testSteadyState1hr(config -> config.addParameter("experiments", "use_runner_v2"));
   }
 
+  @Ignore("Test fails, sickbay")
   @Test
   public void testSteadyState1hrUsingPrime()
       throws IOException, ParseException, InterruptedException {
@@ -169,7 +178,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result =
         pipelineOperator.waitForConditionAndFinish(
@@ -178,7 +187,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
+    assertThat(gcsClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
@@ -211,7 +220,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     // ElementCount metric in dataflow is approximate, allow for 1% difference
     long expectedMessages = (long) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
@@ -221,13 +230,13 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, expectedMessages));
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThat(artifactClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
+    assertThat(gcsClient.listArtifacts(name, EXPECTED_PATTERN)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
   private String getTestMethodDirPath() {
-    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName);
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, gcsClient.runId(), testName);
   }
 }

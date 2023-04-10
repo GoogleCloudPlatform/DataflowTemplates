@@ -15,8 +15,11 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.io.Serializable;
@@ -25,7 +28,54 @@ import java.util.stream.Collectors;
 /** Cloud Spanner foreign key definition. */
 @AutoValue
 public abstract class ForeignKey implements Serializable {
-  private static final long serialVersionUID = 286089905L;
+  private static final long serialVersionUID = 519932875L;
+
+  /** Referential actions supported in Foreign Keys. */
+  public enum ReferentialAction {
+    // Supported actions
+    ON_DELETE_NO_ACTION("ON DELETE NO ACTION"),
+    ON_DELETE_CASCADE("ON DELETE CASCADE"),
+    // Currently unsupported actions, listed here for completeness
+    ON_DELETE_RESTRICT("ON DELETE RESTRICT"),
+    ON_DELETE_SET_NULL("ON DELETE SET NULL"),
+    ON_DELETE_SET_DEFAULT("ON DELETE SET DEFAULT"),
+    ON_UPDATE_NO_ACTION("ON UPDATE NO ACTION"),
+    ON_UPDATE_CASCADE("ON UPDATE CASCADE"),
+    ON_UPDATE_RESTRICT("ON UPDATE RESTRICT"),
+    ON_UPDATE_SET_NULL("ON UPDATE SET NULL"),
+    ON_UPDATE_SET_DEFAULT("ON UPDATE SET DEFAULT");
+
+    private String sqlString;
+
+    private ReferentialAction(String sqlString) {
+      this.sqlString = sqlString;
+    }
+
+    public String getSqlString() {
+      return sqlString;
+    }
+
+    public static ReferentialAction getReferentialAction(String changeType, String action) {
+      if (isNullOrEmpty(changeType) || isNullOrEmpty(action)) {
+        throw new IllegalArgumentException(
+            String.format("Empty changeType [%s] or action [%s]", changeType, action));
+      }
+      if ("DELETE".equalsIgnoreCase(changeType.trim())) {
+        switch (action.trim().toUpperCase()) {
+          case "CASCADE":
+            return ReferentialAction.ON_DELETE_CASCADE;
+          case "NO ACTION":
+            return ReferentialAction.ON_DELETE_NO_ACTION;
+          default:
+            throw new IllegalArgumentException(
+                "ON DELETE referential action not supported: " + action);
+        }
+      } else {
+        throw new IllegalArgumentException(
+            "ON " + changeType + " referential action not supported: " + action);
+      }
+    }
+  }
 
   abstract String name();
 
@@ -38,6 +88,8 @@ public abstract class ForeignKey implements Serializable {
   abstract ImmutableList<String> referencedColumns();
 
   abstract Dialect dialect();
+
+  abstract Optional<ReferentialAction> referentialAction();
 
   public static Builder builder(Dialect dialect) {
     return new AutoValue_ForeignKey.Builder().dialect(dialect);
@@ -69,6 +121,18 @@ public abstract class ForeignKey implements Serializable {
         .append((identifierQuote + " ("))
         .append(referencedColumnsString)
         .append(")");
+    Optional<ReferentialAction> action = referentialAction();
+    if (action.isPresent()) {
+      switch (action.get()) {
+        case ON_DELETE_CASCADE:
+        case ON_DELETE_NO_ACTION:
+          appendable.append(" " + action.get().getSqlString());
+          break;
+        default:
+          throw new IllegalArgumentException(
+              "Foreign Key action not supported: " + action.get().getSqlString());
+      }
+    }
   }
 
   public String prettyPrint() {
@@ -101,6 +165,8 @@ public abstract class ForeignKey implements Serializable {
     public abstract ImmutableList.Builder<String> columnsBuilder();
 
     public abstract ImmutableList.Builder<String> referencedColumnsBuilder();
+
+    public abstract Builder referentialAction(Optional<ReferentialAction> action);
 
     public abstract ForeignKey build();
   }

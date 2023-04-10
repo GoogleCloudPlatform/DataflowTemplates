@@ -37,6 +37,10 @@ import org.slf4j.LoggerFactory;
  * The {@link SpannerChangeStreamsToPubSub} pipeline streams change stream record(s) and stores to
  * pubsub topic in user specified format. The sink data can be stored in a JSON Text or Avro data
  * format.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Spanner_Change_Streams_to_PubSub.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Spanner_Change_Streams_to_PubSub",
@@ -47,6 +51,8 @@ import org.slf4j.LoggerFactory;
             + " Pub/Sub topic using Dataflow Runner V2.",
     optionsClass = SpannerChangeStreamsToPubSubOptions.class,
     flexContainerName = "spanner-changestreams-to-pubsub",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-pubsub",
     contactInformation = "https://cloud.google.com/support")
 public class SpannerChangeStreamsToPubSub {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToPubSub.class);

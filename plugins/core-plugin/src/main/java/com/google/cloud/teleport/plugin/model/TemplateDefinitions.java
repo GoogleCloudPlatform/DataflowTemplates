@@ -24,6 +24,7 @@ import com.google.cloud.teleport.metadata.util.MetadataUtils;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,6 +32,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.options.Default;
 import org.slf4j.Logger;
@@ -87,17 +90,22 @@ public class TemplateDefinitions {
     imageSpec.setSdkInfo(sdkInfo);
 
     ImageSpecMetadata metadata = new ImageSpecMetadata();
+    metadata.setInternalName(templateAnnotation.name());
     metadata.setName(templateAnnotation.displayName());
     metadata.setDescription(templateAnnotation.description());
+    metadata.setModule(getClassModule());
+    metadata.setDocumentationLink(templateAnnotation.documentation());
+    metadata.setAdditionalHelp(templateAnnotation.additionalHelp());
+    metadata.setGoogleReleased(
+        (templateAnnotation.documentation() != null
+                && templateAnnotation.documentation().contains("cloud.google.com"))
+            || !templateAnnotation.hidden());
 
-    if (isClassic()) {
-
-      if (templateAnnotation.placeholderClass() != null
-          && templateAnnotation.placeholderClass() != void.class) {
-        metadata.setMainClass(templateAnnotation.placeholderClass().getName());
-      } else {
-        metadata.setMainClass(templateClass.getName());
-      }
+    if (templateAnnotation.placeholderClass() != null
+        && templateAnnotation.placeholderClass() != void.class) {
+      metadata.setMainClass(templateAnnotation.placeholderClass().getName());
+    } else {
+      metadata.setMainClass(templateClass.getName());
     }
 
     LOG.info(
@@ -165,12 +173,13 @@ public class TemplateDefinitions {
           }
         }
 
-        // Ignore non-annotated params in this criteria
+        // Ignore non-annotated params in this criteria (non-options params)
         if (runtime
             || methodName.startsWith("set")
             || IGNORED_FIELDS.contains(methodName)
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.sdk")
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.runners")
+            || method.getReturnType() == void.class
             || IGNORED_DECLARING_CLASSES.contains(method.getDeclaringClass().getSimpleName())) {
           continue;
         }
@@ -212,6 +221,10 @@ public class TemplateDefinitions {
       if (optionalOptionsSet.contains(parameter.getName())) {
         parameter.setOptional(true);
       }
+
+      // Set the default value, if any
+      parameter.setDefaultValue(getDefault(method.getDefiningMethod()));
+
       if (parameterNames.add(parameter.getName())) {
         metadata.getParameters().add(parameter);
       } else {
@@ -236,7 +249,28 @@ public class TemplateDefinitions {
     imageSpec.setImage("gcr.io/{project-id}/" + templateAnnotation.flexContainerName());
     imageSpec.setMetadata(metadata);
 
+    metadata.setUdfSupport(
+        metadata.getParameters().stream()
+            .anyMatch(
+                parameter ->
+                    parameter.getName().equals("javascriptTextTransformGcsPath")
+                        || parameter.getName().equals("javascriptTextTransformFunctionName")));
+
     return imageSpec;
+  }
+
+  private String getClassModule() {
+    URL resource = templateClass.getResource(templateClass.getSimpleName() + ".class");
+    if (resource == null) {
+      return null;
+    }
+
+    Pattern pattern = Pattern.compile(".*/(.*?)/target");
+    Matcher matcher = pattern.matcher(resource.getPath());
+    if (matcher.find()) {
+      return matcher.group(1);
+    }
+    return null;
   }
 
   private ImageSpecParameter getImageSpecParameter(
@@ -251,7 +285,13 @@ public class TemplateDefinitions {
       if (!helpText.endsWith(".")) {
         helpText += ".";
       }
-      helpText += " Defaults to: " + defaultValue;
+
+      if (defaultValue instanceof String && defaultValue.equals("")) {
+        helpText += " Defaults to empty.";
+      } else {
+        helpText += " Defaults to: " + defaultValue + ".";
+      }
+
       parameter.setHelpText(helpText);
     }
 

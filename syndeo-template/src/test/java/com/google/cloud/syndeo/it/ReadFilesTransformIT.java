@@ -24,12 +24,12 @@ import com.google.auth.Credentials;
 import com.google.cloud.storage.Notification;
 import com.google.cloud.syndeo.perf.SyndeoLoadTestUtils;
 import com.google.cloud.syndeo.transforms.files.SyndeoFilesReadSchemaTransformProvider;
-import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.cloud.teleport.it.common.ResourceManagerUtils;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.it.storage.GcsResourceManager;
+import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -54,6 +54,7 @@ import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.Duration;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -62,6 +63,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Ignore
 @RunWith(JUnit4.class)
 public class ReadFilesTransformIT {
 

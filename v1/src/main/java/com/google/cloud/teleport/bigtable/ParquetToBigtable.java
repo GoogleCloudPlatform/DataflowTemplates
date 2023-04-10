@@ -50,50 +50,9 @@ import org.slf4j.LoggerFactory;
  * compatible table schema. For example, if {@link BigtableCell} from the Parquet files has a
  * 'family' of "f1", the Bigtable table should have a column family of "f1".
  *
- * <p><b>Pipeline Requirements</b>
- *
- * <ul>
- *   <li>Bigtable instance.
- *   <li>Bigtable table with compatible table schema.
- *   <li>Google Cloud Storage input bucket and parquet file(s) exists.
- * </ul>
- *
- * <p><b>Example Usage</b>
- *
- * <pre>
- *
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * PIPELINE_FOLDER=gs://${PROJECT_ID}/dataflow/pipelines/parquet-to-bigtable
- * BIGTABLE_INSTANCE_ID=BIGTABLE INSTANCE ID HERE
- * BIGTABLE_TABLE_ID=BIGTABLE TABLE ID HERE
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.bigtable.ParquetToBigtable \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}"
- *
- * # Execute the template
- * JOB_NAME=parquet-to-bigtable-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "bigtableProjectId=${PROJECT_ID},\
- * bigtableInstanceId=${BIGTABLE_INSTANCE_ID},\
- * bigtableTableId=${BIGTABLE_TABLE_ID},\
- * inputFilePattern=${PIPELINE_FOLDER}/path/to/file/filename-*.parquet"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Parquet_to_Cloud_Bigtable.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Parquet_to_Cloud_Bigtable",
@@ -102,6 +61,8 @@ import org.slf4j.LoggerFactory;
     description =
         "A pipeline which reads data from Parquet files in Cloud Storage and writes it to Cloud Bigtable table.",
     optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/parquet-to-bigtable",
     contactInformation = "https://cloud.google.com/support")
 public class ParquetToBigtable {
   private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);

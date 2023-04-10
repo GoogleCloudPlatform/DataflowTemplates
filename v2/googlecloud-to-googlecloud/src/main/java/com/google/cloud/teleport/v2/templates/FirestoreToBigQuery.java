@@ -19,6 +19,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.TransformTextViaJavascript;
@@ -35,18 +36,28 @@ import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 
-/** Dataflow template which copies Firestore Entities to a BigQuery table. */
+/**
+ * Dataflow template which copies Firestore Entities to a BigQuery table.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Firestore_to_BigQuery_Flex.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Firestore_to_BigQuery_Flex",
     category = TemplateCategory.BATCH,
     displayName = "Firestore (Datastore mode) to BigQuery",
     description = "Batch pipeline. Reads Firestore entities and writes them to BigQuery.",
     optionsClass = FirestoreToBigQuery.FirestoreToBigQueryOptions.class,
+    skipOptions = {"datastoreReadNamespace", "datastoreReadGqlQuery", "datastoreReadProjectId"},
     flexContainerName = "firestore-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class FirestoreToBigQuery {
   public interface FirestoreToBigQueryOptions
-      extends PipelineOptions, FirestoreReadOptions, JavascriptTextTransformerOptions {
+      extends PipelineOptions,
+          FirestoreReadOptions,
+          JavascriptTextTransformerOptions,
+          BigQueryStorageApiBatchOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery output table",

@@ -67,6 +67,10 @@ import org.slf4j.LoggerFactory;
  * Dataflow template which reads Google Cloud data (Text, BigQuery) and writes it to Neo4j.
  *
  * <p>In case of BigQuery, the source data can be either a table or a SQL query.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-neo4j/README_Google_Cloud_to_Neo4j.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Google_Cloud_to_Neo4j",
