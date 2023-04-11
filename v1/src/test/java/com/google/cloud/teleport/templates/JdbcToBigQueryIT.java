@@ -204,7 +204,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  public void testPostgresToBigQueryGcsQueryClassic() throws IOException {
+  public void testPostgresToBigQueryGcsQuery() throws IOException {
     // Create postgres Resource manager
     postgresResourceManager =
         ((DefaultPostgresResourceManager.Builder)
