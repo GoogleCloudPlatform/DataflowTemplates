@@ -91,7 +91,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  public void testMySqlToBigQuery() throws IOException {
+  public void testMySqlToBigQueryFlex() throws IOException {
     // Create mySql Resource manager
     mySQLResourceManager =
         ((DefaultMySQLResourceManager.Builder)
@@ -118,7 +118,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  public void testPostgresToBigQuery() throws IOException {
+  public void testPostgresToBigQueryFlex() throws IOException {
     // Create postgres Resource manager
     postgresResourceManager =
         ((DefaultPostgresResourceManager.Builder)
@@ -144,7 +144,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  public void testOracleToBigQuery() throws IOException {
+  public void testOracleToBigQueryFlex() throws IOException {
     // Oracle image does not work on M1
     if (System.getProperty("testOnM1") != null) {
       LOG.info("M1 is being used, Oracle tests are not being executed.");
@@ -177,7 +177,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  public void testMsSqlToBigQuery() throws IOException {
+  public void testMsSqlToBigQueryFlex() throws IOException {
     // Create msSql Resource manager
     msSQLResourceManager =
         ((DefaultMSSQLResourceManager.Builder)

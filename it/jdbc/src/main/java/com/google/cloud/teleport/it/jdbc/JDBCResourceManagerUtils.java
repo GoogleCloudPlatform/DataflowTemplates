@@ -48,7 +48,7 @@ final class JDBCResourceManagerUtils {
       DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSSSSS");
 
   public static final List<Character> ALLOWED_SPECIAL_CHARS =
-      Chars.asList("'~!@#$%^&*()_\\-+={}[]/<>,.;?:| ".toCharArray());
+      Chars.asList("~!@#$%^&*()_-+={}[]/<>,.?:|".toCharArray());
 
   private JDBCResourceManagerUtils() {}
 
