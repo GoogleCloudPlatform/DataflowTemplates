@@ -47,7 +47,8 @@ import org.apache.beam.sdk.values.PCollection;
     category = TemplateCategory.GET_STARTED,
     displayName = "Word Count",
     description =
-        "Batch pipeline. Reads text from Cloud Storage, tokenizes text lines into individual words, and performs frequency count on each of the words.",
+        "Batch pipeline. Reads text from Cloud Storage, tokenizes text lines into individual words,"
+            + " and performs frequency count on each of the words.",
     optionsClass = WordCountOptions.class,
     contactInformation = "https://cloud.google.com/support")
 public class WordCount {
@@ -57,8 +58,10 @@ public class WordCount {
 
     @ProcessElement
     public void processElement(ProcessContext c) {
+      // Check if the line is empty.
       if (c.element().trim().isEmpty()) {
         emptyLines.inc();
+        return;
       }
 
       // Split the line into words.
