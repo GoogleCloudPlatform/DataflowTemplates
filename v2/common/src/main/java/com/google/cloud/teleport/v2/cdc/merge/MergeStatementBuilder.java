@@ -149,7 +149,8 @@ public class MergeStatementBuilder implements Serializable {
       List<String> orderByFields,
       String deletedFieldName) {
     String commaSeparatedFields = joinStringFields(",", allFields, configuration.quoteCharacter());
-    String commaSeparatedPKFields = String.join(", ", primaryKeyFields);
+    String commaSeparatedPKFields =
+        joinStringFields(", ", primaryKeyFields, configuration.quoteCharacter());
     return String.format(
         PARTITION_BY_PK_AND_SORT_TEMPLATE,
         commaSeparatedFields,
