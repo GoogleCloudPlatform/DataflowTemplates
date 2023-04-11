@@ -123,6 +123,15 @@ public class ProviderUtil {
   /** Applies the given configs. */
   public static PCollectionRowTuple applyConfigs(
       Collection<TransformSpec> specs, PCollectionRowTuple tuple) {
+    TransformSpec dlqTransformSpec = null;
+    for (TransformSpec spec : specs) {
+      String[] arrOfUrn = spec.inputId.split(":", 0);
+      if (arrOfUrn[arrOfUrn.length - 2].contains("dlq")) {
+        dlqTransformSpec = spec;
+        specs.remove(dlqTransformSpec);
+        break;
+      }
+    }
     for (TransformSpec spec : specs) {
       SchemaTransform transform = spec.provider.from(spec.configuration);
       // We know we only deal with transforms with either 0 or 1 input so we know how to connect the
@@ -140,7 +149,6 @@ public class ProviderUtil {
       tuple = tuple.apply(spec.inputId, transform.buildTransform());
 
       if (tuple.getAll().containsKey(ERRORS_TAG)) {
-        // TODO(pabloem): Deal with errors.
         PCollectionRowTuple.of("input", tuple.get(ERRORS_TAG))
             .apply(
                 new SyndeoStatsSchemaTransformProvider()
@@ -148,6 +156,12 @@ public class ProviderUtil {
                         SyndeoStatsSchemaTransformProvider.SyndeoStatsConfiguration.create(
                             "errors"))
                     .buildTransform());
+        if (dlqTransformSpec != null) {
+          PCollectionRowTuple.of("errors", tuple.get(ERRORS_TAG))
+              .apply(
+                  dlqTransformSpec.inputId,
+                  dlqTransformSpec.provider.from(dlqTransformSpec.configuration).buildTransform());
+        }
       }
     }
     return tuple;
