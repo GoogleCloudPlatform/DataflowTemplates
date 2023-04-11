@@ -54,7 +54,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
-import org.apache.directory.api.util.Strings;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -243,7 +243,7 @@ public class TextToBigQueryStreaming {
             "WriteFailedRecords",
             WriteStringMessageErrors.newBuilder()
                 .setErrorRecordsTable(
-                    !Strings.isEmpty(options.getOutputDeadletterTable())
+                    StringUtils.isNotEmpty(options.getOutputDeadletterTable())
                         ? options.getOutputDeadletterTable()
                         : options.getOutputTable() + DEFAULT_DEADLETTER_TABLE_SUFFIX)
                 .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
