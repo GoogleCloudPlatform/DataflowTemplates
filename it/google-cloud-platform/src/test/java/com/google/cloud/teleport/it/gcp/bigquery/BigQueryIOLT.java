@@ -22,14 +22,16 @@ import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.it.common.PipelineLauncher;
+import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
-import com.google.cloud.teleport.it.common.utils.PipelineUtils;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
@@ -38,7 +40,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.Read;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.synthetic.SyntheticBoundedSource;
@@ -48,11 +49,9 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestPipelineOptions;
-import org.apache.beam.sdk.testutils.metrics.MetricsReader;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
-import org.joda.time.Duration;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -74,8 +73,6 @@ public final class BigQueryIOLT extends IOLoadTestBase {
 
   private static BigQueryResourceManager resourceManager;
   private static String tableQualifier;
-
-  private static final String NAMESPACE = BigQueryIOLT.class.getName();
   private static final String READ_ELEMENT_METRIC_NAME = "read_count";
   private Configuration configuration;
   private String tempLocation;
@@ -119,8 +116,6 @@ public final class BigQueryIOLT extends IOLoadTestBase {
       readPipeline.getOptions().as(TestPipelineOptions.class).setTempRoot(tempLocation);
       readPipeline.getOptions().setTempLocation(tempLocation);
     }
-    writePipeline.getOptions().setRunner(PipelineUtils.getRunnerClass(configuration.getRunner()));
-    readPipeline.getOptions().setRunner(PipelineUtils.getRunnerClass(configuration.getRunner()));
   }
 
   @AfterClass
@@ -226,14 +221,21 @@ public final class BigQueryIOLT extends IOLoadTestBase {
                             Collections.singletonList(
                                 new TableFieldSchema().setName("data").setType("BYTES"))))
                 .withCustomGcsTempLocation(ValueProvider.StaticValueProvider.of(tempLocation)));
-    PipelineResult pipelineResult = writePipeline.run();
-    PipelineResult.State pipelineState =
-        configuration.getPipelineTimeout() <= 0
-            ? pipelineResult.waitUntilFinish()
-            : pipelineResult.waitUntilFinish(
-                Duration.standardMinutes(configuration.getPipelineTimeout()));
+
+    PipelineLauncher.LaunchConfig options =
+        PipelineLauncher.LaunchConfig.builder("test-bigquery-write")
+            .setSdk(PipelineLauncher.Sdk.JAVA)
+            .setPipeline(writePipeline)
+            .addParameter("runner", configuration.getRunner())
+            .build();
+
+    PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(project, region, options);
+    PipelineOperator.Result result =
+        pipelineOperator.waitUntilDone(
+            createConfig(launchInfo, Duration.ofMinutes(configuration.getPipelineTimeout())));
+
     // Fail the test if pipeline failed.
-    assertNotEquals(PipelineResult.State.FAILED, pipelineState);
+    assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
   }
 
   private void testRead() throws IOException {
@@ -243,20 +245,31 @@ public final class BigQueryIOLT extends IOLoadTestBase {
 
     readPipeline
         .apply("Read from BQ", BigQueryIO.readTableRows().from(tableQualifier))
-        .apply("Counting element", ParDo.of(new CountingFn<>(NAMESPACE, READ_ELEMENT_METRIC_NAME)));
+        .apply("Counting element", ParDo.of(new CountingFn<>(READ_ELEMENT_METRIC_NAME)));
 
-    PipelineResult pipelineResult = readPipeline.run();
-    PipelineResult.State pipelineState =
-        configuration.getPipelineTimeout() <= 0
-            ? pipelineResult.waitUntilFinish()
-            : pipelineResult.waitUntilFinish(
-                Duration.standardMinutes(configuration.getPipelineTimeout()));
+    PipelineLauncher.LaunchConfig options =
+        PipelineLauncher.LaunchConfig.builder("test-bigquery-read")
+            .setSdk(PipelineLauncher.Sdk.JAVA)
+            .setPipeline(readPipeline)
+            .addParameter("runner", configuration.getRunner())
+            .build();
 
-    assertEquals(
-        sourceOption.numRecords,
-        readElementMetric(pipelineResult, NAMESPACE, READ_ELEMENT_METRIC_NAME));
+    PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(project, region, options);
+    PipelineOperator.Result result =
+        pipelineOperator.waitUntilDone(
+            createConfig(launchInfo, Duration.ofMinutes(configuration.getPipelineTimeout())));
+
     // Fail the test if pipeline failed.
-    assertNotEquals(PipelineResult.State.FAILED, pipelineState);
+    assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
+
+    // check metrics
+    double numRecords =
+        pipelineLauncher.getMetric(
+            project,
+            region,
+            launchInfo.jobId(),
+            getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
+    assertEquals(configuration.getNumRows(), numRecords, 0.5);
   }
 
   private static class MapKVToV extends DoFn<KV<byte[], byte[]>, byte[]> {
@@ -269,11 +282,6 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   private enum WriteFormat {
     AVRO,
     JSON
-  }
-
-  private long readElementMetric(PipelineResult result, String namespace, String name) {
-    MetricsReader metricsReader = new MetricsReader(result, namespace);
-    return metricsReader.getCounterMetric(name);
   }
 
   /** Options for Bigquery IO load test. */

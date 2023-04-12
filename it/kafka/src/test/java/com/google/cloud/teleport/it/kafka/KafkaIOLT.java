@@ -15,23 +15,24 @@
  */
 package com.google.cloud.teleport.it.kafka;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.it.common.PipelineLauncher;
+import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.beam.runners.direct.DirectOptions;
-import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.io.synthetic.SyntheticOptions;
 import org.apache.beam.sdk.io.synthetic.SyntheticSourceOptions;
@@ -39,10 +40,8 @@ import org.apache.beam.sdk.io.synthetic.SyntheticUnboundedSource;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestPipelineOptions;
-import org.apache.beam.sdk.testutils.metrics.MetricsReader;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.joda.time.Duration;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -61,7 +60,6 @@ public final class KafkaIOLT extends IOLoadTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaIOLT.class);
 
   private static KafkaResourceManager resourceManager;
-  private static final String NAMESPACE = KafkaIOLT.class.getName();
   private static final String READ_ELEMENT_METRIC_NAME = "read_count";
   private static final int ROW_SIZE = 1024;
   private Configuration configuration;
@@ -129,36 +127,41 @@ public final class KafkaIOLT extends IOLoadTestBase {
   /** Run integration test with configurations specified by TestProperties. */
   @Test
   public void testWriteAndRead() throws IOException {
-    PipelineResult writeResult = testWrite();
-    PipelineResult readResult = testRead();
+    PipelineLauncher.LaunchInfo writeInfo = testWrite();
+    PipelineLauncher.LaunchInfo readInfo = testRead();
     try {
-      PipelineResult.State readState =
-          readResult.waitUntilFinish(Duration.standardMinutes(configuration.getPipelineTimeout()));
-      // as a streaming pipeline, null readState indicates pipeline is running instead of failed.
-      assertNull(readState);
+      PipelineOperator.Result result =
+          pipelineOperator.waitUntilDone(
+              createConfig(readInfo, Duration.ofMinutes(configuration.getPipelineTimeout())));
+      assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
+      // streaming read pipeline does not end itself
+      assertEquals(
+          PipelineLauncher.JobState.RUNNING,
+          pipelineLauncher.getJobStatus(project, region, readInfo.jobId()));
       // Fail the test if write pipeline (streaming) not in running state.
-      PipelineResult.State writeState = writeResult.getState();
-      assertNotEquals(PipelineResult.State.FAILED, writeState);
-      long records = readElementMetric(readResult, NAMESPACE, READ_ELEMENT_METRIC_NAME);
       // TODO: there is a limitation (or bug) that the cache in KafkaWriter can stay indefinitely if
       // there is no upcoming records. Currently set expected records = (records generated - 10).
-      assertTrue(
-          String.format(
-              "Actual number of record (%d) smaller than expected (at least %d).",
-              records, sourceOptions.numRecords - 10),
-          sourceOptions.numRecords - 10 <= records);
+      double numRecords =
+          pipelineLauncher.getMetric(
+              project,
+              region,
+              readInfo.jobId(),
+              getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
+      assertEquals(configuration.getNumRows(), numRecords, 10.0);
     } finally {
       // clean up pipelines
-      if (writeResult.getState() == PipelineResult.State.RUNNING) {
-        writeResult.cancel();
+      if (pipelineLauncher.getJobStatus(project, region, writeInfo.jobId())
+          == PipelineLauncher.JobState.RUNNING) {
+        pipelineLauncher.cancelJob(project, region, writeInfo.jobId());
       }
-      if (readResult.getState() == PipelineResult.State.RUNNING) {
-        readResult.cancel();
+      if (pipelineLauncher.getJobStatus(project, region, readInfo.jobId())
+          == PipelineLauncher.JobState.RUNNING) {
+        pipelineLauncher.cancelJob(project, region, readInfo.jobId());
       }
     }
   }
 
-  private PipelineResult testWrite() throws IOException {
+  private PipelineLauncher.LaunchInfo testWrite() throws IOException {
 
     KafkaIO.Write<byte[], byte[]> writeIO =
         KafkaIO.<byte[], byte[]>write()
@@ -173,10 +176,17 @@ public final class KafkaIOLT extends IOLoadTestBase {
             org.apache.beam.sdk.io.Read.from(new SyntheticUnboundedSource(sourceOptions)))
         .apply("Write to Kafka", writeIO.withTopic(kafkaTopic));
 
-    return writePipeline.run();
+    PipelineLauncher.LaunchConfig options =
+        PipelineLauncher.LaunchConfig.builder("test-kafka-write")
+            .setSdk(PipelineLauncher.Sdk.JAVA)
+            .setPipeline(writePipeline)
+            .addParameter("runner", configuration.getRunner())
+            .build();
+
+    return pipelineLauncher.launch(project, region, options);
   }
 
-  private PipelineResult testRead() throws IOException {
+  private PipelineLauncher.LaunchInfo testRead() throws IOException {
     KafkaIO.Read<byte[], byte[]> readIO =
         KafkaIO.readBytes()
             .withBootstrapServers(resourceManager.getBootstrapServers())
@@ -184,14 +194,16 @@ public final class KafkaIOLT extends IOLoadTestBase {
             .withConsumerConfigUpdates(ImmutableMap.of("auto.offset.reset", "earliest"));
     readPipeline
         .apply("Read from unbounded Kafka", readIO)
-        .apply("Counting element", ParDo.of(new CountingFn<>(NAMESPACE, READ_ELEMENT_METRIC_NAME)));
+        .apply("Counting element", ParDo.of(new CountingFn<>(READ_ELEMENT_METRIC_NAME)));
 
-    return readPipeline.run();
-  }
+    PipelineLauncher.LaunchConfig options =
+        PipelineLauncher.LaunchConfig.builder("test-kafka-read")
+            .setSdk(PipelineLauncher.Sdk.JAVA)
+            .setPipeline(readPipeline)
+            .addParameter("runner", configuration.getRunner())
+            .build();
 
-  private long readElementMetric(PipelineResult result, String namespace, String name) {
-    MetricsReader metricsReader = new MetricsReader(result, namespace);
-    return metricsReader.getCounterMetric(name);
+    return pipelineLauncher.launch(project, region, options);
   }
 
   /** Options for Kafka IO load test. */
