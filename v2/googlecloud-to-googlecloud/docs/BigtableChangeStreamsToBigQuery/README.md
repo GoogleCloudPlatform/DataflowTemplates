@@ -285,7 +285,7 @@ export BIGQUERY_CHANGELOG_TABLE_NAME=output-table-name
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters ^~^bigtableInstanceId=${BIGTABLE_INSTANCE_ID}~bigtableTableId=${BIGTABLE_TABLE_ID}~bigtableAppProfileId=${BIGTABLE_APP_PROFILE_ID}~bigQueryDataset=${BIGQUERY_DATASET}~bigQueryChangelogTableName=${BIGQUERY_CHANGELOG_TABLE_NAME}
+        --parameters ^~^bigtableReadInstanceId=${BIGTABLE_INSTANCE_ID}~bigtableReadTableId=${BIGTABLE_TABLE_ID}~bigtableChangeStreamsAppProfileId=${BIGTABLE_APP_PROFILE_ID}~bigQueryDataset=${BIGQUERY_DATASET}~bigQueryChangelogTableName=${BIGQUERY_CHANGELOG_TABLE_NAME}
 
 ```
 
