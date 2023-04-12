@@ -88,10 +88,10 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   private LaunchInfo launchInfo;
 
   @Test
-  // @Ignore(
-  //     "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
-  //         + "relies on pre-existing static resources until a new admin API client is available for "
-  //         + "us to setup CDC-enabled resources")
+  @Ignore(
+      "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
+          + "relies on pre-existing static resources until a new admin API client is available for "
+          + "us to setup CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQuerySingleMutationE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
     String clusterName = "c1_cluster";
@@ -161,10 +161,10 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  // @Ignore(
-  //     "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
-  //         + "relies on pre-existing static resources until a new admin API client is available for "
-  //         + "us to setup CDC-enabled resources")
+  @Ignore(
+      "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
+          + "relies on pre-existing static resources until a new admin API client is available for "
+          + "us to setup CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQueryMutationsStartTimeE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
     String clusterName = "c1_cluster";
@@ -266,10 +266,10 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  // @Ignore(
-  //     "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
-  //         + "relies on pre-existing static resources until a new admin API client is available for "
-  //         + "us to setup CDC-enabled resources")
+  @Ignore(
+      "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
+          + "relies on pre-existing static resources until a new admin API client is available for "
+          + "us to setup CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQueryDeadLetterQueueE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
     String clusterName = "c1_cluster";
