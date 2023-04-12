@@ -23,9 +23,9 @@ import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase.PipelineMetricsType;
 import java.io.IOException;
 import java.time.Instant;
+import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testutils.metrics.TimeMonitor;
-import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.junit.Rule;
 import org.junit.Test;
@@ -42,9 +42,10 @@ public class DefaultPipelineLauncherTest {
     DefaultPipelineLauncher launcher = DefaultPipelineLauncher.builder().build();
     final String timeMetrics = "run_time";
     final String counterMetrics = "counter";
+    final long numElements = 1000L;
 
     pipeline
-        .apply(Create.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+        .apply(GenerateSequence.from(0).to(numElements))
         .apply(ParDo.of(new TimeMonitor<>(IOLoadTestBase.BEAM_METRICS_NAMESPACE, timeMetrics)))
         .apply(ParDo.of(new IOLoadTestBase.CountingFn<>(counterMetrics)));
 
@@ -78,6 +79,6 @@ public class DefaultPipelineLauncherTest {
         Math.abs(endTime - currentTime) < 10_000);
     assertTrue("run time should be greater than 0", runTime > 0);
 
-    assertEquals(10, count);
+    assertEquals(numElements, count);
   }
 }
