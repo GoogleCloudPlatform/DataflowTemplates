@@ -257,15 +257,15 @@ The template requires the following parameters:
 The template has the following optional parameters:
 * bigtableReadProjectId: Default: The project where the Dataflow pipeline is running.
 * bigQueryTableChangelogName: Default: bigtableTableId + “_changelog”. Destination BQ table
-* metadataInstanceId: Default: the same as bigtableInstanceId. Change streams metadata table.
-* metadataTableTableId: Default: “__change_stream_md_table”. Change streams metadata table.
-* ignoreColumnFamilies: Default: empty. A comma-separated list of column families for which changes are to be skipped.
-* ignoreColumns: Default: empty. A comma-separated list of columnFamily:columnName values for which changes are to be skipped.
-* startTimestamp: Default: current wall time. Starting point of Change stream.
+* bigtableChangeStreamsMetadataInstanceId: Default: the same as bigtableInstanceId. Change streams metadata table.
+* bigtableChangeStreamsMetadataTableTableId: Default: name is chosen by Cloud Bigtable CDC connector. Change streams metadata table.
+* bigtableChangeStreamsIgnoreColumnFamilies: Default: empty. A comma-separated list of column families for which changes are to be skipped.
+* bigtableChangeStreamsIgnoreColumns: Default: empty. A comma-separated list of columnFamily:columnName values for which changes are to be skipped.
+* bigtableChangeStreamsStartTimestamp: Default: current wall time. Starting point of Change stream.
 * writeNumericTimestamps: Default: false. If true, timestamp, timestamp_from, timestamp_to change log table columns will use INT type.
 * writeRowkeyAsBytes: Default: false. If true, the rowkey will be written as BYTES BQ type.
 * writeValuesAsBytes: Default: false. If true, the value will be written as BYTES BQ type.
-* bigtableCharset: Default: “UTF-8”. Charset to use when reading CBT column qualifiers and row keys (or values if writeValuesAsBytes is false)
+* bigtableChangeStreamsCharset: Default: “UTF-8”. Charset to use when reading CBT column qualifiers and row keys (or values if writeValuesAsBytes is false)
 * bigQueryProjectId: Default to be the Dataflow project id.
 * bigQueryChangelogTablePartitionGranularity: Default: empty. Valid options are “daily”, “monthly”, “yearly”.
 * bigQueryChangelogTablePartitionExpirationMs: Default: never expires. Set partition expiration if specified.
