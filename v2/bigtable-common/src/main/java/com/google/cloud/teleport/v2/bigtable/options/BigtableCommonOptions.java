@@ -138,85 +138,90 @@ public interface BigtableCommonOptions extends GcpOptions {
     void setBigtableBulkWriteMaxRequestSizeBytes(Integer value);
   }
 
-  interface ReadChangeStreamsOptions extends BigtableCommonOptions {
+  interface ReadOptions extends BigtableCommonOptions {
     @TemplateParameter.Text(
         order = 1,
-        description = "Cloud Bigtable instance ID",
-        helpText = "The Cloud Bigtable instance to read change streams from.")
+        regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
+        description = "Source Bigtable Instance ID",
+        helpText = "The ID of the Cloud Bigtable instance that contains the table")
     @Validation.Required
-    String getBigtableInstanceId();
+    String getBigtableReadInstanceId();
 
-    void setBigtableInstanceId(String value);
+    void setBigtableReadInstanceId(String value);
 
     @TemplateParameter.Text(
         order = 2,
-        description = "Cloud Bigtable table ID",
-        helpText = "The Cloud Bigtable table to read change streams from.")
+        description = "Source Cloud Bigtable table ID",
+        helpText = "The Cloud Bigtable table to read from.")
     @Validation.Required
-    String getBigtableTableId();
+    String getBigtableReadTableId();
 
-    void setBigtableTableId(String value);
-
-    @TemplateParameter.Text(
-        order = 3,
-        description = "Cloud Bigtable application profile ID",
-        helpText = "The application profile is used to distinguish workload in Cloud Bigtable")
-    @Validation.Required
-    String getBigtableAppProfileId();
-
-    void setBigtableAppProfileId(String value);
+    void setBigtableReadTableId(String value);
 
     @TemplateParameter.ProjectId(
         order = 4,
         optional = true,
-        description = "Cloud Bigtable Project ID",
+        description = "Source Cloud Bigtable Project ID",
         helpText =
-            "Project to read change streams from. The default for this parameter is the project "
-                + "where the Dataflow pipeline is running.")
+            "Project to read Cloud Bigtable data from. The default for this parameter is the "
+                + "project where the Dataflow pipeline is running.")
     @Default.String("")
-    String getBigtableProjectId();
+    String getBigtableReadProjectId();
 
-    void setBigtableProjectId(String projectId);
+    void setBigtableReadProjectId(String projectId);
+  }
+
+  interface ReadChangeStreamsOptions extends BigtableCommonOptions.ReadOptions {
 
     @TemplateParameter.Text(
-        order = 5,
+        order = 1,
+        description = "Cloud Bigtable application profile ID",
+        helpText = "The application profile is used to distinguish workload in Cloud Bigtable")
+    @Validation.Required
+    String getBigtableChangeStreamsAppProfileId();
+
+    void setBigtableChangeStreamsAppProfileId(String value);
+
+    @TemplateParameter.Text(
+        order = 2,
         optional = true,
-        description = "Cloud Bigtable metadata instance ID",
+        description = "Cloud Bigtable change streams metadata instance ID",
         helpText =
             "The Cloud Bigtable instance to use for the change streams connector metadata table.")
     @Default.String("")
-    String getBigtableMetadataInstanceId();
+    String getBigtableChangeStreamsMetadataInstanceId();
 
-    void setBigtableMetadataInstanceId(String value);
+    void setBigtableChangeStreamsMetadataInstanceId(String value);
 
     @TemplateParameter.Text(
-        order = 6,
+        order = 3,
         optional = true,
-        description = "Cloud Bigtable metadata table ID",
+        description = "Cloud Bigtable change streams metadata table ID",
         helpText =
             "The Cloud Bigtable change streams connector metadata table ID to use. If not "
                 + "provided, a Cloud Bigtable change streams connector metadata table will automatically be "
                 + "created during the pipeline flow. This parameter must be provided when updating an "
                 + "existing pipeline and should not be provided otherwise.")
     @Default.String("")
-    String getBigtableMetadataTableTableId();
+    String getBigtableChangeStreamsMetadataTableTableId();
 
-    void setBigtableMetadataTableTableId(String value);
+    void setBigtableChangeStreamsMetadataTableTableId(String value);
 
     @TemplateParameter.Text(
-        order = 7,
+        order = 4,
         optional = true,
-        description = "Bigtable charset name when reading values and column qualifiers",
+        description =
+            "Bigtable change streams charset name when reading values and column qualifiers",
         helpText =
-            "Bigtable charset name when reading values and column qualifiers. "
+            "Bigtable change streams charset name when reading values and column qualifiers. "
                 + "Default is UTF-8")
     @Default.String("UTF-8")
-    String getBigtableCharset();
+    String getBigtableChangeStreamsCharset();
 
-    void setBigtableCharset(String value);
+    void setBigtableChangeStreamsCharset(String value);
 
     @TemplateParameter.DateTime(
-        order = 8,
+        order = 5,
         optional = true,
         description = "The timestamp to read change streams from",
         helpText =
@@ -224,8 +229,29 @@ public interface BigtableCommonOptions extends GcpOptions {
                 + "(https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the "
                 + "timestamp when the pipeline starts.")
     @Default.String("")
-    String getStartTimestamp();
+    String getBigtableChangeStreamsStartTimestamp();
 
-    void setStartTimestamp(String startTimestamp);
+    void setBigtableChangeStreamsStartTimestamp(String startTimestamp);
+
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        description = "Cloud Bigtable change streams column families to ignore",
+        helpText =
+            "A comma-separated list of column family names changes to which won't be captured")
+    @Default.String("")
+    String getBigtableChangeStreamsIgnoreColumnFamilies();
+
+    void setBigtableChangeStreamsIgnoreColumnFamilies(String value);
+
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        description = "Cloud Bigtable change streams columns to ignore",
+        helpText = "A comma-separated list of column names changes to which won't be captured")
+    @Default.String("")
+    String getBigtableChangeStreamsIgnoreColumns();
+
+    void setBigtableChangeStreamsIgnoreColumns(String value);
   }
 }

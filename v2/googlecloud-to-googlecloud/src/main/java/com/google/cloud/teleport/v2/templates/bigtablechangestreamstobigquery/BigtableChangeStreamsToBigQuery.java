@@ -152,20 +152,20 @@ public final class BigtableChangeStreamsToBigQuery {
 
     // Retrieve and parse the startTimestamp
     Timestamp startTimestamp =
-        options.getStartTimestamp().isEmpty()
+        options.getBigtableChangeStreamsStartTimestamp().isEmpty()
             ? Timestamp.now()
-            : Timestamp.parseTimestamp(options.getStartTimestamp());
+            : Timestamp.parseTimestamp(options.getBigtableChangeStreamsStartTimestamp());
 
     // end timestamp might be supported later
     Timestamp endTimestamp = Timestamp.MAX_VALUE;
 
     BigtableSource sourceInfo =
         new BigtableSource(
-            options.getBigtableInstanceId(),
-            options.getBigtableTableId(),
+            options.getBigtableReadInstanceId(),
+            options.getBigtableReadTableId(),
             getBigtableCharset(options),
-            options.getIgnoreColumnFamilies(),
-            options.getIgnoreColumns(),
+            options.getBigtableChangeStreamsIgnoreColumnFamilies(),
+            options.getBigtableChangeStreamsIgnoreColumns(),
             startTimestamp,
             endTimestamp);
 
@@ -199,17 +199,18 @@ public final class BigtableChangeStreamsToBigQuery {
     BigtableIO.ReadChangeStream readChangeStream =
         BigtableIO.readChangeStream()
             .withProjectId(bigtableProject)
-            .withMetadataTableTableId(options.getBigtableMetadataTableTableId())
-            .withMetadataTableInstanceId(options.getBigtableMetadataInstanceId())
-            .withInstanceId(options.getBigtableInstanceId())
-            .withTableId(options.getBigtableTableId())
-            .withAppProfileId(options.getBigtableAppProfileId())
+            .withMetadataTableTableId(options.getBigtableChangeStreamsMetadataTableTableId())
+            .withMetadataTableInstanceId(options.getBigtableChangeStreamsMetadataInstanceId())
+            .withInstanceId(options.getBigtableReadInstanceId())
+            .withTableId(options.getBigtableReadTableId())
+            .withAppProfileId(options.getBigtableChangeStreamsAppProfileId())
             .withStartTime(startTimestamp)
             .withEndTime(endTimestamp);
 
-    if (!StringUtils.isBlank(options.getBigtableMetadataTableTableId())) {
+    if (!StringUtils.isBlank(options.getBigtableChangeStreamsMetadataTableTableId())) {
       readChangeStream =
-          readChangeStream.withMetadataTableTableId(options.getBigtableMetadataTableTableId());
+          readChangeStream.withMetadataTableTableId(
+              options.getBigtableChangeStreamsMetadataTableTableId());
     }
 
     PCollection<ChangeStreamMutation> dataChangeRecord =
@@ -334,21 +335,21 @@ public final class BigtableChangeStreamsToBigQuery {
   }
 
   private static String getBigtableCharset(BigtableChangeStreamsToBigQueryOptions options) {
-    return StringUtils.isEmpty(options.getBigtableCharset())
+    return StringUtils.isEmpty(options.getBigtableChangeStreamsCharset())
         ? "UTF-8"
-        : options.getBigtableCharset();
+        : options.getBigtableChangeStreamsCharset();
   }
 
   private static String getBigtableProjectId(BigtableChangeStreamsToBigQueryOptions options) {
-    return StringUtils.isEmpty(options.getBigtableProjectId())
+    return StringUtils.isEmpty(options.getBigtableReadProjectId())
         ? options.getProject()
-        : options.getBigtableProjectId();
+        : options.getBigtableReadProjectId();
   }
 
   private static String getBigQueryChangelogTableName(
       BigtableChangeStreamsToBigQueryOptions options) {
     return StringUtils.isEmpty(options.getBigQueryChangelogTableName())
-        ? options.getBigtableTableId() + "_changelog"
+        ? options.getBigtableReadTableId() + "_changelog"
         : options.getBigQueryChangelogTableName();
   }
 

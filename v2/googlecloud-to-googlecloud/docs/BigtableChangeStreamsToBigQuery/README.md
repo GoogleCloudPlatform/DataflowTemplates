@@ -5,9 +5,9 @@ your own Google Cloud project. Make sure to be in the /v2 directory.
 
 The [BigtableChangeStreamsToBigQuery](src/main/java/com/google/cloud/teleport/v2/templates/bigtablechangestreamstobigquery/BigtableChangeStreamsToBigQuery.java)
 pipeline reads messages from Cloud Bigtable Change Streams and stores them in a
-BigQuery table having a changelog schema.
+BigQuery table having a change log schema.
 
-Changelog schema is defined as follows:
+Change log schema is defined as follows:
 
 | Column name     | BigQuery Type | Required? | Description                                                                                                                                           |
 | --------------- | ------------- | --------- |-------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -83,16 +83,16 @@ echo '{
     "description":"Streaming pipeline. Streams change stream records and writes them into a BigQuery table. Note the created pipeline will run on Dataflow Runner V2",
     "parameters":[
         {
-            "label": "Bigtable Instance ID",
+            "label": "Bigtable read instance ID",
             "help_text": "The Cloud Bigtable instance to read change streams from.",
-            "name": "bigtableInstanceId",
+            "name": "bigtableReadInstanceId",
             "is_optional": false,
             "param_type": "TEXT"
         },
         {
-            "label": "Cloud Bigtable table ID",
+            "label": "Cloud Bigtable read table ID",
             "help_text": "The Cloud Bigtable table to read change streams from.",
-            "name": "bigtableTableId",
+            "name": "bigtableReadTableId",
             "is_optional": false,
             "param_type": "TEXT"
         },
@@ -104,58 +104,58 @@ echo '{
             "param_type": "TEXT"
         },
         {
-            "label": "Cloud Bigtable application profile ID",
+            "label": "Cloud Bigtable change streams application profile ID",
             "help_text": "The application profile is used to distinguish workload in Cloud Bigtable. The application profile needs to be single-cluster routing and have single-row transactions enabled",
-            "name": "bigtableAppProfileId",
+            "name": "bigtableChangeStreamsAppProfileId",
             "is_optional": false,
             "param_type": "TEXT"
         },
         {
-            "label": "Cloud Bigtable Project ID",
+            "label": "Cloud Bigtable read Project ID",
             "help_text": "Project to read change streams from. The default for this parameter is the project where the Dataflow pipeline is running.",
-            "name": "bigtableProjectId",
+            "name": "bigtableReadProjectId",
             "is_optional": true,
             "param_type": "TEXT"
         },
         {
-            "label": "Cloud Bigtable metadata instance ID",
+            "label": "Cloud Bigtable change streams metadata instance ID",
             "help_text": "The Cloud Bigtable instance to use for the change streams connector metadata table.",
-            "name": "bigtableMetadataInstanceId",
+            "name": "bigtableChangeStreamsMetadataInstanceId",
             "is_optional": true,
             "param_type": "TEXT"
         },
         {
-            "label": "Cloud Bigtable metadata table ID",
+            "label": "Cloud Bigtable change streams metadata table ID",
             "help_text": "The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. This parameter must be provided when updating an existing pipeline and should not be provided otherwise.",
-            "name": "bigtableMetadataTableTableId",
+            "name": "bigtableChangeStreamsMetadataTableTableId",
             "is_optional": true,
             "param_type": "TEXT"
         },
         {
-            "label": "Cloud Bigtable column families to ignore",
+            "label": "Cloud Bigtable change streams column families to ignore",
             "help_text": "A comma-separated list of column family names changes to which are not to be captured.",
-            "name": "ignoreColumnFamilies",
+            "name": "bigtableChangeStreamsIgnoreColumnFamilies",
             "is_optional": true,
             "param_type": "TEXT"
         },
         {
-            "label": "Cloud Bigtable columns to ignore",
+            "label": "Cloud Bigtable change streams columns to ignore",
             "help_text": "A comma-separated list of column names changes to which are not to be captured",
-            "name": "outputFileFormat",
+            "name": "bigtableChangeStreamsIgnoreColumns",
             "is_optional": true,
             "param_type": "TEXT"
         },
         {
             "label": "The timestamp to read change streams from",
             "help_text": "The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.",
-            "name": "startTimestamp",
+            "name": "bigtableChangeStreamsStartTimestamp",
             "is_optional": true,
             "param_type": "TEXT"
         },
         {
             "label": "Write values as BigQuery BYTES",
             "help_text": "When set true rowkeys are written to BYTES column, otherwise to STRING column. Defaults to false.",
-            "name": "writeRowkeyAsBytes",
+            "name": "bigQueryWriteRowkeyAsBytes",
             "is_optional": true,
             "param_type": "TEXT"
         },
@@ -163,40 +163,40 @@ echo '{
         {
             "label": "Write values as BigQuery BYTES",
             "help_text": "When set true values are written to BYTES column, otherwise to STRING column. Defaults to false.",
-            "name": "writeValuesAsBytes",
+            "name": "bigQueryWriteValuesAsBytes",
             "is_optional": true,
             "param_type": "TEXT"
         },
         {
             "label": "Write Bigtable timestamp as BigQuery INT",
             "help_text": "When set true values are written to INT column, otherwise to TIMESTAMP column. Columns affected: `timestamp`, `timestamp_from`, `timestamp_to`. Defaults to false.",
-            "name": "writeNumericTimestamps",
+            "name": "bigQueryWriteNumericTimestamps",
             "is_optional": true,
             "param_type": "TEXT"
         },
         {
-            "label": "BigQuery charset name when reading values and column qualifiers",
-            "help_text": "BigQuery charset name when reading values and column qualifiers. Default is UTF-8",
-            "name": "bigtableCharset",
+            "label": "Cloud Bigtable charset name when reading values and column qualifiers",
+            "help_text": "Cloud Bigtable charset name when reading values and column qualifiers. Default is UTF-8",
+            "name": "bigtableChangeStreamsCharset",
             "is_optional": true,
             "param_type": "TEXT"            
         },
         {
             "label": "BigQuery project ID",
             "help_text": "The BigQuery Project. Default is the project for the Dataflow job.",
-            "name": "bigtableProjectId",
+            "name": "bigQueryProjectId",
             "is_optional": true,
             "param_type": "TEXT"            
         },
         {
-            "label": "BigQuery table name",
+            "label": "BigQuery change log table name",
             "help_text": "The BigQuery table name that contains the change log. Default: {bigtableTableId}_changelog",
             "name": "bigQueryChangelogTableName",
             "is_optional": true,
             "param_type": "TEXT"            
         },
         {
-            "label": "Changelog table will be partitioned at specified granularity",
+            "label": "Change log table will be partitioned at specified granularity",
             "help_text": "When set, table partitioning will be in effect. Accepted values: `HOUR`, `DAY`, `MONTH`, `YEAR`. Default is no partitioning.",
             "name": "bigQueryChangelogTablePartitionGranularity",
             "is_optional": true,
@@ -210,8 +210,8 @@ echo '{
             "param_type": "TEXT"            
         },
         {
-            "label": "Optional changelog table columns to be disabled",
-            "help_text": "A comma-separated list of the changelog columns which will not be created and populated if specified. Supported values should be from the following list: `is_gc`, `source_instance`, `source_cluster`, `source_table`, `tiebreaker`, `big_query_commit_timestamp`. Defaults to all columns to be populated",
+            "label": "Optional change log table columns to be disabled",
+            "help_text": "A comma-separated list of the change log columns which will not be created and populated if specified. Supported values should be from the following list: `is_gc`, `source_instance`, `source_cluster`, `source_table`, `tiebreaker`, `big_query_commit_timestamp`. Defaults to all columns to be populated",
             "name": "bigQueryChangelogTableFieldsToIgnore",
             "is_optional": true,
             "param_type": "TEXT"
@@ -255,14 +255,14 @@ The template requires the following parameters:
 * bigtableAppProfile: Application profile to use when reading from CBT. A single-cluster routing must be used.
 
 The template has the following optional parameters:
-* bigtableProjectId: Default: The project where the Dataflow pipeline is running.
+* bigtableReadProjectId: Default: The project where the Dataflow pipeline is running.
 * bigQueryTableChangelogName: Default: bigtableTableId + “_changelog”. Destination BQ table
 * metadataInstanceId: Default: the same as bigtableInstanceId. Change streams metadata table.
 * metadataTableTableId: Default: “__change_stream_md_table”. Change streams metadata table.
 * ignoreColumnFamilies: Default: empty. A comma-separated list of column families for which changes are to be skipped.
 * ignoreColumns: Default: empty. A comma-separated list of columnFamily:columnName values for which changes are to be skipped.
 * startTimestamp: Default: current wall time. Starting point of Change stream.
-* writeNumericTimestamps: Default: false. If true, timestamp, timestamp_from, timestamp_to changelog table columns will use INT type.
+* writeNumericTimestamps: Default: false. If true, timestamp, timestamp_from, timestamp_to change log table columns will use INT type.
 * writeRowkeyAsBytes: Default: false. If true, the rowkey will be written as BYTES BQ type.
 * writeValuesAsBytes: Default: false. If true, the value will be written as BYTES BQ type.
 * bigtableCharset: Default: “UTF-8”. Charset to use when reading CBT column qualifiers and row keys (or values if writeValuesAsBytes is false)
