@@ -88,10 +88,10 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   private LaunchInfo launchInfo;
 
   @Test
-  @Ignore(
-      "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
-          + "relies on pre-existing static resources until a new admin API client is available for "
-          + "us to setup CDC-enabled resources")
+  // @Ignore(
+  //     "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
+  //         + "relies on pre-existing static resources until a new admin API client is available for "
+  //         + "us to setup CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQuerySingleMutationE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
     String clusterName = "c1_cluster";
@@ -116,9 +116,9 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         launchTemplate(
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
-                    .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
-                    .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
+                    .addParameter("bigtableReadTableId", SOURCE_CDC_TABLE)
+                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                    .addParameter("bigtableChangeStreamsAppProfileId", APP_PROFILE_ID)
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
                     .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")));
 
@@ -161,10 +161,10 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  @Ignore(
-      "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
-          + "relies on pre-existing static resources until a new admin API client is available for "
-          + "us to setup CDC-enabled resources")
+  // @Ignore(
+  //     "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
+  //         + "relies on pre-existing static resources until a new admin API client is available for "
+  //         + "us to setup CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQueryMutationsStartTimeE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
     String clusterName = "c1_cluster";
@@ -217,13 +217,13 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         launchTemplate(
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
-                    .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
-                    .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
+                    .addParameter("bigtableReadTableId", SOURCE_CDC_TABLE)
+                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                    .addParameter("bigtableChangeStreamsAppProfileId", APP_PROFILE_ID)
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
                     .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
                     .addParameter(
-                        "startTimestamp", Timestamp.of(new Date(afterFirstMutation)).toString())));
+                        "bigtableChangeStreamsStartTimestamp", Timestamp.of(new Date(afterFirstMutation)).toString())));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -266,10 +266,10 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  @Ignore(
-      "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
-          + "relies on pre-existing static resources until a new admin API client is available for "
-          + "us to setup CDC-enabled resources")
+  // @Ignore(
+  //     "Test is not ready for CI/CD purposes because it doesn't provision CBT resources and "
+  //         + "relies on pre-existing static resources until a new admin API client is available for "
+  //         + "us to setup CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQueryDeadLetterQueueE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
     String clusterName = "c1_cluster";
@@ -319,16 +319,16 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         launchTemplate(
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
-                    .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
-                    .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
+                    .addParameter("bigtableReadTableId", SOURCE_CDC_TABLE)
+                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                    .addParameter("bigtableChangeStreamsAppProfileId", APP_PROFILE_ID)
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
                     .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
                     .addParameter("dlqRetryMinutes", "1")
                     .addParameter("dlqDirectory", getGcsPath("dlq"))
                     .addParameter("dlqMaxRetries", "1")
-                    .addParameter(
-                        "startTimestamp", Timestamp.of(new Date(beforeMutations)).toString())));
+                    .addParameter("bigtableChangeStreamsStartTimestamp",
+                        Timestamp.of(new Date(beforeMutations)).toString())));
 
     assertThatPipeline(launchInfo).isRunning();
 

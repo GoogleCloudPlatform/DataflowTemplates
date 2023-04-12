@@ -37,28 +37,8 @@ public interface BigtableChangeStreamsToBigQueryOptions
 
   void setBigQueryDataset(String value);
 
-  @TemplateParameter.Text(
-      order = 2,
-      optional = true,
-      description = "Cloud Bigtable column families to ignore",
-      helpText = "A comma-separated list of column family names changes to which won't be captured")
-  @Default.String("")
-  String getIgnoreColumnFamilies();
-
-  void setIgnoreColumnFamilies(String value);
-
-  @TemplateParameter.Text(
-      order = 3,
-      optional = true,
-      description = "Cloud Bigtable columns to ignore",
-      helpText = "A comma-separated list of column names changes to which won't be captured")
-  @Default.String("")
-  String getIgnoreColumns();
-
-  void setIgnoreColumns(String value);
-
   @TemplateParameter.Boolean(
-      order = 4,
+      order = 2,
       optional = true,
       description = "Write rowkeys as BigQuery BYTES",
       helpText =
@@ -70,7 +50,7 @@ public interface BigtableChangeStreamsToBigQueryOptions
   void setWriteRowkeyAsBytes(Boolean value);
 
   @TemplateParameter.Boolean(
-      order = 5,
+      order = 3,
       optional = true,
       description = "Write values as BigQuery BYTES",
       helpText =
@@ -82,7 +62,7 @@ public interface BigtableChangeStreamsToBigQueryOptions
   void setWriteValuesAsBytes(Boolean value);
 
   @TemplateParameter.Boolean(
-      order = 6,
+      order = 4,
       optional = true,
       description = "Write Bigtable timestamp as BigQuery INT",
       helpText =
@@ -96,7 +76,7 @@ public interface BigtableChangeStreamsToBigQueryOptions
   void setWriteNumericTimestamps(Boolean value);
 
   @TemplateParameter.ProjectId(
-      order = 7,
+      order = 5,
       optional = true,
       description = "BigQuery project ID",
       helpText = "The BigQuery Project. Default is the project for the Dataflow job.")
@@ -106,7 +86,7 @@ public interface BigtableChangeStreamsToBigQueryOptions
   void setBigQueryProjectId(String value);
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 6,
       optional = true,
       description = "BigQuery changelog table name",
       helpText =
@@ -118,7 +98,7 @@ public interface BigtableChangeStreamsToBigQueryOptions
   void setBigQueryChangelogTableName(String value);
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 7,
       optional = true,
       description = "Changelog table will be partitioned at specified granularity",
       helpText =
@@ -130,7 +110,7 @@ public interface BigtableChangeStreamsToBigQueryOptions
   void setBigQueryChangelogTablePartitionGranularity(String value);
 
   @TemplateParameter.Long(
-      order = 10,
+      order = 8,
       optional = true,
       description = "Sets partition expiration time in milliseconds",
       helpText =
@@ -141,7 +121,7 @@ public interface BigtableChangeStreamsToBigQueryOptions
   void setBigQueryChangelogTablePartitionExpirationMs(Long value);
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 9,
       optional = true,
       description = "Optional changelog table columns to be disabled",
       helpText =
@@ -154,7 +134,7 @@ public interface BigtableChangeStreamsToBigQueryOptions
   void setBigQueryChangelogTableFieldsToIgnore(String value);
 
   @TemplateParameter.GcsWriteFolder(
-      order = 12,
+      order = 10,
       optional = true,
       description = "Dead letter queue directory",
       helpText =
@@ -165,7 +145,7 @@ public interface BigtableChangeStreamsToBigQueryOptions
   void setDlqDirectory(String value);
 
   @TemplateParameter.Integer(
-      order = 13,
+      order = 11,
       optional = true,
       description = "Dead letter queue retry minutes",
       helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
@@ -175,7 +155,7 @@ public interface BigtableChangeStreamsToBigQueryOptions
   void setDlqRetryMinutes(Integer value);
 
   @TemplateParameter.Integer(
-      order = 14,
+      order = 12,
       optional = true,
       description = "Dead letter maximum retries",
       helpText = "The number of attempts to process change stream mutations. Defaults to 5.")
