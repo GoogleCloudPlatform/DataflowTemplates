@@ -119,8 +119,8 @@ public class ResourceManagerUtils {
       throw new IllegalArgumentException(
           "Project ID "
               + idToCheck
-              + " is not a valid ID. Only letters, numbers, hyphens, single quotes and exclamation"
-              + " points are allowed.");
+              + " is not a valid ID. Only letters, numbers, hyphens, single quotes, colon and"
+              + " exclamation points are allowed.");
     }
   }
 
