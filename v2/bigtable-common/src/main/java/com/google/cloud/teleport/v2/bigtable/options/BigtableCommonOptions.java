@@ -159,7 +159,7 @@ public interface BigtableCommonOptions extends GcpOptions {
     void setBigtableReadTableId(String value);
 
     @TemplateParameter.ProjectId(
-        order = 4,
+        order = 3,
         optional = true,
         description = "Source Cloud Bigtable Project ID",
         helpText =
@@ -234,7 +234,7 @@ public interface BigtableCommonOptions extends GcpOptions {
     void setBigtableChangeStreamsStartTimestamp(String startTimestamp);
 
     @TemplateParameter.Text(
-        order = 2,
+        order = 6,
         optional = true,
         description = "Cloud Bigtable change streams column families to ignore",
         helpText =
@@ -245,7 +245,7 @@ public interface BigtableCommonOptions extends GcpOptions {
     void setBigtableChangeStreamsIgnoreColumnFamilies(String value);
 
     @TemplateParameter.Text(
-        order = 3,
+        order = 7,
         optional = true,
         description = "Cloud Bigtable change streams columns to ignore",
         helpText = "A comma-separated list of column names changes to which won't be captured")
