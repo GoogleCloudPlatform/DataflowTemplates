@@ -63,10 +63,12 @@ public final class DatastoreToDatastoreDeleteIT extends TemplateTestBase {
       template = "Datastore_to_Datastore_Delete")
   public void testDatastoreToDatastore() throws IOException {
     baseTestDatastoreToDatastore(
+        "persondatastore",
         params ->
             params
                 .addParameter(
-                    "datastoreReadGqlQuery", "SELECT * FROM person WHERE name = \"John Doe\"")
+                    "datastoreReadGqlQuery",
+                    "SELECT * FROM persondatastore WHERE name = \"John Doe\"")
                 .addParameter("datastoreReadProjectId", PROJECT)
                 .addParameter("datastoreReadNamespace", testId)
                 .addParameter("datastoreDeleteProjectId", PROJECT)
@@ -79,10 +81,12 @@ public final class DatastoreToDatastoreDeleteIT extends TemplateTestBase {
       template = "Firestore_to_Firestore_Delete")
   public void testFirestoreToFirestore() throws IOException {
     baseTestDatastoreToDatastore(
+        "personfirestore",
         params ->
             params
                 .addParameter(
-                    "firestoreReadGqlQuery", "SELECT * FROM person WHERE name = \"John Doe\"")
+                    "firestoreReadGqlQuery",
+                    "SELECT * FROM personfirestore WHERE name = \"John Doe\"")
                 .addParameter("firestoreReadProjectId", PROJECT)
                 .addParameter("firestoreReadNamespace", testId)
                 .addParameter("firestoreDeleteProjectId", PROJECT)
@@ -90,11 +94,12 @@ public final class DatastoreToDatastoreDeleteIT extends TemplateTestBase {
   }
 
   public void baseTestDatastoreToDatastore(
-      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
+      String tableName, Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException {
 
     // Arrange
     datastoreResourceManager.insert(
-        "person",
+        tableName,
         Map.of(
             1L,
             Entity.newBuilder().set("name", "John Doe").build(),
@@ -114,8 +119,8 @@ public final class DatastoreToDatastoreDeleteIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    List<Entity> queryResults = datastoreResourceManager.query("SELECT * from person");
-
+    // Make sure that records got deleted
+    List<Entity> queryResults = datastoreResourceManager.query("SELECT * from " + tableName);
     assertThatDatastoreRecords(queryResults).hasRows(1);
     assertThatDatastoreRecords(queryResults).hasRecordUnordered(Map.of("name", "Archimedes"));
   }
