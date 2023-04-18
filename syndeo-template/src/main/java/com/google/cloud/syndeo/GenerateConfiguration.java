@@ -15,11 +15,10 @@
  */
 package com.google.cloud.syndeo;
 
-import com.google.cloud.datapipelines.v1.syndeo.BatchGetTransformDescriptionsResponse;
-import com.google.cloud.datapipelines.v1.syndeo.MapType;
-import com.google.cloud.datapipelines.v1.syndeo.TransformDescription;
-import com.google.cloud.datapipelines.v1.syndeo.TypeName;
+import com.google.cloud.datapipelines.v1.syndeo.*;
 import com.google.cloud.syndeo.common.ProviderUtil;
+import com.google.re2j.Matcher;
+import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -46,6 +45,16 @@ import org.slf4j.LoggerFactory;
  */
 public class GenerateConfiguration {
   private static final Logger LOG = LoggerFactory.getLogger(GenerateConfiguration.class);
+
+  /**
+   * Regex pattern that captures the IO's name and type from one of the following URN formats:
+   *
+   * <p>`beam:schematransform:org.apache.beam:<transform_name>_<read/write/transform>:vN`
+   * `syndeo:schematransform:com.google.cloud:<transform_name>_<read/write/transform>:vN`
+   */
+  private static final Pattern TRANSFORM_NAME_PATTERN =
+      Pattern.compile(
+          "^(?:beam:schematransform:org\\.apache\\.beam|syndeo:schematransform:com\\.google\\.cloud):(.+)_(read|write|[a-z_]*transform):v\\d+$");
 
   public static void main(String[] args) throws IOException {
     Collection<SchemaTransformProvider> providers = ProviderUtil.getProviders();
@@ -76,7 +85,10 @@ public class GenerateConfiguration {
               .setUniformResourceName(provider.identifier())
               .setOptions(
                   datapipelinesFieldTypeFromBeamSchemaFieldType(
-                      provider.configurationSchema(), supportedFields));
+                      provider.configurationSchema(), supportedFields))
+              .setMetadata(
+                  com.google.cloud.datapipelines.v1.syndeo.TransformMetadata.newBuilder()
+                      .setLabel(urnToTransformLabel(provider.identifier())));
       return builder.build();
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException(
@@ -101,6 +113,10 @@ public class GenerateConfiguration {
             com.google.cloud.datapipelines.v1.syndeo.Field.newBuilder()
                 .setName(f.getName())
                 .setType(datapipelinesFieldTypeFromBeamSchemaFieldType(f.getType()))
+                .setMetadata(
+                    com.google.cloud.datapipelines.v1.syndeo.FieldMetadata.newBuilder()
+                        .setLabel(fieldNameToFieldLabel(f.getName()))
+                        .setHelpText(f.getDescription()))
                 .build());
       } catch (IllegalArgumentException e) {
         throw new IllegalArgumentException(
@@ -176,5 +192,18 @@ public class GenerateConfiguration {
         throw new IllegalArgumentException(
             String.format("Unable to convert Beam type %s to Datapipelines type.", beamFieldType));
     }
+  }
+
+  static String urnToTransformLabel(String urn) {
+    Matcher matcher = TRANSFORM_NAME_PATTERN.matcher(urn);
+    if (matcher.matches()) {
+      return matcher.group(1) + ":" + matcher.group(2);
+    }
+    return urn;
+  }
+
+  static String fieldNameToFieldLabel(String fieldName) {
+    String result = fieldName.replaceAll("([A-Z])", " $1");
+    return result.substring(0, 1).toUpperCase() + result.substring(1);
   }
 }

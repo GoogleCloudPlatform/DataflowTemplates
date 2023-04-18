@@ -20,6 +20,7 @@ import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
+import org.apache.beam.sdk.schemas.annotations.SchemaFieldDescription;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptor;
@@ -27,16 +28,21 @@ import org.apache.beam.sdk.values.TypeDescriptor;
 @DefaultSchema(AutoValueSchema.class)
 @AutoValue
 public abstract class BigTableWriteSchemaTransformConfiguration {
+  @SchemaFieldDescription("The Google Cloud project that the Bigtable instance is in.")
   public abstract String getProjectId();
 
+  @SchemaFieldDescription("The ID of the Bigtable instance to write to.")
   public abstract String getInstanceId();
 
+  @SchemaFieldDescription("The ID of the Bigtable table to write to.")
   public abstract String getTableId();
 
+  @SchemaFieldDescription("List of Bigtable columns to uniquely identify each row.")
   public abstract List<String> getKeyColumns();
 
   public abstract @Nullable String getEndpoint();
 
+  @SchemaFieldDescription("The ID of the app profile used to connect to Bigtable.")
   public abstract @Nullable String getAppProfileId();
 
   public static Builder builder() {
