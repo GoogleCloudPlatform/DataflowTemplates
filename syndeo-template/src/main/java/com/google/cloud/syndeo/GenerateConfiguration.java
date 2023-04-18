@@ -16,6 +16,8 @@
 package com.google.cloud.syndeo;
 
 import com.google.cloud.datapipelines.v1.syndeo.BatchGetTransformDescriptionsResponse;
+import com.google.cloud.datapipelines.v1.syndeo.FieldMetadata;
+import com.google.cloud.datapipelines.v1.syndeo.FieldType;
 import com.google.cloud.datapipelines.v1.syndeo.MapType;
 import com.google.cloud.datapipelines.v1.syndeo.TransformDescription;
 import com.google.cloud.datapipelines.v1.syndeo.TypeName;
@@ -65,15 +67,14 @@ public class GenerateConfiguration {
             .getBytes(StandardCharsets.UTF_8));
   }
 
-  static com.google.cloud.datapipelines.v1.syndeo.TransformDescription providerToConfiguration(
-      SchemaTransformProvider provider) {
-    Set<String> supportedFields = SyndeoTemplate.SUPPORTED_URNS.get(provider.identifier());
-    LOG.info("Generating configuration for {}", provider.identifier());
+  static TransformDescription providerToConfiguration(SchemaTransformProvider provider) {
+    String identifier = provider.identifier();
+    Set<String> supportedFields = SyndeoTemplate.SUPPORTED_URNS.get(identifier);
+    LOG.info("Generating configuration for {}", identifier);
     try {
       TransformDescription.Builder builder =
           TransformDescription.newBuilder()
-              .setName(provider.identifier())
-              .setUniformResourceName(provider.identifier())
+              .setUniformResourceName(identifier)
               .setOptions(
                   datapipelinesFieldTypeFromBeamSchemaFieldType(
                       provider.configurationSchema(), supportedFields));
@@ -101,6 +102,10 @@ public class GenerateConfiguration {
             com.google.cloud.datapipelines.v1.syndeo.Field.newBuilder()
                 .setName(f.getName())
                 .setType(datapipelinesFieldTypeFromBeamSchemaFieldType(f.getType()))
+                .setMetadata(
+                    FieldMetadata.newBuilder()
+                        .setLabel(fieldNameToFieldLabel(f.getName()))
+                        .setHelpText(f.getDescription()))
                 .build());
       } catch (IllegalArgumentException e) {
         throw new IllegalArgumentException(
@@ -112,8 +117,7 @@ public class GenerateConfiguration {
 
   static com.google.cloud.datapipelines.v1.syndeo.FieldType
       datapipelinesFieldTypeFromBeamSchemaFieldType(Schema.FieldType beamFieldType) {
-    com.google.cloud.datapipelines.v1.syndeo.FieldType.Builder typeBuilder =
-        com.google.cloud.datapipelines.v1.syndeo.FieldType.newBuilder();
+    FieldType.Builder typeBuilder = FieldType.newBuilder();
     typeBuilder = typeBuilder.setNullable(beamFieldType.getNullable());
     switch (beamFieldType.getTypeName()) {
       case STRING:
@@ -176,5 +180,10 @@ public class GenerateConfiguration {
         throw new IllegalArgumentException(
             String.format("Unable to convert Beam type %s to Datapipelines type.", beamFieldType));
     }
+  }
+
+  static String fieldNameToFieldLabel(String fieldName) {
+    String result = fieldName.replaceAll("([A-Z])", " $1");
+    return result.substring(0, 1).toUpperCase() + result.substring(1);
   }
 }
