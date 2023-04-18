@@ -378,11 +378,6 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.json</groupId>
-      <artifactId>json</artifactId>
-      <version>${json.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.google.auto.value</groupId>
       <artifactId>auto-value</artifactId>
       <version>${autovalue.version}</version>
@@ -665,7 +660,6 @@
               </ignoredUsedUndeclaredDependencies>
               <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
-                <ignoredUnusedDeclaredDependency>org.json:json</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-common</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-core-asl</ignoredUnusedDeclaredDependency>
