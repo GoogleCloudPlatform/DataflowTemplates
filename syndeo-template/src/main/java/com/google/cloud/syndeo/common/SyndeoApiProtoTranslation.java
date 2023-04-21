@@ -35,7 +35,7 @@ public class SyndeoApiProtoTranslation {
     try {
       return SchemaApi.Schema.parseFrom(schema.toByteArray());
     } catch (
-        org.apache.beam.vendor.grpc.v1p48p1.com.google.protobuf.InvalidProtocolBufferException e) {
+        org.apache.beam.vendor.grpc.v1p54p0.com.google.protobuf.InvalidProtocolBufferException e) {
       throw new RuntimeException("Unable to parse proto");
     }
   }
@@ -54,7 +54,7 @@ public class SyndeoApiProtoTranslation {
     try {
       return SchemaApi.Row.parseFrom(row.toByteArray());
     } catch (
-        org.apache.beam.vendor.grpc.v1p48p1.com.google.protobuf.InvalidProtocolBufferException e) {
+        org.apache.beam.vendor.grpc.v1p54p0.com.google.protobuf.InvalidProtocolBufferException e) {
       throw new RuntimeException("Unable to parse proto");
     }
   }
