@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.v2.kafka.utils;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.beam.vendor.grpc.v1p48p1.com.google.gson.JsonObject;
-import org.apache.beam.vendor.grpc.v1p48p1.com.google.gson.JsonParser;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;

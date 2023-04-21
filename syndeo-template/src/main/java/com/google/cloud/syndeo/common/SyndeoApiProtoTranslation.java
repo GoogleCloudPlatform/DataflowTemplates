@@ -16,8 +16,8 @@
 package com.google.cloud.syndeo.common;
 
 import com.google.cloud.syndeo.v1.SyndeoV1;
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.beam.model.pipeline.v1.SchemaApi;
-import org.apache.beam.vendor.grpc.v1p48p1.com.google.protobuf.InvalidProtocolBufferException;
 
 public class SyndeoApiProtoTranslation {
 
@@ -25,7 +25,7 @@ public class SyndeoApiProtoTranslation {
     // TODO(laraschmidt): Proper translation.
     try {
       return SyndeoV1.Schema.parseFrom(schema.toByteArray());
-    } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+    } catch (InvalidProtocolBufferException e) {
       throw new RuntimeException("Unable to parse proto");
     }
   }
@@ -34,7 +34,8 @@ public class SyndeoApiProtoTranslation {
     // TODO(laraschmidt): Proper translation.
     try {
       return SchemaApi.Schema.parseFrom(schema.toByteArray());
-    } catch (InvalidProtocolBufferException e) {
+    } catch (
+        org.apache.beam.vendor.grpc.v1p48p1.com.google.protobuf.InvalidProtocolBufferException e) {
       throw new RuntimeException("Unable to parse proto");
     }
   }
@@ -43,7 +44,7 @@ public class SyndeoApiProtoTranslation {
     // TODO(laraschmidt): Proper translation.
     try {
       return SyndeoV1.Row.parseFrom(row.toByteArray());
-    } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+    } catch (InvalidProtocolBufferException e) {
       throw new RuntimeException("Unable to parse proto");
     }
   }
@@ -52,7 +53,8 @@ public class SyndeoApiProtoTranslation {
     // TODO(laraschmidt): Proper translation.
     try {
       return SchemaApi.Row.parseFrom(row.toByteArray());
-    } catch (InvalidProtocolBufferException e) {
+    } catch (
+        org.apache.beam.vendor.grpc.v1p48p1.com.google.protobuf.InvalidProtocolBufferException e) {
       throw new RuntimeException("Unable to parse proto");
     }
   }

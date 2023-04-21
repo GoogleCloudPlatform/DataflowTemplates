@@ -21,11 +21,11 @@ import static com.google.cloud.teleport.v2.templates.KafkaPubsubConstants.PASSWO
 import static com.google.cloud.teleport.v2.templates.KafkaPubsubConstants.SSL_CREDENTIALS;
 import static com.google.cloud.teleport.v2.templates.KafkaPubsubConstants.USERNAME;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.beam.vendor.grpc.v1p48p1.com.google.gson.JsonObject;
-import org.apache.beam.vendor.grpc.v1p48p1.com.google.gson.JsonParser;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
