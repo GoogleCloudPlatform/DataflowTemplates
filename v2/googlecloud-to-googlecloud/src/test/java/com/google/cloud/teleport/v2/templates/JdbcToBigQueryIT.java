@@ -92,13 +92,13 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
   @Test
   public void testMySqlToBigQueryFlex() throws IOException {
-    // Create mySql Resource manager
+    // Create MySQL Resource manager
     mySQLResourceManager =
         ((DefaultMySQLResourceManager.Builder)
                 DefaultMySQLResourceManager.builder(testName).setHost(HOST_IP))
             .build();
 
-    // Arrange mySql-compatible schema
+    // Arrange MySQL-compatible schema
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "NUMERIC NOT NULL");
     columns.put(NAME, "VARCHAR(200)");
