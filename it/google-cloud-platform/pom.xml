@@ -47,7 +47,12 @@
             <version>${guava.version}</version>
         </dependency>
         <!-- Beam. Try to minimize Beam dependencies, since this is about testing
-      pipelines, not writing them. -->
+        pipelines, not writing them. -->
+        <dependency>
+            <!-- Needed by DataflowPipelineOptions which extends BigQueryOptions -->
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-dataflow</artifactId>
@@ -99,11 +104,6 @@
             <version>${autovalue.version}</version>
         </dependency>
         <!-- TODO(pranavbhandari): Remove the following dependencies after BigQueryIOLT is moved to the right directory -->
-        <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-synthetic</artifactId>

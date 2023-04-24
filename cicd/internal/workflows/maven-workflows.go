@@ -217,6 +217,7 @@ func RunForChangedModules(cmd string, args ...string) error {
 
 	has_it := false
 	has_common := false
+	has_v2 := false
 	for _, module := range modules {
 		if len(module) > 1 && module[:2] == "it" {
 			has_it = true
@@ -224,9 +225,15 @@ func RunForChangedModules(cmd string, args ...string) error {
 		if module == "v2/common" {
 			has_common = true
 		}
+		if module == "v2" {
+			has_v2 = true
+		}
 	}
 	if has_it && !has_common {
 		modules = append(modules, "v2/common")
+	}
+	if has_v2 && !has_it {
+		modules = append(modules, "it")
 	}
 
 	modules = append(modules, "plugins/templates-maven-plugin")

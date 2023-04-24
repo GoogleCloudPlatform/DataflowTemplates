@@ -56,15 +56,16 @@
     <commons-io.version>2.11.0</commons-io.version>
     <commons-lang3.version>3.12.0</commons-lang3.version>
     <conscrypt.version>2.5.2</conscrypt.version>
-    <hadoop.version>2.10.2</hadoop.version>
+    <hadoop.version>3.3.5</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <guava.version>31.0.1-jre</guava.version>
     <mockito.version>4.11.0</mockito.version>
     <log4j-2.version>2.17.2</log4j-2.version>
-    <json.version>20200518</json.version>
+    <json.version>20230227</json.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>1.7.25</slf4j.version>
+    <snakeyaml.version>2.0</snakeyaml.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.0.1</truth.version>
@@ -137,6 +138,13 @@
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-core</artifactId>
         <version>${log4j-2.version}</version>
+      </dependency>
+
+      <!-- Enforce updated version of SnakeYAML -->
+      <dependency>
+        <groupId>org.yaml</groupId>
+        <artifactId>snakeyaml</artifactId>
+        <version>${snakeyaml.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

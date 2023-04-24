@@ -25,6 +25,7 @@ import com.google.cloud.syndeo.common.ProviderUtil.TransformSpec;
 import com.google.cloud.syndeo.transforms.SyndeoStatsSchemaTransformProvider;
 import com.google.cloud.syndeo.v1.SyndeoV1.ConfiguredSchemaTransform;
 import com.google.cloud.syndeo.v1.SyndeoV1.PipelineDescription;
+import com.google.common.io.CharStreams;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.io.Reader;
@@ -50,7 +51,6 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
-import org.apache.beam.vendor.grpc.v1p48p1.com.google.common.io.CharStreams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,6 +104,10 @@ public class SyndeoTemplate {
     SUPPORTED_URNS.putAll(
         Map.of(
             "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+            Set.of(),
+            "syndeo:schematransform:com.google.cloud:pubsub_write:v1",
+            Set.of(),
+            "syndeo:schematransform:com.google.cloud:pubsub_dlq_write:v1",
             Set.of(),
             "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
             Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId")));
@@ -216,6 +220,12 @@ public class SyndeoTemplate {
     }
     // Add the sink transform
     transforms.add(buildFromJsonConfig(config.get("sink")));
+
+    // Adding the dlq transform, if present
+    if (config.get("dlq") != null) {
+      transforms.add(buildFromJsonConfig(config.get("dlq")));
+    }
+
     return PipelineDescription.newBuilder().addAllTransforms(transforms).build();
   }
 

@@ -99,7 +99,7 @@ public final class BigQueryToDatastoreIT extends TemplateTestBase {
             .addParameter("readQuery", "SELECT * FROM `" + toTableSpecStandard(table) + "`")
             .addParameter("readIdColumn", BIGQUERY_ID_COL)
             .addParameter("datastoreWriteProjectId", PROJECT)
-            .addParameter("datastoreWriteEntityKind", "person")
+            .addParameter("datastoreWriteEntityKind", "personbigquery")
             .addParameter("datastoreWriteNamespace", testId)
             .addParameter("datastoreHintNumWorkers", "1")
             .addParameter("errorWritePath", getGcsPath("errorWritePath"))
@@ -114,7 +114,7 @@ public final class BigQueryToDatastoreIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    List<Entity> queryResults = datastoreResourceManager.query("SELECT * from person");
+    List<Entity> queryResults = datastoreResourceManager.query("SELECT * from personbigquery");
     assertThat(queryResults).isNotEmpty();
 
     assertThatDatastoreRecords(queryResults)

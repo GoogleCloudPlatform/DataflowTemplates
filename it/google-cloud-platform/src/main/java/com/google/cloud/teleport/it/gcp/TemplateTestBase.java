@@ -271,7 +271,7 @@ public abstract class TemplateTestBase {
     // Classic templates run on parent pom and -pl v1
     if (pomPath.endsWith("v1/pom.xml")) {
       pomPath = new File(pom.getParentFile().getParentFile(), "pom.xml").getAbsolutePath();
-      moduleBuild = String.join(",", List.of("metadata", "it", "v1"));
+      moduleBuild = String.join(",", List.of("metadata", "v1"));
     } else if (pomPath.contains("v2/")) {
       // Flex templates run on parent pom and -pl {path-to-folder}
       moduleBuild = String.join(",", getModulesBuild(pomPath));
@@ -292,13 +292,13 @@ public abstract class TemplateTestBase {
       pomPath,
       "-pl",
       moduleBuild,
-      // Do not make all dependencies every time. Faster but requires prior `mvn install`.
-      //      "-am",
+      "-am",
       "-PtemplatesStage,pluginOutputDir",
       "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
       // Skip shading for now due to flakiness / slowness in the process.
       "-DskipShade",
       "-DskipTests",
+      "-Dmaven.test.skip",
       "-Dcheckstyle.skip",
       "-Dmdep.analyze.skip",
       "-Dspotless.check.skip",
@@ -316,20 +316,7 @@ public abstract class TemplateTestBase {
   private List<String> getModulesBuild(String pomPath) {
     List<String> modules = new ArrayList<>();
     modules.add("metadata");
-    modules.add("it");
     modules.add("v2/common");
-
-    // Force building specific common areas. This is much faster than using -am when staging.
-    if (pomPath.contains("kafka")) {
-      modules.add("v2/kafka-common");
-    }
-    if (pomPath.contains("elasticsearch")) {
-      modules.add("v2/elasticsearch-common");
-    }
-    if (pomPath.contains("bigtable")) {
-      modules.add("v2/bigtable-common");
-    }
-
     modules.add(pomPath.substring(pomPath.indexOf("v2/")).replace("/pom.xml", ""));
 
     return modules;

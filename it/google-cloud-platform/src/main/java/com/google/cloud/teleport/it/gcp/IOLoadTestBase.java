@@ -55,17 +55,37 @@ public class IOLoadTestBase extends LoadTestBase {
   }
 
   /** a utility DoFn that count element passed. */
-  protected static final class CountingFn<T> extends DoFn<T, Void> {
+  public static final class CountingFn<T> extends DoFn<T, Void> {
 
     private final Counter elementCounter;
 
-    public CountingFn(String namespace, String name) {
-      elementCounter = Metrics.counter(namespace, name);
+    public CountingFn(String name) {
+      elementCounter = Metrics.counter(BEAM_METRICS_NAMESPACE, name);
     }
 
     @ProcessElement
     public void processElement() {
       elementCounter.inc(1L);
     }
+  }
+
+  // To make PipelineLauncher.getMetric works in a unified way for both runner provided metrics and
+  // pipeline defined
+  // metrics, here we wrap Beam provided metrics as a pre-defined metrics name
+  // [name_space:metric_type:metric_name
+  // which will be recognized by getMetric method
+  public enum PipelineMetricsType {
+    COUNTER,
+    STARTTIME,
+    ENDTIME,
+    RUNTIME,
+  }
+
+  /** Namespace for Beam provided pipeline metrics (set up by Metrics transform). */
+  public static final String BEAM_METRICS_NAMESPACE = "BEAM_METRICS";
+
+  /** Given a metrics name, return Beam metrics name. */
+  public static String getBeamMetricsName(PipelineMetricsType metricstype, String metricsName) {
+    return BEAM_METRICS_NAMESPACE + ":" + metricstype + ":" + metricsName;
   }
 }
