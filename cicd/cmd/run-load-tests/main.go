@@ -41,7 +41,7 @@ func main() {
 		mvnFlags.SkipTests(),
 		mvnFlags.SkipJacoco(),
 		mvnFlags.SkipShade(),
-		mvnFlags.ThreadCount(8))
+		mvnFlags.ThreadCount(4))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
