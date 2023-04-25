@@ -32,6 +32,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.google.cloud.teleport.v2</groupId>
+            <artifactId>common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.cloud.bigtable</groupId>
             <artifactId>bigtable-hbase-beam</artifactId>
             <version>${bigtable.version}</version>
