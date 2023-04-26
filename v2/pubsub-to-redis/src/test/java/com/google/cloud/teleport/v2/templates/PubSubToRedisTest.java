@@ -77,17 +77,17 @@ public class PubSubToRedisTest {
     goodTestMessages =
         ImmutableList.of(
             mockPubSubMessage(
-                "{\"location\":\"IN\", \"name\":\"Allen\", \"age\":\"28\", \"color\":\"red\", \"coffee\":\"cappuccino\"}",
-                null,
-                null),
+                "{\"location\":\"NJ\", \"name\":\"Allen\", \"age\":\"28\", \"color\":\"red\", \"coffee\":\"cappuccino\"}",
+                "key",
+                "name"),
             mockPubSubMessage(
-                "{\"location\":\"US\", \"name\":\"Kyle\", \"age\":\"29\", \"color\":\"red\", \"coffee\":\"black\"}",
-                null,
-                null),
+                "{\"location\":\"CO\", \"name\":\"Kyle\", \"age\":\"29\", \"color\":\"red\", \"coffee\":\"black\"}",
+                "key",
+                "name"),
             mockPubSubMessage(
-                "{\"location\":\"UK\", \"name\":\"Virag\", \"age\":\"30\", \"color\":\"red\", \"coffee\":\"LATTE\"}",
-                null,
-                null),
+                "{\"location\":\"FL\", \"name\":\"Virag\", \"age\":\"30\", \"color\":\"red\", \"coffee\":\"latte\"}",
+                "key",
+                "name"),
             new PubsubMessage(
                 "{\"location\":\"IN\", \"name\":\"John\", \"age\":\"28\", \"color\":\"red\", \"coffee\":\"cappuccino\"}"
                     .getBytes(),
@@ -105,6 +105,25 @@ public class PubSubToRedisTest {
             .addAll(badTestMessages)
             .build();
   }
+
+  /*
+  @Test
+  public void processElementForTransformingData() {
+
+    MockitoAnnotations.initMocks(this);
+
+    PCollection<String> input = pipeline.apply(Create.of(INPUT_DATA));
+
+    PCollection<String[]> outputData = input
+            .apply("Processing data", ParDo.of(new TransformingData()));
+
+    PAssert.that(outputData).containsInAnyOrder(OUTPUT_DATA);
+
+    pipeline.run();
+
+  }
+
+   */
 
   /** Tests the {@link PubSubToRedis} pipeline end-to-end with no UDF supplied. */
   @Test
