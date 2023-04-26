@@ -53,29 +53,6 @@ public abstract class RedisHashIO extends RedisConnectionConfiguration {
 
     abstract RedisHashIO.WriteHash.Builder builder();
 
-    public RedisHashIO.WriteHash withEndpoint(String host, int port) {
-      Preconditions.checkArgument(host != null, "host cannot be null");
-      Preconditions.checkArgument(port > 0, "port cannot be negative or 0");
-      return this.builder()
-          .setConnectionConfiguration(Objects.requireNonNull(connectionConfiguration()).withHost(host).withPort(port))
-          .build();
-    }
-
-    public RedisHashIO.WriteHash withAuth(String password) {
-      Preconditions.checkArgument(password != null, "password cannot be null");
-      return this.builder()
-          .setConnectionConfiguration(
-              Objects.requireNonNull(connectionConfiguration()).withAuth(password))
-          .build();
-    }
-
-    public RedisHashIO.WriteHash withTimeout(int timeout) {
-      Preconditions.checkArgument(timeout >= 0, "timeout cannot be negative");
-      return this.builder()
-          .setConnectionConfiguration(Objects.requireNonNull(connectionConfiguration()).withTimeout(timeout))
-          .build();
-    }
-
     public RedisHashIO.WriteHash withConnectionConfiguration(
         RedisConnectionConfiguration connectionConfiguration) {
       Preconditions.checkArgument(connectionConfiguration != null, "connection cannot be null");
