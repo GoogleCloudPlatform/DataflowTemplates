@@ -51,4 +51,15 @@ public class JsonTestUtil {
 
     return records;
   }
+
+  /**
+   * Read Json record to a Map.
+   *
+   * @param contents Byte array with contents to read.
+   * @return A map with the records.
+   */
+  public static Map<String, Object> readRecord(byte[] contents) throws IOException {
+    JsonMapper mapper = new JsonMapper();
+    return mapper.readerFor(mapTypeRef).readValue(contents);
+  }
 }
