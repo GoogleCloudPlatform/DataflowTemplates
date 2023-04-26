@@ -44,7 +44,7 @@ public class MessageTransformation {
   public static class MessageToRedisString extends DoFn<PubsubMessage, String> {
     @ProcessElement
     public void processElement(
-        @Element PubsubMessage pubsubMessage, OutputReceiver<String> receiver) {
+            @Element PubsubMessage pubsubMessage, OutputReceiver<String> receiver) {
       String element = new String(pubsubMessage.getPayload());
       messageId = pubsubMessage.getMessageId();
       LOG.debug("PubSubMessage messageId: " + messageId);
@@ -82,6 +82,7 @@ public class MessageTransformation {
       receiver.output(KV.of(key, KV.of(fieldKey, element)));
     }
   }
+
   public static class MessageToRedisStreams extends DoFn<PubsubMessage, KV<String, Map<String, String>>> {
     @ProcessElement
     public void processElement(

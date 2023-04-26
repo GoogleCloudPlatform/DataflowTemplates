@@ -80,9 +80,9 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
       "paramType": "TEXT"
     },
     {
-      "name": "redisAuth",
-      "label": "Redis database auth",
-      "helpText": "Redis database endpoint auth",
+      "name": "redisPassword",
+      "label": "Redis database password",
+      "helpText": "Redis database endpoint password",
       "is_optional": false,
       "paramType": "TEXT"
     }
@@ -102,11 +102,9 @@ mvn test
 The template requires the following parameters:
 * redisHost: Redis database host , ex: 127.0.0.1
 * redisPort: Redis database port , ex: 6379
-* redisAuth: Redis database password , ex: redis123
+* redisPassword: Redis database password , ex: redis123
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
 
-The template has the following optional parameters:
-* windowDuration: ex: 5
 
 Template can be executed using the following gcloud command.
 ```sh
@@ -117,5 +115,5 @@ gcloud dataflow flex-template run pubsub-to-redis-$(date +'%Y%m%d%H%M%S') \
 --parameters inputSubscription=projects/central-beach-194106/subscriptions/pubsub-to-redis, \
 --parameters redisHost=<REDIS_DB_HOST>, \
 --parameters redisPort=<REDIS_DB_PORT>, \
---parameters redisAuth=<REDIS_DB_PASSWORD>
+--parameters redisPassword=<REDIS_DB_PASSWORD>
 ```

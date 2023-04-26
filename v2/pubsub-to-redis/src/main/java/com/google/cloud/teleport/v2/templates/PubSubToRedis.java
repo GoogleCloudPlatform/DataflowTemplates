@@ -27,7 +27,6 @@ import com.google.cloud.teleport.v2.templates.functions.RedisHashIO;
 import com.google.cloud.teleport.v2.templates.transforms.MessageTransformation;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import java.util.Map;
-import java.util.Objects;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
@@ -69,7 +68,7 @@ import org.slf4j.LoggerFactory;
  * INPUT_SUBSCRIPTION=my-subscription
  * REDIS_HOST=my-host
  * REDIS_PORT=my-port
- * REDIS_AUTH=my-auth
+ * REDIS_PASSWORD=my-pwd
  *
  * mvn compile exec:java \
  *  -Dexec.mainClass=com.google.cloud.teleport.v2.templates.PubSubToRedis \
@@ -82,7 +81,7 @@ import org.slf4j.LoggerFactory;
  *  --inputSubscription=${INPUT_SUBSCRIPTION} \
  *  --redisHost=${REDIS_HOST}
  *  --redisPort=${REDIS_PORT}
- *  --redisAuth=${REDIS_AUTH}"
+ *  --redisPassword=${REDIS_PASSWORD}"
  * </pre>
  */
 @Template(
@@ -90,7 +89,7 @@ import org.slf4j.LoggerFactory;
         category = TemplateCategory.STREAMING,
         displayName = "Pub/Sub to Redis",
         description =
-                "A streaming pipeline which inserts data from a Pub/Sub Topic "
+                "A streaming pipeline which inserts data from a Pub/Sub "
                         + "and writes them to Redis",
         optionsClass = PubSubToRedis.PubSubToRedisOptions.class,
         flexContainerName = "pubsub-to-redis",
@@ -203,6 +202,7 @@ public class PubSubToRedis {
 
         void setTtl(Long ttl);
 
+        /*
         @TemplateParameter.Long(
                 order = 9,
                 optional = true,
@@ -212,6 +212,7 @@ public class PubSubToRedis {
         Long getWindowDuration();
 
         void setWindowDuration(Long value);
+         */
     }
 
     /**
@@ -273,8 +274,17 @@ public class PubSubToRedis {
                         "Read PubSub Events",
                         MessageTransformation.readFromPubSub(options.getInputSubscription()));
 
+        /*
+        input.apply(
+            "Windowing pipeline with sessions window",
+            Window.<PubsubMessage>into(new GlobalWindows())
+                .triggering(Repeatedly.forever(
+                        AfterProcessingTime.pastFirstElementInPane()
+                            .plusDelayOf(Duration.standardSeconds(options.getWindowDuration()))))
+                .discardingFiredPanes());
+         */
+
         if (options.getRedisSinkType().equals(STRING_SINK)) {
-            // Create a PCollection from string and transform to pubsub message format
             PCollection<String> pCollectionString =
                     input.apply("Map to Redis String", ParDo.of(new MessageTransformation.MessageToRedisString()));
 
@@ -292,15 +302,16 @@ public class PubSubToRedis {
                             .withExpireTime(options.getTtl()));
         }
         if (options.getRedisSinkType().equals(HASH_SINK)) {
-            // Create a PCollection from hashes and transform to pubsub message format
             PCollection<KV<String, KV<String, String>>> pCollectionHash =
                     input.apply("Map to Redis Hash", ParDo.of(new MessageTransformation.MessageToRedisHash()));
 
+            /*
             PCollection<KV<String, KV<String, String>>> kvHashCollection = pCollectionHash.apply(
                     "Transform to Hash KV",
                     MapElements.into(
                                     TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings())))
                             .via(record -> KV.of(MessageTransformation.key, Objects.requireNonNull(record).getValue())));
+             */
 
             pCollectionHash.apply(
                     "Write to " + HASH_SINK.name(),
@@ -309,7 +320,6 @@ public class PubSubToRedis {
                             .withExpireTime(options.getTtl()));
         }
         if (options.getRedisSinkType().equals(STREAMS_SINK)) {
-            // Create a PCollection from hashes and transform to pubsub message format
             PCollection<KV<String, Map<String, String>>> pCollectionStreams =
                     input.apply("Map to Redis Streams", ParDo.of(new MessageTransformation.MessageToRedisStreams()));
 

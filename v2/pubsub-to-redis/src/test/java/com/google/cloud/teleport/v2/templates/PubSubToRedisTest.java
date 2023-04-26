@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,141 +15,130 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.io.Resources;
-import java.util.Collections;
-import java.util.HashMap;
+import static java.util.stream.Collectors.toList;
+import static org.junit.Assert.assertEquals;
+
+import com.github.fppt.jedismock.RedisServer;
+import com.google.cloud.teleport.v2.templates.functions.RedisHashIO;
+import com.google.common.collect.ImmutableMap;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import java.util.UUID;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.MapCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.redis.RedisConnectionConfiguration;
+import org.apache.beam.sdk.io.redis.RedisIO;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.junit.Before;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import redis.clients.jedis.Jedis;
 
 /** Test cases for the {@link PubSubToRedis} class. */
+@RunWith(JUnit4.class)
 public class PubSubToRedisTest {
-  private static final String RESOURCES_DIR = "PubSubToRedisTest/";
-  private static final String TRANSFORM_FILE_PATH =
-      Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
-  private static final String BAD_TRANSFORM_FILE_PATH =
-      Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
-  private static List<PubsubMessage> goodTestMessages;
-  private static List<PubsubMessage> badTestMessages;
-  private static List<PubsubMessage> nonFilterableTestMessages;
-  private static List<PubsubMessage> allTestMessages;
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  private static PubsubMessage mockPubSubMessage(
-      String payloadString, String attributeKey, String attributeValue) {
-    Map<String, String> attributeMap;
-    if (attributeKey != null) {
-      attributeMap = Collections.singletonMap(attributeKey, attributeValue);
-    } else {
-      attributeMap = Collections.EMPTY_MAP;
-    }
-    return new PubsubMessage(payloadString.getBytes(), attributeMap);
+  private static final String REDIS_HOST = "localhost";
+  private static RedisServer server;
+  private static Jedis client;
+  private static int port;
+  private static final long NO_EXPIRATION = -1L;
+
+  @Rule
+  public final transient TestPipeline pipeline = TestPipeline.create();
+
+  @BeforeClass
+  public static void beforeClass() throws Exception {
+    server = RedisServer.newRedisServer(8000);
+    server.start();
+    port = server.getBindPort();
+    client = RedisConnectionConfiguration.create(REDIS_HOST, port).connect();
   }
 
-  @Before
-  public void setUp() throws Exception {
-    Map<String, String> testAttributeMap1 =
-        new HashMap<>() {
-          {
-            put("location", "GJ");
-            put("name", "Shubh");
-            put("age", "26");
-            put("color", "white");
-            put("coffee", "filter");
-          }
-        };
-    Map<String, String> testAttributeMap2 =
-        new HashMap<>() {
-          {
-            put("location", "Durban");
-            put("name", "Dan");
-            put("age", "22");
-            put("color", "red");
-            put("coffee", "brown");
-          }
-        };
-
-    goodTestMessages =
-        ImmutableList.of(
-            mockPubSubMessage(
-                "{\"location\":\"NJ\", \"name\":\"Allen\", \"age\":\"28\", \"color\":\"red\", \"coffee\":\"cappuccino\"}",
-                "key",
-                "name"),
-            mockPubSubMessage(
-                "{\"location\":\"CO\", \"name\":\"Kyle\", \"age\":\"29\", \"color\":\"red\", \"coffee\":\"black\"}",
-                "key",
-                "name"),
-            mockPubSubMessage(
-                "{\"location\":\"FL\", \"name\":\"Virag\", \"age\":\"30\", \"color\":\"red\", \"coffee\":\"latte\"}",
-                "key",
-                "name"),
-            new PubsubMessage(
-                "{\"location\":\"IN\", \"name\":\"John\", \"age\":\"28\", \"color\":\"red\", \"coffee\":\"cappuccino\"}"
-                    .getBytes(),
-                testAttributeMap2),
-            new PubsubMessage(new byte[0], testAttributeMap1));
-
-    badTestMessages =
-        ImmutableList.of(
-            mockPubSubMessage("This is a bad record", null, null),
-            mockPubSubMessage("with unknown attribute", "dummy", "value"));
-
-    allTestMessages =
-        ImmutableList.<PubsubMessage>builder()
-            .addAll(goodTestMessages)
-            .addAll(badTestMessages)
-            .build();
+  @AfterClass
+  public static void afterClass() throws IOException {
+    client.close();
+    server.stop();
   }
 
-  /*
   @Test
-  public void processElementForTransformingData() {
+  public void processElementForRedisStringMessage() {
+    String key = "testWriteWithMethodSet";
+    client.set(key, "value");
 
-    MockitoAnnotations.initMocks(this);
+    String newValue = "newValue";
+    PCollection<KV<String, String>> write = pipeline.apply(Create.of(KV.of(key, newValue)));
+    write.apply(RedisIO.write().withEndpoint(REDIS_HOST, port).withMethod(RedisIO.Write.Method.SET));
+    pipeline.run();
 
-    PCollection<String> input = pipeline.apply(Create.of(INPUT_DATA));
+    assertEquals(newValue, client.get(key));
+    assertEquals(NO_EXPIRATION, client.ttl(key));
+  }
 
-    PCollection<String[]> outputData = input
-            .apply("Processing data", ParDo.of(new TransformingData()));
+  @Test
+  public void processElementForRedisHashMessage() {
+    KV<String, String> fieldValue = KV.of("field1", "value1");
+    KV<String, KV<String, String>> record = KV.of("hash1:log", fieldValue );
 
-    PAssert.that(outputData).containsInAnyOrder(OUTPUT_DATA);
+    PCollection<KV<String, KV<String, String>>> write = pipeline.apply(Create.of(record));
+
+    write.apply("Writing Hash into Redis", RedisHashIO.write()
+            .withConnectionConfiguration(RedisConnectionConfiguration
+                    .create(REDIS_HOST, port)));
 
     pipeline.run();
 
+    String value = client.hget("hash1:log", "field1");
+    assertEquals(value, "value1");
   }
 
-   */
-
-  /** Tests the {@link PubSubToRedis} pipeline end-to-end with no UDF supplied. */
   @Test
-  public void testPubSubToRedisNoUdfE2E() {
+  public void processElementForRedisStreamsMessage() {
 
-    PubSubToRedis.PubSubToRedisOptions options =
-        TestPipeline.testingPipelineOptions().as(PubSubToRedis.PubSubToRedisOptions.class);
+    /* test data is 10 keys (stream IDs), each with two entries, each entry having one k/v a pair of data */
+    List<String> redisKeys =
+            IntStream.range(0, 10).boxed().map(idx -> UUID.randomUUID().toString()).collect(toList());
 
-    options.setJavascriptTextTransformFunctionName(null);
-    options.setJavascriptTextTransformGcsPath(null);
+    Map<String, String> fooValues = ImmutableMap.of("sensor-id", "1234", "temperature", "19.8");
+    Map<String, String> barValues = ImmutableMap.of("sensor-id", "9999", "temperature", "18.2");
 
-    // Execute pipeline
-    pipeline.run(options);
-  }
+    List<KV<String, Map<String, String>>> allData =
+            redisKeys.stream()
+                    .flatMap(id -> Stream.of(KV.of(id, fooValues), KV.of(id, barValues)))
+                    .collect(toList());
 
-  /**
-   * Tests the {@link PubSubToRedis} pipeline end-to-end with an empty message payload but
-   * attributes populated.
-   */
-  @Test
-  public void testPubSubToRedisOnlyAttributesE2E() {
+    PCollection<KV<String, Map<String, String>>> write =
+            pipeline.apply(
+                    Create.of(allData)
+                            .withCoder(
+                                    KvCoder.of(
+                                            StringUtf8Coder.of(),
+                                            MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))));
+    write.apply(RedisIO.writeStreams().withEndpoint(REDIS_HOST, port));
+    pipeline.run();
 
-    PubSubToRedis.PubSubToRedisOptions options =
-        TestPipeline.testingPipelineOptions().as(PubSubToRedis.PubSubToRedisOptions.class);
+    /*
+    // redis.clients.jedis.exceptions.JedisDataException: Unsupported operation: xrange
+    String from = "-";
+    String to = "+";
+    Range<String> range = Range.between(from, to);
 
-    // Execute pipeline
-    pipeline.run(options);
+    for (String key : redisKeys) {
+      List<StreamEntry> streamEntries =
+              client.xrange(key, range.getMinimum(), range.getMaximum(), Integer.MAX_VALUE);
+      assertEquals(2, streamEntries.size());
+      assertThat(transform(streamEntries, streamEntry -> streamEntry != null ? streamEntry.getFields() : null), hasItems(fooValues, barValues));
+    }
+     */
   }
 }

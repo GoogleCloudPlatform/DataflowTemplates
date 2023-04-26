@@ -29,6 +29,12 @@
 
     <artifactId>pubsub-to-redis</artifactId>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <ptr.slf4j.version>2.0.5</ptr.slf4j.version>
+        <ptr.jedis-mock.version>1.0.7</ptr.jedis-mock.version>
+    </properties>
+
     <name>PubSub To Redis</name>
     <description>
         Stream data from Google PubSub to a Redis Database
@@ -43,6 +49,24 @@
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!-- slf4j API frontend binding with JUL backend -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${ptr.slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+            <version>${ptr.slf4j.version}</version>
+        </dependency>
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>com.github.fppt</groupId>
+            <artifactId>jedis-mock</artifactId>
+            <version>${ptr.jedis-mock.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
