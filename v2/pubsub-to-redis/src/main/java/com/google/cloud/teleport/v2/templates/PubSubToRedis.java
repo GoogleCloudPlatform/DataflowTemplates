@@ -195,9 +195,9 @@ public class PubSubToRedis {
         @TemplateParameter.Long(
                 order = 8,
                 optional = true,
-                description = "Key expiration time in sec (ttl)",
-                helpText = "Key expiration time in sec (ttl, default is 7 days)")
-        @Default.Long(604800)
+                description = "Hash key expiration time in sec (ttl)",
+                helpText = "Key expiration time in sec (ttl, default for HASH_SINK is -1 i.e. no expiration)")
+        @Default.Long(-1L)
         Long getTtl();
 
         void setTtl(Long ttl);
@@ -298,8 +298,7 @@ public class PubSubToRedis {
                     "Write to " + STRING_SINK.name(),
                     RedisIO.write()
                             .withMethod(RedisIO.Write.Method.SET)
-                            .withConnectionConfiguration(redisConnectionConfiguration)
-                            .withExpireTime(options.getTtl()));
+                            .withConnectionConfiguration(redisConnectionConfiguration));
         }
         if (options.getRedisSinkType().equals(HASH_SINK)) {
             PCollection<KV<String, KV<String, String>>> pCollectionHash =
@@ -317,7 +316,7 @@ public class PubSubToRedis {
                     "Write to " + HASH_SINK.name(),
                     RedisHashIO.write()
                             .withConnectionConfiguration(redisConnectionConfiguration)
-                            .withExpireTime(options.getTtl()));
+                            .withTtl(options.getTtl()));
         }
         if (options.getRedisSinkType().equals(STREAMS_SINK)) {
             PCollection<KV<String, Map<String, String>>> pCollectionStreams =

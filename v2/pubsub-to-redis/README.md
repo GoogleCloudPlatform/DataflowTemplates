@@ -73,7 +73,7 @@ The template has the following optional parameters:
 * redisSinkType: STRING_SINK, HASH_SINK and STREAMS_SINK (defaults to STRING_SINK)
 * sslEnabled: true or false (defaults to false)
 * timeout: Redis connection timeout (defaults to 2000 ms)
-* ttl: Redis keys time to live (defaults to 604800 sec)
+* ttl: Redis hash keys time to live in sec (defaults to -1 i.e. no expiration)
 
 Template can be executed using the following gcloud command.
 ````sh

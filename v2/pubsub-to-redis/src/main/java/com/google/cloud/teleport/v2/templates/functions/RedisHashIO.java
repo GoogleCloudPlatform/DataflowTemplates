@@ -31,18 +31,18 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Transaction;
 
-public abstract class RedisHashIO extends RedisConnectionConfiguration {
+public abstract class RedisHashIO {
 
   public static WriteHash write() {
 
     return (new AutoValue_RedisHashIO_WriteHash.Builder())
-        .setConnectionConfiguration(RedisConnectionConfiguration.create())
-        .build();
+            .setConnectionConfiguration(RedisConnectionConfiguration.create())
+            .build();
   }
 
   @AutoValue
   public abstract static class WriteHash
-      extends PTransform<@NonNull PCollection<KV<String, KV<String, String>>>, @NonNull PDone> {
+          extends PTransform<@NonNull PCollection<KV<String, KV<String, String>>>, @NonNull PDone> {
     public WriteHash() {}
 
     @Nullable
@@ -54,28 +54,26 @@ public abstract class RedisHashIO extends RedisConnectionConfiguration {
     abstract RedisHashIO.WriteHash.Builder builder();
 
     public RedisHashIO.WriteHash withConnectionConfiguration(
-        RedisConnectionConfiguration connectionConfiguration) {
+            RedisConnectionConfiguration connectionConfiguration) {
       Preconditions.checkArgument(connectionConfiguration != null, "connection cannot be null");
       return this.builder().setConnectionConfiguration(connectionConfiguration).build();
     }
 
-    public RedisHashIO.WriteHash withExpireTime(Long expireTimeMillis) {
-      Preconditions.checkArgument(expireTimeMillis != null, "expireTimeMillis cannot be null");
-      Preconditions.checkArgument(
-          expireTimeMillis > 0L, "expireTimeMillis cannot be negative or 0");
+    public RedisHashIO.WriteHash withTtl(Long expireTimeMillis) {
       return this.builder().setExpireTime(expireTimeMillis).build();
     }
 
     @NonNull
     public PDone expand(PCollection<KV<String, KV<String, String>>> input) {
       Preconditions.checkArgument(
-          connectionConfiguration() != null, "withConnectionConfiguration() is required");
+              connectionConfiguration() != null, "withConnectionConfiguration() is required");
       input.apply(ParDo.of(new RedisHashIO.WriteHash.WriteFn(this)));
       return PDone.in(input.getPipeline());
     }
 
     private static class WriteFn extends DoFn<KV<String, KV<String, String>>, Void> {
       private static final int DEFAULT_BATCH_SIZE = 1000;
+      private static final long NO_EXPIRATION = -1L;
       private final RedisHashIO.WriteHash spec;
       private transient Jedis jedis;
       private transient Pipeline pipeline;
@@ -122,7 +120,7 @@ public abstract class RedisHashIO extends RedisConnectionConfiguration {
         Long expireTime = this.spec.expireTime();
 
         transaction.hset(hashKey, fieldKey, value);
-        if (expireTime != null) {
+        if (expireTime != null && !Objects.equals(expireTime, NO_EXPIRATION)) {
           transaction.expire(hashKey, expireTime);
         }
       }
