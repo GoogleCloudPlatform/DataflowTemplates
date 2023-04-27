@@ -156,7 +156,7 @@ public class PubSubToRedis {
         @Validation.Required
         String getRedisPassword();
 
-        void setRedisPassword(String password);
+        void setRedisPassword(String redisPassword);
 
         @TemplateParameter.Boolean(
                 order = 5,
@@ -165,9 +165,9 @@ public class PubSubToRedis {
                 helpText = "Redis database ssl parameter.")
         @Default.Boolean(false)
         @UnknownKeyFor @NonNull @Initialized
-        ValueProvider<@UnknownKeyFor @NonNull @Initialized Boolean> getSsl();
+        ValueProvider<@UnknownKeyFor @NonNull @Initialized Boolean> getSslEnabled();
 
-        void setSsl(ValueProvider<Boolean> ssl);
+        void setSslEnabled(ValueProvider<Boolean> sslEnabled);
 
         @TemplateParameter.Enum(
                 order = 6,
@@ -211,7 +211,7 @@ public class PubSubToRedis {
         @Default.Long(5)
         Long getWindowDuration();
 
-        void setWindowDuration(Long value);
+        void setWindowDuration(Long windowDuration);
          */
     }
 
@@ -256,7 +256,7 @@ public class PubSubToRedis {
                 .withPort(options.getRedisPort())
                 .withAuth(options.getRedisPassword())
                 .withTimeout(options.getConnectionTimeout())
-                .withSSL(options.getSsl());
+                .withSSL(options.getSslEnabled());
 
 
         /*

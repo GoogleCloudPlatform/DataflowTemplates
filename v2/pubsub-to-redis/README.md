@@ -44,57 +44,20 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
                   -am -pl ${TEMPLATE_MODULE}
 ```
 
-#### Creating Image Spec
+### Building and Testing Template locally
 
-* Create spec file in Cloud Storage under the path ${TEMPLATE_IMAGE_SPEC} describing container image location and metadata.
-```json
-{
-  "name": "PubSub To Redis",
-  "description": "A pipeline reads from pubsub and writes to redis.",
-  "parameters": [
-    {
-      "name": "inputSubscription",
-      "label": "PubSub Subscription name",
-      "helpText": "Name of pubsub Subscription. ex: projects/<project-id>/subscriptions/<subscription-name>",
-      "is_optional": false,
-      "regexes": [
-        "^projects\\/[^\\n\\r\\/]+\\/subscriptions\\/[^\\n\\r\\/]+$"
-      ],
-      "paramType": "PUBSUB_SUBSCRIPTION"
-    },
-    {
-      "name": "redisHost",
-      "label": "Redis database host",
-      "helpText": "Redis database endpoint host",
-      "is_optional": false,
-      "regexes": [
-        "[a-zA-Z0-9._\\-]+"
-      ],
-      "paramType": "TEXT"
-    },
-    {
-      "name": "redisPort",
-      "label": "Redis database port",
-      "helpText": "Redis database endpoint port",
-      "is_optional": false,
-      "paramType": "TEXT"
-    },
-    {
-      "name": "redisPassword",
-      "label": "Redis database password",
-      "helpText": "Redis database endpoint password",
-      "is_optional": false,
-      "paramType": "TEXT"
-    }
-  ]
-}
+```sh
+git clone https://github.com/redis-field-engineering/DataflowTemplates.git && cd DataflowTemplates
 ```
 
-### Testing Template
-
-The template unit tests can be run using:
+###### Build
 ```sh
-mvn test
+mvn clean package -pl v2/pubsub-to-redis -am -Dmaven.test.skip -Djib.skip
+```
+
+###### Test
+```sh
+mvn test -pl v2/pubsub-to-redis -am
 ```
 
 ### Executing Template
@@ -105,8 +68,16 @@ The template requires the following parameters:
 * redisPassword: Redis database password , ex: redis123
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
 
+The template has the following optional parameters:
+* redisSinkType: STRING_SINK, HASH_SINK and STREAMS_SINK (defaults to STRING_SINK)
+* sslEnabled: true or false (defaults to false)
+* timeout: Redis connection timeout (defaults to 2000 ms)
+* ttl: Redis keys time to live (defaults to 604800 sec)
 
 Template can be executed using the following gcloud command.
+````sh
+export GOOGLE_APPLICATION_CREDENTIALS=<SERVICE_ACCOUNT_JSON_FILE>
+````
 ```sh
 gcloud dataflow flex-template run pubsub-to-redis-$(date +'%Y%m%d%H%M%S') \
 --template-file-gcs-location gs://redis-field-engineering/redis-field-engineering/pubsub-to-redis/flex/Cloud_PubSub_to_Redis \
@@ -115,5 +86,6 @@ gcloud dataflow flex-template run pubsub-to-redis-$(date +'%Y%m%d%H%M%S') \
 --parameters inputSubscription=projects/central-beach-194106/subscriptions/pubsub-to-redis, \
 --parameters redisHost=<REDIS_DB_HOST>, \
 --parameters redisPort=<REDIS_DB_PORT>, \
---parameters redisPassword=<REDIS_DB_PASSWORD>
+--parameters redisPassword=<REDIS_DB_PASSWORD> \
+--parameters redisSinkType=<STRING_SINK|HASH_SINK|STREAMS_SINK> (defaults to STRING_SINK)
 ```

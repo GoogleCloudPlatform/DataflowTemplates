@@ -30,9 +30,9 @@
       "paramType": "TEXT"
     },
     {
-      "name": "redisAuth",
-      "label": "Redis database auth",
-      "helpText": "Redis database endpoint auth",
+      "name": "redisPassword",
+      "label": "Redis database password",
+      "helpText": "Redis database endpoint password",
       "is_optional": false,
       "paramType": "TEXT"
     }
