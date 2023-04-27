@@ -130,7 +130,7 @@ public class PubSubToRedis {
                 order = 2,
                 description = "Redis DB Host",
                 helpText = "Redis database host.",
-                example = "redis-10422.c289.us-east-1-2.ec2.cloud.redislabs.com")
+                example = "your.cloud.db.redislabs.com")
         @Default.String("127.0.0.1")
         @Validation.Required
         String getRedisHost();
@@ -141,7 +141,7 @@ public class PubSubToRedis {
                 order = 3,
                 description = "Redis DB Port",
                 helpText = "Redis database port.",
-                example = "10422")
+                example = "12345")
         @Default.Integer(6379)
         @Validation.Required
         int getRedisPort();
@@ -161,7 +161,7 @@ public class PubSubToRedis {
         @TemplateParameter.Boolean(
                 order = 5,
                 optional = true,
-                description = "Redis ssl connection",
+                description = "Redis ssl enabled",
                 helpText = "Redis database ssl parameter.")
         @Default.Boolean(false)
         @UnknownKeyFor @NonNull @Initialized
@@ -173,9 +173,9 @@ public class PubSubToRedis {
                 order = 6,
                 optional = true,
                 enumOptions = {"STRING_SINK", "HASH_SINK", "STREAMS_SINK"},
-                description = "Redis data structure to write to",
-                helpText = "Redis sink e.g. string, hash, streams",
-                example = "string")
+                description = "Redis sink to write",
+                helpText = "Supported Redis sinks are STRING_SINK, HASH_SINK and STREAMS_SINK",
+                example = "STRING_SINK")
         @Default.Enum("STRING_SINK")
         RedisSinkType getRedisSinkType();
 
