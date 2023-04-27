@@ -46,6 +46,7 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
 
 ### Building and Testing Template locally
 
+###### Clone
 ```sh
 git clone https://github.com/redis-field-engineering/DataflowTemplates.git && cd DataflowTemplates
 ```
