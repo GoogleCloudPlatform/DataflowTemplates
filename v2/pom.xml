@@ -92,8 +92,8 @@
             </exclusions>
         </dependency>
         <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-sdks-java-io-jdbc</artifactId>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>

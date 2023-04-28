@@ -21,8 +21,6 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
-import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
 import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
@@ -32,6 +30,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
+import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 
@@ -100,6 +99,18 @@ public class JdbcToBigQuery {
      * Steps: 1) Read records via JDBC and convert to TableRow via RowMapper
      *        2) Append TableRow to BigQuery via BigQueryIO
      */
+    JdbcIO.DataSourceConfiguration dataSourceConfiguration =
+        JdbcIO.DataSourceConfiguration.create(
+                options.getDriverClassName(),
+                maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
+            .withUsername(maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
+            .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
+            .withDriverJars(options.getDriverJars());
+
+    if (options.getConnectionProperties() != null) {
+      dataSourceConfiguration =
+          dataSourceConfiguration.withConnectionProperties(options.getConnectionProperties());
+    }
     pipeline
         /*
          * Step 1: Read records via JDBC and convert to TableRow
@@ -107,17 +118,8 @@ public class JdbcToBigQuery {
          */
         .apply(
             "Read from JdbcIO",
-            DynamicJdbcIO.<TableRow>read()
-                .withDataSourceConfiguration(
-                    DynamicDataSourceConfiguration.create(
-                            options.getDriverClassName(),
-                            maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
-                        .withUsername(
-                            maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
-                        .withPassword(
-                            maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
-                        .withDriverJars(options.getDriverJars())
-                        .withConnectionProperties(options.getConnectionProperties()))
+            JdbcIO.<TableRow>read()
+                .withDataSourceConfiguration(dataSourceConfiguration)
                 .withQuery(options.getQuery())
                 .withCoder(TableRowJsonCoder.of())
                 .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())))
