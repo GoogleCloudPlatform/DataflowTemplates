@@ -27,6 +27,7 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import org.bson.Document;
 import org.slf4j.Logger;
@@ -141,6 +142,21 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
     }
 
     LOG.info("Successfully created collection {}.{}", databaseName, collectionName);
+
+    return true;
+  }
+
+  @Override
+  public synchronized boolean createView(String viewName, String collectionName) {
+    LOG.info("Creating view using name '{}' for collection '{}'.", viewName, collectionName);
+
+    try {
+      getDatabase().createView(viewName, collectionName, Collections.emptyList());
+    } catch (Exception e) {
+      throw new MongoDBResourceManagerException("Error creating view.", e);
+    }
+
+    LOG.info("Successfully created view {}.{}", databaseName, viewName);
 
     return true;
   }

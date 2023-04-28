@@ -45,6 +45,8 @@ public interface MongoDBResourceManager extends ResourceManager {
    */
   boolean createCollection(String collectionName);
 
+  boolean createView(String viewName, String collectionName);
+
   /**
    * Inserts the given Document into a collection.
    *
