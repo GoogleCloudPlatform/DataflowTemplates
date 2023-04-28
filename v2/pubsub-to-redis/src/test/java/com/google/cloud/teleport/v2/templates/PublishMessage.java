@@ -31,6 +31,12 @@ import java.util.concurrent.TimeUnit;
 
 public class PublishMessage {
   public static void main(String... args) throws Exception {
+    /*
+     * gcloud auth application-default login
+     * Then use the generated credentials file as
+     * -DGOOGLE_APPLICATION_CREDENTIALS=<credentials_file.json>
+     */
+    System.out.println(System.getProperty("GOOGLE_APPLICATION_CREDENTIALS"));
     publishWithConcurrencyControlExample(
         System.getProperty("projectId", "central-beach-194106"),
         System.getProperty("topicId", "pubsub-to-redis"));
@@ -58,18 +64,21 @@ public class PublishMessage {
 
       // schedule publishing one message at a time : messages get automatically batched
       for (int i = 0; i < 100; i++) {
-        String message = "message " + i;
+        String message = "{ \"name\": \"Allen Terleto\",\n" +
+                "\"email\": \"allen@gmail.com\" }";
         ByteString data = ByteString.copyFromUtf8(message);
         PubsubMessage pubsubMessage =
             PubsubMessage.newBuilder()
                 .setData(data)
-                .putAttributes("key", String.valueOf(i))
+                .putAttributes("key", "msg:" + i)
                 .setOrderingKey("message " + i)
                 .build();
 
         // Once published, returns a server-assigned message id (unique within the topic)
         ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
         messageIdFutures.add(messageIdFuture);
+
+        System.out.println("Publishing message " + i + ":\n" + pubsubMessage);
       }
     } finally {
       // Wait on any pending publish requests.

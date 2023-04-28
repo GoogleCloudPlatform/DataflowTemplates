@@ -33,7 +33,9 @@ public class MessageTransformation {
   static String attributeKey;
   static String messageId;
   public static String key;
-  static String fieldKey;
+  public static String hashKey;
+  public static String hashKeyPrefix = "hash:";
+  static String fieldKey = "data";
 
   /** Configures Pubsub consumer. */
   public static PubsubIO.@UnknownKeyFor @NonNull @Initialized Read<@UnknownKeyFor @NonNull @Initialized PubsubMessage> readFromPubSub(String inputSubscription) {
@@ -72,14 +74,11 @@ public class MessageTransformation {
       if (pubsubMessage.getAttribute("key") != null) {
         attributeKey = pubsubMessage.getAttribute("key");
         LOG.debug("PubSubMessage attributeKey: " + attributeKey);
-        key = attributeKey + ":" + messageId;
-        fieldKey = key.substring(0, key.lastIndexOf(":"));
+        hashKey = hashKeyPrefix + attributeKey + ":" + messageId;
       } else {
-        attributeKey = "";
-        key = messageId;
-        fieldKey = key;
+        hashKey = hashKeyPrefix + messageId;
       }
-      receiver.output(KV.of(key, KV.of(fieldKey, element)));
+      receiver.output(KV.of(hashKey, KV.of(fieldKey, element)));
     }
   }
 
