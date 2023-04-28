@@ -25,6 +25,9 @@ import javax.annotation.Nullable;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableSet;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.joda.time.Duration;
 
 /** Exposed spanner config. */
@@ -67,6 +70,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
   private final ValueProvider<Duration> partitionReadTimeout;
 
   private final ServiceFactory<Spanner, SpannerOptions> serviceFactory;
+  private ValueProvider<Boolean> dataBoostEnabled;
 
   private ExposedSpannerConfig(
       @Nullable ValueProvider<String> projectId,
@@ -201,6 +205,11 @@ public class ExposedSpannerConfig extends SpannerConfig {
   }
 
   @Override
+  public ValueProvider<Boolean> getDataBoostEnabled() {
+    return dataBoostEnabled;
+  }
+
+  @Override
   public String toString() {
     return "SpannerConfig{"
         + "projectId="
@@ -327,6 +336,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
     private ValueProvider<Duration> partitionQueryTimeout;
     private ValueProvider<Duration> partitionReadTimeout;
     private ServiceFactory<Spanner, SpannerOptions> serviceFactory;
+    private ValueProvider<Boolean> dataBoostEnabled;
 
     Builder() {}
 
@@ -370,6 +380,12 @@ public class ExposedSpannerConfig extends SpannerConfig {
     @Override
     ExposedSpannerConfig.Builder setDatabaseRole(ValueProvider<String> databaseRole) {
       this.databaseRole = databaseRole;
+      return this;
+    }
+
+    @Override
+    ExposedSpannerConfig.Builder setDataBoostEnabled(ValueProvider<Boolean> dataBoostEnabled) {
+      this.dataBoostEnabled = dataBoostEnabled;
       return this;
     }
 
