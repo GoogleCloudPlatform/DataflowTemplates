@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings.isNullOrEmpty;
+
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -58,15 +61,22 @@ public class MqttToPubsub {
   }
 
   public static void validate(MqttToPubsubOptions options) {
-    if (options != null) {
-      if ((options.getUsername() != null
-              && (!options.getUsername().isEmpty() || !options.getUsername().isBlank()))
-          && (options.getPassword() != null
-              || options.getPassword().isBlank()
-              || options.getPassword().isEmpty())) {
-        throw new IllegalArgumentException(
-            "While username is provided, password is required for authentication");
-      }
+    checkArgument(
+        options != null,
+        String.format("%s is required to run this template", MqttToPubsubOptions.class.getName()));
+    validateCredentials(options);
+  }
+
+  private static void validateCredentials(MqttToPubsubOptions options) {
+
+    boolean isUsernameNullOrEmpty = isNullOrEmpty(options.getUsername());
+    boolean isPasswordNullOrEmpty = isNullOrEmpty(options.getPassword());
+
+    if (isUsernameNullOrEmpty ^ isPasswordNullOrEmpty) {
+      throw new IllegalArgumentException(
+          String.format(
+              "%s expects either both a username and password or neither",
+              MqttToPubsubOptions.class.getName()));
     }
   }
 
@@ -99,6 +109,7 @@ public class MqttToPubsub {
   }
 
   static class ByteToStringTransform extends DoFn<byte[], String> {
+
     @ProcessElement
     public void processElement(@Element byte[] word, OutputReceiver<String> out) {
       out.output(new String(word, StandardCharsets.UTF_8));
@@ -110,6 +121,7 @@ public class MqttToPubsub {
    * executor at the command-line.
    */
   public interface MqttToPubsubOptions extends PipelineOptions {
+
     @TemplateParameter.Text(
         order = 1,
         optional = true,

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 import java.nio.charset.StandardCharsets;
@@ -51,11 +52,94 @@ public class MqttToPubsubTest {
   }
 
   @Test
-  public void testValidation() {
+  public void testValidation_emptyPassword_throwsIllegalArgumentException() {
     MqttToPubsub.MqttToPubsubOptions options =
         PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
     options.setUsername("test");
     options.setPassword("");
-    assertThrows(IllegalArgumentException.class, () -> MqttToPubsub.validate(options));
+
+    IllegalArgumentException e =
+        assertThrows(IllegalArgumentException.class, () -> MqttToPubsub.validate(options));
+
+    assertEquals(
+        "com.google.cloud.teleport.v2.templates.MqttToPubsub$MqttToPubsubOptions expects either both a username and password or neither",
+        e.getMessage());
+  }
+
+  @Test
+  public void testValidation_nullPassword_throwsIllegalArgumentException() {
+    MqttToPubsub.MqttToPubsubOptions options =
+        PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
+    options.setUsername("test");
+    options.setPassword(null);
+
+    IllegalArgumentException e =
+        assertThrows(IllegalArgumentException.class, () -> MqttToPubsub.validate(options));
+
+    assertEquals(
+        "com.google.cloud.teleport.v2.templates.MqttToPubsub$MqttToPubsubOptions expects either both a username and password or neither",
+        e.getMessage());
+  }
+
+  @Test
+  public void testValidation_emptyUsername_throwsIllegalArgumentException() {
+    MqttToPubsub.MqttToPubsubOptions options =
+        PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
+    options.setUsername("");
+    options.setPassword("password");
+
+    IllegalArgumentException e =
+        assertThrows(IllegalArgumentException.class, () -> MqttToPubsub.validate(options));
+
+    assertEquals(
+        "com.google.cloud.teleport.v2.templates.MqttToPubsub$MqttToPubsubOptions expects either both a username and password or neither",
+        e.getMessage());
+  }
+
+  @Test
+  public void testValidation_nullUsername_throwsIllegalArgumentException() {
+    MqttToPubsub.MqttToPubsubOptions options =
+        PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
+    options.setUsername(null);
+    options.setPassword("password");
+
+    IllegalArgumentException e =
+        assertThrows(IllegalArgumentException.class, () -> MqttToPubsub.validate(options));
+
+    assertEquals(
+        "com.google.cloud.teleport.v2.templates.MqttToPubsub$MqttToPubsubOptions expects either both a username and password or neither",
+        e.getMessage());
+  }
+
+  @Test
+  public void testValidation_nonEmptyUsernamePassword_passes() {
+    MqttToPubsub.MqttToPubsubOptions options =
+        PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
+    options.setUsername("username");
+    options.setPassword("password");
+
+    // validates with no errors
+    MqttToPubsub.validate(options);
+  }
+
+  @Test
+  public void testValidation_emptyUsernamePassword_passes() {
+    MqttToPubsub.MqttToPubsubOptions options =
+        PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
+    options.setUsername("");
+    options.setPassword("");
+
+    // validates with no errors
+    MqttToPubsub.validate(options);
+  }
+
+  @Test
+  public void run_nullMqttToPubsubOptions_throwsIllegalStateException() {
+    IllegalArgumentException e =
+        assertThrows(IllegalArgumentException.class, () -> MqttToPubsub.run(null));
+
+    assertEquals(
+        "com.google.cloud.teleport.v2.templates.MqttToPubsub$MqttToPubsubOptions is required to run this template",
+        e.getMessage());
   }
 }
