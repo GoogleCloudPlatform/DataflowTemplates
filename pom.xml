@@ -391,7 +391,7 @@
   <repositories>
     <repository>
       <id>apache.candidate</id>
-      <url>https://repository.apache.org/content/repositories/orgapachebeam-1309/</url>
+      <url>https://repository.apache.org/content/repositories/orgapachebeam-1315/</url>
     </repository>
   </repositories>
 
