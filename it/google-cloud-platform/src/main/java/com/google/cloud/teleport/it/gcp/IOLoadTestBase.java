@@ -54,8 +54,8 @@ public class IOLoadTestBase extends LoadTestBase {
     return DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
   }
 
-  /** a utility DoFn that count element passed. */
-  public static final class CountingFn<T> extends DoFn<T, Void> {
+  /** a utility DoFn that count element passed through. */
+  public static final class CountingFn<T> extends DoFn<T, T> {
 
     private final Counter elementCounter;
 
@@ -64,8 +64,9 @@ public class IOLoadTestBase extends LoadTestBase {
     }
 
     @ProcessElement
-    public void processElement() {
+    public void processElement(ProcessContext ctx) {
       elementCounter.inc(1L);
+      ctx.output(ctx.element());
     }
   }
 

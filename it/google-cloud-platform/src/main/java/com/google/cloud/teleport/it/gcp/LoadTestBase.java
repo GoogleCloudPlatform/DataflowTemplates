@@ -30,6 +30,7 @@ import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.monitoring.MonitoringClient;
 import com.google.common.base.MoreObjects;
+import com.google.protobuf.util.Timestamps;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
@@ -185,27 +186,22 @@ public abstract class LoadTestBase {
   }
 
   /**
-   * Computes the metrics of the given job using dataflow and monitoring clients.
+   * Compute metrics of a Dataflow runner job.
    *
+   * @param metrics a map of raw metrics. The results are also appened in the map.
    * @param launchInfo Job info of the job
    * @param inputPcollection input pcollection of the dataflow job to query additional metrics. If
    *     not provided, the metrics will not be calculated.
    * @param outputPcollection output pcollection of the dataflow job to query additional metrics. If
    *     not provided, the metrics will not be calculated.
-   * @return metrics
-   * @throws IOException if there is an issue sending the request
-   * @throws ParseException if timestamp is inaccurate
-   * @throws InterruptedException thrown if thread is interrupted
    */
-  protected Map<String, Double> getMetrics(
-      LaunchInfo launchInfo, @Nullable String inputPcollection, @Nullable String outputPcollection)
-      throws ParseException, InterruptedException, IOException {
-    // Metrics take up to 3 minutes to show up
-    // TODO(pranavbhandari): We should use a library like http://awaitility.org/ to poll for metrics
-    // instead of hard coding X minutes.
-    LOG.info("Sleeping for 4 minutes to query metrics.");
-    Thread.sleep(Duration.ofMinutes(4).toMillis());
-    Map<String, Double> metrics = pipelineLauncher.getMetrics(project, region, launchInfo.jobId());
+  private void computeDataflowMetrics(
+      Map<String, Double> metrics,
+      LaunchInfo launchInfo,
+      @Nullable String inputPcollection,
+      @Nullable String outputPcollection)
+      throws ParseException {
+    // cost info
     LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), project);
     double cost = 0;
     if (launchInfo.jobType().equals("JOB_TYPE_STREAMING")) {
@@ -224,6 +220,7 @@ public abstract class LoadTestBase {
     cost += metrics.get("TotalSsdUsage") / 3600 * PD_SSD_PER_GB_HR;
     metrics.put("EstimatedCost", cost);
     metrics.put("ElapsedTime", monitoringClient.getElapsedTime(project, launchInfo));
+
     Double dataProcessed = monitoringClient.getDataProcessed(project, launchInfo, inputPcollection);
     if (dataProcessed != null) {
       metrics.put("EstimatedDataProcessedGB", dataProcessed / 1e9d);
@@ -231,6 +228,64 @@ public abstract class LoadTestBase {
     metrics.putAll(getCpuUtilizationMetrics(launchInfo));
     metrics.putAll(
         getThroughputMetricsOfPcollection(launchInfo, inputPcollection, outputPcollection));
+  }
+
+  /**
+   * Compute metrics of a Direct runner job.
+   *
+   * @param metrics a map of raw metrics. The results are also appened in the map.
+   * @param launchInfo Job info of the job
+   * @param inputPcollection input pcollection of the job to query additional metrics. Currently
+   *     unused.
+   * @param outputPcollection output pcollection of the job to query additional metrics. Currently
+   *     unused.
+   */
+  private void computeDirectMetrics(
+      Map<String, Double> metrics,
+      LaunchInfo launchInfo,
+      @Nullable String inputPcollection,
+      @Nullable String outputPcollection)
+      throws ParseException {
+    // TODO: determine elapsed time more accurately if Direct runner supports do so.
+    metrics.put(
+        "ElapsedTime",
+        0.001
+            * (System.currentTimeMillis()
+                - Timestamps.toMillis(Timestamps.parse(launchInfo.createTime()))));
+  }
+
+  /**
+   * Computes the metrics of the given job using dataflow and monitoring clients.
+   *
+   * @param launchInfo Job info of the job
+   * @param inputPcollection input pcollection of the dataflow job to query additional metrics. If
+   *     not provided, the metrics will not be calculated.
+   * @param outputPcollection output pcollection of the dataflow job to query additional metrics. If
+   *     not provided, the metrics will not be calculated.
+   * @return metrics
+   * @throws IOException if there is an issue sending the request
+   * @throws ParseException if timestamp is inaccurate
+   * @throws InterruptedException thrown if thread is interrupted
+   */
+  protected Map<String, Double> getMetrics(
+      LaunchInfo launchInfo, @Nullable String inputPcollection, @Nullable String outputPcollection)
+      throws InterruptedException, IOException, ParseException {
+    if ("DataflowRunner".equalsIgnoreCase(launchInfo.runner())) {
+      // Dataflow runner specific metrics
+      // In Dataflow runner, metrics take up to 3 minutes to show up
+      // TODO(pranavbhandari): We should use a library like http://awaitility.org/ to poll for
+      // metrics
+      // instead of hard coding X minutes.
+      LOG.info("Sleeping for 4 minutes to query Dataflow runner metrics.");
+      Thread.sleep(Duration.ofMinutes(4).toMillis());
+    }
+    Map<String, Double> metrics = pipelineLauncher.getMetrics(project, region, launchInfo.jobId());
+    if ("DataflowRunner".equalsIgnoreCase(launchInfo.runner())) {
+      computeDataflowMetrics(metrics, launchInfo, inputPcollection, outputPcollection);
+    } else if ("DirectRunner".equalsIgnoreCase(launchInfo.runner())) {
+      computeDirectMetrics(metrics, launchInfo, inputPcollection, outputPcollection);
+    }
+
     return metrics;
   }
 
