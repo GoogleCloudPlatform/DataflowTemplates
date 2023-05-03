@@ -208,7 +208,6 @@
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-kafka</artifactId>
-            <version>${beam.snapshot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -218,7 +217,6 @@
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-extensions-google-cloud-platform-core</artifactId>
-            <version>${beam.snapshot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
