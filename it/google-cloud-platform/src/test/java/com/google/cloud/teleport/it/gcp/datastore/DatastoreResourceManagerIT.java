@@ -24,13 +24,13 @@ import java.util.List;
 import java.util.Map;
 import org.junit.Test;
 
-/** Integration tests for {@link DefaultDatastoreResourceManager}. */
-public class DefaultDatastoreResourceManagerIT {
+/** Integration tests for {@link DatastoreResourceManager}. */
+public class DatastoreResourceManagerIT {
 
   @Test
   public void testInsert() throws IOException {
-    DefaultDatastoreResourceManager resourceManager =
-        DefaultDatastoreResourceManager.builder(
+    DatastoreResourceManager resourceManager =
+        DatastoreResourceManager.builder(
                 TestProperties.project(), DatastoreUtils.createTestId("testInsert"))
             .credentials(TestProperties.credentials())
             .build();
@@ -49,8 +49,8 @@ public class DefaultDatastoreResourceManagerIT {
 
   @Test
   public void testInsertQuery() throws IOException {
-    DefaultDatastoreResourceManager resourceManager =
-        DefaultDatastoreResourceManager.builder(
+    DatastoreResourceManager resourceManager =
+        DatastoreResourceManager.builder(
                 TestProperties.project(), DatastoreUtils.createTestId("testInsertQuery"))
             .credentials(TestProperties.buildCredentialsFromEnv())
             .build();
@@ -72,8 +72,8 @@ public class DefaultDatastoreResourceManagerIT {
 
   @Test
   public void testInsertCleanUp() throws IOException {
-    DefaultDatastoreResourceManager resourceManager =
-        DefaultDatastoreResourceManager.builder(
+    DatastoreResourceManager resourceManager =
+        DatastoreResourceManager.builder(
                 TestProperties.project(), DatastoreUtils.createTestId("testInsertCleanUp"))
             .credentials(TestProperties.buildCredentialsFromEnv())
             .build();

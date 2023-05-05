@@ -28,17 +28,17 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.MySQLContainer;
 
-/** Integration tests for {@link DefaultPostgresResourceManagerTest}. */
+/** Integration tests for {@link MySQLResourceManager}. */
 @RunWith(JUnit4.class)
-public class DefaultPostgresResourceManagerTest<T extends PostgreSQLContainer<T>> {
+public class MySQLResourceManagerTest<T extends MySQLContainer<T>> {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock private T container;
 
-  private DefaultPostgresResourceManager testManager;
+  private MySQLResourceManager testManager;
 
   private static final String TEST_ID = "test_id";
 
@@ -47,13 +47,11 @@ public class DefaultPostgresResourceManagerTest<T extends PostgreSQLContainer<T>
     when(container.withUsername(any())).thenReturn(container);
     when(container.withPassword(any())).thenReturn(container);
     when(container.withDatabaseName(anyString())).thenReturn(container);
-    testManager =
-        new DefaultPostgresResourceManager(
-            container, new DefaultPostgresResourceManager.Builder(TEST_ID));
+    testManager = new MySQLResourceManager(container, new MySQLResourceManager.Builder(TEST_ID));
   }
 
   @Test
   public void testGetJDBCPortReturnsCorrectValue() {
-    assertThat(testManager.getJDBCPort()).isEqualTo(PostgreSQLContainer.POSTGRESQL_PORT);
+    assertThat(testManager.getJDBCPort()).isEqualTo(MySQLContainer.MYSQL_PORT);
   }
 }

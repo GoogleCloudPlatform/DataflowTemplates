@@ -32,7 +32,6 @@ import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
-import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
@@ -73,7 +72,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    bigtableResourceManager = DefaultBigtableResourceManager.builder(testName, project).build();
+    bigtableResourceManager = BigtableResourceManager.builder(testName, project).build();
     Storage storageClient = createStorageClient(CREDENTIALS);
     gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
     // upload schema files and save path

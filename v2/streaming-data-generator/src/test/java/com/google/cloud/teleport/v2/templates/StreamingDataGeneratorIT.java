@@ -29,16 +29,13 @@ import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
-import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
-import com.google.cloud.teleport.it.jdbc.DefaultPostgresResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
+import com.google.cloud.teleport.it.jdbc.PostgresResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SchemaTemplate;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SinkType;
@@ -162,7 +159,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   public void testFakeMessagesToPubSub() throws IOException {
     // Set up resource manager
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
     TopicName backlogTopic = pubsubResourceManager.createTopic("output");
@@ -193,9 +190,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   public void testFakeMessagesToBigQuery() throws IOException {
     // Set up resource manager
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
     // schema should match schema supplied to generate fake records.
     Schema schema =
         Schema.of(
@@ -233,9 +228,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   public void testFakeMessagesToBigQueryWithErrors() throws IOException {
     // Set up resource manager
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
     // removes fields intentionally to reproduce DLQ errors
     Schema schema =
         Schema.of(
@@ -273,8 +266,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   @Test
   public void testFakeMessagesToSpanner() throws IOException {
     // Arrange
-    spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
     String createTableStatement =
         String.format(
             "CREATE TABLE `%s` (\n"
@@ -328,7 +320,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
 
   @Test
   public void testFakeMessagesToJdbc() throws IOException {
-    jdbcResourceManager = DefaultPostgresResourceManager.builder(testName).setHost(HOST_IP).build();
+    jdbcResourceManager = PostgresResourceManager.builder(testName).setHost(HOST_IP).build();
     JDBCSchema jdbcSchema =
         new JDBCSchema(
             Map.of(

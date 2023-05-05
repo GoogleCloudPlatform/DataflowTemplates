@@ -38,9 +38,9 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.testcontainers.containers.CassandraContainer;
 
-/** Unit tests for {@link DefaultCassandraResourceManager}. */
+/** Unit tests for {@link CassandraResourceManager}. */
 @RunWith(JUnit4.class)
-public class DefaultCassandraResourceManagerTest {
+public class CassandraResourceManagerTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -54,7 +54,7 @@ public class DefaultCassandraResourceManagerTest {
   private static final int CASSANDRA_PORT = 9042;
   private static final int MAPPED_PORT = 10001;
 
-  private DefaultCassandraResourceManager testManager;
+  private CassandraResourceManager testManager;
 
   @Before
   public void setUp() throws IOException, InterruptedException {
@@ -62,8 +62,8 @@ public class DefaultCassandraResourceManagerTest {
     when(container.getMappedPort(CASSANDRA_PORT)).thenReturn(MAPPED_PORT);
 
     testManager =
-        new DefaultCassandraResourceManager(
-            cassandraClient, container, DefaultCassandraResourceManager.builder(TEST_ID));
+        new CassandraResourceManager(
+            cassandraClient, container, CassandraResourceManager.builder(TEST_ID));
   }
 
   @Test
@@ -90,10 +90,9 @@ public class DefaultCassandraResourceManagerTest {
 
   @Test
   public void testCleanupAllShouldNotDropStaticDatabase() throws IOException {
-    DefaultCassandraResourceManager.Builder builder =
-        DefaultCassandraResourceManager.builder(TEST_ID).setKeyspaceName(STATIC_KEYSPACE_NAME);
-    DefaultCassandraResourceManager tm =
-        new DefaultCassandraResourceManager(cassandraClient, container, builder);
+    CassandraResourceManager.Builder builder =
+        CassandraResourceManager.builder(TEST_ID).setKeyspaceName(STATIC_KEYSPACE_NAME);
+    CassandraResourceManager tm = new CassandraResourceManager(cassandraClient, container, builder);
 
     tm.cleanupAll();
 

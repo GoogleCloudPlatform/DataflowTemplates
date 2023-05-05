@@ -27,8 +27,6 @@ import com.google.cloud.syndeo.transforms.pubsub.SyndeoPubsubWriteSchemaTransfor
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.pubsub.v1.SubscriptionName;
@@ -89,11 +87,11 @@ public class SyndeoPubsubToBigQueryLT {
   @Before
   public void beforeTest() throws IOException {
     bigquery =
-        DefaultBigQueryResourceManager.builder("syndeo-pubsub-bq-lt", PROJECT)
+        BigQueryResourceManager.builder("syndeo-pubsub-bq-lt", PROJECT)
             .setCredentials(CREDENTIALS)
             .build();
     pubsub =
-        DefaultPubsubResourceManager.builder("syndeo-pubsub-bq-lt", PROJECT)
+        PubsubResourceManager.builder("syndeo-pubsub-bq-lt", PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     testStart = Instant.now();

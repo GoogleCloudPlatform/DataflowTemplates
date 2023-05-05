@@ -36,14 +36,11 @@ import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
-import com.google.cloud.teleport.it.jdbc.DefaultPostgresResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
+import com.google.cloud.teleport.it.jdbc.PostgresResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SchemaTemplate;
 import com.google.common.base.MoreObjects;
@@ -96,7 +93,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGeneratePubsub10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, project)
+        PubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     TopicName backlogTopic = pubsubResourceManager.createTopic("output");
@@ -167,7 +164,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
     // Set up resource manager
     String name = testName;
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(name, project).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(name, project).setCredentials(CREDENTIALS).build();
     // schema should match schema supplied to generate fake records.
     Schema schema =
         Schema.of(
@@ -210,7 +207,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGenerateSpanner10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     String name = testName;
-    spannerResourceManager = DefaultSpannerResourceManager.builder(name, project, region).build();
+    spannerResourceManager = SpannerResourceManager.builder(name, project, region).build();
     String createTableStatement =
         String.format(
             "CREATE TABLE `%s` (\n"
@@ -268,7 +265,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   @Test
   public void testGenerateJdbc10gb()
       throws IOException, ParseException, InterruptedException, SQLException {
-    jdbcResourceManager = DefaultPostgresResourceManager.builder(testName).setHost(hostIp).build();
+    jdbcResourceManager = PostgresResourceManager.builder(testName).setHost(hostIp).build();
     JDBCSchema jdbcSchema =
         new JDBCSchema(
             Map.of(

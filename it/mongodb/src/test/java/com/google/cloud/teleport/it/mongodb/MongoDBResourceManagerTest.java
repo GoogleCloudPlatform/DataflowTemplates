@@ -44,9 +44,9 @@ import org.mockito.junit.MockitoRule;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
-/** Unit tests for {@link com.google.cloud.teleport.it.mongodb.DefaultMongoDBResourceManager}. */
+/** Unit tests for {@link MongoDBResourceManager}. */
 @RunWith(JUnit4.class)
-public class DefaultMongoDBResourceManagerTest {
+public class MongoDBResourceManagerTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -67,7 +67,7 @@ public class DefaultMongoDBResourceManagerTest {
   private static final int MONGO_DB_PORT = 27017;
   private static final int MAPPED_PORT = 10000;
 
-  private DefaultMongoDBResourceManager testManager;
+  private MongoDBResourceManager testManager;
 
   @Before
   public void setUp() throws IOException, InterruptedException {
@@ -75,20 +75,19 @@ public class DefaultMongoDBResourceManagerTest {
     when(container.getMappedPort(MONGO_DB_PORT)).thenReturn(MAPPED_PORT);
 
     testManager =
-        new DefaultMongoDBResourceManager(
-            mongoClient, container, DefaultMongoDBResourceManager.builder(TEST_ID));
+        new MongoDBResourceManager(mongoClient, container, MongoDBResourceManager.builder(TEST_ID));
   }
 
   @Test
   public void testCreateResourceManagerBuilderReturnsDefaultMongoDBResourceManager()
       throws IOException {
     assertThat(
-            DefaultMongoDBResourceManager.builder(TEST_ID)
+            MongoDBResourceManager.builder(TEST_ID)
                 .useStaticContainer()
                 .setHost(HOST)
                 .setPort(MONGO_DB_PORT)
                 .build())
-        .isInstanceOf(DefaultMongoDBResourceManager.class);
+        .isInstanceOf(MongoDBResourceManager.class);
   }
 
   @Test
@@ -176,10 +175,9 @@ public class DefaultMongoDBResourceManagerTest {
     when(database.listCollectionNames()).thenReturn(collectionIterable);
     when(database.getCollection(anyString())).thenReturn(collection);
 
-    DefaultMongoDBResourceManager.Builder builder =
-        DefaultMongoDBResourceManager.builder(TEST_ID).setDatabaseName(STATIC_DATABASE_NAME);
-    DefaultMongoDBResourceManager tm =
-        new DefaultMongoDBResourceManager(mongoClient, container, builder);
+    MongoDBResourceManager.Builder builder =
+        MongoDBResourceManager.builder(TEST_ID).setDatabaseName(STATIC_DATABASE_NAME);
+    MongoDBResourceManager tm = new MongoDBResourceManager(mongoClient, container, builder);
 
     assertThat(tm.insertDocument(COLLECTION_NAME, new Document())).isEqualTo(true);
 
@@ -198,10 +196,9 @@ public class DefaultMongoDBResourceManagerTest {
     when(collectionNames.next()).thenReturn(COLLECTION_NAME);
     when(database.getCollection(anyString())).thenReturn(collection);
 
-    DefaultMongoDBResourceManager.Builder builder =
-        DefaultMongoDBResourceManager.builder(TEST_ID).setDatabaseName(STATIC_DATABASE_NAME);
-    DefaultMongoDBResourceManager tm =
-        new DefaultMongoDBResourceManager(mongoClient, container, builder);
+    MongoDBResourceManager.Builder builder =
+        MongoDBResourceManager.builder(TEST_ID).setDatabaseName(STATIC_DATABASE_NAME);
+    MongoDBResourceManager tm = new MongoDBResourceManager(mongoClient, container, builder);
 
     assertThat(tm.insertDocument(COLLECTION_NAME, new Document())).isEqualTo(true);
 
@@ -270,10 +267,9 @@ public class DefaultMongoDBResourceManagerTest {
 
   @Test
   public void testCleanupAllShouldNotDropStaticDatabase() throws IOException {
-    DefaultMongoDBResourceManager.Builder builder =
-        DefaultMongoDBResourceManager.builder(TEST_ID).setDatabaseName(STATIC_DATABASE_NAME);
-    DefaultMongoDBResourceManager tm =
-        new DefaultMongoDBResourceManager(mongoClient, container, builder);
+    MongoDBResourceManager.Builder builder =
+        MongoDBResourceManager.builder(TEST_ID).setDatabaseName(STATIC_DATABASE_NAME);
+    MongoDBResourceManager tm = new MongoDBResourceManager(mongoClient, container, builder);
 
     tm.cleanupAll();
 

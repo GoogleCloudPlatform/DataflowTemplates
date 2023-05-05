@@ -50,9 +50,9 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-/** Unit tests for {@link DefaultSpannerResourceManager}. */
+/** Unit tests for {@link SpannerResourceManager}. */
 @RunWith(JUnit4.class)
-public final class DefaultSpannerResourceManagerTest {
+public final class SpannerResourceManagerTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock(answer = Answers.RETURNS_DEEP_STUBS)
@@ -66,7 +66,7 @@ public final class DefaultSpannerResourceManagerTest {
   private static final String TEST_ID = "test";
   private static final String PROJECT_ID = "test-project";
   private static final String REGION = "us-east1";
-  private DefaultSpannerResourceManager testManager;
+  private SpannerResourceManager testManager;
 
   @Captor private ArgumentCaptor<Iterable<Mutation>> writeMutationCaptor;
   @Captor private ArgumentCaptor<Iterable<String>> statementCaptor;
@@ -75,7 +75,7 @@ public final class DefaultSpannerResourceManagerTest {
 
   @Before
   public void setUp() {
-    testManager = new DefaultSpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
+    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
   }
 
   private void prepareCreateInstanceMock() throws ExecutionException, InterruptedException {
@@ -408,7 +408,7 @@ public final class DefaultSpannerResourceManagerTest {
     // arrange
     doThrow(SpannerException.class).when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
-    testManager = new DefaultSpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
+    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
 
     // act & assert
     assertThrows(SpannerResourceManagerException.class, () -> testManager.cleanupAll());
@@ -419,7 +419,7 @@ public final class DefaultSpannerResourceManagerTest {
     // arrange
     doNothing().when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
-    testManager = new DefaultSpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
+    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
 
     // act
     testManager.cleanupAll();
@@ -435,7 +435,7 @@ public final class DefaultSpannerResourceManagerTest {
     doNothing().when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
     when(spanner.isClosed()).thenReturn(true);
-    testManager = new DefaultSpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
+    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
     testManager.cleanupAll();
     String statement =
         "CREATE TABLE Singers (\n"

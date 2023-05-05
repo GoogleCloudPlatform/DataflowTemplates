@@ -42,9 +42,9 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.testcontainers.containers.KafkaContainer;
 
-/** Unit tests for {@link com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager}. */
+/** Unit tests for {@link KafkaResourceManager}. */
 @RunWith(JUnit4.class)
-public final class DefaultKafkaResourceManagerTest {
+public final class KafkaResourceManagerTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -59,7 +59,7 @@ public final class DefaultKafkaResourceManagerTest {
   private static final int KAFKA_PORT = 9093;
   private static final int MAPPED_PORT = 10000;
 
-  private DefaultKafkaResourceManager testManager;
+  private KafkaResourceManager testManager;
 
   @Before
   public void setUp() throws IOException, InterruptedException {
@@ -69,20 +69,19 @@ public final class DefaultKafkaResourceManagerTest {
         .thenReturn(String.format("PLAINTEXT://%s:%d", HOST, MAPPED_PORT));
 
     testManager =
-        new DefaultKafkaResourceManager(
-            kafkaClient, container, DefaultKafkaResourceManager.builder(TEST_ID));
+        new KafkaResourceManager(kafkaClient, container, KafkaResourceManager.builder(TEST_ID));
   }
 
   @Test
   public void testCreateResourceManagerBuilderReturnsDefaultKafkaResourceManager()
       throws IOException {
     assertThat(
-            DefaultKafkaResourceManager.builder(TEST_ID)
+            KafkaResourceManager.builder(TEST_ID)
                 .useStaticContainer()
                 .setHost(HOST)
                 .setPort(KAFKA_PORT)
                 .build())
-        .isInstanceOf(DefaultKafkaResourceManager.class);
+        .isInstanceOf(KafkaResourceManager.class);
   }
 
   @Test
@@ -103,7 +102,7 @@ public final class DefaultKafkaResourceManagerTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            DefaultKafkaResourceManager.builder(TEST_ID)
+            KafkaResourceManager.builder(TEST_ID)
                 .setTopicNames(ImmutableSet.of(TOPIC_NAME))
                 .setNumTopics(1));
   }
@@ -151,11 +150,9 @@ public final class DefaultKafkaResourceManagerTest {
 
   @Test
   public void testCleanupAllShouldNotDropStaticTopic() throws IOException {
-    DefaultKafkaResourceManager.Builder builder =
-        DefaultKafkaResourceManager.builder(TEST_ID)
-            .setTopicNames(Collections.singleton(TOPIC_NAME));
-    DefaultKafkaResourceManager tm =
-        new DefaultKafkaResourceManager(kafkaClient, container, builder);
+    KafkaResourceManager.Builder builder =
+        KafkaResourceManager.builder(TEST_ID).setTopicNames(Collections.singleton(TOPIC_NAME));
+    KafkaResourceManager tm = new KafkaResourceManager(kafkaClient, container, builder);
 
     tm.cleanupAll();
 
@@ -165,10 +162,9 @@ public final class DefaultKafkaResourceManagerTest {
   @Test
   public void testCleanupShouldDropNonStaticTopic() throws IOException {
     final int numTopics = 3;
-    DefaultKafkaResourceManager.Builder builder =
-        DefaultKafkaResourceManager.builder(TEST_ID).setNumTopics(numTopics);
-    DefaultKafkaResourceManager tm =
-        new DefaultKafkaResourceManager(kafkaClient, container, builder);
+    KafkaResourceManager.Builder builder =
+        KafkaResourceManager.builder(TEST_ID).setNumTopics(numTopics);
+    KafkaResourceManager tm = new KafkaResourceManager(kafkaClient, container, builder);
 
     tm.cleanupAll();
     verify(kafkaClient).deleteTopics(argThat(list -> list.size() == numTopics));

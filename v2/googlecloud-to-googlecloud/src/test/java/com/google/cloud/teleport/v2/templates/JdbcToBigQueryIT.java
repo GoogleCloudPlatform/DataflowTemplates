@@ -27,12 +27,11 @@ import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.jdbc.DefaultMSSQLResourceManager;
-import com.google.cloud.teleport.it.jdbc.DefaultMySQLResourceManager;
-import com.google.cloud.teleport.it.jdbc.DefaultOracleResourceManager;
-import com.google.cloud.teleport.it.jdbc.DefaultPostgresResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
+import com.google.cloud.teleport.it.jdbc.MSSQLResourceManager;
+import com.google.cloud.teleport.it.jdbc.MySQLResourceManager;
+import com.google.cloud.teleport.it.jdbc.OracleResourceManager;
+import com.google.cloud.teleport.it.jdbc.PostgresResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.time.Instant;
@@ -66,18 +65,16 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   private static final String MEMBER = "member";
   private static final String ENTRY_ADDED = "entry_added";
 
-  private DefaultMySQLResourceManager mySQLResourceManager;
-  private DefaultPostgresResourceManager postgresResourceManager;
-  private DefaultOracleResourceManager oracleResourceManager;
-  private DefaultMSSQLResourceManager msSQLResourceManager;
+  private MySQLResourceManager mySQLResourceManager;
+  private PostgresResourceManager postgresResourceManager;
+  private OracleResourceManager oracleResourceManager;
+  private MSSQLResourceManager msSQLResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setUp() {
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
   }
 
   @After
@@ -94,8 +91,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   public void testMySqlToBigQueryFlex() throws IOException {
     // Create MySQL Resource manager
     mySQLResourceManager =
-        ((DefaultMySQLResourceManager.Builder)
-                DefaultMySQLResourceManager.builder(testName).setHost(HOST_IP))
+        ((MySQLResourceManager.Builder) MySQLResourceManager.builder(testName).setHost(HOST_IP))
             .build();
 
     // Arrange MySQL-compatible schema
@@ -121,8 +117,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   public void testPostgresToBigQueryFlex() throws IOException {
     // Create postgres Resource manager
     postgresResourceManager =
-        ((DefaultPostgresResourceManager.Builder)
-                DefaultPostgresResourceManager.builder(testName).setHost(HOST_IP))
+        ((PostgresResourceManager.Builder)
+                PostgresResourceManager.builder(testName).setHost(HOST_IP))
             .build();
 
     HashMap<String, String> columns = new HashMap<>();
@@ -153,8 +149,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     // Create oracle Resource manager
     oracleResourceManager =
-        ((DefaultOracleResourceManager.Builder)
-                DefaultOracleResourceManager.builder(testName).setHost(HOST_IP))
+        ((OracleResourceManager.Builder) OracleResourceManager.builder(testName).setHost(HOST_IP))
             .build();
 
     // Arrange oracle-compatible schema
@@ -180,8 +175,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   public void testMsSqlToBigQueryFlex() throws IOException {
     // Create msSql Resource manager
     msSQLResourceManager =
-        ((DefaultMSSQLResourceManager.Builder)
-                DefaultMSSQLResourceManager.builder(testName).setHost(HOST_IP))
+        ((MSSQLResourceManager.Builder) MSSQLResourceManager.builder(testName).setHost(HOST_IP))
             .build();
 
     // Arrange msSql-compatible schema

@@ -27,7 +27,6 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.monitoring.MonitoringClient;
 import com.google.common.base.MoreObjects;
 import com.google.protobuf.util.Timestamps;
@@ -122,7 +121,7 @@ public abstract class LoadTestBase {
       // either use the user specified project for exporting, or the same project
       String exportProject = MoreObjects.firstNonNull(TestProperties.exportProject(), project);
       BigQueryResourceManager bigQueryResourceManager =
-          DefaultBigQueryResourceManager.builder(testName, exportProject)
+          BigQueryResourceManager.builder(testName, exportProject)
               .setDatasetId(TestProperties.exportDataset())
               .setCredentials(CREDENTIALS)
               .build();

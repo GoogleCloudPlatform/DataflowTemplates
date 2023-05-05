@@ -72,7 +72,7 @@ public final class KafkaIOLT extends IOLoadTestBase {
 
   @BeforeClass
   public static void beforeClass() throws IOException {
-    resourceManager = DefaultKafkaResourceManager.builder("io-kafka-lt").setHost(hostIp).build();
+    resourceManager = KafkaResourceManager.builder("io-kafka-lt").setHost(hostIp).build();
   }
 
   @Before

@@ -31,7 +31,6 @@ import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
-import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
@@ -70,8 +69,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName, project, region).build();
+    spannerResourceManager = SpannerResourceManager.builder(testName, project, region).build();
     Storage storageClient = createStorageClient(CREDENTIALS);
     gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
   }

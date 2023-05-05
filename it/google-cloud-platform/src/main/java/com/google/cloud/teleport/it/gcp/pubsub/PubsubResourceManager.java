@@ -15,17 +15,110 @@
  */
 package com.google.cloud.teleport.it.gcp.pubsub;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
+import com.google.api.gax.core.CredentialsProvider;
+import com.google.cloud.pubsub.v1.Publisher;
+import com.google.cloud.pubsub.v1.SchemaServiceClient;
+import com.google.cloud.pubsub.v1.SchemaServiceSettings;
+import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
+import com.google.cloud.pubsub.v1.SubscriptionAdminSettings;
+import com.google.cloud.pubsub.v1.TopicAdminClient;
+import com.google.cloud.pubsub.v1.TopicAdminSettings;
 import com.google.cloud.teleport.it.common.ResourceManager;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.Encoding;
+import com.google.pubsub.v1.ProjectName;
+import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.PullResponse;
+import com.google.pubsub.v1.PushConfig;
 import com.google.pubsub.v1.Schema;
+import com.google.pubsub.v1.SchemaName;
+import com.google.pubsub.v1.SchemaSettings;
+import com.google.pubsub.v1.Subscription;
 import com.google.pubsub.v1.SubscriptionName;
+import com.google.pubsub.v1.Topic;
 import com.google.pubsub.v1.TopicName;
+import com.google.pubsub.v1.UpdateTopicRequest;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/** Interface for managing Pub/Sub resources in integration tests. */
-public interface PubsubResourceManager extends ResourceManager {
+/**
+ * Client for managing Pub/Sub resources in integration tests.
+ *
+ * <p>The class provides an interaction with the real Pub/Sub client, with operations related to
+ * management of topics and subscriptions.
+ */
+public final class PubsubResourceManager implements ResourceManager {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PubsubResourceManager.class);
+
+  private static final int DEFAULT_ACK_DEADLINE_SECONDS = 600;
+  private static final String RESOURCE_NAME_SEPARATOR = "-";
+
+  private final String testId;
+  private final String projectId;
+  private final PubsubPublisherFactory publisherFactory;
+  private final TopicAdminClient topicAdminClient;
+  private final SubscriptionAdminClient subscriptionAdminClient;
+
+  private final SchemaServiceClient schemaServiceClient;
+
+  private final Set<TopicName> createdTopics;
+  private final Set<SubscriptionName> createdSubscriptions;
+
+  private final Set<SchemaName> createdSchemas;
+
+  private PubsubResourceManager(Builder builder) throws IOException {
+    this(
+        builder.testName,
+        builder.projectId,
+        new DefaultPubsubPublisherFactory(builder.credentialsProvider),
+        TopicAdminClient.create(
+            TopicAdminSettings.newBuilder()
+                .setCredentialsProvider(builder.credentialsProvider)
+                .build()),
+        SubscriptionAdminClient.create(
+            SubscriptionAdminSettings.newBuilder()
+                .setCredentialsProvider(builder.credentialsProvider)
+                .build()),
+        SchemaServiceClient.create(
+            SchemaServiceSettings.newBuilder()
+                .setCredentialsProvider(builder.credentialsProvider)
+                .build()));
+  }
+
+  @VisibleForTesting
+  PubsubResourceManager(
+      String testName,
+      String projectId,
+      PubsubPublisherFactory publisherFactory,
+      TopicAdminClient topicAdminClient,
+      SubscriptionAdminClient subscriptionAdminClient,
+      SchemaServiceClient schemaServiceClient) {
+    this.projectId = projectId;
+    this.testId = PubsubUtils.createTestId(testName);
+    this.publisherFactory = publisherFactory;
+    this.topicAdminClient = topicAdminClient;
+    this.subscriptionAdminClient = subscriptionAdminClient;
+    this.createdTopics = Collections.synchronizedSet(new HashSet<>());
+    this.createdSubscriptions = Collections.synchronizedSet(new HashSet<>());
+    this.createdSchemas = Collections.synchronizedSet(new HashSet<>());
+    this.schemaServiceClient = schemaServiceClient;
+  }
+
+  public static Builder builder(String testName, String projectId) {
+    checkArgument(!Strings.isNullOrEmpty(testName), "testName can not be null or empty");
+    checkArgument(!projectId.isEmpty(), "projectId can not be empty");
+    return new Builder(testName, projectId);
+  }
 
   /**
    * Creates a topic with the given name on Pub/Sub.
@@ -34,7 +127,21 @@ public interface PubsubResourceManager extends ResourceManager {
    *     directly, and can add a prefix or a suffix to identify specific executions.
    * @return The instance of the TopicName that was just created.
    */
-  TopicName createTopic(String topicName);
+  public TopicName createTopic(String topicName) {
+    checkArgument(!topicName.isEmpty(), "topicName can not be empty");
+    checkIsUsable();
+
+    TopicName name = getTopicName(topicName);
+    LOG.info("Creating topic '{}'...", name.toString());
+
+    Topic topic = topicAdminClient.createTopic(name);
+    TopicName reference = PubsubUtils.toTopicName(topic);
+    createdTopics.add(reference);
+
+    LOG.info("Topic '{}' was created successfully!", reference);
+
+    return reference;
+  }
 
   /**
    * Creates a subscription at the specific topic, with a given name.
@@ -45,7 +152,33 @@ public interface PubsubResourceManager extends ResourceManager {
    *     suffix to identify specific executions.
    * @return The instance of the SubscriptionName that was just created.
    */
-  SubscriptionName createSubscription(TopicName topicName, String subscriptionName);
+  public SubscriptionName createSubscription(TopicName topicName, String subscriptionName) {
+    checkArgument(!subscriptionName.isEmpty(), "subscriptionName can not be empty");
+    checkIsUsable();
+
+    if (!createdTopics.contains(topicName)) {
+      throw new IllegalArgumentException(
+          "Can not create a subscription for a topic not managed by this instance.");
+    }
+
+    LOG.info("Creating subscription '{}' for topic '{}'", subscriptionName, topicName);
+
+    Subscription subscription =
+        subscriptionAdminClient.createSubscription(
+            getSubscriptionName(subscriptionName),
+            topicName,
+            PushConfig.getDefaultInstance(),
+            DEFAULT_ACK_DEADLINE_SECONDS);
+    SubscriptionName reference = PubsubUtils.toSubscriptionName(subscription);
+    createdSubscriptions.add(getSubscriptionName(subscriptionName));
+
+    LOG.info(
+        "Subscription '{}' for topic '{}' was created successfully!",
+        subscription.getName(),
+        topicName);
+
+    return reference;
+  }
 
   /**
    * Publishes a message with the given data to the publisher context's topic.
@@ -55,8 +188,30 @@ public interface PubsubResourceManager extends ResourceManager {
    * @param data Byte data to send.
    * @return The message id that was generated.
    */
-  String publish(TopicName topic, Map<String, String> attributes, ByteString data)
-      throws PubsubResourceManagerException;
+  public String publish(TopicName topic, Map<String, String> attributes, ByteString data)
+      throws PubsubResourceManagerException {
+    checkIsUsable();
+
+    if (!createdTopics.contains(topic)) {
+      throw new IllegalArgumentException(
+          "Can not publish to a topic not managed by this instance.");
+    }
+
+    LOG.info("Publishing message with {} bytes to topic '{}'", data.size(), topic);
+
+    PubsubMessage pubsubMessage =
+        PubsubMessage.newBuilder().putAllAttributes(attributes).setData(data).build();
+
+    try {
+      Publisher publisher = publisherFactory.createPublisher(topic);
+      String messageId = publisher.publish(pubsubMessage).get();
+      LOG.info("Message published with id '{}'", messageId);
+      publisher.shutdown();
+      return messageId;
+    } catch (Exception e) {
+      throw new PubsubResourceManagerException("Error publishing message to Pubsub", e);
+    }
+  }
 
   /**
    * Pulls messages from the given subscription.
@@ -64,7 +219,15 @@ public interface PubsubResourceManager extends ResourceManager {
    * @param subscriptionName Name of the subscription to use.
    * @return The message id that was generated.
    */
-  PullResponse pull(SubscriptionName subscriptionName, int maxMessages);
+  public PullResponse pull(SubscriptionName subscriptionName, int maxMessages) {
+    LOG.info("Pulling messages from subscription '{}'", subscriptionName);
+    PullResponse response = subscriptionAdminClient.pull(subscriptionName, maxMessages);
+    LOG.info(
+        "Received {} messages from subscription '{}'",
+        response.getReceivedMessagesCount(),
+        subscriptionName);
+    return response;
+  }
 
   /**
    * Registers a new schema of the given type and definition, then assigns it to the specified
@@ -76,12 +239,110 @@ public interface PubsubResourceManager extends ResourceManager {
    * @param schemaTopic the name of the topic to which assign the schema.
    * @return the name of the newly created schema
    */
-  String createSchema(
+  public String createSchema(
       Schema.Type schemaType,
       String schemaDefinition,
       Encoding dataEncoding,
-      TopicName schemaTopic);
+      TopicName schemaTopic) {
+    Schema schema =
+        schemaServiceClient.createSchema(
+            ProjectName.newBuilder().setProject(projectId).build(),
+            Schema.newBuilder().setType(schemaType).setDefinition(schemaDefinition).build(),
+            "schema-" + testId + "-" + schemaTopic.getTopic());
+    createdSchemas.add(SchemaName.parse(schema.getName()));
+    topicAdminClient.updateTopic(
+        UpdateTopicRequest.newBuilder()
+            .setTopic(
+                Topic.newBuilder()
+                    .setName(schemaTopic.toString())
+                    .setSchemaSettings(
+                        SchemaSettings.newBuilder()
+                            .setSchema(schema.getName())
+                            .setEncoding(dataEncoding)
+                            .build())
+                    .build())
+            .build());
+    return schema.getName();
+  }
 
   /** Delete any topics or subscriptions created by this manager. */
-  void cleanupAll();
+  @Override
+  public synchronized void cleanupAll() {
+    // Ignore call if it was cleaned up before
+    if (isNotUsable()) {
+      return;
+    }
+
+    LOG.info("Attempting to cleanup manager.");
+
+    try {
+      for (SubscriptionName subscription : createdSubscriptions) {
+        LOG.info("Deleting subscription '{}'", subscription);
+        subscriptionAdminClient.deleteSubscription(subscription);
+      }
+
+      for (TopicName topic : createdTopics) {
+        LOG.info("Deleting topic '{}'", topic);
+        topicAdminClient.deleteTopic(topic);
+      }
+
+      for (SchemaName schemaName : createdSchemas) {
+        LOG.info("Deleting schema '{}'", schemaName);
+        schemaServiceClient.deleteSchema(schemaName);
+      }
+    } finally {
+      subscriptionAdminClient.close();
+      topicAdminClient.close();
+    }
+
+    LOG.info("Manager successfully cleaned up.");
+  }
+
+  SubscriptionName getSubscriptionName(String subscriptionName) {
+    return SubscriptionName.of(projectId, testId + RESOURCE_NAME_SEPARATOR + subscriptionName);
+  }
+
+  TopicName getTopicName(String topicName) {
+    return TopicName.of(projectId, testId + RESOURCE_NAME_SEPARATOR + topicName);
+  }
+
+  /**
+   * Check if the clients started by this instance are still usable, and throwing {@link
+   * IllegalStateException} otherwise.
+   */
+  private void checkIsUsable() throws IllegalStateException {
+    if (isNotUsable()) {
+      throw new IllegalStateException("Manager has cleaned up resources and is unusable.");
+    }
+  }
+
+  private boolean isNotUsable() {
+    return topicAdminClient.isShutdown() || subscriptionAdminClient.isShutdown();
+  }
+
+  /** Builder for {@link PubsubResourceManager}. */
+  public static final class Builder {
+
+    private final String projectId;
+    private final String testName;
+    private CredentialsProvider credentialsProvider;
+
+    private Builder(String testName, String projectId) {
+      this.testName = testName;
+      this.projectId = projectId;
+    }
+
+    public Builder credentialsProvider(CredentialsProvider credentialsProvider) {
+      this.credentialsProvider = credentialsProvider;
+      return this;
+    }
+
+    public PubsubResourceManager build() throws IOException {
+      if (credentialsProvider == null) {
+        throw new IllegalArgumentException(
+            "Unable to find credentials. Please provide credentials to authenticate to GCP");
+      }
+      return new PubsubResourceManager(this);
+    }
+  }
 }

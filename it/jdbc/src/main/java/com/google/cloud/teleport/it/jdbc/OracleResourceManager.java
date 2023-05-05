@@ -28,7 +28,7 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class DefaultOracleResourceManager extends AbstractJDBCResourceManager<OracleContainer> {
+public class OracleResourceManager extends AbstractJDBCResourceManager<OracleContainer> {
 
   private static final String DEFAULT_ORACLE_CONTAINER_NAME = "gvenzl/oracle-xe";
 
@@ -43,7 +43,7 @@ public class DefaultOracleResourceManager extends AbstractJDBCResourceManager<Or
   private static final String DEFAULT_ORACLE_USERNAME = "testUser";
   private static final String DEFAULT_ORACLE_PASSWORD = "testPassword";
 
-  private DefaultOracleResourceManager(DefaultOracleResourceManager.Builder builder) {
+  private OracleResourceManager(OracleResourceManager.Builder builder) {
     this(
         new OracleContainer(
             DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
@@ -51,13 +51,12 @@ public class DefaultOracleResourceManager extends AbstractJDBCResourceManager<Or
   }
 
   @VisibleForTesting
-  DefaultOracleResourceManager(
-      OracleContainer container, DefaultOracleResourceManager.Builder builder) {
+  OracleResourceManager(OracleContainer container, OracleResourceManager.Builder builder) {
     super(container, builder);
   }
 
-  public static DefaultOracleResourceManager.Builder builder(String testId) {
-    return new DefaultOracleResourceManager.Builder(testId);
+  public static OracleResourceManager.Builder builder(String testId) {
+    return new OracleResourceManager.Builder(testId);
   }
 
   @Override
@@ -82,7 +81,7 @@ public class DefaultOracleResourceManager extends AbstractJDBCResourceManager<Or
     return "SELECT * FROM " + tableName + " WHERE ROWNUM <= 1";
   }
 
-  /** Builder for {@link DefaultOracleResourceManager}. */
+  /** Builder for {@link OracleResourceManager}. */
   public static final class Builder extends AbstractJDBCResourceManager.Builder<OracleContainer> {
 
     public Builder(String testId) {
@@ -94,8 +93,8 @@ public class DefaultOracleResourceManager extends AbstractJDBCResourceManager<Or
     }
 
     @Override
-    public DefaultOracleResourceManager build() {
-      return new DefaultOracleResourceManager(this);
+    public OracleResourceManager build() {
+      return new OracleResourceManager(this);
     }
   }
 }

@@ -56,9 +56,9 @@ import org.mockito.internal.verification.Times;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-/** Unit tests for {@link DefaultBigQueryResourceManager}. */
+/** Unit tests for {@link BigQueryResourceManager}. */
 @RunWith(JUnit4.class)
-public class DefaultBigQueryResourceManagerTest {
+public class BigQueryResourceManagerTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -86,11 +86,11 @@ public class DefaultBigQueryResourceManagerTest {
   private static final String PROJECT_ID = "test-project";
   private static final String REGION = "us-central1";
 
-  private DefaultBigQueryResourceManager testManager;
+  private BigQueryResourceManager testManager;
 
   @Before
   public void setUp() {
-    testManager = new DefaultBigQueryResourceManager(TEST_ID, PROJECT_ID, bigQuery);
+    testManager = new BigQueryResourceManager(TEST_ID, PROJECT_ID, bigQuery);
   }
 
   @Test
@@ -100,10 +100,10 @@ public class DefaultBigQueryResourceManagerTest {
 
   @Test
   public void testGetDatasetIdReturnsCorrectValue() {
-    DefaultBigQueryResourceManager.Builder tmBuilder =
-        DefaultBigQueryResourceManager.builder(TEST_ID, PROJECT_ID);
+    BigQueryResourceManager.Builder tmBuilder =
+        BigQueryResourceManager.builder(TEST_ID, PROJECT_ID);
     tmBuilder.setCredentials(credentials);
-    DefaultBigQueryResourceManager tm = tmBuilder.build();
+    BigQueryResourceManager tm = tmBuilder.build();
 
     assertThat(tm.getDatasetId()).matches(TEST_ID.replace('-', '_') + "_\\d{8}_\\d{6}_\\d{6}");
   }
