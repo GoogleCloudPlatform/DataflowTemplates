@@ -36,6 +36,7 @@ import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.dataflow.ClassicTemplateClient;
 import com.google.cloud.teleport.it.gcp.dataflow.DirectRunnerClient;
 import com.google.cloud.teleport.it.gcp.dataflow.FlexTemplateClient;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateCreationParameters;
@@ -47,6 +48,7 @@ import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -56,6 +58,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
+import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
@@ -115,15 +118,23 @@ public abstract class TemplateTestBase {
    */
   @Deprecated protected GcsArtifactClient artifactClient;
 
+  private boolean usingDirectRunner;
+
   @Before
   public void setUpBase() {
 
     testId = PipelineUtils.createJobName("test");
 
     TemplateIntegrationTest annotation = null;
+    usingDirectRunner = System.getProperty("directRunnerTest") != null;
     try {
       Method testMethod = getClass().getMethod(testName);
       annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
+      Category category = testMethod.getAnnotation(Category.class);
+      if (category != null) {
+        usingDirectRunner =
+            Arrays.asList(category.value()).contains(DirectRunnerTest.class) || usingDirectRunner;
+      }
     } catch (NoSuchMethodException e) {
       // ignore error
     }
@@ -175,7 +186,7 @@ public abstract class TemplateTestBase {
       specPath = TestProperties.specPath();
     } else if (stagedTemplates.containsKey(template.name())) {
       specPath = stagedTemplates.get(template.name());
-    } else if (System.getProperty("directRunnerTest") == null) {
+    } else if (!usingDirectRunner) {
       LOG.info("Preparing test for {} ({})", template.name(), templateClass);
 
       String prefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_IT";
@@ -329,7 +340,7 @@ public abstract class TemplateTestBase {
   }
 
   protected PipelineLauncher launcher() {
-    if (System.getProperty("directRunnerTest") != null) {
+    if (usingDirectRunner) {
       return DirectRunnerClient.builder(templateClass).setCredentials(credentials).build();
     } else if (template.flexContainerName() != null && !template.flexContainerName().isEmpty()) {
       return FlexTemplateClient.builder().setCredentials(credentials).build();
@@ -372,7 +383,7 @@ public abstract class TemplateTestBase {
       options.addEnvironment("workerMachineType", System.getProperty("workerMachineType"));
     }
 
-    if (System.getProperty("directRunnerTest") != null) {
+    if (usingDirectRunner) {
       // For direct runner tests we need to explicitly add a tempLocation if missing
       if (options.getParameter("tempLocation") == null) {
         options.addParameter("tempLocation", "gs://" + artifactBucketName + "/temp/");
@@ -433,9 +444,9 @@ public abstract class TemplateTestBase {
         Config.builder().setJobId(info.jobId()).setProject(PROJECT).setRegion(REGION);
 
     // For DirectRunner tests, reduce the max time and the interval, as there is no worker required
-    if (System.getProperty("directRunnerTest") != null) {
+    if (usingDirectRunner) {
       configBuilder =
-          configBuilder.setTimeoutAfter(Duration.ofMinutes(3)).setCheckAfter(Duration.ofSeconds(5));
+          configBuilder.setTimeoutAfter(Duration.ofMinutes(4)).setCheckAfter(Duration.ofSeconds(5));
     }
 
     return configBuilder.build();
