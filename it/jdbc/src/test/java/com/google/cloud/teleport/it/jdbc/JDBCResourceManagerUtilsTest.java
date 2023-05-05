@@ -18,7 +18,7 @@ package com.google.cloud.teleport.it.jdbc;
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.ALLOWED_SPECIAL_CHARS;
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.checkValidTableName;
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generateDatabaseName;
-import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generatePassword;
+import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generateJdbcPassword;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
@@ -47,7 +47,7 @@ public class JDBCResourceManagerUtilsTest {
   @Test
   public void testGeneratePasswordMeetsRequirements() {
     for (int i = 0; i < 10000; i++) {
-      String password = generatePassword();
+      String password = generateJdbcPassword();
       int lower = 0;
       int upper = 0;
       int special = 0;

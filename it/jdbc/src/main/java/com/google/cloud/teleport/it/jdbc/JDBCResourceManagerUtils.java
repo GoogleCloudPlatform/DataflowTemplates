@@ -15,14 +15,13 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
+import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generatePassword;
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generateResourceId;
 
 import com.google.common.primitives.Chars;
 import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Random;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Utilities for {@link com.google.cloud.teleport.it.jdbc.JDBCResourceManager} implementations. */
 final class JDBCResourceManagerUtils {
@@ -73,30 +72,17 @@ final class JDBCResourceManagerUtils {
    *
    * @return The generated password.
    */
-  static String generatePassword() {
-    StringBuilder password = new StringBuilder();
-    int numSpecial = 2;
+  static String generateJdbcPassword() {
     int numLower = 2;
     int numUpper = 2;
-    password.append(
-        RandomStringUtils.randomAlphanumeric(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH - numSpecial)
-            .toUpperCase());
-    for (int i = 0; i < numSpecial; i++) {
-      password.insert(
-          new Random().nextInt(password.length()),
-          ALLOWED_SPECIAL_CHARS.get(new Random().nextInt(ALLOWED_SPECIAL_CHARS.size())));
-    }
-    for (int i = 0; i < numLower; i++) {
-      password.insert(
-          new Random().nextInt(password.length()),
-          RandomStringUtils.randomAlphabetic(1).toLowerCase());
-    }
-    for (int i = 0; i < numUpper; i++) {
-      password.insert(
-          new Random().nextInt(password.length()),
-          RandomStringUtils.randomAlphabetic(1).toUpperCase());
-    }
-    return password.toString();
+    int numSpecial = 2;
+    return generatePassword(
+        MIN_PASSWORD_LENGTH,
+        MAX_PASSWORD_LENGTH,
+        numLower,
+        numUpper,
+        numSpecial,
+        ALLOWED_SPECIAL_CHARS);
   }
 
   /**
