@@ -60,6 +60,7 @@ type MavenFlags interface {
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
 	RunIntegrationTests() string
+	RunIntegrationSmokeTests() string
 	RunLoadTests() string
 	ThreadCount(int) string
 	IntegrationTestParallelism(int) string
@@ -109,6 +110,10 @@ func (*mvnFlags) FailAtTheEnd() string {
 
 func (*mvnFlags) RunIntegrationTests() string {
 	return "-PtemplatesIntegrationTests"
+}
+
+func (*mvnFlags) RunIntegrationSmokeTests() string {
+	return "-PtemplatesIntegrationSmokeTests"
 }
 
 func (*mvnFlags) RunLoadTests() string {

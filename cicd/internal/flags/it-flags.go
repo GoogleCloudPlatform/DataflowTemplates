@@ -60,12 +60,12 @@ func StageBucket() string {
 }
 
 func HostIp() string {
-	if dHostIp == "" {
+	if len(dHostIp) == 0 {
 		gcloudCmd := "gcloud compute instances list | grep $(hostname) | awk '{print $4}'"
-		if hostIp, err := exec.Command("bash", "-c", gcloudCmd).Output(); err != nil {
+		if hostIP, err := exec.Command("bash", "-c", gcloudCmd).Output(); err != nil || len(hostIP) == 0 {
 			panic(fmt.Errorf("failed to get gitactions runner host ip: %v", err))
 		} else {
-			return "-DhostIp=" + string(hostIp)[:len(hostIp)-1]
+			return "-DhostIp=" + string(hostIP)[:len(hostIP)-1]
 		}
 	}
 	return "-DhostIp=" + dHostIp
