@@ -21,7 +21,7 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import java.util.List;
 import java.util.Map;
-import org.jetbrains.annotations.Nullable;
+import javax.annotation.Nullable;
 
 /** Assert utilities for Template DSL-like tests. */
 public class TemplateAsserts {

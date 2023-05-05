@@ -22,8 +22,8 @@ import static com.google.common.truth.Truth.assertAbout;
 import com.google.cloud.teleport.it.common.matchers.RecordsSubject;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.avro.generic.GenericRecord;
-import org.jetbrains.annotations.Nullable;
 
 public class ArtifactAsserts {
 
