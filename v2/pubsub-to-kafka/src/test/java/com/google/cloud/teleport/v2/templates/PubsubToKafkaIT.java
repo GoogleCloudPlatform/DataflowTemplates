@@ -74,7 +74,7 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
             .credentialsProvider(credentialsProvider)
             .build();
 
-    kafkaResourceManager = DefaultKafkaResourceManager.builder(testName).setHost(HOST_IP).build();
+    kafkaResourceManager = DefaultKafkaResourceManager.builder(testName).build();
   }
 
   @After

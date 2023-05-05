@@ -93,10 +93,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   @Test
   public void testMySqlToBigQueryFlex() throws IOException {
     // Create MySQL Resource manager
-    mySQLResourceManager =
-        ((DefaultMySQLResourceManager.Builder)
-                DefaultMySQLResourceManager.builder(testName).setHost(HOST_IP))
-            .build();
+    mySQLResourceManager = DefaultMySQLResourceManager.builder(testName).build();
 
     // Arrange MySQL-compatible schema
     HashMap<String, String> columns = new HashMap<>();
@@ -120,10 +117,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   @Test
   public void testPostgresToBigQueryFlex() throws IOException {
     // Create postgres Resource manager
-    postgresResourceManager =
-        ((DefaultPostgresResourceManager.Builder)
-                DefaultPostgresResourceManager.builder(testName).setHost(HOST_IP))
-            .build();
+    postgresResourceManager = DefaultPostgresResourceManager.builder(testName).build();
 
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "INTEGER NOT NULL");
@@ -152,10 +146,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     }
 
     // Create oracle Resource manager
-    oracleResourceManager =
-        ((DefaultOracleResourceManager.Builder)
-                DefaultOracleResourceManager.builder(testName).setHost(HOST_IP))
-            .build();
+    oracleResourceManager = DefaultOracleResourceManager.builder(testName).build();
 
     // Arrange oracle-compatible schema
     HashMap<String, String> columns = new HashMap<>();
@@ -179,10 +170,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   @Test
   public void testMsSqlToBigQueryFlex() throws IOException {
     // Create msSql Resource manager
-    msSQLResourceManager =
-        ((DefaultMSSQLResourceManager.Builder)
-                DefaultMSSQLResourceManager.builder(testName).setHost(HOST_IP))
-            .build();
+    msSQLResourceManager = DefaultMSSQLResourceManager.builder(testName).build();
 
     // Arrange msSql-compatible schema
     HashMap<String, String> columns = new HashMap<>();

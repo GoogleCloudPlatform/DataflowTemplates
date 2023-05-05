@@ -71,7 +71,6 @@ public abstract class LoadTestBase {
       FixedCredentialsProvider.create(CREDENTIALS);
   protected static String project;
   protected static String region;
-  protected static String hostIp;
   protected static MonitoringClient monitoringClient;
   protected static PipelineLauncher pipelineLauncher;
   protected static PipelineOperator pipelineOperator;
@@ -92,7 +91,6 @@ public abstract class LoadTestBase {
   public static void setUpLoadTestBase() {
     project = TestProperties.project();
     region = TestProperties.region();
-    hostIp = TestProperties.hostIp();
   }
 
   @Before

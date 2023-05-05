@@ -81,10 +81,7 @@ public class JdbcToPubsubIT extends JDBCBaseIT {
   @Test
   public void testJdbcToPubsub() throws IOException {
     // Arrange
-    mysqlResourceManager =
-        ((DefaultMySQLResourceManager.Builder)
-                DefaultMySQLResourceManager.builder(testName).setHost(HOST_IP))
-            .build();
+    mysqlResourceManager = DefaultMySQLResourceManager.builder(testName).build();
 
     // Arrange MySQL-compatible schema
     HashMap<String, String> columns = new HashMap<>();

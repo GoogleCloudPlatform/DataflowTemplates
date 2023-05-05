@@ -64,8 +64,7 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
         DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
-    elasticsearchResourceManager =
-        DefaultElasticsearchResourceManager.builder(testId).setHost(HOST_IP).build();
+    elasticsearchResourceManager = DefaultElasticsearchResourceManager.builder(testId).build();
   }
 
   @After

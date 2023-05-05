@@ -328,7 +328,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
 
   @Test
   public void testFakeMessagesToJdbc() throws IOException {
-    jdbcResourceManager = DefaultPostgresResourceManager.builder(testName).setHost(HOST_IP).build();
+    jdbcResourceManager = DefaultPostgresResourceManager.builder(testName).build();
     JDBCSchema jdbcSchema =
         new JDBCSchema(
             Map.of(
