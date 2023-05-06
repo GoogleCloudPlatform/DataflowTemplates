@@ -27,6 +27,7 @@ import org.apache.beam.sdk.values.TypeDescriptor;
 @DefaultSchema(AutoValueSchema.class)
 @AutoValue
 public abstract class BigTableWriteSchemaTransformConfiguration {
+
   public abstract String getProjectId();
 
   public abstract String getInstanceId();
@@ -38,6 +39,8 @@ public abstract class BigTableWriteSchemaTransformConfiguration {
   public abstract @Nullable String getEndpoint();
 
   public abstract @Nullable String getAppProfileId();
+
+  public abstract @Nullable Boolean getFlattenInputSchema();
 
   public static Builder builder() {
     return new AutoValue_BigTableWriteSchemaTransformConfiguration.Builder();
@@ -67,6 +70,8 @@ public abstract class BigTableWriteSchemaTransformConfiguration {
     public abstract Builder setEndpoint(@Nullable String endpoint);
 
     public abstract Builder setAppProfileId(@Nullable String appProfile);
+
+    public abstract Builder setFlattenInputSchema(@Nullable Boolean flattenInputSchema);
 
     public abstract BigTableWriteSchemaTransformConfiguration build();
   }

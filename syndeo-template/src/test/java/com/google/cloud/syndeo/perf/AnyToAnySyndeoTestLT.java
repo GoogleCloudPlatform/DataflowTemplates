@@ -15,6 +15,8 @@
  */
 package com.google.cloud.syndeo.perf;
 
+import static com.google.cloud.syndeo.transforms.bigtable.BigTableIOWriteSchemaBasedTransform.flattenSchema;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
@@ -79,6 +81,8 @@ public class AnyToAnySyndeoTestLT {
   private static final String ZONE_SUFFIX = "-c";
   private static final String TEST_ID = "syndeo-any-to-any-" + UUID.randomUUID();
 
+  private static final String HOST_IP = TestProperties.hostIp();
+
   protected static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   protected static final CredentialsProvider CREDENTIALS_PROVIDER =
       FixedCredentialsProvider.create(CREDENTIALS);
@@ -118,7 +122,7 @@ public class AnyToAnySyndeoTestLT {
                         configToMap(
                             BigQueryStorageWriteApiSchemaTransformProvider
                                 .BigQueryStorageWriteApiSchemaTransformConfiguration.builder()
-                                .setTable(String.format("%s.%s", bqrm.getDatasetId(), TEST_ID))
+                                .setTable(String.format("%s:%s.%s", PROJECT, bqrm.getDatasetId(), TEST_ID))
                                 .setAutoSharding(true)
                                 .build())),
                     buildJsonConfig(
@@ -126,12 +130,12 @@ public class AnyToAnySyndeoTestLT {
                         configToMap(
                             BigQueryDirectReadSchemaTransformProvider
                                 .BigQueryDirectReadSchemaTransformConfiguration.builder()
-                                .setTableSpec(String.format("%s.%s", bqrm.getDatasetId(), TEST_ID))
+                                .setTableSpec(String.format("%s:%s.%s", PROJECT, bqrm.getDatasetId(), TEST_ID))
                                 .build())));
               }),
           "beam:schematransform:org.apache.beam:kafka_read:v1",
           TransformProvider.create(
-              wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).build()),
+              wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).setHost(HOST_IP).build()),
               (ResourceManager rm) -> {
                 assert rm instanceof KafkaResourceManager;
                 KafkaResourceManager krm = (KafkaResourceManager) rm;
@@ -173,7 +177,7 @@ public class AnyToAnySyndeoTestLT {
                 assert rm instanceof PubsubLiteResourceManager;
                 PubsubLiteResourceManager psrm = (PubsubLiteResourceManager) rm;
                 ReservationPath rpath =
-                    psrm.createReservation("resrv-" + TEST_ID, REGION, PROJECT, 100L);
+                    psrm.createReservation("resrv-rd-" + TEST_ID, REGION, PROJECT, 100L);
                 TopicName tname = psrm.createTopic("topic-" + TEST_ID, rpath);
                 String subsName = "sub-" + TEST_ID;
                 com.google.cloud.pubsublite.SubscriptionName sname =
@@ -255,7 +259,7 @@ public class AnyToAnySyndeoTestLT {
                                 .setAutoSharding(true)
                                 .setTable(
                                     String.format(
-                                        "%s.%s.%s", PROJECT, bqrm.getDatasetId(), TEST_ID))
+                                        "%s:%s.%s", PROJECT, bqrm.getDatasetId(), TEST_ID))
                                 .build())),
                     null);
               }),
@@ -280,7 +284,7 @@ public class AnyToAnySyndeoTestLT {
               }),
           "beam:schematransform:org.apache.beam:kafka_write:v1",
           TransformProvider.create(
-              wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).build()),
+              wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).setHost(HOST_IP).build()),
               (ResourceManager rm) -> {
                 assert rm instanceof KafkaResourceManager;
                 KafkaResourceManager krm = (KafkaResourceManager) rm;
@@ -349,7 +353,8 @@ public class AnyToAnySyndeoTestLT {
                             StorageType.SSD)));
                 String tableName = ("table-" + TEST_ID).substring(0, 29);
                 btrm.createTable(
-                    tableName, SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA.getFieldNames()); // TODO
+                    tableName,
+                    flattenSchema(SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA).getFieldNames()); // TODO
                 return SinkAndSourceConfigs.create(
                     buildJsonConfig(
                         "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
@@ -358,6 +363,7 @@ public class AnyToAnySyndeoTestLT {
                                 .setInstanceId(btrm.getInstanceId())
                                 .setTableId(tableName)
                                 .setProjectId(PROJECT)
+                                .setFlattenInputSchema(true)
                                 .setKeyColumns(List.of("commit")) // TODO(pabloem): Figure this out
                                 .build())),
                     null);
