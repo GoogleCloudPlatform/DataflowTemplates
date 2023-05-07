@@ -172,23 +172,7 @@ public final class PipelineOperator {
       Config config, Supplier<Boolean>[] conditionCheck, Supplier<Boolean>... stopChecking) {
     Instant start = Instant.now();
 
-    LOG.debug("Making initial finish check.");
-    try {
-      if (allMatch(conditionCheck)) {
-        return Result.CONDITION_MET;
-      }
-    } catch (Exception e) {
-      LOG.warn("Error happened when initially checking for condition: {}", e.getMessage());
-    }
-
-    LOG.info("Job was not already finished. Starting to wait between requests.");
     while (timeIsLeft(start, config.timeoutAfter())) {
-      try {
-        Thread.sleep(config.checkAfter().toMillis());
-      } catch (InterruptedException e) {
-        LOG.warn("Wait interrupted. Checking now.");
-      }
-
       LOG.debug("Checking if condition is met.");
       try {
         if (allMatch(conditionCheck)) {
@@ -209,6 +193,12 @@ public final class PipelineOperator {
           config.checkAfter().getSeconds(),
           Duration.between(start, Instant.now()).getSeconds(),
           config.timeoutAfter().getSeconds());
+
+      try {
+        Thread.sleep(config.checkAfter().toMillis());
+      } catch (InterruptedException e) {
+        LOG.warn("Wait interrupted. Checking now.");
+      }
     }
 
     LOG.warn("Neither the condition or job completion were fulfilled on time.");

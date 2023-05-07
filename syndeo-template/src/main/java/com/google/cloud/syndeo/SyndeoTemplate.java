@@ -46,6 +46,7 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.sdk.io.fs.ResourceId;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -160,7 +161,10 @@ public class SyndeoTemplate {
     SchemaTransformProvider transformProvider =
         ProviderUtil.getProvider(transformConfig.get("urn").asText());
     LOG.info(
-        "Transform provider({}) is: {}", transformConfig.get("urn").asText(), transformProvider);
+        "Transform provider({}) is: {} | in {}",
+        transformConfig.get("urn").asText(),
+        transformProvider,
+        transformProvider.getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     if (transformProvider == null) {
       throw new IllegalArgumentException(
           String.format(
@@ -256,5 +260,16 @@ public class SyndeoTemplate {
           "Template received neither of --pipelineSpec or --jsonSpecPayload parameters. "
               + "One of these parameters must be specified.");
     }
+    List<String> experiments =
+        inputOptions.getExperiments() == null
+            ? List.of()
+            : new ArrayList<>(inputOptions.getExperiments());
+    experiments.addAll(
+        List.of(
+            "enable_streaming_engine",
+            "enable_streaming_auto_sharding=true",
+            "streaming_auto_sharding_algorithm=FIXED_THROUGHPUT"));
+    inputOptions.as(BigQueryOptions.class).setNumStorageWriteApiStreams(50);
+    inputOptions.setExperiments(experiments);
   }
 }

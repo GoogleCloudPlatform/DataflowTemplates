@@ -31,6 +31,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.text.ParseException;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -64,8 +65,13 @@ import org.slf4j.LoggerFactory;
 /**
  * BigQueryIO performance tests.
  *
- * <p>Example trigger command: "mvn test -pl it -am -Dtest="BigQueryIOLT" -Dproject=[gcpProject] \
- * -DartifactBucket=[temp bucket] -DfailIfNoTests=false".
+ * <p>Example trigger command for all tests: "mvn test -pl it/google-cloud-platform -am
+ * -Dtest="BigQueryIOLT" \ -Dproject=[gcpProject] -DartifactBucket=[temp bucket]
+ * -DfailIfNoTests=false".
+ *
+ * <p>Example trigger command for specific test: "mvn test -pl it/google-cloud-platform -am \
+ * -Dtest="BigQueryIOLT#testAvroFileLoadsWriteThenRead" -Dconfiguration=local -Dproject=[gcpProject]
+ * \ -DartifactBucket=[temp bucket] -DfailIfNoTests=false".
  */
 public final class BigQueryIOLT extends IOLoadTestBase {
 
@@ -76,6 +82,9 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   private static final String READ_ELEMENT_METRIC_NAME = "read_count";
   private Configuration configuration;
   private String tempLocation;
+
+  private static final String READ_PCOLLECTION = "Counting element.out0";
+  private static final String WRITE_PCOLLECTION = "Map records.out0";
 
   @Rule public TestPipeline writePipeline = TestPipeline.create();
   @Rule public TestPipeline readPipeline = TestPipeline.create();
@@ -165,6 +174,17 @@ public final class BigQueryIOLT extends IOLoadTestBase {
     testWriteAndRead();
   }
 
+  @Test
+  public void testStorageAPIWriteThenRead() throws IOException {
+    configuration =
+        configuration.toBuilder()
+            .setReadMethod("DIRECT_READ")
+            .setWriteFormat("AVRO")
+            .setWriteMethod("STORAGE_WRITE_API")
+            .build();
+    testWriteAndRead();
+  }
+
   /** Run integration test with configurations specified by TestProperties. */
   public void testWriteAndRead() throws IOException {
     WriteFormat writeFormat = WriteFormat.valueOf(configuration.getWriteFormat());
@@ -173,14 +193,30 @@ public final class BigQueryIOLT extends IOLoadTestBase {
       case AVRO:
         writeIO =
             BigQueryIO.<byte[]>write()
-                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE)
-                .withAvroFormatFunction(
-                    writeRequest -> {
-                      byte[] data = writeRequest.getElement();
-                      GenericRecord record = new GenericData.Record(writeRequest.getSchema());
-                      record.put("data", ByteBuffer.wrap(data));
-                      return record;
-                    });
+                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE);
+        // TODO(https://github.com/apache/beam/issues/26408) eliminate this branching once the Beam
+        // issue resolved
+        if ("STORAGE_WRITE_API".equalsIgnoreCase(configuration.getWriteMethod())) {
+          // storage api write does not recognize ByteBuffer for bytes
+          writeIO =
+              writeIO.withAvroFormatFunction(
+                  writeRequest -> {
+                    byte[] data = writeRequest.getElement();
+                    GenericRecord record = new GenericData.Record(writeRequest.getSchema());
+                    record.put("data", data);
+                    return record;
+                  });
+        } else {
+          writeIO =
+              writeIO.withAvroFormatFunction(
+                  writeRequest -> {
+                    byte[] data = writeRequest.getElement();
+                    GenericRecord record = new GenericData.Record(writeRequest.getSchema());
+                    record.put("data", ByteBuffer.wrap(data));
+                    return record;
+                  });
+        }
+
         break;
       case JSON:
         writeIO =
@@ -236,15 +272,21 @@ public final class BigQueryIOLT extends IOLoadTestBase {
 
     // Fail the test if pipeline failed.
     assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
+
+    // export metrics
+    try {
+      exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, WRITE_PCOLLECTION, null));
+    } catch (ParseException | InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private void testRead() throws IOException {
-    SyntheticSourceOptions sourceOption =
-        SyntheticOptions.fromJsonString(
-            configuration.getSourceOptions(), SyntheticSourceOptions.class);
+    BigQueryIO.TypedRead.Method method =
+        BigQueryIO.TypedRead.Method.valueOf(configuration.getReadMethod());
 
     readPipeline
-        .apply("Read from BQ", BigQueryIO.readTableRows().from(tableQualifier))
+        .apply("Read from BQ", BigQueryIO.readTableRows().from(tableQualifier).withMethod(method))
         .apply("Counting element", ParDo.of(new CountingFn<>(READ_ELEMENT_METRIC_NAME)));
 
     PipelineLauncher.LaunchConfig options =
@@ -270,6 +312,13 @@ public final class BigQueryIOLT extends IOLoadTestBase {
             launchInfo.jobId(),
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
     assertEquals(configuration.getNumRows(), numRecords, 0.5);
+
+    // export metrics
+    try {
+      exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, null, READ_PCOLLECTION));
+    } catch (ParseException | InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private static class MapKVToV extends DoFn<KV<byte[], byte[]>, byte[]> {
@@ -295,6 +344,8 @@ public final class BigQueryIOLT extends IOLoadTestBase {
 
     abstract Integer getRowSize();
 
+    abstract String getReadMethod();
+
     abstract String getWriteMethod();
 
     abstract String getWriteFormat();
@@ -305,6 +356,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
           .setPipelineTimeout(pipelineTimeout)
           .setRunner(runner)
           .setRowSize(1024)
+          .setReadMethod("DEFAULT")
           .setWriteMethod("DEFAULT")
           .setWriteFormat("AVRO")
           .build();
@@ -320,9 +372,10 @@ public final class BigQueryIOLT extends IOLoadTestBase {
 
       abstract Builder setRowSize(int rowSize);
 
-      /**
-       * Write method: DEFAULT/FILE_LOADS/STREAMING_INSERTS/STORAGE_WRITE_API(not yet supported).
-       */
+      /** Read method: DEFAULT/DIRECT_READ/EXPORT. */
+      abstract Builder setReadMethod(String readMethod);
+
+      /** Write method: DEFAULT/FILE_LOADS/STREAMING_INSERTS/STORAGE_WRITE_API. */
       abstract Builder setWriteMethod(String writeMethod);
 
       /** Write format: AVRO/JSON. */

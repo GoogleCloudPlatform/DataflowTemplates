@@ -29,6 +29,7 @@ import com.google.cloud.teleport.it.common.utils.PipelineUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.protobuf.util.Timestamps;
 import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
 import java.io.IOException;
@@ -49,6 +50,7 @@ import org.apache.beam.sdk.metrics.MetricQueryResults;
 import org.apache.beam.sdk.metrics.MetricResult;
 import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Iterables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -285,9 +287,20 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
         PipelineOptions pipelineOptions = options.pipeline().getOptions();
         pipelineOptions.setRunner(PipelineUtils.getRunnerClass(options.getParameter("runner")));
         pipelineOptions.setJobName(options.jobName());
-        if (Objects.equals(options.getParameter("runner"), "DataflowRunner")) {
+        Map<String, String> jobProperties = new HashMap<>();
+        if ("DataflowRunner".equalsIgnoreCase(options.getParameter("runner"))) {
+          // dataflow runner specific options
           pipelineOptions.as(DataflowPipelineOptions.class).setProject(project);
           pipelineOptions.as(DataflowPipelineOptions.class).setRegion(region);
+        } else {
+          // unsupported runner, manually record job properties
+          jobProperties.put(
+              "createTime", Timestamps.toString(Timestamps.fromMillis(System.currentTimeMillis())));
+          if (pipelineOptions.as(StreamingOptions.class).isStreaming()) {
+            jobProperties.put("jobType", "JOB_TYPE_STREAMING");
+          } else {
+            jobProperties.put("jobType", "JOB_TYPE_BATCH");
+          }
         }
         PipelineResult pipelineResult = options.pipeline().run();
         if (Objects.equals(options.getParameter("runner"), "DataflowRunner")) {
@@ -305,10 +318,10 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
               .setJobId(jobId)
               .setProjectId(project)
               .setRegion(region)
-              .setCreateTime("")
+              .setCreateTime(jobProperties.get("createTime"))
               .setSdk("DirectBeam")
               .setVersion("0.0.1")
-              .setJobType("JOB_TYPE_BATCH")
+              .setJobType(jobProperties.get("jobType"))
               .setRunner(options.getParameter("runner"))
               .setParameters(options.parameters())
               .setState(JobState.RUNNING)
