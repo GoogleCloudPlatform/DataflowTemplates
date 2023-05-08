@@ -14,8 +14,6 @@
   ~ License for the specific language governing permissions and limitations under
   ~ the License.
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-
-
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
@@ -43,6 +41,20 @@
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <!-- Testing dependencies -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-google-cloud-platform</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-mongodb</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

@@ -337,7 +337,7 @@ public class PubSubToMongoDB {
             "Put to MongoDB",
             MongoDbIO.write()
                 .withBatchSize(options.getBatchSize())
-                .withUri(String.format("mongodb://%s", options.getMongoDBUri()))
+                .withUri(prefixMongoDb(options.getMongoDBUri()))
                 .withDatabase(options.getDatabase())
                 .withCollection(options.getCollection())
                 .withIgnoreSSLCertificate(options.getIgnoreSSLCertificate())
@@ -360,6 +360,14 @@ public class PubSubToMongoDB {
 
     // Execute the pipeline and return the result.
     return pipeline.run();
+  }
+
+  /** Add the MongoDB protocol prefix only if the given uri doesn't have it. */
+  private static String prefixMongoDb(String mongoDBUri) {
+    if (mongoDBUri.startsWith("mongodb://") || mongoDBUri.startsWith("mongodb+srv://")) {
+      return mongoDBUri;
+    }
+    return String.format("mongodb://%s", mongoDBUri);
   }
 
   /**
