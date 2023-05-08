@@ -64,14 +64,14 @@ public final class AbstractPipelineLauncherTest {
   public void testGetJobStatus() throws IOException {
     Get get = mock(Get.class);
     Job job = new Job().setCurrentState(JobState.RUNNING.toString());
-    when(getLocationJobs(client).get(any(), any(), any()))
+    when(getLocationJobs(client).get(any(), any(), any()).setView(any()))
         .thenThrow(new RuntimeException("Server is not responding"))
         .thenReturn(get);
     when(get.execute()).thenThrow(new IOException("Connection reset")).thenReturn(job);
 
     JobState actual = new FakePipelineLauncher(client).getJobStatus(PROJECT, REGION, JOB_ID);
 
-    verify(getLocationJobs(client), times(3))
+    verify(getLocationJobs(client), times(4))
         .get(projectCaptor.capture(), regionCaptor.capture(), jobIdCaptor.capture());
     assertThat(projectCaptor.getValue()).isEqualTo(PROJECT);
     assertThat(regionCaptor.getValue()).isEqualTo(REGION);

@@ -28,6 +28,7 @@ import com.google.api.services.dataflow.Dataflow.Projects.Locations;
 import com.google.api.services.dataflow.Dataflow.Projects.Locations.FlexTemplates;
 import com.google.api.services.dataflow.Dataflow.Projects.Locations.FlexTemplates.Launch;
 import com.google.api.services.dataflow.Dataflow.Projects.Locations.Jobs.Get;
+import com.google.api.services.dataflow.model.Environment;
 import com.google.api.services.dataflow.model.FlexTemplateRuntimeEnvironment;
 import com.google.api.services.dataflow.model.Job;
 import com.google.api.services.dataflow.model.JobMetadata;
@@ -43,6 +44,7 @@ import com.google.common.collect.ImmutableMap;
 import dev.failsafe.FailsafeException;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.util.Collections;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -102,7 +104,9 @@ public final class FlexTemplateClientTest {
                         new SdkVersion()
                             .setVersionDisplayName("Apache Beam Java")
                             .setVersion("2.42.0")))
-            .setType("JOB_TYPE_BATCH");
+            .setType("JOB_TYPE_BATCH")
+            .setEnvironment(new Environment().setExperiments(Collections.singletonList("")));
+
     LaunchFlexTemplateResponse response = new LaunchFlexTemplateResponse().setJob(launchJob);
 
     LaunchConfig options =
@@ -111,7 +115,7 @@ public final class FlexTemplateClientTest {
             .build();
 
     when(getFlexTemplates(client).launch(any(), any(), any())).thenReturn(launch);
-    when(getLocationJobs(client).get(any(), any(), any())).thenReturn(get);
+    when(getLocationJobs(client).get(any(), any(), any()).setView(any())).thenReturn(get);
     when(launch.execute())
         .thenThrow(new SocketTimeoutException("Read timed out"))
         .thenReturn(response);
@@ -136,7 +140,7 @@ public final class FlexTemplateClientTest {
     assertThat(regionCaptor.getValue()).isEqualTo(REGION);
     assertThat(requestCaptor.getValue()).isEqualTo(expectedRequest);
 
-    verify(getLocationJobs(client), times(2))
+    verify(getLocationJobs(client), times(3))
         .get(projectCaptor.capture(), regionCaptor.capture(), jobIdCaptor.capture());
     assertThat(projectCaptor.getValue()).isEqualTo(PROJECT);
     assertThat(regionCaptor.getValue()).isEqualTo(REGION);
@@ -152,7 +156,7 @@ public final class FlexTemplateClientTest {
             .setSdk("Apache Beam Java")
             .setVersion("2.42.0")
             .setJobType("JOB_TYPE_BATCH")
-            .setRunner("Dataflow")
+            .setRunner("Dataflow Legacy Runner")
             .setParameters(ImmutableMap.of(PARAM_KEY, PARAM_VALUE))
             .build();
     assertThat(actual).isEqualTo(expected);

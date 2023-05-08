@@ -135,7 +135,7 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
         return false;
       }
       // The Collection does not exist in the database, create it and return true.
-      getDatabase().getCollection(collectionName);
+      getDatabase().createCollection(collectionName);
     } catch (Exception e) {
       throw new MongoDBResourceManagerException("Error creating collection.", e);
     }

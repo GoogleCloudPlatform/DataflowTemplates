@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.Pipeline;
 
 /** Client for working with Cloud Dataflow. */
 public interface PipelineLauncher {
@@ -111,7 +111,7 @@ public interface PipelineLauncher {
     @Nullable private final String specPath;
     @Nullable private final Sdk sdk;
     @Nullable private final String executable;
-    @Nullable private final TestPipeline pipeline;
+    @Nullable private final Pipeline pipeline;
 
     private LaunchConfig(Builder builder) {
       this.jobName = builder.jobName;
@@ -152,7 +152,7 @@ public interface PipelineLauncher {
       return executable;
     }
 
-    public TestPipeline pipeline() {
+    public Pipeline pipeline() {
       return pipeline;
     }
 
@@ -176,7 +176,7 @@ public interface PipelineLauncher {
       private Map<String, String> parameters;
       private Sdk sdk;
       private String executable;
-      private TestPipeline pipeline;
+      private Pipeline pipeline;
 
       private Builder(String jobName, String specPath) {
         this.jobName = jobName;
@@ -240,11 +240,11 @@ public interface PipelineLauncher {
       }
 
       @Nullable
-      public TestPipeline getPipeline() {
+      public Pipeline getPipeline() {
         return pipeline;
       }
 
-      public Builder setPipeline(TestPipeline pipeline) {
+      public Builder setPipeline(Pipeline pipeline) {
         this.pipeline = pipeline;
         return this;
       }
@@ -348,6 +348,18 @@ public interface PipelineLauncher {
    * @throws IOException if there is an issue sending the request
    */
   Job getJob(String project, String region, String jobId) throws IOException;
+
+  /**
+   * Gets information of a job.
+   *
+   * @param project the project that the job is running under
+   * @param region the region that the job was launched in
+   * @param jobId the id of the job
+   * @param jobView
+   * @return dataflow job information
+   * @throws IOException if there is an issue sending the request
+   */
+  Job getJob(String project, String region, String jobId, String jobView) throws IOException;
 
   /**
    * Gets the current status of a job.
