@@ -59,6 +59,11 @@ message Field {
 
   // Type info for the field.
   FieldType type = 2;
+
+  // Metadata about the field.
+  FieldMetadata metadata = 3 [
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ];
 }
 
 // Type info about a field.
@@ -241,6 +246,45 @@ message TransformDescription {
 
   // Available options for configuring the transform.
   Schema options = 3;
+
+  // Metadata about the transform.
+  TransformMetadata metadata = 4 [
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ];
+}
+
+// Metadata for a transform.
+message TransformMetadata {
+  // A label for the transform, such as an easier-to-read variant of its URN.
+  string label = 1;
+}
+
+// Metadata for a schema field.
+message FieldMetadata {
+  // A label for the field, generally an easier-to-read variant of the field's
+  // name.
+  string label = 1;
+
+  // Helpful message on the field's purpose and how to use it.
+  string help_text = 2;
+
+  // Metadata for a specific field type.
+  oneof type_metadata {
+    // Metadata for fields that are a string type.
+    StringMetadata string_metadata = 3;
+  }
+
+  // Additional, non-standard details for the field.
+  map<string, string> custom_metadata = 4;
+}
+
+// Metadata specific to string fields.
+message StringMetadata {
+  // Regexes for validating the string.
+  repeated string regexes = 1;
+
+  // The type of data represented by the string.
+  StringDataType data_type = 2;
 }
 
 // Raw schemas supported.
@@ -289,4 +333,25 @@ enum TypeName {
   TYPE_NAME_ROW = 15;
   // Beam logical type
   TYPE_NAME_LOGICAL_TYPE = 16;
+}
+
+// The type of data that a string represents.
+enum StringDataType {
+  // The string represents raw text.
+  STRING_DATA_TYPE_TEXT = 0;
+
+  // The string represents a Cloud Storage bucket.
+  STRING_DATA_TYPE_GCS_BUCKET = 1;
+  // The string represents a Cloud Storage folder.
+  STRING_DATA_TYPE_GCS_FOLDER = 2;
+  // The string represents a Cloud Storage file.
+  STRING_DATA_TYPE_GCS_FILE = 3;
+
+  // The string represents a Pub/Sub Topic.
+  STRING_DATA_TYPE_PUBSUB_TOPIC = 4;
+  // The string represents a Pub/Sub Subscription.
+  STRING_DATA_TYPE_PUBSUB_SUBSCRIPTION = 5;
+
+  // The string represents a BigQuery table.
+  STRING_DATA_TYPE_BIGQUERY_TABLE = 6;
 }
