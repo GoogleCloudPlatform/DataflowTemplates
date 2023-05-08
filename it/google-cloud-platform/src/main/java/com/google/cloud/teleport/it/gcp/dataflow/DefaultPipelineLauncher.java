@@ -50,6 +50,7 @@ import org.apache.beam.sdk.metrics.MetricQueryResults;
 import org.apache.beam.sdk.metrics.MetricResult;
 import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Iterables;
 import org.slf4j.Logger;
@@ -69,9 +70,9 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
   // polling custom metrics
   private static final Map<String, PipelineResult> UNMANAGED_JOBS = new HashMap<>();
 
-  private static final long UNKNOWNL_METRIC_VALUE = -1L;
+  private static final long UNKNOWN_METRIC_VALUE = -1L;
 
-  private static final Map<PipelineResult.State, JobState> PIPILINE_STATE_TRANSLATE =
+  private static final Map<PipelineResult.State, JobState> PIPELINE_STATE_TRANSLATE =
       ImmutableMap.<PipelineResult.State, JobState>builder()
           .put(PipelineResult.State.CANCELLED, JobState.CANCELLED)
           .put(PipelineResult.State.RUNNING, JobState.RUNNING)
@@ -100,7 +101,7 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
   @Override
   public JobState getJobStatus(String project, String region, String jobId) throws IOException {
     if (MANAGED_JOBS.containsKey(jobId)) {
-      return PIPILINE_STATE_TRANSLATE.get(MANAGED_JOBS.get(jobId).getState());
+      return PIPELINE_STATE_TRANSLATE.get(MANAGED_JOBS.get(jobId).getState());
     } else {
       return super.handleJobState(getJob(project, region, jobId));
     }
@@ -126,7 +127,7 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
       return new Job()
           .setId(jobId)
           .setRequestedState(
-              PIPILINE_STATE_TRANSLATE.get(MANAGED_JOBS.get(jobId).getState()).toString());
+              PIPELINE_STATE_TRANSLATE.get(MANAGED_JOBS.get(jobId).getState()).toString());
     } else {
       return super.getJob(project, region, jobId);
     }
@@ -196,7 +197,7 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
                 metricName,
                 IOLoadTestBase.BEAM_METRICS_NAMESPACE);
           }
-          return UNKNOWNL_METRIC_VALUE;
+          return UNKNOWN_METRIC_VALUE;
         case STARTTIME:
         case ENDTIME:
         case RUNTIME:
@@ -206,21 +207,21 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
               StreamSupport.stream(distributions.spliterator(), true)
                   .map(element -> Objects.requireNonNull(element.getAttempted()).getMin())
                   .min(Long::compareTo)
-                  .orElse(UNKNOWNL_METRIC_VALUE);
+                  .orElse(UNKNOWN_METRIC_VALUE);
           Long greatestMax =
               StreamSupport.stream(distributions.spliterator(), true)
                   .map(element -> Objects.requireNonNull(element.getAttempted()).getMax())
                   .max(Long::compareTo)
-                  .orElse(UNKNOWNL_METRIC_VALUE);
+                  .orElse(UNKNOWN_METRIC_VALUE);
           if (metricType == IOLoadTestBase.PipelineMetricsType.STARTTIME) {
             return lowestMin;
           } else if (metricType == IOLoadTestBase.PipelineMetricsType.ENDTIME) {
             return greatestMax;
           } else {
-            if (lowestMin != UNKNOWNL_METRIC_VALUE && greatestMax != UNKNOWNL_METRIC_VALUE) {
+            if (lowestMin != UNKNOWN_METRIC_VALUE && greatestMax != UNKNOWN_METRIC_VALUE) {
               return greatestMax - lowestMin;
             } else {
-              return UNKNOWNL_METRIC_VALUE;
+              return UNKNOWN_METRIC_VALUE;
             }
           }
         default:
@@ -229,7 +230,7 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
       }
     } else {
       LOG.warn("Query pipeline defined metrics this SDK or runner is currently unsupported.");
-      return UNKNOWNL_METRIC_VALUE;
+      return UNKNOWN_METRIC_VALUE;
     }
   }
 
@@ -275,25 +276,31 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
     LOG.info("Using parameters:\n{}", formatForLogging(options.parameters()));
     // Create SDK specific command and execute to launch dataflow job
     List<String> cmd = new ArrayList<>();
-    String jobId = null;
+    String jobId;
     switch (options.sdk()) {
       case JAVA:
         checkState(
             options.pipeline() != null,
             "Cannot launch a dataflow job "
                 + "without pipeline specified. Please specify pipeline and try again!");
-        // we expect options are mostly ready except those provided as arguments (project, region,
-        // runner)
-        PipelineOptions pipelineOptions = options.pipeline().getOptions();
-        pipelineOptions.setRunner(PipelineUtils.getRunnerClass(options.getParameter("runner")));
-        pipelineOptions.setJobName(options.jobName());
-        Map<String, String> jobProperties = new HashMap<>();
         if ("DataflowRunner".equalsIgnoreCase(options.getParameter("runner"))) {
           // dataflow runner specific options
-          pipelineOptions.as(DataflowPipelineOptions.class).setProject(project);
-          pipelineOptions.as(DataflowPipelineOptions.class).setRegion(region);
+          PipelineOptions pipelineOptions =
+              PipelineOptionsFactory.fromArgs(
+                      extractOptions(project, region, options).toArray(new String[] {}))
+                  .as(DataflowPipelineOptions.class);
+          pipelineOptions.setJobName(options.jobName());
+          PipelineResult pipelineResult = options.pipeline().run(pipelineOptions);
+          // dataflow runner generated a jobId of certain format for each job
+          DataflowPipelineJob job = (DataflowPipelineJob) pipelineResult;
+          jobId = job.getJobId();
+          UNMANAGED_JOBS.put(jobId, pipelineResult);
         } else {
-          // unsupported runner, manually record job properties
+          PipelineOptions pipelineOptions = options.pipeline().getOptions();
+          pipelineOptions.setRunner(PipelineUtils.getRunnerClass(options.getParameter("runner")));
+          pipelineOptions.setJobName(options.jobName());
+          // for unsupported runners (e.g. direct runner) runner, manually record job properties
+          Map<String, String> jobProperties = new HashMap<>();
           jobProperties.put(
               "createTime", Timestamps.toString(Timestamps.fromMillis(System.currentTimeMillis())));
           if (pipelineOptions.as(StreamingOptions.class).isStreaming()) {
@@ -301,18 +308,10 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
           } else {
             jobProperties.put("jobType", "JOB_TYPE_BATCH");
           }
-        }
-        PipelineResult pipelineResult = options.pipeline().run();
-        if (Objects.equals(options.getParameter("runner"), "DataflowRunner")) {
-          // dataflow runner generated a jobId of certain format for each job
-          DataflowPipelineJob job = (DataflowPipelineJob) pipelineResult;
-          jobId = job.getJobId();
-          UNMANAGED_JOBS.put(jobId, pipelineResult);
-        } else {
+          PipelineResult pipelineResult = options.pipeline().run();
           // for unsupported runners (e.g. direct runner), set jobId the same as jobName
           jobId = options.jobName();
           MANAGED_JOBS.put(jobId, pipelineResult);
-
           // for unsupported runners (e.g. direct runner), return a wrapped LaunchInfo
           return LaunchInfo.builder()
               .setJobId(jobId)
@@ -359,8 +358,8 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
     }
     // Wait until the job is active to get more information
     JobState state = waitUntilActive(project, region, jobId);
-    Job job = getJob(project, region, jobId);
-    return getJobInfo(options, state, job, options.getParameter("runner"));
+    Job job = getJob(project, region, jobId, "JOB_VIEW_DESCRIPTION");
+    return getJobInfo(options, state, job);
   }
 
   private List<String> extractOptions(String project, String region, LaunchConfig options) {

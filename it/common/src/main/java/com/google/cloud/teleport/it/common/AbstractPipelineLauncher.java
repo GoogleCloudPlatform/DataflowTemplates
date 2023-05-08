@@ -22,10 +22,12 @@ import static com.google.cloud.teleport.it.common.utils.RetryUtil.clientRetryPol
 
 import com.google.api.client.util.ArrayMap;
 import com.google.api.services.dataflow.Dataflow;
+import com.google.api.services.dataflow.model.Environment;
 import com.google.api.services.dataflow.model.Job;
 import com.google.api.services.dataflow.model.MetricUpdate;
 import com.google.cloud.teleport.it.common.logging.LogStrings;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
 import dev.failsafe.Failsafe;
 import java.io.IOException;
 import java.util.HashMap;
@@ -57,11 +59,24 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
 
   @Override
   public Job getJob(String project, String region, String jobId) throws IOException {
+    return getJob(project, region, jobId, "JOB_VIEW_UNKNOWN");
+  }
+
+  @Override
+  public Job getJob(String project, String region, String jobId, String view) throws IOException {
     LOG.info("Getting the status of {} under {}", jobId, project);
 
     Job job =
         Failsafe.with(clientRetryPolicy())
-            .get(() -> client.projects().locations().jobs().get(project, region, jobId).execute());
+            .get(
+                () ->
+                    client
+                        .projects()
+                        .locations()
+                        .jobs()
+                        .get(project, region, jobId)
+                        .setView(view)
+                        .execute());
 
     LOG.info("Received job on get request for {}:\n{}", jobId, LogStrings.formatForLogging(job));
     return job;
@@ -198,8 +213,15 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   }
 
   /** Creates a JobInfo object from the provided parameters. */
-  protected LaunchInfo getJobInfo(LaunchConfig options, JobState state, Job job, String runner) {
+  protected LaunchInfo getJobInfo(LaunchConfig options, JobState state, Job job) {
     Map<String, String> labels = job.getLabels();
+    String runner = "Dataflow Legacy Runner";
+    Environment environment = job.getEnvironment();
+    if (environment != null
+        && environment.getExperiments() != null
+        && environment.getExperiments().contains("use_runner_v2")) {
+      runner = "Dataflow Runner V2";
+    }
     LaunchInfo.Builder builder =
         LaunchInfo.builder()
             .setProjectId(job.getProjectId())
@@ -210,8 +232,13 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
             .setVersion(job.getJobMetadata().getSdkVersion().getVersion())
             .setJobType(job.getType())
             .setRunner(runner)
-            .setParameters(options.parameters())
             .setState(state);
+    // add all environment params to parameters in LaunchInfo so that these are exported for load
+    // tests
+    Map<String, String> parameters = new HashMap<>();
+    parameters.putAll(options.parameters());
+    options.environment().forEach((key, val) -> parameters.put(key, val.toString()));
+    builder.setParameters(ImmutableMap.copyOf(parameters));
     if (labels != null && !labels.isEmpty()) {
       builder
           .setTemplateType(

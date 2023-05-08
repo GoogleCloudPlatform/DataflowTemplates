@@ -104,7 +104,7 @@ public abstract class LoadTestBase {
   }
 
   @After
-  public void tearDownPerformanceBenchmarkingBase() {
+  public void tearDownLoadTestBase() {
     monitoringClient.cleanupAll();
   }
 
