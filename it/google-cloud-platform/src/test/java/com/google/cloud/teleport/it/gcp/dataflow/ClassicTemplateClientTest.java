@@ -29,6 +29,7 @@ import com.google.api.services.dataflow.Dataflow.Projects.Locations.Jobs.Get;
 import com.google.api.services.dataflow.Dataflow.Projects.Locations.Templates;
 import com.google.api.services.dataflow.Dataflow.Projects.Locations.Templates.Create;
 import com.google.api.services.dataflow.model.CreateJobFromTemplateRequest;
+import com.google.api.services.dataflow.model.Environment;
 import com.google.api.services.dataflow.model.Job;
 import com.google.api.services.dataflow.model.JobMetadata;
 import com.google.api.services.dataflow.model.RuntimeEnvironment;
@@ -41,6 +42,7 @@ import com.google.common.collect.ImmutableMap;
 import dev.failsafe.FailsafeException;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.util.Collections;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -100,7 +102,8 @@ public final class ClassicTemplateClientTest {
                         new SdkVersion()
                             .setVersionDisplayName("Apache Beam Java")
                             .setVersion("2.42.0")))
-            .setType("JOB_TYPE_BATCH");
+            .setType("JOB_TYPE_BATCH")
+            .setEnvironment(new Environment().setExperiments(Collections.singletonList("")));
 
     LaunchConfig options =
         LaunchConfig.builderWithName(JOB_NAME, SPEC_PATH)
@@ -108,7 +111,7 @@ public final class ClassicTemplateClientTest {
             .build();
 
     when(getTemplates(client).create(any(), any(), any())).thenReturn(launch);
-    when(getLocationJobs(client).get(any(), any(), any())).thenReturn(get);
+    when(getLocationJobs(client).get(any(), any(), any()).setView(any())).thenReturn(get);
     when(launch.execute())
         .thenThrow(new SocketTimeoutException("Read timed out"))
         .thenReturn(launchJob);
@@ -132,7 +135,7 @@ public final class ClassicTemplateClientTest {
     assertThat(regionCaptor.getValue()).isEqualTo(REGION);
     assertThat(requestCaptor.getValue()).isEqualTo(expectedRequest);
 
-    verify(getLocationJobs(client), times(2))
+    verify(getLocationJobs(client), times(3))
         .get(projectCaptor.capture(), regionCaptor.capture(), jobIdCaptor.capture());
     assertThat(projectCaptor.getValue()).isEqualTo(PROJECT);
     assertThat(regionCaptor.getValue()).isEqualTo(REGION);
@@ -148,7 +151,7 @@ public final class ClassicTemplateClientTest {
             .setSdk("Apache Beam Java")
             .setVersion("2.42.0")
             .setJobType("JOB_TYPE_BATCH")
-            .setRunner("Dataflow")
+            .setRunner("Dataflow Legacy Runner")
             .setParameters(ImmutableMap.of(PARAM_KEY, PARAM_VALUE))
             .build();
     assertThat(actual).isEqualTo(expected);
