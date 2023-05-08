@@ -76,12 +76,4 @@ public interface MongoDBResourceManager extends ResourceManager {
    * @throws MongoDBResourceManagerException if there is an error reading the collection.
    */
   FindIterable<Document> readCollection(String collectionName);
-
-  /**
-   * Deletes all created resources (databases, collections and documents) and cleans up the MongoDB
-   * client, making the manager object unusable.
-   *
-   * @throws MongoDBResourceManagerException if there is an error deleting the MongoDB resources.
-   */
-  void cleanupAll();
 }

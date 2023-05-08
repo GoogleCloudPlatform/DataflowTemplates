@@ -43,7 +43,7 @@ public abstract class PubsubMessagesCheck extends ConditionCheck {
 
   @Override
   public String getDescription() {
-    if (minMessages() != null) {
+    if (maxMessages() != null) {
       return String.format(
           "Pub/Sub check if subscription %s received between %d and %d messages",
           subscription(), minMessages(), maxMessages());
