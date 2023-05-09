@@ -17,6 +17,7 @@ package com.google.cloud.teleport.it.elasticsearch;
 
 import static com.google.cloud.teleport.it.elasticsearch.ElasticsearchUtils.checkValidIndexName;
 
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
@@ -48,7 +49,7 @@ import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Default class for implementation of {@link ElasticsearchResourceManager} interface.
+ * Default class for implementation of {@link DefaultElasticsearchResourceManager} interface.
  *
  * <p>The class supports many indices per resource manager object.
  *
@@ -59,7 +60,7 @@ import org.testcontainers.utility.DockerImageName;
  */
 public class DefaultElasticsearchResourceManager
     extends TestContainerResourceManager<GenericContainer<?>>
-    implements ElasticsearchResourceManager {
+    implements ResourceManager {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(DefaultElasticsearchResourceManager.class);
@@ -111,7 +112,7 @@ public class DefaultElasticsearchResourceManager
     return new DefaultElasticsearchResourceManager.Builder(testId);
   }
 
-  @Override
+  /** Returns the URI connection string to the Elasticsearch service. */
   public synchronized String getUri() {
     return connectionString;
   }
@@ -125,7 +126,14 @@ public class DefaultElasticsearchResourceManager
         .exists(new GetIndexRequest(indexName), RequestOptions.DEFAULT);
   }
 
-  @Override
+  /**
+   * Creates an index on Elasticsearch.
+   *
+   * @param indexName Name of the index to create.
+   * @return A boolean indicating whether the resource was created.
+   * @throws ElasticsearchResourceManagerException if there is an error creating the collection in
+   *     Elasticsearch.
+   */
   public synchronized boolean createIndex(String indexName) {
     LOG.info("Creating index using name '{}'.", indexName);
 
@@ -146,7 +154,16 @@ public class DefaultElasticsearchResourceManager
     }
   }
 
-  @Override
+  /**
+   * Inserts the given Documents into a collection.
+   *
+   * <p>Note: Implementations may do collection creation here, if one does not already exist.
+   *
+   * @param indexName The name of the index to insert the documents into.
+   * @param documents A map of (id, document) to insert into the collection.
+   * @return A boolean indicating whether the Documents were inserted successfully.
+   * @throws ElasticsearchResourceManagerException if there is an error inserting the documents.
+   */
   public synchronized boolean insertDocuments(
       String indexName, Map<String, Map<String, Object>> documents) {
     LOG.info("Attempting to write {} documents to {}.", documents.size(), indexName);
@@ -173,7 +190,13 @@ public class DefaultElasticsearchResourceManager
     }
   }
 
-  @Override
+  /**
+   * Reads all the documents in an index.
+   *
+   * @param indexName The name of the index to read from.
+   * @return An iterable of all the Documents in the collection.
+   * @throws ElasticsearchResourceManagerException if there is an error reading the data.
+   */
   public synchronized List<Map<String, Object>> fetchAll(String indexName) {
     LOG.info("Reading all documents from {}.", indexName);
 
@@ -192,7 +215,13 @@ public class DefaultElasticsearchResourceManager
     }
   }
 
-  @Override
+  /**
+   * Gets the count of documents in an index.
+   *
+   * @param indexName The name of the index to read from.
+   * @return The number of documents for the given index
+   * @throws ElasticsearchResourceManagerException if there is an error reading the data.
+   */
   public long count(String indexName) {
     LOG.info("Fetching count from {}.", indexName);
 
@@ -209,7 +238,13 @@ public class DefaultElasticsearchResourceManager
     }
   }
 
-  @Override
+  /**
+   * Deletes all created resources and cleans up the Elasticsearch client, making the manager object
+   * unusable.
+   *
+   * @throws ElasticsearchResourceManagerException if there is an error deleting the Elasticsearch
+   *     resources.
+   */
   public synchronized void cleanupAll() {
     LOG.info("Attempting to cleanup Elasticsearch manager.");
 

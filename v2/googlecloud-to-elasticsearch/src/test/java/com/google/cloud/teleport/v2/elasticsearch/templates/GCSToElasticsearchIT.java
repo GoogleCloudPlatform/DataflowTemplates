@@ -26,7 +26,6 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.elasticsearch.DefaultElasticsearchResourceManager;
-import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
@@ -49,7 +48,7 @@ import org.junit.runners.JUnit4;
 public final class GCSToElasticsearchIT extends TemplateTestBase {
 
   private BigQueryResourceManager bigQueryClient;
-  private ElasticsearchResourceManager elasticsearchResourceManager;
+  private DefaultElasticsearchResourceManager elasticsearchResourceManager;
 
   @Before
   public void setup() {
