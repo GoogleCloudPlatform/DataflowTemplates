@@ -25,7 +25,7 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
+import com.google.cloud.teleport.it.kafka.KafkaResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
@@ -61,7 +61,7 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(PubsubToKafka.class);
 
-  private DefaultKafkaResourceManager kafkaResourceManager;
+  private KafkaResourceManager kafkaResourceManager;
 
   private PubsubResourceManager pubsubResourceManager;
 
@@ -73,7 +73,7 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
             .credentialsProvider(credentialsProvider)
             .build();
 
-    kafkaResourceManager = DefaultKafkaResourceManager.builder(testName).build();
+    kafkaResourceManager = KafkaResourceManager.builder(testName).build();
   }
 
   @After

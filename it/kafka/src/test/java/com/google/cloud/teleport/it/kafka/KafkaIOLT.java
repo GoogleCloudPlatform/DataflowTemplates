@@ -55,7 +55,7 @@ import org.junit.Test;
  * -DartifactBucket=[temp bucket] -DfailIfNoTests=false".
  */
 public final class KafkaIOLT extends IOLoadTestBase {
-  private static DefaultKafkaResourceManager resourceManager;
+  private static KafkaResourceManager resourceManager;
   private static final String READ_ELEMENT_METRIC_NAME = "read_count";
   private static final int ROW_SIZE = 1024;
   private Configuration configuration;
@@ -68,7 +68,7 @@ public final class KafkaIOLT extends IOLoadTestBase {
 
   @BeforeClass
   public static void beforeClass() throws IOException {
-    resourceManager = DefaultKafkaResourceManager.builder("io-kafka-lt").build();
+    resourceManager = KafkaResourceManager.builder("io-kafka-lt").build();
   }
 
   @Before

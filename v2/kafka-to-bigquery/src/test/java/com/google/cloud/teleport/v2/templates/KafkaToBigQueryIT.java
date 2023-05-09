@@ -33,7 +33,7 @@ import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
-import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
+import com.google.cloud.teleport.it.kafka.KafkaResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
@@ -61,7 +61,7 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableResourceManager.class);
 
-  private DefaultKafkaResourceManager kafkaResourceManager;
+  private KafkaResourceManager kafkaResourceManager;
   private BigQueryResourceManager bigQueryClient;
 
   @Before
@@ -70,7 +70,7 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
         BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
     bigQueryClient.createDataset(REGION);
 
-    kafkaResourceManager = DefaultKafkaResourceManager.builder(testName).build();
+    kafkaResourceManager = KafkaResourceManager.builder(testName).build();
   }
 
   @After

@@ -51,10 +51,10 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class DefaultKafkaResourceManager extends TestContainerResourceManager<GenericContainer<?>>
+public class KafkaResourceManager extends TestContainerResourceManager<GenericContainer<?>>
     implements ResourceManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultKafkaResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaResourceManager.class);
 
   private static final String DEFAULT_KAFKA_CONTAINER_NAME = "confluentinc/cp-kafka";
 
@@ -70,13 +70,13 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
   private final String connectionString;
   private final boolean usingStaticTopic;
 
-  private DefaultKafkaResourceManager(DefaultKafkaResourceManager.Builder builder) {
+  private KafkaResourceManager(KafkaResourceManager.Builder builder) {
     this(null, new DefaultKafkaContainer(builder), builder);
   }
 
   @VisibleForTesting
-  DefaultKafkaResourceManager(
-      AdminClient client, KafkaContainer container, DefaultKafkaResourceManager.Builder builder) {
+  KafkaResourceManager(
+      AdminClient client, KafkaContainer container, KafkaResourceManager.Builder builder) {
     super(container, builder);
 
     this.usingStaticTopic = builder.topicNames.size() > 0;
@@ -101,8 +101,8 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
             : AdminClient.create(ImmutableMap.of("bootstrap.servers", this.connectionString));
   }
 
-  public static DefaultKafkaResourceManager.Builder builder(String testId) throws IOException {
-    return new DefaultKafkaResourceManager.Builder(testId);
+  public static KafkaResourceManager.Builder builder(String testId) throws IOException {
+    return new KafkaResourceManager.Builder(testId);
   }
 
   /** Returns the kafka boostrap server connection string. */
@@ -209,9 +209,9 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
     LOG.info("Kafka manager successfully cleaned up.");
   }
 
-  /** Builder for {@link DefaultKafkaResourceManager}. */
+  /** Builder for {@link KafkaResourceManager}. */
   public static final class Builder
-      extends TestContainerResourceManager.Builder<DefaultKafkaResourceManager> {
+      extends TestContainerResourceManager.Builder<KafkaResourceManager> {
 
     private final Set<String> topicNames;
     int numTopics;
@@ -231,7 +231,7 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
      * <p>Note: if a topic name is set, and a static kafka server is being used
      * (useStaticContainer() is also called on the builder), then a topic will be created on the
      * static server if it does not exist, and it will NOT be removed when cleanupAll() is called on
-     * the DefaultKafkaResourceManager.
+     * the KafkaResourceManager.
      *
      * @param topicNames A set of topic names.
      * @return this builder object with the topic name set.
@@ -248,7 +248,7 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
      * <p>Note: if number of topics is set, and a static kafka server is being used
      * (useStaticContainer() is also called on the builder), then the assigned number of topics will
      * be created on the static server, and it will be removed when cleanupAll() is called on the
-     * DefaultKafkaResourceManager.
+     * KafkaResourceManager.
      *
      * @param numTopics number of topics to be created. Default is 1.
      * @return this builder object with numTopics set.
@@ -263,8 +263,8 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
     }
 
     @Override
-    public DefaultKafkaResourceManager build() {
-      return new DefaultKafkaResourceManager(this);
+    public KafkaResourceManager build() {
+      return new KafkaResourceManager(this);
     }
   }
 

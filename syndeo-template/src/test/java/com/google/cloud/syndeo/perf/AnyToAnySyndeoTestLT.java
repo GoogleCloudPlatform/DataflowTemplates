@@ -37,7 +37,7 @@ import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManagerCluster;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsublite.PubsubliteResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
-import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
+import com.google.cloud.teleport.it.kafka.KafkaResourceManager;
 import com.google.pubsub.v1.SubscriptionName;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -125,10 +125,10 @@ public class AnyToAnySyndeoTestLT {
               }),
           "beam:schematransform:org.apache.beam:kafka_read:v1",
           TransformProvider.create(
-              wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).build()),
+              wrap(() -> KafkaResourceManager.builder(TEST_ID).build()),
               (ResourceManager rm) -> {
-                assert rm instanceof DefaultKafkaResourceManager;
-                DefaultKafkaResourceManager krm = (DefaultKafkaResourceManager) rm;
+                assert rm instanceof KafkaResourceManager;
+                KafkaResourceManager krm = (KafkaResourceManager) rm;
                 // TODO(pabloem): Verify correct number of partitions to use.
                 String topicName = krm.createTopic(TEST_ID, 1);
                 return SinkAndSourceConfigs.create(
@@ -274,10 +274,10 @@ public class AnyToAnySyndeoTestLT {
               }),
           "beam:schematransform:org.apache.beam:kafka_write:v1",
           TransformProvider.create(
-              wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).build()),
+              wrap(() -> KafkaResourceManager.builder(TEST_ID).build()),
               (ResourceManager rm) -> {
-                assert rm instanceof DefaultKafkaResourceManager;
-                DefaultKafkaResourceManager krm = (DefaultKafkaResourceManager) rm;
+                assert rm instanceof KafkaResourceManager;
+                KafkaResourceManager krm = (KafkaResourceManager) rm;
                 // TODO(pabloem): Make sure it's not created twice
 
                 return SinkAndSourceConfigs.create(
@@ -477,7 +477,7 @@ public class AnyToAnySyndeoTestLT {
       return rowConfig.getSchema().getFields().stream()
           .filter(f -> rowConfig.getValue(f.getName()) != null)
           .map(f -> Map.entry(f.getName(), rowConfig.getValue(f.getName())))
-          .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
+          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     } catch (NoSuchSchemaException e) {
       throw new RuntimeException(e);
     }
