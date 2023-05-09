@@ -16,6 +16,9 @@
 package com.google.cloud.teleport.v2.templates.functions;
 
 import com.google.auto.value.AutoValue;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import org.apache.beam.sdk.io.redis.RedisConnectionConfiguration;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -113,13 +116,17 @@ public abstract class RedisHashIO {
       }
 
       private void writeRecord(KV<String, KV<String, String>> record) {
+        Map<String, String> hashFieldValues = new HashMap<>();
         String hashKey = record.getKey();
         KV<String, String> hashValue = record.getValue();
         String fieldKey = hashValue.getKey();
-        String value = hashValue.getValue();
+        String fieldValue = hashValue.getValue();
         Long expireTime = this.spec.expireTime();
 
-        transaction.hset(hashKey, fieldKey, value);
+        hashFieldValues.putIfAbsent("millisecondsTime", String.valueOf(System.currentTimeMillis()));
+        hashFieldValues.put(fieldKey, fieldValue);
+
+        transaction.hset(hashKey, hashFieldValues);
         if (expireTime != null && !Objects.equals(expireTime, NO_EXPIRATION)) {
           transaction.expire(hashKey, expireTime);
         }
