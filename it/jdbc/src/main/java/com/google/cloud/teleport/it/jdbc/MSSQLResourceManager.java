@@ -33,8 +33,7 @@ import org.testcontainers.utility.DockerImageName;
  * <p>The class is thread-safe.
  */
 public class MSSQLResourceManager
-    extends AbstractJDBCResourceManager<
-        MSSQLResourceManager.DefaultMSSQLServerContainer<?>> {
+    extends AbstractJDBCResourceManager<MSSQLResourceManager.DefaultMSSQLServerContainer<?>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(MSSQLResourceManager.class);
 
@@ -59,8 +58,8 @@ public class MSSQLResourceManager
   }
 
   @VisibleForTesting
-  <T extends MSSQLResourceManager.DefaultMSSQLServerContainer<T>>
-  MSSQLResourceManager(T container, Builder builder) {
+  <T extends MSSQLResourceManager.DefaultMSSQLServerContainer<T>> MSSQLResourceManager(
+      T container, Builder builder) {
     super(container, builder);
     initialized = true;
   }

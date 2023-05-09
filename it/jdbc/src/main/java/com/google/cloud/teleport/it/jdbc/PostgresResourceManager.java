@@ -28,8 +28,7 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class PostgresResourceManager
-    extends AbstractJDBCResourceManager<PostgreSQLContainer<?>> {
+public class PostgresResourceManager extends AbstractJDBCResourceManager<PostgreSQLContainer<?>> {
 
   private static final String DEFAULT_POSTGRES_CONTAINER_NAME = "postgres";
 

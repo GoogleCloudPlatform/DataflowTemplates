@@ -48,8 +48,7 @@ public class PostgresResourceManagerTest<T extends PostgreSQLContainer<T>> {
     when(container.withPassword(any())).thenReturn(container);
     when(container.withDatabaseName(anyString())).thenReturn(container);
     testManager =
-        new PostgresResourceManager(
-            container, new PostgresResourceManager.Builder(TEST_ID));
+        new PostgresResourceManager(container, new PostgresResourceManager.Builder(TEST_ID));
   }
 
   @Test

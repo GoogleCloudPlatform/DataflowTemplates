@@ -48,9 +48,7 @@ public class OracleResourceManagerTest<T extends OracleContainer> {
     when(container.withUsername(any())).thenReturn(container);
     when(container.withPassword(any())).thenReturn(container);
     when(container.withDatabaseName(anyString())).thenReturn(container);
-    testManager =
-        new OracleResourceManager(
-            container, new OracleResourceManager.Builder(TEST_ID));
+    testManager = new OracleResourceManager(container, new OracleResourceManager.Builder(TEST_ID));
   }
 
   @Test

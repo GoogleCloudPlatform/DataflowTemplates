@@ -51,8 +51,7 @@ public class OracleResourceManager extends AbstractJDBCResourceManager<OracleCon
   }
 
   @VisibleForTesting
-  OracleResourceManager(
-      OracleContainer container, OracleResourceManager.Builder builder) {
+  OracleResourceManager(OracleContainer container, OracleResourceManager.Builder builder) {
     super(container, builder);
   }
 

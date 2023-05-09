@@ -58,12 +58,10 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class ElasticsearchResourceManager
-    extends TestContainerResourceManager<GenericContainer<?>>
+public class ElasticsearchResourceManager extends TestContainerResourceManager<GenericContainer<?>>
     implements ResourceManager {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(ElasticsearchResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchResourceManager.class);
 
   private static final String DEFAULT_ELASTICSEARCH_CONTAINER_NAME =
       "docker.elastic.co/elasticsearch/elasticsearch-oss";

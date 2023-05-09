@@ -51,9 +51,7 @@ public class MSSQLResourceManagerTest<
     when(container.withPassword(any())).thenReturn(container);
     when(container.withDatabaseName(anyString())).thenReturn(container);
     when(container.getDatabaseName()).thenReturn(DATABASE_NAME);
-    testManager =
-        new MSSQLResourceManager(
-            container, new MSSQLResourceManager.Builder(TEST_ID));
+    testManager = new MSSQLResourceManager(container, new MSSQLResourceManager.Builder(TEST_ID));
   }
 
   @Test

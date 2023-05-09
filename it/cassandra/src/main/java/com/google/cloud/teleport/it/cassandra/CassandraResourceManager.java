@@ -47,8 +47,8 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class CassandraResourceManager
-    extends TestContainerResourceManager<GenericContainer<?>> implements ResourceManager {
+public class CassandraResourceManager extends TestContainerResourceManager<GenericContainer<?>>
+    implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(CassandraResourceManager.class);
 

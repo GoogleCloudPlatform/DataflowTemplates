@@ -51,8 +51,7 @@ public class AbstractJDBCResourceManagerIT {
 
   @Test
   public void testDefaultPostgresResourceManagerE2E() {
-    PostgresResourceManager postgres =
-        PostgresResourceManager.builder(TEST_ID).build();
+    PostgresResourceManager postgres = PostgresResourceManager.builder(TEST_ID).build();
 
     simpleTest(postgres);
   }

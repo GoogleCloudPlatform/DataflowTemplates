@@ -47,9 +47,7 @@ public class MySQLResourceManagerTest<T extends MySQLContainer<T>> {
     when(container.withUsername(any())).thenReturn(container);
     when(container.withPassword(any())).thenReturn(container);
     when(container.withDatabaseName(anyString())).thenReturn(container);
-    testManager =
-        new MySQLResourceManager(
-            container, new MySQLResourceManager.Builder(TEST_ID));
+    testManager = new MySQLResourceManager(container, new MySQLResourceManager.Builder(TEST_ID));
   }
 
   @Test

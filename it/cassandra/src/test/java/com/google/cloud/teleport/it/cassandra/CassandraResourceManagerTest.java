@@ -92,8 +92,7 @@ public class CassandraResourceManagerTest {
   public void testCleanupAllShouldNotDropStaticDatabase() throws IOException {
     CassandraResourceManager.Builder builder =
         CassandraResourceManager.builder(TEST_ID).setKeyspaceName(STATIC_KEYSPACE_NAME);
-    CassandraResourceManager tm =
-        new CassandraResourceManager(cassandraClient, container, builder);
+    CassandraResourceManager tm = new CassandraResourceManager(cassandraClient, container, builder);
 
     tm.cleanupAll();
 

@@ -154,8 +154,7 @@ public class ElasticsearchResourceManagerTest {
 
   @Test
   public void testCleanupAllShouldDropStaticIndex() throws IOException {
-    ElasticsearchResourceManager.Builder builder =
-        ElasticsearchResourceManager.builder(TEST_ID);
+    ElasticsearchResourceManager.Builder builder = ElasticsearchResourceManager.builder(TEST_ID);
     builder.setHost("localhost").setPort(9200).useStaticContainer();
 
     ElasticsearchResourceManager tm =
