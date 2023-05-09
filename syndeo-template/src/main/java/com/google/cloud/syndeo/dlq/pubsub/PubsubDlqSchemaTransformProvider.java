@@ -70,6 +70,7 @@ public class PubsubDlqSchemaTransformProvider
       outputCollectionNames() {
     return Collections.emptyList();
   }
+
   /**
    * An implementation of {@link SchemaTransform} for Pub/Sub writes configured using {@link
    * PubsubDlqWriteConfiguration}.

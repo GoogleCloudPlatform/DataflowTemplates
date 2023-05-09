@@ -15,6 +15,8 @@
  */
 package com.google.cloud.syndeo.it;
 
+import static org.awaitility.Awaitility.await;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -28,12 +30,13 @@ import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.dataflow.FlexTemplateClient;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.time.Instant;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +68,6 @@ public class PubsubDlqIT {
       FixedCredentialsProvider.create(CREDENTIALS);
 
   private static final Integer MESSAGE_COUNT = 10;
-  private static final Long ONE_MINUTE_MILLIS = 60 * 1000L;
 
   @Rule public final TestName testName = new TestName();
 
@@ -146,35 +148,30 @@ public class PubsubDlqIT {
     // Publish correct messages to the source queue
     publishCorrectDataToPubsub();
 
-    // Wait for the Syndeo pipeline to move all the data.
-    Thread.sleep(3 * ONE_MINUTE_MILLIS);
+    // Poll the pubsub sink until the messages are written
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, pubsubSinkSubscription)
+            .setMinMessages(MESSAGE_COUNT)
+            .setMaxMessages(MESSAGE_COUNT)
+            .build();
 
-    // Wait for a while to check the reults in the pubsub sink
-    {
-      Instant start = Instant.now();
-      while (true) {
-        PullResponse response = pubsubResourceManager.pull(pubsubSinkSubscription, 100);
-        if (response.getReceivedMessagesCount() == MESSAGE_COUNT) {
-          // Test sucessful
-          break;
-        } else if (response.getReceivedMessagesCount() > MESSAGE_COUNT) {
-          throw new AssertionError(
-              String.format(
-                  "Expected at most %s elements to be inserted to Pubsub sink, but found %s.",
-                  MESSAGE_COUNT, response.getReceivedMessagesCount()));
-        } else if (java.time.Duration.between(start, Instant.now())
-                .compareTo(java.time.Duration.ofMinutes(20))
-            > 0) {
-          // If we spent over 20 minutes waiting for the job, then we must exit
-          throw new AssertionError(
-              String.format(
-                  "Expected %s elements to be inserted to Pubsub sink, but found %s after over 20 minutes.",
-                  MESSAGE_COUNT, response.getReceivedMessagesCount()));
-        } else {
-          // Iterate once more
-          Thread.sleep(ONE_MINUTE_MILLIS);
-        }
-      }
+    await("Retrieving messages from Pub/Sub sink")
+        .atMost(Duration.ofMinutes(7))
+        .pollInterval(Duration.ofSeconds(5))
+        .until(pubsubCheck::get);
+
+    int msgCount = pubsubCheck.getReceivedMessageList().size();
+
+    if (msgCount > MESSAGE_COUNT) {
+      throw new AssertionError(
+          String.format(
+              "Expected at most %s elements to be inserted to Pubsub sink, but found %s.",
+              MESSAGE_COUNT, msgCount));
+    } else if (msgCount < MESSAGE_COUNT) {
+      throw new AssertionError(
+          String.format(
+              "Expected at least %s elements to be inserted to Pubsub sink, but found %s.",
+              MESSAGE_COUNT, msgCount));
     }
 
     // Wait five minutes while the pipeline drains
@@ -199,35 +196,75 @@ public class PubsubDlqIT {
     // Publish incorrect messages to the source queue
     publishIncorrectDataToPubsub();
 
-    // Wait for the Syndeo pipeline to move all the data.
-    Thread.sleep(3 * ONE_MINUTE_MILLIS);
+    // Poll the pubsub sink until the messages are written
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, pubsubDlqSubscription)
+            .setMinMessages(MESSAGE_COUNT)
+            .setMaxMessages(MESSAGE_COUNT)
+            .build();
 
-    // Wait for a while to check the reults in the pubsub sink
-    {
-      Instant start = Instant.now();
-      while (true) {
-        PullResponse response = pubsubResourceManager.pull(pubsubDlqSubscription, 100);
-        if (response.getReceivedMessagesCount() == MESSAGE_COUNT) {
-          // Test sucessful
-          break;
-        } else if (response.getReceivedMessagesCount() > MESSAGE_COUNT) {
-          throw new AssertionError(
-              String.format(
-                  "Expected at most %s elements to be inserted to Pubsub sink, but found %s.",
-                  MESSAGE_COUNT, response.getReceivedMessagesCount()));
-        } else if (java.time.Duration.between(start, Instant.now())
-                .compareTo(java.time.Duration.ofMinutes(20))
-            > 0) {
-          // If we spent over 20 minutes waiting for the job, then we must exit
-          throw new AssertionError(
-              String.format(
-                  "Expected %s elements to be inserted to Pubsub sink, but found %s after over 20 minutes.",
-                  MESSAGE_COUNT, response.getReceivedMessagesCount()));
-        } else {
-          // Iterate once more
-          Thread.sleep(ONE_MINUTE_MILLIS);
-        }
-      }
+    await("Retrieving messages from Pub/Sub dlq")
+        .atMost(Duration.ofMinutes(7))
+        .pollInterval(Duration.ofSeconds(5))
+        .until(pubsubCheck::get);
+
+    int msgCount = pubsubCheck.getReceivedMessageList().size();
+
+    if (msgCount > MESSAGE_COUNT) {
+      throw new AssertionError(
+          String.format(
+              "Expected at most %s elements to be inserted to Pubsub sink, but found %s.",
+              MESSAGE_COUNT, msgCount));
+    } else if (msgCount < MESSAGE_COUNT) {
+      throw new AssertionError(
+          String.format(
+              "Expected at least %s elements to be inserted to Pubsub sink, but found %s.",
+              MESSAGE_COUNT, msgCount));
+    }
+
+    // Wait five minutes while the pipeline drains
+    operator.drainJobAndFinish(
+        PipelineOperator.Config.builder()
+            .setProject(PROJECT)
+            .setRegion(REGION)
+            .setJobId(syndeoPipeline.jobId())
+            .setTimeoutAfter(java.time.Duration.ofMinutes(5))
+            .build());
+  }
+
+  @Test
+  public void testPubsubToPubsubLargeMsgFailure() throws Exception {
+    // Start Syndeo pipeline
+    FlexTemplateClient templateClient =
+        FlexTemplateClient.builder().setCredentials(CREDENTIALS).build();
+    PipelineOperator operator = new PipelineOperator(templateClient);
+
+    PipelineLauncher.LaunchInfo syndeoPipeline = kickstartSyndeoPipeline();
+
+    // Publish large messages to the source queue
+    publishLargeMsgToPubsub();
+
+    // Poll the pubsub sink until the messages are written
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, pubsubSinkSubscription)
+            .setMinMessages(1)
+            .setMaxMessages(1)
+            .build();
+
+    await("Retrieving messages from Pub/Sub sink")
+        .atMost(Duration.ofMinutes(7))
+        .pollInterval(Duration.ofSeconds(5))
+        .until(pubsubCheck::get);
+
+    int msgCount = pubsubCheck.getReceivedMessageList().size();
+
+    if (msgCount > 1) {
+      throw new AssertionError(
+          String.format(
+              "Expected at most %s elements to be inserted to Pubsub sink, but found %s.",
+              1, msgCount));
+    } else if (msgCount < 1) {
+      throw new AssertionError(String.format("No elements found in the Pubsub sink."));
     }
 
     // Wait five minutes while the pipeline drains
@@ -326,6 +363,21 @@ public class PubsubDlqIT {
     for (int i = 0; i < MESSAGE_COUNT; i++) {
       pubsubResourceManager.publish(
           pubsubSourceTopic, Map.of(), ByteString.copyFromUtf8(String.format("{failure}")));
+    }
+  }
+
+  private void publishLargeMsgToPubsub() {
+    // Publish large message with the correct schema
+    // Max data that can be sent over Pubsub is 10000000 bytes but
+    // it reserves 214 bytes, so the effective size is 9999797 bytes.
+    Long msgSize = 10000000L - 214L;
+    StringBuilder sb = new StringBuilder();
+    for (Long i = 0L; i < (msgSize); i++) {
+      sb.append('a');
+    }
+    String str = String.format("{\"name\":\"%s\"}", sb.toString());
+    for (int i = 0; i < 1; i++) {
+      pubsubResourceManager.publish(pubsubSourceTopic, Map.of(), ByteString.copyFromUtf8(str));
     }
   }
 }

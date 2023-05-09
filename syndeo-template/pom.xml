@@ -25,6 +25,7 @@
     <properties>
         <auto-value.version>1.9</auto-value.version>
         <avro.version>1.11.1</avro.version>
+        <awaitility.version>4.2.0</awaitility.version>
         <beam.version>2.46.0</beam.version>
         <beam.snapshot.version>2.48.0-SNAPSHOT</beam.snapshot.version>
         <bigtable.version>1.15.0</bigtable.version>
@@ -353,6 +354,12 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>kafka</artifactId>
             <version>1.17.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>${awaitility.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
