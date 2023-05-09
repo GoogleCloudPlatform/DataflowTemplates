@@ -44,15 +44,15 @@ public class AbstractJDBCResourceManagerIT {
 
   @Test
   public void testDefaultMySQLResourceManagerE2E() {
-    DefaultMySQLResourceManager mySQL = DefaultMySQLResourceManager.builder(TEST_ID).build();
+    MySQLResourceManager mySQL = MySQLResourceManager.builder(TEST_ID).build();
 
     simpleTest(mySQL);
   }
 
   @Test
   public void testDefaultPostgresResourceManagerE2E() {
-    DefaultPostgresResourceManager postgres =
-        DefaultPostgresResourceManager.builder(TEST_ID).build();
+    PostgresResourceManager postgres =
+        PostgresResourceManager.builder(TEST_ID).build();
 
     simpleTest(postgres);
   }
@@ -65,13 +65,13 @@ public class AbstractJDBCResourceManagerIT {
       return;
     }
 
-    DefaultOracleResourceManager oracle = DefaultOracleResourceManager.builder(TEST_ID).build();
+    OracleResourceManager oracle = OracleResourceManager.builder(TEST_ID).build();
     simpleTest(oracle);
   }
 
   @Test
   public void testDefaultMSSQLResourceManagerE2E() {
-    DefaultMSSQLResourceManager mssqlBuilder = DefaultMSSQLResourceManager.builder(TEST_ID).build();
+    MSSQLResourceManager mssqlBuilder = MSSQLResourceManager.builder(TEST_ID).build();
     simpleTest(mssqlBuilder);
   }
 

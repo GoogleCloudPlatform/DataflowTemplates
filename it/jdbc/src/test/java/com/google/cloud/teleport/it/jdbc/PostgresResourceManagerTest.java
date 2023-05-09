@@ -28,54 +28,32 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.testcontainers.containers.PostgreSQLContainer;
 
-/** Integration tests for {@link DefaultMSSQLResourceManagerTest}. */
+/** Integration tests for {@link PostgresResourceManagerTest}. */
 @RunWith(JUnit4.class)
-public class DefaultMSSQLResourceManagerTest<
-    T extends DefaultMSSQLResourceManager.DefaultMSSQLServerContainer<T>> {
+public class PostgresResourceManagerTest<T extends PostgreSQLContainer<T>> {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock private T container;
 
-  private DefaultMSSQLResourceManager testManager;
+  private PostgresResourceManager testManager;
 
   private static final String TEST_ID = "test_id";
-  private static final String DATABASE_NAME = "database";
-  private static final String HOST = "localhost";
-  private static final int MAPPED_PORT = 1234;
 
   @Before
   public void setUp() {
     when(container.withUsername(any())).thenReturn(container);
     when(container.withPassword(any())).thenReturn(container);
     when(container.withDatabaseName(anyString())).thenReturn(container);
-    when(container.getDatabaseName()).thenReturn(DATABASE_NAME);
     testManager =
-        new DefaultMSSQLResourceManager(
-            container, new DefaultMSSQLResourceManager.Builder(TEST_ID));
+        new PostgresResourceManager(
+            container, new PostgresResourceManager.Builder(TEST_ID));
   }
 
   @Test
   public void testGetJDBCPortReturnsCorrectValue() {
-    assertThat(testManager.getJDBCPort())
-        .isEqualTo(DefaultMSSQLResourceManager.DefaultMSSQLServerContainer.MS_SQL_SERVER_PORT);
-  }
-
-  @Test
-  public void testGetUriShouldReturnCorrectValue() {
-    when(container.getHost()).thenReturn(HOST);
-    when(container.getMappedPort(
-            DefaultMSSQLResourceManager.DefaultMSSQLServerContainer.MS_SQL_SERVER_PORT))
-        .thenReturn(MAPPED_PORT);
-    assertThat(testManager.getUri())
-        .matches(
-            "jdbc:sqlserver://"
-                + HOST
-                + ":"
-                + MAPPED_PORT
-                + ";DatabaseName="
-                + DATABASE_NAME
-                + ";encrypt=true;trustServerCertificate=true;");
+    assertThat(testManager.getJDBCPort()).isEqualTo(PostgreSQLContainer.POSTGRESQL_PORT);
   }
 }

@@ -28,32 +28,54 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.testcontainers.containers.MySQLContainer;
 
-/** Integration tests for {@link com.google.cloud.teleport.it.jdbc.DefaultMySQLResourceManager}. */
+/** Integration tests for {@link MSSQLResourceManagerTest}. */
 @RunWith(JUnit4.class)
-public class DefaultMySQLResourceManagerTest<T extends MySQLContainer<T>> {
+public class MSSQLResourceManagerTest<
+    T extends MSSQLResourceManager.DefaultMSSQLServerContainer<T>> {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock private T container;
 
-  private DefaultMySQLResourceManager testManager;
+  private MSSQLResourceManager testManager;
 
   private static final String TEST_ID = "test_id";
+  private static final String DATABASE_NAME = "database";
+  private static final String HOST = "localhost";
+  private static final int MAPPED_PORT = 1234;
 
   @Before
   public void setUp() {
     when(container.withUsername(any())).thenReturn(container);
     when(container.withPassword(any())).thenReturn(container);
     when(container.withDatabaseName(anyString())).thenReturn(container);
+    when(container.getDatabaseName()).thenReturn(DATABASE_NAME);
     testManager =
-        new DefaultMySQLResourceManager(
-            container, new DefaultMySQLResourceManager.Builder(TEST_ID));
+        new MSSQLResourceManager(
+            container, new MSSQLResourceManager.Builder(TEST_ID));
   }
 
   @Test
   public void testGetJDBCPortReturnsCorrectValue() {
-    assertThat(testManager.getJDBCPort()).isEqualTo(MySQLContainer.MYSQL_PORT);
+    assertThat(testManager.getJDBCPort())
+        .isEqualTo(MSSQLResourceManager.DefaultMSSQLServerContainer.MS_SQL_SERVER_PORT);
+  }
+
+  @Test
+  public void testGetUriShouldReturnCorrectValue() {
+    when(container.getHost()).thenReturn(HOST);
+    when(container.getMappedPort(
+            MSSQLResourceManager.DefaultMSSQLServerContainer.MS_SQL_SERVER_PORT))
+        .thenReturn(MAPPED_PORT);
+    assertThat(testManager.getUri())
+        .matches(
+            "jdbc:sqlserver://"
+                + HOST
+                + ":"
+                + MAPPED_PORT
+                + ";DatabaseName="
+                + DATABASE_NAME
+                + ";encrypt=true;trustServerCertificate=true;");
   }
 }

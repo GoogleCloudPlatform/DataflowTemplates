@@ -32,11 +32,11 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class DefaultMSSQLResourceManager
+public class MSSQLResourceManager
     extends AbstractJDBCResourceManager<
-        DefaultMSSQLResourceManager.DefaultMSSQLServerContainer<?>> {
+        MSSQLResourceManager.DefaultMSSQLServerContainer<?>> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultMSSQLResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MSSQLResourceManager.class);
 
   private static final String DEFAULT_MSSQL_CONTAINER_NAME = "mcr.microsoft.com/azure-sql-edge";
 
@@ -46,7 +46,7 @@ public class DefaultMSSQLResourceManager
 
   private boolean initialized;
 
-  private DefaultMSSQLResourceManager(Builder builder) {
+  private MSSQLResourceManager(Builder builder) {
     super(
         new DefaultMSSQLServerContainer<>(
             DockerImageName.parse(builder.containerImageName)
@@ -59,14 +59,14 @@ public class DefaultMSSQLResourceManager
   }
 
   @VisibleForTesting
-  <T extends DefaultMSSQLResourceManager.DefaultMSSQLServerContainer<T>>
-      DefaultMSSQLResourceManager(T container, Builder builder) {
+  <T extends MSSQLResourceManager.DefaultMSSQLServerContainer<T>>
+  MSSQLResourceManager(T container, Builder builder) {
     super(container, builder);
     initialized = true;
   }
 
-  public static DefaultMSSQLResourceManager.Builder builder(String testId) {
-    return new DefaultMSSQLResourceManager.Builder(testId);
+  public static MSSQLResourceManager.Builder builder(String testId) {
+    return new MSSQLResourceManager.Builder(testId);
   }
 
   private void createDatabase(String databaseName) {
@@ -113,7 +113,7 @@ public class DefaultMSSQLResourceManager
     return "SELECT TOP 1 * FROM " + tableName;
   }
 
-  /** Builder for {@link DefaultMSSQLResourceManager}. */
+  /** Builder for {@link MSSQLResourceManager}. */
   public static final class Builder
       extends AbstractJDBCResourceManager.Builder<DefaultMSSQLServerContainer<?>> {
 
@@ -124,8 +124,8 @@ public class DefaultMSSQLResourceManager
     }
 
     @Override
-    public DefaultMSSQLResourceManager build() {
-      return new DefaultMSSQLResourceManager(this);
+    public MSSQLResourceManager build() {
+      return new MSSQLResourceManager(this);
     }
   }
 
@@ -154,7 +154,7 @@ public class DefaultMSSQLResourceManager
 
     @Override
     public T withDatabaseName(String dbName) {
-      // AbstractJDBCResourceManager constructor calls this method, but DefaultMSSQLResourceManager
+      // AbstractJDBCResourceManager constructor calls this method, but MSSQLResourceManager
       // does
       // database creation after class initialization, so just pass container instance back as-is.
       return this.self();

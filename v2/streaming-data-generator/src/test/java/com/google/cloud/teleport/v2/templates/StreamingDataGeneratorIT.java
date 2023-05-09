@@ -36,7 +36,7 @@ import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
-import com.google.cloud.teleport.it.jdbc.DefaultPostgresResourceManager;
+import com.google.cloud.teleport.it.jdbc.PostgresResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -55,16 +55,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link StreamingDataGenerator}. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(StreamingDataGenerator.class)
 @RunWith(JUnit4.class)
 public final class StreamingDataGeneratorIT extends TemplateTestBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(StreamingDataGeneratorIT.class);
 
   private static final String SCHEMA_FILE = "gameevent.json";
   private static final String LOCAL_SCHEMA_PATH = Resources.getResource(SCHEMA_FILE).getPath();
@@ -328,7 +324,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
 
   @Test
   public void testFakeMessagesToJdbc() throws IOException {
-    jdbcResourceManager = DefaultPostgresResourceManager.builder(testName).build();
+    jdbcResourceManager = PostgresResourceManager.builder(testName).build();
     JDBCSchema jdbcSchema =
         new JDBCSchema(
             Map.of(

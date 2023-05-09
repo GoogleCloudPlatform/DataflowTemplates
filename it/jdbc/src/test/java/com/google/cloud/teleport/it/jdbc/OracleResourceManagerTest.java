@@ -30,15 +30,15 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.testcontainers.containers.OracleContainer;
 
-/** Integration tests for {@link DefaultOracleResourceManagerTest}. */
+/** Integration tests for {@link OracleResourceManagerTest}. */
 @RunWith(JUnit4.class)
-public class DefaultOracleResourceManagerTest<T extends OracleContainer> {
+public class OracleResourceManagerTest<T extends OracleContainer> {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock private T container;
 
-  private DefaultOracleResourceManager testManager;
+  private OracleResourceManager testManager;
 
   private static final String TEST_ID = "test_id";
   private static final int DEFAULT_ORACLE_INTERNAL_PORT = 1521;
@@ -49,8 +49,8 @@ public class DefaultOracleResourceManagerTest<T extends OracleContainer> {
     when(container.withPassword(any())).thenReturn(container);
     when(container.withDatabaseName(anyString())).thenReturn(container);
     testManager =
-        new DefaultOracleResourceManager(
-            container, new DefaultOracleResourceManager.Builder(TEST_ID));
+        new OracleResourceManager(
+            container, new OracleResourceManager.Builder(TEST_ID));
   }
 
   @Test

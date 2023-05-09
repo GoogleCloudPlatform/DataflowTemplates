@@ -41,7 +41,7 @@ import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
-import com.google.cloud.teleport.it.jdbc.DefaultPostgresResourceManager;
+import com.google.cloud.teleport.it.jdbc.PostgresResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
@@ -268,7 +268,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   @Test
   public void testGenerateJdbc10gb()
       throws IOException, ParseException, InterruptedException, SQLException {
-    jdbcResourceManager = DefaultPostgresResourceManager.builder(testName).build();
+    jdbcResourceManager = PostgresResourceManager.builder(testName).build();
     JDBCSchema jdbcSchema =
         new JDBCSchema(
             Map.of(

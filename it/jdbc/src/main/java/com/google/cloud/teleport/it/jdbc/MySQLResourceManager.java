@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class DefaultMySQLResourceManager extends AbstractJDBCResourceManager<MySQLContainer<?>> {
+public class MySQLResourceManager extends AbstractJDBCResourceManager<MySQLContainer<?>> {
 
   private static final String DEFAULT_MYSQL_CONTAINER_NAME = "mysql";
 
@@ -35,7 +35,7 @@ public class DefaultMySQLResourceManager extends AbstractJDBCResourceManager<MyS
   // https://hub.docker.com/_/mysql/tags?tab=tags
   private static final String DEFAULT_MYSQL_CONTAINER_TAG = "8.0.30";
 
-  private DefaultMySQLResourceManager(Builder builder) {
+  private MySQLResourceManager(Builder builder) {
     this(
         new MySQLContainer<>(
             DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
@@ -43,12 +43,12 @@ public class DefaultMySQLResourceManager extends AbstractJDBCResourceManager<MyS
   }
 
   @VisibleForTesting
-  DefaultMySQLResourceManager(MySQLContainer<?> container, Builder builder) {
+  MySQLResourceManager(MySQLContainer<?> container, Builder builder) {
     super(container, builder);
   }
 
-  public static DefaultMySQLResourceManager.Builder builder(String testId) {
-    return new DefaultMySQLResourceManager.Builder(testId);
+  public static MySQLResourceManager.Builder builder(String testId) {
+    return new MySQLResourceManager.Builder(testId);
   }
 
   @Override
@@ -61,7 +61,7 @@ public class DefaultMySQLResourceManager extends AbstractJDBCResourceManager<MyS
     return "mysql";
   }
 
-  /** Builder for {@link DefaultMySQLResourceManager}. */
+  /** Builder for {@link MySQLResourceManager}. */
   public static final class Builder extends AbstractJDBCResourceManager.Builder<MySQLContainer<?>> {
 
     public Builder(String testId) {
@@ -71,8 +71,8 @@ public class DefaultMySQLResourceManager extends AbstractJDBCResourceManager<MyS
     }
 
     @Override
-    public DefaultMySQLResourceManager build() {
-      return new DefaultMySQLResourceManager(this);
+    public MySQLResourceManager build() {
+      return new MySQLResourceManager(this);
     }
   }
 }

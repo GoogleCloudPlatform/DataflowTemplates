@@ -28,7 +28,7 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class DefaultPostgresResourceManager
+public class PostgresResourceManager
     extends AbstractJDBCResourceManager<PostgreSQLContainer<?>> {
 
   private static final String DEFAULT_POSTGRES_CONTAINER_NAME = "postgres";
@@ -37,7 +37,7 @@ public class DefaultPostgresResourceManager
   // https://hub.docker.com/_/postgres/tags?tab=tags
   private static final String DEFAULT_POSTGRES_CONTAINER_TAG = "15.1";
 
-  private DefaultPostgresResourceManager(DefaultPostgresResourceManager.Builder builder) {
+  private PostgresResourceManager(PostgresResourceManager.Builder builder) {
     this(
         new PostgreSQLContainer<>(
             DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
@@ -45,13 +45,13 @@ public class DefaultPostgresResourceManager
   }
 
   @VisibleForTesting
-  DefaultPostgresResourceManager(
-      PostgreSQLContainer<?> container, DefaultPostgresResourceManager.Builder builder) {
+  PostgresResourceManager(
+      PostgreSQLContainer<?> container, PostgresResourceManager.Builder builder) {
     super(container, builder);
   }
 
-  public static DefaultPostgresResourceManager.Builder builder(String testId) {
-    return new DefaultPostgresResourceManager.Builder(testId);
+  public static PostgresResourceManager.Builder builder(String testId) {
+    return new PostgresResourceManager.Builder(testId);
   }
 
   @Override
@@ -69,7 +69,7 @@ public class DefaultPostgresResourceManager
     return "postgresql";
   }
 
-  /** Builder for {@link DefaultPostgresResourceManager}. */
+  /** Builder for {@link PostgresResourceManager}. */
   public static final class Builder
       extends AbstractJDBCResourceManager.Builder<PostgreSQLContainer<?>> {
 
@@ -80,8 +80,8 @@ public class DefaultPostgresResourceManager
     }
 
     @Override
-    public DefaultPostgresResourceManager build() {
-      return new DefaultPostgresResourceManager(this);
+    public PostgresResourceManager build() {
+      return new PostgresResourceManager(this);
     }
   }
 }
