@@ -18,6 +18,7 @@ package com.google.cloud.teleport.it.mongodb;
 import static com.google.cloud.teleport.it.mongodb.MongoDBResourceManagerUtils.checkValidCollectionName;
 import static com.google.cloud.teleport.it.mongodb.MongoDBResourceManagerUtils.generateDatabaseName;
 
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -26,7 +27,6 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import java.io.IOException;
 import java.util.List;
 import org.bson.Document;
 import org.slf4j.Logger;
@@ -35,7 +35,7 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Default class for implementation of {@link MongoDBResourceManager} interface.
+ * Client for managing MongoDB resources.
  *
  * <p>The class supports one database and multiple collections per database object. A database is
  * created when the first collection is created if one has not been created already.
@@ -46,7 +46,7 @@ import org.testcontainers.utility.DockerImageName;
  * <p>The class is thread-safe.
  */
 public class DefaultMongoDBResourceManager extends TestContainerResourceManager<MongoDBContainer>
-    implements MongoDBResourceManager {
+    implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(DefaultMongoDBResourceManager.class);
 
@@ -87,16 +87,20 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
     this.mongoClient = mongoClient == null ? MongoClients.create(connectionString) : mongoClient;
   }
 
-  public static DefaultMongoDBResourceManager.Builder builder(String testId) throws IOException {
+  public static DefaultMongoDBResourceManager.Builder builder(String testId) {
     return new DefaultMongoDBResourceManager.Builder(testId);
   }
 
-  @Override
+  /** Returns the URI connection string to the MongoDB Database. */
   public synchronized String getUri() {
     return connectionString;
   }
 
-  @Override
+  /**
+   * Returns the name of the Database that this MongoDB manager will operate in.
+   *
+   * @return the name of the MongoDB Database.
+   */
   public synchronized String getDatabaseName() {
     return databaseName;
   }
@@ -125,7 +129,16 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
     return false;
   }
 
-  @Override
+  /**
+   * Creates a collection in MongoDB for storing Documents.
+   *
+   * <p>Note: Implementations may do database creation here, if one does not already exist.
+   *
+   * @param collectionName Collection name to associate with the given MongoDB instance.
+   * @return A boolean indicating whether the resource was created.
+   * @throws MongoDBResourceManagerException if there is an error creating the collection in
+   *     MongoDB.
+   */
   public synchronized boolean createCollection(String collectionName) {
     LOG.info("Creating collection using collectionName '{}'.", collectionName);
 
@@ -163,12 +176,29 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
     return getDatabase().getCollection(collectionName);
   }
 
-  @Override
+  /**
+   * Inserts the given Document into a collection.
+   *
+   * <p>A database will be created here, if one does not already exist.
+   *
+   * @param collectionName The name of the collection to insert the document into.
+   * @param document The document to insert into the collection.
+   * @return A boolean indicating whether the Document was inserted successfully.
+   */
   public synchronized boolean insertDocument(String collectionName, Document document) {
     return insertDocuments(collectionName, ImmutableList.of(document));
   }
 
-  @Override
+  /**
+   * Inserts the given Documents into a collection.
+   *
+   * <p>Note: Implementations may do collection creation here, if one does not already exist.
+   *
+   * @param collectionName The name of the collection to insert the documents into.
+   * @param documents A list of documents to insert into the collection.
+   * @return A boolean indicating whether the Documents were inserted successfully.
+   * @throws MongoDBResourceManagerException if there is an error inserting the documents.
+   */
   public synchronized boolean insertDocuments(String collectionName, List<Document> documents) {
     LOG.info(
         "Attempting to write {} documents to {}.{}.",
@@ -188,7 +218,13 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
     return true;
   }
 
-  @Override
+  /**
+   * Reads all the Documents in a collection.
+   *
+   * @param collectionName The name of the collection to read from.
+   * @return An iterable of all the Documents in the collection.
+   * @throws MongoDBResourceManagerException if there is an error reading the collection.
+   */
   public synchronized FindIterable<Document> readCollection(String collectionName) {
     LOG.info("Reading all documents from {}.{}", databaseName, collectionName);
 
@@ -258,7 +294,7 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
      * <p>Note: if a database name is set, and a static MongoDB server is being used
      * (useStaticContainer() is also called on the builder), then a database will be created on the
      * static server if it does not exist, and it will not be removed when cleanupAll() is called on
-     * the MongoDBResourceManager.
+     * the DefaultMongoDBResourceManager.
      *
      * @param databaseName The database name.
      * @return this builder object with the database name set.

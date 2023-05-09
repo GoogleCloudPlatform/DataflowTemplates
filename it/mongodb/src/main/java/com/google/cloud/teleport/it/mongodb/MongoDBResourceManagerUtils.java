@@ -21,8 +21,7 @@ import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Utilities for {@link com.google.cloud.teleport.it.mongodb.MongoDBResourceManager}
- * implementations.
+ * Utilities for {@link DefaultMongoDBResourceManager} implementations.
  */
 final class MongoDBResourceManagerUtils {
 
