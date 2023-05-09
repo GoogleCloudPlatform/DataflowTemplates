@@ -32,7 +32,7 @@ import com.google.cloud.teleport.v2.templates.session.ReadSessionFileTest;
 import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import java.io.IOException;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,8 +75,7 @@ public class SpannerTransactionWriterDoFnTest {
   public void transformChangeEventViaSessionFileNamesTest() {
     Session session = ReadSessionFileTest.getSessionObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            ExposedSpannerConfig.create(), null, session, "", "", false);
+        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, session, "", "", false);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("product_id", "A");
     changeEvent.put("quantity", 1);
@@ -99,8 +98,7 @@ public class SpannerTransactionWriterDoFnTest {
   public void transformChangeEventViaSessionFileSynthPKTest() {
     Session session = ReadSessionFileTest.getSessionObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(
-            ExposedSpannerConfig.create(), null, session, "", "", false);
+        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, session, "", "", false);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "people");
@@ -121,7 +119,7 @@ public class SpannerTransactionWriterDoFnTest {
   @Test
   public void transformChangeEventDataTest() throws Exception {
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(ExposedSpannerConfig.create(), null, null, "", "", true);
+        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, null, "", "", true);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
