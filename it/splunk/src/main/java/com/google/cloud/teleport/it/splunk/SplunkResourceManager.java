@@ -57,10 +57,10 @@ import org.testcontainers.utility.DockerImageName;
  * <p>Note: The Splunk TestContainer will only run on M1 Mac's if the Docker version is >= 4.16.0
  * and the "Use Rosetta for x86/amd64 emulation on Apple Silicon" setting is enabled.
  */
-public class DefaultSplunkResourceManager extends TestContainerResourceManager<SplunkContainer>
+public class SplunkResourceManager extends TestContainerResourceManager<SplunkContainer>
     implements ResourceManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultSplunkResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SplunkResourceManager.class);
   private static final String DEFAULT_SPLUNK_CONTAINER_NAME = "splunk/splunk";
 
   // A list of available Splunk Docker image tags can be found at
@@ -80,7 +80,7 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
   private final String hecToken;
 
   @SuppressWarnings("resource")
-  private DefaultSplunkResourceManager(DefaultSplunkResourceManager.Builder builder) {
+  private SplunkResourceManager(SplunkResourceManager.Builder builder) {
     this(
         new SplunkContainer(
                 DockerImageName.parse(builder.containerImageName)
@@ -90,8 +90,7 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
   }
 
   @VisibleForTesting
-  DefaultSplunkResourceManager(
-      SplunkContainer container, DefaultSplunkResourceManager.Builder builder) {
+  SplunkResourceManager(SplunkContainer container, SplunkResourceManager.Builder builder) {
     super(setup(container, builder), builder);
 
     // Validate builder args
@@ -131,7 +130,7 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
    * Helper method for injecting config information from the builder into the given SplunkContainer.
    *
    * @param container The SplunkContainer before config info is injected.
-   * @param builder The DefaultSplunkResourceManager.Builder to extract config info from.
+   * @param builder The SplunkResourceManager.Builder to extract config info from.
    * @return The SplunkContainer with all config info injected.
    */
   private static SplunkContainer setup(SplunkContainer container, Builder builder) {
@@ -155,8 +154,8 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
         .withPassword(builder.password);
   }
 
-  public static DefaultSplunkResourceManager.Builder builder(String testId) {
-    return new DefaultSplunkResourceManager.Builder(testId);
+  public static SplunkResourceManager.Builder builder(String testId) {
+    return new SplunkResourceManager.Builder(testId);
   }
 
   /**
@@ -301,18 +300,19 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
     try {
       ResultsReader reader = new ResultsReaderXml(job.getEvents());
       reader.forEach(
-          event -> results.add(
-              SplunkEvent.newBuilder()
-                  .withEvent(event.get("_raw"))
-                  .withSource(event.get("source"))
-                  .withSourceType(event.get("_sourcetype"))
-                  .withHost(event.get("host"))
-                  .withTime(
-                      OffsetDateTime.parse(
-                              event.get("_time"), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                          .toInstant()
-                          .toEpochMilli())
-                  .create()));
+          event ->
+              results.add(
+                  SplunkEvent.newBuilder()
+                      .withEvent(event.get("_raw"))
+                      .withSource(event.get("source"))
+                      .withSourceType(event.get("_sourcetype"))
+                      .withHost(event.get("host"))
+                      .withTime(
+                          OffsetDateTime.parse(
+                                  event.get("_time"), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                              .toInstant()
+                              .toEpochMilli())
+                      .create()));
 
     } catch (Exception e) {
       throw new SplunkResourceManagerException("Error parsing XML results from Splunk.", e);
@@ -322,9 +322,9 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
     return results;
   }
 
-  /** Builder for {@link DefaultSplunkResourceManager}. */
+  /** Builder for {@link SplunkResourceManager}. */
   public static final class Builder
-      extends TestContainerResourceManager.Builder<DefaultSplunkResourceManager> {
+      extends TestContainerResourceManager.Builder<SplunkResourceManager> {
 
     private String username;
     private String password;
@@ -413,8 +413,8 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
     }
 
     @Override
-    public DefaultSplunkResourceManager build() {
-      return new DefaultSplunkResourceManager(this);
+    public SplunkResourceManager build() {
+      return new SplunkResourceManager(this);
     }
   }
 }

@@ -17,14 +17,14 @@ package com.google.cloud.teleport.it.splunk.conditions;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.it.common.conditions.ConditionCheck;
-import com.google.cloud.teleport.it.splunk.DefaultSplunkResourceManager;
+import com.google.cloud.teleport.it.splunk.SplunkResourceManager;
 import javax.annotation.Nullable;
 
 /** ConditionCheck to validate if Splunk has received a certain amount of events. */
 @AutoValue
 public abstract class SplunkEventsCheck extends ConditionCheck {
 
-  abstract DefaultSplunkResourceManager resourceManager();
+  abstract SplunkResourceManager resourceManager();
 
   @Nullable
   abstract String query();
@@ -72,7 +72,7 @@ public abstract class SplunkEventsCheck extends ConditionCheck {
         true, String.format("Expected at least %d events and found %d", minEvents(), totalEvents));
   }
 
-  public static Builder builder(DefaultSplunkResourceManager resourceManager) {
+  public static Builder builder(SplunkResourceManager resourceManager) {
     return new AutoValue_SplunkEventsCheck.Builder().setResourceManager(resourceManager);
   }
 
@@ -80,7 +80,7 @@ public abstract class SplunkEventsCheck extends ConditionCheck {
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setResourceManager(DefaultSplunkResourceManager resourceManager);
+    public abstract Builder setResourceManager(SplunkResourceManager resourceManager);
 
     public abstract Builder setQuery(String query);
 

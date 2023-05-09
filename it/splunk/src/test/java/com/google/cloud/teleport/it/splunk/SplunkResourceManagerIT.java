@@ -35,15 +35,15 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 /** Integration tests for Splunk Resource Managers. */
 @Category(TestContainersIntegrationTest.class)
 @RunWith(JUnit4.class)
-public class DefaultSplunkResourceManagerIT {
+public class SplunkResourceManagerIT {
   private static final String TEST_ID = "dummy-test";
   private static final int NUM_EVENTS = 100;
 
-  private DefaultSplunkResourceManager splunkResourceManager;
+  private SplunkResourceManager splunkResourceManager;
 
   @Before
   public void setUp() {
-    splunkResourceManager = DefaultSplunkResourceManager.builder(TEST_ID).build();
+    splunkResourceManager = SplunkResourceManager.builder(TEST_ID).build();
   }
 
   @Test
