@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates.functions;
 
 import com.google.auto.value.AutoValue;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
