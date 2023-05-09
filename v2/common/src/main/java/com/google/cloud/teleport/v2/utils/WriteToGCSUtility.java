@@ -31,6 +31,7 @@ public class WriteToGCSUtility {
               FileFormat.TEXT, ".txt",
               FileFormat.AVRO, ".avro",
               FileFormat.PARQUET, ".parquet"));
+
   /**
    * Shard Template of the output file. Specified as repeating sequences of the letters 'S' or 'N'
    * (example: SSS-NNN).

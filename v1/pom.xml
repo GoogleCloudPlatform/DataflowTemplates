@@ -247,6 +247,12 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-splunk</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.hamcrest</groupId>
       <artifactId>hamcrest-core</artifactId>
       <version>${hamcrest.version}</version>

@@ -47,6 +47,7 @@ import org.junit.runners.JUnit4;
 public class WriteDataChangeRecordsToJsonTest {
   /** Rule for pipeline testing. */
   @Rule public final transient TestPipeline testPipeline = TestPipeline.create();
+
   /** Rule for exception testing. */
   @Rule public ExpectedException expectedException = ExpectedException.none();
 

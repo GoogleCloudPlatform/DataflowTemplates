@@ -973,6 +973,7 @@ public class ElasticsearchIO {
       return source;
     }
   }
+
   /**
    * A POJO encapsulating a configuration for retry behavior when issuing requests to ES. A retry
    * will be attempted until the maxAttempts or maxDuration is exceeded, whichever comes first, for
@@ -1408,6 +1409,7 @@ public class ElasticsearchIO {
           gen.writeEndObject();
         }
       }
+
       /**
        * Extracts the components that comprise the document address from the document using the
        * {@link FieldValueExtractFn} configured. This allows any or all of the index, type and

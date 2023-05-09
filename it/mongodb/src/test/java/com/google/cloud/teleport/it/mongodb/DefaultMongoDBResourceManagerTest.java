@@ -128,7 +128,7 @@ public class DefaultMongoDBResourceManagerTest {
   public void testCreateCollectionShouldThrowErrorWhenMongoDBFailsToCreateCollection() {
     when(mongoClient.getDatabase(anyString())).thenReturn(database);
     when(database.listCollectionNames()).thenReturn(collectionIterable);
-    doThrow(IllegalArgumentException.class).when(database).getCollection(anyString());
+    doThrow(IllegalArgumentException.class).when(database).createCollection(anyString());
 
     assertThrows(
         MongoDBResourceManagerException.class, () -> testManager.createCollection(COLLECTION_NAME));
@@ -140,7 +140,7 @@ public class DefaultMongoDBResourceManagerTest {
     when(database.listCollectionNames()).thenReturn(collectionIterable);
 
     assertThat(testManager.createCollection(COLLECTION_NAME)).isEqualTo(true);
-    verify(database).getCollection(anyString());
+    verify(database).createCollection(anyString());
   }
 
   @Test

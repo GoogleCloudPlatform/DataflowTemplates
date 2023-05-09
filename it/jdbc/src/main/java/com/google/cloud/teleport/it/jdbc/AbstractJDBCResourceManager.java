@@ -17,7 +17,7 @@ package com.google.cloud.teleport.it.jdbc;
 
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.checkValidTableName;
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generateDatabaseName;
-import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generatePassword;
+import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generateJdbcPassword;
 
 import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
@@ -312,7 +312,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
       super(testId);
 
       this.username = DEFAULT_JDBC_USERNAME;
-      this.password = generatePassword();
+      this.password = generateJdbcPassword();
       this.databaseName = generateDatabaseName(testId);
     }
 

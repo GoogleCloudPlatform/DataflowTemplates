@@ -26,6 +26,7 @@ func RunMavenOnPom(pom string, cmd string, args ...string) error {
 	fullArgs := []string{"-B"}
 	fullArgs = append(fullArgs, strings.Split(cmd, " ")...)
 	fullArgs = append(fullArgs, "-f", pom)
+	fullArgs = append(fullArgs, "-e")
 	fullArgs = append(fullArgs, args...)
 
 	return RunCmdAndStreamOutput("mvn", fullArgs)

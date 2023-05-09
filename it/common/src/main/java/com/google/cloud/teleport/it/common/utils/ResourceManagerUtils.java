@@ -25,9 +25,12 @@ import com.google.re2j.Pattern;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Random;
+import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Common utilities for ResourceManager implementations. */
 public class ResourceManagerUtils {
@@ -157,5 +160,33 @@ public class ResourceManagerUtils {
     if (bubbleException != null) {
       throw new RuntimeException("Error cleaning up resources", bubbleException);
     }
+  }
+
+  public static String generatePassword(
+      int minLength,
+      int maxLength,
+      int numLower,
+      int numUpper,
+      int numSpecial,
+      @Nullable List<Character> specialChars) {
+    StringBuilder password = new StringBuilder();
+    password.append(
+        RandomStringUtils.randomAlphanumeric(minLength, maxLength - numSpecial).toUpperCase());
+    for (int i = 0; i < numSpecial && specialChars != null; i++) {
+      password.insert(
+          new Random().nextInt(password.length()),
+          specialChars.get(new Random().nextInt(specialChars.size())));
+    }
+    for (int i = 0; i < numLower; i++) {
+      password.insert(
+          new Random().nextInt(password.length()),
+          RandomStringUtils.randomAlphabetic(1).toLowerCase());
+    }
+    for (int i = 0; i < numUpper; i++) {
+      password.insert(
+          new Random().nextInt(password.length()),
+          RandomStringUtils.randomAlphabetic(1).toUpperCase());
+    }
+    return password.toString();
   }
 }

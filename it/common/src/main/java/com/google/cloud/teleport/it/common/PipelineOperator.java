@@ -273,6 +273,7 @@ public final class PipelineOperator {
     public abstract Duration checkAfter();
 
     public abstract Duration timeoutAfter();
+
     // TODO(zhoufek): Also let users set the maximum number of exceptions.
 
     public static Builder builder() {

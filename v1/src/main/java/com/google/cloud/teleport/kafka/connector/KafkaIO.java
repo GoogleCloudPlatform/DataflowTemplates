@@ -758,6 +758,7 @@ public class KafkaIO {
             final SerializableFunction<KV<KeyT, ValueT>, OutT> fn) {
       return record -> fn.apply(record.getKV());
     }
+
     ///////////////////////////////////////////////////////////////////////////////////////
 
     /** A set of properties that are not required or don't make sense for our consumer. */

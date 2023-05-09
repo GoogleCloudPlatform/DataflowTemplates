@@ -46,8 +46,10 @@ import org.junit.runners.JUnit4;
 public class WriteDataChangeRecordsToGcsTextTest {
   /** Rule for pipeline testing. */
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+
   /** Rule for exception testing. */
   @Rule public ExpectedException expectedException = ExpectedException.none();
+
   /** Rule for temporary folder for output records. */
   @Rule public final TemporaryFolder tmpDir = new TemporaryFolder();
 
@@ -114,6 +116,7 @@ public class WriteDataChangeRecordsToGcsTextTest {
                 .build());
     pipeline.run();
   }
+
   /**
    * Test whether {@link WriteDataChangeRecordsToGcsText} throws an exception if temporary directory
    * is not provided.

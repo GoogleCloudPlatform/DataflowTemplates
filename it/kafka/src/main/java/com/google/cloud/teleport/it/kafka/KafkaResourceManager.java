@@ -41,6 +41,7 @@ public interface KafkaResourceManager extends ResourceManager {
   /** Build a {@link KafkaConsumer} for the given serializer and deserializers. */
   <K, V> KafkaConsumer<K, V> buildConsumer(
       Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer);
+
   /**
    * Deletes all created resources and cleans up the Kafka client, making the manager object
    * unusable.

@@ -179,5 +179,6 @@
     <module>jdbc</module>
     <module>kafka</module>
     <module>mongodb</module>
+    <module>splunk</module>
   </modules>
 </project>
