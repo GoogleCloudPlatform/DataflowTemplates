@@ -45,10 +45,10 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class DefaultMongoDBResourceManager extends TestContainerResourceManager<MongoDBContainer>
+public class MongoDBResourceManager extends TestContainerResourceManager<MongoDBContainer>
     implements ResourceManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultMongoDBResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MongoDBResourceManager.class);
 
   private static final String DEFAULT_MONGODB_CONTAINER_NAME = "mongo";
 
@@ -64,7 +64,7 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
   private final String connectionString;
   private final boolean usingStaticDatabase;
 
-  private DefaultMongoDBResourceManager(DefaultMongoDBResourceManager.Builder builder) {
+  private MongoDBResourceManager(MongoDBResourceManager.Builder builder) {
     this(
         /* mongoClient= */ null,
         new MongoDBContainer(
@@ -73,10 +73,8 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
   }
 
   @VisibleForTesting
-  DefaultMongoDBResourceManager(
-      MongoClient mongoClient,
-      MongoDBContainer container,
-      DefaultMongoDBResourceManager.Builder builder) {
+  MongoDBResourceManager(
+      MongoClient mongoClient, MongoDBContainer container, MongoDBResourceManager.Builder builder) {
     super(container, builder);
 
     this.usingStaticDatabase = builder.databaseName != null;
@@ -87,8 +85,8 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
     this.mongoClient = mongoClient == null ? MongoClients.create(connectionString) : mongoClient;
   }
 
-  public static DefaultMongoDBResourceManager.Builder builder(String testId) {
-    return new DefaultMongoDBResourceManager.Builder(testId);
+  public static MongoDBResourceManager.Builder builder(String testId) {
+    return new MongoDBResourceManager.Builder(testId);
   }
 
   /** Returns the URI connection string to the MongoDB Database. */
@@ -275,9 +273,9 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
     LOG.info("MongoDB manager successfully cleaned up.");
   }
 
-  /** Builder for {@link DefaultMongoDBResourceManager}. */
+  /** Builder for {@link MongoDBResourceManager}. */
   public static final class Builder
-      extends TestContainerResourceManager.Builder<DefaultMongoDBResourceManager> {
+      extends TestContainerResourceManager.Builder<MongoDBResourceManager> {
 
     private String databaseName;
 
@@ -294,7 +292,7 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
      * <p>Note: if a database name is set, and a static MongoDB server is being used
      * (useStaticContainer() is also called on the builder), then a database will be created on the
      * static server if it does not exist, and it will not be removed when cleanupAll() is called on
-     * the DefaultMongoDBResourceManager.
+     * the MongoDBResourceManager.
      *
      * @param databaseName The database name.
      * @return this builder object with the database name set.
@@ -305,8 +303,8 @@ public class DefaultMongoDBResourceManager extends TestContainerResourceManager<
     }
 
     @Override
-    public DefaultMongoDBResourceManager build() {
-      return new DefaultMongoDBResourceManager(this);
+    public MongoDBResourceManager build() {
+      return new MongoDBResourceManager(this);
     }
   }
 }
