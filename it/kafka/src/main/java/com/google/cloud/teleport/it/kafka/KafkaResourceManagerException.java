@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.it.kafka;
 
 /**
- * Custom exception for {@link com.google.cloud.teleport.it.kafka.KafkaResourceManager}
+ * Custom exception for {@link DefaultKafkaResourceManager}
  * implementations.
  */
 public class KafkaResourceManagerException extends RuntimeException {

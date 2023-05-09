@@ -21,7 +21,7 @@ import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Utilities for {@link com.google.cloud.teleport.it.kafka.KafkaResourceManager} implementations.
+ * Utilities for {@link DefaultKafkaResourceManager} implementations.
  */
 final class KafkaResourceManagerUtils {
 

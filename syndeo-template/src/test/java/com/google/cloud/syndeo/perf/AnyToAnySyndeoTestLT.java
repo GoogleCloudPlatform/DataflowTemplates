@@ -43,7 +43,6 @@ import com.google.cloud.teleport.it.gcp.pubsublite.PubsubLiteResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
-import com.google.cloud.teleport.it.kafka.KafkaResourceManager;
 import com.google.pubsub.v1.SubscriptionName;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -133,8 +132,8 @@ public class AnyToAnySyndeoTestLT {
           TransformProvider.create(
               wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).build()),
               (ResourceManager rm) -> {
-                assert rm instanceof KafkaResourceManager;
-                KafkaResourceManager krm = (KafkaResourceManager) rm;
+                assert rm instanceof DefaultKafkaResourceManager;
+                DefaultKafkaResourceManager krm = (DefaultKafkaResourceManager) rm;
                 // TODO(pabloem): Verify correct number of partitions to use.
                 String topicName = krm.createTopic(TEST_ID, 1);
                 return SinkAndSourceConfigs.create(
@@ -282,8 +281,8 @@ public class AnyToAnySyndeoTestLT {
           TransformProvider.create(
               wrap(() -> DefaultKafkaResourceManager.builder(TEST_ID).build()),
               (ResourceManager rm) -> {
-                assert rm instanceof KafkaResourceManager;
-                KafkaResourceManager krm = (KafkaResourceManager) rm;
+                assert rm instanceof DefaultKafkaResourceManager;
+                DefaultKafkaResourceManager krm = (DefaultKafkaResourceManager) rm;
                 // TODO(pabloem): Make sure it's not created twice
 
                 return SinkAndSourceConfigs.create(

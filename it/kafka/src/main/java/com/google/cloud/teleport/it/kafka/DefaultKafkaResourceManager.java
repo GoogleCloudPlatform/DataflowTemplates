@@ -17,6 +17,7 @@ package com.google.cloud.teleport.it.kafka;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -40,7 +41,7 @@ import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Default class for implementation of {@link KafkaResourceManager} interface.
+ * Client for managing Kafka resources.
  *
  * <p>The class supports multiple topic names per server object. A topic is created if one has not
  * been created already.
@@ -51,7 +52,7 @@ import org.testcontainers.utility.DockerImageName;
  * <p>The class is thread-safe.
  */
 public class DefaultKafkaResourceManager extends TestContainerResourceManager<GenericContainer<?>>
-    implements KafkaResourceManager {
+    implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(DefaultKafkaResourceManager.class);
 
@@ -82,7 +83,7 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
     if (this.usingStaticTopic) {
       this.topicNames = new HashSet<>(builder.topicNames);
     } else {
-      Set<String> setOfTopicNames = new HashSet<String>();
+      Set<String> setOfTopicNames = new HashSet<>();
       for (int index = 0; index < builder.numTopics; ++index) {
         setOfTopicNames.add(
             KafkaResourceManagerUtils.generateTopicName(
@@ -104,17 +105,30 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
     return new DefaultKafkaResourceManager.Builder(testId);
   }
 
-  @Override
+  /** Returns the kafka boostrap server connection string. */
   public synchronized String getBootstrapServers() {
     return connectionString;
   }
 
-  @Override
+  /**
+   * Returns a list of names of the topics that this kafka manager will operate in.
+   *
+   * @return names of the kafka topics.
+   */
   public synchronized Set<String> getTopicNames() {
     return topicNames;
   }
 
-  @Override
+  /**
+   * Creates a kafka topic.
+   *
+   * <p>Note: Implementations may do topic creation here, if one does not already exist.
+   *
+   * @param topicName Topic name to associate with the given kafka instance.
+   * @param partitions Number of partitions on the topic.
+   * @return The name of the topic that was created.
+   * @throws KafkaResourceManagerException if there is an error creating the kafka topic.
+   */
   public synchronized String createTopic(String topicName, int partitions) {
     checkArgument(partitions > 0, "partitions must be positive.");
 
@@ -138,7 +152,7 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
     return uniqueName;
   }
 
-  @Override
+  /** Build a {@link KafkaProducer} for the given serializer and deserializers. */
   public synchronized <K, V> KafkaProducer<K, V> buildProducer(
       Serializer<K> keySerializer, Serializer<V> valueSerializer) {
     return new KafkaProducer<>(
@@ -147,7 +161,7 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
         valueSerializer);
   }
 
-  @Override
+  /** Build a {@link KafkaConsumer} for the given serializer and deserializers. */
   public synchronized <K, V> KafkaConsumer<K, V> buildConsumer(
       Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
 
@@ -163,7 +177,12 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
         valueDeserializer);
   }
 
-  @Override
+  /**
+   * Deletes all created resources and cleans up the Kafka client, making the manager object
+   * unusable.
+   *
+   * @throws KafkaResourceManagerException if there is an error deleting the Kafka resources.
+   */
   public synchronized void cleanupAll() {
     LOG.info("Attempting to cleanup Kafka manager.");
 
@@ -194,7 +213,7 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
   public static final class Builder
       extends TestContainerResourceManager.Builder<DefaultKafkaResourceManager> {
 
-    private Set<String> topicNames;
+    private final Set<String> topicNames;
     int numTopics;
 
     private Builder(String testId) {
@@ -212,7 +231,7 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
      * <p>Note: if a topic name is set, and a static kafka server is being used
      * (useStaticContainer() is also called on the builder), then a topic will be created on the
      * static server if it does not exist, and it will NOT be removed when cleanupAll() is called on
-     * the KafkaResourceManager.
+     * the DefaultKafkaResourceManager.
      *
      * @param topicNames A set of topic names.
      * @return this builder object with the topic name set.
@@ -229,7 +248,7 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
      * <p>Note: if number of topics is set, and a static kafka server is being used
      * (useStaticContainer() is also called on the builder), then the assigned number of topics will
      * be created on the static server, and it will be removed when cleanupAll() is called on the
-     * KafkaResourceManager.
+     * DefaultKafkaResourceManager.
      *
      * @param numTopics number of topics to be created. Default is 1.
      * @return this builder object with numTopics set.
@@ -251,7 +270,7 @@ public class DefaultKafkaResourceManager extends TestContainerResourceManager<Ge
 
   static class DefaultKafkaContainer extends KafkaContainer {
 
-    private String host;
+    private final String host;
 
     public DefaultKafkaContainer(Builder builder) {
       super(DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag));
