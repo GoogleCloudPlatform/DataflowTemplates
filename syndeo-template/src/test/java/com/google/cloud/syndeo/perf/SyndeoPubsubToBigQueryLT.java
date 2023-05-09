@@ -26,10 +26,8 @@ import com.google.cloud.syndeo.SyndeoTemplate;
 import com.google.cloud.syndeo.transforms.pubsub.SyndeoPubsubWriteSchemaTransformProvider;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -82,8 +80,8 @@ public class SyndeoPubsubToBigQueryLT {
               + UUID.randomUUID())
           .substring(0, 30);
 
-  private PubsubResourceManager pubsub = null;
-  private BigQueryResourceManager bigquery = null;
+  private DefaultPubsubResourceManager pubsub = null;
+  private DefaultBigQueryResourceManager bigquery = null;
   private Instant testStart = null;
 
   @Before

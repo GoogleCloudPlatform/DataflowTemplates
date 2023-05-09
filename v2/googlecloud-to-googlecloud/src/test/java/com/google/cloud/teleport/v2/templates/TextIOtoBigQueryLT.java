@@ -35,7 +35,6 @@ import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
@@ -83,7 +82,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
   private static final String TEST_ROOT_DIR =
       TextIOtoBigQueryLT.class.getSimpleName().toLowerCase();
   private static ArtifactClient artifactClient;
-  private static BigQueryResourceManager bigQueryResourceManager;
+  private static DefaultBigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setup() throws IOException {

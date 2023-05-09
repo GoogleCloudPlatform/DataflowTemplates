@@ -34,6 +34,7 @@ import com.google.cloud.bigquery.TableDefinition;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
 import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
@@ -44,13 +45,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default class for implementation of {@link BigQueryResourceManager} interface.
+ * Client for managing BigQuery resources.
  *
  * <p>The class supports one dataset, and multiple tables per dataset object.
  *
  * <p>The class is thread-safe.
  */
-public final class DefaultBigQueryResourceManager implements BigQueryResourceManager {
+public final class DefaultBigQueryResourceManager implements ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultBigQueryResourceManager.class);
   private static final String DEFAULT_DATASET_REGION = "us-central1";
 
@@ -96,6 +97,11 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     return projectId;
   }
 
+  /**
+   * Return the dataset ID this Resource Manager uses to create and manage tables in.
+   *
+   * @return the dataset ID.
+   */
   public String getDatasetId() {
     return datasetId;
   }
@@ -159,7 +165,12 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     }
   }
 
-  @Override
+  /**
+   * Create a BigQuery dataset in which all tables will exist.
+   *
+   * @param region the region to store the dataset in.
+   * @throws BigQueryResourceManagerException if there is an error creating the dataset in BigQuery.
+   */
   public synchronized void createDataset(String region) {
 
     // Check to see if dataset already exists, and throw error if it does
@@ -182,12 +193,39 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     LOG.info("Dataset {} created successfully", datasetId);
   }
 
-  @Override
+  /**
+   * Creates a table within the current dataset given a table name and schema.
+   *
+   * <p>This table will automatically expire 1 hour after creation if not cleaned up manually or by
+   * calling the {@link DefaultBigQueryResourceManager#cleanupAll()} method.
+   *
+   * <p>Note: Implementations may do dataset creation here, if one does not already exist.
+   *
+   * @param tableName The name of the table.
+   * @param schema A schema object that defines the table.
+   * @return The TableId (reference) to the table
+   * @throws BigQueryResourceManagerException if there is an error creating the table in BigQuery.
+   */
   public synchronized TableId createTable(String tableName, Schema schema) {
     return createTable(tableName, schema, System.currentTimeMillis() + 3600000); // 1h
   }
 
-  @Override
+  /**
+   * Creates a table within the current dataset given a table name and schema.
+   *
+   * <p>This table will automatically expire at the time specified by {@code expirationTime} if not
+   * cleaned up manually or by calling the {@link DefaultBigQueryResourceManager#cleanupAll()}
+   * method.
+   *
+   * <p>Note: Implementations may do dataset creation here, if one does not already exist.
+   *
+   * @param tableName The name of the table.
+   * @param schema A schema object that defines the table.
+   * @param expirationTimeMillis Sets the time when this table expires, in milliseconds since the
+   *     epoch.
+   * @return The TableId (reference) to the table
+   * @throws BigQueryResourceManagerException if there is an error creating the table in BigQuery.
+   */
   public synchronized TableId createTable(
       String tableName, Schema schema, Long expirationTimeMillis) {
     // Check table ID
@@ -227,12 +265,32 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     }
   }
 
-  @Override
+  /**
+   * Writes a given row into a table. This method requires {@link
+   * DefaultBigQueryResourceManager#createTable(String, Schema)} to be called for the target table
+   * beforehand.
+   *
+   * @param tableName The name of the table to insert the given row into.
+   * @param row A row object representing the table row.
+   * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no dataset, if the table does not exist or if there is an
+   *     Exception when attempting to insert the rows.
+   */
   public synchronized void write(String tableName, RowToInsert row) {
     write(tableName, ImmutableList.of(row));
   }
 
-  @Override
+  /**
+   * Writes a collection of table rows into a single table. This method requires {@link
+   * DefaultBigQueryResourceManager#createTable(String, Schema)} to be called for the target table
+   * beforehand.
+   *
+   * @param tableName The name of the table to insert the given rows into.
+   * @param rows A collection of table rows.
+   * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no dataset, if the table does not exist or if there is an
+   *     Exception when attempting to insert the rows.
+   */
   public synchronized void write(String tableName, List<RowToInsert> rows) {
     // Exit early if there are no mutations
     if (!rows.iterator().hasNext()) {
@@ -269,7 +327,11 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
         tableName);
   }
 
-  @Override
+  /**
+   * Runs the specified query.
+   *
+   * @param query the query to execute
+   */
   public TableResult runQuery(String query) {
     try {
       TableResult results = bigQuery.query(QueryJobConfiguration.newBuilder(query).build());
@@ -280,7 +342,11 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     }
   }
 
-  @Override
+  /**
+   * Gets the number of rows in the table.
+   *
+   * @param table the name of the table
+   */
   public Long getRowCount(String table) {
     TableResult r =
         runQuery(String.format("SELECT COUNT(*) FROM `%s.%s.%s`", projectId, datasetId, table));
@@ -290,22 +356,63 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
         .get(0);
   }
 
-  @Override
+  /**
+   * Reads all the rows in a table and returns a TableResult containing a JSON string
+   * representation. This method requires {@link DefaultBigQueryResourceManager#createTable(String,
+   * Schema)} to be called for the target table beforehand.
+   *
+   * @param table The table reference to read rows from.
+   * @return A TableResult containing all the rows in the table in JSON.
+   * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no dataset, if the table does not exist or if there is an
+   *     Exception when attempting to insert the rows.
+   */
   public synchronized TableResult readTable(TableId table) {
     return readTable(table.getTable());
   }
 
-  @Override
+  /**
+   * Reads all the rows in a table and returns a TableResult containing a JSON string
+   * representation. This method requires {@link DefaultBigQueryResourceManager#createTable(String,
+   * Schema)} to be called for the target table beforehand.
+   *
+   * @param tableName The name of the table to read rows from.
+   * @return A TableResult containing all the rows in the table in JSON.
+   * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no dataset, if the table does not exist or if there is an
+   *     Exception when attempting to insert the rows.
+   */
   public synchronized TableResult readTable(String tableName) {
     return readTable(tableName, -1);
   }
 
-  @Override
+  /**
+   * Reads number of rows in a table and returns a TableResult containing a JSON string
+   * representation. This method requires {@link DefaultBigQueryResourceManager#createTable(String,
+   * Schema)} to be called for the target table beforehand.
+   *
+   * @param table The table reference to read rows from.
+   * @return A TableResult containing all the rows in the table in JSON.
+   * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no dataset, if the table does not exist or if there is an
+   *     Exception when attempting to insert the rows.
+   */
   public synchronized TableResult readTable(TableId table, int numRows) {
     return readTable(table.getTable(), numRows);
   }
 
-  @Override
+  /**
+   * Reads number of rows in a table and returns a TableResult containing a JSON string
+   * representation. This method requires {@link DefaultBigQueryResourceManager#createTable(String,
+   * Schema)} to be called for the target table beforehand.
+   *
+   * @param tableName The name of the table to read rows from.
+   * @param numRows number of rows to read from the table
+   * @return A TableResult containing all the rows in the table in JSON.
+   * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no dataset, if the table does not exist or if there is an
+   *     Exception when attempting to insert the rows.
+   */
   public synchronized TableResult readTable(String tableName, int numRows) {
     getTableIfExists(tableName);
 
@@ -324,6 +431,13 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     return runQuery(query);
   }
 
+  /**
+   * Deletes all created resources (dataset and tables) and cleans up the BigQuery client, making
+   * the manager object unusable.
+   *
+   * @throws BigQueryResourceManagerException if there is an error deleting the tables or dataset in
+   *     BigQuery.
+   */
   @Override
   public synchronized void cleanupAll() {
     LOG.info("Attempting to cleanup manager.");

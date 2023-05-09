@@ -28,14 +28,11 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
-import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
 import com.google.cloud.teleport.it.jdbc.PostgresResourceManager;
@@ -80,9 +77,9 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   private static final String DEFAULT_WINDOW_DURATION = "60s";
   private static final String HIGH_QPS = "10000";
 
-  private PubsubResourceManager pubsubResourceManager;
-  private BigQueryResourceManager bigQueryResourceManager;
-  private SpannerResourceManager spannerResourceManager;
+  private DefaultPubsubResourceManager pubsubResourceManager;
+  private DefaultBigQueryResourceManager bigQueryResourceManager;
+  private DefaultSpannerResourceManager spannerResourceManager;
   private JDBCResourceManager jdbcResourceManager;
 
   @After

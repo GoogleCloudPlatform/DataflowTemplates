@@ -32,7 +32,6 @@ import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.utils.BigQueryTestUtil;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -55,7 +54,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class BigQueryToParquetIT extends TemplateTestBase {
 
-  private BigQueryResourceManager bigQueryResourceManager;
+  private DefaultBigQueryResourceManager bigQueryResourceManager;
 
   // Define a set of parameters used to allow configuration of the test size being run.
   private static final String BIGQUERY_ID_COL = "test_id";

@@ -23,7 +23,6 @@ import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -51,7 +50,7 @@ public class MqttToPubsubTestIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(MqttToPubsubTestIT.class);
 
   private HiveMQContainer hiveMQContainer;
-  private PubsubResourceManager pubsubClient;
+  private DefaultPubsubResourceManager pubsubClient;
   private Mqtt5BlockingClient mqttClient;
 
   @Before

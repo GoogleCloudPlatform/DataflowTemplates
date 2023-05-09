@@ -21,7 +21,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 
-/** Utilities for {@link BigQueryResourceManager} implementations. */
+/** Utilities for {@link DefaultBigQueryResourceManager} implementations. */
 public final class BigQueryResourceManagerUtils {
 
   private static final int MAX_DATASET_ID_LENGTH = 1024;

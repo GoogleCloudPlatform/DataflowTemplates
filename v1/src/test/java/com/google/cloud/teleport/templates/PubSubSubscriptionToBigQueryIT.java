@@ -29,11 +29,9 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -58,8 +56,8 @@ import org.junit.runners.JUnit4;
     template = "PubSub_Subscription_to_BigQuery")
 @RunWith(JUnit4.class)
 public class PubSubSubscriptionToBigQueryIT extends TemplateTestBase {
-  private PubsubResourceManager pubsubResourceManager;
-  private BigQueryResourceManager bigQueryResourceManager;
+  private DefaultPubsubResourceManager pubsubResourceManager;
+  private DefaultBigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setUp() throws IOException {

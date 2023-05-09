@@ -23,6 +23,7 @@ import com.google.cloud.storage.NotificationInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,8 +32,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Default implementation for {@link GcsResourceManager}. */
-public class DefaultGcsResourceManager implements GcsResourceManager {
+/** Client for managing Google Cloud Storage resources. */
+public class DefaultGcsResourceManager implements ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultGcsResourceManager.class);
 
   private final String project;
@@ -50,6 +51,13 @@ public class DefaultGcsResourceManager implements GcsResourceManager {
     return StorageOptions.newBuilder().setProjectId(project).build().getService();
   }
 
+  /**
+   * Creates a new notification for the given topic and GCS prefix.
+   *
+   * @param topicName the name of the Pub/Sub topic to which the notification should be sent.
+   * @param gcsPrefix the prefix of the object names to which the notification applies.
+   * @return the created notification.
+   */
   public Notification createNotification(String topicName, String gcsPrefix) {
     Storage storage = getStorageClient();
     NotificationInfo notificationInfo =
@@ -72,6 +80,14 @@ public class DefaultGcsResourceManager implements GcsResourceManager {
     }
   }
 
+  /**
+   * Copies a file from a local path to a specified object name in Google Cloud Storage.
+   *
+   * @param localPath the path of the file to be copied.
+   * @param objectName the name of the object to be created in Google Cloud Storage.
+   * @return the URI of the copied object in Google Cloud Storage.
+   * @throws IOException if there is an error reading the file at the specified local path.
+   */
   public String copyFileToGcs(Path localPath, String objectName) throws IOException {
     Storage storage = getStorageClient();
 
@@ -83,6 +99,10 @@ public class DefaultGcsResourceManager implements GcsResourceManager {
     return resultBlob.getBlobId().toGsUtilUri();
   }
 
+  /**
+   * Cleans up all resources created by the manager instance, including notifications and objects in
+   * Google Cloud Storage.
+   */
   @Override
   public void cleanupAll() {
     if (GCS_BLOBS.size() > 0) {
@@ -95,6 +115,57 @@ public class DefaultGcsResourceManager implements GcsResourceManager {
       for (Notification notification : NOTIFICATION_LIST) {
         storage.deleteNotification(bucket, notification.getNotificationId());
       }
+    }
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /** A builder class for creating instances of {@link DefaultGcsResourceManager}. */
+  public static class Builder {
+    private String project;
+    private String bucket;
+
+    /**
+     * Sets the GCP project for the builder.
+     *
+     * @param project the GCP project ID.
+     * @return the builder instance.
+     */
+    public Builder setProject(String project) {
+      this.project = project;
+      return this;
+    }
+
+    /**
+     * Sets the GCS bucket for the builder.
+     *
+     * @param bucket the name of the GCS bucket.
+     * @return the builder instance.
+     */
+    public Builder setBucket(String bucket) {
+      this.bucket = bucket;
+      return this;
+    }
+
+    /**
+     * Builds a new instance of {@link DefaultGcsResourceManager} with the specified project and
+     * bucket.
+     *
+     * @return a new instance of {@link DefaultGcsResourceManager}.
+     * @throws IllegalArgumentException if either project or bucket is not set.
+     */
+    public DefaultGcsResourceManager build() {
+      if (project == null) {
+        throw new IllegalArgumentException(
+            "A GCP project must be provided to build a GCS resource manager.");
+      }
+      if (bucket == null) {
+        throw new IllegalArgumentException(
+            "A GCS bucket must be provided to build a GCS resource manager.");
+      }
+      return new DefaultGcsResourceManager(project, bucket);
     }
   }
 }

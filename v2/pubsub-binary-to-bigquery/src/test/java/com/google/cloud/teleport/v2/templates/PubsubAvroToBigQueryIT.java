@@ -27,11 +27,9 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
@@ -71,8 +69,8 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
   private Schema avroSchema;
   private com.google.cloud.bigquery.Schema bigQuerySchema;
 
-  private PubsubResourceManager pubsubResourceManager;
-  private BigQueryResourceManager bigQueryResourceManager;
+  private DefaultPubsubResourceManager pubsubResourceManager;
+  private DefaultBigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setup() throws IOException {

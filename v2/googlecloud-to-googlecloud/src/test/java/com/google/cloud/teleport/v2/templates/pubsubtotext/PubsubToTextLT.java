@@ -32,7 +32,6 @@ import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
@@ -67,7 +66,6 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   private static final String OUTPUT_DIRECTORY_KEY = "outputDirectory";
   private static final String WINDOW_DURATION_KEY = "windowDuration";
   private static final String NUM_WORKERS_KEY = "numWorkers";
-  private static final String MAX_WORKERS_KEY = "maxWorkers";
   private static final String OUTPUT_FILENAME_PREFIX = "outputFilenamePrefix";
   private static final String DEFAULT_WINDOW_DURATION = "10s";
   private static final Pattern EXPECTED_PATTERN = Pattern.compile(".*subscription-output-.*");
@@ -77,7 +75,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   // 35,000,000 messages of the given schema make up approximately 10GB
   private static final long NUM_MESSAGES = 35000000L;
 
-  private static PubsubResourceManager pubsubResourceManager;
+  private static DefaultPubsubResourceManager pubsubResourceManager;
   private static ArtifactClient gcsClient;
 
   @Before

@@ -25,6 +25,7 @@ import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.cloud.pubsub.v1.SubscriptionAdminSettings;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminSettings;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.protobuf.ByteString;
@@ -50,12 +51,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default class for implementation of {@link PubsubResourceManager} interface.
+ * Client for managing Pub/Sub resources.
  *
  * <p>The class provides an interaction with the real Pub/Sub client, with operations related to
  * management of topics and subscriptions.
  */
-public final class DefaultPubsubResourceManager implements PubsubResourceManager {
+public final class DefaultPubsubResourceManager implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(DefaultPubsubResourceManager.class);
 
@@ -64,7 +65,7 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
 
   private final String testId;
   private final String projectId;
-  private final PubsubPublisherFactory publisherFactory;
+  private final DefaultPubsubPublisherFactory publisherFactory;
   private final TopicAdminClient topicAdminClient;
   private final SubscriptionAdminClient subscriptionAdminClient;
 
@@ -98,7 +99,7 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
   DefaultPubsubResourceManager(
       String testName,
       String projectId,
-      PubsubPublisherFactory publisherFactory,
+      DefaultPubsubPublisherFactory publisherFactory,
       TopicAdminClient topicAdminClient,
       SubscriptionAdminClient subscriptionAdminClient,
       SchemaServiceClient schemaServiceClient) {
@@ -120,12 +121,12 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
   }
 
   /**
-   * Create a topic based on the given topic name. However, it adds a prefix based on the test id
-   * and timestamp, to uniquely identify the current execution instance.
+   * Creates a topic with the given name on Pub/Sub.
    *
-   * @see PubsubResourceManager#createTopic(String)
+   * @param topicName Topic name to create. The underlying implementation may not use the topic name
+   *     directly, and can add a prefix or a suffix to identify specific executions.
+   * @return The instance of the TopicName that was just created.
    */
-  @Override
   public TopicName createTopic(String topicName) {
     checkArgument(!topicName.isEmpty(), "topicName can not be empty");
     checkIsUsable();
@@ -143,12 +144,14 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
   }
 
   /**
-   * Create a subscription based on the given name. However, it adds a prefix based on the test id
-   * and timestamp, to uniquely identify the current execution instance.
+   * Creates a subscription at the specific topic, with a given name.
    *
-   * @see PubsubResourceManager#createSubscription(TopicName, String)
+   * @param topicName Topic Name reference to add the subscription.
+   * @param subscriptionName Name of the subscription to use. Note that the underlying
+   *     implementation may not use the subscription name literally, and can use a prefix or a
+   *     suffix to identify specific executions.
+   * @return The instance of the SubscriptionName that was just created.
    */
-  @Override
   public SubscriptionName createSubscription(TopicName topicName, String subscriptionName) {
     checkArgument(!subscriptionName.isEmpty(), "subscriptionName can not be empty");
     checkIsUsable();
@@ -177,7 +180,14 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
     return reference;
   }
 
-  @Override
+  /**
+   * Publishes a message with the given data to the publisher context's topic.
+   *
+   * @param topic Reference to the topic to send the message.
+   * @param attributes Attributes to send with the message.
+   * @param data Byte data to send.
+   * @return The message id that was generated.
+   */
   public String publish(TopicName topic, Map<String, String> attributes, ByteString data)
       throws PubsubResourceManagerException {
     checkIsUsable();
@@ -203,7 +213,12 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
     }
   }
 
-  @Override
+  /**
+   * Pulls messages from the given subscription.
+   *
+   * @param subscriptionName Name of the subscription to use.
+   * @return The message id that was generated.
+   */
   public PullResponse pull(SubscriptionName subscriptionName, int maxMessages) {
     LOG.info("Pulling messages from subscription '{}'", subscriptionName);
     PullResponse response = subscriptionAdminClient.pull(subscriptionName, maxMessages);
@@ -214,7 +229,16 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
     return response;
   }
 
-  @Override
+  /**
+   * Registers a new schema of the given type and definition, then assigns it to the specified
+   * topic.
+   *
+   * @param schemaType the type of schema to create (e.g. AVRO, PROTOBUF)
+   * @param schemaDefinition the definition of the schema to create in AVRO or Protobuf syntax.
+   * @param dataEncoding the encoding of the data in pubsub (e.g. BINARY_ENCODING, JSON)
+   * @param schemaTopic the name of the topic to which assign the schema.
+   * @return the name of the newly created schema
+   */
   public String createSchema(
       Schema.Type schemaType,
       String schemaDefinition,
@@ -241,6 +265,7 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
     return schema.getName();
   }
 
+  /** Delete any topics or subscriptions created by this manager. */
   @Override
   public synchronized void cleanupAll() {
     // Ignore call if it was cleaned up before

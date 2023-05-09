@@ -27,7 +27,6 @@ import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
@@ -51,7 +50,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class PubSubToElasticsearchIT extends TemplateTestBase {
 
-  private PubsubResourceManager pubsubResourceManager;
+  private DefaultPubsubResourceManager pubsubResourceManager;
   private ElasticsearchResourceManager elasticsearchResourceManager;
 
   public static final int MESSAGES_TO_SEND = 25;

@@ -26,6 +26,7 @@ import com.google.cloud.datastore.GqlQuery;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.Query.ResultType;
 import com.google.cloud.datastore.QueryResults;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import java.util.ArrayList;
@@ -34,7 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class DefaultDatastoreResourceManager implements DatastoreResourceManager {
+/** Client for managing Datastore resources. */
+public class DefaultDatastoreResourceManager implements ResourceManager {
 
   private final String namespace;
 
@@ -60,7 +62,13 @@ public class DefaultDatastoreResourceManager implements DatastoreResourceManager
     this.keys = new HashSet<>();
   }
 
-  @Override
+  /**
+   * Insert entities to Datastore.
+   *
+   * @param kind Kind of document to insert.
+   * @param entities Entities to insert to Datastore.
+   * @return Entities.
+   */
   public List<Entity> insert(String kind, Map<Long, FullEntity<?>> entities) {
     List<Entity> created = new ArrayList<>();
 
@@ -79,7 +87,12 @@ public class DefaultDatastoreResourceManager implements DatastoreResourceManager
     return created;
   }
 
-  @Override
+  /**
+   * Run a Gql Query and return the results in entity format.
+   *
+   * @param gqlQuery Gql Query to run.
+   * @return Entities returned from the query.
+   */
   public List<Entity> query(String gqlQuery) {
     try {
       QueryResults<Entity> queryResults =
@@ -105,6 +118,12 @@ public class DefaultDatastoreResourceManager implements DatastoreResourceManager
     }
   }
 
+  /**
+   * Deletes all created entities and cleans up the Datastore client.
+   *
+   * @throws DatastoreResourceManagerException if there is an error deleting the tables or dataset
+   *     in BigQuery.
+   */
   @Override
   public void cleanupAll() {
     try {

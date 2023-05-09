@@ -32,7 +32,6 @@ import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.utils.BigQueryTestUtil;
 import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
@@ -72,7 +71,7 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
       Integer.min(
           300, Integer.parseInt(getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY)));
 
-  private BigQueryResourceManager bigQueryClient;
+  private DefaultBigQueryResourceManager bigQueryClient;
   private DefaultBigtableResourceManager bigtableClient;
 
   @Before

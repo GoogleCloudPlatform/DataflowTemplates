@@ -28,8 +28,7 @@ import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
+import com.google.cloud.teleport.it.gcp.storage.DefaultGcsResourceManager;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -84,13 +83,14 @@ public class ReadFilesTransformIT {
 
   private SubscriptionName pubsubSubscription = null;
   private TopicName pubsubTopic = null;
-  private GcsResourceManager gcsResourceManager = null;
-  private PubsubResourceManager pubsubResourceManager = null;
+  private DefaultGcsResourceManager gcsResourceManager = null;
+  private DefaultPubsubResourceManager pubsubResourceManager = null;
   private String gcsPrefix = null;
 
   @Before
   public void setUpPubSubNotifications() throws IOException {
-    gcsResourceManager = GcsResourceManager.builder().setBucket(BUCKET).setProject(PROJECT).build();
+    gcsResourceManager =
+        DefaultGcsResourceManager.builder().setBucket(BUCKET).setProject(PROJECT).build();
     RESOURCE_MANAGERS.add(gcsResourceManager);
 
     pubsubResourceManager =
@@ -121,7 +121,7 @@ public class ReadFilesTransformIT {
 
   @Test
   public void testFilesAreConsumed() throws IOException, InterruptedException {
-    Thread dataCopy = new Thread(() -> copyFilesToGcs());
+    Thread dataCopy = new Thread(this::copyFilesToGcs);
     dataCopy.start();
 
     Counter elementCounter = Metrics.counter("test", "elementCounter");
@@ -237,7 +237,7 @@ public class ReadFilesTransformIT {
 
   @Test
   public void testGoodErrorHandling() throws IOException, InterruptedException {
-    Thread dataCopy = new Thread(() -> copyFilesToGcs());
+    Thread dataCopy = new Thread(this::copyFilesToGcs);
     dataCopy.start();
 
     // Pass a proper JSON string without the right fields

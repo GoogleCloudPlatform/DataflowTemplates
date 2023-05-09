@@ -67,7 +67,7 @@ public final class DefaultPubsubResourceManagerTest {
   @Mock private Topic topic;
   @Mock private Subscription subscription;
   @Mock private Publisher publisher;
-  @Mock private PubsubPublisherFactory publisherFactory;
+  @Mock private DefaultPubsubPublisherFactory publisherFactory;
 
   private DefaultPubsubResourceManager testManager;
 

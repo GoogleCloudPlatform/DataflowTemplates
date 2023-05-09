@@ -19,12 +19,12 @@ import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.gen
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generateResourceId;
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
+import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
 import com.google.common.base.CharMatcher;
 import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 
-/** Utilities for {@link SpannerResourceManager} implementations. */
+/** Utilities for {@link DefaultSpannerResourceManager} implementations. */
 public final class SpannerResourceManagerUtils {
   private static final Pattern ILLEGAL_DATABASE_CHARS = Pattern.compile("[\\W-]");
   private static final Pattern ILLEGAL_INSTANCE_CHARS = Pattern.compile("[^a-z0-9-]");

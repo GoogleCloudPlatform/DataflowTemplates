@@ -35,6 +35,7 @@ import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -43,7 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default class for implementation of {@link SpannerResourceManager} interface.
+ * Client for managing Spanner resources.
  *
  * <p>The class supports one instance, one database, and multiple tables per manager object. The
  * instance and database are created when the first table is created.
@@ -55,7 +56,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The class is thread-safe.
  */
-public final class DefaultSpannerResourceManager implements SpannerResourceManager {
+public final class DefaultSpannerResourceManager implements ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultSpannerResourceManager.class);
   private static final int MAX_BASE_ID_LENGTH = 30;
 
@@ -154,18 +155,32 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
     }
   }
 
-  @Override
+  /**
+   * Return the instance ID this Resource Manager uses to create and manage tables in.
+   *
+   * @return the instance ID.
+   */
   public String getInstanceId() {
     return this.instanceId;
   }
 
-  @Override
+  /**
+   * Return the dataset ID this Resource Manager uses to create and manage tables in.
+   *
+   * @return the dataset ID.
+   */
   public String getDatabaseId() {
     return this.databaseId;
   }
 
-  /** Creates an instance and database as well if there are none at the time of method call. */
-  @Override
+  /**
+   * Creates a table given a CREATE TABLE DDL statement.
+   *
+   * <p>Note: Implementations may do instance creation and database creation here.
+   *
+   * @param statement The CREATE TABLE DDL statement.
+   * @throws IllegalStateException if method is called after resources have been cleaned up.
+   */
   public synchronized void createTable(String statement) throws IllegalStateException {
     checkIsUsable();
     maybeCreateInstance();
@@ -183,12 +198,28 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
     }
   }
 
-  @Override
+  /**
+   * Writes a given record into a table. This method requires {@link
+   * DefaultSpannerResourceManager#createTable(String)} to be called for the target table
+   * beforehand.
+   *
+   * @param tableRecord A mutation object representing the table record.
+   * @throws IllegalStateException if method is called after resources have been cleaned up or if
+   *     the manager object has no instance or database.
+   */
   public synchronized void write(Mutation tableRecord) throws IllegalStateException {
     write(ImmutableList.of(tableRecord));
   }
 
-  @Override
+  /**
+   * Writes a collection of table records into one or more tables. This method requires {@link
+   * DefaultSpannerResourceManager#createTable(String)} to be called for the target table
+   * beforehand.
+   *
+   * @param tableRecords A collection of mutation objects representing table records.
+   * @throws IllegalStateException if method is called after resources have been cleaned up or if
+   *     the manager object has no instance or database.
+   */
   public synchronized void write(Iterable<Mutation> tableRecords) throws IllegalStateException {
     checkIsUsable();
     checkHasInstanceAndDatabase();
@@ -204,13 +235,33 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
     }
   }
 
-  @Override
+  /**
+   * Reads all the rows in a table. This method requires {@link
+   * DefaultSpannerResourceManager#createTable(String)} to be called for the target table
+   * beforehand.
+   *
+   * @param tableId The id of the table to read rows from.
+   * @param columnNames The table's column names.
+   * @return A ResultSet object containing all the rows in the table.
+   * @throws IllegalStateException if method is called after resources have been cleaned up or if
+   *     the manager object has no instance or database.
+   */
   public synchronized ImmutableList<Struct> readTableRecords(String tableId, String... columnNames)
       throws IllegalStateException {
     return readTableRecords(tableId, ImmutableList.copyOf(columnNames));
   }
 
-  @Override
+  /**
+   * Reads all the rows in a table.This method requires {@link
+   * DefaultSpannerResourceManager#createTable(String)} to be called for the target table
+   * beforehand.
+   *
+   * @param tableId The id of table to read rows from.
+   * @param columnNames A collection of the table's column names.
+   * @return A ResultSet object containing all the rows in the table.
+   * @throws IllegalStateException if method is called after resources have been cleaned up or if
+   *     the manager object has no instance or database.
+   */
   public synchronized ImmutableList<Struct> readTableRecords(
       String tableId, Iterable<String> columnNames) throws IllegalStateException {
     checkIsUsable();
@@ -241,6 +292,10 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
     }
   }
 
+  /**
+   * Deletes all created resources (instance, database, and tables) and cleans up all Spanner
+   * sessions, making the manager object unusable.
+   */
   @Override
   public synchronized void cleanupAll() {
     try {

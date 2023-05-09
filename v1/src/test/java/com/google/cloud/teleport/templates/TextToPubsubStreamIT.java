@@ -26,7 +26,6 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.ByteStreams;
@@ -63,7 +62,7 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(TextToPubsubStreamIT.class);
   private static final String TEST_ROOT_DIR = TextToPubsubStreamIT.class.getSimpleName();
 
-  private PubsubResourceManager pubsubResourceManager;
+  private DefaultPubsubResourceManager pubsubResourceManager;
 
   @ClassRule public static TemporaryFolder tempFolder = new TemporaryFolder();
 

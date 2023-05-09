@@ -59,8 +59,6 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * BigQueryIO performance tests.
@@ -75,9 +73,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class BigQueryIOLT extends IOLoadTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BigQueryIOLT.class);
-
-  private static BigQueryResourceManager resourceManager;
+  private static DefaultBigQueryResourceManager resourceManager;
   private static String tableQualifier;
   private static final String READ_ELEMENT_METRIC_NAME = "read_count";
   private Configuration configuration;

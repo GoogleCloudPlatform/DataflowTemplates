@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.gcp.pubsub;
 
-/** Custom exception for {@link PubsubResourceManager} implementations. */
+/** Custom exception for {@link DefaultPubsubResourceManager} implementations. */
 class PubsubResourceManagerException extends RuntimeException {
 
   PubsubResourceManagerException(String errorMessage, Throwable err) {

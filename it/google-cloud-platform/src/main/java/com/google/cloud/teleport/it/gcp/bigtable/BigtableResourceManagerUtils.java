@@ -22,7 +22,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 
-/** Utilities for {@link BigtableResourceManager} implementations. */
+/** Utilities for {@link DefaultBigtableResourceManager} implementations. */
 public final class BigtableResourceManagerUtils {
 
   private static final int MAX_CLUSTER_ID_LENGTH = 30;

@@ -27,7 +27,6 @@ import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
@@ -62,7 +61,7 @@ public final class PubsubToTextIT extends TemplateTestBase {
 
   private static final String DEFAULT_WINDOW_DURATION = "10s";
 
-  private PubsubResourceManager pubsubResourceManager;
+  private DefaultPubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setup() throws IOException {

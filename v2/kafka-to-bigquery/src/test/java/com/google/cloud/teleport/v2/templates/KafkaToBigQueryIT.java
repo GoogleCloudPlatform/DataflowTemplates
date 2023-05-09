@@ -30,7 +30,6 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
@@ -63,7 +62,7 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultBigtableResourceManager.class);
 
   private DefaultKafkaResourceManager kafkaResourceManager;
-  private BigQueryResourceManager bigQueryClient;
+  private DefaultBigQueryResourceManager bigQueryClient;
 
   @Before
   public void setup() throws IOException {

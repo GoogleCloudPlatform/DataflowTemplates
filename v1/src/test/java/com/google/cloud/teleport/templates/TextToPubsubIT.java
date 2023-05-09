@@ -26,7 +26,6 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
@@ -47,7 +46,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class TextToPubsubIT extends TemplateTestBase {
   private static final String TEST_ROOT_DIR = TextToPubsubIT.class.getSimpleName();
-  private PubsubResourceManager pubsubResourceManager;
+  private DefaultPubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setUp() throws IOException {

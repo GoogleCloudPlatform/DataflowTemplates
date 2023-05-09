@@ -31,7 +31,6 @@ import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
 import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
-import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.re2j.Pattern;
@@ -62,7 +61,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
       "Read all records/Read from Cloud Spanner/Read from Partitions.out0";
   private static final String OUTPUT_PCOLLECTION =
       "Write to storage/WriteFiles/RewindowIntoGlobal/Window.Assign.out0";
-  private static SpannerResourceManager spannerResourceManager;
+  private static DefaultSpannerResourceManager spannerResourceManager;
   private static GcsArtifactClient gcsClient;
 
   @Before

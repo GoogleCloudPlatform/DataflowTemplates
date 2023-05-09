@@ -26,7 +26,6 @@ import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.jdbc.MSSQLResourceManager;
 import com.google.cloud.teleport.it.jdbc.MySQLResourceManager;
@@ -70,7 +69,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   private PostgresResourceManager postgresResourceManager;
   private OracleResourceManager oracleResourceManager;
   private MSSQLResourceManager msSQLResourceManager;
-  private BigQueryResourceManager bigQueryResourceManager;
+  private DefaultBigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setUp() {

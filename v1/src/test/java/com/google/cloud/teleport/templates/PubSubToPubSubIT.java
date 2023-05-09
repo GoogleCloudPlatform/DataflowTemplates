@@ -25,7 +25,6 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
@@ -47,7 +46,7 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(PubsubToPubsub.class)
 @RunWith(JUnit4.class)
 public class PubSubToPubSubIT extends TemplateTestBase {
-  private PubsubResourceManager pubsubResourceManager;
+  private DefaultPubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setUp() throws IOException {

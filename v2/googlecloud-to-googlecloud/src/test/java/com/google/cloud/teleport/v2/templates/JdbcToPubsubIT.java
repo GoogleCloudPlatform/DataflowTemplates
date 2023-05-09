@@ -27,7 +27,6 @@ import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
 import com.google.cloud.teleport.it.gcp.artifacts.utils.JsonTestUtil;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
 import com.google.cloud.teleport.it.jdbc.MySQLResourceManager;
@@ -56,7 +55,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @TemplateIntegrationTest(JdbcToPubsub.class)
 @RunWith(JUnit4.class)
 public class JdbcToPubsubIT extends JDBCBaseIT {
-  private PubsubResourceManager pubsubResourceManager;
+  private DefaultPubsubResourceManager pubsubResourceManager;
   private MySQLResourceManager mysqlResourceManager;
 
   private static final String ROW_ID = "row_id";

@@ -21,12 +21,12 @@ import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 
 /**
- * Default class for implementation of {@link PubsubPublisherFactory} interface.
+ * Client for building Pub/Sub publishers.
  *
  * <p>The class provides an interaction with the real Pub/Sub client, with operations related to
  * creating a Pub/Sub Publisher.
  */
-class DefaultPubsubPublisherFactory implements PubsubPublisherFactory {
+public class DefaultPubsubPublisherFactory {
 
   private final CredentialsProvider credentialsProvider;
 
@@ -34,7 +34,7 @@ class DefaultPubsubPublisherFactory implements PubsubPublisherFactory {
     this.credentialsProvider = credentialsProvider;
   }
 
-  @Override
+  /** Create a {@link Publisher} instance for the given topic reference. */
   public Publisher createPublisher(TopicName topic) {
     try {
       return Publisher.newBuilder(topic).setCredentialsProvider(credentialsProvider).build();
