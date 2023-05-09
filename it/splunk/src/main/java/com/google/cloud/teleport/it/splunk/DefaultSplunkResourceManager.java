@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.it.splunk.SplunkResourceManagerUtils.gen
 import static com.google.cloud.teleport.it.splunk.SplunkResourceManagerUtils.generateSplunkPassword;
 import static com.google.cloud.teleport.it.splunk.SplunkResourceManagerUtils.splunkEventToMap;
 
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.splunk.Job;
@@ -47,7 +48,7 @@ import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Default class for implementation of SplunkResourceManager interface.
+ * Client for managing Kafka resources.
  *
  * <p>The class supports one Splunk server instance.
  *
@@ -57,7 +58,7 @@ import org.testcontainers.utility.DockerImageName;
  * and the "Use Rosetta for x86/amd64 emulation on Apple Silicon" setting is enabled.
  */
 public class DefaultSplunkResourceManager extends TestContainerResourceManager<SplunkContainer>
-    implements SplunkResourceManager {
+    implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(DefaultSplunkResourceManager.class);
   private static final String DEFAULT_SPLUNK_CONTAINER_NAME = "splunk/splunk";
@@ -158,17 +159,33 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
     return new DefaultSplunkResourceManager.Builder(testId);
   }
 
-  @Override
+  /**
+   * Returns the HTTP endpoint that this Splunk server is configured to listen on.
+   *
+   * @return the HTTP endpoint.
+   */
   public String getHttpEndpoint() {
     return String.format("%s://%s:%d", hecScheme, getHost(), hecPort);
   }
 
-  @Override
+  /**
+   * Returns the HTTP Event Collector (HEC) endpoint that this Splunk server is configured to
+   * receive events at.
+   *
+   * <p>This will be the HTTP endpoint concatenated with <code>'/services/collector/event'</code>.
+   *
+   * @return the HEC service endpoint.
+   */
   public String getHecEndpoint() {
     return getHttpEndpoint() + "/services/collector/event";
   }
 
-  @Override
+  /**
+   * Returns the Splunk Http Event Collector (HEC) authentication token used to connect to this
+   * Splunk instance's HEC service.
+   *
+   * @return the HEC authentication token.
+   */
   public String getHecToken() {
     return hecToken;
   }
@@ -183,12 +200,30 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
     return new JSONObject(splunkEventToMap(event)).toString();
   }
 
-  @Override
+  /**
+   * Sends the given HTTP event to the Splunk Http Event Collector (HEC) service.
+   *
+   * <p>Note: Setting the <code>index</code> field in the Splunk event requires the index already
+   * being configured in the Splunk instance. Unless using a static Splunk instance, omit this field
+   * from the event.
+   *
+   * @param event The SpunkEvent to send to the HEC service.
+   * @return True, if the request was successful.
+   */
   public synchronized boolean sendHttpEvent(SplunkEvent event) {
     return sendHttpEvents(List.of(event));
   }
 
-  @Override
+  /**
+   * Sends the given HTTP events to the Splunk Http Event Collector (HEC) service.
+   *
+   * <p>Note: Setting the <code>index</code> field in the Splunk event requires the index already
+   * being configured in the Splunk instance. Unless using a static Splunk instance, omit this field
+   * from the events.
+   *
+   * @param events The SpunkEvents to send to the HEC service.
+   * @return True, if the request was successful.
+   */
   public synchronized boolean sendHttpEvents(Collection<SplunkEvent> events) {
 
     LOG.info("Attempting to send {} events to {}.", events.size(), getHecEndpoint());
@@ -229,12 +264,23 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
     return true;
   }
 
-  @Override
+  /**
+   * Return a list of all Splunk events retrieved from the Splunk server.
+   *
+   * @return All Splunk events on the server.
+   */
   public synchronized List<SplunkEvent> getEvents() {
     return getEvents("search");
   }
 
-  @Override
+  /**
+   * Return a list of Splunk events retrieved from the Splunk server based on the given query.
+   *
+   * <p>e.g. query: <code>'search source=mySource sourcetype=mySourceType host=myHost'</code>
+   *
+   * @param query The query to filter events by.
+   * @return
+   */
   public synchronized List<SplunkEvent> getEvents(String query) {
     // Initialize the SDK client
     Service service = Service.connect(loginArgs);
@@ -255,20 +301,18 @@ public class DefaultSplunkResourceManager extends TestContainerResourceManager<S
     try {
       ResultsReader reader = new ResultsReaderXml(job.getEvents());
       reader.forEach(
-          event -> {
-            results.add(
-                SplunkEvent.newBuilder()
-                    .withEvent(event.get("_raw"))
-                    .withSource(event.get("source"))
-                    .withSourceType(event.get("_sourcetype"))
-                    .withHost(event.get("host"))
-                    .withTime(
-                        OffsetDateTime.parse(
-                                event.get("_time"), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                            .toInstant()
-                            .toEpochMilli())
-                    .create());
-          });
+          event -> results.add(
+              SplunkEvent.newBuilder()
+                  .withEvent(event.get("_raw"))
+                  .withSource(event.get("source"))
+                  .withSourceType(event.get("_sourcetype"))
+                  .withHost(event.get("host"))
+                  .withTime(
+                      OffsetDateTime.parse(
+                              event.get("_time"), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                          .toInstant()
+                          .toEpochMilli())
+                  .create()));
 
     } catch (Exception e) {
       throw new SplunkResourceManagerException("Error parsing XML results from Splunk.", e);

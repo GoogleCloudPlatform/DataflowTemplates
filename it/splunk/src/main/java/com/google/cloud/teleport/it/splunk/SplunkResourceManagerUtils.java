@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 
-/** Utilities for {@link SplunkResourceManager} implementations. */
+/** Utilities for {@link DefaultSplunkResourceManager} implementations. */
 public final class SplunkResourceManagerUtils {
 
   // Splunk event metadata keys

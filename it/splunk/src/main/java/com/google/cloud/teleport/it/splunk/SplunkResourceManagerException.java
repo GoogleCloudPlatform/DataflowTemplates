@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.splunk;
 
-/** Custom exception for {@link SplunkResourceManager} implementations. */
+/** Custom exception for {@link DefaultSplunkResourceManager} implementations. */
 public class SplunkResourceManagerException extends RuntimeException {
 
   public SplunkResourceManagerException(String errorMessage, Throwable err) {

@@ -39,7 +39,7 @@ public class DefaultSplunkResourceManagerIT {
   private static final String TEST_ID = "dummy-test";
   private static final int NUM_EVENTS = 100;
 
-  private SplunkResourceManager splunkResourceManager;
+  private DefaultSplunkResourceManager splunkResourceManager;
 
   @Before
   public void setUp() {
