@@ -66,23 +66,30 @@ public class BigQueryConvertersTest {
 
   static final TableRow ROW =
       new TableRow().set("id", "007").set("state", "CA").set("price", 26.23);
+
   /** The tag for the main output of the json transformation. */
   static final TupleTag<FailsafeElement<TableRow, String>> TRANSFORM_OUT = new TupleTag<>() {};
+
   /** The tag for the dead-letter output of the json to table row transform. */
   static final TupleTag<FailsafeElement<TableRow, String>> TRANSFORM_DEADLETTER_OUT =
       new TupleTag<>() {};
+
   /** The tag for the main output of the json transformation. */
   static final TupleTag<FailsafeElement<TableRow, String>> UDF_OUT = new TupleTag<>() {};
+
   /** The tag for the dead-letter output of the json to table row transform. */
   static final TupleTag<FailsafeElement<TableRow, String>> UDF_TRANSFORM_DEADLETTER_OUT =
       new TupleTag<>() {};
+
   /** String/String Coder for FailsafeElement. */
   static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
+
   /** TableRow/String Coder for FailsafeElement. */
   static final FailsafeElementCoder<TableRow, String> FAILSAFE_TABLE_ROW_ELEMENT_CODER =
       FailsafeElementCoder.of(TableRowJsonCoder.of(), NullableCoder.of(StringUtf8Coder.of()));
+
   // Define the TupleTag's here otherwise the anonymous class will force the test method to
   // be serialized.
   private static final TupleTag<TableRow> TABLE_ROW_TAG = new TupleTag<>() {};

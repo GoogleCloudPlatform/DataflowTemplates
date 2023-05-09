@@ -86,6 +86,7 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
       public abstract StringFieldValueExtractFn build();
     }
   }
+
   /** Convert provided long to {@link Duration}. */
   private static Duration getDuration(Long milliseconds) {
     return new Duration(milliseconds);

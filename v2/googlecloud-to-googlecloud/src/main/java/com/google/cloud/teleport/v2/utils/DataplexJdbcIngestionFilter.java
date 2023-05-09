@@ -46,8 +46,10 @@ public class DataplexJdbcIngestionFilter
   private final String fileSuffix;
   private final WriteDispositionOptions writeDisposition;
   private final List<String> existingFiles;
+
   /** The tag for filtered records. */
   private TupleTag<GenericRecord> filteredRecordsOutputTag;
+
   /** The tag for existing target file names. */
   private TupleTag<String> existingTargetFilesOutputTag;
 

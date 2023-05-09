@@ -119,16 +119,22 @@ import org.slf4j.LoggerFactory;
 public class DLPTextToBigQueryStreaming {
 
   public static final Logger LOG = LoggerFactory.getLogger(DLPTextToBigQueryStreaming.class);
+
   /** Default interval for polling files in GCS. */
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(30);
+
   /** Expected only CSV file in GCS bucket. */
   private static final String ALLOWED_FILE_EXTENSION = String.valueOf("csv");
+
   /** Regular expression that matches valid BQ table IDs. */
   private static final Pattern TABLE_REGEXP = Pattern.compile("[-\\w$@]{1,1024}");
+
   /** Default batch size if value not provided in execution. */
   private static final Integer DEFAULT_BATCH_SIZE = 100;
+
   /** Regular expression that matches valid BQ column name . */
   private static final Pattern COLUMN_NAME_REGEXP = Pattern.compile("^[A-Za-z_]+[A-Za-z_0-9]*$");
+
   /** Default window interval to create side inputs for header records. */
   private static final Duration WINDOW_INTERVAL = Duration.standardSeconds(30);
 
@@ -345,6 +351,7 @@ public class DLPTextToBigQueryStreaming {
 
     private ValueProvider<Integer> batchSize;
     private PCollectionView<List<KV<String, List<String>>>> headerMap;
+
     /** This counter is used to track number of lines processed against batch size. */
     private Integer lineCount;
 

@@ -45,8 +45,10 @@ import org.junit.runners.JUnit4;
 public class WriteDataChangeRecordsToGcsAvroTest {
   /** Rule for pipeline testing. */
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+
   /** Rule for exception testing. */
   @Rule public ExpectedException expectedException = ExpectedException.none();
+
   /** Rule for temporary folder storing output records. */
   @Rule public final TemporaryFolder tmpDir = new TemporaryFolder();
 
@@ -113,6 +115,7 @@ public class WriteDataChangeRecordsToGcsAvroTest {
                 .build());
     pipeline.run();
   }
+
   /**
    * Test whether {@link WriteDataChangeRecordsToGcsAvro} throws an exception if temporary directory
    * is not provided.

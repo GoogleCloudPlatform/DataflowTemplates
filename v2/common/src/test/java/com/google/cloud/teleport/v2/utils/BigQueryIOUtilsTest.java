@@ -52,6 +52,7 @@ public class BigQueryIOUtilsTest {
   private static final String DATASET = "test-dataset";
   private static final String TABLE = "test-table";
   public static final TableRow TABLE_ROW = new TableRow().set("BOOK_ID", "1").set("TITLE", "ABC");
+
   /** A row with wrong field that should cause "TableRow contained unexpected field" error. */
   public static final TableRow TABLE_ROW_WITH_WRONG_FIELD =
       new TableRow().set("BOOK_ID", "1").set("WRONG_FIELD", "ABC");

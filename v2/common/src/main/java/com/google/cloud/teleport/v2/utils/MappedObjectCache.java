@@ -38,6 +38,7 @@ public abstract class MappedObjectCache<KeyT, ValueT> implements Serializable {
   public Cache<KeyT, ValueT> cachedObjects =
       CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).<KeyT, ValueT>build();
   private int maxNumRetries = 0;
+
   // private Integer cacheResetTimeUnitValue = 5;
   // private TimeUnit cacheResetTimeUnit = TimeUnit.MINUTES;
 

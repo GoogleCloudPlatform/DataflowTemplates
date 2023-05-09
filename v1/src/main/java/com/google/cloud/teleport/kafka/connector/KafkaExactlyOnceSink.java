@@ -241,6 +241,7 @@ class KafkaExactlyOnceSink<K, V> extends PTransform<PCollection<KV<K, V>>, PColl
 
     @StateId(OUT_OF_ORDER_BUFFER)
     private final StateSpec<BagState<KV<Long, TimestampedValue<KV<K, V>>>>> outOfOrderBufferSpec;
+
     // A random id assigned to each shard. Helps with detecting when multiple jobs are mistakenly
     // started with same groupId used for storing state on Kafka side, including the case where
     // a job is restarted with same groupId, but the metadata from previous run was not cleared.
