@@ -23,6 +23,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.it.common.TestProperties;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -41,7 +42,7 @@ public class TestContainerResourceManagerTest {
   @Mock private GenericContainer<?> container;
 
   private static final String TEST_ID = "test-id";
-  private static final String HOST = "localhost";
+  private static final String HOST = "1.2.3.4";
   private static final int PORT = 10000;
 
   private TestContainerResourceManager.Builder<TestContainerResourceManagerImpl> testManagerBuilder;
@@ -113,12 +114,10 @@ public class TestContainerResourceManagerTest {
 
   @Test
   public void testGetHostShouldReturnCorrectHostWhenHostNotSet() {
-    String testHost = "testHost";
-    when(container.getHost()).thenReturn(testHost);
-
+    String host = TestProperties.hostIp();
     TestContainerResourceManager<?> testManager = testManagerBuilder.build();
 
-    assertThat(testManager.getHost()).matches(testHost);
+    assertThat(testManager.getHost()).matches(host);
   }
 
   @Test

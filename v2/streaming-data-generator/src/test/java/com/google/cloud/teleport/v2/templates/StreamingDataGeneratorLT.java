@@ -268,7 +268,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   @Test
   public void testGenerateJdbc10gb()
       throws IOException, ParseException, InterruptedException, SQLException {
-    jdbcResourceManager = DefaultPostgresResourceManager.builder(testName).setHost(hostIp).build();
+    jdbcResourceManager = DefaultPostgresResourceManager.builder(testName).build();
     JDBCSchema jdbcSchema =
         new JDBCSchema(
             Map.of(
