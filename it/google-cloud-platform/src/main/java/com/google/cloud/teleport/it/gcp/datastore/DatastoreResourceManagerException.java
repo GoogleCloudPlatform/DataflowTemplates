@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.gcp.datastore;
 
-/** Custom exception for {@link DefaultDatastoreResourceManager} implementations. */
+/** Custom exception for {@link DatastoreResourceManager} implementations. */
 public class DatastoreResourceManagerException extends RuntimeException {
 
   public DatastoreResourceManagerException(String errorMessage, Throwable err) {

@@ -33,13 +33,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Client for managing Google Cloud Storage resources. */
-public class DefaultGcsResourceManager implements ResourceManager {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultGcsResourceManager.class);
+public class GcsResourceManager implements ResourceManager {
+  private static final Logger LOG = LoggerFactory.getLogger(GcsResourceManager.class);
 
   private final String project;
   private final String bucket;
 
-  DefaultGcsResourceManager(String project, String bucket) {
+  GcsResourceManager(String project, String bucket) {
     this.project = project;
     this.bucket = bucket;
   }
@@ -122,7 +122,7 @@ public class DefaultGcsResourceManager implements ResourceManager {
     return new Builder();
   }
 
-  /** A builder class for creating instances of {@link DefaultGcsResourceManager}. */
+  /** A builder class for creating instances of {@link GcsResourceManager}. */
   public static class Builder {
     private String project;
     private String bucket;
@@ -150,13 +150,12 @@ public class DefaultGcsResourceManager implements ResourceManager {
     }
 
     /**
-     * Builds a new instance of {@link DefaultGcsResourceManager} with the specified project and
-     * bucket.
+     * Builds a new instance of {@link GcsResourceManager} with the specified project and bucket.
      *
-     * @return a new instance of {@link DefaultGcsResourceManager}.
+     * @return a new instance of {@link GcsResourceManager}.
      * @throws IllegalArgumentException if either project or bucket is not set.
      */
-    public DefaultGcsResourceManager build() {
+    public GcsResourceManager build() {
       if (project == null) {
         throw new IllegalArgumentException(
             "A GCP project must be provided to build a GCS resource manager.");
@@ -165,7 +164,7 @@ public class DefaultGcsResourceManager implements ResourceManager {
         throw new IllegalArgumentException(
             "A GCS bucket must be provided to build a GCS resource manager.");
       }
-      return new DefaultGcsResourceManager(project, bucket);
+      return new GcsResourceManager(project, bucket);
     }
   }
 }

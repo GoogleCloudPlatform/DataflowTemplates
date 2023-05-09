@@ -28,7 +28,7 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
-import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
+import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.TextImportPipeline;
 import com.google.common.collect.ImmutableList;
@@ -51,12 +51,11 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class TextImportPipelineIT extends TemplateTestBase {
 
-  private DefaultSpannerResourceManager spannerResourceManager;
+  private SpannerResourceManager spannerResourceManager;
 
   @Before
   public void setup() throws IOException, URISyntaxException {
-    spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
   }
 
   @After

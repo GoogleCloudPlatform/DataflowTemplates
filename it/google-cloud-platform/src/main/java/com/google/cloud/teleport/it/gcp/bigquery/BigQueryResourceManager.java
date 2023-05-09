@@ -51,8 +51,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The class is thread-safe.
  */
-public final class DefaultBigQueryResourceManager implements ResourceManager {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultBigQueryResourceManager.class);
+public final class BigQueryResourceManager implements ResourceManager {
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryResourceManager.class);
   private static final String DEFAULT_DATASET_REGION = "us-central1";
 
   private final String projectId;
@@ -61,7 +61,7 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
   private final BigQuery bigQuery;
   private Dataset dataset;
 
-  private DefaultBigQueryResourceManager(Builder builder) {
+  private BigQueryResourceManager(Builder builder) {
     // create bigQuery client
     BigQueryOptions.Builder bigQueryOptions =
         BigQueryOptions.newBuilder().setProjectId(builder.projectId);
@@ -83,14 +83,14 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
   }
 
   @VisibleForTesting
-  DefaultBigQueryResourceManager(String testId, String projectId, BigQuery bigQuery) {
+  BigQueryResourceManager(String testId, String projectId, BigQuery bigQuery) {
     this.datasetId = BigQueryResourceManagerUtils.generateDatasetId(testId);
     this.projectId = projectId;
     this.bigQuery = bigQuery;
   }
 
-  public static DefaultBigQueryResourceManager.Builder builder(String testId, String projectId) {
-    return new DefaultBigQueryResourceManager.Builder(testId, projectId);
+  public static BigQueryResourceManager.Builder builder(String testId, String projectId) {
+    return new BigQueryResourceManager.Builder(testId, projectId);
   }
 
   public String getProjectId() {
@@ -197,7 +197,7 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
    * Creates a table within the current dataset given a table name and schema.
    *
    * <p>This table will automatically expire 1 hour after creation if not cleaned up manually or by
-   * calling the {@link DefaultBigQueryResourceManager#cleanupAll()} method.
+   * calling the {@link BigQueryResourceManager#cleanupAll()} method.
    *
    * <p>Note: Implementations may do dataset creation here, if one does not already exist.
    *
@@ -214,8 +214,7 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
    * Creates a table within the current dataset given a table name and schema.
    *
    * <p>This table will automatically expire at the time specified by {@code expirationTime} if not
-   * cleaned up manually or by calling the {@link DefaultBigQueryResourceManager#cleanupAll()}
-   * method.
+   * cleaned up manually or by calling the {@link BigQueryResourceManager#cleanupAll()} method.
    *
    * <p>Note: Implementations may do dataset creation here, if one does not already exist.
    *
@@ -267,7 +266,7 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
 
   /**
    * Writes a given row into a table. This method requires {@link
-   * DefaultBigQueryResourceManager#createTable(String, Schema)} to be called for the target table
+   * BigQueryResourceManager#createTable(String, Schema)} to be called for the target table
    * beforehand.
    *
    * @param tableName The name of the table to insert the given row into.
@@ -282,7 +281,7 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
 
   /**
    * Writes a collection of table rows into a single table. This method requires {@link
-   * DefaultBigQueryResourceManager#createTable(String, Schema)} to be called for the target table
+   * BigQueryResourceManager#createTable(String, Schema)} to be called for the target table
    * beforehand.
    *
    * @param tableName The name of the table to insert the given rows into.
@@ -358,7 +357,7 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
 
   /**
    * Reads all the rows in a table and returns a TableResult containing a JSON string
-   * representation. This method requires {@link DefaultBigQueryResourceManager#createTable(String,
+   * representation. This method requires {@link BigQueryResourceManager#createTable(String,
    * Schema)} to be called for the target table beforehand.
    *
    * @param table The table reference to read rows from.
@@ -373,7 +372,7 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
 
   /**
    * Reads all the rows in a table and returns a TableResult containing a JSON string
-   * representation. This method requires {@link DefaultBigQueryResourceManager#createTable(String,
+   * representation. This method requires {@link BigQueryResourceManager#createTable(String,
    * Schema)} to be called for the target table beforehand.
    *
    * @param tableName The name of the table to read rows from.
@@ -388,7 +387,7 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
 
   /**
    * Reads number of rows in a table and returns a TableResult containing a JSON string
-   * representation. This method requires {@link DefaultBigQueryResourceManager#createTable(String,
+   * representation. This method requires {@link BigQueryResourceManager#createTable(String,
    * Schema)} to be called for the target table beforehand.
    *
    * @param table The table reference to read rows from.
@@ -403,7 +402,7 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
 
   /**
    * Reads number of rows in a table and returns a TableResult containing a JSON string
-   * representation. This method requires {@link DefaultBigQueryResourceManager#createTable(String,
+   * representation. This method requires {@link BigQueryResourceManager#createTable(String,
    * Schema)} to be called for the target table beforehand.
    *
    * @param tableName The name of the table to read rows from.
@@ -457,7 +456,7 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
     LOG.info("Manager successfully cleaned up.");
   }
 
-  /** Builder for {@link DefaultBigQueryResourceManager}. */
+  /** Builder for {@link BigQueryResourceManager}. */
   public static final class Builder {
 
     private final String testId;
@@ -480,8 +479,8 @@ public final class DefaultBigQueryResourceManager implements ResourceManager {
       return this;
     }
 
-    public DefaultBigQueryResourceManager build() {
-      return new DefaultBigQueryResourceManager(this);
+    public BigQueryResourceManager build() {
+      return new BigQueryResourceManager(this);
     }
   }
 }

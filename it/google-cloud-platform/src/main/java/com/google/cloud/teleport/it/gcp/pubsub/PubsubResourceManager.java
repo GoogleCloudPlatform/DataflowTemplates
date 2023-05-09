@@ -56,16 +56,16 @@ import org.slf4j.LoggerFactory;
  * <p>The class provides an interaction with the real Pub/Sub client, with operations related to
  * management of topics and subscriptions.
  */
-public final class DefaultPubsubResourceManager implements ResourceManager {
+public final class PubsubResourceManager implements ResourceManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultPubsubResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PubsubResourceManager.class);
 
   private static final int DEFAULT_ACK_DEADLINE_SECONDS = 600;
   private static final String RESOURCE_NAME_SEPARATOR = "-";
 
   private final String testId;
   private final String projectId;
-  private final DefaultPubsubPublisherFactory publisherFactory;
+  private final PubsubPublisherFactory publisherFactory;
   private final TopicAdminClient topicAdminClient;
   private final SubscriptionAdminClient subscriptionAdminClient;
 
@@ -76,11 +76,11 @@ public final class DefaultPubsubResourceManager implements ResourceManager {
 
   private final Set<SchemaName> createdSchemas;
 
-  private DefaultPubsubResourceManager(Builder builder) throws IOException {
+  private PubsubResourceManager(Builder builder) throws IOException {
     this(
         builder.testName,
         builder.projectId,
-        new DefaultPubsubPublisherFactory(builder.credentialsProvider),
+        new PubsubPublisherFactory(builder.credentialsProvider),
         TopicAdminClient.create(
             TopicAdminSettings.newBuilder()
                 .setCredentialsProvider(builder.credentialsProvider)
@@ -96,10 +96,10 @@ public final class DefaultPubsubResourceManager implements ResourceManager {
   }
 
   @VisibleForTesting
-  DefaultPubsubResourceManager(
+  PubsubResourceManager(
       String testName,
       String projectId,
-      DefaultPubsubPublisherFactory publisherFactory,
+      PubsubPublisherFactory publisherFactory,
       TopicAdminClient topicAdminClient,
       SubscriptionAdminClient subscriptionAdminClient,
       SchemaServiceClient schemaServiceClient) {
@@ -321,7 +321,7 @@ public final class DefaultPubsubResourceManager implements ResourceManager {
     return topicAdminClient.isShutdown() || subscriptionAdminClient.isShutdown();
   }
 
-  /** Builder for {@link DefaultPubsubResourceManager}. */
+  /** Builder for {@link PubsubResourceManager}. */
   public static final class Builder {
 
     private final String projectId;
@@ -338,12 +338,12 @@ public final class DefaultPubsubResourceManager implements ResourceManager {
       return this;
     }
 
-    public DefaultPubsubResourceManager build() throws IOException {
+    public PubsubResourceManager build() throws IOException {
       if (credentialsProvider == null) {
         throw new IllegalArgumentException(
             "Unable to find credentials. Please provide credentials to authenticate to GCP");
       }
-      return new DefaultPubsubResourceManager(this);
+      return new PubsubResourceManager(this);
     }
   }
 }

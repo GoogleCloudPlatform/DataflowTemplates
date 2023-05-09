@@ -27,7 +27,7 @@ import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.dataflow.FlexTemplateClient;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.SubscriptionName;
@@ -77,12 +77,12 @@ public class PubsubDlqIT {
   private SubscriptionName pubsubSinkSubscription = null;
   private TopicName pubsubDlqTopic = null;
   private SubscriptionName pubsubDlqSubscription = null;
-  private DefaultPubsubResourceManager pubsubResourceManager = null;
+  private PubsubResourceManager pubsubResourceManager = null;
 
   @Before
   public void setUpPubSub() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(TEST_ID, PROJECT)
+        PubsubResourceManager.builder(TEST_ID, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     RESOURCE_MANAGERS.add(pubsubResourceManager);

@@ -25,7 +25,7 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.datastore.DefaultDatastoreResourceManager;
+import com.google.cloud.teleport.it.gcp.datastore.DatastoreResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
@@ -43,12 +43,12 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class DatastoreToDatastoreDeleteIT extends TemplateTestBase {
 
-  private DefaultDatastoreResourceManager datastoreResourceManager;
+  private DatastoreResourceManager datastoreResourceManager;
 
   @Before
   public void setup() {
     datastoreResourceManager =
-        DefaultDatastoreResourceManager.builder(PROJECT, testId).credentials(credentials).build();
+        DatastoreResourceManager.builder(PROJECT, testId).credentials(credentials).build();
   }
 
   @After

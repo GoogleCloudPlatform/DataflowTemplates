@@ -31,7 +31,7 @@ import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
@@ -75,14 +75,14 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   // 35,000,000 messages of the given schema make up approximately 10GB
   private static final long NUM_MESSAGES = 35000000L;
 
-  private static DefaultPubsubResourceManager pubsubResourceManager;
+  private static PubsubResourceManager pubsubResourceManager;
   private static ArtifactClient gcsClient;
 
   @Before
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, project)
+        PubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     Storage storageClient = createStorageClient(CREDENTIALS);

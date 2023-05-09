@@ -17,7 +17,7 @@ package com.google.cloud.teleport.it.gcp.pubsub.conditions;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.it.common.conditions.ConditionCheck;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.ReceivedMessage;
@@ -30,7 +30,7 @@ import javax.annotation.Nullable;
 @AutoValue
 public abstract class PubsubMessagesCheck extends ConditionCheck {
 
-  abstract DefaultPubsubResourceManager resourceManager();
+  abstract PubsubResourceManager resourceManager();
 
   abstract SubscriptionName subscription();
 
@@ -84,7 +84,7 @@ public abstract class PubsubMessagesCheck extends ConditionCheck {
   }
 
   public static Builder builder(
-      DefaultPubsubResourceManager resourceManager, SubscriptionName subscription) {
+      PubsubResourceManager resourceManager, SubscriptionName subscription) {
     return new AutoValue_PubsubMessagesCheck.Builder()
         .setResourceManager(resourceManager)
         .setSubscription(subscription);
@@ -98,7 +98,7 @@ public abstract class PubsubMessagesCheck extends ConditionCheck {
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setResourceManager(DefaultPubsubResourceManager resourceManager);
+    public abstract Builder setResourceManager(PubsubResourceManager resourceManager);
 
     public abstract Builder setSubscription(SubscriptionName subscription);
 

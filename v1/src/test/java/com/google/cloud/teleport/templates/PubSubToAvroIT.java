@@ -26,7 +26,7 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
@@ -58,12 +58,12 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(value = PubsubToAvro.class, template = "Cloud_PubSub_to_Avro")
 @RunWith(JUnit4.class)
 public class PubSubToAvroIT extends TemplateTestBase {
-  private DefaultPubsubResourceManager pubsubResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
   }

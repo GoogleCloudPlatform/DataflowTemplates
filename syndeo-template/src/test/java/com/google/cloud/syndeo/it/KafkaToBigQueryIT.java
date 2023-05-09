@@ -30,7 +30,7 @@ import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.PipelineUtils;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.dataflow.FlexTemplateClient;
 import java.time.Instant;
 import java.util.Collection;
@@ -92,17 +92,16 @@ public class KafkaToBigQueryIT {
   private static final Long ONE_MINUTE_MILLIS = 60 * 1000L;
   private static final Long SIX_MINUTES_MILLIS = 6 * ONE_MINUTE_MILLIS;
 
-  private DefaultBigQueryResourceManager bigQueryResourceManager;
+  private BigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setUp() {
-    bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder("kafka-bq-test", PROJECT).build();
+    bigQueryResourceManager = BigQueryResourceManager.builder("kafka-bq-test", PROJECT).build();
     bigQueryResourceManager.createDataset(REGION);
   }
 
   @Test
-  public void testErrorOnCreateNeverIfTableNotExisting() throws Exception {
+  public void testErrorOnCreateNeverIfTableNotExisting() {
     String tableName =
         String.format("%s.%s.NONEXISTENT_TABLE", PROJECT, bigQueryResourceManager.getDatasetId());
     JsonNode rootConfig =
@@ -214,7 +213,6 @@ public class KafkaToBigQueryIT {
         } else {
           // Iterate once more
           Thread.sleep(ONE_MINUTE_MILLIS);
-          continue;
         }
       }
     }
@@ -304,7 +302,7 @@ public class KafkaToBigQueryIT {
   }
 
   private static class GenerateKVPairsForKafka extends DoFn<Long, KV<Long, byte[]>> {
-    private SerializableFunction<Row, byte[]> toAvroBytesFn;
+    private final SerializableFunction<Row, byte[]> toAvroBytesFn;
 
     GenerateKVPairsForKafka(Schema rowSchema) {
       toAvroBytesFn =

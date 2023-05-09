@@ -30,7 +30,7 @@ import com.google.cloud.teleport.it.common.utils.PipelineUtils;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
-import com.google.cloud.teleport.it.gcp.datastore.DefaultDatastoreResourceManager;
+import com.google.cloud.teleport.it.gcp.datastore.DatastoreResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.re2j.Pattern;
 import java.io.IOException;
@@ -49,14 +49,14 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class DatastoreToTextIT extends TemplateTestBase {
 
-  private DefaultDatastoreResourceManager datastoreResourceManager;
+  private DatastoreResourceManager datastoreResourceManager;
 
   @Before
   public void setup() {
     testId = PipelineUtils.createJobName("test");
 
     datastoreResourceManager =
-        DefaultDatastoreResourceManager.builder(PROJECT, testId).credentials(credentials).build();
+        DatastoreResourceManager.builder(PROJECT, testId).credentials(credentials).build();
 
     gcsClient.createArtifact(
         "input/udf.js",

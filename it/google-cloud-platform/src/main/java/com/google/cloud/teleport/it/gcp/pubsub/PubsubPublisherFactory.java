@@ -26,11 +26,11 @@ import java.io.IOException;
  * <p>The class provides an interaction with the real Pub/Sub client, with operations related to
  * creating a Pub/Sub Publisher.
  */
-public class DefaultPubsubPublisherFactory {
+public class PubsubPublisherFactory {
 
   private final CredentialsProvider credentialsProvider;
 
-  DefaultPubsubPublisherFactory(CredentialsProvider credentialsProvider) {
+  PubsubPublisherFactory(CredentialsProvider credentialsProvider) {
     this.credentialsProvider = credentialsProvider;
   }
 

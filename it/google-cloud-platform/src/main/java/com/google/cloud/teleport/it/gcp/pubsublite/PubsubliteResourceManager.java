@@ -37,8 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Client for managing Pub/Sub Lite resources. */
-public class DefaultPubsubliteResourceManager implements ResourceManager {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultPubsubliteResourceManager.class);
+public class PubsubliteResourceManager implements ResourceManager {
+  private static final Logger LOG = LoggerFactory.getLogger(PubsubliteResourceManager.class);
 
   private final List<ReservationPath> cleanupReservations = new ArrayList<>();
   private final List<TopicPath> cleanupTopics = new ArrayList<>();

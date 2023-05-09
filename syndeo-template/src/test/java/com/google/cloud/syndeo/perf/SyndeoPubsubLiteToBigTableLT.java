@@ -26,9 +26,9 @@ import com.google.cloud.pubsublite.TopicName;
 import com.google.cloud.syndeo.SyndeoTemplate;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManagerCluster;
-import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsublite.DefaultPubsubliteResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsublite.PubsubliteResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import java.io.IOException;
 import java.util.Collections;
@@ -72,14 +72,13 @@ public class SyndeoPubsubLiteToBigTableLT {
   // 30 characters is the maximum length for some literals, so we cap it here.
   private final String testUuid = ("syndeo-" + UUID.randomUUID()).substring(0, 30);
 
-  private static final DefaultPubsubliteResourceManager pubsubLite =
-      new DefaultPubsubliteResourceManager();
-  private DefaultBigtableResourceManager bigtable = null;
+  private static final PubsubliteResourceManager pubsubLite = new PubsubliteResourceManager();
+  private BigtableResourceManager bigtable = null;
   private Instant testStart = null;
 
   @Before
   public void beforeTest() throws IOException {
-    bigtable = DefaultBigtableResourceManager.builder(testUuid, PROJECT).build();
+    bigtable = BigtableResourceManager.builder(testUuid, PROJECT).build();
     testStart = Instant.now();
   }
 

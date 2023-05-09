@@ -30,7 +30,7 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.mongodb.MongoDBResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -101,15 +101,13 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
   private static final String MONGO_DB_ID = "_id";
 
   private MongoDBResourceManager mongoDbClient;
-  private DefaultBigQueryResourceManager bigQueryClient;
+  private BigQueryResourceManager bigQueryClient;
 
   @Before
   public void setup() {
     mongoDbClient = MongoDBResourceManager.builder(testName).build();
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
   }
 
   @After

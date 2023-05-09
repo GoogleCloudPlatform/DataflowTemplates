@@ -18,14 +18,14 @@ package com.google.cloud.teleport.it.gcp.bigquery.conditions;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.common.conditions.ConditionCheck;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import javax.annotation.Nullable;
 
 /** ConditionCheck to validate if BigQuery has received a certain amount of rows. */
 @AutoValue
 public abstract class BigQueryRowsCheck extends ConditionCheck {
 
-  abstract DefaultBigQueryResourceManager resourceManager();
+  abstract BigQueryResourceManager resourceManager();
 
   abstract TableId tableId();
 
@@ -67,7 +67,7 @@ public abstract class BigQueryRowsCheck extends ConditionCheck {
         true, String.format("Expected at least %d rows and found %d", minRows(), totalRows));
   }
 
-  public static Builder builder(DefaultBigQueryResourceManager resourceManager, TableId tableId) {
+  public static Builder builder(BigQueryResourceManager resourceManager, TableId tableId) {
     return new AutoValue_BigQueryRowsCheck.Builder()
         .setResourceManager(resourceManager)
         .setTableId(tableId);
@@ -77,7 +77,7 @@ public abstract class BigQueryRowsCheck extends ConditionCheck {
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setResourceManager(DefaultBigQueryResourceManager resourceManager);
+    public abstract Builder setResourceManager(BigQueryResourceManager resourceManager);
 
     public abstract Builder setTableId(TableId tableId);
 

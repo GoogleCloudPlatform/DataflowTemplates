@@ -31,12 +31,12 @@ import com.google.cloud.syndeo.v1.SyndeoV1;
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManagerCluster;
-import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsublite.DefaultPubsubliteResourceManager;
-import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsublite.PubsubliteResourceManager;
+import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
 import com.google.pubsub.v1.SubscriptionName;
 import java.util.ArrayList;
@@ -101,10 +101,10 @@ public class AnyToAnySyndeoTestLT {
       Map.of(
           "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
           TransformProvider.create(
-              () -> DefaultBigQueryResourceManager.builder(TEST_ID, PROJECT).build(),
+              () -> BigQueryResourceManager.builder(TEST_ID, PROJECT).build(),
               (ResourceManager rm) -> {
-                assert rm instanceof DefaultBigQueryResourceManager;
-                DefaultBigQueryResourceManager bqrm = (DefaultBigQueryResourceManager) rm;
+                assert rm instanceof BigQueryResourceManager;
+                BigQueryResourceManager bqrm = (BigQueryResourceManager) rm;
                 bqrm.createDataset(REGION);
                 return SinkAndSourceConfigs.create(
                     buildJsonConfig(
@@ -162,10 +162,10 @@ public class AnyToAnySyndeoTestLT {
               }),
           "beam:schematransform:org.apache.beam:pubsublite_read:v1",
           TransformProvider.create(
-              DefaultPubsubliteResourceManager::new,
+              PubsubliteResourceManager::new,
               (ResourceManager rm) -> {
-                assert rm instanceof DefaultPubsubliteResourceManager;
-                DefaultPubsubliteResourceManager psrm = (DefaultPubsubliteResourceManager) rm;
+                assert rm instanceof PubsubliteResourceManager;
+                PubsubliteResourceManager psrm = (PubsubliteResourceManager) rm;
                 ReservationPath rpath =
                     psrm.createReservation("resrv-" + TEST_ID, REGION, PROJECT, 100L);
                 TopicName tname = psrm.createTopic("topic-" + TEST_ID, rpath);
@@ -202,12 +202,12 @@ public class AnyToAnySyndeoTestLT {
           TransformProvider.create(
               wrap(
                   () ->
-                      DefaultPubsubResourceManager.builder(TEST_ID, PROJECT)
+                      PubsubResourceManager.builder(TEST_ID, PROJECT)
                           .credentialsProvider(CREDENTIALS_PROVIDER)
                           .build()),
               (ResourceManager rm) -> {
-                assert rm instanceof DefaultPubsubResourceManager;
-                DefaultPubsubResourceManager psrm = (DefaultPubsubResourceManager) rm;
+                assert rm instanceof PubsubResourceManager;
+                PubsubResourceManager psrm = (PubsubResourceManager) rm;
                 com.google.pubsub.v1.TopicName tname = psrm.createTopic("topic-" + TEST_ID);
                 SubscriptionName sname = psrm.createSubscription(tname, "subscription-" + TEST_ID);
 
@@ -237,8 +237,8 @@ public class AnyToAnySyndeoTestLT {
                   .get("beam:schematransform:org.apache.beam:bigquery_storage_read:v1")
                   .getResourceManagerBuilder(),
               (ResourceManager rm) -> {
-                assert rm instanceof DefaultBigQueryResourceManager;
-                DefaultBigQueryResourceManager bqrm = (DefaultBigQueryResourceManager) rm;
+                assert rm instanceof BigQueryResourceManager;
+                BigQueryResourceManager bqrm = (BigQueryResourceManager) rm;
                 bqrm.createDataset(REGION);
                 return SinkAndSourceConfigs.create(
                     buildJsonConfig(
@@ -255,10 +255,10 @@ public class AnyToAnySyndeoTestLT {
               }),
           "beam:schematransform:org.apache.beam:spanner_write:v1",
           TransformProvider.create(
-              () -> DefaultSpannerResourceManager.builder(TEST_ID, PROJECT, REGION).build(),
+              () -> SpannerResourceManager.builder(TEST_ID, PROJECT, REGION).build(),
               (ResourceManager rm) -> {
-                assert rm instanceof DefaultSpannerResourceManager;
-                DefaultSpannerResourceManager srm = (DefaultSpannerResourceManager) rm;
+                assert rm instanceof SpannerResourceManager;
+                SpannerResourceManager srm = (SpannerResourceManager) rm;
                 // TODO(pabloem): Verify that Syndeo can automatically create the table.
                 return SinkAndSourceConfigs.create(
                     buildJsonConfig(
@@ -309,8 +309,8 @@ public class AnyToAnySyndeoTestLT {
                   .get("beam:schematransform:org.apache.beam:pubsublite_read:v1")
                   .getResourceManagerBuilder(),
               (ResourceManager rm) -> {
-                assert rm instanceof DefaultPubsubliteResourceManager;
-                DefaultPubsubliteResourceManager psrm = (DefaultPubsubliteResourceManager) rm;
+                assert rm instanceof PubsubliteResourceManager;
+                PubsubliteResourceManager psrm = (PubsubliteResourceManager) rm;
                 ReservationPath rpath =
                     psrm.createReservation("resrv-wr-" + TEST_ID, REGION, PROJECT, 100L);
                 TopicName tname = psrm.createTopic("topic-wr-" + TEST_ID, rpath);
@@ -330,10 +330,10 @@ public class AnyToAnySyndeoTestLT {
               }),
           "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
           TransformProvider.create(
-              wrap(() -> DefaultBigtableResourceManager.builder(TEST_ID, PROJECT).build()),
+              wrap(() -> BigtableResourceManager.builder(TEST_ID, PROJECT).build()),
               (ResourceManager rm) -> {
-                assert rm instanceof DefaultBigtableResourceManager;
-                DefaultBigtableResourceManager btrm = (DefaultBigtableResourceManager) rm;
+                assert rm instanceof BigtableResourceManager;
+                BigtableResourceManager btrm = (BigtableResourceManager) rm;
                 btrm.createInstance(
                     Collections.singletonList(
                         BigtableResourceManagerCluster.create(

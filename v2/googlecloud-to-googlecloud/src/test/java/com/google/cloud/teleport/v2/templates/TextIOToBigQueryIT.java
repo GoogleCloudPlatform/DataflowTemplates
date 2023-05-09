@@ -30,7 +30,7 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
@@ -56,14 +56,12 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
   private static final String SCHEMA_PATH = "TextIOToBigQueryTest/schema.json";
   private static final String INPUT_PATH = "TextIOToBigQueryTest/input.txt";
   private static final String UDF_PATH = "TextIOToBigQueryTest/udf.js";
-  private DefaultBigQueryResourceManager bigQueryClient;
+  private BigQueryResourceManager bigQueryClient;
 
   @Before
   public void setup() throws IOException {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
   }
 
   @After

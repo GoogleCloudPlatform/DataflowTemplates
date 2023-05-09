@@ -26,7 +26,7 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -48,13 +48,13 @@ import org.junit.runners.JUnit4;
 public class CassandraToBigtableIT extends TemplateTestBase {
 
   private CassandraResourceManager cassandraResourceManager;
-  private DefaultBigtableResourceManager bigtableResourceManager;
+  private BigtableResourceManager bigtableResourceManager;
 
   @Before
   public void setup() throws IOException {
     cassandraResourceManager = CassandraResourceManager.builder(testName).build();
     bigtableResourceManager =
-        DefaultBigtableResourceManager.builder(testName, PROJECT)
+        BigtableResourceManager.builder(testName, PROJECT)
             .setCredentialsProvider(credentialsProvider)
             .build();
   }

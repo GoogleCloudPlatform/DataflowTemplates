@@ -29,10 +29,10 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
@@ -76,19 +76,17 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
       "ReadPubSubSubscription/PubsubUnboundedSource.out0";
   private static final String OUTPUT_PCOLLECTION =
       "WriteSuccessfulRecords/StreamingInserts/StreamingWriteTables/StripShardId/Map.out0";
-  private static DefaultPubsubResourceManager pubsubResourceManager;
-  private static DefaultBigQueryResourceManager bigQueryResourceManager;
+  private static PubsubResourceManager pubsubResourceManager;
+  private static BigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, project)
+        PubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName, project)
-            .setCredentials(CREDENTIALS)
-            .build();
+        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
   }
 
   @After

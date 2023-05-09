@@ -57,9 +57,9 @@ import org.threeten.bp.Duration;
  *
  * <p>The class is thread-safe.
  */
-public class DefaultBigtableResourceManager implements ResourceManager {
+public class BigtableResourceManager implements ResourceManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultBigtableResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BigtableResourceManager.class);
   private static final String DEFAULT_CLUSTER_ZONE = "us-central1-a";
   private static final int DEFAULT_CLUSTER_NUM_NODES = 1;
   private static final StorageType DEFAULT_CLUSTER_STORAGE_TYPE = StorageType.SSD;
@@ -70,8 +70,7 @@ public class DefaultBigtableResourceManager implements ResourceManager {
 
   private boolean hasInstance = false;
 
-  private DefaultBigtableResourceManager(DefaultBigtableResourceManager.Builder builder)
-      throws IOException {
+  private BigtableResourceManager(BigtableResourceManager.Builder builder) throws IOException {
     // Check that the project ID conforms to GCP standards
     checkValidProjectId(builder.projectId);
 
@@ -107,7 +106,7 @@ public class DefaultBigtableResourceManager implements ResourceManager {
   }
 
   @VisibleForTesting
-  DefaultBigtableResourceManager(
+  BigtableResourceManager(
       String testId,
       String projectId,
       BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory) {
@@ -116,9 +115,9 @@ public class DefaultBigtableResourceManager implements ResourceManager {
     this.bigtableResourceManagerClientFactory = bigtableResourceManagerClientFactory;
   }
 
-  public static DefaultBigtableResourceManager.Builder builder(String testId, String projectId)
+  public static BigtableResourceManager.Builder builder(String testId, String projectId)
       throws IOException {
-    return new DefaultBigtableResourceManager.Builder(testId, projectId);
+    return new BigtableResourceManager.Builder(testId, projectId);
   }
 
   /**
@@ -282,7 +281,7 @@ public class DefaultBigtableResourceManager implements ResourceManager {
 
   /**
    * Writes a given row into a table. This method requires {@link
-   * DefaultBigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableRow A mutation object representing the table row.
@@ -296,7 +295,7 @@ public class DefaultBigtableResourceManager implements ResourceManager {
 
   /**
    * Writes a collection of table rows into one or more tables. This method requires {@link
-   * DefaultBigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableRows A collection of mutation objects representing table rows.
@@ -329,7 +328,7 @@ public class DefaultBigtableResourceManager implements ResourceManager {
 
   /**
    * Reads all the rows in a table. This method requires {@link
-   * DefaultBigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableId The id of table to read rows from.
@@ -390,7 +389,7 @@ public class DefaultBigtableResourceManager implements ResourceManager {
     LOG.info("Manager successfully cleaned up.");
   }
 
-  /** Builder for {@link DefaultBigtableResourceManager}. */
+  /** Builder for {@link BigtableResourceManager}. */
   public static final class Builder {
 
     private final String testId;
@@ -407,8 +406,8 @@ public class DefaultBigtableResourceManager implements ResourceManager {
       return this;
     }
 
-    public DefaultBigtableResourceManager build() throws IOException {
-      return new DefaultBigtableResourceManager(this);
+    public BigtableResourceManager build() throws IOException {
+      return new BigtableResourceManager(this);
     }
   }
 }

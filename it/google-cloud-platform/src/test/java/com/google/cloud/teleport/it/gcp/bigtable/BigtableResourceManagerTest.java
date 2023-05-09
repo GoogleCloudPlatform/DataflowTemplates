@@ -48,9 +48,9 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-/** Unit tests for {@link com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager}. */
+/** Unit tests for {@link BigtableResourceManager}. */
 @RunWith(JUnit4.class)
-public class DefaultBigtableResourceManagerTest {
+public class BigtableResourceManagerTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -78,14 +78,13 @@ public class DefaultBigtableResourceManagerTest {
   private static final int CLUSTER_NUM_NODES = 1;
   private static final StorageType CLUSTER_STORAGE_TYPE = StorageType.SSD;
 
-  private DefaultBigtableResourceManager testManager;
+  private BigtableResourceManager testManager;
   private Iterable<BigtableResourceManagerCluster> cluster;
 
   @Before
   public void setUp() throws IOException {
     testManager =
-        new DefaultBigtableResourceManager(
-            TEST_ID, PROJECT_ID, bigtableResourceManagerClientFactory);
+        new BigtableResourceManager(TEST_ID, PROJECT_ID, bigtableResourceManagerClientFactory);
     cluster =
         ImmutableList.of(
             BigtableResourceManagerCluster.create(
@@ -102,7 +101,7 @@ public class DefaultBigtableResourceManagerTest {
   public void testResourceManagerBuilderGeneratesBigtableResourceManagerClientFactory()
       throws IOException {
     testManager =
-        DefaultBigtableResourceManager.builder(TEST_ID, PROJECT_ID)
+        BigtableResourceManager.builder(TEST_ID, PROJECT_ID)
             .setCredentialsProvider(credentialsProvider)
             .build();
     assertThat(testManager.getInstanceId()).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");

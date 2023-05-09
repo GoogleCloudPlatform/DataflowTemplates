@@ -56,8 +56,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The class is thread-safe.
  */
-public final class DefaultSpannerResourceManager implements ResourceManager {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultSpannerResourceManager.class);
+public final class SpannerResourceManager implements ResourceManager {
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerResourceManager.class);
   private static final int MAX_BASE_ID_LENGTH = 30;
 
   private boolean hasInstance = false;
@@ -72,7 +72,7 @@ public final class DefaultSpannerResourceManager implements ResourceManager {
   private final InstanceAdminClient instanceAdminClient;
   private final DatabaseAdminClient databaseAdminClient;
 
-  private DefaultSpannerResourceManager(Builder builder) {
+  private SpannerResourceManager(Builder builder) {
     this(
         SpannerOptions.newBuilder().setProjectId(builder.projectId).build().getService(),
         builder.testId,
@@ -81,7 +81,7 @@ public final class DefaultSpannerResourceManager implements ResourceManager {
   }
 
   @VisibleForTesting
-  DefaultSpannerResourceManager(Spanner spanner, String testId, String projectId, String region) {
+  SpannerResourceManager(Spanner spanner, String testId, String projectId, String region) {
     // Check that the project ID conforms to GCP standards
     checkValidProjectId(projectId);
 
@@ -200,8 +200,7 @@ public final class DefaultSpannerResourceManager implements ResourceManager {
 
   /**
    * Writes a given record into a table. This method requires {@link
-   * DefaultSpannerResourceManager#createTable(String)} to be called for the target table
-   * beforehand.
+   * SpannerResourceManager#createTable(String)} to be called for the target table beforehand.
    *
    * @param tableRecord A mutation object representing the table record.
    * @throws IllegalStateException if method is called after resources have been cleaned up or if
@@ -213,8 +212,7 @@ public final class DefaultSpannerResourceManager implements ResourceManager {
 
   /**
    * Writes a collection of table records into one or more tables. This method requires {@link
-   * DefaultSpannerResourceManager#createTable(String)} to be called for the target table
-   * beforehand.
+   * SpannerResourceManager#createTable(String)} to be called for the target table beforehand.
    *
    * @param tableRecords A collection of mutation objects representing table records.
    * @throws IllegalStateException if method is called after resources have been cleaned up or if
@@ -237,8 +235,7 @@ public final class DefaultSpannerResourceManager implements ResourceManager {
 
   /**
    * Reads all the rows in a table. This method requires {@link
-   * DefaultSpannerResourceManager#createTable(String)} to be called for the target table
-   * beforehand.
+   * SpannerResourceManager#createTable(String)} to be called for the target table beforehand.
    *
    * @param tableId The id of the table to read rows from.
    * @param columnNames The table's column names.
@@ -253,8 +250,7 @@ public final class DefaultSpannerResourceManager implements ResourceManager {
 
   /**
    * Reads all the rows in a table.This method requires {@link
-   * DefaultSpannerResourceManager#createTable(String)} to be called for the target table
-   * beforehand.
+   * SpannerResourceManager#createTable(String)} to be called for the target table beforehand.
    *
    * @param tableId The id of table to read rows from.
    * @param columnNames A collection of the table's column names.
@@ -311,7 +307,7 @@ public final class DefaultSpannerResourceManager implements ResourceManager {
     LOG.info("Manager successfully cleaned up.");
   }
 
-  /** Builder for {@link DefaultSpannerResourceManager}. */
+  /** Builder for {@link SpannerResourceManager}. */
   public static final class Builder {
 
     private final String testId;
@@ -324,8 +320,8 @@ public final class DefaultSpannerResourceManager implements ResourceManager {
       this.region = region;
     }
 
-    public DefaultSpannerResourceManager build() {
-      return new DefaultSpannerResourceManager(this);
+    public SpannerResourceManager build() {
+      return new SpannerResourceManager(this);
     }
   }
 }

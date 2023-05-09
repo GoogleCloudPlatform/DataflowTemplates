@@ -73,7 +73,7 @@ import org.junit.Test;
  */
 public final class BigQueryIOLT extends IOLoadTestBase {
 
-  private static DefaultBigQueryResourceManager resourceManager;
+  private static BigQueryResourceManager resourceManager;
   private static String tableQualifier;
   private static final String READ_ELEMENT_METRIC_NAME = "read_count";
   private Configuration configuration;
@@ -88,7 +88,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   @BeforeClass
   public static void beforeClass() {
     resourceManager =
-        DefaultBigQueryResourceManager.builder("io-bigquery-lt", project)
+        BigQueryResourceManager.builder("io-bigquery-lt", project)
             .setCredentials(CREDENTIALS)
             .build();
     resourceManager.createDataset(region);

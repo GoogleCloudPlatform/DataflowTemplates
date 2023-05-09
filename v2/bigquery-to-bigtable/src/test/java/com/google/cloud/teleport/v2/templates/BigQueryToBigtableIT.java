@@ -32,9 +32,9 @@ import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.utils.BigQueryTestUtil;
-import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.truth.Truth;
@@ -71,17 +71,15 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
       Integer.min(
           300, Integer.parseInt(getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY)));
 
-  private DefaultBigQueryResourceManager bigQueryClient;
-  private DefaultBigtableResourceManager bigtableClient;
+  private BigQueryResourceManager bigQueryClient;
+  private BigtableResourceManager bigtableClient;
 
   @Before
   public void setup() throws IOException {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
     bigtableClient =
-        DefaultBigtableResourceManager.builder(testName, PROJECT)
+        BigtableResourceManager.builder(testName, PROJECT)
             .setCredentialsProvider(credentialsProvider)
             .build();
   }

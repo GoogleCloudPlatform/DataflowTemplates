@@ -31,7 +31,7 @@ import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
-import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
@@ -64,7 +64,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
       "Read from Avro/Read/ParDo(BoundedSourceAsSDFWrapper)/ParMultiDo(BoundedSourceAsSDFWrapper).out0";
   private static final String OUTPUT_PCOLLECTION =
       "Transform to Bigtable/ParMultiDo(AvroToBigtable).out0";
-  private static DefaultBigtableResourceManager bigtableResourceManager;
+  private static BigtableResourceManager bigtableResourceManager;
   private static ArtifactClient gcsClient;
   private static String generatorSchemaPath;
   private static String avroSchemaPath;
@@ -72,7 +72,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    bigtableResourceManager = DefaultBigtableResourceManager.builder(testName, project).build();
+    bigtableResourceManager = BigtableResourceManager.builder(testName, project).build();
     Storage storageClient = createStorageClient(CREDENTIALS);
     gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
     // upload schema files and save path

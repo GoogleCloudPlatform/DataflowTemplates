@@ -25,7 +25,7 @@ import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
@@ -58,12 +58,12 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
   private static final long NUM_MESSAGES = 35000000L;
   private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
   private static final String OUTPUT_PCOLLECTION = "Write PubSub Events/MapElements/Map.out0";
-  private static DefaultPubsubResourceManager pubsubResourceManager;
+  private static PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, project)
+        PubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
   }

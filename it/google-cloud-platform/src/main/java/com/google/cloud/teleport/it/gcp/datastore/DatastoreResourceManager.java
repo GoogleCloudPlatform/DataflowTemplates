@@ -36,14 +36,14 @@ import java.util.Map;
 import java.util.Set;
 
 /** Client for managing Datastore resources. */
-public class DefaultDatastoreResourceManager implements ResourceManager {
+public class DatastoreResourceManager implements ResourceManager {
 
   private final String namespace;
 
   private final Datastore datastore;
   private final Set<Key> keys;
 
-  public DefaultDatastoreResourceManager(Builder builder) {
+  public DatastoreResourceManager(Builder builder) {
     this.namespace = builder.namespace;
 
     this.datastore =
@@ -56,7 +56,7 @@ public class DefaultDatastoreResourceManager implements ResourceManager {
   }
 
   @VisibleForTesting
-  DefaultDatastoreResourceManager(String namespace, Datastore datastore) {
+  DatastoreResourceManager(String namespace, Datastore datastore) {
     this.namespace = namespace;
     this.datastore = datastore;
     this.keys = new HashSet<>();
@@ -156,12 +156,12 @@ public class DefaultDatastoreResourceManager implements ResourceManager {
       return this;
     }
 
-    public DefaultDatastoreResourceManager build() {
+    public DatastoreResourceManager build() {
       if (credentials == null) {
         throw new IllegalArgumentException(
             "Unable to find credentials. Please provide credentials to authenticate to GCP");
       }
-      return new DefaultDatastoreResourceManager(this);
+      return new DatastoreResourceManager(this);
     }
   }
 }

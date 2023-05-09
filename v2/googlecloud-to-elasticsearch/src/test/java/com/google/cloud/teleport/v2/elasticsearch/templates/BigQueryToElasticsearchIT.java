@@ -36,7 +36,7 @@ import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.utils.BigQueryTestUtil;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
@@ -55,7 +55,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class BigQueryToElasticsearchIT extends TemplateTestBase {
 
-  private DefaultBigQueryResourceManager bigQueryClient;
+  private BigQueryResourceManager bigQueryClient;
   private ElasticsearchResourceManager elasticsearchResourceManager;
 
   // Define a set of parameters used to allow configuration of the test size being run.
@@ -71,9 +71,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   @Before
   public void setup() {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
     elasticsearchResourceManager = ElasticsearchResourceManager.builder(testId).build();
   }
 

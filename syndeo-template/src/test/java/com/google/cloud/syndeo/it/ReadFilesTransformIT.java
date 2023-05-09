@@ -27,8 +27,8 @@ import com.google.cloud.syndeo.transforms.files.SyndeoFilesReadSchemaTransformPr
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.storage.DefaultGcsResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -83,18 +83,17 @@ public class ReadFilesTransformIT {
 
   private SubscriptionName pubsubSubscription = null;
   private TopicName pubsubTopic = null;
-  private DefaultGcsResourceManager gcsResourceManager = null;
-  private DefaultPubsubResourceManager pubsubResourceManager = null;
+  private GcsResourceManager gcsResourceManager = null;
+  private PubsubResourceManager pubsubResourceManager = null;
   private String gcsPrefix = null;
 
   @Before
   public void setUpPubSubNotifications() throws IOException {
-    gcsResourceManager =
-        DefaultGcsResourceManager.builder().setBucket(BUCKET).setProject(PROJECT).build();
+    gcsResourceManager = GcsResourceManager.builder().setBucket(BUCKET).setProject(PROJECT).build();
     RESOURCE_MANAGERS.add(gcsResourceManager);
 
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(TEST_ID, PROJECT)
+        PubsubResourceManager.builder(TEST_ID, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     RESOURCE_MANAGERS.add(pubsubResourceManager);
