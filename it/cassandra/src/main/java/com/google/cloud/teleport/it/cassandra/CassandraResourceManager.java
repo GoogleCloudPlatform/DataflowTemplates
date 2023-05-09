@@ -37,7 +37,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Default class for implementation of {@link DefaultCassandraResourceManager} interface.
+ * Client for managing Cassandra resources.
  *
  * <p>The class supports one database and multiple collections per database object. A database is
  * created when the first collection is created if one has not been created already.
@@ -47,10 +47,10 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class DefaultCassandraResourceManager
+public class CassandraResourceManager
     extends TestContainerResourceManager<GenericContainer<?>> implements ResourceManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultCassandraResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CassandraResourceManager.class);
 
   private static final String DEFAULT_CASSANDRA_CONTAINER_NAME = "cassandra";
 
@@ -65,7 +65,7 @@ public class DefaultCassandraResourceManager
   private final String keyspaceName;
   private final boolean usingStaticDatabase;
 
-  private DefaultCassandraResourceManager(Builder builder) {
+  private CassandraResourceManager(Builder builder) {
     this(
         /* cassandraClient= */ null,
         new CassandraContainer(
@@ -74,7 +74,7 @@ public class DefaultCassandraResourceManager
   }
 
   @VisibleForTesting
-  DefaultCassandraResourceManager(
+  CassandraResourceManager(
       CqlSession cassandraClient, CassandraContainer container, Builder builder) {
     super(container, builder);
 
@@ -259,9 +259,9 @@ public class DefaultCassandraResourceManager
     return String.format("INSERT INTO %s (%s) VALUES (%s)", tableName, columns, values);
   }
 
-  /** Builder for {@link DefaultCassandraResourceManager}. */
+  /** Builder for {@link CassandraResourceManager}. */
   public static final class Builder
-      extends TestContainerResourceManager.Builder<DefaultCassandraResourceManager> {
+      extends TestContainerResourceManager.Builder<CassandraResourceManager> {
 
     private String keyspaceName;
 
@@ -278,7 +278,7 @@ public class DefaultCassandraResourceManager
      * <p>Note: if a database name is set, and a static Cassandra server is being used
      * (useStaticContainer() is also called on the builder), then a database will be created on the
      * static server if it does not exist, and it will not be removed when cleanupAll() is called on
-     * the DefaultCassandraResourceManager.
+     * the CassandraResourceManager.
      *
      * @param keyspaceName The database name.
      * @return this builder object with the database name set.
@@ -289,8 +289,8 @@ public class DefaultCassandraResourceManager
     }
 
     @Override
-    public DefaultCassandraResourceManager build() {
-      return new DefaultCassandraResourceManager(this);
+    public CassandraResourceManager build() {
+      return new CassandraResourceManager(this);
     }
   }
 }

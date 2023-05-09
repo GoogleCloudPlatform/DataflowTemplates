@@ -20,7 +20,7 @@ import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.asser
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.bigtable.data.v2.models.Row;
-import com.google.cloud.teleport.it.cassandra.DefaultCassandraResourceManager;
+import com.google.cloud.teleport.it.cassandra.CassandraResourceManager;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator;
@@ -47,12 +47,12 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class CassandraToBigtableIT extends TemplateTestBase {
 
-  private DefaultCassandraResourceManager cassandraResourceManager;
+  private CassandraResourceManager cassandraResourceManager;
   private DefaultBigtableResourceManager bigtableResourceManager;
 
   @Before
   public void setup() throws IOException {
-    cassandraResourceManager = DefaultCassandraResourceManager.builder(testName).build();
+    cassandraResourceManager = CassandraResourceManager.builder(testName).build();
     bigtableResourceManager =
         DefaultBigtableResourceManager.builder(testName, PROJECT)
             .setCredentialsProvider(credentialsProvider)

@@ -20,7 +20,7 @@ import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.gen
 import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 
-/** Utilities for {@link DefaultCassandraResourceManager} implementations. */
+/** Utilities for {@link CassandraResourceManager} implementations. */
 final class CassandraResourceManagerUtils {
 
   private static final int MAX_DATABASE_NAME_LENGTH = 63;
