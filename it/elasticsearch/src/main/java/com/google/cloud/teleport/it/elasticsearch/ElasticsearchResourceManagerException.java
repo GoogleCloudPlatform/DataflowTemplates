@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.elasticsearch;
 
-/** Custom exception for {@link DefaultElasticsearchResourceManager} implementations. */
+/** Custom exception for {@link ElasticsearchResourceManager} implementations. */
 public class ElasticsearchResourceManagerException extends RuntimeException {
 
   public ElasticsearchResourceManagerException(String errorMessage, Throwable err) {

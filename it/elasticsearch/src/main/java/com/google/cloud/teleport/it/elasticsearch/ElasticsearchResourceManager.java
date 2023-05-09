@@ -49,7 +49,7 @@ import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Default class for implementation of {@link DefaultElasticsearchResourceManager} interface.
+ * Client for managing Elasticsearch resources.
  *
  * <p>The class supports many indices per resource manager object.
  *
@@ -58,12 +58,12 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class DefaultElasticsearchResourceManager
+public class ElasticsearchResourceManager
     extends TestContainerResourceManager<GenericContainer<?>>
     implements ResourceManager {
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(DefaultElasticsearchResourceManager.class);
+      LoggerFactory.getLogger(ElasticsearchResourceManager.class);
 
   private static final String DEFAULT_ELASTICSEARCH_CONTAINER_NAME =
       "docker.elastic.co/elasticsearch/elasticsearch-oss";
@@ -79,7 +79,7 @@ public class DefaultElasticsearchResourceManager
   private final String connectionString;
   private final List<String> managedIndexNames = new ArrayList<>();
 
-  private DefaultElasticsearchResourceManager(DefaultElasticsearchResourceManager.Builder builder) {
+  private ElasticsearchResourceManager(ElasticsearchResourceManager.Builder builder) {
     this(
         /* elasticsearchClient= */ null,
         builder.useStaticContainer
@@ -91,10 +91,10 @@ public class DefaultElasticsearchResourceManager
   }
 
   @VisibleForTesting
-  DefaultElasticsearchResourceManager(
+  ElasticsearchResourceManager(
       RestHighLevelClient elasticsearchClient,
       ElasticsearchContainer container,
-      DefaultElasticsearchResourceManager.Builder builder) {
+      ElasticsearchResourceManager.Builder builder) {
     super(container, builder);
 
     this.connectionString =
@@ -108,8 +108,8 @@ public class DefaultElasticsearchResourceManager
             : new RestHighLevelClient(restClientBuilder);
   }
 
-  public static DefaultElasticsearchResourceManager.Builder builder(String testId) {
-    return new DefaultElasticsearchResourceManager.Builder(testId);
+  public static ElasticsearchResourceManager.Builder builder(String testId) {
+    return new ElasticsearchResourceManager.Builder(testId);
   }
 
   /** Returns the URI connection string to the Elasticsearch service. */
@@ -268,9 +268,9 @@ public class DefaultElasticsearchResourceManager
     LOG.info("Elasticsearch manager successfully cleaned up.");
   }
 
-  /** Builder for {@link DefaultElasticsearchResourceManager}. */
+  /** Builder for {@link ElasticsearchResourceManager}. */
   public static final class Builder
-      extends TestContainerResourceManager.Builder<DefaultElasticsearchResourceManager> {
+      extends TestContainerResourceManager.Builder<ElasticsearchResourceManager> {
 
     private Builder(String testId) {
       super(testId);
@@ -279,8 +279,8 @@ public class DefaultElasticsearchResourceManager
     }
 
     @Override
-    public DefaultElasticsearchResourceManager build() {
-      return new DefaultElasticsearchResourceManager(this);
+    public ElasticsearchResourceManager build() {
+      return new ElasticsearchResourceManager(this);
     }
   }
 }

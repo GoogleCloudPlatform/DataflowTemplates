@@ -24,7 +24,7 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.elasticsearch.DefaultElasticsearchResourceManager;
+import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
@@ -52,7 +52,7 @@ import org.junit.runners.JUnit4;
 public final class PubSubToElasticsearchIT extends TemplateTestBase {
 
   private PubsubResourceManager pubsubResourceManager;
-  private DefaultElasticsearchResourceManager elasticsearchResourceManager;
+  private ElasticsearchResourceManager elasticsearchResourceManager;
 
   public static final int MESSAGES_TO_SEND = 25;
   private static final int MALFORMED_MESSAGES_TO_SEND = 5;
@@ -63,7 +63,7 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
         DefaultPubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
-    elasticsearchResourceManager = DefaultElasticsearchResourceManager.builder(testId).build();
+    elasticsearchResourceManager = ElasticsearchResourceManager.builder(testId).build();
   }
 
   @After

@@ -21,7 +21,7 @@ import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 
-/** Utilities for {@link DefaultElasticsearchResourceManager} implementations. */
+/** Utilities for {@link ElasticsearchResourceManager} implementations. */
 final class ElasticsearchUtils {
 
   // Constraints from

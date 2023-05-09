@@ -29,16 +29,16 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration tests for {@link DefaultElasticsearchResourceManager}. */
+/** Integration tests for {@link ElasticsearchResourceManager}. */
 @Category(TestContainersIntegrationTest.class)
 @RunWith(JUnit4.class)
-public class DefaultElasticsearchResourceManagerIT {
+public class ElasticsearchResourceManagerIT {
 
-  private DefaultElasticsearchResourceManager elasticsearchResourceManager;
+  private ElasticsearchResourceManager elasticsearchResourceManager;
 
   @Before
   public void setUp() {
-    elasticsearchResourceManager = DefaultElasticsearchResourceManager.builder("dummy").build();
+    elasticsearchResourceManager = ElasticsearchResourceManager.builder("dummy").build();
   }
 
   @Test
