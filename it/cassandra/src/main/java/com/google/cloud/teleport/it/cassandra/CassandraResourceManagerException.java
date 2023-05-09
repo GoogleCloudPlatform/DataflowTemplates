@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.cassandra;
 
-/** Custom exception for {@link CassandraResourceManager} implementations. */
+/** Custom exception for {@link DefaultCassandraResourceManager} implementations. */
 public class CassandraResourceManagerException extends RuntimeException {
 
   public CassandraResourceManagerException(String errorMessage, Throwable err) {

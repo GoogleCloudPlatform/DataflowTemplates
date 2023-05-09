@@ -22,6 +22,7 @@ import com.datastax.oss.driver.api.core.DriverTimeoutException;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -36,7 +37,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Default class for implementation of {@link CassandraResourceManager} interface.
+ * Default class for implementation of {@link DefaultCassandraResourceManager} interface.
  *
  * <p>The class supports one database and multiple collections per database object. A database is
  * created when the first collection is created if one has not been created already.
@@ -47,7 +48,7 @@ import org.testcontainers.utility.DockerImageName;
  * <p>The class is thread-safe.
  */
 public class DefaultCassandraResourceManager
-    extends TestContainerResourceManager<GenericContainer<?>> implements CassandraResourceManager {
+    extends TestContainerResourceManager<GenericContainer<?>> implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(DefaultCassandraResourceManager.class);
 
@@ -101,17 +102,26 @@ public class DefaultCassandraResourceManager
     return new Builder(testId);
   }
 
-  @Override
+  /** Returns the port to connect to the Cassandra Database. */
   public int getPort() {
     return super.getPort(CASSANDRA_INTERNAL_PORT);
   }
 
-  @Override
+  /**
+   * Returns the name of the Database that this Cassandra manager will operate in.
+   *
+   * @return the name of the Cassandra Database.
+   */
   public synchronized String getKeyspaceName() {
     return keyspaceName;
   }
 
-  @Override
+  /**
+   * Execute the given statement on the managed keyspace.
+   *
+   * @param statement The statement to execute.
+   * @return ResultSet from Cassandra.
+   */
   public synchronized ResultSet executeStatement(String statement) {
     LOG.info("Executing statement: {}", statement);
 
@@ -136,7 +146,16 @@ public class DefaultCassandraResourceManager
     return insertDocuments(tableName, ImmutableList.of(document));
   }
 
-  @Override
+  /**
+   * Inserts the given Documents into a collection.
+   *
+   * <p>Note: Implementations may do collection creation here, if one does not already exist.
+   *
+   * @param tableName The name of the collection to insert the documents into.
+   * @param documents A list of documents to insert into the collection.
+   * @return A boolean indicating whether the Documents were inserted successfully.
+   * @throws CassandraResourceManagerException if there is an error inserting the documents.
+   */
   public synchronized boolean insertDocuments(
       String tableName, List<Map<String, Object>> documents) {
     LOG.info(
@@ -155,7 +174,13 @@ public class DefaultCassandraResourceManager
     return true;
   }
 
-  @Override
+  /**
+   * Reads all the Documents in a collection.
+   *
+   * @param tableName The name of the collection to read from.
+   * @return An iterable of all the Documents in the collection.
+   * @throws CassandraResourceManagerException if there is an error reading the collection.
+   */
   public synchronized Iterable<Row> readTable(String tableName) {
     LOG.info("Reading all documents from {}.{}", keyspaceName, tableName);
 
@@ -253,7 +278,7 @@ public class DefaultCassandraResourceManager
      * <p>Note: if a database name is set, and a static Cassandra server is being used
      * (useStaticContainer() is also called on the builder), then a database will be created on the
      * static server if it does not exist, and it will not be removed when cleanupAll() is called on
-     * the CassandraResourceManager.
+     * the DefaultCassandraResourceManager.
      *
      * @param keyspaceName The database name.
      * @return this builder object with the database name set.
