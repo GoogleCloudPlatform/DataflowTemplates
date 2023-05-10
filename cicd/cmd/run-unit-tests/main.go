@@ -30,6 +30,7 @@ func main() {
 
 	mvnFlags := workflows.NewMavenFlags()
 	err := workflows.MvnCleanVerify().Run(
+		mvnFlags.BatchMode(),
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.IncludeDependents(),
 		mvnFlags.SkipCheckstyle(),

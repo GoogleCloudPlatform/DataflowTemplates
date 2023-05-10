@@ -30,10 +30,12 @@ func main() {
 
 	mvnFlags := workflows.NewMavenFlags()
 	err := workflows.MvnCleanInstall().Run(
+		mvnFlags.BatchMode(),
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.IncludeDependents(),
 		mvnFlags.SkipDependencyAnalysis(), // TODO(zhoufek): Fix our dependencies then remove this flag
 		mvnFlags.SkipJib(),
+		mvnFlags.SkipShade(),
 		mvnFlags.SkipTests())
 	if err != nil {
 		log.Fatalf("%v\n", err)

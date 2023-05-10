@@ -163,6 +163,11 @@ public class PubSubToMongoDBTest {
   /** Tests the {@link PubSubToMongoDB} pipeline end-to-end with a UDF. */
   @Test
   public void testPubSubToMongoDBUdfE2E() {
+
+    if (true) {
+      throw new IllegalArgumentException("Asset not properly formatted");
+    }
+
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(
         PubSubToMongoDB.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),

@@ -64,7 +64,7 @@ jobs:
         uses: ./.github/actions/cleanup-java-env
   java_unit_tests:
     name: Unit Tests
-    timeout-minutes: 60
+    timeout-minutes: 90
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -74,8 +74,24 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
         run: ./cicd/run-unit-tests --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+      - name: Upload Unit Tests Report
+        uses: actions/upload-artifact@v3
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 1
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
+  java_unit_tests_report:
+    if: always()
+    needs: java_unit_tests
+    uses: Polber/DataflowTemplates/.github/workflows/java-pr-report.yml@main
+    with:
+      workflow_id: ${{ github.event.workflow.id }}
+      run_id: ${{ github.event.workflow_run.id }}
+    permissions:
+      checks: write
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
     needs: [spotless_check, java_build, java_unit_tests]
@@ -95,8 +111,24 @@ jobs:
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
+      - name: Upload Integration Tests Report
+        uses: actions/upload-artifact@v3
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 1
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
+  java_integration_tests_templates_report:
+    if: always()
+    needs: java_integration_tests_templates
+    uses: Polber/DataflowTemplates/.github/workflows/java-pr-report.yml@main
+    with:
+      workflow_id: ${{ github.event.workflow.id }}
+      run_id: ${{ github.event.workflow_run.id }}
+    permissions:
+      checks: write
   java_load_tests_templates:
     if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
     name: Dataflow Templates Load Tests
@@ -119,5 +151,21 @@ jobs:
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
         --lt-exportDataset="performance_tests"
         --lt-exportTable="template_performance_metrics"
+    - name: Upload Load Tests Report
+      uses: actions/upload-artifact@v3
+      if: always() # always run even if the previous step fails
+      with:
+        name: surefire-test-results
+        path: '**/surefire-reports/TEST-*.xml'
+        retention-days: 1
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
+  java_load_tests_templates_report:
+    if: always()
+    needs: java_load_tests_templates
+    uses: Polber/DataflowTemplates/.github/workflows/java-pr-report.yml@main
+    with:
+      workflow_id: ${{ github.event.workflow.id }}
+      run_id: ${{ github.event.workflow_run.id }}
+    permissions:
+      checks: write

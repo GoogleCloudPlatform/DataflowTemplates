@@ -128,7 +128,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
         "input/" + udfFileName,
         "function transform(inJson) {\n"
             + "    var outJson = JSON.parse(inJson);\n"
-            + "    outJson.udf = \"out\";\n"
+            + "    outJson.udf = \"in\";\n"
             + "    return JSON.stringify(outJson);\n"
             + "}");
     List<Field> bqSchemaFields = new ArrayList<>();
