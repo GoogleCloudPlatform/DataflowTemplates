@@ -107,7 +107,7 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
             .addParameter("collection", testName)
             .addParameter("inputSubscription", subscription.toString())
             .addParameter(
-                "deadletterTable", PROJECT + ":" + bigQueryClient.getDatasetId() + ".dlq");
+                "deadletterTable", PROJECT + ":" + bigQueryClient.getDatasetId() + ".dl");
 
     // Act
     LaunchInfo info = launchTemplate(options);

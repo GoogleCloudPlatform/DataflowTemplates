@@ -74,6 +74,9 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
         run: ./cicd/run-unit-tests --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+      - name: Publish Test Report
+        if: success() || failure()
+        uses: scacap/action-surefire-report@v1
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_integration_tests_templates:
@@ -95,6 +98,9 @@ jobs:
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
+      - name: Publish Test Report
+        if: success() || failure()
+        uses: scacap/action-surefire-report@v1
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_load_tests_templates:

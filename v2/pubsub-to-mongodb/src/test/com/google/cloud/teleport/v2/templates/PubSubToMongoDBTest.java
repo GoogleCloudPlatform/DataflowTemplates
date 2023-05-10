@@ -198,7 +198,7 @@ public class PubSubToMongoDBTest {
               FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
               assertThat(
                   element.getOriginalPayload().getPayload(),
-                  is(equalTo(goodTestMessages.get(0).getPayload())));
+                  is(equalTo(goodTestMessages.get(1).getPayload())));
               return null;
             });
 
