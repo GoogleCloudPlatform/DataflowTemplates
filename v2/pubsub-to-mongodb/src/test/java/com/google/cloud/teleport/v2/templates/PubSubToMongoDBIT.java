@@ -17,16 +17,15 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
-import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.mongodb.DefaultMongoDBResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.mongodb.MongoDBResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
@@ -34,14 +33,9 @@ import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,9 +54,9 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToMongoDBIT.class);
 
-  private DefaultMongoDBResourceManager mongoResourceManager;
+  private MongoDBResourceManager mongoResourceManager;
 
-  private DefaultPubsubResourceManager pubsubResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
 
   private BigQueryResourceManager bigQueryClient;
 
@@ -70,16 +64,14 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
   public void setup() throws IOException {
 
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
 
-    mongoResourceManager = DefaultMongoDBResourceManager.builder(testName).setHost(HOST_IP).build();
+    mongoResourceManager = MongoDBResourceManager.builder(testName).build();
 
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
   }
 
   @After
