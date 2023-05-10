@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.it.common.testcontainers;
 
 import com.google.cloud.teleport.it.common.ResourceManager;
+import com.google.cloud.teleport.it.common.TestProperties;
+import java.util.concurrent.Callable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -37,21 +39,35 @@ public abstract class TestContainerResourceManager<T extends GenericContainer<?>
     implements ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(TestContainerResourceManager.class);
 
+  protected static final String HOST_IP = TestProperties.hostIp();
   private final T container;
   private final boolean usingStaticContainer;
   private final String host;
-  protected final int port;
+  protected int port;
 
   protected <B extends TestContainerResourceManager.Builder<?>> TestContainerResourceManager(
       T container, B builder) {
+    this(container, builder, null);
+  }
+
+  protected <B extends TestContainerResourceManager.Builder<?>> TestContainerResourceManager(
+      T container, B builder, Callable<Void> setup) {
     this.container = container;
     this.usingStaticContainer = builder.useStaticContainer;
-    this.host = builder.host;
+    this.host = builder.host == null ? HOST_IP : builder.host;
     this.port = builder.port;
+
+    if (setup != null) {
+      try {
+        setup.call();
+      } catch (Exception e) {
+        throw new TestContainerResourceManagerException("Error running setup function.", e);
+      }
+    }
 
     if (!usingStaticContainer) {
       container.start();
-    } else if (this.host == null || this.port < 0) {
+    } else if (builder.host == null || builder.port < 0) {
       throw new TestContainerResourceManagerException(
           "This manager was configured to use a static resource, but the host and port were not properly set.");
     }
@@ -68,9 +84,6 @@ public abstract class TestContainerResourceManager<T extends GenericContainer<?>
    * @return the host that the resource is running on
    */
   public String getHost() {
-    if (host == null) {
-      return container.getHost();
-    }
     return host;
   }
 

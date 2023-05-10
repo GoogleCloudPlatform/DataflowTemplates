@@ -73,7 +73,7 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
             .build();
     bigQueryClient.createDataset(REGION);
 
-    kafkaResourceManager = DefaultKafkaResourceManager.builder(testName).setHost(HOST_IP).build();
+    kafkaResourceManager = DefaultKafkaResourceManager.builder(testName).build();
   }
 
   @After

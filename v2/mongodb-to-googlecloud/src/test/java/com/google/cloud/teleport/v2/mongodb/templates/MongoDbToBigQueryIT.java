@@ -111,7 +111,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException {
-    mongoDbClient = DefaultMongoDBResourceManager.builder(testName).setHost(HOST_IP).build();
+    mongoDbClient = DefaultMongoDBResourceManager.builder(testName).build();
     bigQueryClient =
         DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)

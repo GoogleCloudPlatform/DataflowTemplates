@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.asser
 
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
+import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
@@ -111,7 +112,9 @@ public class MqttToPubsubTestIT extends TemplateTestBase {
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath)
-            .addParameter("brokerServer", "tcp://" + HOST_IP + ":" + hiveMQContainer.getMqttPort())
+            .addParameter(
+                "brokerServer",
+                "tcp://" + TestProperties.hostIp() + ":" + hiveMQContainer.getMqttPort())
             .addParameter("inputTopic", inputTopic)
             .addParameter("outputTopic", topicName.toString())
             .addParameter("username", "")

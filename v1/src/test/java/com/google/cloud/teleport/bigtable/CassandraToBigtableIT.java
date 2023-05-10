@@ -53,8 +53,7 @@ public class CassandraToBigtableIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException {
-    cassandraResourceManager =
-        DefaultCassandraResourceManager.builder(testName).setHost(HOST_IP).build();
+    cassandraResourceManager = DefaultCassandraResourceManager.builder(testName).build();
     bigtableResourceManager =
         DefaultBigtableResourceManager.builder(testName, PROJECT)
             .setCredentialsProvider(credentialsProvider)

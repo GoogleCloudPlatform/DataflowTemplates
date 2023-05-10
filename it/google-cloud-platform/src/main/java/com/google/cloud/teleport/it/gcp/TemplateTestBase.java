@@ -92,7 +92,6 @@ public abstract class TemplateTestBase {
 
   protected static final String PROJECT = TestProperties.project();
   protected static final String REGION = TestProperties.region();
-  protected static final String HOST_IP = TestProperties.hostIp();
 
   protected String specPath;
   protected Credentials credentials;

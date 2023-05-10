@@ -268,6 +268,7 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
     } finally {
       subscriptionAdminClient.close();
       topicAdminClient.close();
+      schemaServiceClient.close();
     }
 
     LOG.info("Manager successfully cleaned up.");

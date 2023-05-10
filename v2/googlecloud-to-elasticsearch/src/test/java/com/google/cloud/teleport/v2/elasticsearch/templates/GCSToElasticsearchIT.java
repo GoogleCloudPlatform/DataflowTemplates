@@ -57,8 +57,7 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
         DefaultBigQueryResourceManager.builder(testName, PROJECT)
             .setCredentials(credentials)
             .build();
-    elasticsearchResourceManager =
-        DefaultElasticsearchResourceManager.builder(testId).setHost(HOST_IP).build();
+    elasticsearchResourceManager = DefaultElasticsearchResourceManager.builder(testId).build();
   }
 
   @After
