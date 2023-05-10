@@ -31,10 +31,9 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
-import com.google.cloud.teleport.it.gcp.bigtable.DefaultBigtableResourceManager;
-import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
+import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
+import com.google.cloud.teleport.it.kafka.KafkaResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
@@ -60,20 +59,18 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public final class KafkaToBigQueryIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultBigtableResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BigtableResourceManager.class);
 
-  private DefaultKafkaResourceManager kafkaResourceManager;
+  private KafkaResourceManager kafkaResourceManager;
   private BigQueryResourceManager bigQueryClient;
 
   @Before
   public void setup() throws IOException {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
     bigQueryClient.createDataset(REGION);
 
-    kafkaResourceManager = DefaultKafkaResourceManager.builder(testName).build();
+    kafkaResourceManager = KafkaResourceManager.builder(testName).build();
   }
 
   @After

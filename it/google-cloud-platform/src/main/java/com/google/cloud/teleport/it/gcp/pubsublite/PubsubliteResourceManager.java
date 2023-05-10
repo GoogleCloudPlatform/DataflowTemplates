@@ -28,6 +28,7 @@ import com.google.cloud.pubsublite.TopicPath;
 import com.google.cloud.pubsublite.proto.Reservation;
 import com.google.cloud.pubsublite.proto.Subscription;
 import com.google.cloud.pubsublite.proto.Topic;
+import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.protobuf.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,9 +36,9 @@ import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Default implementation for {@link PubsubLiteResourceManager}. */
-public class DefaultPubsubliteResourceManager implements PubsubLiteResourceManager {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultPubsubliteResourceManager.class);
+/** Client for managing Pub/Sub Lite resources. */
+public class PubsubliteResourceManager implements ResourceManager {
+  private static final Logger LOG = LoggerFactory.getLogger(PubsubliteResourceManager.class);
 
   private final List<ReservationPath> cleanupReservations = new ArrayList<>();
   private final List<TopicPath> cleanupTopics = new ArrayList<>();
@@ -51,7 +52,16 @@ public class DefaultPubsubliteResourceManager implements PubsubLiteResourceManag
   // 30 GB per partition
   public static final Long DEFAULT_PARTITION_SIZE = 30 * 1024 * 1024 * 1024L;
 
-  @Override
+  /**
+   * Creates a new PubsubLite reservation with the specified number of capacity units. Capacity
+   * units represent 0.25 MiBps on a regional reservation, and 1 MiBps on a zonal reservation.
+   *
+   * @param reservationName the name of the reservation to create.
+   * @param cloudRegion the region in which the reservation will be created.
+   * @param projectId the project id associated with the reservation.
+   * @param capacity the number of capacity units for the reservation.
+   * @return the path of the created reservation.
+   */
   public ReservationPath createReservation(
       String reservationName, String cloudRegion, String projectId, Long capacity) {
     try (AdminClient client =
@@ -82,7 +92,16 @@ public class DefaultPubsubliteResourceManager implements PubsubLiteResourceManag
     }
   }
 
-  @Override
+  /**
+   * Creates a topic with the given name on Pub/Sub.
+   *
+   * <p>https://cloud.google.com/pubsub/lite/docs/reservations
+   *
+   * @param topicName Topic name to create. The underlying implementation may not use the topic name
+   *     directly, and can add a prefix or a suffix to identify specific executions.
+   * @param reservationPath the path of the reservation under which to create the topic.
+   * @return The instance of the TopicName that was just created.
+   */
   public TopicName createTopic(String topicName, ReservationPath reservationPath) {
     try (AdminClient client =
         AdminClient.create(
@@ -123,7 +142,14 @@ public class DefaultPubsubliteResourceManager implements PubsubLiteResourceManag
     }
   }
 
-  @Override
+  /**
+   * Creates a new Pubsub lite subscription for a specified topic.
+   *
+   * @param reservationPath the path of the reservation to add the subscription.
+   * @param topicName the name of the topic to add the subscription to.
+   * @param subscriptionName the name to use for the subscription.
+   * @return the created {@link SubscriptionName} instance.
+   */
   public SubscriptionName createSubscription(
       ReservationPath reservationPath, TopicName topicName, String subscriptionName) {
     try (AdminClient client =
@@ -159,6 +185,7 @@ public class DefaultPubsubliteResourceManager implements PubsubLiteResourceManag
     }
   }
 
+  /** Delete any topics or subscriptions created by this manager. */
   @Override
   public void cleanupAll() {
     for (TopicPath t : cleanupTopics) {

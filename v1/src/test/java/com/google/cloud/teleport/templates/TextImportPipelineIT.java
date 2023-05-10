@@ -28,7 +28,6 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
-import com.google.cloud.teleport.it.gcp.spanner.DefaultSpannerResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.TextImportPipeline;
@@ -56,8 +55,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException, URISyntaxException {
-    spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
   }
 
   @After

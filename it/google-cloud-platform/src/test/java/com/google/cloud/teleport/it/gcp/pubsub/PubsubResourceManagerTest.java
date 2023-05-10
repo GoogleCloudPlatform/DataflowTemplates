@@ -48,9 +48,9 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-/** Unit tests for {@link DefaultPubsubResourceManager}. */
+/** Unit tests for {@link PubsubResourceManager}. */
 @RunWith(JUnit4.class)
-public final class DefaultPubsubResourceManagerTest {
+public final class PubsubResourceManagerTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   private static final String TEST_ID = "test-id";
@@ -69,7 +69,7 @@ public final class DefaultPubsubResourceManagerTest {
   @Mock private Publisher publisher;
   @Mock private PubsubPublisherFactory publisherFactory;
 
-  private DefaultPubsubResourceManager testManager;
+  private PubsubResourceManager testManager;
 
   @Captor private ArgumentCaptor<TopicName> topicNameCaptor;
   @Captor private ArgumentCaptor<SubscriptionName> subscriptionNameCaptor;
@@ -79,7 +79,7 @@ public final class DefaultPubsubResourceManagerTest {
   public void setUp() throws IOException {
     // Using spy to inject our mocked publisher at getPublisher(topic)
     testManager =
-        new DefaultPubsubResourceManager(
+        new PubsubResourceManager(
             TEST_ID,
             PROJECT_ID,
             publisherFactory,
@@ -97,8 +97,7 @@ public final class DefaultPubsubResourceManagerTest {
   public void testBuilderWithInvalidProjectShouldFail() {
     IllegalArgumentException exception =
         assertThrows(
-            IllegalArgumentException.class,
-            () -> DefaultPubsubResourceManager.builder("test-a", ""));
+            IllegalArgumentException.class, () -> PubsubResourceManager.builder("test-a", ""));
     assertThat(exception).hasMessageThat().contains("projectId can not be empty");
   }
 

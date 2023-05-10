@@ -15,10 +15,7 @@
  */
 package com.google.cloud.teleport.it.kafka;
 
-/**
- * Custom exception for {@link com.google.cloud.teleport.it.kafka.KafkaResourceManager}
- * implementations.
- */
+/** Custom exception for {@link KafkaResourceManager} implementations. */
 public class KafkaResourceManagerException extends RuntimeException {
 
   public KafkaResourceManagerException(String errorMessage, Throwable err) {

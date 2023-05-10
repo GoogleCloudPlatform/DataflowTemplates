@@ -40,11 +40,11 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-/** Unit tests for {@link DefaultDatastoreResourceManager}. */
-public class DefaultDatastoreResourceManagerTest {
+/** Unit tests for {@link DatastoreResourceManager}. */
+public class DatastoreResourceManagerTest {
 
   @Mock private Datastore datastoreMock;
-  @Mock private DefaultDatastoreResourceManager resourceManager;
+  @Mock private DatastoreResourceManager resourceManager;
   @Mock private KeyFactory keyFactory;
   @Mock private Key key;
 
@@ -57,7 +57,7 @@ public class DefaultDatastoreResourceManagerTest {
     when(keyFactory.setKind(anyString())).thenReturn(keyFactory);
     when(keyFactory.setNamespace(anyString())).thenReturn(keyFactory);
 
-    resourceManager = new DefaultDatastoreResourceManager("test-namespace", datastoreMock);
+    resourceManager = new DatastoreResourceManager("test-namespace", datastoreMock);
   }
 
   @Test

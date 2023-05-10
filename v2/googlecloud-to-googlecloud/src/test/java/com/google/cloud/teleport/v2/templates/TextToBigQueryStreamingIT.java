@@ -29,7 +29,6 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
@@ -43,15 +42,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link TextToBigQueryStreaming} (GCS_Text_to_BigQuery_Flex). */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(TextToBigQueryStreaming.class)
 @RunWith(JUnit4.class)
 public class TextToBigQueryStreamingIT extends TemplateTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(TextToBigQueryStreamingIT.class);
 
   private static final String SCHEMA_PATH = "TextToBigQueryStreamingIT/schema.json";
   private static final String INPUT_PATH = "TextToBigQueryStreamingIT/input.txt";
@@ -63,9 +59,7 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
   }
 
   @After
@@ -79,7 +73,7 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
   }
 
   @Test
-  public void testTextToBigQueryWithStorageApi() throws IOException, InterruptedException {
+  public void testTextToBigQueryWithStorageApi() throws IOException {
     testTextToBigQuery(
         b ->
             b.addParameter("useStorageWriteApi", "true")

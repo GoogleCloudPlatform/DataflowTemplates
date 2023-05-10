@@ -15,10 +15,7 @@
  */
 package com.google.cloud.teleport.it.mongodb;
 
-/**
- * Custom exception for {@link com.google.cloud.teleport.it.mongodb.MongoDBResourceManager}
- * implementations.
- */
+/** Custom exception for {@link MongoDBResourceManager} implementations. */
 public class MongoDBResourceManagerException extends RuntimeException {
 
   public MongoDBResourceManagerException(String errorMessage, Throwable err) {

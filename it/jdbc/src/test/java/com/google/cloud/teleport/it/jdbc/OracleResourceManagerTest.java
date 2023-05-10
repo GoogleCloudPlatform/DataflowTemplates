@@ -28,32 +28,31 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.containers.OracleContainer;
 
-/** Integration tests for {@link com.google.cloud.teleport.it.jdbc.DefaultMySQLResourceManager}. */
+/** Integration tests for {@link OracleResourceManagerTest}. */
 @RunWith(JUnit4.class)
-public class DefaultMySQLResourceManagerTest<T extends MySQLContainer<T>> {
+public class OracleResourceManagerTest<T extends OracleContainer> {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock private T container;
 
-  private DefaultMySQLResourceManager testManager;
+  private OracleResourceManager testManager;
 
   private static final String TEST_ID = "test_id";
+  private static final int DEFAULT_ORACLE_INTERNAL_PORT = 1521;
 
   @Before
   public void setUp() {
     when(container.withUsername(any())).thenReturn(container);
     when(container.withPassword(any())).thenReturn(container);
     when(container.withDatabaseName(anyString())).thenReturn(container);
-    testManager =
-        new DefaultMySQLResourceManager(
-            container, new DefaultMySQLResourceManager.Builder(TEST_ID));
+    testManager = new OracleResourceManager(container, new OracleResourceManager.Builder(TEST_ID));
   }
 
   @Test
   public void testGetJDBCPortReturnsCorrectValue() {
-    assertThat(testManager.getJDBCPort()).isEqualTo(MySQLContainer.MYSQL_PORT);
+    assertThat(testManager.getJDBCPort()).isEqualTo(DEFAULT_ORACLE_INTERNAL_PORT);
   }
 }

@@ -15,15 +15,155 @@
  */
 package com.google.cloud.teleport.it.gcp.bigquery;
 
+import static com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManagerUtils.checkValidTableId;
+
+import com.google.api.gax.paging.Page;
+import com.google.auth.Credentials;
+import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.BigQueryError;
+import com.google.cloud.bigquery.BigQueryOptions;
+import com.google.cloud.bigquery.Dataset;
+import com.google.cloud.bigquery.DatasetInfo;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
+import com.google.cloud.bigquery.InsertAllResponse;
+import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardTableDefinition;
+import com.google.cloud.bigquery.Table;
+import com.google.cloud.bigquery.TableDefinition;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.bigquery.TableInfo;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.common.ResourceManager;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/** Interface for managing BigQuery resources in integration tests. */
-public interface BigQueryResourceManager extends ResourceManager {
+/**
+ * Client for managing BigQuery resources.
+ *
+ * <p>The class supports one dataset, and multiple tables per dataset object.
+ *
+ * <p>The class is thread-safe.
+ */
+public final class BigQueryResourceManager implements ResourceManager {
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryResourceManager.class);
+  private static final String DEFAULT_DATASET_REGION = "us-central1";
+
+  private final String projectId;
+  private final String datasetId;
+
+  private final BigQuery bigQuery;
+  private Dataset dataset;
+
+  private BigQueryResourceManager(Builder builder) {
+    // create bigQuery client
+    BigQueryOptions.Builder bigQueryOptions =
+        BigQueryOptions.newBuilder().setProjectId(builder.projectId);
+
+    // set credentials, if provided
+    if (builder.credentials != null) {
+      bigQueryOptions.setCredentials(builder.credentials);
+    }
+    this.bigQuery = bigQueryOptions.build().getService();
+    this.projectId = builder.projectId;
+
+    // If datasetId is provided, get the dataset.
+    if (builder.datasetId != null) {
+      this.datasetId = builder.datasetId;
+      dataset = getDatasetIfExists(this.datasetId);
+    } else {
+      this.datasetId = BigQueryResourceManagerUtils.generateDatasetId(builder.testId);
+    }
+  }
+
+  @VisibleForTesting
+  BigQueryResourceManager(String testId, String projectId, BigQuery bigQuery) {
+    this.datasetId = BigQueryResourceManagerUtils.generateDatasetId(testId);
+    this.projectId = projectId;
+    this.bigQuery = bigQuery;
+  }
+
+  public static BigQueryResourceManager.Builder builder(String testId, String projectId) {
+    return new BigQueryResourceManager.Builder(testId, projectId);
+  }
+
+  public String getProjectId() {
+    return projectId;
+  }
+
+  /**
+   * Return the dataset ID this Resource Manager uses to create and manage tables in.
+   *
+   * @return the dataset ID.
+   */
+  public String getDatasetId() {
+    return datasetId;
+  }
+
+  /**
+   * Helper method for determining if a dataset exists in the resource manager.
+   *
+   * @throws IllegalStateException if a dataset does not exist.
+   */
+  private void checkHasDataset() {
+    if (dataset == null) {
+      throw new IllegalStateException("There is no dataset for manager to perform operation on.");
+    }
+  }
+
+  /**
+   * Helper method for fetching a dataset stored in the project given the datasetId.
+   *
+   * @param datasetId the name of the dataset to fetch.
+   * @return the dataset, if it exists.
+   * @throws IllegalStateException if the given dataset does not exist in the project.
+   */
+  private synchronized Dataset getDatasetIfExists(String datasetId) throws IllegalStateException {
+    Dataset dataset = bigQuery.getDataset(datasetId);
+    if (dataset == null) {
+      throw new IllegalStateException(
+          "The dataset " + datasetId + " does not exist in project " + projectId + ".");
+    }
+    return dataset;
+  }
+
+  /**
+   * Helper method for fetching a table stored in the dataset given a table name.
+   *
+   * @param tableId the name of the table to fetch.
+   * @return the table, if it exists.
+   * @throws IllegalStateException if the given table name does not exist in the dataset.
+   */
+  private synchronized Table getTableIfExists(String tableId) throws IllegalStateException {
+    checkHasDataset();
+    Table table = dataset.get(tableId);
+    if (table == null) {
+      throw new IllegalStateException(
+          "The table " + tableId + " does not exist in dataset " + datasetId + ".");
+    }
+    return table;
+  }
+
+  /**
+   * Helper method for logging individual errors thrown by inserting rows to a table. This method is
+   * used to log errors thrown by inserting certain rows when other rows were successful.
+   *
+   * @param insertErrors the map of errors to log.
+   */
+  private void logInsertErrors(Map<Long, List<BigQueryError>> insertErrors) {
+    for (Map.Entry<Long, List<BigQueryError>> entries : insertErrors.entrySet()) {
+      long index = entries.getKey();
+      for (BigQueryError error : entries.getValue()) {
+        LOG.info("Error when inserting row with index {}: {}", index, error.getMessage());
+      }
+    }
+  }
 
   /**
    * Create a BigQuery dataset in which all tables will exist.
@@ -31,14 +171,27 @@ public interface BigQueryResourceManager extends ResourceManager {
    * @param region the region to store the dataset in.
    * @throws BigQueryResourceManagerException if there is an error creating the dataset in BigQuery.
    */
-  void createDataset(String region);
+  public synchronized void createDataset(String region) {
 
-  /**
-   * Return the dataset ID this Resource Manager uses to create and manage tables in.
-   *
-   * @return the dataset ID.
-   */
-  String getDatasetId();
+    // Check to see if dataset already exists, and throw error if it does
+    if (dataset != null) {
+      throw new IllegalStateException(
+          "Dataset " + datasetId + " already exists for project " + projectId + ".");
+    }
+
+    LOG.info("Creating dataset {} in project {}.", datasetId, projectId);
+
+    // Send the dataset request to Google Cloud
+    try {
+      DatasetInfo datasetInfo = DatasetInfo.newBuilder(datasetId).setLocation(region).build();
+      dataset = bigQuery.create(datasetInfo);
+
+    } catch (Exception e) {
+      throw new BigQueryResourceManagerException("Failed to create dataset.", e);
+    }
+
+    LOG.info("Dataset {} created successfully", datasetId);
+  }
 
   /**
    * Creates a table within the current dataset given a table name and schema.
@@ -53,7 +206,9 @@ public interface BigQueryResourceManager extends ResourceManager {
    * @return The TableId (reference) to the table
    * @throws BigQueryResourceManagerException if there is an error creating the table in BigQuery.
    */
-  TableId createTable(String tableName, Schema schema);
+  public synchronized TableId createTable(String tableName, Schema schema) {
+    return createTable(tableName, schema, System.currentTimeMillis() + 3600000); // 1h
+  }
 
   /**
    * Creates a table within the current dataset given a table name and schema.
@@ -70,7 +225,44 @@ public interface BigQueryResourceManager extends ResourceManager {
    * @return The TableId (reference) to the table
    * @throws BigQueryResourceManagerException if there is an error creating the table in BigQuery.
    */
-  TableId createTable(String tableName, Schema schema, Long expirationTimeMillis);
+  public synchronized TableId createTable(
+      String tableName, Schema schema, Long expirationTimeMillis) {
+    // Check table ID
+    checkValidTableId(tableName);
+
+    // Check schema
+    if (schema == null) {
+      throw new IllegalArgumentException("A valid schema must be provided to create a table.");
+    }
+    // Create a default dataset if this resource manager has not already created one
+    if (dataset == null) {
+      createDataset(DEFAULT_DATASET_REGION);
+    }
+    checkHasDataset();
+    LOG.info("Creating table using tableName '{}'.", tableName);
+
+    // Create the table if it does not already exist in the dataset
+    try {
+      TableId tableId = TableId.of(dataset.getDatasetId().getDataset(), tableName);
+      if (bigQuery.getTable(tableId) == null) {
+        TableDefinition tableDefinition = StandardTableDefinition.of(schema);
+        TableInfo tableInfo =
+            TableInfo.newBuilder(tableId, tableDefinition)
+                .setExpirationTime(expirationTimeMillis)
+                .build();
+        bigQuery.create(tableInfo);
+        LOG.info(
+            "Successfully created table {}.{}", dataset.getDatasetId().getDataset(), tableName);
+
+        return tableId;
+      } else {
+        throw new IllegalStateException(
+            "Table " + tableId + " already exists for dataset " + datasetId + ".");
+      }
+    } catch (Exception e) {
+      throw new BigQueryResourceManagerException("Failed to create table.", e);
+    }
+  }
 
   /**
    * Writes a given row into a table. This method requires {@link
@@ -78,12 +270,14 @@ public interface BigQueryResourceManager extends ResourceManager {
    * beforehand.
    *
    * @param tableName The name of the table to insert the given row into.
-   * @param tableRow A row object representing the table row.
+   * @param row A row object representing the table row.
    * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  void write(String tableName, RowToInsert tableRow);
+  public synchronized void write(String tableName, RowToInsert row) {
+    write(tableName, ImmutableList.of(row));
+  }
 
   /**
    * Writes a collection of table rows into a single table. This method requires {@link
@@ -91,12 +285,75 @@ public interface BigQueryResourceManager extends ResourceManager {
    * beforehand.
    *
    * @param tableName The name of the table to insert the given rows into.
-   * @param tableRows A collection of table rows.
+   * @param rows A collection of table rows.
    * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  void write(String tableName, List<RowToInsert> tableRows);
+  public synchronized void write(String tableName, List<RowToInsert> rows) {
+    // Exit early if there are no mutations
+    if (!rows.iterator().hasNext()) {
+      return;
+    }
+
+    Table table = getTableIfExists(tableName);
+
+    LOG.info(
+        "Attempting to write {} records to {}.{}.",
+        rows.size(),
+        dataset.getDatasetId().getDataset(),
+        tableName);
+
+    // Send row mutations to the table
+    int successfullyWrittenRecords = rows.size();
+    try {
+      InsertAllResponse insertResponse = table.insert(rows);
+      successfullyWrittenRecords -= insertResponse.getInsertErrors().size();
+
+      if (insertResponse.hasErrors()) {
+        LOG.warn("Errors encountered when inserting rows: ");
+        logInsertErrors(insertResponse.getInsertErrors());
+      }
+
+    } catch (Exception e) {
+      throw new BigQueryResourceManagerException("Failed to write to table.", e);
+    }
+
+    LOG.info(
+        "Successfully wrote {} records to {}.{}.",
+        successfullyWrittenRecords,
+        dataset.getDatasetId().getDataset(),
+        tableName);
+  }
+
+  /**
+   * Runs the specified query.
+   *
+   * @param query the query to execute
+   */
+  public TableResult runQuery(String query) {
+    try {
+      TableResult results = bigQuery.query(QueryJobConfiguration.newBuilder(query).build());
+      LOG.info("Loaded {} rows from {}", results.getTotalRows(), query);
+      return results;
+    } catch (Exception e) {
+      throw new BigQueryResourceManagerException("Failed to read query " + query, e);
+    }
+  }
+
+  /**
+   * Gets the number of rows in the table.
+   *
+   * @param table the name of the table
+   */
+  public Long getRowCount(String table) {
+    TableResult r =
+        runQuery(String.format("SELECT COUNT(*) FROM `%s.%s.%s`", projectId, datasetId, table));
+    return StreamSupport.stream(r.getValues().spliterator(), false)
+        .map(fieldValues -> fieldValues.get(0).getLongValue())
+        .collect(Collectors.toList())
+        .get(0);
+  }
 
   /**
    * Reads all the rows in a table and returns a TableResult containing a JSON string
@@ -109,7 +366,9 @@ public interface BigQueryResourceManager extends ResourceManager {
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  TableResult readTable(TableId table);
+  public synchronized TableResult readTable(TableId table) {
+    return readTable(table.getTable());
+  }
 
   /**
    * Reads all the rows in a table and returns a TableResult containing a JSON string
@@ -122,7 +381,9 @@ public interface BigQueryResourceManager extends ResourceManager {
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  TableResult readTable(String tableName);
+  public synchronized TableResult readTable(String tableName) {
+    return readTable(tableName, -1);
+  }
 
   /**
    * Reads number of rows in a table and returns a TableResult containing a JSON string
@@ -135,7 +396,9 @@ public interface BigQueryResourceManager extends ResourceManager {
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  TableResult readTable(TableId table, int numRows);
+  public synchronized TableResult readTable(TableId table, int numRows) {
+    return readTable(table.getTable(), numRows);
+  }
 
   /**
    * Reads number of rows in a table and returns a TableResult containing a JSON string
@@ -143,12 +406,29 @@ public interface BigQueryResourceManager extends ResourceManager {
    * Schema)} to be called for the target table beforehand.
    *
    * @param tableName The name of the table to read rows from.
+   * @param numRows number of rows to read from the table
    * @return A TableResult containing all the rows in the table in JSON.
    * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  TableResult readTable(String tableName, int numRows);
+  public synchronized TableResult readTable(String tableName, int numRows) {
+    getTableIfExists(tableName);
+
+    LOG.info(
+        "Reading {} rows from {}.{}",
+        numRows == -1 ? "all" : Integer.toString(numRows),
+        dataset.getDatasetId().getDataset(),
+        tableName);
+
+    // Read all the rows from the table given by tableId
+    String query =
+        "SELECT TO_JSON_STRING(t) FROM `"
+            + String.join(".", projectId, datasetId, tableName)
+            + "` AS t"
+            + (numRows != -1 ? " LIMIT " + numRows + ";" : ";");
+    return runQuery(query);
+  }
 
   /**
    * Deletes all created resources (dataset and tables) and cleans up the BigQuery client, making
@@ -157,9 +437,50 @@ public interface BigQueryResourceManager extends ResourceManager {
    * @throws BigQueryResourceManagerException if there is an error deleting the tables or dataset in
    *     BigQuery.
    */
-  void cleanupAll();
+  @Override
+  public synchronized void cleanupAll() {
+    LOG.info("Attempting to cleanup manager.");
+    try {
+      if (dataset != null) {
+        Page<Table> tables = bigQuery.listTables(dataset.getDatasetId());
+        for (Table table : tables.iterateAll()) {
+          bigQuery.delete(
+              TableId.of(
+                  projectId, dataset.getDatasetId().getDataset(), table.getTableId().getTable()));
+        }
+        bigQuery.delete(dataset.getDatasetId());
+      }
+    } catch (Exception e) {
+      throw new BigQueryResourceManagerException("Failed to delete resources.", e);
+    }
+    LOG.info("Manager successfully cleaned up.");
+  }
 
-  TableResult runQuery(String query);
+  /** Builder for {@link BigQueryResourceManager}. */
+  public static final class Builder {
 
-  Long getRowCount(String table);
+    private final String testId;
+    private final String projectId;
+    private String datasetId;
+    private Credentials credentials;
+
+    private Builder(String testId, String projectId) {
+      this.testId = testId;
+      this.projectId = projectId;
+    }
+
+    public Builder setDatasetId(String datasetId) {
+      this.datasetId = datasetId;
+      return this;
+    }
+
+    public Builder setCredentials(Credentials credentials) {
+      this.credentials = credentials;
+      return this;
+    }
+
+    public BigQueryResourceManager build() {
+      return new BigQueryResourceManager(this);
+    }
+  }
 }

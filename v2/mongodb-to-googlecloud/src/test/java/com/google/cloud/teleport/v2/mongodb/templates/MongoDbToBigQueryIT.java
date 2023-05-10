@@ -31,9 +31,8 @@ import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
-import com.google.cloud.teleport.it.mongodb.DefaultMongoDBResourceManager;
+import com.google.cloud.teleport.it.mongodb.MongoDBResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,8 +48,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /**
@@ -95,9 +92,6 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @TemplateIntegrationTest(MongoDbToBigQuery.class)
 @RunWith(JUnit4.class)
 public final class MongoDbToBigQueryIT extends TemplateTestBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQueryIT.class);
-
   private static final String MONGO_URI = "mongoDbUri";
   private static final String MONGO_DB = "database";
   private static final String MONGO_COLLECTION = "collection";
@@ -106,16 +100,14 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
   private static final String MONGO_DB_ID = "_id";
 
-  private DefaultMongoDBResourceManager mongoDbClient;
+  private MongoDBResourceManager mongoDbClient;
   private BigQueryResourceManager bigQueryClient;
 
   @Before
-  public void setup() throws IOException {
-    mongoDbClient = DefaultMongoDBResourceManager.builder(testName).build();
+  public void setup() {
+    mongoDbClient = MongoDBResourceManager.builder(testName).build();
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
   }
 
   @After

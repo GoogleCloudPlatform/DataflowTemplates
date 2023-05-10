@@ -15,12 +15,31 @@
  */
 package com.google.cloud.teleport.it.gcp.pubsub;
 
+import com.google.api.gax.core.CredentialsProvider;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.pubsub.v1.TopicName;
+import java.io.IOException;
 
-/** Interface for building Pub/Sub publishers in integration tests. */
-interface PubsubPublisherFactory {
+/**
+ * Client for building Pub/Sub publishers.
+ *
+ * <p>The class provides an interaction with the real Pub/Sub client, with operations related to
+ * creating a Pub/Sub Publisher.
+ */
+public class PubsubPublisherFactory {
+
+  private final CredentialsProvider credentialsProvider;
+
+  PubsubPublisherFactory(CredentialsProvider credentialsProvider) {
+    this.credentialsProvider = credentialsProvider;
+  }
 
   /** Create a {@link Publisher} instance for the given topic reference. */
-  Publisher createPublisher(TopicName topic);
+  public Publisher createPublisher(TopicName topic) {
+    try {
+      return Publisher.newBuilder(topic).setCredentialsProvider(credentialsProvider).build();
+    } catch (IOException e) {
+      throw new PubsubResourceManagerException("Error creating publisher for topic", e);
+    }
+  }
 }

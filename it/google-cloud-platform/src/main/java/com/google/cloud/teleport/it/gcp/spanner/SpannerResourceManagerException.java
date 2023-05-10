@@ -18,10 +18,6 @@ package com.google.cloud.teleport.it.gcp.spanner;
 /** Custom exception for {@link SpannerResourceManager} implementations. */
 public class SpannerResourceManagerException extends RuntimeException {
 
-  public SpannerResourceManagerException(String errorMessage) {
-    super(errorMessage);
-  }
-
   public SpannerResourceManagerException(String errorMessage, Throwable err) {
     super(errorMessage, err);
   }

@@ -46,9 +46,9 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
-/** Unit tests for {@link DefaultElasticsearchResourceManager}. */
+/** Unit tests for {@link ElasticsearchResourceManager}. */
 @RunWith(JUnit4.class)
-public class DefaultElasticsearchResourceManagerTest {
+public class ElasticsearchResourceManagerTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -66,18 +66,18 @@ public class DefaultElasticsearchResourceManagerTest {
   private static final int ELASTICSEARCH_PORT = 9200;
   private static final int MAPPED_PORT = 10000;
 
-  private DefaultElasticsearchResourceManager testManager;
+  private ElasticsearchResourceManager testManager;
 
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() {
     when(container.getHost()).thenReturn(HOST);
     when(container.getMappedPort(ELASTICSEARCH_PORT)).thenReturn(MAPPED_PORT);
     when(container.getHttpHostAddress()).thenReturn(HOST + ":" + MAPPED_PORT);
     when(elasticsearchClient.indices()).thenReturn(elasticsearchIndicesClient);
 
     testManager =
-        new DefaultElasticsearchResourceManager(
-            elasticsearchClient, container, DefaultElasticsearchResourceManager.builder(TEST_ID));
+        new ElasticsearchResourceManager(
+            elasticsearchClient, container, ElasticsearchResourceManager.builder(TEST_ID));
   }
 
   @Test
@@ -154,12 +154,11 @@ public class DefaultElasticsearchResourceManagerTest {
 
   @Test
   public void testCleanupAllShouldDropStaticIndex() throws IOException {
-    DefaultElasticsearchResourceManager.Builder builder =
-        DefaultElasticsearchResourceManager.builder(TEST_ID);
+    ElasticsearchResourceManager.Builder builder = ElasticsearchResourceManager.builder(TEST_ID);
     builder.setHost("localhost").setPort(9200).useStaticContainer();
 
-    DefaultElasticsearchResourceManager tm =
-        new DefaultElasticsearchResourceManager(elasticsearchClient, container, builder);
+    ElasticsearchResourceManager tm =
+        new ElasticsearchResourceManager(elasticsearchClient, container, builder);
 
     when(elasticsearchIndicesClient.create(
             any(CreateIndexRequest.class), eq(RequestOptions.DEFAULT)))

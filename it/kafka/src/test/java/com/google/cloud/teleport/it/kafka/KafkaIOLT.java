@@ -47,8 +47,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * KafkaIO performance tests.
@@ -57,8 +55,6 @@ import org.slf4j.LoggerFactory;
  * -DartifactBucket=[temp bucket] -DfailIfNoTests=false".
  */
 public final class KafkaIOLT extends IOLoadTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaIOLT.class);
-
   private static KafkaResourceManager resourceManager;
   private static final String READ_ELEMENT_METRIC_NAME = "read_count";
   private static final int ROW_SIZE = 1024;
@@ -72,7 +68,7 @@ public final class KafkaIOLT extends IOLoadTestBase {
 
   @BeforeClass
   public static void beforeClass() throws IOException {
-    resourceManager = DefaultKafkaResourceManager.builder("io-kafka-lt").build();
+    resourceManager = KafkaResourceManager.builder("io-kafka-lt").build();
   }
 
   @Before

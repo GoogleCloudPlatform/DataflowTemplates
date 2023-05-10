@@ -25,11 +25,10 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
-import com.google.cloud.teleport.it.jdbc.DefaultMySQLResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
+import com.google.cloud.teleport.it.jdbc.MySQLResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -55,7 +54,7 @@ import org.junit.runners.JUnit4;
 public final class PubsubToJdbcIT extends JDBCBaseIT {
 
   private PubsubResourceManager pubsubResourceManager;
-  private DefaultMySQLResourceManager jdbcResourceManager;
+  private MySQLResourceManager jdbcResourceManager;
 
   private static final int MESSAGES_COUNT = 10;
   private static final int BAD_MESSAGES_COUNT = 3;
@@ -63,10 +62,10 @@ public final class PubsubToJdbcIT extends JDBCBaseIT {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
-    jdbcResourceManager = DefaultMySQLResourceManager.builder(testName).build();
+    jdbcResourceManager = MySQLResourceManager.builder(testName).build();
   }
 
   @After

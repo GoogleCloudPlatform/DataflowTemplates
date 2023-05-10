@@ -24,8 +24,8 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.kafka.DefaultKafkaResourceManager;
+import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.kafka.KafkaResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
@@ -38,7 +38,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -62,19 +61,19 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(PubsubToKafka.class);
 
-  private DefaultKafkaResourceManager kafkaResourceManager;
+  private KafkaResourceManager kafkaResourceManager;
 
-  private DefaultPubsubResourceManager pubsubResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setup() throws IOException {
 
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
 
-    kafkaResourceManager = DefaultKafkaResourceManager.builder(testName).build();
+    kafkaResourceManager = KafkaResourceManager.builder(testName).build();
   }
 
   @After
@@ -83,7 +82,7 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPubsubToKafka() throws IOException, ExecutionException, InterruptedException {
+  public void testPubsubToKafka() throws IOException {
     pubsubToKafka(Function.identity()); // no extra parameters
   }
 

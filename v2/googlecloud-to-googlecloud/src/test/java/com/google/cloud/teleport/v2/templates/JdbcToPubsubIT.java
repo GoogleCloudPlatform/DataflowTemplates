@@ -26,11 +26,10 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
 import com.google.cloud.teleport.it.gcp.artifacts.utils.JsonTestUtil;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
-import com.google.cloud.teleport.it.jdbc.DefaultMySQLResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
+import com.google.cloud.teleport.it.jdbc.MySQLResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -57,7 +56,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @RunWith(JUnit4.class)
 public class JdbcToPubsubIT extends JDBCBaseIT {
   private PubsubResourceManager pubsubResourceManager;
-  private DefaultMySQLResourceManager mysqlResourceManager;
+  private MySQLResourceManager mysqlResourceManager;
 
   private static final String ROW_ID = "row_id";
   private static final String NAME = "name";
@@ -68,7 +67,7 @@ public class JdbcToPubsubIT extends JDBCBaseIT {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
             .build();
   }
@@ -81,7 +80,7 @@ public class JdbcToPubsubIT extends JDBCBaseIT {
   @Test
   public void testJdbcToPubsub() throws IOException {
     // Arrange
-    mysqlResourceManager = DefaultMySQLResourceManager.builder(testName).build();
+    mysqlResourceManager = MySQLResourceManager.builder(testName).build();
 
     // Arrange MySQL-compatible schema
     HashMap<String, String> columns = new HashMap<>();

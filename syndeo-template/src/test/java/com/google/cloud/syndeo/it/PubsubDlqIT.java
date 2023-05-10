@@ -27,7 +27,6 @@ import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.dataflow.FlexTemplateClient;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PullResponse;
@@ -83,7 +82,7 @@ public class PubsubDlqIT {
   @Before
   public void setUpPubSub() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(TEST_ID, PROJECT)
+        PubsubResourceManager.builder(TEST_ID, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     RESOURCE_MANAGERS.add(pubsubResourceManager);
@@ -122,7 +121,7 @@ public class PubsubDlqIT {
   }
 
   @Test
-  public void testOnlyWriteDataToPubsub() throws Exception {
+  public void testOnlyWriteDataToPubsub() {
     // Make sure that Kafka Server exists
     // Start data generation pipeline
     publishCorrectDataToPubsub();
@@ -174,7 +173,6 @@ public class PubsubDlqIT {
         } else {
           // Iterate once more
           Thread.sleep(ONE_MINUTE_MILLIS);
-          continue;
         }
       }
     }
@@ -228,7 +226,6 @@ public class PubsubDlqIT {
         } else {
           // Iterate once more
           Thread.sleep(ONE_MINUTE_MILLIS);
-          continue;
         }
       }
     }

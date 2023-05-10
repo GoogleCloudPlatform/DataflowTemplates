@@ -34,11 +34,9 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.elasticsearch.DefaultElasticsearchResourceManager;
 import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.utils.BigQueryTestUtil;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
@@ -73,10 +71,8 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   @Before
   public void setup() {
     bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName, PROJECT)
-            .setCredentials(credentials)
-            .build();
-    elasticsearchResourceManager = DefaultElasticsearchResourceManager.builder(testId).build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+    elasticsearchResourceManager = ElasticsearchResourceManager.builder(testId).build();
   }
 
   @After

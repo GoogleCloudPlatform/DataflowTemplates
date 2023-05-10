@@ -59,8 +59,6 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * BigQueryIO performance tests.
@@ -74,8 +72,6 @@ import org.slf4j.LoggerFactory;
  * \ -DartifactBucket=[temp bucket] -DfailIfNoTests=false".
  */
 public final class BigQueryIOLT extends IOLoadTestBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(BigQueryIOLT.class);
 
   private static BigQueryResourceManager resourceManager;
   private static String tableQualifier;
@@ -92,7 +88,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   @BeforeClass
   public static void beforeClass() {
     resourceManager =
-        DefaultBigQueryResourceManager.builder("io-bigquery-lt", project)
+        BigQueryResourceManager.builder("io-bigquery-lt", project)
             .setCredentials(CREDENTIALS)
             .build();
     resourceManager.createDataset(region);

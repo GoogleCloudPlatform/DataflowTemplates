@@ -19,18 +19,17 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.teleport.it.common.TestProperties;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.junit.Test;
 
-/** Integration tests for {@link DefaultDatastoreResourceManager}. */
-public class DefaultDatastoreResourceManagerIT {
+/** Integration tests for {@link DatastoreResourceManager}. */
+public class DatastoreResourceManagerIT {
 
   @Test
-  public void testInsert() throws IOException {
-    DefaultDatastoreResourceManager resourceManager =
-        DefaultDatastoreResourceManager.builder(
+  public void testInsert() {
+    DatastoreResourceManager resourceManager =
+        DatastoreResourceManager.builder(
                 TestProperties.project(), DatastoreUtils.createTestId("testInsert"))
             .credentials(TestProperties.credentials())
             .build();
@@ -48,9 +47,9 @@ public class DefaultDatastoreResourceManagerIT {
   }
 
   @Test
-  public void testInsertQuery() throws IOException {
-    DefaultDatastoreResourceManager resourceManager =
-        DefaultDatastoreResourceManager.builder(
+  public void testInsertQuery() {
+    DatastoreResourceManager resourceManager =
+        DatastoreResourceManager.builder(
                 TestProperties.project(), DatastoreUtils.createTestId("testInsertQuery"))
             .credentials(TestProperties.buildCredentialsFromEnv())
             .build();
@@ -71,9 +70,9 @@ public class DefaultDatastoreResourceManagerIT {
   }
 
   @Test
-  public void testInsertCleanUp() throws IOException {
-    DefaultDatastoreResourceManager resourceManager =
-        DefaultDatastoreResourceManager.builder(
+  public void testInsertCleanUp() {
+    DatastoreResourceManager resourceManager =
+        DatastoreResourceManager.builder(
                 TestProperties.project(), DatastoreUtils.createTestId("testInsertCleanUp"))
             .credentials(TestProperties.buildCredentialsFromEnv())
             .build();

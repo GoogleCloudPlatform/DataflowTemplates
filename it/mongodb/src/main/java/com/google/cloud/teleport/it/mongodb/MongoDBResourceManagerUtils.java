@@ -20,10 +20,7 @@ import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.gen
 import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Utilities for {@link com.google.cloud.teleport.it.mongodb.MongoDBResourceManager}
- * implementations.
- */
+/** Utilities for {@link MongoDBResourceManager} implementations. */
 final class MongoDBResourceManagerUtils {
 
   // MongoDB Database and Collection naming restrictions can be found at

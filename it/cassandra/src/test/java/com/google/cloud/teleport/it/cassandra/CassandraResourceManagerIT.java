@@ -31,16 +31,16 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration tests for {@link DefaultCassandraResourceManager}. */
+/** Integration tests for {@link CassandraResourceManager}. */
 @Category(TestContainersIntegrationTest.class)
 @RunWith(JUnit4.class)
-public class DefaultCassandraResourceManagerIT {
+public class CassandraResourceManagerIT {
 
-  private DefaultCassandraResourceManager cassandraResourceManager;
+  private CassandraResourceManager cassandraResourceManager;
 
   @Before
   public void setUp() throws IOException {
-    cassandraResourceManager = DefaultCassandraResourceManager.builder("dummy").build();
+    cassandraResourceManager = CassandraResourceManager.builder("dummy").build();
   }
 
   @Test

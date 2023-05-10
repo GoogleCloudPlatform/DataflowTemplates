@@ -31,7 +31,6 @@ import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
 import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
@@ -67,7 +66,6 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   private static final String OUTPUT_DIRECTORY_KEY = "outputDirectory";
   private static final String WINDOW_DURATION_KEY = "windowDuration";
   private static final String NUM_WORKERS_KEY = "numWorkers";
-  private static final String MAX_WORKERS_KEY = "maxWorkers";
   private static final String OUTPUT_FILENAME_PREFIX = "outputFilenamePrefix";
   private static final String DEFAULT_WINDOW_DURATION = "10s";
   private static final Pattern EXPECTED_PATTERN = Pattern.compile(".*subscription-output-.*");
@@ -84,7 +82,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName, project)
+        PubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     Storage storageClient = createStorageClient(CREDENTIALS);

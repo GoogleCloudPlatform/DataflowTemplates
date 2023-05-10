@@ -27,7 +27,6 @@ import com.google.cloud.syndeo.transforms.files.SyndeoFilesReadSchemaTransformPr
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.protobuf.ByteString;
@@ -94,7 +93,7 @@ public class ReadFilesTransformIT {
     RESOURCE_MANAGERS.add(gcsResourceManager);
 
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(TEST_ID, PROJECT)
+        PubsubResourceManager.builder(TEST_ID, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     RESOURCE_MANAGERS.add(pubsubResourceManager);
@@ -121,7 +120,7 @@ public class ReadFilesTransformIT {
 
   @Test
   public void testFilesAreConsumed() throws IOException, InterruptedException {
-    Thread dataCopy = new Thread(() -> copyFilesToGcs());
+    Thread dataCopy = new Thread(this::copyFilesToGcs);
     dataCopy.start();
 
     Counter elementCounter = Metrics.counter("test", "elementCounter");
@@ -237,7 +236,7 @@ public class ReadFilesTransformIT {
 
   @Test
   public void testGoodErrorHandling() throws IOException, InterruptedException {
-    Thread dataCopy = new Thread(() -> copyFilesToGcs());
+    Thread dataCopy = new Thread(this::copyFilesToGcs);
     dataCopy.start();
 
     // Pass a proper JSON string without the right fields

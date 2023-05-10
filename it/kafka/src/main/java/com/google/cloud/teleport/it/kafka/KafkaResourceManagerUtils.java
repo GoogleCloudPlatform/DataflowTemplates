@@ -20,9 +20,7 @@ import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.gen
 import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Utilities for {@link com.google.cloud.teleport.it.kafka.KafkaResourceManager} implementations.
- */
+/** Utilities for {@link KafkaResourceManager} implementations. */
 final class KafkaResourceManagerUtils {
 
   // from
