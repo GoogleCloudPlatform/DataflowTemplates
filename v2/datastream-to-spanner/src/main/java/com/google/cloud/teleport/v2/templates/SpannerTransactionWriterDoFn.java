@@ -57,7 +57,7 @@ import java.util.Spliterators;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -107,7 +107,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private transient ObjectMapper mapper;
 
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
-  private transient ExposedSpannerAccessor spannerAccessor;
+  private transient SpannerAccessor spannerAccessor;
 
   private final Counter processedEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Total Events in Spanner Sink");
@@ -150,7 +150,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() {
-    spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
+    spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
   }

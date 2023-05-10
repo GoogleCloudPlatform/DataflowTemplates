@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -78,7 +78,7 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
 
   static class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
     private final SpannerConfig spannerConfig;
-    private transient ExposedSpannerAccessor spannerAccessor;
+    private transient SpannerAccessor spannerAccessor;
     private transient Dialect dialect;
     private final Boolean shouldCreateShadowTables;
     private final String shadowTablePrefix;
@@ -101,7 +101,7 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
 
     @Setup
     public void setup() throws Exception {
-      spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
+      spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
       DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
       dialect =
           databaseAdminClient
