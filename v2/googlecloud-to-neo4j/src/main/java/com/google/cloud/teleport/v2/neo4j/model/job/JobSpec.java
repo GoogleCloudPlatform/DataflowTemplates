@@ -23,13 +23,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import lombok.Getter;
-import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Job specification request object. */
-@Getter
 public class JobSpec implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(JobSpec.class);
@@ -37,7 +34,7 @@ public class JobSpec implements Serializable {
   // initialize defaults;
   private final Map<String, Source> sources = new HashMap<>();
   private final List<Target> targets = new ArrayList<>();
-  @Setter private Config config = new Config();
+  private Config config = new Config();
   private final Map<String, String> options = new HashMap<>();
   private final List<Action> actions = new ArrayList<>();
 
@@ -113,6 +110,30 @@ public class JobSpec implements Serializable {
         actions.add(action);
       }
     }
+    return actions;
+  }
+
+  public Map<String, Source> getSources() {
+    return sources;
+  }
+
+  public List<Target> getTargets() {
+    return targets;
+  }
+
+  public Config getConfig() {
+    return config;
+  }
+
+  public void setConfig(Config config) {
+    this.config = config;
+  }
+
+  public Map<String, String> getOptions() {
+    return options;
+  }
+
+  public List<Action> getActions() {
     return actions;
   }
 }

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.providers.bigquery;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SqlQuerySpec;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.SqlQuerySpec.SqlQuerySpecBuilder;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
@@ -96,7 +97,7 @@ public class BigQueryImpl implements Provider {
     String zeroRowSql = "SELECT * FROM (" + baseQuery + ") LIMIT 0";
     LOG.info("Reading BQ metadata with query: {}", zeroRowSql);
 
-    return SqlQuerySpec.builder()
+    return new SqlQuerySpecBuilder()
         .readDescription("Read from BQ " + source.getName())
         .castDescription("Cast to BeamRow " + source.getName())
         .sql(zeroRowSql)
@@ -109,7 +110,7 @@ public class BigQueryImpl implements Provider {
    * @return helper object includes metadata and SQL
    */
   public SqlQuerySpec getSourceQueryBeamSpec(SourceQuerySpec sourceQuerySpec) {
-    return SqlQuerySpec.builder()
+    return new SqlQuerySpecBuilder()
         .castDescription("Cast to BeamRow " + sourceQuerySpec.getSource().getName())
         .readDescription("Read from BQ " + sourceQuerySpec.getSource().getName())
         .sql(getBaseQuery(sourceQuerySpec.getSource()))
@@ -126,7 +127,7 @@ public class BigQueryImpl implements Provider {
     String baseSql = getBaseQuery(targetQuerySpec.getSource());
     String targetSpecificSql =
         ModelUtils.getTargetSql(sourceFieldSet, targetQuerySpec.getTarget(), true, baseSql);
-    return SqlQuerySpec.builder()
+    return new SqlQuerySpecBuilder()
         .readDescription(
             targetQuerySpec.getTarget().getSequence()
                 + ": Read from BQ "

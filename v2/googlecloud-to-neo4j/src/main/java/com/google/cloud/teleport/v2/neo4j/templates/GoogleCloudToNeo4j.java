@@ -30,7 +30,9 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.ArtifactType;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.JobSpecMapper;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.OptionsParamsMapper;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec.SourceQuerySpecBuilder;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec.TargetQuerySpecBuilder;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
@@ -224,7 +226,7 @@ public class GoogleCloudToNeo4j {
       boolean targetsHaveTransforms = ModelUtils.targetsHaveTransforms(jobSpec, source);
       if (!targetsHaveTransforms || !providerImpl.supportsSqlPushDown()) {
         SourceQuerySpec sourceQuerySpec =
-            SourceQuerySpec.builder().source(source).sourceSchema(sourceBeamSchema).build();
+            new SourceQuerySpecBuilder().source(source).sourceSchema(sourceBeamSchema).build();
         nullableSourceBeamRows =
             pipeline
                 .apply(
@@ -242,7 +244,7 @@ public class GoogleCloudToNeo4j {
       List<Target> nodeTargets = jobSpec.getActiveNodeTargetsBySource(source.getName());
       for (Target nodeTarget : nodeTargets) {
         TargetQuerySpec targetQuerySpec =
-            TargetQuerySpec.builder()
+            new TargetQuerySpecBuilder()
                 .source(source)
                 .sourceBeamSchema(sourceBeamSchema)
                 .nullableSourceRows(nullableSourceBeamRows)
@@ -297,7 +299,7 @@ public class GoogleCloudToNeo4j {
           jobSpec.getActiveRelationshipTargetsBySource(source.getName());
       for (Target relationshipTarget : relationshipTargets) {
         TargetQuerySpec targetQuerySpec =
-            TargetQuerySpec.builder()
+            new TargetQuerySpecBuilder()
                 .source(source)
                 .nullableSourceRows(nullableSourceBeamRows)
                 .sourceBeamSchema(sourceBeamSchema)
