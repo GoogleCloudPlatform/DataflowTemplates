@@ -31,9 +31,9 @@ import com.google.common.truth.Subject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Subject that has assertion operations for artifact lists (GCS files), usually coming from the
