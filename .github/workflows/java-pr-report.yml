@@ -38,3 +38,5 @@ jobs:
       with:
         commit: ${{github.event.workflow_run.head_sha}}
         report_paths: '**/surefire-reports/TEST-*.xml'
+        detailed_summary: true
+        fail_on_failure: false
