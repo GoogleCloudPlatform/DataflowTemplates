@@ -16,25 +16,48 @@
 
 name: Java PR Report
 on:
-  workflow_run:
-    workflows: [ Java PR ]
-    types: [ completed ]
+  workflow_call:
+    inputs:
+      workflow_id:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
 
 permissions:
   checks: write # Need to write reports
 
+# jobs:
+#   checks:
+#     runs-on: ubuntu-latest
+#     steps:
+#     - name: Download Test Report
+#       uses: dawidd6/action-download-artifact@v2
+#       with:
+#         name: surefire-test-results
+#         workflow: ${{ github.event.workflow.id }}
+#         run_id: ${{ github.event.workflow_run.id }}
+#     - name: Publish Test Report
+#       uses: mikepenz/action-junit-report@v3
+#       with:
+#         commit: ${{github.event.workflow_run.head_sha}}
+#         report_paths: '**/surefire-reports/TEST-*.xml'
 jobs:
-  checks:
+  report:
     runs-on: ubuntu-latest
     steps:
-    - name: Download Test Report
+    - name: Download Test Files
       uses: dawidd6/action-download-artifact@v2
       with:
         name: surefire-test-results
-        workflow: ${{ github.event.workflow.id }}
-        run_id: ${{ github.event.workflow_run.id }}
-    - name: Publish Test Report
-      uses: mikepenz/action-junit-report@v3
+        workflow: ${{ inputs.workflow_id }}
+        run_id: ${{ inputs.run_id }}
+    - name: Generate Test Report
+      uses: dorny/test-reporter@v1
       with:
-        commit: ${{github.event.workflow_run.head_sha}}
-        report_paths: '**/surefire-reports/TEST-*.xml'
+        artifact: surefire-test-results
+        name: Maven Tests
+        path: '**/surefire-reports/TEST-*.xml'
+        reporter: java-junit
+        fail-on-error: 'false'
