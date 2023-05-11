@@ -28,6 +28,8 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -112,6 +114,8 @@ public abstract class JavascriptTextTransformer {
 
     private Invocable invocable;
 
+    private Instant lastRefreshed = Instant.now();
+
     /** Builder for {@link JavascriptTextTransformer}. */
     @AutoValue.Builder
     public abstract static class Builder {
@@ -144,9 +148,11 @@ public abstract class JavascriptTextTransformer {
         return null;
       }
 
-      if (invocable == null) {
+      boolean invocableStale = Duration.between(lastRefreshed, Instant.now()).getSeconds() > 60;
+      if (invocable == null || invocableStale) {
         Collection<String> scripts = getScripts(fileSystemPath());
         invocable = newInvocable(scripts);
+        lastRefreshed = Instant.now();
       }
       return invocable;
     }
