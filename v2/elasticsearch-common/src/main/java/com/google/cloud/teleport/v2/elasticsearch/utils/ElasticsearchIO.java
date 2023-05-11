@@ -48,8 +48,6 @@ import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 import javax.annotation.Nonnull;
 import javax.net.ssl.SSLContext;
-import org.apache.beam.sdk.annotations.Experimental;
-import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.BoundedSource;
@@ -157,7 +155,6 @@ import org.slf4j.LoggerFactory;
  * socket timeout of 30000ms. {@code withConnectTimeout()} can be used to override the default
  * connect timeout of 1000ms.
  */
-@Experimental(Kind.SOURCE_SINK)
 @SuppressWarnings({
   "nullness" // TODO(https://issues.apache.org/jira/browse/BEAM-10402)
 })

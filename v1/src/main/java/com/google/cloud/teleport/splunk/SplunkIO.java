@@ -21,8 +21,6 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.auto.value.AutoValue;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.annotations.Experimental;
-import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.coders.BigEndianIntegerCoder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -39,7 +37,6 @@ import org.slf4j.LoggerFactory;
  * The {@link SplunkIO} class provides a {@link PTransform} that allows writing {@link SplunkEvent}
  * messages into a Splunk HTTP Event Collector end point.
  */
-@Experimental(Kind.SOURCE_SINK)
 public class SplunkIO {
 
   private static final Logger LOG = LoggerFactory.getLogger(SplunkIO.class);
