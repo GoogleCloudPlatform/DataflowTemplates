@@ -358,7 +358,6 @@ import org.slf4j.LoggerFactory;
  * <p>{@link Write} can be used as a streaming sink, however as with batch mode note that the write
  * order of individual {@link Mutation}/{@link MutationGroup} objects is not guaranteed.
  */
-@Experimental(Kind.SOURCE_SINK)
 @SuppressWarnings({
   "nullness" // TODO(https://issues.apache.org/jira/browse/BEAM-10402)
 })
@@ -405,7 +404,6 @@ public class LocalSpannerIO {
    * TimestampBound#strong()} transaction is created, to override this use {@link
    * CreateTransaction#withTimestampBound(TimestampBound)}.
    */
-  @Experimental
   public static CreateTransaction createTransaction() {
     return new AutoValue_LocalSpannerIO_CreateTransaction.Builder()
         .setSpannerConfig(SpannerConfig.create())
@@ -418,7 +416,6 @@ public class LocalSpannerIO {
    * configured with a {@link Write#withInstanceId} and {@link Write#withDatabaseId} that identify
    * the Cloud Spanner database being written.
    */
-  @Experimental
   public static Write write() {
     return new AutoValue_LocalSpannerIO_Write.Builder()
         .setSpannerConfig(SpannerConfig.create())
@@ -436,7 +433,6 @@ public class LocalSpannerIO {
    * Cloud Spanner database being written. It must also be configured with the start time and the
    * change stream name.
    */
-  @Experimental
   public static ReadChangeStream readChangeStream() {
     return new AutoValue_LocalSpannerIO_ReadChangeStream.Builder()
         .setSpannerConfig(SpannerConfig.create())
