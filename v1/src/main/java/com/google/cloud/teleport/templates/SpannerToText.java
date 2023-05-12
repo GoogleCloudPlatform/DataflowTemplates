@@ -68,7 +68,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Cloud Spanner to Text Files on Cloud Storage",
     description =
-        "A pipeline which reads in Cloud Spanner table and writes it to Cloud Storage as CSV text files.",
+        "A pipeline which reads in Cloud Spanner table and writes it to Cloud Storage as CSV text"
+            + " files.",
     optionsClass = SpannerToTextOptions.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-cloud-storage",
@@ -98,7 +99,8 @@ public class SpannerToText {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
+            "The request priority for Cloud Spanner calls. The value must be one of:"
+                + " [HIGH,MEDIUM,LOW].")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
@@ -124,7 +126,8 @@ public class SpannerToText {
             .withProjectId(options.getSpannerProjectId())
             .withInstanceId(options.getSpannerInstanceId())
             .withDatabaseId(options.getSpannerDatabaseId())
-            .withRpcPriority(options.getSpannerPriority());
+            .withRpcPriority(options.getSpannerPriority())
+            .withDataBoostEnabled(options.getDataBoostEnabled());
 
     PTransform<PBegin, PCollection<ReadOperation>> spannerExport =
         SpannerConverters.ExportTransformFactory.create(

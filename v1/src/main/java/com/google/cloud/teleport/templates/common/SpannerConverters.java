@@ -145,6 +145,19 @@ public class SpannerConverters {
 
     @SuppressWarnings("unused")
     void setSpannerSnapshotTime(ValueProvider<String> value);
+
+    @TemplateParameter.Boolean(
+        order = 7,
+        optional = true,
+        description = "Use independent compute resource (Spanner DataBoost).",
+        helpText =
+            "Use Spanner on-demand compute so the export job will run on independent compute"
+                + " resources and have no impact to current Spanner workloads. This will incur"
+                + " additional charges in Spanner.")
+    @Default.Boolean(false)
+    ValueProvider<Boolean> getDataBoostEnabled();
+
+    void setDataBoostEnabled(ValueProvider<Boolean> value);
   }
 
   /** Factory for Export transform class. */
