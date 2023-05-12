@@ -16,15 +16,44 @@
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
-import lombok.Builder;
-import lombok.Getter;
 import org.apache.beam.sdk.schemas.Schema;
 
 /** Convenience object for passing Source metadata and PCollection schema together. */
-@Builder
-@Getter
 public class SourceQuerySpec {
 
-  private Source source;
-  private Schema sourceSchema;
+  private final Source source;
+  private final Schema sourceSchema;
+
+  public SourceQuerySpec(Source source, Schema sourceSchema) {
+    this.source = source;
+    this.sourceSchema = sourceSchema;
+  }
+
+  public Source getSource() {
+    return source;
+  }
+
+  public Schema getSourceSchema() {
+    return sourceSchema;
+  }
+
+  public static class SourceQuerySpecBuilder {
+
+    private Source source;
+    private Schema sourceSchema;
+
+    public SourceQuerySpecBuilder source(Source source) {
+      this.source = source;
+      return this;
+    }
+
+    public SourceQuerySpecBuilder sourceSchema(Schema sourceSchema) {
+      this.sourceSchema = sourceSchema;
+      return this;
+    }
+
+    public SourceQuerySpec build() {
+      return new SourceQuerySpec(source, sourceSchema);
+    }
+  }
 }

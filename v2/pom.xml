@@ -92,8 +92,8 @@
             </exclusions>
         </dependency>
         <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-sdks-java-io-jdbc</artifactId>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -689,6 +689,7 @@
         <module>kafka-common</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
+        <module>kafka-to-source</module>
         <module>kafka-to-pubsub</module>
         <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>

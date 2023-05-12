@@ -25,14 +25,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.Getter;
-import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Target (node/edge) metadata. */
-@Getter
-@Setter
 public class Target implements Serializable, Comparable {
 
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -66,5 +62,109 @@ public class Target implements Serializable, Comparable {
     } else {
       return -1;
     }
+  }
+
+  public String getSource() {
+    return source;
+  }
+
+  public void setSource(String source) {
+    this.source = source;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public boolean isActive() {
+    return active;
+  }
+
+  public void setActive(boolean active) {
+    this.active = active;
+  }
+
+  public TargetType getType() {
+    return type;
+  }
+
+  public void setType(TargetType type) {
+    this.type = type;
+  }
+
+  public boolean isAutoMap() {
+    return autoMap;
+  }
+
+  public void setAutoMap(boolean autoMap) {
+    this.autoMap = autoMap;
+  }
+
+  public Transform getTransform() {
+    return transform;
+  }
+
+  public void setTransform(Transform transform) {
+    this.transform = transform;
+  }
+
+  public List<Mapping> getMappings() {
+    return mappings;
+  }
+
+  public void setMappings(List<Mapping> mappings) {
+    this.mappings = mappings;
+  }
+
+  public SaveMode getSaveMode() {
+    return saveMode;
+  }
+
+  public void setSaveMode(SaveMode saveMode) {
+    this.saveMode = saveMode;
+  }
+
+  public Map<String, Mapping> getMappingByFieldMap() {
+    return mappingByFieldMap;
+  }
+
+  public void setMappingByFieldMap(Map<String, Mapping> mappingByFieldMap) {
+    this.mappingByFieldMap = mappingByFieldMap;
+  }
+
+  public List<String> getFieldNames() {
+    return fieldNames;
+  }
+
+  public void setFieldNames(List<String> fieldNames) {
+    this.fieldNames = fieldNames;
+  }
+
+  public int getSequence() {
+    return sequence;
+  }
+
+  public void setSequence(int sequence) {
+    this.sequence = sequence;
+  }
+
+  public ActionExecuteAfter getExecuteAfter() {
+    return executeAfter;
+  }
+
+  public void setExecuteAfter(ActionExecuteAfter executeAfter) {
+    this.executeAfter = executeAfter;
+  }
+
+  public String getExecuteAfterName() {
+    return executeAfterName;
+  }
+
+  public void setExecuteAfterName(String executeAfterName) {
+    this.executeAfterName = executeAfterName;
   }
 }
