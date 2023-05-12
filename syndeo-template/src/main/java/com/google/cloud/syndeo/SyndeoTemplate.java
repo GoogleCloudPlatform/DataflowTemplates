@@ -160,17 +160,17 @@ public class SyndeoTemplate {
     JsonNode params = transformConfig.get("configurationParameters");
     SchemaTransformProvider transformProvider =
         ProviderUtil.getProvider(transformConfig.get("urn").asText());
-    LOG.info(
-        "Transform provider({}) is: {} | in {}",
-        transformConfig.get("urn").asText(),
-        transformProvider,
-        transformProvider.getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     if (transformProvider == null) {
       throw new IllegalArgumentException(
           String.format(
               "Unable to load a transform provider for urn [%s]. Available providers are: %s",
               transformConfig.get("urn").asText(), ProviderUtil.PROVIDERS.keySet()));
     }
+    LOG.info(
+        "Transform provider({}) is: {} | in {}",
+        transformConfig.get("urn").asText(),
+        transformProvider,
+        transformProvider.getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     List<Object> configurationParameters =
         transformProvider.configurationSchema().getFields().stream()
             .map(field -> field.getName())
@@ -262,7 +262,7 @@ public class SyndeoTemplate {
     }
     List<String> experiments =
         inputOptions.getExperiments() == null
-            ? List.of()
+            ? new ArrayList<>()
             : new ArrayList<>(inputOptions.getExperiments());
     experiments.addAll(
         List.of(

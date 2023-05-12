@@ -297,6 +297,7 @@ public class SyndeoPubsubReadSchemaTransformProvider
 
     // Used for testing only.
     public abstract @Nullable PubsubTestClientFactory getClientFactory();
+
     // Used for testing only.
     public abstract @Nullable Clock getClock();
 
@@ -317,6 +318,7 @@ public class SyndeoPubsubReadSchemaTransformProvider
 
       // Used for testing only.
       public abstract Builder setClientFactory(PubsubTestClientFactory clientFactory);
+
       // Used for testing only.
       public abstract Builder setClock(Clock clock);
 

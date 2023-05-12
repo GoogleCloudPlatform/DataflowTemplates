@@ -26,9 +26,7 @@ import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubClient;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubClient.OutgoingMessage;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubClient.TopicPath;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubTestClient;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubTestClient.PubsubTestClientFactory;
@@ -81,7 +79,6 @@ public class PubsubDlqSchemaTransformProviderTest {
 
   @Test
   public void testPubsubDlqWriteSuccess() throws IOException {
-    TopicPath topicPath = PubsubClient.topicPathFromPath(TOPIC);
     List<OutgoingMessage> outgoing =
         ImmutableList.of(
             OutgoingMessage.of(
@@ -90,20 +87,21 @@ public class PubsubDlqSchemaTransformProviderTest {
                     .build(),
                 -9223372036854775L,
                 null,
-                null));
-    PubsubTestClientFactory pubsubFactory =
-        PubsubTestClient.createFactoryForPublish(topicPath, outgoing, ImmutableList.of());
+                TOPIC));
+    try (PubsubTestClientFactory pubsubFactory =
+        PubsubTestClient.createFactoryForPublish(null, outgoing, ImmutableList.of())) {
+      PCollectionRowTuple.of(
+              "errors",
+              pipeline.apply(Create.of(generateRow())).setRowSchema(LOCAL_TEST_INPUT_SCHEMA))
+          .apply(
+              transform(PubsubDlqWriteConfiguration.create(TOPIC))
+                  .withPubsubClientFactory(pubsubFactory)
+                  .buildTransform());
 
-    PCollectionRowTuple.of(
-            "errors",
-            pipeline.apply(Create.of(generateRow())).setRowSchema(LOCAL_TEST_INPUT_SCHEMA))
-        .apply(
-            transform(PubsubDlqWriteConfiguration.create(TOPIC))
-                .withPubsubClientFactory(pubsubFactory)
-                .buildTransform());
-
-    pipeline.run(OPTIONS);
-    pubsubFactory.close();
+      pipeline.run(OPTIONS);
+    } catch (Exception e) {
+      throw e;
+    }
   }
 
   @Test
