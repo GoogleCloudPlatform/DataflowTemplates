@@ -23,6 +23,7 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
@@ -41,6 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -108,7 +110,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         MYSQL_DRIVER,
         mySqlDriverGCSPath(),
         mySQLResourceManager,
-        "SELECT * FROM " + testName);
+        config -> config.addParameter("query", "SELECT * FROM " + testName));
   }
 
   @Test
@@ -131,7 +133,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         POSTGRES_DRIVER,
         postgresDriverGCSPath(),
         postgresResourceManager,
-        "SELECT * FROM " + testName);
+        config -> config.addParameter("query", "SELECT * FROM " + testName));
   }
 
   @Test
@@ -161,7 +163,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         ORACLE_DRIVER,
         oracleDriverGCSPath(),
         oracleResourceManager,
-        "SELECT * FROM " + testName);
+        config -> config.addParameter("query", "SELECT * FROM " + testName));
   }
 
   @Test
@@ -185,7 +187,29 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         MSSQL_DRIVER,
         msSqlDriverGCSPath(),
         msSQLResourceManager,
-        "SELECT * FROM " + testName);
+        config -> config.addParameter("query", "SELECT * FROM " + testName));
+  }
+
+  @Test
+  public void testReadWithPartitions() throws IOException {
+    postgresResourceManager = PostgresResourceManager.builder(testId).build();
+
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "INTEGER NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "INTEGER");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        testName,
+        schema,
+        POSTGRES_DRIVER,
+        postgresDriverGCSPath(),
+        postgresResourceManager,
+        config -> config.addParameter("table", testName).addParameter("partitionColumn", ROW_ID));
   }
 
   private void simpleJdbcToBigQueryTest(
@@ -194,7 +218,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
       String driverClassName,
       String driverJars,
       JDBCResourceManager jdbcResourceManager,
-      String query)
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
 
     // Arrange
@@ -217,15 +241,15 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     String jobName = createJobName(testName);
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(jobName, specPath)
-            .addParameter("connectionURL", jdbcResourceManager.getUri())
-            .addParameter("driverClassName", driverClassName)
-            .addParameter("query", query)
-            .addParameter("outputTable", tableSpec)
-            .addParameter("driverJars", driverJars)
-            .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
-            .addParameter("username", jdbcResourceManager.getUsername())
-            .addParameter("password", jdbcResourceManager.getPassword());
+        paramsAdder.apply(
+            PipelineLauncher.LaunchConfig.builder(jobName, specPath)
+                .addParameter("connectionURL", jdbcResourceManager.getUri())
+                .addParameter("driverClassName", driverClassName)
+                .addParameter("outputTable", tableSpec)
+                .addParameter("driverJars", driverJars)
+                .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
+                .addParameter("username", jdbcResourceManager.getUsername())
+                .addParameter("password", jdbcResourceManager.getPassword()));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

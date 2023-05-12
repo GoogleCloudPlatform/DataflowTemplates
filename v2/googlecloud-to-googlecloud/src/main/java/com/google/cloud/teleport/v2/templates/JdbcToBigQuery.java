@@ -33,6 +33,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
+import org.apache.beam.sdk.values.PCollection;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
@@ -111,22 +112,44 @@ public class JdbcToBigQuery {
       dataSourceConfiguration =
           dataSourceConfiguration.withConnectionProperties(options.getConnectionProperties());
     }
-    pipeline
-        /*
-         * Step 1: Read records via JDBC and convert to TableRow
-         *         via {@link org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper}
-         */
-        .apply(
-            "Read from JdbcIO",
-            JdbcIO.<TableRow>read()
-                .withDataSourceConfiguration(dataSourceConfiguration)
-                .withQuery(options.getQuery())
-                .withCoder(TableRowJsonCoder.of())
-                .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())))
-        /*
-         * Step 2: Append TableRow to an existing BigQuery table
-         */
-        .apply("Write to BigQuery", writeToBQ);
+
+    /*
+     * Step 1: Read records via JDBC and convert to TableRow
+     *         via {@link org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper}
+     */
+    PCollection<TableRow> rows;
+    if (options.getPartitionColumn() != null && options.getTable() != null) {
+      // Read with Partitions
+      // TODO(pranavbhandari): Support readWithPartitions for other data types.
+      JdbcIO.ReadWithPartitions<TableRow, Long> readIO =
+          JdbcIO.<TableRow>readWithPartitions()
+              .withDataSourceConfiguration(dataSourceConfiguration)
+              .withTable(options.getTable())
+              .withPartitionColumn(options.getPartitionColumn())
+              .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
+      if (options.getNumPartitions() != null) {
+        readIO.withNumPartitions(options.getNumPartitions());
+      }
+      if (options.getLowerBound() != null && options.getUpperBound() != null) {
+        readIO.withLowerBound(options.getLowerBound()).withUpperBound(options.getUpperBound());
+      }
+      rows = pipeline.apply("Read from JDBC with Partitions", readIO);
+    } else {
+      rows =
+          pipeline.apply(
+              "Read from JdbcIO",
+              JdbcIO.<TableRow>read()
+                  .withDataSourceConfiguration(dataSourceConfiguration)
+                  .withQuery(options.getQuery())
+                  .withCoder(TableRowJsonCoder.of())
+                  .withRowMapper(
+                      JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())));
+    }
+
+    /*
+     * Step 2: Append TableRow to an existing BigQuery table
+     */
+    rows.apply("Write to BigQuery", writeToBQ);
 
     // Execute the pipeline and return the result.
     return pipeline.run();

@@ -97,7 +97,7 @@ public interface JdbcToBigQueryOptions
 
   @TemplateParameter.Text(
       order = 7,
-      optional = false,
+      optional = true,
       regexes = {"^.+$"},
       description = "JDBC source SQL query.",
       helpText = "Query to be executed on the source to extract the data.",
@@ -162,4 +162,55 @@ public interface JdbcToBigQueryOptions
   Boolean getIsTruncate();
 
   void setIsTruncate(Boolean isTruncate);
+
+  @TemplateParameter.Text(
+      order = 13,
+      optional = true,
+      description = "The name of a column of numeric type that will be used for partitioning.",
+      helpText =
+          "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported.")
+  String getPartitionColumn();
+
+  void setPartitionColumn(String partitionColumn);
+
+  @TemplateParameter.Text(
+      order = 14,
+      optional = true,
+      description = "Name of the table in the external database.",
+      helpText =
+          "Table to read from using partitions. This parameter also accepts a subquery in parentheses.",
+      example = "(select id, name from Person) as subq")
+  String getTable();
+
+  void setTable(String table);
+
+  @TemplateParameter.Integer(
+      order = 15,
+      optional = true,
+      description = "The number of partitions.",
+      helpText =
+          "The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.")
+  Integer getNumPartitions();
+
+  void setNumPartitions(Integer numPartitions);
+
+  @TemplateParameter.Long(
+      order = 16,
+      optional = true,
+      description = "Lower bound of partition column.",
+      helpText =
+          "Lower bound used in the partition scheme. If not provided, it is automatically inferred by Beam (for the supported types)")
+  Long getLowerBound();
+
+  void setLowerBound(Long lowerBound);
+
+  @TemplateParameter.Long(
+      order = 17,
+      optional = true,
+      description = "Upper bound of partition column",
+      helpText =
+          "Upper bound used in partition scheme. If not provided, it is automatically inferred by Beam (for the supported types)")
+  Long getUpperBound();
+
+  void setUpperBound(Long lowerBound);
 }
