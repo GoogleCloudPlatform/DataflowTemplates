@@ -37,7 +37,7 @@ import org.apache.avro.SchemaBuilder.RecordBuilder;
 import org.apache.avro.SchemaBuilder.TypeBuilder;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.generic.GenericDatumReader;
-import org.apache.beam.sdk.io.jdbc.BeamSchemaUtil;
+import org.apache.beam.sdk.io.jdbc.SchemaUtil;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 
 /** Utility methods for Dataplex and Avro schemas. */
@@ -70,7 +70,7 @@ public final class Schemas {
     try (Connection conn = dataSource.getConnection();
         PreparedStatement statement =
             conn.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
-      return BeamSchemaUtil.toBeamSchema(statement.getMetaData());
+      return SchemaUtil.toBeamSchema(statement.getMetaData());
     } catch (SQLException e) {
       throw new SchemaConversionException("Failed to infer Beam schema for query: " + query, e);
     }

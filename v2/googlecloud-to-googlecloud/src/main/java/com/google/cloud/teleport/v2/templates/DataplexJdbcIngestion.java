@@ -30,8 +30,6 @@ import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DataplexClientFactory;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
-import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
 import com.google.cloud.teleport.v2.options.DataplexJdbcIngestionOptions;
 import com.google.cloud.teleport.v2.transforms.BeamRowToGenericRecordFn;
 import com.google.cloud.teleport.v2.transforms.DataplexJdbcIngestionUpdateMetadata;
@@ -60,10 +58,10 @@ import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.AvroCoder;
-import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
-import org.apache.beam.sdk.io.jdbc.BeamSchemaUtil;
+import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.apache.beam.sdk.io.jdbc.JdbcIO.DataSourceConfiguration;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
@@ -140,7 +138,7 @@ public class DataplexJdbcIngestion {
     String assetName = options.getOutputAsset();
     GoogleCloudDataplexV1Asset asset = resolveAsset(assetName, dataplex);
 
-    DynamicDataSourceConfiguration dataSourceConfig = configDataSource(options);
+    DataSourceConfiguration dataSourceConfig = configDataSource(options);
     String assetType = asset.getResourceSpec().getType();
     if (DataplexAssetResourceSpec.BIGQUERY_DATASET.name().equals(assetType)) {
       buildBigQueryPipeline(pipeline, options, dataSourceConfig);
@@ -275,7 +273,7 @@ public class DataplexJdbcIngestion {
   static void buildBigQueryPipeline(
       Pipeline pipeline,
       DataplexJdbcIngestionOptions options,
-      DynamicDataSourceConfiguration dataSourceConfig) {
+      DataSourceConfiguration dataSourceConfig) {
 
     if (options.getUpdateDataplexMetadata()) {
       LOG.warn("Dataplex metadata updates enabled, but not supported for BigQuery targets.");
@@ -284,7 +282,7 @@ public class DataplexJdbcIngestion {
     pipeline
         .apply(
             "Read from JdbcIO",
-            DynamicJdbcIO.<TableRow>read()
+            JdbcIO.<TableRow>read()
                 .withDataSourceConfiguration(dataSourceConfig)
                 .withQuery(options.getQuery())
                 .withCoder(TableRowJsonCoder.of())
@@ -305,7 +303,7 @@ public class DataplexJdbcIngestion {
   static void buildGcsPipeline(
       Pipeline pipeline,
       DataplexJdbcIngestionOptions options,
-      DynamicDataSourceConfiguration dataSourceConfig,
+      DataSourceConfiguration dataSourceConfig,
       String targetRootPath,
       DataplexClient dataplex,
       DataplexClientFactory dcf)
@@ -321,11 +319,9 @@ public class DataplexJdbcIngestion {
     PCollection<Row> resultRows =
         pipeline.apply(
             "Read from JdbcIO",
-            DynamicJdbcIO.<Row>read()
+            JdbcIO.readRows()
                 .withDataSourceConfiguration(dataSourceConfig)
-                .withQuery(options.getQuery())
-                .withCoder(RowCoder.of(beamSchema))
-                .withRowMapper(BeamSchemaUtil.of(beamSchema)));
+                .withQuery(options.getQuery()));
     // Convert Beam Row to GenericRecord
     PCollection<GenericRecord> genericRecords =
         resultRows
@@ -484,13 +480,19 @@ public class DataplexJdbcIngestion {
     return DataplexUtils.storageFormat(options.getFileFormat(), DataplexCompression.SNAPPY);
   }
 
-  static DynamicDataSourceConfiguration configDataSource(DataplexJdbcIngestionOptions options) {
-    return DynamicJdbcIO.DynamicDataSourceConfiguration.create(
-            options.getDriverClassName(),
-            maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
-        .withUsername(maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
-        .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
-        .withDriverJars(options.getDriverJars())
-        .withConnectionProperties(options.getConnectionProperties());
+  static DataSourceConfiguration configDataSource(DataplexJdbcIngestionOptions options) {
+    JdbcIO.DataSourceConfiguration dataSourceConfiguration =
+        JdbcIO.DataSourceConfiguration.create(
+                options.getDriverClassName(),
+                maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
+            .withUsername(maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
+            .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
+            .withDriverJars(options.getDriverJars());
+
+    if (options.getConnectionProperties() != null) {
+      dataSourceConfiguration =
+          dataSourceConfiguration.withConnectionProperties(options.getConnectionProperties());
+    }
+    return dataSourceConfiguration;
   }
 }

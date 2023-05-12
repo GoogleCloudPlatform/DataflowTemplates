@@ -20,7 +20,6 @@ import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.options.JdbcToPubsubOptions;
 import java.sql.Clob;
 import java.sql.ResultSet;
@@ -141,8 +140,8 @@ public class JdbcToPubsub {
      *  1) Read data from a Jdbc Table
      *  2) Write to Pub/Sub topic
      */
-    DynamicJdbcIO.DynamicDataSourceConfiguration dataSourceConfiguration =
-        DynamicJdbcIO.DynamicDataSourceConfiguration.create(
+    JdbcIO.DataSourceConfiguration dataSourceConfiguration =
+        JdbcIO.DataSourceConfiguration.create(
                 options.getDriverClassName(),
                 maybeDecrypt(options.getConnectionUrl(), options.getKMSEncryptionKey()))
             .withDriverJars(options.getDriverJars());
@@ -164,7 +163,7 @@ public class JdbcToPubsub {
     PCollection<String> jdbcData =
         pipeline.apply(
             "readFromJdbc",
-            DynamicJdbcIO.<String>read()
+            JdbcIO.<String>read()
                 .withDataSourceConfiguration(dataSourceConfiguration)
                 .withQuery(options.getQuery())
                 .withCoder(StringUtf8Coder.of())
