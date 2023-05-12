@@ -15,15 +15,34 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
-import lombok.Getter;
-import lombok.Setter;
-
 /** Field name tuple. */
-@Getter
-@Setter
 public class FieldNameTuple {
 
   private String name;
   private String field;
   private String constant;
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public String getField() {
+    return field;
+  }
+
+  public void setField(String field) {
+    this.field = field;
+  }
+
+  public String getConstant() {
+    return constant;
+  }
+
+  public void setConstant(String constant) {
+    this.constant = constant;
+  }
 }

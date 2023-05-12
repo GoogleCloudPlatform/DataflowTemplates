@@ -21,14 +21,10 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.Getter;
-import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Field to Neo4j property mapping. */
-@Getter
-@Setter
 public class Mapping implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(Mapping.class);
@@ -61,4 +57,96 @@ public class Mapping implements Serializable {
   }
 
   public void setLabels(List<String> labels) {}
+
+  public String getConstant() {
+    return constant;
+  }
+
+  public void setConstant(String constant) {
+    this.constant = constant;
+  }
+
+  public RoleType getRole() {
+    return role;
+  }
+
+  public void setRole(RoleType role) {
+    this.role = role;
+  }
+
+  public PropertyType getType() {
+    return type;
+  }
+
+  public void setType(PropertyType type) {
+    this.type = type;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public List<String> getLabels() {
+    return labels;
+  }
+
+  public String getField() {
+    return field;
+  }
+
+  public void setField(String field) {
+    this.field = field;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  public String getDefaultValue() {
+    return defaultValue;
+  }
+
+  public void setDefaultValue(String defaultValue) {
+    this.defaultValue = defaultValue;
+  }
+
+  public boolean isMandatory() {
+    return mandatory;
+  }
+
+  public void setMandatory(boolean mandatory) {
+    this.mandatory = mandatory;
+  }
+
+  public boolean isUnique() {
+    return unique;
+  }
+
+  public void setUnique(boolean unique) {
+    this.unique = unique;
+  }
+
+  public boolean isIndexed() {
+    return indexed;
+  }
+
+  public void setIndexed(boolean indexed) {
+    this.indexed = indexed;
+  }
+
+  public FragmentType getFragmentType() {
+    return fragmentType;
+  }
+
+  public void setFragmentType(FragmentType fragmentType) {
+    this.fragmentType = fragmentType;
+  }
 }
