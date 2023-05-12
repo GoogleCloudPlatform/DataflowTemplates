@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.splunk.SplunkEventCoder;
 import com.google.cloud.teleport.splunk.SplunkIO;
@@ -46,6 +47,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -201,6 +203,8 @@ public class PubSubToSplunk {
                 FailsafeJavascriptUdf.<String>newBuilder()
                     .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setFunctionReload(options.getJavascriptFunctionReload())
+                    .setReloadIntervalMinutes(options.getJavascriptReloadIntervalMinutes())
                     .setLoggingEnabled(ValueProvider.StaticValueProvider.of(true))
                     .setSuccessTag(UDF_OUT)
                     .setFailureTag(UDF_DEADLETTER_OUT)
@@ -287,13 +291,38 @@ public class PubSubToSplunk {
       extends SplunkOptions,
           PubsubReadSubscriptionOptions,
           PubsubWriteDeadletterTopicOptions,
-          JavascriptTextTransformerOptions {}
+          JavascriptTextTransformerOptions {
+
+    // Support for auto reload is only needed for Pub/Sub to Splunk for now.
+    // This can be moved to JavascriptTextTransformerOptions to support in other templates.
+    @TemplateParameter.Boolean(
+        order = 1,
+        optional = true,
+        description = "Enable JavaScript UDF auto-reload feature",
+        helpText =
+            "If set to true, enables the JavaScript UDF auto-reload feature, which guarantees that updated code is used without the need to restart jobs.")
+    ValueProvider<Boolean> getJavascriptFunctionReload();
+
+    void setJavascriptFunctionReload(ValueProvider<Boolean> javascriptFunctionReload);
+
+    @TemplateParameter.Integer(
+        order = 2,
+        optional = true,
+        description = "JavaScript UDF auto-reload interval (minutes)",
+        helpText =
+            "Define the interval that workers may check for JavaScript UDF changes to reload the files.")
+    @Default.Integer(60)
+    ValueProvider<Integer> getJavascriptReloadIntervalMinutes();
+
+    void setJavascriptReloadIntervalMinutes(ValueProvider<Integer> javascriptReloadIntervalMinutes);
+  }
 
   /**
    * A {@link PTransform} that reads messages from a Pub/Sub subscription, increments a counter and
    * returns a {@link PCollection} of {@link String} messages.
    */
   private static class ReadMessages extends PTransform<PBegin, PCollection<String>> {
+
     private final ValueProvider<String> subscriptionName;
     private final ValueProvider<Boolean> inputIncludePubsubMessageFlag;
     private Boolean includePubsubMessage;
