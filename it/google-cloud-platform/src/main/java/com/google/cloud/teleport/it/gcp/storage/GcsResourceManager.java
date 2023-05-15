@@ -15,12 +15,14 @@
  */
 package com.google.cloud.teleport.it.gcp.storage;
 
+import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Notification;
 import com.google.cloud.storage.NotificationInfo;
 import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageBatch;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.it.common.ResourceManager;
@@ -46,6 +48,7 @@ public class GcsResourceManager implements ResourceManager {
 
   private static final List<Notification> NOTIFICATION_LIST = new ArrayList<>();
   private static final List<BlobId> GCS_BLOBS = new ArrayList<>();
+  private static final List<String> MANAGED_TEMP_DIRS = new ArrayList<>();
 
   Storage getStorageClient() {
     return StorageOptions.newBuilder().setProjectId(project).build().getService();
@@ -100,6 +103,15 @@ public class GcsResourceManager implements ResourceManager {
   }
 
   /**
+   * Register a temporary directory that will be cleaned up after test.
+   *
+   * @param dirName name of the temporary directory
+   */
+  public void registerTempDir(String dirName) {
+    MANAGED_TEMP_DIRS.add(dirName);
+  }
+
+  /**
    * Cleans up all resources created by the manager instance, including notifications and objects in
    * Google Cloud Storage.
    */
@@ -108,6 +120,22 @@ public class GcsResourceManager implements ResourceManager {
     if (GCS_BLOBS.size() > 0) {
       Storage storage = getStorageClient();
       storage.delete(GCS_BLOBS);
+    }
+
+    if (MANAGED_TEMP_DIRS.size() > 0) {
+      Storage storage = getStorageClient();
+      StorageBatch batch = storage.batch();
+      boolean needCleanup = false;
+      for (String tempDir : MANAGED_TEMP_DIRS) {
+        Page<Blob> blobs = storage.list(bucket, Storage.BlobListOption.prefix(tempDir));
+        for (Blob blob : blobs.iterateAll()) {
+          batch.delete(blob.getBlobId());
+          needCleanup = true;
+        }
+      }
+      if (needCleanup) {
+        batch.submit();
+      }
     }
 
     if (NOTIFICATION_LIST.size() > 0) {

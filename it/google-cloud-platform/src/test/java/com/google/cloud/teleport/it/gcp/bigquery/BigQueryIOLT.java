@@ -15,13 +15,14 @@
  */
 package com.google.cloud.teleport.it.gcp.bigquery;
 
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
-import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
@@ -35,16 +36,19 @@ import java.text.ParseException;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
-import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.io.Read;
+import org.apache.beam.sdk.io.gcp.bigquery.AvroWriteRequest;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.synthetic.SyntheticBoundedSource;
-import org.apache.beam.sdk.io.synthetic.SyntheticOptions;
 import org.apache.beam.sdk.io.synthetic.SyntheticSourceOptions;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -52,6 +56,7 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestPipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -63,13 +68,27 @@ import org.junit.Test;
 /**
  * BigQueryIO performance tests.
  *
- * <p>Example trigger command for all tests: "mvn test -pl it/google-cloud-platform -am
- * -Dtest="BigQueryIOLT" \ -Dproject=[gcpProject] -DartifactBucket=[temp bucket]
- * -DfailIfNoTests=false".
+ * <p>Example trigger command for all tests:
  *
- * <p>Example trigger command for specific test: "mvn test -pl it/google-cloud-platform -am \
- * -Dtest="BigQueryIOLT#testAvroFileLoadsWriteThenRead" -Dconfiguration=local -Dproject=[gcpProject]
- * \ -DartifactBucket=[temp bucket] -DfailIfNoTests=false".
+ * <pre>
+ * mvn test -pl it/google-cloud-platform -am -Dtest="BigQueryIOLT" -Dproject=[gcpProject] \
+ * -DartifactBucket=[temp bucket] -DfailIfNoTests=false
+ * </pre>
+ *
+ * <p>Example trigger command for specific test running on Dataflow runner:
+ *
+ * <pre>
+ * mvn test -pl it/google-cloud-platform -am -Dtest="BigQueryIOLT#testAvroFileLoadsWriteThenRead" \
+ * -Dconfiguration=medium -Dproject=[gcpProject] -DartifactBucket=[temp bucket] -DfailIfNoTests=false
+ * </pre>
+ *
+ * <p>Example trigger command for specific test and custom data configuration:
+ *
+ * <pre>mvn test -pl it/google-cloud-platform -am \
+ * -Dconfiguration="{\"numRecords\":1000,\"valueSizeBytes\":1000,\"numColumns\":100,\"pipelineTimeout\":2,\"runner\":\"DataflowRunner\"}" \
+ * -Dtest="BigQueryIOLT#testAvroFileLoadsWriteThenRead" -Dconfiguration=local -Dproject=[gcpProject] \
+ * -DartifactBucket=[temp bucket] -DfailIfNoTests=false
+ * </pre>
  */
 public final class BigQueryIOLT extends IOLoadTestBase {
 
@@ -79,6 +98,8 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   private Configuration configuration;
   private String tempLocation;
 
+  private TableSchema schema;
+
   private static final String READ_PCOLLECTION = "Counting element.out0";
   private static final String WRITE_PCOLLECTION = "Map records.out0";
 
@@ -86,7 +107,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   @Rule public TestPipeline readPipeline = TestPipeline.create();
 
   @BeforeClass
-  public static void beforeClass() {
+  public static void beforeClass() throws IOException {
     resourceManager =
         BigQueryResourceManager.builder("io-bigquery-lt", project)
             .setCredentials(CREDENTIALS)
@@ -95,7 +116,8 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   }
 
   @Before
-  public void setup() throws IOException {
+  public void setup() {
+    // generate a random table name
     String tableName =
         "io-bq-table-"
             + DateTimeFormatter.ofPattern("MMddHHmmssSSS")
@@ -104,15 +126,29 @@ public final class BigQueryIOLT extends IOLoadTestBase {
             + UUID.randomUUID().toString().substring(0, 10);
     tableQualifier = String.format("%s:%s.%s", project, resourceManager.getDatasetId(), tableName);
 
+    // parse configuration
     String testConfig =
         TestProperties.getProperty("configuration", "local", TestProperties.Type.PROPERTY);
-    configuration = TEST_CONFIGS.get(testConfig);
+    configuration = TEST_CONFIGS_PRESET.get(testConfig);
     if (configuration == null) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Unknown test configuration: [%s]. Known configs: %s",
-              testConfig, TEST_CONFIGS.keySet()));
+      try {
+        configuration = Configuration.fromJsonString(testConfig, Configuration.class);
+      } catch (IOException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Unknown test configuration: [%s]. Pass to a valid configuration json, or use"
+                    + " config presets: %s",
+                testConfig, TEST_CONFIGS_PRESET.keySet()));
+      }
     }
+
+    // prepare schema
+    List<TableFieldSchema> fields = new ArrayList<>(configuration.numColumns);
+    for (int idx = 0; idx < configuration.numColumns; ++idx) {
+      fields.add(new TableFieldSchema().setName("data_" + idx).setType("BYTES"));
+    }
+    schema = new TableSchema().setFields(fields);
+
     // tempLocation needs to be set for bigquery IO writes
     if (!Strings.isNullOrEmpty(tempBucketName)) {
       tempLocation = String.format("gs://%s/temp/", tempBucketName);
@@ -128,102 +164,87 @@ public final class BigQueryIOLT extends IOLoadTestBase {
     ResourceManagerUtils.cleanResources(resourceManager);
   }
 
-  private static final Map<String, Configuration> TEST_CONFIGS =
-      ImmutableMap.of(
-          "local", Configuration.of(1000L, 2, "DirectRunner"), // 1MB
-          "medium", Configuration.of(10_000_000L, 20, "DataflowRunner"), // 10 GB
-          "large", Configuration.of(100_000_000L, 80, "DataflowRunner") // 100 GB
-          );
+  private static final Map<String, Configuration> TEST_CONFIGS_PRESET;
+
+  static {
+    try {
+      TEST_CONFIGS_PRESET =
+          ImmutableMap.of(
+              "local",
+              Configuration.fromJsonString(
+                  "{\"numRecords\":1000,\"valueSizeBytes\":1000,\"pipelineTimeout\":2,\"runner\":\"DirectRunner\"}",
+                  Configuration.class), // 1 MB
+              "medium",
+              Configuration.fromJsonString(
+                  "{\"numRecords\":10000000,\"valueSizeBytes\":1000,\"pipelineTimeout\":20,\"runner\":\"DataflowRunner\"}",
+                  Configuration.class), // 10 GB
+              "large",
+              Configuration.fromJsonString(
+                  "{\"numRecords\":100000000,\"valueSizeBytes\":1000,\"pipelineTimeout\":80,\"runner\":\"DataflowRunner\"}",
+                  Configuration.class) // 100 GB
+              );
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   @Test
   public void testAvroFileLoadsWriteThenRead() throws IOException {
-    configuration =
-        configuration.toBuilder().setWriteFormat("AVRO").setWriteMethod("FILE_LOADS").build();
+    configuration.writeFormat = "AVRO";
+    configuration.writeMethod = "FILE_LOADS";
     testWriteAndRead();
   }
 
   @Test
   public void testJsonFileLoadsWriteThenRead() throws IOException {
-    configuration =
-        configuration.toBuilder().setWriteFormat("JSON").setWriteMethod("FILE_LOADS").build();
+    configuration.writeFormat = "JSON";
+    configuration.writeMethod = "FILE_LOADS";
     testWriteAndRead();
   }
 
   @Test
   @Ignore("Avro streaming write is not supported as of Beam v2.45.0")
   public void testAvroStreamingWriteThenRead() throws IOException {
-    configuration =
-        configuration.toBuilder()
-            .setWriteFormat("AVRO")
-            .setWriteMethod("STREAMING_INSERTS")
-            .build();
+    configuration.writeFormat = "AVRO";
+    configuration.writeMethod = "STREAMING_INSERTS";
     testWriteAndRead();
   }
 
   @Test
   public void testJsonStreamingWriteThenRead() throws IOException {
-    configuration =
-        configuration.toBuilder()
-            .setWriteFormat("JSON")
-            .setWriteMethod("STREAMING_INSERTS")
-            .build();
+    configuration.writeFormat = "JSON";
+    configuration.writeMethod = "STREAMING_INSERTS";
     testWriteAndRead();
   }
 
   @Test
   public void testStorageAPIWriteThenRead() throws IOException {
-    configuration =
-        configuration.toBuilder()
-            .setReadMethod("DIRECT_READ")
-            .setWriteFormat("AVRO")
-            .setWriteMethod("STORAGE_WRITE_API")
-            .build();
+    configuration.readMethod = "DIRECT_READ";
+    configuration.writeFormat = "AVRO";
+    configuration.writeMethod = "STORAGE_WRITE_API";
     testWriteAndRead();
   }
 
   /** Run integration test with configurations specified by TestProperties. */
   public void testWriteAndRead() throws IOException {
-    WriteFormat writeFormat = WriteFormat.valueOf(configuration.getWriteFormat());
+    WriteFormat writeFormat = WriteFormat.valueOf(configuration.writeFormat);
     BigQueryIO.Write<byte[]> writeIO = null;
     switch (writeFormat) {
       case AVRO:
         writeIO =
             BigQueryIO.<byte[]>write()
-                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE);
-        // TODO(https://github.com/apache/beam/issues/26408) eliminate this branching once the Beam
-        // issue resolved
-        if ("STORAGE_WRITE_API".equalsIgnoreCase(configuration.getWriteMethod())) {
-          // storage api write does not recognize ByteBuffer for bytes
-          writeIO =
-              writeIO.withAvroFormatFunction(
-                  writeRequest -> {
-                    byte[] data = writeRequest.getElement();
-                    GenericRecord record = new GenericData.Record(writeRequest.getSchema());
-                    record.put("data", data);
-                    return record;
-                  });
-        } else {
-          writeIO =
-              writeIO.withAvroFormatFunction(
-                  writeRequest -> {
-                    byte[] data = writeRequest.getElement();
-                    GenericRecord record = new GenericData.Record(writeRequest.getSchema());
-                    record.put("data", ByteBuffer.wrap(data));
-                    return record;
-                  });
-        }
+                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE)
+                .withAvroFormatFunction(
+                    new AvroFormatFn(
+                        configuration.numColumns,
+                        !("STORAGE_WRITE_API".equalsIgnoreCase(configuration.writeMethod))));
 
         break;
       case JSON:
         writeIO =
             BigQueryIO.<byte[]>write()
                 .withSuccessfulInsertsPropagation(false)
-                .withFormatFunction(
-                    input -> {
-                      TableRow tableRow = new TableRow();
-                      tableRow.set("data", Base64.getEncoder().encodeToString(input));
-                      return tableRow;
-                    });
+                .withFormatFunction(new JsonFormatFn(configuration.numColumns));
         break;
     }
     testWrite(writeIO);
@@ -231,40 +252,32 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   }
 
   private void testWrite(BigQueryIO.Write<byte[]> writeIO) throws IOException {
-    BigQueryIO.Write.Method method =
-        BigQueryIO.Write.Method.valueOf(configuration.getWriteMethod());
+    BigQueryIO.Write.Method method = BigQueryIO.Write.Method.valueOf(configuration.writeMethod);
     if (method == BigQueryIO.Write.Method.STREAMING_INSERTS) {
       writePipeline.getOptions().as(StreamingOptions.class).setStreaming(true);
     }
-    SyntheticSourceOptions sourceOption =
-        SyntheticOptions.fromJsonString(
-            configuration.getSourceOptions(), SyntheticSourceOptions.class);
     writePipeline
-        .apply("Read from source", Read.from(new SyntheticBoundedSource(sourceOption)))
+        .apply("Read from source", Read.from(new SyntheticBoundedSource(configuration)))
         .apply("Map records", ParDo.of(new MapKVToV()))
         .apply(
             "Write to BQ",
             writeIO
                 .to(tableQualifier)
                 .withMethod(method)
-                .withSchema(
-                    new TableSchema()
-                        .setFields(
-                            Collections.singletonList(
-                                new TableFieldSchema().setName("data").setType("BYTES"))))
+                .withSchema(schema)
                 .withCustomGcsTempLocation(ValueProvider.StaticValueProvider.of(tempLocation)));
 
     PipelineLauncher.LaunchConfig options =
         PipelineLauncher.LaunchConfig.builder("test-bigquery-write")
             .setSdk(PipelineLauncher.Sdk.JAVA)
             .setPipeline(writePipeline)
-            .addParameter("runner", configuration.getRunner())
+            .addParameter("runner", configuration.runner)
             .build();
 
     PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(project, region, options);
     PipelineOperator.Result result =
         pipelineOperator.waitUntilDone(
-            createConfig(launchInfo, Duration.ofMinutes(configuration.getPipelineTimeout())));
+            createConfig(launchInfo, Duration.ofMinutes(configuration.pipelineTimeout)));
 
     // Fail the test if pipeline failed.
     assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
@@ -279,7 +292,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
 
   private void testRead() throws IOException {
     BigQueryIO.TypedRead.Method method =
-        BigQueryIO.TypedRead.Method.valueOf(configuration.getReadMethod());
+        BigQueryIO.TypedRead.Method.valueOf(configuration.readMethod);
 
     readPipeline
         .apply("Read from BQ", BigQueryIO.readTableRows().from(tableQualifier).withMethod(method))
@@ -289,16 +302,16 @@ public final class BigQueryIOLT extends IOLoadTestBase {
         PipelineLauncher.LaunchConfig.builder("test-bigquery-read")
             .setSdk(PipelineLauncher.Sdk.JAVA)
             .setPipeline(readPipeline)
-            .addParameter("runner", configuration.getRunner())
+            .addParameter("runner", configuration.runner)
             .build();
 
     PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(project, region, options);
     PipelineOperator.Result result =
         pipelineOperator.waitUntilDone(
-            createConfig(launchInfo, Duration.ofMinutes(configuration.getPipelineTimeout())));
+            createConfig(launchInfo, Duration.ofMinutes(configuration.pipelineTimeout)));
 
-    // Fail the test if pipeline failed.
-    assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
+    // Fail the test if pipeline failed or timeout.
+    assertThatResult(result).isLaunchFinished();
 
     // check metrics
     double numRecords =
@@ -307,7 +320,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
             region,
             launchInfo.jobId(),
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
-    assertEquals(configuration.getNumRows(), numRecords, 0.5);
+    assertEquals(configuration.numRecords, numRecords, 0.5);
 
     // export metrics
     try {
@@ -320,7 +333,89 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   private static class MapKVToV extends DoFn<KV<byte[], byte[]>, byte[]> {
     @ProcessElement
     public void process(ProcessContext context) {
-      context.output(context.element().getValue());
+      context.output(Objects.requireNonNull(context.element()).getValue());
+    }
+  }
+
+  abstract static class FormatFn<InputT, OutputT> implements SerializableFunction<InputT, OutputT> {
+    protected final int numColumns;
+
+    public FormatFn(int numColumns) {
+      this.numColumns = numColumns;
+    }
+  }
+
+  private static class AvroFormatFn extends FormatFn<AvroWriteRequest<byte[]>, GenericRecord> {
+
+    protected final boolean isWrapBytes;
+
+    public AvroFormatFn(int numColumns, boolean isWrapBytes) {
+      super(numColumns);
+      this.isWrapBytes = isWrapBytes;
+    }
+
+    // TODO(https://github.com/apache/beam/issues/26408) eliminate this method once the Beam issue
+    // resolved
+    private Object maybeWrapBytes(byte[] input) {
+      if (isWrapBytes) {
+        return ByteBuffer.wrap(input);
+      } else {
+        return input;
+      }
+    }
+
+    @Override
+    public GenericRecord apply(AvroWriteRequest<byte[]> writeRequest) {
+      byte[] data = Objects.requireNonNull(writeRequest.getElement());
+      GenericRecord record = new GenericData.Record(writeRequest.getSchema());
+      if (numColumns == 1) {
+        // only one column, just wrap incoming bytes
+        record.put("data_0", maybeWrapBytes(data));
+      } else {
+        // otherwise, distribute bytes
+        int bytePerCol = data.length / numColumns;
+        int curIdx = 0;
+        for (int idx = 0; idx < numColumns - 1; ++idx) {
+          record.put(
+              "data_" + idx, maybeWrapBytes(Arrays.copyOfRange(data, curIdx, curIdx + bytePerCol)));
+          curIdx += bytePerCol;
+        }
+        record.put(
+            "data_" + (numColumns - 1),
+            maybeWrapBytes(Arrays.copyOfRange(data, curIdx, data.length)));
+      }
+      return record;
+    }
+  }
+
+  private static class JsonFormatFn extends FormatFn<byte[], TableRow> {
+
+    public JsonFormatFn(int numColumns) {
+      super(numColumns);
+    }
+
+    @Override
+    public TableRow apply(byte[] input) {
+      TableRow tableRow = new TableRow();
+      Base64.Encoder encoder = Base64.getEncoder();
+      if (numColumns == 1) {
+        // only one column, just wrap incoming bytes
+        tableRow.set("data_0", encoder.encodeToString(input));
+      } else {
+        // otherwise, distribute bytes
+        int bytePerCol = input.length / numColumns;
+        int curIdx = 0;
+        for (int idx = 0; idx < numColumns - 1; ++idx) {
+          tableRow.set(
+              "data_" + idx,
+              encoder.encodeToString(Arrays.copyOfRange(input, curIdx, curIdx + bytePerCol)));
+          curIdx += bytePerCol;
+        }
+        tableRow.set(
+            "data_" + (numColumns - 1),
+            encoder.encodeToString(Arrays.copyOfRange(input, curIdx, input.length)));
+      }
+      return tableRow;
     }
   }
 
@@ -330,63 +425,27 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   }
 
   /** Options for Bigquery IO load test. */
-  @AutoValue
-  abstract static class Configuration {
-    abstract Long getNumRows();
+  static class Configuration extends SyntheticSourceOptions {
 
-    abstract Integer getPipelineTimeout();
+    /**
+     * Number of columns of each record. The column size is equally distributed as
+     * valueSizeBytes/numColumns.
+     */
+    @JsonProperty public int numColumns = 1;
 
-    abstract String getRunner();
+    /** Pipeline timeout in minutes. Must be a positive value. */
+    @JsonProperty public int pipelineTimeout = 20;
 
-    abstract Integer getRowSize();
+    /** Runner specified to run the pipeline. */
+    @JsonProperty public String runner = "DirectRunner";
 
-    abstract String getReadMethod();
+    /** BigQuery read method: DEFAULT/DIRECT_READ/EXPORT. */
+    @JsonProperty public String readMethod = "DEFAULT";
 
-    abstract String getWriteMethod();
+    /** BigQuery write method: DEFAULT/FILE_LOADS/STREAMING_INSERTS/STORAGE_WRITE_API. */
+    @JsonProperty public String writeMethod = "DEFAULT";
 
-    abstract String getWriteFormat();
-
-    static Configuration of(long numRows, int pipelineTimeout, String runner) {
-      return new AutoValue_BigQueryIOLT_Configuration.Builder()
-          .setNumRows(numRows)
-          .setPipelineTimeout(pipelineTimeout)
-          .setRunner(runner)
-          .setRowSize(1024)
-          .setReadMethod("DEFAULT")
-          .setWriteMethod("DEFAULT")
-          .setWriteFormat("AVRO")
-          .build();
-    }
-
-    @AutoValue.Builder
-    abstract static class Builder {
-      abstract Builder setNumRows(long numRows);
-
-      abstract Builder setPipelineTimeout(int timeOutMinutes);
-
-      abstract Builder setRunner(String runner);
-
-      abstract Builder setRowSize(int rowSize);
-
-      /** Read method: DEFAULT/DIRECT_READ/EXPORT. */
-      abstract Builder setReadMethod(String readMethod);
-
-      /** Write method: DEFAULT/FILE_LOADS/STREAMING_INSERTS/STORAGE_WRITE_API. */
-      abstract Builder setWriteMethod(String writeMethod);
-
-      /** Write format: AVRO/JSON. */
-      abstract Builder setWriteFormat(String writeFormat);
-
-      abstract Configuration build();
-    }
-
-    abstract Builder toBuilder();
-
-    /** Synthetic source options. */
-    String getSourceOptions() {
-      return String.format(
-          "{\"numRecords\":%d,\"keySizeBytes\":1,\"valueSizeBytes\":%d}",
-          getNumRows(), getRowSize());
-    }
+    /** BigQuery write format: AVRO/JSON. */
+    @JsonProperty public String writeFormat = "AVRO";
   }
 }
