@@ -201,6 +201,8 @@ public class PubSubToSplunk {
                 FailsafeJavascriptUdf.<String>newBuilder()
                     .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setFunctionReloadFrequency(
+                        options.getJavascriptTextTransformFunctionReloadFrequency())
                     .setLoggingEnabled(ValueProvider.StaticValueProvider.of(true))
                     .setSuccessTag(UDF_OUT)
                     .setFailureTag(UDF_DEADLETTER_OUT)

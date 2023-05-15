@@ -99,8 +99,7 @@ public abstract class JavascriptTextTransformer {
         optional = true,
         regexes = {"[0-9]+"},
         description = "Frequency to reload UDF",
-        helpText =
-            "Frequency in seconds to reload the the user defined function from GCS",
+        helpText = "Frequency in seconds to reload the the user defined function from GCS",
         example = "300")
     ValueProvider<Integer> getJavascriptTextTransformFunctionReloadFrequency();
 
@@ -167,8 +166,9 @@ public abstract class JavascriptTextTransformer {
       }
 
       boolean invocableStale = false;
-      if (functionReloadFrequency() != null){
-        invocableStale = Duration.between(lastRefreshed, Instant.now()).getSeconds() > functionReloadFrequency();
+      if (functionReloadFrequency() != null) {
+        invocableStale =
+            Duration.between(lastRefreshed, Instant.now()).getSeconds() > functionReloadFrequency();
       }
       if (invocable == null || invocableStale) {
         Collection<String> scripts = getScripts(fileSystemPath());
@@ -289,7 +289,8 @@ public abstract class JavascriptTextTransformer {
 
       public abstract Builder setFunctionName(@Nullable ValueProvider<String> functionName);
 
-      public abstract Builder setFunctionReloadFrequency(@Nullable ValueProvider<Integer> functionReloadFrequency);
+      public abstract Builder setFunctionReloadFrequency(
+          @Nullable ValueProvider<Integer> functionReloadFrequency);
 
       public abstract TransformTextViaJavascript build();
     }
@@ -309,7 +310,10 @@ public abstract class JavascriptTextTransformer {
                 public void setup() {
                   if (fileSystemPath() != null && functionName() != null) {
                     javascriptRuntime =
-                        getJavascriptRuntime(fileSystemPath().get(), functionName().get(), functionReloadFrequency().get());
+                        getJavascriptRuntime(
+                            fileSystemPath().get(),
+                            functionName().get(),
+                            functionReloadFrequency().get());
                   }
                 }
 
@@ -367,7 +371,8 @@ public abstract class JavascriptTextTransformer {
 
       public abstract Builder<T> setFunctionName(@Nullable ValueProvider<String> functionName);
 
-      public abstract Builder<T> setFunctionReloadFrequency(@Nullable ValueProvider<Integer> functionReloadFrequency);
+      public abstract Builder<T> setFunctionReloadFrequency(
+          @Nullable ValueProvider<Integer> functionReloadFrequency);
 
       public abstract Builder<T> setLoggingEnabled(@Nullable ValueProvider<Boolean> loggingEnabled);
 
@@ -391,7 +396,10 @@ public abstract class JavascriptTextTransformer {
                     public void setup() {
                       if (fileSystemPath() != null && functionName() != null) {
                         javascriptRuntime =
-                            getJavascriptRuntime(fileSystemPath().get(), functionName().get(), functionReloadFrequency().get());
+                            getJavascriptRuntime(
+                                fileSystemPath().get(),
+                                functionName().get(),
+                                functionReloadFrequency().get());
                       }
 
                       if (loggingEnabled() != null && loggingEnabled().isAccessible()) {
@@ -462,7 +470,8 @@ public abstract class JavascriptTextTransformer {
    *
    * @param fileSystemPath The file path to the JavaScript file to execute.
    * @param functionName The function name which will be invoked within the JavaScript script.
-   * @param functionReloadFrequency Frequency in seconds to reload the the user defined function from GCS. Null if reload is not desired.
+   * @param functionReloadFrequency Frequency in seconds to reload the the user defined function
+   *     from GCS. Null if reload is not desired.
    * @return The {@link JavascriptRuntime} instance.
    */
   private static JavascriptRuntime getJavascriptRuntime(
