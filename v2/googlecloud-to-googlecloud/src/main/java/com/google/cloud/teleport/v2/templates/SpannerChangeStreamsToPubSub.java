@@ -119,19 +119,22 @@ public class SpannerChangeStreamsToPubSub {
             : options.getSpannerMetadataTableName();
 
     final RpcPriority rpcPriority = options.getRpcPriority();
-
-    final String errorMessage =
-        "Invalid api:" + pubsubAPI + ". Supported apis: pubsubio, native_client";
-
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+            .withProjectId(projectId)
+            .withInstanceId(instanceId)
+            .withDatabaseId(databaseId);
+    // Propagate database role for fine-grained access control on change stream.
+    if (options.getSpannerDatabaseRole() != null) {
+      spannerConfig =
+          spannerConfig.withDatabaseRole(
+              ValueProvider.StaticValueProvider.of(options.getSpannerDatabaseRole()));
+    }
     pipeline
         .apply(
             SpannerIO.readChangeStream()
-                .withSpannerConfig(
-                    SpannerConfig.create()
-                        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-                        .withProjectId(projectId)
-                        .withInstanceId(instanceId)
-                        .withDatabaseId(databaseId))
+                .withSpannerConfig(spannerConfig)
                 .withMetadataInstance(metadataInstanceId)
                 .withMetadataDatabase(metadataDatabaseId)
                 .withChangeStreamName(changeStreamName)
