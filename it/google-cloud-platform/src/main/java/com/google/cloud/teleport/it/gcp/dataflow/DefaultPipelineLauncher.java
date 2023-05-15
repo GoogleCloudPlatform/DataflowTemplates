@@ -295,6 +295,7 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
           DataflowPipelineJob job = (DataflowPipelineJob) pipelineResult;
           jobId = job.getJobId();
           UNMANAGED_JOBS.put(jobId, pipelineResult);
+          launchedJobs.add(jobId);
         } else {
           PipelineOptions pipelineOptions = options.pipeline().getOptions();
           pipelineOptions.setRunner(PipelineUtils.getRunnerClass(options.getParameter("runner")));

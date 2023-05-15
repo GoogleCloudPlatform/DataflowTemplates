@@ -101,7 +101,8 @@ public abstract class LoadTestBase {
   }
 
   @After
-  public void tearDownLoadTestBase() {
+  public void tearDownLoadTestBase() throws IOException {
+    launcher().cleanupAll();
     monitoringClient.cleanupAll();
   }
 
