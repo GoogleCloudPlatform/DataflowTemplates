@@ -36,9 +36,13 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /** Test cases for the {@link PubSubToMongoDB} class. */
+@RunWith(JUnit4.class)
 public class PubSubToMongoDBTest {
+
   private static final String RESOURCES_DIR = "PubSubToMongoDBTest/";
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
@@ -46,8 +50,7 @@ public class PubSubToMongoDBTest {
       Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
   private static List<PubsubMessage> goodTestMessages;
   private static List<PubsubMessage> badTestMessages;
-  private static List<PubsubMessage> nonFilterableTestMessages;
-  private static List<PubsubMessage> allTestMessages;
+
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   private static PubsubMessage makePubsubMessage(
@@ -56,15 +59,15 @@ public class PubSubToMongoDBTest {
     if (attributeKey != null) {
       attributeMap = Collections.singletonMap(attributeKey, attributeValue);
     } else {
-      attributeMap = Collections.EMPTY_MAP;
+      attributeMap = Collections.emptyMap();
     }
     return new PubsubMessage(payloadString.getBytes(), attributeMap);
   }
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     Map<String, String> testAttributeMap1 =
-        new HashMap<String, String>() {
+        new HashMap<>() {
           {
             put("location", "GJ");
             put("name", "Shubh");
@@ -74,7 +77,7 @@ public class PubSubToMongoDBTest {
           }
         };
     Map<String, String> testAttributeMap2 =
-        new HashMap<String, String>() {
+        new HashMap<>() {
           {
             put("location", "Durban");
             put("name", "Dan");
@@ -108,18 +111,11 @@ public class PubSubToMongoDBTest {
         ImmutableList.of(
             makePubsubMessage("This is a bad record", null, null),
             makePubsubMessage("with unknown attribute", "dummy", "value"));
-
-    allTestMessages =
-        ImmutableList.<PubsubMessage>builder()
-            .addAll(goodTestMessages)
-            .addAll(badTestMessages)
-            .build();
   }
 
   /** Tests the {@link PubSubToMongoDB} pipeline end-to-end with no UDF supplied. */
   @Test
   public void testPubSubToMongoDBNoUdfE2E() {
-
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
 
     coderRegistry.registerCoderForType(
@@ -204,7 +200,6 @@ public class PubSubToMongoDBTest {
   /** Tests the {@link PubSubToMongoDB} pipeline end-to-end with a bad UDF. */
   @Test
   public void testPubSubToMongoDBBadUdfE2E() {
-
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(
         PubSubToMongoDB.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
@@ -251,7 +246,6 @@ public class PubSubToMongoDBTest {
    */
   @Test
   public void testPubSubToMongoDBOnlyAttributesE2E() {
-
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(
         PubSubToMongoDB.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),

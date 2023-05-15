@@ -61,6 +61,7 @@
     <guava.version>31.0.1-jre</guava.version>
     <mockito.version>4.11.0</mockito.version>
     <log4j-2.version>2.17.2</log4j-2.version>
+    <jacoco.version>0.8.8</jacoco.version>
     <json.version>20230227</json.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
