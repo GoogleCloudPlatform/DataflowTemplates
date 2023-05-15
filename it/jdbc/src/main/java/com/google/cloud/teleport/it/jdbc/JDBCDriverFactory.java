@@ -20,9 +20,9 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /** JDBC Driver Factory class. */
-public class JDBCDriverFactory {
+class JDBCDriverFactory {
 
-  public JDBCDriverFactory() {}
+  JDBCDriverFactory() {}
 
   /**
    * Returns a Connection session to the given database uri.
@@ -33,8 +33,7 @@ public class JDBCDriverFactory {
    * @return the Connection session.
    * @throws SQLException if there is an error creating a connection.
    */
-  public Connection getConnection(String uri, String username, String password)
-      throws SQLException {
+  Connection getConnection(String uri, String username, String password) throws SQLException {
     return DriverManager.getConnection(uri, username, password);
   }
 }

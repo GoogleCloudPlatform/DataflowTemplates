@@ -72,8 +72,8 @@ public class SplunkResourceManagerIT {
     List<SplunkEvent> httpEventsReceived = splunkResourceManager.getEvents(query);
 
     // Assert
-    assertThatSplunkEvents(httpEventsSent)
-        .hasRecordsUnordered(splunkEventsToRecords(httpEventsReceived));
+    assertThatSplunkEvents(httpEventsReceived)
+        .hasRecordsUnordered(splunkEventsToRecords(httpEventsSent));
   }
 
   private static List<SplunkEvent> generateHttpEvents(
