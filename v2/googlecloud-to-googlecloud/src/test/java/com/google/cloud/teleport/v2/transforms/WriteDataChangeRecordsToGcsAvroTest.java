@@ -102,18 +102,13 @@ public class WriteDataChangeRecordsToGcsAvroTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage(
         "withGcsOutputDirectory(gcsOutputDirectory) called with null input.");
-    final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
-    pipeline
-        .apply("CreateInput", Create.of(dataChangeRecord))
-        .apply(
-            "WriteTextFile(s)",
-            WriteDataChangeRecordsToGcsAvro.newBuilder()
-                .withGcsOutputDirectory(null)
-                .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
-                .setNumShards(NUM_SHARDS)
-                .withTempLocation(fakeTempLocation)
-                .build());
-    pipeline.run();
+
+    WriteDataChangeRecordsToGcsAvro.newBuilder()
+        .withGcsOutputDirectory(null)
+        .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
+        .setNumShards(NUM_SHARDS)
+        .withTempLocation(fakeTempLocation)
+        .build();
   }
 
   /**
@@ -124,18 +119,13 @@ public class WriteDataChangeRecordsToGcsAvroTest {
   public void testWriteWithoutTempLocation() {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withTempLocation(tempLocation) called with null input.");
-    final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
-    pipeline
-        .apply("CreateInput", Create.of(dataChangeRecord))
-        .apply(
-            "WriteTextFile(s)",
-            WriteDataChangeRecordsToGcsAvro.newBuilder()
-                .withGcsOutputDirectory(fakeDir)
-                .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
-                .setNumShards(NUM_SHARDS)
-                .withTempLocation(null)
-                .build());
-    pipeline.run();
+
+    WriteDataChangeRecordsToGcsAvro.newBuilder()
+        .withGcsOutputDirectory(fakeDir)
+        .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
+        .setNumShards(NUM_SHARDS)
+        .withTempLocation(null)
+        .build();
   }
 
   private DataChangeRecord createTestDataChangeRecord() {

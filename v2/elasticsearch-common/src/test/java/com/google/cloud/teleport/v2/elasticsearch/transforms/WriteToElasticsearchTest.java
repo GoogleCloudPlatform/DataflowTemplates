@@ -45,11 +45,7 @@ public class WriteToElasticsearchTest {
     options.setConnectionUrl(null);
     options.setApiKey("key");
 
-    pipeline
-        .apply("CreateInput", Create.of("test"))
-        .apply(WriteToElasticsearch.newBuilder().setOptions(options).build());
-
-    pipeline.run();
+    WriteToElasticsearch.newBuilder().setOptions(options).build();
   }
 
   /** Tests {@link WriteToElasticsearch} throws an exception if a null index is provided. */
@@ -64,11 +60,7 @@ public class WriteToElasticsearchTest {
     options.setConnectionUrl("https://host.domain");
     options.setApiKey("key");
 
-    pipeline
-        .apply("CreateInput", Create.of("test"))
-        .apply(WriteToElasticsearch.newBuilder().setOptions(options).build());
-
-    pipeline.run();
+    WriteToElasticsearch.newBuilder().setOptions(options).build();
   }
 
   /**
@@ -113,13 +105,7 @@ public class WriteToElasticsearchTest {
     options.setMaxRetryDuration(500L);
     options.setMaxRetryAttempts(null);
 
-    pipeline
-        .apply("CreateInput", Create.of("test"))
-        .apply(
-            "TestWriteToElasticsearchBadMaxAttempts",
-            WriteToElasticsearch.newBuilder().setOptions(options).build());
-
-    pipeline.run();
+    WriteToElasticsearch.newBuilder().setOptions(options).build();
   }
 
   /**
@@ -139,12 +125,6 @@ public class WriteToElasticsearchTest {
     options.setMaxRetryDuration(null);
     options.setMaxRetryAttempts(3);
 
-    pipeline
-        .apply("CreateInput", Create.of("test"))
-        .apply(
-            "TestWriteToElasticsearchBadMaxDuration",
-            WriteToElasticsearch.newBuilder().setOptions(options).build());
-
-    pipeline.run();
+    WriteToElasticsearch.newBuilder().setOptions(options).build();
   }
 }

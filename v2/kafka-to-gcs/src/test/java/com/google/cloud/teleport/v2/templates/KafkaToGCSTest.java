@@ -88,6 +88,8 @@ public class KafkaToGCSTest {
   @Category(NeedsRunner.class)
   public void testFileFormatFactoryInvalid() {
 
+    exception.expect(IllegalArgumentException.class);
+
     // Create the test input.
     final String key = "Name";
     final String value = "Generic";
@@ -107,17 +109,12 @@ public class KafkaToGCSTest {
     options.setNumShards(numShards);
     options.setTempLocation(tempOutputDirectory);
 
-    exception.expect(IllegalArgumentException.class);
-
     PCollection<KV<String, String>> records =
         pipeline.apply(
             "CreateInput",
             Create.of(message).withCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
 
     records.apply("WriteToGCS", FileFormatFactory.newBuilder().setOptions(options).build());
-
-    // Run the pipeline.
-    pipeline.run();
   }
 
   /** Tests testFileFormat() with a invalid file format. */

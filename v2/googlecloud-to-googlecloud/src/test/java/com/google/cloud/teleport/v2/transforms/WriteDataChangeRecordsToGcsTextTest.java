@@ -44,6 +44,7 @@ import org.junit.runners.JUnit4;
 /** Test cases for the {@link WriteDataChangeRecordsToGcsText} class. */
 @RunWith(JUnit4.class)
 public class WriteDataChangeRecordsToGcsTextTest {
+
   /** Rule for pipeline testing. */
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
@@ -103,18 +104,13 @@ public class WriteDataChangeRecordsToGcsTextTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage(
         "withGcsOutputDirectory(gcsOutputDirectory) called with null input.");
-    final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
-    pipeline
-        .apply("CreateInput", Create.of(dataChangeRecord))
-        .apply(
-            "WriteTextFile(s)",
-            WriteDataChangeRecordsToGcsText.newBuilder()
-                .withGcsOutputDirectory(null)
-                .withOutputFilenamePrefix(TEXT_FILENAME_PREFIX)
-                .setNumShards(NUM_SHARDS)
-                .withTempLocation(fakeTempLocation)
-                .build());
-    pipeline.run();
+
+    WriteDataChangeRecordsToGcsText.newBuilder()
+        .withGcsOutputDirectory(null)
+        .withOutputFilenamePrefix(TEXT_FILENAME_PREFIX)
+        .setNumShards(NUM_SHARDS)
+        .withTempLocation(fakeTempLocation)
+        .build();
   }
 
   /**
@@ -125,18 +121,13 @@ public class WriteDataChangeRecordsToGcsTextTest {
   public void testWriteWithoutTempLocation() {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withTempLocation(tempLocation) called with null input.");
-    final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
-    pipeline
-        .apply("CreateInput", Create.of(dataChangeRecord))
-        .apply(
-            "WriteTextFile(s)",
-            WriteDataChangeRecordsToGcsText.newBuilder()
-                .withGcsOutputDirectory(fakeDir)
-                .withOutputFilenamePrefix(TEXT_FILENAME_PREFIX)
-                .setNumShards(NUM_SHARDS)
-                .withTempLocation(null)
-                .build());
-    pipeline.run();
+
+    WriteDataChangeRecordsToGcsText.newBuilder()
+        .withGcsOutputDirectory(fakeDir)
+        .withOutputFilenamePrefix(TEXT_FILENAME_PREFIX)
+        .setNumShards(NUM_SHARDS)
+        .withTempLocation(null)
+        .build();
   }
 
   private DataChangeRecord createTestDataChangeRecord() {
