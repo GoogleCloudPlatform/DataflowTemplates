@@ -22,6 +22,7 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
@@ -73,7 +74,8 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
             .credentialsProvider(credentialsProvider)
             .build();
 
-    kafkaResourceManager = KafkaResourceManager.builder(testName).build();
+    kafkaResourceManager =
+        KafkaResourceManager.builder(testName).setHost(TestProperties.hostIp()).build();
   }
 
   @After
