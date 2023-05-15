@@ -25,9 +25,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.splunk.Job;
 import com.splunk.ResultsReader;
 import com.splunk.ResultsReaderXml;
-import com.splunk.Service;
 import com.splunk.ServiceArgs;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -35,11 +35,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
-import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,9 +78,12 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
   private final String hecScheme;
   private final String hecToken;
 
+  private final SplunkClientFactory clientFactory;
+
   @SuppressWarnings("resource")
   private SplunkResourceManager(SplunkResourceManager.Builder builder) {
     this(
+        new SplunkClientFactory(),
         new SplunkContainer(
                 DockerImageName.parse(builder.containerImageName)
                     .withTag(builder.containerImageTag))
@@ -90,16 +92,11 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
   }
 
   @VisibleForTesting
-  SplunkResourceManager(SplunkContainer container, SplunkResourceManager.Builder builder) {
+  SplunkResourceManager(
+      SplunkClientFactory clientFactory,
+      SplunkContainer container,
+      SplunkResourceManager.Builder builder) {
     super(setup(container, builder), builder);
-
-    // Validate builder args
-    if (builder.useStaticContainer) {
-      if (builder.hecPort < 0 || builder.splunkdPort < 0) {
-        throw new SplunkResourceManagerException(
-            "This manager was configured to use a static resource, but the hecPort and splunkdPort were not properly set.");
-      }
-    }
 
     String username = DEFAULT_SPLUNK_USERNAME;
     if (builder.useStaticContainer && builder.username != null) {
@@ -118,12 +115,16 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
 
     hecToken = builder.hecToken;
 
-    loginArgs = new ServiceArgs();
-    loginArgs.setPort(splunkdPort);
-    loginArgs.setHost(this.getHost());
-    loginArgs.setScheme(splunkdScheme);
-    loginArgs.setUsername(username);
-    loginArgs.setPassword(builder.password);
+    // Create Splunk service login args
+    this.loginArgs = new ServiceArgs();
+    this.loginArgs.setPort(splunkdPort);
+    this.loginArgs.setHost(this.getHost());
+    this.loginArgs.setScheme(splunkdScheme);
+    this.loginArgs.setUsername(username);
+    this.loginArgs.setPassword(builder.password);
+
+    // Initialize the clients
+    this.clientFactory = clientFactory;
   }
 
   /**
@@ -134,6 +135,14 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
    * @return The SplunkContainer with all config info injected.
    */
   private static SplunkContainer setup(SplunkContainer container, Builder builder) {
+    // Validate builder args
+    if (builder.useStaticContainer) {
+      if (builder.hecPort < 0 || builder.splunkdPort < 0) {
+        throw new SplunkResourceManagerException(
+            "This manager was configured to use a static resource, but the hecPort and splunkdPort were not properly set.");
+      }
+    }
+
     builder.hecPort = builder.hecPort < 0 ? DEFAULT_SPLUNK_HEC_INTERNAL_PORT : builder.hecPort;
     builder.splunkdPort =
         builder.splunkdPort < 0 ? DEFAULT_SPLUNKD_INTERNAL_PORT : builder.splunkdPort;
@@ -232,31 +241,37 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
     httppost.addHeader("Authorization", "Splunk " + hecToken);
 
     // Loop over events and send one-by-one
+    StringBuilder eventsData = new StringBuilder();
     events.forEach(
         event -> {
-          try (CloseableHttpClient httpclient = HttpClientBuilder.create().build()) {
-            String eventStr = splunkEventToJson(event);
-            LOG.info("Sending HTTP event: {}", eventStr);
-
-            // Send request
-            HttpResponse response;
-            try {
-              httppost.setEntity(new StringEntity(eventStr));
-              response = httpclient.execute(httppost);
-            } catch (Exception e) {
-              throw new SplunkResourceManagerException("Error sending event.", e);
-            }
-
-            // Check error code
-            int code = response.getStatusLine().getStatusCode();
-            if (code != 200) {
-              throw new SplunkResourceManagerException(
-                  "Received http error code " + code + " sending event.");
-            }
-          } catch (IOException e) {
-            throw new SplunkResourceManagerException("Error closing HTTP client.");
-          }
+          String eventStr = splunkEventToJson(event);
+          eventsData.append(eventStr);
+          LOG.info("Sending HTTP event: {}", eventStr);
         });
+
+    try (CloseableHttpClient httpClient = clientFactory.getHttpClient()) {
+      // Set request data
+      try {
+        httppost.setEntity(new StringEntity(eventsData.toString()));
+      } catch (UnsupportedEncodingException e) {
+        throw new SplunkResourceManagerException(
+            "Error setting HTTP message data to " + eventsData, e);
+      }
+
+      // Send request
+      try (CloseableHttpResponse response = httpClient.execute(httppost)) {
+        // Check error code
+        int code = response.getStatusLine().getStatusCode();
+        if (code != 200) {
+          throw new SplunkResourceManagerException(
+              "Received http error code " + code + " sending event.");
+        }
+      } catch (Exception e) {
+        throw new SplunkResourceManagerException("Error sending event.", e);
+      }
+    } catch (IOException e) {
+      throw new SplunkResourceManagerException("Error with HTTP client.", e);
+    }
 
     LOG.info("Successfully sent {} events.", events.size());
 
@@ -278,16 +293,13 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
    * <p>e.g. query: <code>'search source=mySource sourcetype=mySourceType host=myHost'</code>
    *
    * @param query The query to filter events by.
-   * @return
+   * @return All Splunk events on the server that match the given query.
    */
   public synchronized List<SplunkEvent> getEvents(String query) {
-    // Initialize the SDK client
-    Service service = Service.connect(loginArgs);
+    LOG.info("Reading events from Splunk using query: {}.", query);
 
     // Run a simple search by first creating the search job
-    Job job = service.getJobs().create(query);
-
-    LOG.info("Reading events from Splunk using query {}.", query);
+    Job job = clientFactory.getServiceClient(loginArgs).getJobs().create(query);
 
     // Wait up to 1 minute for search results to be ready
     Awaitility.await("Retrieving events from Splunk")
@@ -300,19 +312,21 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
     try {
       ResultsReader reader = new ResultsReaderXml(job.getEvents());
       reader.forEach(
-          event ->
-              results.add(
-                  SplunkEvent.newBuilder()
-                      .withEvent(event.get("_raw"))
-                      .withSource(event.get("source"))
-                      .withSourceType(event.get("_sourcetype"))
-                      .withHost(event.get("host"))
-                      .withTime(
-                          OffsetDateTime.parse(
-                                  event.get("_time"), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                              .toInstant()
-                              .toEpochMilli())
-                      .create()));
+          event -> {
+            results.add(
+                SplunkEvent.newBuilder()
+                    .withEvent(event.get("_raw"))
+                    .withSource(event.get("source"))
+                    .withSourceType(event.get("_sourcetype"))
+                    .withHost(event.get("host"))
+                    .withTime(
+                        OffsetDateTime.parse(
+                                event.get("_time"), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                            .toInstant()
+                            .toEpochMilli())
+                    .withIndex(event.get("index"))
+                    .create());
+          });
 
     } catch (Exception e) {
       throw new SplunkResourceManagerException("Error parsing XML results from Splunk.", e);

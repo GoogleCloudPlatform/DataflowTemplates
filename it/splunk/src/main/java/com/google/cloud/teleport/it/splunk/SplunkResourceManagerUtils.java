@@ -24,6 +24,8 @@ import org.apache.beam.sdk.io.splunk.SplunkEvent;
 /** Utilities for {@link SplunkResourceManager} implementations. */
 public final class SplunkResourceManagerUtils {
 
+  static final String DEFAULT_SPLUNK_INDEX = "main";
+
   // Splunk event metadata keys
   private static final String SPLUNK_EVENT_KEY = "event";
   private static final String SPLUNK_HOST_KEY = "host";
@@ -41,7 +43,7 @@ public final class SplunkResourceManagerUtils {
     Map<String, Object> eventMap = new HashMap<>();
     eventMap.put(SPLUNK_EVENT_KEY, event.event());
     eventMap.put(SPLUNK_HOST_KEY, event.host());
-    eventMap.put(SPLUNK_INDEX_KEY, event.index());
+    eventMap.put(SPLUNK_INDEX_KEY, event.index() != null ? event.index() : DEFAULT_SPLUNK_INDEX);
     eventMap.put(SPLUNK_SOURCE_KEY, event.source());
     eventMap.put(SPLUNK_SOURCE_TYPE_KEY, event.sourceType());
     eventMap.put(SPLUNK_TIME_KEY, event.time());

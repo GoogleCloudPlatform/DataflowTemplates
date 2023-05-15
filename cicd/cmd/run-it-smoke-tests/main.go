@@ -14,7 +14,7 @@
  * the License.
  */
 
- // The run-it-smoke-tests workflow runs all Direct Runner tests.
+// The run-it-smoke-tests workflow runs all Direct Runner tests.
 package main
 
 import (
@@ -41,7 +41,7 @@ func main() {
 		mvnFlags.SkipTests(),
 		mvnFlags.SkipJacoco(),
 		mvnFlags.SkipShade(),
-		mvnFlags.ThreadCount(8))
+		mvnFlags.ThreadCount(4))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
@@ -56,8 +56,8 @@ func main() {
 		mvnFlags.SkipJib(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunIntegrationSmokeTests(),
-		mvnFlags.ThreadCount(8),
-		mvnFlags.IntegrationTestParallelism(4),
+		mvnFlags.ThreadCount(4),
+		mvnFlags.IntegrationTestParallelism(2),
 		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
