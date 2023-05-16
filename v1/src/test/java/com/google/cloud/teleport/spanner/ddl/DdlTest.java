@@ -588,8 +588,6 @@ public class DdlTest {
                 + " INPUT ( `i1` BOOL OPTIONS (required = false), `i2` STRING(MAX), )"
                 + " OUTPUT ( `o1` INT64 OPTIONS (required = true), `o2` FLOAT64, )"
                 + " REMOTE OPTIONS (endpoint = \"test\")"));
-
-    Model.Builder copy = Model.Builder(model);
   }
 
   @Test
