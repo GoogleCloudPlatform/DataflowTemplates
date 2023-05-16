@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -249,6 +250,29 @@ public class InformationSchemaScannerIT {
 
     // Verify pretty print.
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(allTypes));
+  }
+
+  @Test
+  public void simpleModel() throws Exception {
+    String modelDef =
+        "CREATE MODEL UsersModel"
+            + " INPUT ( i1 FLOAT64 OPTIONS (required = false), i2 INT64, )"
+            + " OUTPUT ( o1 STRING(MAX), )"
+            + " REMOTE OPTIONS (endpoint = \"test\")";
+
+    spannerServer.createDatabase(dbId, Arrays.asList(modelDef));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.models(), hasSize(1));
+    Model model = ddl.model("UsersModel");
+    assertThat(model, notNullValue());
+    assertThat(ddl.model("uSersmOdel"), sameInstance(model));
+    assertThat(model.inputColumns(), hasSize(2));
+    assertThat(model.outputColumns(), hasSize(1));
+    assertThat(model.remote(), equalTo(true));
+    assertThat(model.options(), hasItems("XXXXendpoints = \"test\""));
+
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(modelDef));
   }
 
   @Test

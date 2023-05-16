@@ -62,6 +62,12 @@ public class InformationSchemaScanner {
     listViews(builder);
     listColumns(builder);
     listColumnOptions(builder);
+    if (isModelSupported()) {
+      listModels(builder);
+      listModelOptions(builder);
+      listModelColumns(builder);
+      listModelColumnOptions(builder);
+    }
     if (isChangeStreamsSupported()) {
       listChangeStreams(builder);
       listChangeStreamOptions(builder);
@@ -701,6 +707,178 @@ public class InformationSchemaScanner {
       String viewQuery = resultSet.getString(1);
       LOG.debug("Schema View {}", viewName);
       builder.createView(viewName).query(viewQuery).security(View.SqlSecurity.INVOKER).endView();
+    }
+  }
+
+  // TODO: Remove after models are supported in POSTGRESQL.
+  private boolean isModelSupported() {
+    return dialect == Dialect.GOOGLE_STANDARD_SQL;
+  }
+
+  private void listModels(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.model_name, t.is_remote "
+                    + " FROM information_schema.models AS t"
+                    + " WHERE t.model_catalog = '' AND t.model_schema = ''"));
+    while (resultSet.next()) {
+      String modelName = resultSet.getString(0);
+      Boolean remote = resultSet.isNull(1) ? null : resultSet.getBoolean(1);
+      LOG.debug("Schema Model {} Remote {} {}", modelName, remote);
+      builder.createModel(modelName).remote(remote).endModel();
+    }
+  }
+
+  private void listModelOptions(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.model_name, t.option_name, t.option_type, t.option_value "
+                    + " FROM information_schema.model_options AS t"
+                    + " ORDER BY t.model_name, t.option_name"));
+
+    Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String modelName = resultSet.getString(0);
+      String optionName = resultSet.getString(1);
+      String optionType = resultSet.getString(2);
+      String optionValue = resultSet.getString(3);
+
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(modelName, k -> ImmutableList.builder());
+
+      if (optionType.equalsIgnoreCase("STRING")) {
+        options.add(
+            optionName
+                + "="
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(
+            optionName
+                + "="
+                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry : allOptions.entrySet()) {
+      String modelName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder.createModel(modelName).options(options).endModel();
+    }
+  }
+
+  private void listModelColumns(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.model_name, t.column_kind, t.ordinal_position, t.column_name"
+                    + " t.data_type FROM information_schema.model_columns as t WHERE"
+                    + " t.model_catalog = '' AND t.model_schema = '' ORDER BY t.model_name,"
+                    + " t.column_kind, t.ordinal_position"));
+
+    while (resultSet.next()) {
+      String modelName = resultSet.getString(0);
+      String columnKind = resultSet.getString(1);
+      String columnName = resultSet.getString(3);
+      String spannerType = resultSet.getString(4);
+      if (columnKind.equalsIgnoreCase("INPUT")) {
+        builder
+            .createModel(modelName)
+            .inputColumn(columnName)
+            .parseType(spannerType)
+            .endInputColumn()
+            .endModel();
+      } else if (columnKind.equalsIgnoreCase("OUTPUT")) {
+        builder
+            .createModel(modelName)
+            .outputColumn(columnName)
+            .parseType(spannerType)
+            .endOutputColumn()
+            .endModel();
+      } else {
+        throw new IllegalArgumentException("Unrecognized model column kind: " + columnKind);
+      }
+    }
+  }
+
+  private void listModelColumnOptions(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.model_name, t.column_kind, t.column_name, t.option_name, t.option_type,"
+                    + " t.option_value FROM information_schema.model_column_options as t WHERE"
+                    + " t.model_catalog = '' AND t.model_schema = '' ORDER BY t.model_name,"
+                    + " t.column_kind, t.column_name"));
+
+    Map<KV<String, String>, ImmutableList.Builder<String>> inputOptions = Maps.newHashMap();
+    Map<KV<String, String>, ImmutableList.Builder<String>> outputOptions = Maps.newHashMap();
+
+    while (resultSet.next()) {
+      String modelName = resultSet.getString(0);
+      String columnKind = resultSet.getString(1);
+      String columnName = resultSet.getString(2);
+      String optionName = resultSet.getString(3);
+      String optionType = resultSet.getString(4);
+      String optionValue = resultSet.getString(5);
+
+      KV<String, String> kv = KV.of(modelName, columnName);
+      ImmutableList.Builder<String> options;
+      if (columnKind.equals("INPUT")) {
+        options = inputOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
+      } else if (columnKind.equals("OUTPUT")) {
+        options = outputOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
+      } else {
+        throw new IllegalArgumentException("Unrecognized model column kind: " + columnKind);
+      }
+
+      if (optionType.equalsIgnoreCase("STRING")) {
+        options.add(
+            optionName
+                + "=\""
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + "\"");
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(
+            optionName
+                + "='"
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + "'");
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<KV<String, String>, ImmutableList.Builder<String>> entry :
+        inputOptions.entrySet()) {
+      String modelName = entry.getKey().getKey();
+      String columnName = entry.getKey().getValue();
+      ImmutableList<String> options = entry.getValue().build();
+      builder
+          .createModel(modelName)
+          .inputColumn(columnName)
+          .columnOptions(options)
+          .endInputColumn()
+          .endModel();
+    }
+
+    for (Map.Entry<KV<String, String>, ImmutableList.Builder<String>> entry :
+        outputOptions.entrySet()) {
+      String modelName = entry.getKey().getKey();
+      String columnName = entry.getKey().getValue();
+      ImmutableList<String> options = entry.getValue().build();
+      builder
+          .createModel(modelName)
+          .outputColumn(columnName)
+          .columnOptions(options)
+          .endOutputColumn()
+          .endModel();
     }
   }
 

@@ -21,6 +21,8 @@ import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn;
+import com.google.cloud.teleport.spanner.ddl.Model;
+import com.google.cloud.teleport.spanner.ddl.ModelColumn;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
 import java.util.ArrayList;
@@ -29,6 +31,8 @@ import java.util.stream.Collectors;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
+import org.apache.avro.SchemaBuilder.FieldBuilder;
+import org.apache.avro.SchemaBuilder.RecordDefault;
 
 /** Converts a Spanner {@link Ddl} to Avro {@link Schema}. */
 public class DdlToAvroSchemaConverter {
@@ -114,6 +118,59 @@ public class DdlToAvroSchemaConverter {
           fieldBuilder.type(avroType).noDefault();
         }
       }
+      Schema schema = fieldsAssembler.endRecord();
+      schemas.add(schema);
+    }
+
+    for (Model model : ddl.models()) {
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(model.name()).namespace(this.namespace);
+      recordBuilder.prop("googleFormatVersion", version);
+      recordBuilder.prop("googleStorage", "CloudSpanner");
+      recordBuilder.prop("spannerEntity", "Model");
+      recordBuilder.prop("spannerRemote", Boolean.toString(model.remote()));
+      if (model.options() != null) {
+        for (int i = 0; i < model.options().size(); i++) {
+          recordBuilder.prop("spannerOption_" + i, model.options().get(i));
+        }
+      }
+
+      SchemaBuilder.FieldAssembler<Schema> fieldsAssembler = recordBuilder.fields();
+
+      SchemaBuilder.RecordBuilder<RecordDefault<Schema>> inputBuilder =
+          fieldsAssembler
+              .name("Input")
+              .type()
+              .record(model.name() + "_input")
+              .namespace(this.namespace);
+      for (ModelColumn c : model.inputColumns()) {
+        FieldBuilder<RecordDefault<Schema>> fieldBuilder = inputBuilder.fields().name(c.name());
+        fieldBuilder.prop("sqlType", c.typeString());
+        for (int i = 0; i < c.columnOptions().size(); i++) {
+          fieldBuilder.prop("spannerOption_" + i, c.columnOptions().get(i));
+        }
+        Schema avroType = avroType(c.type());
+        fieldBuilder.type(avroType).noDefault();
+      }
+      inputBuilder.fields().endRecord();
+
+      SchemaBuilder.RecordBuilder<RecordDefault<Schema>> outputBuilder =
+          fieldsAssembler
+              .name("Output")
+              .type()
+              .record(model.name() + "_output")
+              .namespace(this.namespace);
+      for (ModelColumn c : model.outputColumns()) {
+        FieldBuilder<RecordDefault<Schema>> fieldBuilder = outputBuilder.fields().name(c.name());
+        fieldBuilder.prop("sqlType", c.typeString());
+        for (int i = 0; i < c.columnOptions().size(); i++) {
+          fieldBuilder.prop("spannerOption_" + i, c.columnOptions().get(i));
+        }
+        Schema avroType = avroType(c.type());
+        fieldBuilder.type(avroType).noDefault();
+      }
+      outputBuilder.fields().endRecord();
+
       Schema schema = fieldsAssembler.endRecord();
       schemas.add(schema);
     }
