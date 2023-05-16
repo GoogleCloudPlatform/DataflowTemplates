@@ -17,12 +17,8 @@ package com.google.cloud.teleport.it.gcp.dataflow;
 
 import static com.google.cloud.teleport.it.common.logging.LogStrings.formatForLogging;
 
-import com.google.api.client.googleapis.util.Utils;
-import com.google.api.services.dataflow.Dataflow;
 import com.google.api.services.dataflow.model.Job;
 import com.google.auth.Credentials;
-import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.cloud.teleport.it.common.AbstractPipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -39,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * Implementation of the {@link PipelineLauncher} interface which invokes the template class using
  * DirectRunner, and manages the state in-memory.
  */
-public class DirectRunnerClient extends AbstractPipelineLauncher {
+public class DirectRunnerClient implements PipelineLauncher {
   private static final Logger LOG = LoggerFactory.getLogger(DirectRunnerClient.class);
 
   private static final Map<String, DirectRunnerJobThread> MANAGED_JOBS = new HashMap<>();
@@ -47,7 +43,6 @@ public class DirectRunnerClient extends AbstractPipelineLauncher {
   private final Class<?> mainClass;
 
   DirectRunnerClient(Builder builder) {
-    super(new DirectRunnerDataflowFacade(builder.getMainClass(), builder.getCredentials()));
     this.mainClass = builder.getMainClass();
   }
 
@@ -98,6 +93,49 @@ public class DirectRunnerClient extends AbstractPipelineLauncher {
     }
   }
 
+  @Override
+  public Job getJob(String project, String region, String jobId) {
+    return MANAGED_JOBS.get(jobId).getJob();
+  }
+
+  @Override
+  public Job getJob(String project, String region, String jobId, String jobView) {
+    return MANAGED_JOBS.get(jobId).getJob();
+  }
+
+  @Override
+  public JobState getJobStatus(String project, String region, String jobId) {
+    return MANAGED_JOBS.get(jobId).getJobState();
+  }
+
+  @Override
+  public Job cancelJob(String project, String region, String jobId) {
+    MANAGED_JOBS.get(jobId).cancel();
+    return new Job().setId(jobId).setRequestedState(JobState.CANCELLED.toString());
+  }
+
+  @Override
+  public Job drainJob(String project, String region, String jobId) {
+    LOG.warn("Cannot drain a direct runner job. Cancelling the job instead.");
+    return cancelJob(project, region, jobId);
+  }
+
+  @Override
+  public Double getMetric(String project, String region, String jobId, String metricName) {
+    return null;
+  }
+
+  @Override
+  public Map<String, Double> getMetrics(String project, String region, String jobId)
+      throws IOException {
+    return null;
+  }
+
+  @Override
+  public void cleanupAll() throws IOException {
+    // Direct runner jobs don't need to be cleaned up.
+  }
+
   /** Builder for {@link DirectRunnerClient}. */
   public static final class Builder {
     private Credentials credentials;
@@ -122,100 +160,6 @@ public class DirectRunnerClient extends AbstractPipelineLauncher {
 
     public DirectRunnerClient build() {
       return new DirectRunnerClient(this);
-    }
-  }
-
-  static class DirectRunnerDataflowFacade extends Dataflow {
-
-    public DirectRunnerDataflowFacade(Class<?> mainClass, Credentials credentials) {
-      super(
-          Utils.getDefaultTransport(),
-          Utils.getDefaultJsonFactory(),
-          new HttpCredentialsAdapter(credentials));
-    }
-
-    @Override
-    public Projects projects() {
-      return new DirectRunnerProjects();
-    }
-
-    class DirectRunnerProjects extends Projects {
-
-      @Override
-      public Locations locations() {
-        return new DirectRunnerLocations();
-      }
-
-      class DirectRunnerLocations extends Locations {
-
-        @Override
-        public Jobs jobs() {
-          return new DirectRunnerLocationJobs();
-        }
-
-        class DirectRunnerLocationJobs extends Jobs {
-
-          @Override
-          public Get get(String projectId, String location, String jobId) throws IOException {
-            return new DirectRunnerGetJob(projectId, location, jobId);
-          }
-
-          @Override
-          public Update update(String projectId, String location, String jobId, Job content)
-              throws IOException {
-            return new DirectRunnerUpdateJob(projectId, location, jobId, content);
-          }
-
-          class DirectRunnerGetJob extends Get {
-
-            private String jobId;
-
-            public DirectRunnerGetJob(String projectId, String location, String jobId) {
-              super(projectId, location, jobId);
-              this.jobId = jobId;
-            }
-
-            @Override
-            public Job execute() throws IOException {
-              return MANAGED_JOBS.get(jobId).getJob();
-            }
-          }
-
-          private class DirectRunnerUpdateJob extends Update {
-
-            private final String jobId;
-            private final Job updateJob;
-
-            public DirectRunnerUpdateJob(
-                String projectId, String location, String jobId, Job updateJob) {
-              super(projectId, location, jobId, updateJob);
-              this.jobId = jobId;
-              this.updateJob = updateJob;
-            }
-
-            @Override
-            public Job execute() throws IOException {
-              DirectRunnerJobThread jobThread = MANAGED_JOBS.get(jobId);
-              Job job = jobThread.getJob();
-              job.putAll(updateJob);
-
-              // Make state transitions instant
-              String requestedState = (String) job.get("requestedState");
-              String currentState = (String) job.get("currentState");
-              if (requestedState != null && !requestedState.equals(currentState)) {
-                job.put("currentState", requestedState);
-
-                JobState jobState = JobState.parse(requestedState);
-                if (jobState == JobState.CANCELLED || jobState == JobState.DRAINED) {
-                  jobThread.cancel();
-                }
-              }
-
-              return job;
-            }
-          }
-        }
-      }
     }
   }
 
@@ -268,6 +212,10 @@ public class DirectRunnerClient extends AbstractPipelineLauncher {
 
     public Throwable getThrowable() {
       return throwable;
+    }
+
+    public JobState getJobState() {
+      return JobState.parse(currentJob.getCurrentState());
     }
 
     public void cancel() {
