@@ -72,6 +72,9 @@ public class MqttToPubsub {
     boolean isUsernameNullOrEmpty = isNullOrEmpty(options.getUsername());
     boolean isPasswordNullOrEmpty = isNullOrEmpty(options.getPassword());
 
+    // Validation passes when both username and password are provided together or neither provided.
+    // Uses xor operator '^' to simplify this evaluation. The following conditional is true when
+    // either are true but not when both are true or both are false.
     if (isUsernameNullOrEmpty ^ isPasswordNullOrEmpty) {
       throw new IllegalArgumentException(
           String.format(
@@ -150,7 +153,8 @@ public class MqttToPubsub {
         order = 3,
         description = "Output Pub/Sub topic",
         helpText =
-            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+            "The name of the topic to which data should published, in the format of"
+                + " 'projects/your-project-id/topics/your-topic-name'",
         example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     String getOutputTopic();
