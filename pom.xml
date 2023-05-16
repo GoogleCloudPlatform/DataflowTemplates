@@ -81,6 +81,9 @@
     <integration.tests>
       com.google.cloud.teleport.metadata.TemplateIntegrationTest
     </integration.tests>
+    <direct-runner.tests>
+      com.google.cloud.teleport.metadata.DirectRunnerTest
+    </direct-runner.tests>
     <excluded.spanner.tests></excluded.spanner.tests>
 
     <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
@@ -288,7 +291,7 @@
               <includes>
                 <include>**/*IT.java</include>
               </includes>
-              <excludedGroups></excludedGroups>
+              <excludedGroups>${direct-runner.tests}</excludedGroups>
               <groups>
                 ${integration.tests}
                 com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest
@@ -359,6 +362,7 @@
               </excludedGroups>
               <groups>
                 ${integration.tests}
+                ${direct-runner.tests}
               </groups>
               <systemProperties>
                 <!-- Pass on the flag directRunnerTest to the templates test base -->
@@ -367,6 +371,37 @@
                   <value>true</value>
                 </property>
               </systemProperties>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>templatesIntegrationSmokeTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Skip shade for faster runs -->
+        <skipShade>true</skipShade>
+        <!-- Some modules may yield no integration tests -->
+        <failIfNoTests>false</failIfNoTests>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*IT.java</include>
+              </includes>
+              <groups>
+                ${direct-runner.tests}
+              </groups>
             </configuration>
           </plugin>
         </plugins>
