@@ -559,6 +559,64 @@ public class DdlTest {
   }
 
   @Test
+  public void testModel() {
+    Model.Builder model =
+        Model.builder()
+            .name("user_model")
+            .remote(true)
+            .options(ImmutableList.of("endpoint = \"test\""));
+
+    model
+        .inputColumn("i1")
+        .type(Type.bool())
+        .size(-1)
+        .columnOptions(ImmutableList.of("required = false"))
+        .endInputColumn();
+    model.inputColumn("i2").type(Type.string()).size(-1).endInputColumn();
+    model
+        .outputColumn("o1")
+        .type(Type.int64())
+        .size(-1)
+        .columnOptions(ImmutableList.of("required = true"))
+        .endOutputColumn();
+    model.outputColumn("o2").type(Type.float64()).size(-1).endOutputColumn();
+
+    assertThat(
+        model.build().prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE MODEL `user_model`"
+                + " INPUT ( `i1` BOOL OPTIONS (required = false), `i2` STRING(MAX), )"
+                + " OUTPUT ( `o1` INT64 OPTIONS (required = true), `o2` FLOAT64, )"
+                + " REMOTE OPTIONS (endpoint = \"test\")"));
+  }
+
+  @Test
+  public void pgTestModel() {
+    Model.Builder model =
+        Model.builder(Dialect.POSTGRESQL)
+            .name("user_model")
+            .remote(true)
+            .options(ImmutableList.of("endpoint = \"test\""));
+
+    model
+        .inputColumn("i1")
+        .type(Type.bool())
+        .size(-1)
+        .columnOptions(ImmutableList.of("required = false"))
+        .endInputColumn();
+    model.inputColumn("i2").type(Type.string()).size(-1).endInputColumn();
+    model
+        .outputColumn("o1")
+        .type(Type.int64())
+        .size(-1)
+        .columnOptions(ImmutableList.of("required = true"))
+        .endOutputColumn();
+    model.outputColumn("o2").type(Type.float64()).size(-1).endOutputColumn();
+
+    assertThrows(IllegalArgumentException.class, () -> model.build().prettyPrint());
+  }
+
+  @Test
   public void testView() {
     View view = View.builder().name("user_view").query("SELECT * FROM `User`").build();
     assertThat(
