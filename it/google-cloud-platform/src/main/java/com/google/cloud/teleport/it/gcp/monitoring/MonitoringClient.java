@@ -244,7 +244,8 @@ public final class MonitoringClient {
   }
 
   /**
-   * Gets the output throughput from a particular PCollection during job run interval.
+   * Gets the output throughput in bytes per second from a particular PCollection during job run
+   * interval.
    *
    * @param project the project that the job is running under
    * @param pcollection name of the pcollection
@@ -252,13 +253,13 @@ public final class MonitoringClient {
    * @return output throughput from a particular PCollection during job run interval
    * @throws ParseException if timestamp is inaccurate
    */
-  public List<Double> getThroughputOfPcollection(
+  public List<Double> getThroughputBytesPerSecond(
       String project, LaunchInfo launchInfo, String pcollection) throws ParseException {
     if (pcollection == null) {
       LOG.warn("Output PCollection name not provided. Unable to calculate throughput.");
       return null;
     }
-    LOG.info("Getting throughput for {} under {}", launchInfo.jobId(), project);
+    LOG.info("Getting throughput (bytes/sec) for {} under {}", launchInfo.jobId(), project);
     String filter =
         String.format(
             "metric.type = \"dataflow.googleapis.com/job/estimated_bytes_produced_count\" "
@@ -287,27 +288,28 @@ public final class MonitoringClient {
   }
 
   /**
-   * Gets the output throughput from a particular PTransform during job run interval.
+   * Gets the output throughput in elements per second from a particular PCollection during job run
+   * interval.
    *
    * @param project the project that the job is running under
-   * @param ptransform name of the PTransform
+   * @param pcollection name of the pcollection
    * @param launchInfo information about the job
-   * @return output throughput from a particular PTransform during job run interval
+   * @return output throughput from a particular PCollection during job run interval
    * @throws ParseException if timestamp is inaccurate
    */
-  public List<Double> getThroughputOfPtransform(
-      String project, LaunchInfo launchInfo, String ptransform) throws ParseException {
-    if (ptransform == null) {
-      LOG.warn("Output PTransform name not provided. Unable to calculate throughput.");
+  public List<Double> getThroughputElementsPerSecond(
+      String project, LaunchInfo launchInfo, String pcollection) throws ParseException {
+    if (pcollection == null) {
+      LOG.warn("Output PCollection name not provided. Unable to calculate throughput.");
       return null;
     }
-    LOG.info("Getting throughput for {} under {}", launchInfo.jobId(), project);
+    LOG.info("Getting throughput (elements/sec) for {} under {}", launchInfo.jobId(), project);
     String filter =
         String.format(
-            "metric.type = \"dataflow.googleapis.com/job/estimated_bytes_produced_count\" "
+            "metric.type = \"dataflow.googleapis.com/job/elements_produced_count\" "
                 + "AND metric.labels.job_id=\"%s\" "
-                + "AND metric.labels.ptransform=\"%s\" ",
-            launchInfo.jobId(), ptransform);
+                + "AND metric.labels.pcollection=\"%s\" ",
+            launchInfo.jobId(), pcollection);
     TimeInterval timeInterval = getTimeInterval(launchInfo.createTime());
     Aggregation aggregation =
         Aggregation.newBuilder()
