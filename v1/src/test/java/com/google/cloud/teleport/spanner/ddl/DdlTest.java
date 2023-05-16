@@ -590,7 +590,6 @@ public class DdlTest {
                 + " OUTPUT ( `o1` INT64, `o2` FLOAT64, )"
                 // + " OUTPUT ( `o1` INT64 OPTIONS (required = true), `o2` FLOAT64, )"
                 + " REMOTE OPTIONS (endpoint = \"test\")"));
-
   }
 
   @Test
