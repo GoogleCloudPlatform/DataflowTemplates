@@ -333,7 +333,8 @@ public abstract class TemplateTestBase {
   }
 
   @After
-  public void tearDownBase() {
+  public void tearDownBase() throws IOException {
+    launcher().cleanupAll();
     if (gcsClient != null) {
       gcsClient.cleanupAll();
     }

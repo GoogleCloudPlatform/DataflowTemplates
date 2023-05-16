@@ -418,5 +418,6 @@ public interface PipelineLauncher {
    */
   Map<String, Double> getMetrics(String project, String region, String jobId) throws IOException;
 
-  JobState waitUntilActive(String project, String region, String jobId) throws IOException;
+  /** Cancel all active jobs. */
+  void cleanupAll() throws IOException;
 }

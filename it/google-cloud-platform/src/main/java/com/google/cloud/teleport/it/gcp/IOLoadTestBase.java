@@ -18,9 +18,11 @@ package com.google.cloud.teleport.it.gcp;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.gcp.dataflow.DefaultPipelineLauncher;
+import java.io.IOException;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -47,6 +49,11 @@ public class IOLoadTestBase extends LoadTestBase {
           "Both -DartifactBucket and -DstageBucket were not given. Pipeline may fail if a temp gcs"
               + " location is needed");
     }
+  }
+
+  @After
+  public void tearDownBase() throws IOException {
+    launcher().cleanupAll();
   }
 
   @Override
