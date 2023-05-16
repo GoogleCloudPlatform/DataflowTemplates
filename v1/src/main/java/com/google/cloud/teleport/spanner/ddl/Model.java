@@ -76,6 +76,7 @@ public abstract class Model implements Serializable {
         .append(identifierQuote)
         .append(name())
         .append(identifierQuote);
+
     if (!inputColumns().isEmpty()) {
       appendable.append("\nINPUT (");
       for (ModelColumn column : inputColumns()) {

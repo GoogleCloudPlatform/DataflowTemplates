@@ -566,9 +566,19 @@ public class DdlTest {
             .remote(true)
             .options(ImmutableList.of("endpoint = \"test\""));
 
-    model.inputColumn("i1").type(Type.bool()).size(-1).endInputColumn();
+    model
+        .inputColumn("i1")
+        .type(Type.bool())
+        .size(-1)
+        //.columnOptions(ImmutableList.of("required = false"))
+        .endInputColumn();
     model.inputColumn("i2").type(Type.string()).size(-1).endInputColumn();
-    model.outputColumn("o1").type(Type.int64()).size(-1).endOutputColumn();
+    model
+        .outputColumn("o1")
+        .type(Type.int64())
+        .size(-1)
+        // .columnOptions(ImmutableList.of("required = true"))
+        .endOutputColumn();
     model.outputColumn("o2").type(Type.float64()).size(-1).endOutputColumn();
 
     assertThat(
@@ -576,8 +586,11 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             "CREATE MODEL `user_model`"
                 + " INPUT ( `i1` BOOL, `i2` STRING(MAX), )"
+                // + " INPUT ( `i1` BOOL OPTIONS (required = false), `i2` STRING(MAX), )"
                 + " OUTPUT ( `o1` INT64, `o2` FLOAT64, )"
+                // + " OUTPUT ( `o1` INT64 OPTIONS (required = true), `o2` FLOAT64, )"
                 + " REMOTE OPTIONS (endpoint = \"test\")"));
+
   }
 
   @Test
