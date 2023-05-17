@@ -133,10 +133,9 @@ public abstract class Model implements Serializable {
     abstract Model autoBuild();
 
     public Model build() {
-      return
-          inputColumns(ImmutableList.copyOf(inputColumns.values()))
-              .outputColumns(ImmutableList.copyOf(outputColumns.values()))
-              .autoBuild();
+      return inputColumns(ImmutableList.copyOf(inputColumns.values()))
+          .outputColumns(ImmutableList.copyOf(outputColumns.values()))
+          .autoBuild();
     }
 
     public ModelColumn.Builder inputColumn(String name) {

@@ -762,6 +762,37 @@ public class CopyDbTest {
   }
 
   @Test
+  public void models() throws Exception {
+    Ddl ddl =
+        Ddl.builder()
+            .createModel("ModelAll")
+            .remote(true)
+            .options(ImmutableList.of("endpoint=\"test\""))
+            .inputColumn("i1")
+            .type(Type.bool())
+            .size(-1)
+            .columnOptions(ImmutableList.of("required=false"))
+            .endInputColumn()
+            .inputColumn("i2")
+            .type(Type.string())
+            .size(-1)
+            .endInputColumn()
+            .outputColumn("o1")
+            .type(Type.int64())
+            .size(-1)
+            .columnOptions(ImmutableList.of("required=true"))
+            .endOutputColumn()
+            .outputColumn("o2")
+            .type(Type.float64())
+            .size(-1)
+            .endOutputColumn()
+            .endModel()
+            .build();
+    createAndPopulate(ddl, 0);
+    runTest();
+  }
+
+  @Test
   public void changeStreams() throws Exception {
     Ddl ddl =
         Ddl.builder()

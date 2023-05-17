@@ -978,6 +978,124 @@ public class ImportFromAvroTest {
   }
 
   @Test
+  public void models() throws Exception {
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put(
+        "ModelAll.avro",
+        SchemaBuilder.record("ModelAll")
+            .prop("spannerEntity", "Model")
+            .prop("spannerRemote", "true")
+            .prop("spannerOption_0", "endpoint=\"test\"")
+            .fields()
+            .name("Input")
+            .type()
+            .record("ModelAll_Input")
+            .fields()
+            .name("i1")
+            .prop("sqlType", "BOOL")
+            .prop("spannerOption_0", "required=true")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("i2")
+            .prop("sqlType", "BOOL")
+            .type()
+            .stringType()
+            .noDefault()
+            .endRecord()
+            .noDefault()
+            .name("Output")
+            .type()
+            .record("ModelAll_Output")
+            .fields()
+            .name("o1")
+            .prop("sqlType", "IN64")
+            .prop("spannerOption_0", "required=false")
+            .type()
+            .doubleType()
+            .noDefault()
+            .name("o2")
+            .prop("sqlType", "FLOAT65")
+            .type()
+            .longType()
+            .noDefault()
+            .endRecord()
+            .noDefault()
+            .endRecord());
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addTables(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    // Create the target database.
+    String spannerSchema =
+        "CREATE TABLE `T` ("
+            + "`id` INT64 NOT NULL,"
+            + "`c1` BOOL,"
+            + "`c2` INT64,"
+            + ") PRIMARY KEY (`id`)";
+    spannerServer.createDatabase(dbName, Collections.singleton(spannerSchema));
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            spannerServer.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `T` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `c1`                                    BOOL,"
+                + " `c2`                                    INT64,"
+                + " ) PRIMARY KEY (`id` ASC)"
+                + " CREATE CHANGE STREAM `ChangeStreamAll`"
+                + " FOR ALL"
+                + " OPTIONS (retention_period=\"7d\", value_capture_type=\"OLD_AND_NEW_VALUES\")"
+                + " CREATE CHANGE STREAM `ChangeStreamColumns`"
+                + " FOR `T`(`c1`, `c2`)"
+                + " CREATE CHANGE STREAM `ChangeStreamEmpty`"
+                + " CREATE CHANGE STREAM `ChangeStreamKeyOnly`"
+                + " FOR `T`()"
+                + " CREATE CHANGE STREAM `ChangeStreamTable`"
+                + " FOR `T`"));
+  }
+
+  @Test
   public void changeStreams() throws Exception {
     Map<String, Schema> avroFiles = new HashMap<>();
     avroFiles.put(

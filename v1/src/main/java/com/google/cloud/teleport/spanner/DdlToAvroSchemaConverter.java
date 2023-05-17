@@ -142,7 +142,8 @@ public class DdlToAvroSchemaConverter {
               .name("Input")
               .type()
               .record(model.name() + "_Input")
-              .namespace(this.namespace).fields();
+              .namespace(this.namespace)
+              .fields();
       for (ModelColumn c : model.inputColumns()) {
         FieldBuilder<RecordDefault<Schema>> fieldBuilder = inputBuilder.name(c.name());
         fieldBuilder.prop("sqlType", c.typeString());
@@ -159,7 +160,8 @@ public class DdlToAvroSchemaConverter {
               .name("Output")
               .type()
               .record(model.name() + "_Output")
-              .namespace(this.namespace).fields();
+              .namespace(this.namespace)
+              .fields();
       for (ModelColumn c : model.outputColumns()) {
         FieldBuilder<RecordDefault<Schema>> fieldBuilder = outputBuilder.name(c.name());
         fieldBuilder.prop("sqlType", c.typeString());
@@ -169,7 +171,8 @@ public class DdlToAvroSchemaConverter {
         Schema avroType = avroType(c.type());
         fieldBuilder.type(avroType).noDefault();
       }
-      outputBuilder.endRecord().noDefault();;
+      outputBuilder.endRecord().noDefault();
+      ;
 
       Schema schema = fieldsAssembler.endRecord();
       schemas.add(schema);

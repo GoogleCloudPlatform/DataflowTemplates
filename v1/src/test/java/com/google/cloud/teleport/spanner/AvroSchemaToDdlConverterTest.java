@@ -29,8 +29,6 @@ import java.util.Collection;
 import java.util.Collections;
 import org.apache.avro.Schema;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Tests {@link AvroSchemaToDdlConverter}. */
 public class AvroSchemaToDdlConverterTest {
@@ -363,9 +361,6 @@ public class AvroSchemaToDdlConverterTest {
                 + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"));
   }
 
-
-  private static final Logger LOG = LoggerFactory.getLogger(AvroSchemaToDdlConverterTest.class);
-
   @Test
   public void models() {
     String modelAllString =
@@ -426,9 +421,6 @@ public class AvroSchemaToDdlConverterTest {
             + "      \"fields\":["
             + "        {\"name\":\"o1\", \"type\":\"long\", \"sqlType\":\"INT64\"}]}}] "
             + "}";
-
-    LOG.error("AAAA modelAllString\n" + modelAllString);
-    LOG.error("AAAA modelMinString\n" + modelMinString);
 
     Collection<Schema> schemas = new ArrayList<>();
     Schema.Parser parser = new Schema.Parser();
