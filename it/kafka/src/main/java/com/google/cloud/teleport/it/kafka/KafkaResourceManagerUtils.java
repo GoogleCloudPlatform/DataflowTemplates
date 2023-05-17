@@ -17,8 +17,8 @@ package com.google.cloud.teleport.it.kafka;
 
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generateResourceId;
 
-import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Pattern;
 
 /** Utilities for {@link KafkaResourceManager} implementations. */
 final class KafkaResourceManagerUtils {
@@ -28,7 +28,7 @@ final class KafkaResourceManagerUtils {
   // legalChars = "[a-zA-Z0-9\\._\\-]"
   // maxNameLength = 249
   private static final int MAX_TOPIC_NAME_LENGTH = 249;
-  private static final Pattern ILLEGAL_TOPIC_NAME_CHARS = Pattern.compile("[^a-zA-Z0-9\\._\\-]");
+  private static final Pattern ILLEGAL_TOPIC_NAME_CHARS = Pattern.compile("[^a-zA-Z0-9._\\-]");
   private static final String REPLACE_TOPIC_NAME_CHAR = "-";
   private static final DateTimeFormatter TIME_FORMAT =
       DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSSSSS");

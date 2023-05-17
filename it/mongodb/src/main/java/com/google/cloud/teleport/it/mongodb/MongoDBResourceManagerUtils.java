@@ -17,8 +17,8 @@ package com.google.cloud.teleport.it.mongodb;
 
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generateResourceId;
 
-import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Pattern;
 
 /** Utilities for {@link MongoDBResourceManager} implementations. */
 final class MongoDBResourceManagerUtils {
@@ -27,7 +27,7 @@ final class MongoDBResourceManagerUtils {
   // https://www.mongodb.com/docs/manual/reference/limits/#naming-restrictions
   private static final int MAX_DATABASE_NAME_LENGTH = 63;
   private static final Pattern ILLEGAL_DATABASE_NAME_CHARS =
-      Pattern.compile("[\\/\\\\. \"\0$]"); // i.e. [/\. "$]
+      Pattern.compile("[/\\\\. \"\0$]"); // i.e. [/\. "$]
   private static final String REPLACE_DATABASE_NAME_CHAR = "-";
   private static final int MIN_COLLECTION_NAME_LENGTH = 1;
   private static final int MAX_COLLECTION_NAME_LENGTH = 99;
