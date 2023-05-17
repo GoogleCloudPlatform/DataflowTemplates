@@ -51,10 +51,12 @@ mvn clean package -pl v2/pubsub-binary-to-bigquery -am
 * [GCS Text to Pub/Sub (Batch)](v1/src/main/java/com/google/cloud/teleport/templates/TextToPubsub.java)
 * [GCS Text to Pub/Sub (Streaming)](v1/src/main/java/com/google/cloud/teleport/templates/TextToPubsubStream.java)
 * [Jdbc to BigQuery](v1/src/main/java/com/google/cloud/teleport/templates/JdbcToBigQuery.java)
+* [Jms to Pubsub](v2/jms-to-pubsub/src/main/java/com/google/cloud/teleport/v2/templates/JmsToPubsub.java)
 * [Pub/Sub to BigQuery](v1/src/main/java/com/google/cloud/teleport/templates/PubSubToBigQuery.java) *
 * [Pub/Sub to Datastore](v1/src/main/java/com/google/cloud/teleport/templates/PubsubToDatastore.java) *
 * [Pub/Sub to GCS Avro](v1/src/main/java/com/google/cloud/teleport/templates/PubsubToAvro.java)
 * [Pub/Sub to GCS Text](v1/src/main/java/com/google/cloud/teleport/templates/PubsubToText.java)
+* [Pub/Sub to Kafka](v2/pubsub-to-kafka/src/main/java/com/google/cloud/teleport/v2/templates/PubsubToKafka.java)
 * [Pub/Sub to Pub/Sub](v1/src/main/java/com/google/cloud/teleport/templates/PubsubToPubsub.java)
 * [Pub/Sub to Splunk](v1/src/main/java/com/google/cloud/teleport/templates/PubSubToSplunk.java) *
 * [Spanner to GCS Avro](v1/src/main/java/com/google/cloud/teleport/spanner/ExportPipeline.java)

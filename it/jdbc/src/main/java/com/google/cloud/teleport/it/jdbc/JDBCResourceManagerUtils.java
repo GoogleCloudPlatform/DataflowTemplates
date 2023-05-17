@@ -19,9 +19,9 @@ import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.gen
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generateResourceId;
 
 import com.google.common.primitives.Chars;
-import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /** Utilities for {@link com.google.cloud.teleport.it.jdbc.JDBCResourceManager} implementations. */
 final class JDBCResourceManagerUtils {
@@ -42,7 +42,7 @@ final class JDBCResourceManagerUtils {
   private static final int MAX_PASSWORD_LENGTH = 25;
   private static final int MIN_TABLE_ID_LENGTH = 1;
   private static final int MAX_TABLE_ID_LENGTH = 30;
-  private static final Pattern ILLEGAL_TABLE_CHARS = Pattern.compile("[\\/\\.]"); // i.e. [/.]
+  private static final Pattern ILLEGAL_TABLE_CHARS = Pattern.compile("[/.]"); // i.e. [/.]
   private static final DateTimeFormatter TIME_FORMAT =
       DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSSSSS");
 

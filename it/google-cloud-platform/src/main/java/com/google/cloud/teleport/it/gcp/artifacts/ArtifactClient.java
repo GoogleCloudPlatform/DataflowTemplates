@@ -16,10 +16,10 @@
 package com.google.cloud.teleport.it.gcp.artifacts;
 
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.junit.rules.TestName;
 
 /**

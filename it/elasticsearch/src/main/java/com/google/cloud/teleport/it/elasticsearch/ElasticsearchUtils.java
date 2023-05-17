@@ -17,9 +17,9 @@ package com.google.cloud.teleport.it.elasticsearch;
 
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generateResourceId;
 
-import com.google.re2j.Matcher;
-import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Utilities for {@link ElasticsearchResourceManager} implementations. */
 final class ElasticsearchUtils {
@@ -29,8 +29,7 @@ final class ElasticsearchUtils {
   private static final int MAX_INDEX_NAME_LENGTH = 255;
 
   // Cannot include \, /, *, ?, ", <, >, |, ` ` (space character), ,, #
-  private static final Pattern ILLEGAL_INDEX_NAME_CHARS =
-      Pattern.compile("[\\/\\\\ \"\\?\\*\\\"\\<\\>\\|,\\#\0]");
+  private static final Pattern ILLEGAL_INDEX_NAME_CHARS = Pattern.compile("[/\\\\ \"?*<>|,#\0]");
   private static final String REPLACE_DATABASE_NAME_CHAR = "-";
   private static final DateTimeFormatter TIME_FORMAT =
       DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSSSSS");
