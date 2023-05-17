@@ -29,6 +29,8 @@ import java.util.Collection;
 import java.util.Collections;
 import org.apache.avro.Schema;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Tests {@link AvroSchemaToDdlConverter}. */
 public class AvroSchemaToDdlConverterTest {
@@ -359,6 +361,99 @@ public class AvroSchemaToDdlConverterTest {
                 + " REFERENCES \"AllowedNames\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
                 + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"));
+  }
+
+
+  private static final Logger LOG = LoggerFactory.getLogger(AvroSchemaToDdlConverterTest.class);
+
+  @Test
+  public void models() {
+    String modelAllString =
+        "{"
+            + "\"type\":\"record\","
+            + "\"name\":\"ModelAll\","
+            + "\"namespace\":\"spannertest\","
+            + "\"googleFormatVersion\":\"booleans\","
+            + "\"googleStorage\":\"CloudSpanner\", "
+            + "\"spannerEntity\":\"Model\", "
+            + "\"spannerRemote\":\"true\", "
+            + "\"spannerOption_0\":\"endpoint=\\\"test\\\"\", "
+            + "\"fields\":["
+            + "  {\"name\":\"Input\","
+            + "   \"type\":"
+            + "     {\"type\":\"record\","
+            + "      \"name\":\"ModelAll_Input\","
+            + "      \"fields\":["
+            + "        {\"name\":\"i1\","
+            + "         \"type\":\"boolean\","
+            + "         \"sqlType\":\"BOOL\","
+            + "         \"spannerOption_0\":\"required = false\"},"
+            + "        {\"name\":\"i2\","
+            + "         \"type\":\"string\","
+            + "         \"sqlType\":\"STRING(MAX)\"}]}},"
+            + "  {\"name\":\"Output\","
+            + "   \"type\":"
+            + "     {\"type\":\"record\","
+            + "      \"name\":\"ModelAll_Output\","
+            + "      \"fields\":["
+            + "        {\"name\":\"o1\","
+            + "         \"type\":\"long\","
+            + "         \"sqlType\":\"INT64\","
+            + "         \"spannerOption_0\":\"required = true\"},"
+            + "        {\"name\":\"o2\", "
+            + "         \"type\":\"double\", "
+            + "         \"sqlType\":\"FLOAT64\"}]}}] "
+            + "}";
+    String modelMinString =
+        "{"
+            + "\"type\":\"record\","
+            + "\"name\":\"ModelMin\","
+            + "\"namespace\":\"spannertest\","
+            + "\"googleFormatVersion\":\"booleans\","
+            + "\"googleStorage\":\"CloudSpanner\", "
+            + "\"spannerEntity\":\"Model\", "
+            + "\"spannerRemote\":\"false\", "
+            + "\"fields\":["
+            + "  {\"name\":\"Input\","
+            + "   \"type\":"
+            + "     {\"type\":\"record\","
+            + "      \"name\":\"ModelMin_Input\","
+            + "      \"fields\":[{\"name\":\"i1\", \"type\":\"boolean\", \"sqlType\":\"BOOL\"}]}},"
+            + "  {\"name\":\"Output\","
+            + "   \"type\":"
+            + "     {\"type\":\"record\","
+            + "      \"name\":\"ModelMin_Output\","
+            + "      \"fields\":["
+            + "        {\"name\":\"o1\", \"type\":\"long\", \"sqlType\":\"INT64\"}]}}] "
+            + "}";
+
+    LOG.error("AAAA modelAllString\n" + modelAllString);
+    LOG.error("AAAA modelMinString\n" + modelMinString);
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(modelAllString));
+    schemas.add(parser.parse(modelMinString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.models(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE MODEL `ModelAll`"
+                + " INPUT ("
+                + "  `i1` BOOL OPTIONS (required = false),"
+                + "  `i2` STRING(MAX),"
+                + " )"
+                + " OUTPUT ("
+                + " `o1` INT64 OPTIONS (required = true),"
+                + " `o2` FLOAT64,"
+                + " )"
+                + " REMOTE OPTIONS (endpoint=\"test\")"
+                + " CREATE MODEL `ModelMin`"
+                + " INPUT ( `i1` BOOL, )"
+                + " OUTPUT ( `o1` INT64, )"));
   }
 
   @Test
