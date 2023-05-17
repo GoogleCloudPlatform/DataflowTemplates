@@ -1,0 +1,52 @@
+{
+  "name": "Jms to Pub/Sub",
+  "description": "Streaming pipeline. Ingests UTF8-encoded messages from JMS to a Pub/Sub topic",
+  "parameters": [
+    {
+      "name": "jmsServer",
+      "label": "JMS host Server IP",
+      "helpText": "JMS host servers IP in format ip:port",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "inputName",
+      "label": "JMS input Queue/Topic",
+      "helpText": "Input JMS queue/topic to read data",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "inputType",
+      "label": "JMS Destination Type",
+      "helpText": "Input JMS queue to read data",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputTopic",
+      "label": "Pub/Sub output topic",
+      "helpText": "Pub/Sub topic to write the output, in the format of 'projects/yourproject/topics/yourtopic'",
+      "regexes": [
+        "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "username",
+      "isOptional": true,
+      "label": "JMS Username",
+      "helpText": "Username to authenticate with JMS server",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "password",
+      "isOptional": true,
+      "label": "JMS Password",
+      "helpText": "Password for the username with JMS server",
+      "regexes": [],
+      "paramType": "TEXT"
+    }
+  ]
+}
