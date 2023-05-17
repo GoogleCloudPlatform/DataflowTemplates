@@ -23,14 +23,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import javax.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Cloud Spanner model. */
 @AutoValue
 public abstract class Model implements Serializable {
   private static final long serialVersionUID = 1L;
-  private static final Logger LOG = LoggerFactory.getLogger(Model.class);
 
   @Nullable
   public abstract String name();
@@ -136,12 +133,10 @@ public abstract class Model implements Serializable {
     abstract Model autoBuild();
 
     public Model build() {
-      Model m =
+      return
           inputColumns(ImmutableList.copyOf(inputColumns.values()))
               .outputColumns(ImmutableList.copyOf(outputColumns.values()))
               .autoBuild();
-      LOG.error("AAAA Model {}", m);
-      return m;
     }
 
     public ModelColumn.Builder inputColumn(String name) {

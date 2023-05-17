@@ -137,14 +137,14 @@ public class DdlToAvroSchemaConverter {
 
       SchemaBuilder.FieldAssembler<Schema> fieldsAssembler = recordBuilder.fields();
 
-      SchemaBuilder.RecordBuilder<RecordDefault<Schema>> inputBuilder =
+      SchemaBuilder.FieldAssembler<RecordDefault<Schema>> inputBuilder =
           fieldsAssembler
               .name("Input")
               .type()
-              .record(model.name() + "_input")
-              .namespace(this.namespace);
+              .record(model.name() + "_Input")
+              .namespace(this.namespace).fields();
       for (ModelColumn c : model.inputColumns()) {
-        FieldBuilder<RecordDefault<Schema>> fieldBuilder = inputBuilder.fields().name(c.name());
+        FieldBuilder<RecordDefault<Schema>> fieldBuilder = inputBuilder.name(c.name());
         fieldBuilder.prop("sqlType", c.typeString());
         for (int i = 0; i < c.columnOptions().size(); i++) {
           fieldBuilder.prop("spannerOption_" + i, c.columnOptions().get(i));
@@ -152,16 +152,16 @@ public class DdlToAvroSchemaConverter {
         Schema avroType = avroType(c.type());
         fieldBuilder.type(avroType).noDefault();
       }
-      inputBuilder.fields().endRecord();
+      inputBuilder.endRecord().noDefault();
 
-      SchemaBuilder.RecordBuilder<RecordDefault<Schema>> outputBuilder =
+      SchemaBuilder.FieldAssembler<RecordDefault<Schema>> outputBuilder =
           fieldsAssembler
               .name("Output")
               .type()
-              .record(model.name() + "_output")
-              .namespace(this.namespace);
+              .record(model.name() + "_Output")
+              .namespace(this.namespace).fields();
       for (ModelColumn c : model.outputColumns()) {
-        FieldBuilder<RecordDefault<Schema>> fieldBuilder = outputBuilder.fields().name(c.name());
+        FieldBuilder<RecordDefault<Schema>> fieldBuilder = outputBuilder.name(c.name());
         fieldBuilder.prop("sqlType", c.typeString());
         for (int i = 0; i < c.columnOptions().size(); i++) {
           fieldBuilder.prop("spannerOption_" + i, c.columnOptions().get(i));
@@ -169,7 +169,7 @@ public class DdlToAvroSchemaConverter {
         Schema avroType = avroType(c.type());
         fieldBuilder.type(avroType).noDefault();
       }
-      outputBuilder.fields().endRecord();
+      outputBuilder.endRecord().noDefault();;
 
       Schema schema = fieldsAssembler.endRecord();
       schemas.add(schema);

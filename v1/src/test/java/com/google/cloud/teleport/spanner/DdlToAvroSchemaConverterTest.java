@@ -835,6 +835,113 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(1).getProp("sqlType"), equalTo("timestamp with time zone"));
   }
 
+
+  @Test
+  public void models() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    Ddl ddl =
+        Ddl.builder()
+            .createModel("ModelAll")
+            .inputColumn("i1")
+            .type(Type.bool())
+            .size(-1)
+            .columnOptions(ImmutableList.of("required = false"))
+            .endInputColumn()
+            .inputColumn("i2")
+            .type(Type.string())
+            .size(-1)
+            .endInputColumn()
+            .outputColumn("o1")
+            .type(Type.int64())
+            .size(-1)
+            .columnOptions(ImmutableList.of("required = true"))
+            .endOutputColumn()
+            .outputColumn("o2")
+            .type(Type.float64())
+            .size(-1)
+            .endOutputColumn()
+            .remote(true)
+            .options(ImmutableList.of("endpoint=\"test\""))
+            .endModel()
+            .createModel("ModelMin")
+            .remote(false)
+            .inputColumn("i1")
+            .type(Type.bool())
+            .size(-1)
+            .endInputColumn()
+            .outputColumn("o1")
+            .type(Type.int64())
+            .size(-1)
+            .endOutputColumn()
+            .endModel()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(2));
+
+    Iterator<Schema> iterator = result.iterator();
+    Schema s = iterator.next();
+    assertThat(s.getName(), equalTo("ModelAll"));
+    assertThat(s.getNamespace(), equalTo("spannertest"));
+    assertThat(s.getProp("googleFormatVersion"), equalTo("booleans"));
+    assertThat(s.getProp("googleStorage"), equalTo("CloudSpanner"));
+    assertThat(s.getProp("spannerEntity"), equalTo("Model"));
+    assertThat(s.getProp("spannerRemote"), equalTo("true"));
+    assertThat(s.getProp("spannerOption_0"), equalTo("endpoint=\"test\""));
+    assertThat(s.getFields(), hasSize(2));
+    assertThat(s.getFields().get(0).name(), equalTo("Input"));
+    assertThat(s.getFields().get(0).schema().getType(), equalTo(Schema.Type.RECORD));
+    assertThat(s.getFields().get(0).schema().getName(), equalTo("ModelAll_Input"));
+    assertThat(s.getFields().get(0).schema().getFields(), hasSize(2));
+    assertThat(s.getFields().get(0).schema().getFields().get(0).name(), equalTo("i1"));
+    assertThat(s.getFields().get(0).schema().getFields().get(0).schema().getType(),
+        equalTo(Schema.Type.BOOLEAN));
+    assertThat(s.getFields().get(0).schema().getFields().get(0).getProp("sqlType"),
+        equalTo("BOOL"));
+    assertThat(s.getFields().get(0).schema().getFields().get(0).getProp("spannerOption_0"),
+        equalTo("required = false"));
+    assertThat(s.getFields().get(0).schema().getFields().get(1).name(), equalTo("i2"));
+    assertThat(s.getFields().get(0).schema().getFields().get(1).schema().getType(),
+        equalTo(Schema.Type.STRING));
+    assertThat(s.getFields().get(0).schema().getFields().get(1).getProp("sqlType"),
+        equalTo("STRING(MAX)"));
+    assertThat(s.getFields().get(1).name(), equalTo("Output"));
+    assertThat(s.getFields().get(1).schema().getType(), equalTo(Schema.Type.RECORD));
+    assertThat(s.getFields().get(1).schema().getName(), equalTo("ModelAll_Output"));
+    assertThat(s.getFields().get(1).schema().getFields(), hasSize(2));
+
+    assertThat(s.getFields().get(1).schema().getFields().get(0).name(), equalTo("o1"));
+    assertThat(s.getFields().get(1).schema().getFields().get(0).schema().getType(),
+        equalTo(Schema.Type.LONG));
+    assertThat(s.getFields().get(1).schema().getFields().get(0).getProp("sqlType"),
+        equalTo("INT64"));
+    assertThat(s.getFields().get(1).schema().getFields().get(0).getProp("spannerOption_0"),
+        equalTo("required = true"));
+    assertThat(s.getFields().get(1).schema().getFields().get(1).name(), equalTo("o2"));
+    assertThat(s.getFields().get(1).schema().getFields().get(1).schema().getType(),
+        equalTo(Schema.Type.DOUBLE));
+    assertThat(s.getFields().get(1).schema().getFields().get(1).getProp("sqlType"),
+        equalTo("FLOAT64"));
+
+    s = iterator.next();
+    assertThat(s.getName(), equalTo("ModelMin"));
+    assertThat(s.getNamespace(), equalTo("spannertest"));
+    assertThat(s.getProp("googleFormatVersion"), equalTo("booleans"));
+    assertThat(s.getProp("googleStorage"), equalTo("CloudSpanner"));
+    assertThat(s.getProp("spannerEntity"), equalTo("Model"));
+    assertThat(s.getProp("spannerRemote"), equalTo("false"));
+    assertThat(s.getFields(), hasSize(2));
+    assertThat(s.getFields().get(0).name(), equalTo("Input"));;
+    assertThat(s.getFields().get(0).schema().getType(), equalTo(Schema.Type.RECORD));
+    assertThat(s.getFields().get(0).schema().getFields(), hasSize(1));
+    assertThat(s.getFields().get(1).name(), equalTo("Output"));
+    assertThat(s.getFields().get(1).schema().getType(), equalTo(Schema.Type.RECORD));
+    assertThat(s.getFields().get(0).schema().getFields(), hasSize(1));
+
+    assertThat(iterator.hasNext(), equalTo(false));
+  }
+
   @Test
   public void changeStreams() {
     DdlToAvroSchemaConverter converter =

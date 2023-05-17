@@ -724,7 +724,7 @@ public class InformationSchemaScanner {
                     + " WHERE t.model_catalog = '' AND t.model_schema = ''"));
     while (resultSet.next()) {
       String modelName = resultSet.getString(0);
-      Boolean remote = resultSet.isNull(1) ? null : resultSet.getBoolean(1);
+      boolean remote = resultSet.isNull(1) ? false : resultSet.getBoolean(1);
       LOG.debug("Schema Model {} Remote {} {}", modelName, remote);
       builder.createModel(modelName).remote(remote).endModel();
     }
