@@ -21,8 +21,8 @@ import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.gen
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Pattern;
 import org.junit.Test;
 
 /** Unit tests for {@link ResourceManagerUtils}. */

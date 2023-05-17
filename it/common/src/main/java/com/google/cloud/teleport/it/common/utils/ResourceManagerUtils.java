@@ -21,12 +21,12 @@ import static java.lang.Math.min;
 
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.common.hash.HashFunction;
-import com.google.re2j.Pattern;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Random;
+import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

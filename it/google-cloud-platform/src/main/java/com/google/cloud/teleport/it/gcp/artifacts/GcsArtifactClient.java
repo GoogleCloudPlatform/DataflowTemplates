@@ -24,7 +24,6 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
-import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -33,6 +32,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,7 +136,7 @@ public final class GcsArtifactClient implements ArtifactClient {
         firstPage,
         blobs -> {
           for (Blob blob : blobs) {
-            if (regex.matches(blob.getName())) {
+            if (regex.matcher(blob.getName()).matches()) {
               matched.add(new GcsArtifact(blob));
             }
           }
