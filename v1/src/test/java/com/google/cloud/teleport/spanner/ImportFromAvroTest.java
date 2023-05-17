@@ -991,7 +991,7 @@ public class ImportFromAvroTest {
             // Input columns.
             .name("Input")
             .type()
-            .record("ModelAll_Input")
+            .record("Iris_Input")
             .fields()
             .name("f1")
             .prop("sqlType", "FLOAT64")
@@ -1018,7 +1018,7 @@ public class ImportFromAvroTest {
             // Output columns.
             .name("Output")
             .type()
-            .record("ModelAll_Output")
+            .record("Iris_Output")
             .fields()
             .name("classes")
             .prop("sqlType", "ARRAY<STRING(MAX)>")

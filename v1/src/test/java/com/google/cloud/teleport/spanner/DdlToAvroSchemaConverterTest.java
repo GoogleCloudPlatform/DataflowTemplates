@@ -835,7 +835,6 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(1).getProp("sqlType"), equalTo("timestamp with time zone"));
   }
 
-
   @Test
   public void models() {
     DdlToAvroSchemaConverter converter =
@@ -895,16 +894,20 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(s.getFields().get(0).schema().getName(), equalTo("ModelAll_Input"));
     assertThat(s.getFields().get(0).schema().getFields(), hasSize(2));
     assertThat(s.getFields().get(0).schema().getFields().get(0).name(), equalTo("i1"));
-    assertThat(s.getFields().get(0).schema().getFields().get(0).schema().getType(),
+    assertThat(
+        s.getFields().get(0).schema().getFields().get(0).schema().getType(),
         equalTo(Schema.Type.BOOLEAN));
-    assertThat(s.getFields().get(0).schema().getFields().get(0).getProp("sqlType"),
-        equalTo("BOOL"));
-    assertThat(s.getFields().get(0).schema().getFields().get(0).getProp("spannerOption_0"),
+    assertThat(
+        s.getFields().get(0).schema().getFields().get(0).getProp("sqlType"), equalTo("BOOL"));
+    assertThat(
+        s.getFields().get(0).schema().getFields().get(0).getProp("spannerOption_0"),
         equalTo("required = false"));
     assertThat(s.getFields().get(0).schema().getFields().get(1).name(), equalTo("i2"));
-    assertThat(s.getFields().get(0).schema().getFields().get(1).schema().getType(),
+    assertThat(
+        s.getFields().get(0).schema().getFields().get(1).schema().getType(),
         equalTo(Schema.Type.STRING));
-    assertThat(s.getFields().get(0).schema().getFields().get(1).getProp("sqlType"),
+    assertThat(
+        s.getFields().get(0).schema().getFields().get(1).getProp("sqlType"),
         equalTo("STRING(MAX)"));
     assertThat(s.getFields().get(1).name(), equalTo("Output"));
     assertThat(s.getFields().get(1).schema().getType(), equalTo(Schema.Type.RECORD));
@@ -912,17 +915,20 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(s.getFields().get(1).schema().getFields(), hasSize(2));
 
     assertThat(s.getFields().get(1).schema().getFields().get(0).name(), equalTo("o1"));
-    assertThat(s.getFields().get(1).schema().getFields().get(0).schema().getType(),
+    assertThat(
+        s.getFields().get(1).schema().getFields().get(0).schema().getType(),
         equalTo(Schema.Type.LONG));
-    assertThat(s.getFields().get(1).schema().getFields().get(0).getProp("sqlType"),
-        equalTo("INT64"));
-    assertThat(s.getFields().get(1).schema().getFields().get(0).getProp("spannerOption_0"),
+    assertThat(
+        s.getFields().get(1).schema().getFields().get(0).getProp("sqlType"), equalTo("INT64"));
+    assertThat(
+        s.getFields().get(1).schema().getFields().get(0).getProp("spannerOption_0"),
         equalTo("required = true"));
     assertThat(s.getFields().get(1).schema().getFields().get(1).name(), equalTo("o2"));
-    assertThat(s.getFields().get(1).schema().getFields().get(1).schema().getType(),
+    assertThat(
+        s.getFields().get(1).schema().getFields().get(1).schema().getType(),
         equalTo(Schema.Type.DOUBLE));
-    assertThat(s.getFields().get(1).schema().getFields().get(1).getProp("sqlType"),
-        equalTo("FLOAT64"));
+    assertThat(
+        s.getFields().get(1).schema().getFields().get(1).getProp("sqlType"), equalTo("FLOAT64"));
 
     s = iterator.next();
     assertThat(s.getName(), equalTo("ModelMin"));
@@ -932,7 +938,8 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(s.getProp("spannerEntity"), equalTo("Model"));
     assertThat(s.getProp("spannerRemote"), equalTo("false"));
     assertThat(s.getFields(), hasSize(2));
-    assertThat(s.getFields().get(0).name(), equalTo("Input"));;
+    assertThat(s.getFields().get(0).name(), equalTo("Input"));
+    ;
     assertThat(s.getFields().get(0).schema().getType(), equalTo(Schema.Type.RECORD));
     assertThat(s.getFields().get(0).schema().getFields(), hasSize(1));
     assertThat(s.getFields().get(1).name(), equalTo("Output"));
