@@ -19,8 +19,8 @@ import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.gen
 
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.common.collect.ImmutableList;
-import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Pattern;
 
 /** Utilities for {@link BigtableResourceManager} implementations. */
 public final class BigtableResourceManagerUtils {

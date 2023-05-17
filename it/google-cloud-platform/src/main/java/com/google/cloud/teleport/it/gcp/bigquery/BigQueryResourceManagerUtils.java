@@ -18,8 +18,8 @@ package com.google.cloud.teleport.it.gcp.bigquery;
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generateResourceId;
 
 import com.google.cloud.bigquery.TableId;
-import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Pattern;
 
 /** Utilities for {@link BigQueryResourceManager} implementations. */
 public final class BigQueryResourceManagerUtils {

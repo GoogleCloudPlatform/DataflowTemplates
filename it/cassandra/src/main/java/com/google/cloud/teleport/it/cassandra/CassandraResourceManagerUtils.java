@@ -17,15 +17,15 @@ package com.google.cloud.teleport.it.cassandra;
 
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generateResourceId;
 
-import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Pattern;
 
 /** Utilities for {@link CassandraResourceManager} implementations. */
 final class CassandraResourceManagerUtils {
 
   private static final int MAX_DATABASE_NAME_LENGTH = 63;
   private static final Pattern ILLEGAL_DATABASE_NAME_CHARS =
-      Pattern.compile("[\\/\\\\. \"\0$]"); // i.e. [/\. "$]
+      Pattern.compile("[/\\\\. \"\0$]"); // i.e. [/\. "$]
   private static final String REPLACE_DATABASE_NAME_CHAR = "-";
   private static final DateTimeFormatter TIME_FORMAT =
       DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");

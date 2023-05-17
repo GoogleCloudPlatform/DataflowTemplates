@@ -21,8 +21,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.common.base.CharMatcher;
-import com.google.re2j.Pattern;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Pattern;
 
 /** Utilities for {@link SpannerResourceManager} implementations. */
 public final class SpannerResourceManagerUtils {

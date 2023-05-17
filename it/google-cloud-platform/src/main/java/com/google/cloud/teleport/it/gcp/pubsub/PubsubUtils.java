@@ -22,11 +22,11 @@ import com.google.pubsub.v1.Subscription;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.Topic;
 import com.google.pubsub.v1.TopicName;
-import com.google.re2j.Matcher;
-import com.google.re2j.Pattern;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Utilities to make working with Pubsub easier. */
 final class PubsubUtils {
@@ -37,15 +37,14 @@ final class PubsubUtils {
    * projects/{project_id}/subscription/{topic_name}.
    */
   private static final Pattern TOPICS_PATTERN =
-      Pattern.compile("^projects/(?P<project_id>[^/]+)/topics/(?P<topic_name>[^/]+)$");
+      Pattern.compile("^projects/(?<projectId>[^/]+)/topics/(?<topicName>[^/]+)$");
 
   /**
    * Regular expression to validate/extract a subscription name string, following
    * projects/{project_id}/subscription/{subscription_name}.
    */
   private static final Pattern SUBSCRIPTIONS_PATTERN =
-      Pattern.compile(
-          "^projects/(?P<project_id>[^/]+)/subscriptions/(?P<subscription_name>[^/]+)$");
+      Pattern.compile("^projects/(?<projectId>[^/]+)/subscriptions/(?<subscriptionName>[^/]+)$");
 
   /**
    * Convert the instance of {@link Topic} to a {@link TopicName}.
@@ -62,7 +61,7 @@ final class PubsubUtils {
         matcher.find(),
         "Topic name must be in the format 'projects/{project_id}/topics/{topic_name}.");
 
-    return TopicName.of(matcher.group("project_id"), matcher.group("topic_name"));
+    return TopicName.of(matcher.group("projectId"), matcher.group("topicName"));
   }
 
   /**
@@ -81,7 +80,7 @@ final class PubsubUtils {
         "Subscription name must be in the format"
             + " 'projects/{project_id}/subscriptions/{subscription_name}.");
 
-    return SubscriptionName.of(matcher.group("project_id"), matcher.group("subscription_name"));
+    return SubscriptionName.of(matcher.group("projectId"), matcher.group("subscriptionName"));
   }
 
   /**

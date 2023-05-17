@@ -47,13 +47,13 @@ import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
-import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.time.Duration;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -309,11 +309,12 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
 
     // Assert
     assertThatResult(result).isLaunchFinished();
-    ResultSet resultSet =
-        jdbcResourceManager.runSQLQuery(String.format("SELECT COUNT(*) FROM %s", testName));
-    resultSet.next();
-    int totalRows = resultSet.getInt(1);
-    assertThat(totalRows).isAtLeast(Integer.valueOf(NUM_MESSAGES));
+    try (ResultSet resultSet =
+        jdbcResourceManager.runSQLQuery(String.format("SELECT COUNT(*) FROM %s", testName))) {
+      resultSet.next();
+      int totalRows = resultSet.getInt(1);
+      assertThat(totalRows).isAtLeast(Integer.valueOf(NUM_MESSAGES));
+    }
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, FAKE_DATA_PCOLLECTION));
   }
