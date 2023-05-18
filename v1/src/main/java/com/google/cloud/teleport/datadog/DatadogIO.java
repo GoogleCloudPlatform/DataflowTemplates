@@ -70,9 +70,6 @@ public class DatadogIO {
     abstract ValueProvider<Integer> parallelism();
 
     @Nullable
-    abstract ValueProvider<String> rootCaCertificatePath();
-
-    @Nullable
     abstract ValueProvider<Boolean> enableBatchLogs();
 
     @Nullable
@@ -87,7 +84,6 @@ public class DatadogIO {
               .withUrl(url())
               .withInputBatchCount(batchCount())
               .withToken((token()))
-              .withRootCaCertificatePath(rootCaCertificatePath())
               .withEnableBatchLogs(enableBatchLogs())
               .withEnableGzipHttpCompression(enableGzipHttpCompression());
 
@@ -116,8 +112,6 @@ public class DatadogIO {
       abstract Builder setBatchCount(ValueProvider<Integer> batchCount);
 
       abstract Builder setParallelism(ValueProvider<Integer> parallelism);
-
-      abstract Builder setRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath);
 
       abstract Builder setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
 
@@ -214,30 +208,6 @@ public class DatadogIO {
       public Builder withParallelism(Integer parallelism) {
         checkArgument(parallelism != null, "withParallelism(parallelism) called with null input.");
         return setParallelism(ValueProvider.StaticValueProvider.of(parallelism));
-      }
-
-      /**
-       * Method to set the self signed certificate path.
-       *
-       * @param rootCaCertificatePath Path to self-signed certificate
-       * @return {@link Builder}
-       */
-      public Builder withRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath) {
-        return setRootCaCertificatePath(rootCaCertificatePath);
-      }
-
-      /**
-       * Same as {@link Builder#withRootCaPath(ValueProvider)} but without a {@link ValueProvider}.
-       *
-       * @param rootCaCertificatePath Path to self-signed certificate
-       * @return {@link Builder}
-       */
-      public Builder withRootCaCertificatePath(String rootCaCertificatePath) {
-        checkArgument(
-            rootCaCertificatePath != null,
-            "withRootCaCertificatePath(rootCaCertificatePath) called with null input.");
-        return setRootCaCertificatePath(
-            ValueProvider.StaticValueProvider.of(rootCaCertificatePath));
       }
 
       /**

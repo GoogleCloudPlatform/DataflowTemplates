@@ -190,25 +190,6 @@ public class DatadogConverters {
 
     void setTokenSource(ValueProvider<String> tokenSource);
 
-    @TemplateParameter.GcsReadFile(
-        order = 10,
-        optional = true,
-        description = "Cloud Storage path to root CA certificate.",
-        helpText =
-            "The full URL to root CA certificate in Cloud Storage. The certificate provided in "
-                + "Cloud Storage must be DER-encoded and may be supplied in binary or printable "
-                + "(Base64) encoding. If the certificate is provided in Base64 encoding, it must "
-                + "be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded "
-                + "at the end by -----END CERTIFICATE-----. If this parameter is provided, this "
-                + "private CA certificate file will be fetched and added to Dataflow worker's trust "
-                + "store in order to verify Datadog HEC endpoint's SSL certificate which is signed "
-                + "by that private CA. If this parameter is not provided, the default trust store "
-                + "is used.",
-        example = "gs://mybucket/mycerts/privateCA.crt")
-    ValueProvider<String> getRootCaCertificatePath();
-
-    void setRootCaCertificatePath(ValueProvider<String> rootCaPath);
-
     @TemplateParameter.Boolean(
         order = 11,
         optional = true,
