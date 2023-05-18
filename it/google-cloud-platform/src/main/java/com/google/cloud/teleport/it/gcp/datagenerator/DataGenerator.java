@@ -17,7 +17,6 @@ package com.google.cloud.teleport.it.gcp.datagenerator;
 
 import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
-import static com.google.cloud.teleport.it.common.utils.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.gcp.LoadTestBase.createConfig;
 
 import com.google.auth.Credentials;
@@ -56,19 +55,20 @@ public class DataGenerator {
     this.dataGeneratorOptions =
         LaunchConfig.builder(builder.getJobName(), SPEC_PATH)
             .setParameters(builder.getParameters())
+            .addParameter("experiments", "disable_runner_v2")
             .build();
   }
 
   public static DataGenerator.Builder builderWithSchemaLocation(
       String testName, String schemaLocation) {
-    return new DataGenerator.Builder(createJobName(testName + "-data-generator"))
+    return new DataGenerator.Builder(testName + "-data-generator")
         .setSchemaLocation(schemaLocation)
         .setAutoscalingAlgorithm(AutoscalingAlgorithmType.THROUGHPUT_BASED);
   }
 
   public static DataGenerator.Builder builderWithSchemaTemplate(
       String testName, String schemaTemplate) {
-    return new DataGenerator.Builder(createJobName(testName + "-data-generator"))
+    return new DataGenerator.Builder(testName + "-data-generator")
         .setSchemaTemplate(schemaTemplate)
         .setAutoscalingAlgorithm(AutoscalingAlgorithmType.THROUGHPUT_BASED);
   }
