@@ -566,17 +566,9 @@ public class DdlTest {
             .remote(true)
             .options(ImmutableList.of("endpoint = \"test\""));
 
-    model
-        .inputColumn("i1")
-        .type(Type.bool())
-        .size(-1)
-        .endInputColumn();
+    model.inputColumn("i1").type(Type.bool()).size(-1).endInputColumn();
     model.inputColumn("i2").type(Type.string()).size(-1).endInputColumn();
-    model
-        .outputColumn("o1")
-        .type(Type.int64())
-        .size(-1)
-        .endOutputColumn();
+    model.outputColumn("o1").type(Type.int64()).size(-1).endOutputColumn();
     model.outputColumn("o2").type(Type.float64()).size(-1).endOutputColumn();
 
     assertThat(
