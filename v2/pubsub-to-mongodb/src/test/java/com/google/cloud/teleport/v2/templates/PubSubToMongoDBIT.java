@@ -15,27 +15,32 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.it.mongodb.matchers.MongoDBAsserts.assertThatMongoDBDocuments;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.jsonRecordsToRecords;
 
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.mongodb.MongoDBResourceManager;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.it.mongodb.conditions.MongoDBDocumentsCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.bson.Document;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,12 +52,14 @@ import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link PubSubToMongoDB}. */
 @TemplateIntegrationTest(PubSubToMongoDB.class)
-// SkipDirectRunnerTest: PubsubIO doesn't trigger panes on the DirectRunner.
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
 public final class PubSubToMongoDBIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToMongoDBIT.class);
+
+  private static final int MESSAGES_COUNT = 10;
+  private static final int BAD_MESSAGES_COUNT = 3;
 
   private MongoDBResourceManager mongoResourceManager;
 
@@ -81,16 +88,24 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPubsubToMongoDB() throws IOException, ExecutionException, InterruptedException {
+  public void testPubsubToMongoDB() throws IOException {
     // Arrange
     TopicName tc = pubsubResourceManager.createTopic(testName);
     SubscriptionName subscription = pubsubResourceManager.createSubscription(tc, "sub-" + testName);
+
     bigQueryClient.createDataset(REGION);
+    TableId dlqTableId = TableId.of(bigQueryClient.getDatasetId(), "dlq");
 
     mongoResourceManager.createCollection(testName);
 
-    String outDeadLetterTopicName =
-        pubsubResourceManager.createTopic("outDead" + testName).getTopic();
+    String udfFileName = "transform.js";
+    gcsClient.createArtifact(
+        "input/" + udfFileName,
+        "function transform(inJson) {\n"
+            + "    var outJson = JSON.parse(inJson);\n"
+            + "    outJson.udf = \"out\";\n"
+            + "    return JSON.stringify(outJson);\n"
+            + "}");
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -98,8 +113,11 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
             .addParameter("database", mongoResourceManager.getDatabaseName())
             .addParameter("collection", testName)
             .addParameter("inputSubscription", subscription.toString())
-            .addParameter(
-                "deadletterTable", PROJECT + ":" + bigQueryClient.getDatasetId() + ".dlq");
+            .addParameter("deadletterTable", toTableSpecLegacy(dlqTableId))
+            .addParameter("batchSize", "1")
+            .addParameter("sslEnabled", "false")
+            .addParameter("javascriptTextTransformGcsPath", getGcsPath("input/" + udfFileName))
+            .addParameter("javascriptTextTransformFunctionName", "transform");
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -107,27 +125,47 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
 
     assertThatPipeline(info).isRunning();
 
-    List<String> inMessages =
-        Arrays.asList("{\"id\": 1, \"name\": \"Fox\"}", "{\"id\": 2, \"name\": \"Dog\"}");
+    List<String> inMessages = generateMessages();
+    for (final String message : inMessages) {
+      ByteString data = ByteString.copyFromUtf8(message);
+      pubsubResourceManager.publish(tc, ImmutableMap.of(), data);
+    }
+
+    for (int i = 1; i <= BAD_MESSAGES_COUNT; i++) {
+      ByteString messageData = ByteString.copyFromUtf8("bad id " + i);
+      pubsubResourceManager.publish(tc, ImmutableMap.of(), messageData);
+    }
 
     Result result =
         pipelineOperator()
-            .waitForConditionAndFinish(
+            .waitForConditionsAndFinish(
                 createConfig(info),
-                () -> {
+                MongoDBDocumentsCheck.builder(mongoResourceManager, testName)
+                    .setMinDocuments(MESSAGES_COUNT)
+                    .build(),
+                BigQueryRowsCheck.builder(bigQueryClient, dlqTableId)
+                    .setMinRows(BAD_MESSAGES_COUNT)
+                    .build());
 
-                  // For tests that run against topics, sending repeatedly will make it work for
-                  // cases in which the on-demand subscription is created after sending messages.
-                  for (final String message : inMessages) {
-                    ByteString data = ByteString.copyFromUtf8(message);
-                    pubsubResourceManager.publish(tc, ImmutableMap.of(), data);
-                  }
-
-                  return mongoResourceManager.readCollection(testName).spliterator().estimateSize()
-                      >= inMessages.size();
-                });
+    List<Document> documents = mongoResourceManager.readCollection(testName);
+    documents.forEach(document -> document.remove("_id"));
+    List<String> outMessages = new ArrayList<>();
+    inMessages.forEach(
+        message -> outMessages.add(message.replace("\"udf\": \"in\"", "\"udf\": \"out\"")));
 
     // Assert
     assertThatResult(result).meetsConditions();
+    assertThatMongoDBDocuments(documents).hasRecordsUnordered(jsonRecordsToRecords(outMessages));
+  }
+
+  private static List<String> generateMessages() {
+    List<String> messages = new ArrayList<>();
+    for (int i = 1; i <= MESSAGES_COUNT; i++) {
+      messages.add(
+          String.format(
+              "{\"id\": %d, \"name\": \"%s\", \"udf\": \"in\"}",
+              i, RandomStringUtils.randomAlphabetic(1, 20)));
+    }
+    return messages;
   }
 }
