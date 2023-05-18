@@ -255,22 +255,26 @@ public class InformationSchemaScannerIT {
   @Test
   public void simpleModel() throws Exception {
     String modelDef =
-        "CREATE MODEL UsersModel"
-            + " INPUT ( i1 FLOAT64 OPTIONS (required = false), i2 INT64, )"
-            + " OUTPUT ( o1 STRING(MAX), )"
-            + " REMOTE OPTIONS (endpoint = \"test\")";
+        "CREATE MODEL `Iris`"
+            + " INPUT ( `f1` FLOAT64, `f2` FLOAT64, `f3` FLOAT64, `f4` FLOAT64, )"
+            + " OUTPUT ( `classes` ARRAY<STRING(MAX)>, `scores` ARRAY<FLOAT64>, )"
+            + " REMOTE OPTIONS (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\")";
 
     spannerServer.createDatabase(dbId, Arrays.asList(modelDef));
     Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.models(), hasSize(1));
-    Model model = ddl.model("UsersModel");
+    Model model = ddl.model("Iris");
     assertThat(model, notNullValue());
-    assertThat(ddl.model("uSersmOdel"), sameInstance(model));
-    assertThat(model.inputColumns(), hasSize(2));
-    assertThat(model.outputColumns(), hasSize(1));
+    assertThat(ddl.model("iriS"), sameInstance(model));
+    assertThat(model.inputColumns(), hasSize(4));
+    assertThat(model.inputColumns().get(0).name(), is("f1"));
+    assertThat(model.inputColumns().get(0).type(), is(Type.float64()));
+    assertThat(model.inputColumns().get(0).columnOptions(), hasSize(1));
+    assertThat(model.inputColumns().get(0).columnOptions(), hasItems("required=TRUE"));
+    assertThat(model.outputColumns(), hasSize(2));
     assertThat(model.remote(), equalTo(true));
-    assertThat(model.options(), hasItems("XXXXendpoints = \"test\""));
+    assertThat(model.options(), hasItems("endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\""));
 
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(modelDef));
   }

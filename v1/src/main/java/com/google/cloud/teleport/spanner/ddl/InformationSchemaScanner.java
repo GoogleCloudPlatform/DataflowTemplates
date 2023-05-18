@@ -778,7 +778,7 @@ public class InformationSchemaScanner {
     ResultSet resultSet =
         context.executeQuery(
             Statement.of(
-                "SELECT t.model_name, t.column_kind, t.ordinal_position, t.column_name"
+                "SELECT t.model_name, t.column_kind, t.ordinal_position, t.column_name, "
                     + " t.data_type FROM information_schema.model_columns as t WHERE"
                     + " t.model_catalog = '' AND t.model_schema = '' ORDER BY t.model_name,"
                     + " t.column_kind, t.ordinal_position"));

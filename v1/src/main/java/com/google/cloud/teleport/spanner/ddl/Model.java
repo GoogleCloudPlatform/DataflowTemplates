@@ -51,7 +51,19 @@ public abstract class Model implements Serializable {
     return new AutoValue_Model.Builder().dialect(dialect).options(ImmutableList.of());
   }
 
-  public abstract Builder toBuilder();
+  public abstract Builder autoToBuilder();
+
+  public Builder toBuilder() {
+    Builder builder = autoToBuilder();
+    builder = builder.dialect(dialect());
+    for (ModelColumn column : inputColumns()) {
+      builder.addInputColumn(column);
+    }
+    for (ModelColumn column : outputColumns()) {
+      builder.addOutputColumn(column);
+    }
+    return builder;
+  }
 
   public void prettyPrint(Appendable appendable) throws IOException {
     if (dialect() != Dialect.GOOGLE_STANDARD_SQL) {
@@ -64,20 +76,25 @@ public abstract class Model implements Serializable {
         .append(identifierQuote)
         .append(name())
         .append(identifierQuote);
-    appendable.append("\nINPUT (");
-    for (ModelColumn column : inputColumns()) {
-      appendable.append("\n\t");
-      column.prettyPrint(appendable);
-      appendable.append(",");
+
+    if (!inputColumns().isEmpty()) {
+      appendable.append("\nINPUT (");
+      for (ModelColumn column : inputColumns()) {
+        appendable.append("\n\t");
+        column.prettyPrint(appendable);
+        appendable.append(",");
+      }
+      appendable.append("\n)");
     }
-    appendable.append("\n)");
-    appendable.append("\nOUTPUT (");
-    for (ModelColumn column : outputColumns()) {
-      appendable.append("\n\t");
-      column.prettyPrint(appendable);
-      appendable.append(",");
+    if (!outputColumns().isEmpty()) {
+      appendable.append("\nOUTPUT (");
+      for (ModelColumn column : outputColumns()) {
+        appendable.append("\n\t");
+        column.prettyPrint(appendable);
+        appendable.append(",");
+      }
+      appendable.append("\n)");
     }
-    appendable.append("\n)");
     if (remote()) {
       appendable.append("\nREMOTE");
     }

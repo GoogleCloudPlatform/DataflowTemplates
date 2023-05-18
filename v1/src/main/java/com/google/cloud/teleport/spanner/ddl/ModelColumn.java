@@ -62,10 +62,10 @@ public abstract class ModelColumn implements Serializable {
     appendable
         .append(String.format("%1$-40s", identifierQuote + name() + identifierQuote))
         .append(typeString());
-    if (columnOptions() != null && !columnOptions().isEmpty()) {
-      String optionsString = String.join(",", columnOptions());
-      appendable.append(" OPTIONS (").append(optionsString).append(")");
-    }
+    // if (columnOptions() != null && !columnOptions().isEmpty()) {
+    //   String optionsString = String.join(",", columnOptions());
+    //   appendable.append(" OPTIONS (").append(optionsString).append(")");
+    // }
   }
 
   public String prettyPrint() {

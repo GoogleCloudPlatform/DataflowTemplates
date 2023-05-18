@@ -593,8 +593,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           } else {
                             c.output(informationSchemaDdl);
                           }
-                          // In case of no tables, add empty list
-                          if (missingTables.isEmpty()) {
+                          // In case of no tables or models, add empty list
+                          if (missingTables.isEmpty() && missingModels.isEmpty()) {
                             c.output(pendingIndexesTag, createIndexStatements);
                             c.output(pendingForeignKeysTag, createForeignKeyStatements);
                           }

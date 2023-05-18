@@ -763,31 +763,23 @@ public class CopyDbTest {
 
   @Test
   public void models() throws Exception {
+    // spotless:off
+    String endpoint = "//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760";
     Ddl ddl =
         Ddl.builder()
-            .createModel("ModelAll")
+            .createModel("Iris")
             .remote(true)
-            .options(ImmutableList.of("endpoint=\"test\""))
-            .inputColumn("i1")
-            .type(Type.bool())
-            .size(-1)
-            .columnOptions(ImmutableList.of("required=false"))
-            .endInputColumn()
-            .inputColumn("i2")
-            .type(Type.string())
-            .size(-1)
-            .endInputColumn()
-            .outputColumn("o1")
-            .type(Type.int64())
-            .size(-1)
-            .columnOptions(ImmutableList.of("required=true"))
-            .endOutputColumn()
-            .outputColumn("o2")
-            .type(Type.float64())
-            .size(-1)
-            .endOutputColumn()
+            .options(ImmutableList.of("endpoint=\"" + endpoint + "\""))
+            .inputColumn("f1").type(Type.float64()).size(-1).endInputColumn()
+            .inputColumn("f2").type(Type.float64()).size(-1).endInputColumn()
+            .inputColumn("f3").type(Type.float64()).size(-1).endInputColumn()
+            .inputColumn("f4").type(Type.float64()).size(-1).endInputColumn()
+            .outputColumn("classes").type(Type.array(Type.string())).size(-1).endOutputColumn()
+            .outputColumn("scores").type(Type.array(Type.float64())).size(-1).endOutputColumn()
             .endModel()
             .build();
+    // spotless:on
+
     createAndPopulate(ddl, 0);
     runTest();
   }
