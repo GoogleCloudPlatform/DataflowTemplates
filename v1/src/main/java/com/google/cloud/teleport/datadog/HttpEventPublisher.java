@@ -96,8 +96,6 @@ public abstract class HttpEventPublisher {
   @Nullable
   abstract Integer maxElapsedMillis();
 
-  abstract Boolean enableGzipHttpCompression();
-
   /**
    * Executes a POST for the list of {@link DatadogEvent} objects into Datadog's Http Event Collector
    * endpoint.
@@ -110,9 +108,7 @@ public abstract class HttpEventPublisher {
     HttpContent content = getContent(events);
     HttpRequest request = requestFactory().buildPostRequest(genericUrl(), content);
 
-    if (enableGzipHttpCompression()) {
-      request.setEncoding(new GZipEncoding());
-    }
+    request.setEncoding(new GZipEncoding());
 
     HttpBackOffUnsuccessfulResponseHandler responseHandler =
         new HttpBackOffUnsuccessfulResponseHandler(getConfiguredBackOff());
@@ -164,10 +160,7 @@ public abstract class HttpEventPublisher {
    */
   private void setHeaders(HttpRequest request, String token) {
     request.getHeaders().setAuthorization(String.format(AUTHORIZATION_SCHEME, token));
-
-    if (enableGzipHttpCompression()) {
-      request.getHeaders().setContentEncoding("gzip");
-    }
+    request.getHeaders().setContentEncoding("gzip");
   }
 
   /**
@@ -209,8 +202,6 @@ public abstract class HttpEventPublisher {
 
     abstract String token();
 
-    abstract Builder setEnableGzipHttpCompression(Boolean enableGzipHttpCompression);
-
     abstract Builder setMaxElapsedMillis(Integer maxElapsedMillis);
 
     abstract Integer maxElapsedMillis();
@@ -237,19 +228,6 @@ public abstract class HttpEventPublisher {
     public Builder withToken(String token) {
       checkNotNull(token, "withToken(token) called with null input.");
       return setToken(token);
-    }
-
-    /**
-     * Method to specify if HTTP requests sent to Datadog HEC should be GZIP encoded.
-     *
-     * @param enableGzipHttpCompression whether to enable Gzip encoding.
-     * @return {@link Builder}
-     */
-    public Builder withEnableGzipHttpCompression(Boolean enableGzipHttpCompression) {
-      checkNotNull(
-          enableGzipHttpCompression,
-          "withEnableGzipHttpCompression(enableGzipHttpCompression) called with null input.");
-      return setEnableGzipHttpCompression(enableGzipHttpCompression);
     }
 
     /**

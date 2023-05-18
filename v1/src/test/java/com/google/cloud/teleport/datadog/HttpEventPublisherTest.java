@@ -69,7 +69,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withToken("test-token")
-            .withEnableGzipHttpCompression(true)
             .build();
 
     String actual = publisher.getStringPayload(DATADOG_EVENTS);
@@ -95,7 +94,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withToken("test-token")
-            .withEnableGzipHttpCompression(true)
             .build();
 
     String expectedString =
@@ -121,8 +119,7 @@ public class HttpEventPublisherTest {
     HttpEventPublisher.Builder builder =
         HttpEventPublisher.newBuilder()
             .withUrl(baseURL)
-            .withToken("test-token")
-            .withEnableGzipHttpCompression(true);
+            .withToken("test-token");
 
     assertThat(
         builder.genericUrl(),
@@ -139,7 +136,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withToken("test-token")
-            .withEnableGzipHttpCompression(true)
             .build();
 
     assertThat(
@@ -159,7 +155,6 @@ public class HttpEventPublisherTest {
             .withUrl("http://example.com")
             .withToken("test-token")
             .withMaxElapsedMillis(timeoutInMillis)
-            .withEnableGzipHttpCompression(true)
             .build();
 
     assertThat(

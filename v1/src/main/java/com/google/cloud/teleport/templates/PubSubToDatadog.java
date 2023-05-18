@@ -228,7 +228,6 @@ public class PubSubToDatadog {
                     .withUrl(options.getUrl())
                     .withBatchCount(options.getBatchCount())
                     .withParallelism(options.getParallelism())
-                    .withEnableGzipHttpCompression(options.getEnableGzipHttpCompression())
                     .build());
 
     // 5a) Wrap write failures into a FailsafeElement.

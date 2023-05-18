@@ -69,9 +69,6 @@ public class DatadogIO {
     @Nullable
     abstract ValueProvider<Integer> parallelism();
 
-    @Nullable
-    abstract ValueProvider<Boolean> enableGzipHttpCompression();
-
     @Override
     public PCollection<DatadogWriteError> expand(PCollection<DatadogEvent> input) {
 
@@ -80,8 +77,7 @@ public class DatadogIO {
           DatadogEventWriter.newBuilder()
               .withUrl(url())
               .withInputBatchCount(batchCount())
-              .withToken((token()))
-              .withEnableGzipHttpCompression(enableGzipHttpCompression());
+              .withToken((token()));
 
       DatadogEventWriter writer = builder.build();
       LOG.info("DatadogEventWriter configured");
@@ -108,9 +104,6 @@ public class DatadogIO {
       abstract Builder setBatchCount(ValueProvider<Integer> batchCount);
 
       abstract Builder setParallelism(ValueProvider<Integer> parallelism);
-
-      abstract Builder setEnableGzipHttpCompression(
-          ValueProvider<Boolean> enableGzipHttpCompression);
 
       abstract Write autoBuild();
 
@@ -202,29 +195,6 @@ public class DatadogIO {
       public Builder withParallelism(Integer parallelism) {
         checkArgument(parallelism != null, "withParallelism(parallelism) called with null input.");
         return setParallelism(ValueProvider.StaticValueProvider.of(parallelism));
-      }
-
-      /**
-       * Method to specify if HTTP requests sent to Datadog should be GZIP encoded.
-       *
-       * @param enableGzipHttpCompression whether to enable Gzip encoding.
-       * @return {@link Builder}
-       */
-      public Builder withEnableGzipHttpCompression(
-          ValueProvider<Boolean> enableGzipHttpCompression) {
-        return setEnableGzipHttpCompression(enableGzipHttpCompression);
-      }
-
-      /**
-       * Same as {@link Builder#withEnableGzipHttpCompression(ValueProvider)} but without a {@link
-       * ValueProvider}.
-       *
-       * @param enableGzipHttpCompression whether to enable Gzip encoding.
-       * @return {@link Builder}
-       */
-      public Builder withEnableGzipHttpCompression(Boolean enableGzipHttpCompression) {
-        return setEnableGzipHttpCompression(
-            ValueProvider.StaticValueProvider.of(enableGzipHttpCompression));
       }
 
       public Write build() {

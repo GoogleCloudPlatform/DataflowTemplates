@@ -59,7 +59,6 @@ import org.slf4j.LoggerFactory;
 public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>, DatadogWriteError> {
 
   private static final Integer DEFAULT_BATCH_COUNT = 10;
-  private static final Boolean DEFAULT_ENABLE_GZIP_HTTP_COMPRESSION = true;
   private static final Logger LOG = LoggerFactory.getLogger(DatadogEventWriter.class);
   private static final long DEFAULT_FLUSH_DELAY = 2;
   private static final Counter INPUT_COUNTER =
@@ -100,7 +99,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
   private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
   private Integer batchCount;
-  private Boolean enableGzipHttpCompression;
   private HttpEventPublisher publisher;
 
   private static final Gson GSON =
@@ -115,9 +113,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
 
   @Nullable
   abstract ValueProvider<String> token();
-
-  @Nullable
-  abstract ValueProvider<Boolean> enableGzipHttpCompression();
 
   @Nullable
   abstract ValueProvider<Integer> inputBatchCount();
@@ -140,23 +135,11 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
       LOG.info("Batch count set to: {}", batchCount);
     }
 
-    if (enableGzipHttpCompression == null) {
-
-      if (enableGzipHttpCompression() != null) {
-        enableGzipHttpCompression = enableGzipHttpCompression().get();
-      }
-
-      enableGzipHttpCompression =
-          MoreObjects.firstNonNull(enableGzipHttpCompression, DEFAULT_ENABLE_GZIP_HTTP_COMPRESSION);
-      LOG.info("Enable gzip http compression set to: {}", enableGzipHttpCompression);
-    }
-
     try {
       HttpEventPublisher.Builder builder =
           HttpEventPublisher.newBuilder()
               .withUrl(url().get())
-              .withToken(token().get())
-              .withEnableGzipHttpCompression(enableGzipHttpCompression);
+              .withToken(token().get());
 
       publisher = builder.build();
       LOG.info("Successfully created HttpEventPublisher");
@@ -396,8 +379,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
 
     abstract ValueProvider<String> token();
 
-    abstract Builder setEnableGzipHttpCompression(ValueProvider<Boolean> enableGzipHttpCompression);
-
     abstract Builder setInputBatchCount(ValueProvider<Integer> inputBatchCount);
 
     abstract DatadogEventWriter autoBuild();
@@ -458,16 +439,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
      */
     public Builder withInputBatchCount(ValueProvider<Integer> inputBatchCount) {
       return setInputBatchCount(inputBatchCount);
-    }
-
-    /**
-     * Method to specify if HTTP requests sent to Datadog should be GZIP encoded.
-     *
-     * @param enableGzipHttpCompression whether to enable Gzip encoding.
-     * @return {@link Builder}
-     */
-    public Builder withEnableGzipHttpCompression(ValueProvider<Boolean> enableGzipHttpCompression) {
-      return setEnableGzipHttpCompression(enableGzipHttpCompression);
     }
 
     /** Build a new {@link DatadogEventWriter} objects based on the configuration. */

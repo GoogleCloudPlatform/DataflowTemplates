@@ -25,7 +25,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -175,18 +174,6 @@ public class DatadogConverters {
     ValueProvider<String> getTokenSource();
 
     void setTokenSource(ValueProvider<String> tokenSource);
-
-    @TemplateParameter.Text(
-        order = 12,
-        optional = true,
-        description =
-            "Enable compression (gzip content encoding) in HTTP requests sent to Datadog HEC.",
-        helpText =
-            "Parameter which specifies if HTTP requests sent to Datadog HEC should be GZIP encoded.")
-    @Default.Boolean(true)
-    ValueProvider<Boolean> getEnableGzipHttpCompression();
-
-    void setEnableGzipHttpCompression(ValueProvider<Boolean> enableGzipHttpCompression);
   }
 
   private static class FailsafeStringToDatadogEvent
