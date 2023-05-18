@@ -979,44 +979,56 @@ public class ImportFromAvroTest {
 
   @Test
   public void models() throws Exception {
+    String endpoint = "//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760";
     Map<String, Schema> avroFiles = new HashMap<>();
     avroFiles.put(
         "ModelAll.avro",
-        SchemaBuilder.record("ModelAll")
+        SchemaBuilder.record("Iris")
             .prop("spannerEntity", "Model")
             .prop("spannerRemote", "true")
-            .prop("spannerOption_0", "endpoint=\"test\"")
+            .prop("spannerOption_0", "endpoint=\""+ endpoint + "\"")
             .fields()
+            // Input columns.
             .name("Input")
             .type()
             .record("ModelAll_Input")
             .fields()
-            .name("i1")
-            .prop("sqlType", "BOOL")
-            .prop("spannerOption_0", "required=true")
+            .name("f1")
+            .prop("sqlType", "FLOAT64")
             .type()
             .booleanType()
             .noDefault()
-            .name("i2")
-            .prop("sqlType", "BOOL")
+            .name("f2")
+            .prop("sqlType", "FLOAT64")
             .type()
-            .stringType()
+            .booleanType()
+            .noDefault()
+            .name("f3")
+            .prop("sqlType", "FLOAT64")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("f4")
+            .prop("sqlType", "FLOAT64")
+            .type()
+            .booleanType()
             .noDefault()
             .endRecord()
             .noDefault()
+            // Output columns.
             .name("Output")
             .type()
             .record("ModelAll_Output")
             .fields()
-            .name("o1")
-            .prop("sqlType", "IN64")
-            .prop("spannerOption_0", "required=false")
+            .name("classes")
+            .prop("sqlType", "ARRAY<STRING(MAX)>")
             .type()
-            .doubleType()
+            .array().items().stringType()
             .noDefault()
-            .name("o2")
-            .prop("sqlType", "FLOAT65")
+            .name("scores")
+            .prop("sqlType", "ARRAY<FLOAT64>")
             .type()
+            .array().items()
             .longType()
             .noDefault()
             .endRecord()
@@ -1078,21 +1090,13 @@ public class ImportFromAvroTest {
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
-            "CREATE TABLE `T` ("
-                + " `id`                                    INT64 NOT NULL,"
-                + " `c1`                                    BOOL,"
-                + " `c2`                                    INT64,"
-                + " ) PRIMARY KEY (`id` ASC)"
-                + " CREATE CHANGE STREAM `ChangeStreamAll`"
-                + " FOR ALL"
-                + " OPTIONS (retention_period=\"7d\", value_capture_type=\"OLD_AND_NEW_VALUES\")"
-                + " CREATE CHANGE STREAM `ChangeStreamColumns`"
-                + " FOR `T`(`c1`, `c2`)"
-                + " CREATE CHANGE STREAM `ChangeStreamEmpty`"
-                + " CREATE CHANGE STREAM `ChangeStreamKeyOnly`"
-                + " FOR `T`()"
-                + " CREATE CHANGE STREAM `ChangeStreamTable`"
-                + " FOR `T`"));
+            "CREATE TABLE `T`"
+                + " ( `id` INT64 NOT NULL, `c1` BOOL, `c2` INT64, )"
+                + " PRIMARY KEY (`id` ASC)"
+                + " CREATE MODEL `Iris`"
+                + " INPUT ( `f1` FLOAT64, `f2` FLOAT64, `f3` FLOAT64, `f4` FLOAT64, )"
+                + " OUTPUT ( `classes` ARRAY<STRING(MAX)>, `scores` ARRAY<FLOAT64>, )"
+                + " REMOTE OPTIONS (endpoint=\"" + endpoint + "\")"));
   }
 
   @Test
