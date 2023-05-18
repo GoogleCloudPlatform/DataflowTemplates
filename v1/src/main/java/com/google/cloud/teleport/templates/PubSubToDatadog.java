@@ -231,7 +231,6 @@ public class PubSubToDatadog {
                     .withUrl(options.getUrl())
                     .withBatchCount(options.getBatchCount())
                     .withParallelism(options.getParallelism())
-                    .withDisableCertificateValidation(options.getDisableCertificateValidation())
                     .withRootCaCertificatePath(options.getRootCaCertificatePath())
                     .withEnableBatchLogs(options.getEnableBatchLogs())
                     .withEnableGzipHttpCompression(options.getEnableGzipHttpCompression())

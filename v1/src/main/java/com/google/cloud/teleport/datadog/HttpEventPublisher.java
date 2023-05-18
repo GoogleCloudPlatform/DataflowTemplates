@@ -55,9 +55,7 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Immutabl
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
@@ -74,8 +72,6 @@ public abstract class HttpEventPublisher {
   private static final Logger LOG = LoggerFactory.getLogger(HttpEventPublisher.class);
 
   private static final int DEFAULT_MAX_CONNECTIONS = 1;
-
-  private static final boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
 
   private static final Gson GSON =
       new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
@@ -109,8 +105,6 @@ public abstract class HttpEventPublisher {
 
   @Nullable
   abstract Integer maxElapsedMillis();
-
-  abstract Boolean disableCertificateValidation();
 
   abstract Boolean enableGzipHttpCompression();
 
@@ -225,10 +219,6 @@ public abstract class HttpEventPublisher {
 
     abstract String token();
 
-    abstract Builder setDisableCertificateValidation(Boolean disableCertificateValidation);
-
-    abstract Boolean disableCertificateValidation();
-
     abstract Builder setEnableGzipHttpCompression(Boolean enableGzipHttpCompression);
 
     abstract Builder setRootCaCertificate(byte[] certificate);
@@ -275,20 +265,6 @@ public abstract class HttpEventPublisher {
     }
 
     /**
-     * Method to disable SSL certificate validation. Defaults to {@value
-     * DEFAULT_DISABLE_CERTIFICATE_VALIDATION}.
-     *
-     * @param disableCertificateValidation whether to disable SSL certificate validation.
-     * @return {@link Builder}
-     */
-    public Builder withDisableCertificateValidation(Boolean disableCertificateValidation) {
-      checkNotNull(
-          disableCertificateValidation,
-          "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
-      return setDisableCertificateValidation(disableCertificateValidation);
-    }
-
-    /**
      * Method to specify if HTTP requests sent to Datadog HEC should be GZIP encoded.
      *
      * @param enableGzipHttpCompression whether to enable Gzip encoding.
@@ -329,11 +305,6 @@ public abstract class HttpEventPublisher {
       checkNotNull(token(), "Authentication token needs to be specified via withToken(token).");
       checkNotNull(genericUrl(), "URL needs to be specified via withUrl(url).");
 
-      if (disableCertificateValidation() == null) {
-        LOG.info("Certificate validation disabled: {}", DEFAULT_DISABLE_CERTIFICATE_VALIDATION);
-        setDisableCertificateValidation(DEFAULT_DISABLE_CERTIFICATE_VALIDATION);
-      }
-
       if (maxElapsedMillis() == null) {
         LOG.info(
             "Defaulting max backoff time to: {} milliseconds ",
@@ -343,7 +314,7 @@ public abstract class HttpEventPublisher {
 
       CloseableHttpClient httpClient =
           getHttpClient(
-              DEFAULT_MAX_CONNECTIONS, disableCertificateValidation(), rootCaCertificate());
+              DEFAULT_MAX_CONNECTIONS, rootCaCertificate());
 
       setTransport(new ApacheHttpTransport(httpClient));
       setRequestFactory(transport().createRequestFactory());
@@ -368,10 +339,9 @@ public abstract class HttpEventPublisher {
      * HEC.
      *
      * @param maxConnections max number of parallel connections.
-     * @param disableCertificateValidation should disable certificate validation.
      */
     private CloseableHttpClient getHttpClient(
-        int maxConnections, boolean disableCertificateValidation, byte[] rootCaCertificate)
+        int maxConnections, byte[] rootCaCertificate)
         throws NoSuchAlgorithmException,
             KeyStoreException,
             KeyManagementException,
@@ -383,19 +353,10 @@ public abstract class HttpEventPublisher {
       if (genericUrl().getScheme().equalsIgnoreCase(HTTPS_PROTOCOL_PREFIX)) {
         LOG.info("SSL connection requested");
 
-        HostnameVerifier hostnameVerifier =
-            disableCertificateValidation
-                ? NoopHostnameVerifier.INSTANCE
-                : new DefaultHostnameVerifier();
+        HostnameVerifier hostnameVerifier = new DefaultHostnameVerifier();
 
         SSLContext sslContext = SSLContextBuilder.create().build();
-        if (disableCertificateValidation) {
-          LOG.info("Certificate validation is disabled");
-          sslContext =
-              SSLContextBuilder.create()
-                  .loadTrustMaterial((TrustStrategy) (chain, authType) -> true)
-                  .build();
-        } else if (rootCaCertificate != null) {
+        if (rootCaCertificate != null) {
           LOG.info("Self-Signed Certificate provided");
           InputStream inStream = new ByteArrayInputStream(rootCaCertificate);
           CertificateFactory cf = CertificateFactory.getInstance("X.509");

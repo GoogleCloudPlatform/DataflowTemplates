@@ -128,34 +128,30 @@ public class DatadogEventWriterTest {
   }
 
   /**
-   * Test building {@link DatadogEventWriter} with default batchcount and certificate validation .
+   * Test building {@link DatadogEventWriter} with default batchcount .
    */
   @Test
-  public void eventWriterDefaultBatchCountAndValidation() {
+  public void eventWriterDefaultBatchCount() {
 
     DatadogEventWriter writer =
         DatadogEventWriter.newBuilder().withUrl("http://test-url").withToken("test-token").build();
 
     assertThat(writer.inputBatchCount()).isNull();
-    assertThat(writer.disableCertificateValidation()).isNull();
   }
 
-  /** Test building {@link DatadogEventWriter} with custom batchcount and certificate validation . */
+  /** Test building {@link DatadogEventWriter} with custom batchcount . */
   @Test
   public void eventWriterCustomBatchCountAndValidation() {
 
     Integer batchCount = 30;
-    Boolean certificateValidation = false;
     DatadogEventWriter writer =
         DatadogEventWriter.newBuilder()
             .withUrl("http://test-url")
             .withToken("test-token")
             .withInputBatchCount(StaticValueProvider.of(batchCount))
-            .withDisableCertificateValidation(StaticValueProvider.of(certificateValidation))
             .build();
 
     assertThat(writer.inputBatchCount().get()).isEqualTo(batchCount);
-    assertThat(writer.disableCertificateValidation().get()).isEqualTo(certificateValidation);
   }
 
   /** Test successful POST request for single batch. */

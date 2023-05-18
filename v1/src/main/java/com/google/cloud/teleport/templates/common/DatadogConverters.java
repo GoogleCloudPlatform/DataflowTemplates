@@ -121,18 +121,6 @@ public class DatadogConverters {
 
     void setBatchCount(ValueProvider<Integer> batchCount);
 
-    @TemplateParameter.Boolean(
-        order = 4,
-        optional = true,
-        description = "Disable SSL certificate validation.",
-        helpText =
-            "Disable SSL certificate validation (true/false). Default false (validation "
-                + "enabled). If true, the certificates are not validated (all certificates are "
-                + "trusted) and  `rootCaCertificatePath` parameter is ignored.")
-    ValueProvider<Boolean> getDisableCertificateValidation();
-
-    void setDisableCertificateValidation(ValueProvider<Boolean> disableCertificateValidation);
-
     @TemplateParameter.Integer(
         order = 5,
         optional = true,

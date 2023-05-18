@@ -62,7 +62,6 @@ import org.slf4j.LoggerFactory;
 public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>, DatadogWriteError> {
 
   private static final Integer DEFAULT_BATCH_COUNT = 10;
-  private static final Boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
   private static final Boolean DEFAULT_ENABLE_BATCH_LOGS = true;
   private static final Boolean DEFAULT_ENABLE_GZIP_HTTP_COMPRESSION = true;
   private static final Logger LOG = LoggerFactory.getLogger(DatadogEventWriter.class);
@@ -105,7 +104,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
   private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
   private Integer batchCount;
-  private Boolean disableValidation;
   private Boolean enableBatchLogs;
   private Boolean enableGzipHttpCompression;
   private HttpEventPublisher publisher;
@@ -122,9 +120,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
 
   @Nullable
   abstract ValueProvider<String> token();
-
-  @Nullable
-  abstract ValueProvider<Boolean> disableCertificateValidation();
 
   @Nullable
   abstract ValueProvider<String> rootCaCertificatePath();
@@ -177,24 +172,11 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
       LOG.info("Enable gzip http compression set to: {}", enableGzipHttpCompression);
     }
 
-    // Either user supplied or default disableValidation.
-    if (disableValidation == null) {
-
-      if (disableCertificateValidation() != null) {
-        disableValidation = disableCertificateValidation().get();
-      }
-
-      disableValidation =
-          MoreObjects.firstNonNull(disableValidation, DEFAULT_DISABLE_CERTIFICATE_VALIDATION);
-      LOG.info("Disable certificate validation set to: {}", disableValidation);
-    }
-
     try {
       HttpEventPublisher.Builder builder =
           HttpEventPublisher.newBuilder()
               .withUrl(url().get())
               .withToken(token().get())
-              .withDisableCertificateValidation(disableValidation)
               .withEnableGzipHttpCompression(enableGzipHttpCompression);
 
       if (rootCaCertificatePath() != null && rootCaCertificatePath().get() != null) {
@@ -449,9 +431,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
 
     abstract ValueProvider<String> token();
 
-    abstract Builder setDisableCertificateValidation(
-        ValueProvider<Boolean> disableCertificateValidation);
-
     abstract Builder setRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath);
 
     abstract Builder setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
@@ -518,17 +497,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
      */
     public Builder withInputBatchCount(ValueProvider<Integer> inputBatchCount) {
       return setInputBatchCount(inputBatchCount);
-    }
-
-    /**
-     * Method to disable certificate validation.
-     *
-     * @param disableCertificateValidation for disabling certificate validation.
-     * @return {@link Builder}
-     */
-    public Builder withDisableCertificateValidation(
-        ValueProvider<Boolean> disableCertificateValidation) {
-      return setDisableCertificateValidation(disableCertificateValidation);
     }
 
     /**

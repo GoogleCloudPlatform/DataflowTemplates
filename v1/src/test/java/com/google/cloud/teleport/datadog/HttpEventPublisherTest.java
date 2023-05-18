@@ -110,7 +110,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withToken("test-token")
-            .withDisableCertificateValidation(false)
             .withEnableGzipHttpCompression(true)
             .build();
 
@@ -140,7 +139,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withToken("test-token")
-            .withDisableCertificateValidation(false)
             .withEnableGzipHttpCompression(true)
             .build();
 
@@ -168,7 +166,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl(baseURL)
             .withToken("test-token")
-            .withDisableCertificateValidation(false)
             .withEnableGzipHttpCompression(true);
 
     assertThat(
@@ -188,7 +185,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withToken("test-token")
-            .withDisableCertificateValidation(false)
             .withEnableGzipHttpCompression(true)
             .build();
 
@@ -210,7 +206,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withToken("test-token")
-            .withDisableCertificateValidation(false)
             .withMaxElapsedMillis(timeoutInMillis)
             .withEnableGzipHttpCompression(true)
             .build();
@@ -226,7 +221,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl("https://example.com")
             .withToken("test-token")
-            .withDisableCertificateValidation(false)
             .withRootCaCertificate("invalid_ca".getBytes())
             .withEnableGzipHttpCompression(true)
             .build();
@@ -242,7 +236,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl("https://localhost:" + String.valueOf(mockServer.getPort()))
             .withToken("test-token")
-            .withDisableCertificateValidation(false)
             .withRootCaCertificate(rootCa)
             .withEnableGzipHttpCompression(true)
             .build();
@@ -268,7 +261,6 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl("https://localhost:" + String.valueOf(mockServer.getPort()))
             .withToken("test-token")
-            .withDisableCertificateValidation(false)
             .withRootCaCertificate(rootCa)
             .withMaxElapsedMillis(timeoutInMillis)
             .withEnableGzipHttpCompression(true)

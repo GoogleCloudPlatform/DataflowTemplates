@@ -70,9 +70,6 @@ public class DatadogIO {
     abstract ValueProvider<Integer> parallelism();
 
     @Nullable
-    abstract ValueProvider<Boolean> disableCertificateValidation();
-
-    @Nullable
     abstract ValueProvider<String> rootCaCertificatePath();
 
     @Nullable
@@ -89,7 +86,6 @@ public class DatadogIO {
           DatadogEventWriter.newBuilder()
               .withUrl(url())
               .withInputBatchCount(batchCount())
-              .withDisableCertificateValidation(disableCertificateValidation())
               .withToken((token()))
               .withRootCaCertificatePath(rootCaCertificatePath())
               .withEnableBatchLogs(enableBatchLogs())
@@ -120,9 +116,6 @@ public class DatadogIO {
       abstract Builder setBatchCount(ValueProvider<Integer> batchCount);
 
       abstract Builder setParallelism(ValueProvider<Integer> parallelism);
-
-      abstract Builder setDisableCertificateValidation(
-          ValueProvider<Boolean> disableCertificateValidation);
 
       abstract Builder setRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath);
 
@@ -221,37 +214,6 @@ public class DatadogIO {
       public Builder withParallelism(Integer parallelism) {
         checkArgument(parallelism != null, "withParallelism(parallelism) called with null input.");
         return setParallelism(ValueProvider.StaticValueProvider.of(parallelism));
-      }
-
-      /**
-       * Method to disable certificate validation.
-       *
-       * @param disableCertificateValidation for disabling certificate validation.
-       * @return {@link Builder}
-       */
-      public Builder withDisableCertificateValidation(
-          ValueProvider<Boolean> disableCertificateValidation) {
-        checkArgument(
-            disableCertificateValidation != null,
-            "withDisableCertificateValidation(disableCertificateValidation) called with null"
-                + " input.");
-        return setDisableCertificateValidation(disableCertificateValidation);
-      }
-
-      /**
-       * Same as {@link Builder#withDisableCertificateValidation(ValueProvider)} but without a
-       * {@link ValueProvider}.
-       *
-       * @param disableCertificateValidation for disabling certificate validation.
-       * @return {@link Builder}
-       */
-      public Builder withDisableCertificateValidation(Boolean disableCertificateValidation) {
-        checkArgument(
-            disableCertificateValidation != null,
-            "withDisableCertificateValidation(disableCertificateValidation) called with null"
-                + " input.");
-        return setDisableCertificateValidation(
-            ValueProvider.StaticValueProvider.of((disableCertificateValidation)));
       }
 
       /**
