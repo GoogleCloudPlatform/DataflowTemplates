@@ -17,10 +17,13 @@
  */
 package org.apache.beam.sdk.io.gcp.spanner;
 
+import com.google.api.gax.rpc.StatusCode.Code;
 import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Spanner;
+import com.google.cloud.spanner.v1.stub.SpannerStubSettings;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableSet;
 
 /** Manages lifecycle of {@link DatabaseClient} and {@link Spanner} instances. */
 @SuppressWarnings({
@@ -38,6 +41,11 @@ public class LocalSpannerAccessor implements AutoCloseable {
   }
 
   public static LocalSpannerAccessor getOrCreate(SpannerConfig spannerConfig) {
+    // TODO: remove after next Beam release (after default retryable codes are added in Beam)
+    ImmutableSet<Code> retryableCodes =
+        ImmutableSet.copyOf(
+            SpannerStubSettings.newBuilder().getSessionSettings().getRetryableCodes());
+    spannerConfig = spannerConfig.withRetryableCodes(retryableCodes);
     return new LocalSpannerAccessor(SpannerAccessor.getOrCreate(spannerConfig));
   }
 
