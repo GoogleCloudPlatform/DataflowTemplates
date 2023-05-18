@@ -66,9 +66,6 @@ public class DatadogConverters {
 
   private static final Gson GSON = new Gson();
 
-  protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
-  protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
-
   /**
    * Returns a {@link FailsafeStringToDatadogEvent} {@link PTransform} that consumes {@link
    * FailsafeElement} messages, attempts to parse it as a JSON and extract metadata fields needed by
@@ -129,17 +126,6 @@ public class DatadogConverters {
     ValueProvider<Integer> getParallelism();
 
     void setParallelism(ValueProvider<Integer> parallelism);
-
-    @TemplateParameter.Boolean(
-        order = 6,
-        optional = true,
-        description = "Include full Pub/Sub message in the payload.",
-        helpText =
-            "Include full Pub/Sub message in the payload (true/false). Defaults to false "
-                + "(only data element is included in the payload).")
-    ValueProvider<Boolean> getIncludePubsubMessage();
-
-    void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
 
     @TemplateParameter.Text(
         order = 7,
@@ -271,11 +257,6 @@ public class DatadogConverters {
                           String parsedTimestamp;
                           if (metadataAvailable) {
                             parsedTimestamp = metadata.optString(HEC_TIME_KEY);
-                          } else if (isPubsubMessage(json)
-                              && json.getJSONObject(PUBSUB_MESSAGE_DATA_FIELD).has(TIMESTAMP_KEY)) {
-                            parsedTimestamp =
-                                json.getJSONObject(PUBSUB_MESSAGE_DATA_FIELD)
-                                    .getString(TIMESTAMP_KEY);
                           } else {
                             parsedTimestamp = json.optString(TIMESTAMP_KEY);
                           }
@@ -365,17 +346,6 @@ public class DatadogConverters {
                     }
                   })
               .withOutputTags(datadogEventOutputTag, TupleTagList.of(datadogDeadletterTag)));
-    }
-
-    /**
-     * Determines whether the JSON payload is a Pub/Sub message by checking for the 'data' and
-     * 'attributes' fields.
-     *
-     * @param json {@link JSONObject} payload
-     * @return true if the payload is a Pub/Sub message and false otherwise
-     */
-    private boolean isPubsubMessage(JSONObject json) {
-      return json.has(PUBSUB_MESSAGE_DATA_FIELD) && json.has(PUBSUB_MESSAGE_ATTRIBUTE_FIELD);
     }
   }
 }

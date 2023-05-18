@@ -58,7 +58,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,8 +127,6 @@ public class PubSubToDatadog {
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToDatadog.class);
 
-  private static final Boolean DEFAULT_INCLUDE_PUBSUB_MESSAGE = false;
-
   @VisibleForTesting protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
   @VisibleForTesting protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
   private static final String PUBSUB_MESSAGE_ID_FIELD = "messageId";
@@ -185,7 +182,7 @@ public class PubSubToDatadog {
     PCollection<String> stringMessages =
         pipeline.apply(
             "ReadMessages",
-            new ReadMessages(options.getInputSubscription(), options.getIncludePubsubMessage()));
+            new ReadMessages(options.getInputSubscription()));
 
     // 2) Convert message to FailsafeElement for processing.
     PCollectionTuple transformedOutput =
@@ -293,14 +290,10 @@ public class PubSubToDatadog {
    */
   private static class ReadMessages extends PTransform<PBegin, PCollection<String>> {
     private final ValueProvider<String> subscriptionName;
-    private final ValueProvider<Boolean> inputIncludePubsubMessageFlag;
-    private Boolean includePubsubMessage;
 
     ReadMessages(
-        ValueProvider<String> subscriptionName,
-        ValueProvider<Boolean> inputIncludePubsubMessageFlag) {
+        ValueProvider<String> subscriptionName) {
       this.subscriptionName = subscriptionName;
-      this.inputIncludePubsubMessageFlag = inputIncludePubsubMessageFlag;
     }
 
     @Override
@@ -316,23 +309,12 @@ public class PubSubToDatadog {
 
                     @Setup
                     public void setup() {
-                      if (inputIncludePubsubMessageFlag != null) {
-                        includePubsubMessage = inputIncludePubsubMessageFlag.get();
-                      }
-                      includePubsubMessage =
-                          MoreObjects.firstNonNull(
-                              includePubsubMessage, DEFAULT_INCLUDE_PUBSUB_MESSAGE);
-                      LOG.info("includePubsubMessage set to: {}", includePubsubMessage);
                     }
 
                     @ProcessElement
                     public void processElement(ProcessContext context) {
-                      if (includePubsubMessage) {
-                        context.output(formatPubsubMessage(context.element()));
-                      } else {
-                        context.output(
-                            new String(context.element().getPayload(), StandardCharsets.UTF_8));
-                      }
+                      context.output(
+                          new String(context.element().getPayload(), StandardCharsets.UTF_8));
                     }
                   }))
           .apply(

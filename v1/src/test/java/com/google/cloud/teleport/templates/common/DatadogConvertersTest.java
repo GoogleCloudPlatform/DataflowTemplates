@@ -304,40 +304,6 @@ public class DatadogConvertersTest {
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of Pub/Sub messages with provided override for time. */
-  @Test
-  @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEventPubsubMessageTimeOverride() {
-
-    FailsafeElement<String, String> input =
-        FailsafeElement.of(
-            "",
-            "{\n"
-                + "  \"data\": {\n"
-                + "    \"timestamp\": \"2021-04-16T14:10:04.634492Z\"\n"
-                + "  },\n"
-                + "  \"attributes\": {\n"
-                + "    \"test-key\": \"test-value\"\n"
-                + "  }\n"
-                + "}");
-
-    DatadogEvent expectedDatadogEvent =
-        DatadogEvent.newBuilder()
-            .withEvent(
-                "{\n"
-                    + "  \"data\": {\n"
-                    + "    \"timestamp\": \"2021-04-16T14:10:04.634492Z\"\n"
-                    + "  },\n"
-                    + "  \"attributes\": {\n"
-                    + "    \"test-key\": \"test-value\"\n"
-                    + "  }\n"
-                    + "}")
-            .withTime(DateTime.parseRfc3339("2021-04-16T14:10:04.634492Z").getValue())
-            .build();
-
-    matchesDatadogEvent(input, expectedDatadogEvent);
-  }
-
   @Category(NeedsRunner.class)
   private void matchesDatadogEvent(
       FailsafeElement<String, String> input, DatadogEvent expectedDatadogEvent) {
