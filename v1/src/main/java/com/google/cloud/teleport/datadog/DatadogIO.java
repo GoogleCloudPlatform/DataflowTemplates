@@ -70,9 +70,6 @@ public class DatadogIO {
     abstract ValueProvider<Integer> parallelism();
 
     @Nullable
-    abstract ValueProvider<Boolean> enableBatchLogs();
-
-    @Nullable
     abstract ValueProvider<Boolean> enableGzipHttpCompression();
 
     @Override
@@ -84,7 +81,6 @@ public class DatadogIO {
               .withUrl(url())
               .withInputBatchCount(batchCount())
               .withToken((token()))
-              .withEnableBatchLogs(enableBatchLogs())
               .withEnableGzipHttpCompression(enableGzipHttpCompression());
 
       DatadogEventWriter writer = builder.build();
@@ -112,8 +108,6 @@ public class DatadogIO {
       abstract Builder setBatchCount(ValueProvider<Integer> batchCount);
 
       abstract Builder setParallelism(ValueProvider<Integer> parallelism);
-
-      abstract Builder setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
 
       abstract Builder setEnableGzipHttpCompression(
           ValueProvider<Boolean> enableGzipHttpCompression);
@@ -208,27 +202,6 @@ public class DatadogIO {
       public Builder withParallelism(Integer parallelism) {
         checkArgument(parallelism != null, "withParallelism(parallelism) called with null input.");
         return setParallelism(ValueProvider.StaticValueProvider.of(parallelism));
-      }
-
-      /**
-       * Method to enable batch logs.
-       *
-       * @param enableBatchLogs for enabling batch logs.
-       * @return {@link Builder}
-       */
-      public Builder withEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs) {
-        return setEnableBatchLogs(enableBatchLogs);
-      }
-
-      /**
-       * Same as {@link Builder#withEnableBatchLogs(ValueProvider)} but without a {@link
-       * ValueProvider}.
-       *
-       * @param enableBatchLogs for enabling batch logs.
-       * @return {@link Builder}
-       */
-      public Builder withEnableBatchLogs(Boolean enableBatchLogs) {
-        return setEnableBatchLogs(ValueProvider.StaticValueProvider.of((enableBatchLogs)));
       }
 
       /**

@@ -228,7 +228,6 @@ public class PubSubToDatadog {
                     .withUrl(options.getUrl())
                     .withBatchCount(options.getBatchCount())
                     .withParallelism(options.getParallelism())
-                    .withEnableBatchLogs(options.getEnableBatchLogs())
                     .withEnableGzipHttpCompression(options.getEnableGzipHttpCompression())
                     .build());
 

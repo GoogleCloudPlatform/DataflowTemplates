@@ -176,17 +176,6 @@ public class DatadogConverters {
 
     void setTokenSource(ValueProvider<String> tokenSource);
 
-    @TemplateParameter.Boolean(
-        order = 11,
-        optional = true,
-        description = "Enable logs for batches written to Datadog.",
-        helpText =
-            "Parameter which specifies if logs should be enabled for batches written to Datadog.")
-    @Default.Boolean(true)
-    ValueProvider<Boolean> getEnableBatchLogs();
-
-    void setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
-
     @TemplateParameter.Text(
         order = 12,
         optional = true,

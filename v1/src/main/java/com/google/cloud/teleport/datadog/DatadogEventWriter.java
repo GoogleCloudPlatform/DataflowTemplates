@@ -59,7 +59,6 @@ import org.slf4j.LoggerFactory;
 public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>, DatadogWriteError> {
 
   private static final Integer DEFAULT_BATCH_COUNT = 10;
-  private static final Boolean DEFAULT_ENABLE_BATCH_LOGS = true;
   private static final Boolean DEFAULT_ENABLE_GZIP_HTTP_COMPRESSION = true;
   private static final Logger LOG = LoggerFactory.getLogger(DatadogEventWriter.class);
   private static final long DEFAULT_FLUSH_DELAY = 2;
@@ -101,7 +100,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
   private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
   private Integer batchCount;
-  private Boolean enableBatchLogs;
   private Boolean enableGzipHttpCompression;
   private HttpEventPublisher publisher;
 
@@ -117,9 +115,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
 
   @Nullable
   abstract ValueProvider<String> token();
-
-  @Nullable
-  abstract ValueProvider<Boolean> enableBatchLogs();
 
   @Nullable
   abstract ValueProvider<Boolean> enableGzipHttpCompression();
@@ -143,16 +138,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
 
       batchCount = MoreObjects.firstNonNull(batchCount, DEFAULT_BATCH_COUNT);
       LOG.info("Batch count set to: {}", batchCount);
-    }
-
-    if (enableBatchLogs == null) {
-
-      if (enableBatchLogs() != null) {
-        enableBatchLogs = enableBatchLogs().get();
-      }
-
-      enableBatchLogs = MoreObjects.firstNonNull(enableBatchLogs, DEFAULT_ENABLE_BATCH_LOGS);
-      LOG.info("Enable Batch logs set to: {}", enableBatchLogs);
     }
 
     if (enableGzipHttpCompression == null) {
@@ -203,9 +188,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
     timer.offset(Duration.standardSeconds(DEFAULT_FLUSH_DELAY)).setRelative();
 
     if (count >= batchCount) {
-      if (enableBatchLogs) {
-        LOG.info("Flushing batch of {} events", count);
-      }
+      LOG.debug("Flushing batch of {} events", count);
       flush(receiver, bufferState, countState);
     }
   }
@@ -218,9 +201,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
       throws IOException {
 
     if (MoreObjects.<Long>firstNonNull(countState.read(), 0L) > 0) {
-      if (enableBatchLogs) {
-        LOG.info("Flushing window with {} events", countState.read());
-      }
+      LOG.debug("Flushing window with {} events", countState.read());
       flush(receiver, bufferState, countState);
     }
   }
@@ -281,9 +262,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
           VALID_REQUESTS.inc();
           SUCCESSFUL_WRITE_BATCH_SIZE.update(countState.read());
 
-          if (enableBatchLogs) {
-            LOG.info("Successfully wrote {} events", countState.read());
-          }
+          LOG.debug("Successfully wrote {} events", countState.read());
         }
 
       } catch (HttpResponseException e) {
@@ -339,9 +318,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
       int statusCode,
       String content,
       String statusMessage) {
-    if (enableBatchLogs) {
-      LOG.error("Failed to write {} events", countState.read());
-    }
+    LOG.error("Failed to write {} events", countState.read());
     LOG.error(
         "Error writing to Datadog. StatusCode: {}, content: {}, StatusMessage: {}",
         statusCode,
@@ -419,8 +396,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
 
     abstract ValueProvider<String> token();
 
-    abstract Builder setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
-
     abstract Builder setEnableGzipHttpCompression(ValueProvider<Boolean> enableGzipHttpCompression);
 
     abstract Builder setInputBatchCount(ValueProvider<Integer> inputBatchCount);
@@ -483,16 +458,6 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
      */
     public Builder withInputBatchCount(ValueProvider<Integer> inputBatchCount) {
       return setInputBatchCount(inputBatchCount);
-    }
-
-    /**
-     * Method to enable batch logs.
-     *
-     * @param enableBatchLogs for enabling batch logs.
-     * @return {@link Builder}
-     */
-    public Builder withEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs) {
-      return setEnableBatchLogs(enableBatchLogs);
     }
 
     /**
