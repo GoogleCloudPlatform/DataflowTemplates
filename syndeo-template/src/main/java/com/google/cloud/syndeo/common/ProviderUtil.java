@@ -31,15 +31,12 @@ import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ProviderUtil {
 
   public static final Map<String, SchemaTransformProvider> PROVIDERS = loadProviders();
   public static final String ERRORS_TAG = "errors";
   public static final String OUTPUT_TAG = "output";
-  private static final Logger LOG = LoggerFactory.getLogger(ProviderUtil.class);
 
   /** Load providers, including bringing in one for SchemaIOs. */
   private static Map<String, SchemaTransformProvider> loadProviders() {
@@ -82,7 +79,6 @@ public class ProviderUtil {
       try {
         configuration =
             Row.withSchema(provider.configurationSchema()).addValues(configurationAsList).build();
-        LOG.warn("config row after built by transformSpec " + configuration.toString(true));
       } catch (ClassCastException | IllegalArgumentException e) {
         throw new IllegalArgumentException(
             String.format(

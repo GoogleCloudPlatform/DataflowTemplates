@@ -52,8 +52,9 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.Field;
-import org.apache.beam.sdk.schemas.Schema.FieldType;
+import org.apache.beam.sdk.schemas.Schema.TypeName;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
@@ -177,71 +178,58 @@ public class SyndeoTemplate {
         transformProvider.getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     List<Object> configurationParameters =
         transformProvider.configurationSchema().getFields().stream()
-            .map(field -> field.getName())
-            .map(fieldName -> params.has(fieldName) ? params.get(fieldName) : null)
+            .map(field -> KV.of(field, field.getName()))
             .map(
-                fieldNode ->
-                    fieldNode == null
-                        ? null
-                        : fieldNode.isBoolean()
-                            ? fieldNode.asBoolean()
-                            : fieldNode.isFloatingPointNumber()
-                                ? fieldNode.asDouble()
-                                : fieldNode.isNumber()
-                                    ? fieldNode.asLong()
-                                    : !fieldNode.isContainerNode()
-                                        ? fieldNode.asText()
-                                        : fieldNode.isArray()
-                                            ? new ObjectMapper().convertValue(fieldNode, List.class)
-                                            : convertJsonNodeToRow(fieldNode))
+                fieldPair ->
+                    params.has(fieldPair.getValue())
+                        ? KV.of(fieldPair.getKey(), params.get(fieldPair.getValue()))
+                        : null)
+            .map(fieldPair -> parseJsonNode(fieldPair))
             .collect(Collectors.toList());
-    // return new ProviderUtil.TransformSpec(
-    //         transformConfig.get("urn").asText(), configurationParameters)
-    //     .toProto();
-    ConfiguredSchemaTransform t = new ProviderUtil.TransformSpec(
+
+    return new ProviderUtil.TransformSpec(
             transformConfig.get("urn").asText(), configurationParameters)
         .toProto();
-
-    LOG.warn("configured schema transfrm " + t.getConfigurationValues().toString());
-    // LOG.warn("fiel " + t.getConfigurationValues().)
-    return t;
   }
 
-  private static Row convertJsonNodeToRow(JsonNode node) {
-    try {
-      Map<String, Object> map = new ObjectMapper().convertValue(node, Map.class);
-      Schema.Builder schemaBuilder = Schema.builder();
-      List<Object> configList = new ArrayList<Object>();
+  private static Object parseJsonNode(KV<Field, JsonNode> fieldPair) {
+    if (fieldPair == null) return null;
 
-      for (Map.Entry<String, Object> kv : map.entrySet()) {
-        String key = kv.getKey();
-        Object value = kv.getValue();
+    Field field = fieldPair.getKey();
+    JsonNode fieldNode = fieldPair.getValue();
 
-        Field field =
-            value.getClass() == Integer.class
-                ? Field.of(key, FieldType.INT32)
-                : value.getClass() == String.class
-                    ? Field.of(key, FieldType.STRING)
-                    : value.getClass() == Boolean.class ? Field.of(key, FieldType.BOOLEAN) : null;
+    Object parsedField =
+        fieldNode == null
+            ? null
+            : fieldNode.isBoolean()
+                ? fieldNode.asBoolean()
+                : fieldNode.isFloatingPointNumber()
+                    ? fieldNode.asDouble()
+                    : fieldNode.isNumber()
+                        ? fieldNode.asLong()
+                        : !fieldNode.isContainerNode()
+                            ? fieldNode.asText()
+                            : fieldNode.isArray()
+                                ? new ObjectMapper().convertValue(fieldNode, List.class)
+                                : field.getType().getTypeName() == TypeName.MAP
+                                    ? new ObjectMapper().convertValue(fieldNode, Map.class)
+                                    : field.getType().getTypeName() == TypeName.ROW
+                                        ? convertJsonNodeToRow(fieldPair)
+                                        : new ObjectMapper().convertValue(fieldNode, Object.class);
 
-        if (field == null) {
-          throw new IllegalArgumentException(
-              "Cannot parse the schema field for " + value.getClass());
-        }
+    return parsedField;
+  }
 
-        schemaBuilder.addField(field);
-        configList.add(value);
-      }
-      Schema schema = schemaBuilder.build();
-
-      Row row = Row.withSchema(schema).addValues(configList).build();
-      LOG.warn("row after converting from json" + row.toString(true));
-      return row;
-      // return Row.withSchema(schema).addValues(configList).build();
-    } catch (Exception e) {
-      throw new IllegalArgumentException(
-          "Cannot parse nest JSON input into Beam Row. Input given is: " + node.toString(), e);
+  private static Row convertJsonNodeToRow(KV<Field, JsonNode> fieldPair) {
+    Field field = fieldPair.getKey();
+    JsonNode node = fieldPair.getValue();
+    Schema schema = field.getType().getRowSchema();
+    Map<String, Object> map = new ObjectMapper().convertValue(node, Map.class);
+    Row.Builder rowBuilder = Row.withSchema(schema);
+    for (String fieldName : schema.getFieldNames()) {
+      rowBuilder.addValue(map.get(fieldName));
     }
+    return rowBuilder.build();
   }
 
   public static PipelineDescription buildFromJsonPayload(String jsonPayload)
