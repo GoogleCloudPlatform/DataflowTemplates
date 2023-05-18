@@ -19,12 +19,9 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
-import com.mongodb.client.FindIterable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import org.bson.Document;
 import org.junit.After;
 import org.junit.Before;
@@ -58,10 +55,7 @@ public class MongoDBResourceManagerIT {
     boolean insertDocuments = mongoResourceManager.insertDocuments(COLLECTION_NAME, documents);
     assertThat(insertDocuments).isTrue();
 
-    FindIterable<Document> got = mongoResourceManager.readCollection(COLLECTION_NAME);
-
-    List<Document> fetchRecords =
-        StreamSupport.stream(got.spliterator(), false).collect(Collectors.toList());
+    List<Document> fetchRecords = mongoResourceManager.readCollection(COLLECTION_NAME);
 
     assertThat(fetchRecords).hasSize(2);
     assertThat(fetchRecords).containsExactlyElementsIn(documents);
