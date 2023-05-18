@@ -50,8 +50,12 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.Schema.Field;
+import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
+import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -189,11 +193,55 @@ public class SyndeoTemplate {
                                         ? fieldNode.asText()
                                         : fieldNode.isArray()
                                             ? new ObjectMapper().convertValue(fieldNode, List.class)
-                                            : new ObjectMapper().convertValue(fieldNode, Map.class))
+                                            : convertJsonNodeToRow(fieldNode))
             .collect(Collectors.toList());
-    return new ProviderUtil.TransformSpec(
+    // return new ProviderUtil.TransformSpec(
+    //         transformConfig.get("urn").asText(), configurationParameters)
+    //     .toProto();
+    ConfiguredSchemaTransform t = new ProviderUtil.TransformSpec(
             transformConfig.get("urn").asText(), configurationParameters)
         .toProto();
+
+    LOG.warn("configured schema transfrm " + t.getConfigurationValues().toString());
+    // LOG.warn("fiel " + t.getConfigurationValues().)
+    return t;
+  }
+
+  private static Row convertJsonNodeToRow(JsonNode node) {
+    try {
+      Map<String, Object> map = new ObjectMapper().convertValue(node, Map.class);
+      Schema.Builder schemaBuilder = Schema.builder();
+      List<Object> configList = new ArrayList<Object>();
+
+      for (Map.Entry<String, Object> kv : map.entrySet()) {
+        String key = kv.getKey();
+        Object value = kv.getValue();
+
+        Field field =
+            value.getClass() == Integer.class
+                ? Field.of(key, FieldType.INT32)
+                : value.getClass() == String.class
+                    ? Field.of(key, FieldType.STRING)
+                    : value.getClass() == Boolean.class ? Field.of(key, FieldType.BOOLEAN) : null;
+
+        if (field == null) {
+          throw new IllegalArgumentException(
+              "Cannot parse the schema field for " + value.getClass());
+        }
+
+        schemaBuilder.addField(field);
+        configList.add(value);
+      }
+      Schema schema = schemaBuilder.build();
+
+      Row row = Row.withSchema(schema).addValues(configList).build();
+      LOG.warn("row after converting from json" + row.toString(true));
+      return row;
+      // return Row.withSchema(schema).addValues(configList).build();
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          "Cannot parse nest JSON input into Beam Row. Input given is: " + node.toString(), e);
+    }
   }
 
   public static PipelineDescription buildFromJsonPayload(String jsonPayload)
