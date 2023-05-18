@@ -45,6 +45,7 @@ public class Ddl implements Serializable {
   private static final long serialVersionUID = -4153759448351855360L;
 
   private ImmutableSortedMap<String, Table> tables;
+  private ImmutableSortedMap<String, Model> models;
   private ImmutableSortedMap<String, View> views;
   private ImmutableSortedMap<String, ChangeStream> changeStreams;
   private TreeMultimap<String, String> parents;
@@ -55,6 +56,7 @@ public class Ddl implements Serializable {
 
   private Ddl(
       ImmutableSortedMap<String, Table> tables,
+      ImmutableSortedMap<String, Model> models,
       ImmutableSortedMap<String, View> views,
       ImmutableSortedMap<String, ChangeStream> changeStreams,
       TreeMultimap<String, String> parents,
@@ -62,6 +64,7 @@ public class Ddl implements Serializable {
       ImmutableList<Export.DatabaseOption> databaseOptions,
       Dialect dialect) {
     this.tables = tables;
+    this.models = models;
     this.views = views;
     this.changeStreams = changeStreams;
     this.parents = parents;
@@ -124,6 +127,14 @@ public class Ddl implements Serializable {
     return tables.get(tableName.toLowerCase());
   }
 
+  public Collection<Model> models() {
+    return models.values();
+  }
+
+  public Model model(String modelName) {
+    return models.get(modelName.toLowerCase());
+  }
+
   public Collection<View> views() {
     return views.values();
   }
@@ -176,6 +187,11 @@ public class Ddl implements Serializable {
       }
     }
 
+    for (Model model : models()) {
+      appendable.append("\n");
+      model.prettyPrint(appendable);
+    }
+
     for (View view : views()) {
       appendable.append("\n");
       view.prettyPrint(appendable);
@@ -192,6 +208,7 @@ public class Ddl implements Serializable {
         .addAll(createTableStatements())
         .addAll(createIndexStatements())
         .addAll(addForeignKeyStatements())
+        .addAll(createModelStatements())
         .addAll(createViewStatements())
         .addAll(createChangeStreamStatements())
         .addAll(setOptionsStatements("%db_name%"))
@@ -240,6 +257,14 @@ public class Ddl implements Serializable {
     List<String> result = new ArrayList<>();
     for (Table table : allTables()) {
       result.addAll(table.foreignKeys());
+    }
+    return result;
+  }
+
+  public List<String> createModelStatements() {
+    List<String> result = new ArrayList<>(models.size());
+    for (Model model : models.values()) {
+      result.add(model.prettyPrint());
     }
     return result;
   }
@@ -339,6 +364,7 @@ public class Ddl implements Serializable {
   public static class Builder {
 
     private Map<String, Table> tables = Maps.newLinkedHashMap();
+    private Map<String, Model> models = Maps.newLinkedHashMap();
     private Map<String, View> views = Maps.newLinkedHashMap();
     private Map<String, ChangeStream> changeStreams = Maps.newLinkedHashMap();
     private TreeMultimap<String, String> parents = TreeMultimap.create();
@@ -372,6 +398,22 @@ public class Ddl implements Serializable {
 
     public Collection<Table> tables() {
       return tables.values();
+    }
+
+    public Model.Builder createModel(String name) {
+      Model model = models.get(name.toLowerCase());
+      if (model == null) {
+        return Model.builder(dialect).name(name).ddlBuilder(this);
+      }
+      return model.toBuilder().ddlBuilder(this);
+    }
+
+    public void addModel(Model model) {
+      models.put(model.name().toLowerCase(), model);
+    }
+
+    public boolean hasModel(String name) {
+      return models.containsKey(name.toLowerCase());
     }
 
     public View.Builder createView(String name) {
@@ -428,6 +470,7 @@ public class Ddl implements Serializable {
     public Ddl build() {
       return new Ddl(
           ImmutableSortedMap.copyOf(tables),
+          ImmutableSortedMap.copyOf(models),
           ImmutableSortedMap.copyOf(views),
           ImmutableSortedMap.copyOf(changeStreams),
           parents,
@@ -440,6 +483,7 @@ public class Ddl implements Serializable {
   public Builder toBuilder() {
     Builder builder = new Builder(dialect);
     builder.tables.putAll(tables);
+    builder.models.putAll(models);
     builder.views.putAll(views);
     builder.changeStreams.putAll(changeStreams);
     builder.parents.putAll(parents);
@@ -473,6 +517,9 @@ public class Ddl implements Serializable {
         : ddl.referencedTables != null) {
       return false;
     }
+    if (models != null ? !models.equals(ddl.models) : ddl.models != null) {
+      return false;
+    }
     if (views != null ? !views.equals(ddl.views) : ddl.views != null) {
       return false;
     }
@@ -490,6 +537,7 @@ public class Ddl implements Serializable {
     result = 31 * result + (tables != null ? tables.hashCode() : 0);
     result = 31 * result + (parents != null ? parents.hashCode() : 0);
     result = 31 * result + (referencedTables != null ? referencedTables.hashCode() : 0);
+    result = 31 * result + (models != null ? models.hashCode() : 0);
     result = 31 * result + (views != null ? views.hashCode() : 0);
     result = 31 * result + (changeStreams != null ? changeStreams.hashCode() : 0);
     result = 31 * result + (databaseOptions != null ? databaseOptions.hashCode() : 0);
