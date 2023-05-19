@@ -139,6 +139,22 @@ public class DatadogEventWriterTest {
     assertThat(writer.inputBatchCount()).isNull();
   }
 
+  /** Test building {@link DatadogEventWriter} with a batchCount greater than 1000. */
+  @Test
+  public void eventWriterBatchCountTooBig() {
+
+    Exception thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> DatadogEventWriter.newBuilder()
+                .withUrl("http://test-url")
+                .withToken("test-token")
+                .withInputBatchCount(StaticValueProvider.of(1001))
+                .build());
+
+    assertThat(thrown).hasMessageThat().contains("inputBatchCount must be less than or equal to 1000");
+  }
+
   /** Test building {@link DatadogEventWriter} with custom batchcount . */
   @Test
   public void eventWriterCustomBatchCountAndValidation() {

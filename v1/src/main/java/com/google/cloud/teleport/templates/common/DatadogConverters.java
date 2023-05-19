@@ -108,7 +108,7 @@ public class DatadogConverters {
         order = 3,
         optional = true,
         description = "Batch size for sending multiple events to Datadog HEC.",
-        helpText = "Batch size for sending multiple events to Datadog HEC. Defaults to 10.")
+        helpText = "Batch size for sending multiple events to Datadog HEC. Defaults to 10. Max is 1000.")
     ValueProvider<Integer> getBatchCount();
 
     void setBatchCount(ValueProvider<Integer> batchCount);

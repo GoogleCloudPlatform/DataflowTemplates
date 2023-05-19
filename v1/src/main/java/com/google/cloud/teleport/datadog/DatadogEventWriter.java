@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>, DatadogWriteError> {
 
   private static final Integer DEFAULT_BATCH_COUNT = 10;
+  private static final Integer MAX_BATCH_COUNT = 1000;
   private static final Logger LOG = LoggerFactory.getLogger(DatadogEventWriter.class);
   private static final long DEFAULT_FLUSH_DELAY = 2;
   private static final Counter INPUT_COUNTER =
@@ -134,6 +135,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
       batchCount = MoreObjects.firstNonNull(batchCount, DEFAULT_BATCH_COUNT);
       LOG.info("Batch count set to: {}", batchCount);
     }
+    checkArgument(batchCount <= MAX_BATCH_COUNT, "batchCount must be less than or equal to %s", MAX_BATCH_COUNT);
 
     try {
       HttpEventPublisher.Builder builder =
@@ -438,6 +440,12 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
      * @return {@link Builder}
      */
     public Builder withInputBatchCount(ValueProvider<Integer> inputBatchCount) {
+      if (inputBatchCount != null && inputBatchCount.isAccessible()) {
+        Integer batchCount = inputBatchCount.get();
+        if (batchCount != null) {
+          checkArgument(batchCount <= MAX_BATCH_COUNT, "inputBatchCount must be less than or equal to %s", MAX_BATCH_COUNT);
+        }
+      }
       return setInputBatchCount(inputBatchCount);
     }
 

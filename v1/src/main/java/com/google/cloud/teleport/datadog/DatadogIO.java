@@ -171,7 +171,7 @@ public class DatadogIO {
       public Builder withBatchCount(Integer batchCount) {
         checkArgument(
             batchCount != null,
-            "withMaxEventsBatchCount(maxEventsBatchCount) called with null input.");
+            "withBatchCount(batchCount) called with null input.");
         return setBatchCount(ValueProvider.StaticValueProvider.of(batchCount));
       }
 
