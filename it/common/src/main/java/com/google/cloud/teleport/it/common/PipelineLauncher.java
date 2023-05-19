@@ -94,6 +94,9 @@ public interface PipelineLauncher {
      * <p>Always use this in place of valueOf.
      */
     public static JobState parse(String fromDataflow) {
+      if (fromDataflow == null) {
+        return null;
+      }
       return valueOf(fromDataflow.replace(DATAFLOW_PREFIX, ""));
     }
 
