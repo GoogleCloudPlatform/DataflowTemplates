@@ -34,6 +34,7 @@ func main() {
 		mvnFlags.IncludeDependents(),
 		mvnFlags.SkipDependencyAnalysis(), // TODO(zhoufek): Fix our dependencies then remove this flag
 		mvnFlags.SkipJib(),
+		mvnFlags.SkipShade(),
 		mvnFlags.SkipTests())
 	if err != nil {
 		log.Fatalf("%v\n", err)
