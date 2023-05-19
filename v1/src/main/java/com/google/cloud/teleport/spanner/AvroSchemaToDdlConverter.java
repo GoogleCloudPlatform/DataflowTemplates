@@ -23,12 +23,14 @@ import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.util.Collection;
+import org.apache.avro.JsonProperties;
 import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
@@ -53,6 +55,8 @@ public class AvroSchemaToDdlConverter {
     for (Schema schema : avroSchemas) {
       if (schema.getProp("spannerViewQuery") != null) {
         builder.addView(toView(null, schema));
+      } else if ("Model".equals(schema.getProp("spannerEntity"))) {
+        builder.addModel(toModel(null, schema));
       } else if (schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE) != null) {
         builder.addChangeStream(toChangeStream(null, schema));
       } else {
@@ -74,6 +78,54 @@ public class AvroSchemaToDdlConverter {
       builder.security(View.SqlSecurity.valueOf(schema.getProp("spannerViewSecurity")));
     }
     return builder.build();
+  }
+
+  public Model toModel(String modelName, Schema schema) {
+    if (modelName == null) {
+      modelName = schema.getName();
+    }
+    LOG.debug("Converting to Ddl modelName {}", modelName);
+
+    Model.Builder builder = Model.builder(dialect);
+    builder.name(modelName);
+    builder.remote(Boolean.parseBoolean(schema.getProp("spannerRemote")));
+    builder.options(toOptionsList(schema));
+
+    for (Schema.Field f : schema.getFields()) {
+      if (f.name().equals("Input")) {
+        for (Schema.Field c : f.schema().getFields()) {
+          builder
+              .inputColumn(c.name())
+              .parseType(c.getProp("sqlType"))
+              .columnOptions(toOptionsList(c))
+              .endInputColumn();
+        }
+      } else if (f.name().equals("Output")) {
+        for (Schema.Field c : f.schema().getFields()) {
+          builder
+              .outputColumn(c.name())
+              .parseType(c.getProp("sqlType"))
+              .columnOptions(toOptionsList(c))
+              .endOutputColumn();
+        }
+      } else {
+        throw new IllegalArgumentException("Unexpected model field " + f.name());
+      }
+    }
+
+    return builder.build();
+  }
+
+  private ImmutableList<String> toOptionsList(JsonProperties json) {
+    ImmutableList.Builder<String> columnOptions = ImmutableList.builder();
+    for (int i = 0; ; i++) {
+      String spannerOption = json.getProp("spannerOption_" + i);
+      if (spannerOption == null) {
+        break;
+      }
+      columnOptions.add(spannerOption);
+    }
+    return columnOptions.build();
   }
 
   public ChangeStream toChangeStream(String changeStreamName, Schema schema) {
