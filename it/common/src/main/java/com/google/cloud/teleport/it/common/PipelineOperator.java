@@ -208,7 +208,7 @@ public final class PipelineOperator {
   private boolean jobIsDone(String project, String region, String jobId) {
     try {
       JobState state = client.getJobStatus(project, region, jobId);
-      LOG.info("Job is in state {}", state);
+      LOG.info("Job {} is in state {}", jobId, state);
       if (JobState.FAILED_STATES.contains(state)) {
         throw new RuntimeException(
             String.format(
@@ -225,7 +225,7 @@ public final class PipelineOperator {
   private boolean jobIsDoneOrFinishing(String project, String region, String jobId) {
     try {
       JobState state = client.getJobStatus(project, region, jobId);
-      LOG.info("Job is in state {}", state);
+      LOG.info("Job {} is in state {}", jobId, state);
       if (JobState.FAILED_STATES.contains(state)) {
         throw new RuntimeException(
             String.format(

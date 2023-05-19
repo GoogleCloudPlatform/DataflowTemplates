@@ -53,7 +53,7 @@ public class IOLoadTestBase extends LoadTestBase {
 
   @After
   public void tearDownBase() throws IOException {
-    launcher().cleanupAll();
+    pipelineLauncher.cleanupAll();
   }
 
   @Override

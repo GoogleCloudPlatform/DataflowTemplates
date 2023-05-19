@@ -25,6 +25,7 @@ import com.google.auth.Credentials;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
+import com.google.cloud.teleport.it.common.PipelineLauncher.JobState;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator;
@@ -119,6 +120,7 @@ public abstract class TemplateTestBase {
   @Deprecated protected GcsArtifactClient artifactClient;
 
   private boolean usingDirectRunner;
+  protected PipelineLauncher pipelineLauncher;
 
   @Before
   public void setUpBase() {
@@ -238,6 +240,8 @@ public abstract class TemplateTestBase {
         throw new IllegalArgumentException("Error staging template", e);
       }
     }
+
+    pipelineLauncher = buildLauncher();
   }
 
   private Template getTemplateAnnotation(
@@ -334,13 +338,15 @@ public abstract class TemplateTestBase {
 
   @After
   public void tearDownBase() throws IOException {
-    launcher().cleanupAll();
+    LOG.info("Invoking tearDownBase cleanups for {} - {}", testName, testId);
+
+    pipelineLauncher.cleanupAll();
     if (gcsClient != null) {
       gcsClient.cleanupAll();
     }
   }
 
-  protected PipelineLauncher launcher() {
+  protected PipelineLauncher buildLauncher() {
     if (usingDirectRunner) {
       return DirectRunnerClient.builder(templateClass).setCredentials(credentials).build();
     } else if (template.flexContainerName() != null && !template.flexContainerName().isEmpty()) {
@@ -411,7 +417,6 @@ public abstract class TemplateTestBase {
       }
     }
 
-    PipelineLauncher pipelineLauncher = launcher();
     LaunchInfo launchInfo = pipelineLauncher.launch(PROJECT, REGION, options.build());
 
     // if the launch succeeded and setupShutdownHook is enabled, setup a thread to cancel job
@@ -482,7 +487,7 @@ public abstract class TemplateTestBase {
   }
 
   protected PipelineOperator pipelineOperator() {
-    return new PipelineOperator(launcher());
+    return new PipelineOperator(pipelineLauncher);
   }
 
   /**
@@ -502,6 +507,10 @@ public abstract class TemplateTestBase {
 
     @Override
     public void run() {
+      // Ignore shutdown hook
+      if (JobState.FINISHING_STATES.contains(launchInfo.state())) {
+        return;
+      }
       try {
         Job cancelled =
             pipelineLauncher.cancelJob(
