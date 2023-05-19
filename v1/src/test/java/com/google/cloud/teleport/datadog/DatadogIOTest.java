@@ -42,28 +42,26 @@ public class DatadogIOTest {
 
   private static final DatadogEvent DATADOG_TEST_EVENT_1 =
       DatadogEvent.newBuilder()
-          .withEvent("test-event-1")
-          .withHost("test-host-1")
-          .withIndex("test-index-1")
           .withSource("test-source-1")
-          .withSourceType("test-source-type-1")
-          .withTime(12345L)
+          .withTags("test-tags-1")
+          .withHostname("test-hostname-1")
+          .withService("test-service-1")
+          .withMessage("test-message-1")
           .build();
 
   private static final DatadogEvent DATADOG_TEST_EVENT_2 =
       DatadogEvent.newBuilder()
-          .withEvent("test-event-2")
-          .withHost("test-host-2")
-          .withIndex("test-index-2")
           .withSource("test-source-2")
-          .withSourceType("test-source-type-2")
-          .withTime(12345L)
+          .withTags("test-tags-2")
+          .withHostname("test-hostname-2")
+          .withService("test-service-2")
+          .withMessage("test-message-2")
           .build();
 
   private static final List<DatadogEvent> DATADOG_EVENTS =
       ImmutableList.of(DATADOG_TEST_EVENT_1, DATADOG_TEST_EVENT_2);
 
-  private static final String EXPECTED_PATH = "/" + HttpEventPublisher.HEC_URL_PATH;
+  private static final String EXPECTED_PATH = "/" + HttpEventPublisher.DD_URL_PATH;
   private static final int TEST_PARALLELISM = 2;
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();

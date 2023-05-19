@@ -69,15 +69,16 @@ public abstract class HttpEventPublisher {
   private static final Gson GSON =
       new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
 
-  @VisibleForTesting protected static final String HEC_URL_PATH = "services/collector/event";
+  @VisibleForTesting
+  protected static final String DD_URL_PATH = "api/v2/logs";
+
+  private static final String DD_API_KEY_HEADER = "dd-api-key";
 
   private static final HttpMediaType MEDIA_TYPE =
-      new HttpMediaType("application/json;profile=urn:datadog:event:1.0;charset=utf-8");
+      new HttpMediaType("application/json;charset=utf-8");
 
   private static final String CONTENT_TYPE =
       Joiner.on('/').join(MEDIA_TYPE.getType(), MEDIA_TYPE.getSubType());
-
-  private static final String AUTHORIZATION_SCHEME = "Datadog %s";
 
   private static final String HTTPS_PROTOCOL_PREFIX = "https";
 
@@ -159,7 +160,7 @@ public abstract class HttpEventPublisher {
    * @param token Datadog's HEC authorization token.
    */
   private void setHeaders(HttpRequest request, String token) {
-    request.getHeaders().setAuthorization(String.format(AUTHORIZATION_SCHEME, token));
+    request.getHeaders().set(DD_API_KEY_HEADER, token);
     request.getHeaders().setContentEncoding("gzip");
   }
 
@@ -180,9 +181,7 @@ public abstract class HttpEventPublisher {
   /** Utility method to get payload string from a list of {@link DatadogEvent}s. */
   @VisibleForTesting
   String getStringPayload(List<DatadogEvent> events) {
-    StringBuilder sb = new StringBuilder();
-    events.forEach(event -> sb.append(GSON.toJson(event)));
-    return sb.toString();
+    return GSON.toJson(events);
   }
 
   @AutoValue.Builder
@@ -279,7 +278,7 @@ public abstract class HttpEventPublisher {
      * @return {@link GenericUrl}
      */
     private GenericUrl getGenericUrl(String baseUrl) {
-      String url = Joiner.on('/').join(baseUrl, HEC_URL_PATH);
+      String url = Joiner.on('/').join(baseUrl, DD_URL_PATH);
 
       return new GenericUrl(url);
     }

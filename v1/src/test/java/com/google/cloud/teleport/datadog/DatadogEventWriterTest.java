@@ -47,7 +47,7 @@ import org.mockserver.verify.VerificationTimes;
 /** Unit tests for {@link com.google.cloud.teleport.datadog.DatadogEventWriter} class. */
 public class DatadogEventWriterTest {
 
-  private static final String EXPECTED_PATH = "/" + HttpEventPublisher.HEC_URL_PATH;
+  private static final String EXPECTED_PATH = "/" + HttpEventPublisher.DD_URL_PATH;
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
@@ -98,7 +98,7 @@ public class DatadogEventWriterTest {
   }
 
   /**
-   * Test building {@link DatadogEventWriter} with the 'services/collector/event' path appended to
+   * Test building {@link DatadogEventWriter} with the 'api/v2/logs' path appended to
    * the URL.
    */
   @Test
@@ -109,7 +109,7 @@ public class DatadogEventWriterTest {
             IllegalArgumentException.class,
             () ->
                 DatadogEventWriter.newBuilder()
-                    .withUrl("http://test-url:8088/services/collector/event")
+                    .withUrl("http://test-url:8088/api/v2/logs")
                     .build());
 
     assertThat(thrown).hasMessageThat().contains(DatadogEventWriter.INVALID_URL_FORMAT_MESSAGE);
@@ -169,22 +169,20 @@ public class DatadogEventWriterTest {
             KV.of(
                 123,
                 DatadogEvent.newBuilder()
-                    .withEvent("test-event-1")
-                    .withHost("test-host-1")
-                    .withIndex("test-index-1")
                     .withSource("test-source-1")
-                    .withSourceType("test-source-type-1")
-                    .withTime(12345L)
+                    .withTags("test-tags-1")
+                    .withHostname("test-hostname-1")
+                    .withService("test-service-1")
+                    .withMessage("test-message-1")
                     .build()),
             KV.of(
                 123,
                 DatadogEvent.newBuilder()
-                    .withEvent("test-event-2")
-                    .withHost("test-host-2")
-                    .withIndex("test-index-2")
                     .withSource("test-source-2")
-                    .withSourceType("test-source-type-2")
-                    .withTime(12345L)
+                    .withTags("test-tags-2")
+                    .withHostname("test-hostname-2")
+                    .withService("test-service-2")
+                    .withMessage("test-message-2")
                     .build()));
 
     PCollection<DatadogWriteError> actual =
@@ -229,22 +227,20 @@ public class DatadogEventWriterTest {
             KV.of(
                 123,
                 DatadogEvent.newBuilder()
-                    .withEvent("test-event-1")
-                    .withHost("test-host-1")
-                    .withIndex("test-index-1")
                     .withSource("test-source-1")
-                    .withSourceType("test-source-type-1")
-                    .withTime(12345L)
+                    .withTags("test-tags-1")
+                    .withHostname("test-hostname-1")
+                    .withService("test-service-1")
+                    .withMessage("test-message-1")
                     .build()),
             KV.of(
                 123,
                 DatadogEvent.newBuilder()
-                    .withEvent("test-event-2")
-                    .withHost("test-host-2")
-                    .withIndex("test-index-2")
                     .withSource("test-source-2")
-                    .withSourceType("test-source-type-2")
-                    .withTime(12345L)
+                    .withTags("test-tags-2")
+                    .withHostname("test-hostname-2")
+                    .withService("test-service-2")
+                    .withMessage("test-message-2")
                     .build()));
 
     PCollection<DatadogWriteError> actual =
@@ -289,12 +285,11 @@ public class DatadogEventWriterTest {
             KV.of(
                 123,
                 DatadogEvent.newBuilder()
-                    .withEvent("test-event-1")
-                    .withHost("test-host-1")
-                    .withIndex("test-index-1")
                     .withSource("test-source-1")
-                    .withSourceType("test-source-type-1")
-                    .withTime(12345L)
+                    .withTags("test-tags-1")
+                    .withHostname("test-hostname-1")
+                    .withService("test-service-1")
+                    .withMessage("test-message-1")
                     .build()));
 
     PCollection<DatadogWriteError> actual =
@@ -322,9 +317,9 @@ public class DatadogEventWriterTest {
                 .withStatusCode(404)
                 .withStatusMessage("Not Found")
                 .withPayload(
-                    "{\"time\":12345,\"host\":\"test-host-1\","
-                        + "\"source\":\"test-source-1\",\"sourcetype\":\"test-source-type-1\","
-                        + "\"index\":\"test-index-1\",\"event\":\"test-event-1\"}")
+                    "{\"ddsource\":\"test-source-1\"," +
+                        "\"ddtags\":\"test-tags-1\",\"hostname\":\"test-hostname-1\"," +
+                        "\"service\":\"test-service-1\",\"message\":\"test-message-1\"}")
                 .build());
 
     pipeline.run();

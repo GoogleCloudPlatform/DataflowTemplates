@@ -18,8 +18,6 @@ package com.google.cloud.teleport.datadog;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
-import com.google.gson.JsonObject;
-import com.google.gson.annotations.SerializedName;
 import javax.annotation.Nullable;
 
 /** A class for Datadog events. */
@@ -31,93 +29,71 @@ public abstract class DatadogEvent {
   }
 
   @Nullable
-  public abstract Long time();
+  public abstract String ddsource();
 
   @Nullable
-  public abstract String host();
+  public abstract String ddtags();
 
   @Nullable
-  public abstract String source();
+  public abstract String hostname();
 
   @Nullable
-  @SerializedName("sourcetype")
-  public abstract String sourceType();
+  public abstract String service();
 
   @Nullable
-  public abstract String index();
-
-  @Nullable
-  public abstract JsonObject fields();
-
-  @Nullable
-  public abstract String event();
+  public abstract String message();
 
   /** A builder class for creating {@link DatadogEvent} objects. */
   @AutoValue.Builder
   public abstract static class Builder {
 
-    abstract Builder setTime(Long time);
+    abstract Builder setDdsource(String source);
 
-    abstract Builder setHost(String host);
+    abstract Builder setDdtags(String tags);
 
-    abstract Builder setSource(String source);
+    abstract Builder setHostname(String hostname);
 
-    abstract Builder setSourceType(String sourceType);
+    abstract Builder setService(String service);
 
-    abstract Builder setIndex(String index);
+    abstract Builder setMessage(String message);
 
-    abstract Builder setEvent(String event);
-
-    abstract Builder setFields(JsonObject fields);
-
-    abstract String event();
+    abstract String message();
 
     abstract DatadogEvent autoBuild();
-
-    public Builder withTime(Long time) {
-      checkNotNull(time, "withTime(time) called with null input.");
-
-      return setTime(time);
-    }
-
-    public Builder withHost(String host) {
-      checkNotNull(host, "withHost(host) called with null input.");
-
-      return setHost(host);
-    }
 
     public Builder withSource(String source) {
       checkNotNull(source, "withSource(source) called with null input.");
 
-      return setSource(source);
+      return setDdsource(source);
     }
 
-    public Builder withSourceType(String sourceType) {
-      checkNotNull(sourceType, "withSourceType(sourceType) called with null input.");
+    public Builder withTags(String tags) {
+      checkNotNull(tags, "withTags(tags) called with null input.");
 
-      return setSourceType(sourceType);
+      return setDdtags(tags);
     }
 
-    public Builder withIndex(String index) {
-      checkNotNull(index, "withIndex(index) called with null input.");
+    public Builder withHostname(String hostname) {
+      checkNotNull(hostname, "withHostname(hostname) called with null input.");
 
-      return setIndex(index);
+      return setHostname(hostname);
     }
 
-    public Builder withFields(JsonObject fields) {
-      checkNotNull(fields, "withFields(fields) called with null input.");
+    public Builder withService(String service) {
+      checkNotNull(service, "withService(service) called with null input.");
 
-      return setFields(fields);
+      return setService(service);
     }
 
-    public Builder withEvent(String event) {
-      checkNotNull(event, "withEvent(event) called with null input.");
+    public Builder withMessage(String message) {
+      checkNotNull(message, "withMessage(message) called with null input.");
 
-      return setEvent(event);
+      return setMessage(message);
     }
 
     public DatadogEvent build() {
-      checkNotNull(event(), "Event information is required.");
+      checkNotNull(message(), "Message is required.");
+
       return autoBuild();
     }
   }

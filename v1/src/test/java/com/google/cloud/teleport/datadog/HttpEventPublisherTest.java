@@ -37,22 +37,20 @@ public class HttpEventPublisherTest {
 
   private static final DatadogEvent DATADOG_TEST_EVENT_1 =
       DatadogEvent.newBuilder()
-          .withEvent("test-event-1")
-          .withHost("test-host-1")
-          .withIndex("test-index-1")
           .withSource("test-source-1")
-          .withSourceType("test-source-type-1")
-          .withTime(12345L)
+          .withTags("test-tags-1")
+          .withHostname("test-hostname-1")
+          .withService("test-service-1")
+          .withMessage("test-message-1")
           .build();
 
   private static final DatadogEvent DATADOG_TEST_EVENT_2 =
       DatadogEvent.newBuilder()
-          .withEvent("test-event-2")
-          .withHost("test-host-2")
-          .withIndex("test-index-2")
           .withSource("test-source-2")
-          .withSourceType("test-source-type-2")
-          .withTime(12345L)
+          .withTags("test-tags-2")
+          .withHostname("test-hostname-2")
+          .withService("test-service-2")
+          .withMessage("test-message-2")
           .build();
 
   private static final List<DatadogEvent> DATADOG_EVENTS =
@@ -74,11 +72,14 @@ public class HttpEventPublisherTest {
     String actual = publisher.getStringPayload(DATADOG_EVENTS);
 
     String expected =
-        "{\"time\":12345,\"host\":\"test-host-1\",\"source\":\"test-source-1\","
-            + "\"sourcetype\":\"test-source-type-1\",\"index\":\"test-index-1\","
-            + "\"event\":\"test-event-1\"}{\"time\":12345,\"host\":\"test-host-2\","
-            + "\"source\":\"test-source-2\",\"sourcetype\":\"test-source-type-2\","
-            + "\"index\":\"test-index-2\",\"event\":\"test-event-2\"}";
+        "[" +
+            "{\"ddsource\":\"test-source-1\",\"ddtags\":\"test-tags-1\"," +
+            "\"hostname\":\"test-hostname-1\",\"service\":\"test-service-1\"," +
+            "\"message\":\"test-message-1\"}," +
+            "{\"ddsource\":\"test-source-2\",\"ddtags\":\"test-tags-2\"," +
+            "\"hostname\":\"test-hostname-2\",\"service\":\"test-service-2\"," +
+            "\"message\":\"test-message-2\"}" +
+            "]";
 
     assertThat(expected, is(equalTo(actual)));
   }
@@ -97,11 +98,14 @@ public class HttpEventPublisherTest {
             .build();
 
     String expectedString =
-        "{\"time\":12345,\"host\":\"test-host-1\",\"source\":\"test-source-1\","
-            + "\"sourcetype\":\"test-source-type-1\",\"index\":\"test-index-1\","
-            + "\"event\":\"test-event-1\"}{\"time\":12345,\"host\":\"test-host-2\","
-            + "\"source\":\"test-source-2\",\"sourcetype\":\"test-source-type-2\","
-            + "\"index\":\"test-index-2\",\"event\":\"test-event-2\"}";
+        "[" +
+            "{\"ddsource\":\"test-source-1\",\"ddtags\":\"test-tags-1\"," +
+            "\"hostname\":\"test-hostname-1\",\"service\":\"test-service-1\"," +
+            "\"message\":\"test-message-1\"}," +
+            "{\"ddsource\":\"test-source-2\",\"ddtags\":\"test-tags-2\"," +
+            "\"hostname\":\"test-hostname-2\",\"service\":\"test-service-2\"," +
+            "\"message\":\"test-message-2\"}" +
+            "]";
 
     try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
       HttpContent actualContent = publisher.getContent(DATADOG_EVENTS);
@@ -123,7 +127,7 @@ public class HttpEventPublisherTest {
 
     assertThat(
         builder.genericUrl(),
-        is(equalTo(new GenericUrl(Joiner.on('/').join(baseURL, "services/collector/event")))));
+        is(equalTo(new GenericUrl(Joiner.on('/').join(baseURL, "api/v2/logs")))));
   }
 
   @Test

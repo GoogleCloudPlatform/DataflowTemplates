@@ -20,7 +20,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
 
-import com.google.gson.JsonObject;
 import org.junit.Test;
 
 /** Unit tests for {@link DatadogEvent} class. */
@@ -29,25 +28,19 @@ public class DatadogEventTest {
   /** Test whether a {@link DatadogEvent} created via its builder can be compared correctly. */
   @Test
   public void testEquals() {
-
-    String event = "test-event";
-    String host = "test-host";
-    String index = "test-index";
     String source = "test-source";
-    String sourceType = "test-source-type";
-    Long time = 123456789L;
-    JsonObject fields = new JsonObject();
-    fields.addProperty("test-key", "test-value");
+    String tags = "test-tags";
+    String hostname = "test-hostname";
+    String service = "test-service";
+    String message = "test-message";
 
     DatadogEvent actualEvent =
         DatadogEvent.newBuilder()
-            .withEvent(event)
-            .withHost(host)
-            .withIndex(index)
             .withSource(source)
-            .withSourceType(sourceType)
-            .withTime(time)
-            .withFields(fields)
+            .withTags(tags)
+            .withHostname(hostname)
+            .withService(service)
+            .withMessage(message)
             .build();
 
     assertThat(
@@ -55,13 +48,11 @@ public class DatadogEventTest {
         is(
             equalTo(
                 DatadogEvent.newBuilder()
-                    .withEvent(event)
-                    .withHost(host)
-                    .withIndex(index)
                     .withSource(source)
-                    .withSourceType(sourceType)
-                    .withTime(time)
-                    .withFields(fields)
+                    .withTags(tags)
+                    .withHostname(hostname)
+                    .withService(service)
+                    .withMessage(message)
                     .build())));
 
     assertThat(
@@ -70,13 +61,11 @@ public class DatadogEventTest {
             not(
                 equalTo(
                     DatadogEvent.newBuilder()
-                        .withEvent("a-different-test-event")
-                        .withHost(host)
-                        .withIndex(index)
                         .withSource(source)
-                        .withSourceType(sourceType)
-                        .withTime(time)
-                        .withFields(fields)
+                        .withTags(tags)
+                        .withHostname(hostname)
+                        .withService(service)
+                        .withMessage("a-different-test-message")
                         .build()))));
   }
 }

@@ -15,14 +15,14 @@
  */
 package com.google.cloud.teleport.templates.common;
 
-import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.datadog.DatadogEvent;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.values.FailsafeElement;
+import com.google.common.base.Joiner;
 import com.google.common.base.Throwables;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -36,8 +36,6 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Collection of utility {@link PTransform}s, {@link DoFn} and {@link PipelineOptions} used by
@@ -45,25 +43,23 @@ import org.slf4j.LoggerFactory;
  */
 public class DatadogConverters {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DatadogConverters.class);
+  private static final String GCP_RESOURCE_KEY = "resource";
+  private static final String GCP_RESOURCE_TYPE_KEY = "type";
+  private static final String GCP_RESOURCE_LABELS_KEY = "labels";
 
   // Key for grouping metadata fields.
   private static final String METADATA_KEY = "_metadata";
 
-  // Users may use a UDF to add additional fields such as host and index
-  // that can be used for routing messages to different indexes in HEC.
+  private static final String DD_DEFAULT_SOURCE = "gcp";
+
+  // Users may use a UDF to overwrite defaults for fields.
   // These metadata fields should be added in a nested JsonObject corresponding
   // to key _metadata.
-  private static final String HEC_EVENT_KEY = "event";
-  private static final String HEC_HOST_KEY = "host";
-  private static final String HEC_INDEX_KEY = "index";
-  private static final String HEC_TIME_KEY = "time";
-  private static final String HEC_SOURCE_KEY = "source";
-  private static final String HEC_SOURCE_TYPE_KEY = "sourcetype";
-  private static final String HEC_FIELDS_KEY = "fields";
-  private static final String TIMESTAMP_KEY = "timestamp";
-
-  private static final Gson GSON = new Gson();
+  private static final String DD_SOURCE_KEY = "ddsource";
+  private static final String DD_TAGS_KEY = "ddtags";
+  private static final String DD_HOSTNAME_KEY = "hostname";
+  private static final String DD_SERVICE_KEY = "service";
+  private static final String DD_MESSAGE_KEY = "message";
 
   /**
    * Returns a {@link FailsafeStringToDatadogEvent} {@link PTransform} that consumes {@link
@@ -210,90 +206,109 @@ public class DatadogConverters {
 
                       try {
 
-                        // Start building a DatadogEvent with the payload as the event.
-                        DatadogEvent.Builder builder = DatadogEvent.newBuilder().withEvent(input);
+                        // Start building a DatadogEvent with the payload as the message and a default source.
+                        DatadogEvent.Builder builder = DatadogEvent.newBuilder()
+                            .withMessage(input)
+                            .withSource(DD_DEFAULT_SOURCE);
 
                         // We will attempt to parse the input to see
                         // if it is a valid JSON and if so, whether we can
-                        // extract some additional properties that would be
-                        // present in Stackdriver's LogEntry structure (timestamp) or
-                        // a user provided _metadata field.
+                        // extract some additional properties.
                         try {
 
+                          // If valid JSON, we attempt to treat it as a LogEntry
+                          // See: https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
                           JSONObject json = new JSONObject(input);
+
+                          // Check if the JSON we receive has a resource object
+                          // See: https://cloud.google.com/logging/docs/reference/v2/rest/v2/MonitoredResource
+                          JSONObject resource = json.optJSONObject(GCP_RESOURCE_KEY);
+                          boolean resourceAvailable = (resource != null && !resource.isEmpty());
+
+                          if (resourceAvailable) {
+
+                            // Check if the resource object has a type string
+                            // If so, convert it to a Datadog source string and add it to the DatadogEvent, i.e.
+                            // "gce_instance"
+                            // converts to
+                            // "gcp.gce.instance"
+                            String type = resource.optString(GCP_RESOURCE_TYPE_KEY);
+                            if (!type.isEmpty()) {
+                              String formattedSource = DD_DEFAULT_SOURCE + "." + type.replaceAll("_", ".");
+                              builder.withSource(formattedSource);
+                            }
+
+                            // Check if the resource object has a labels object
+                            // If so, convert it to a Datadog tags string and add it to the DatadogEvent, i.e.
+                            // {"projectId": "my-project", "instanceId": "12345678901234", "zone": "us-central1-a"}
+                            // converts to
+                            // "projectId:my-project,instanceId:12345678901234,zone:us-central1-a"
+                            JSONObject labels = resource.optJSONObject(GCP_RESOURCE_LABELS_KEY);
+                            boolean labelsAvailable = (labels != null && !labels.isEmpty());
+
+                            if (labelsAvailable) {
+                              List<String> tags = new ArrayList<>();
+                              for(Map.Entry<String, Object> label : labels.toMap().entrySet()) {
+                                String labelName = label.getKey();
+                                String labelValue = label.getValue().toString();
+                                if(labelName.isEmpty() || labelValue.isEmpty()) {
+                                  continue;
+                                }
+
+                                tags.add(String.format("%s:%s", labelName, labelValue));
+                              }
+
+                              String formattedTags = Joiner.on(",").join(tags);
+                              if(!formattedTags.isEmpty()) {
+                                builder.withTags(formattedTags);
+                              }
+                            }
+                          }
 
                           // Check if metadata is provided via a nested _metadata
                           // JSON object
                           JSONObject metadata = json.optJSONObject(METADATA_KEY);
-                          boolean metadataAvailable = (metadata != null);
+                          boolean metadataAvailable = (metadata != null && !metadata.isEmpty());
 
-                          // We attempt to extract the timestamp from metadata (if available)
-                          // followed by TIMESTAMP_KEY. If neither (optional) keys are available
-                          // we proceed without setting this metadata field.
-                          String parsedTimestamp;
-                          if (metadataAvailable) {
-                            parsedTimestamp = metadata.optString(HEC_TIME_KEY);
-                          } else {
-                            parsedTimestamp = json.optString(TIMESTAMP_KEY);
-                          }
-
-                          if (!parsedTimestamp.isEmpty()) {
-                            try {
-                              builder.withTime(DateTime.parseRfc3339(parsedTimestamp).getValue());
-                            } catch (NumberFormatException n) {
-                              // We log this exception but don't want to fail the entire record.
-                              LOG.warn(
-                                  "Unable to parse non-rfc3339 formatted timestamp: {}",
-                                  parsedTimestamp);
-                            }
-                          }
-
-                          // For the other metadata fields, we only look at the _metadata
+                          // For the metadata fields, we only look at the _metadata
                           // object if present.
+                          // If the metadata has any matching entries, they take precedence
+                          // over anything already in the DatadogEvent
                           if (metadataAvailable) {
-                            String source = metadata.optString(HEC_SOURCE_KEY);
+                            String source = metadata.optString(DD_SOURCE_KEY);
                             if (!source.isEmpty()) {
                               builder.withSource(source);
                             }
 
-                            String sourceType = metadata.optString(HEC_SOURCE_TYPE_KEY);
-                            if (!sourceType.isEmpty()) {
-                              builder.withSourceType(sourceType);
+                            String tags = metadata.optString(DD_TAGS_KEY);
+                            if (!tags.isEmpty()) {
+                              builder.withTags(tags);
                             }
 
-                            String host = metadata.optString(HEC_HOST_KEY);
-                            if (!host.isEmpty()) {
-                              builder.withHost(host);
+                            String hostname = metadata.optString(DD_HOSTNAME_KEY);
+                            if (!hostname.isEmpty()) {
+                              builder.withHostname(hostname);
                             }
 
-                            String index = metadata.optString(HEC_INDEX_KEY);
-                            if (!index.isEmpty()) {
-                              builder.withIndex(index);
+                            String service = metadata.optString(DD_SERVICE_KEY);
+                            if (!service.isEmpty()) {
+                              builder.withService(service);
                             }
 
-                            String event = metadata.optString(HEC_EVENT_KEY);
-                            if (!event.isEmpty()) {
-                              builder.withEvent(event);
+                            String message = metadata.optString(DD_MESSAGE_KEY);
+                            if (!message.isEmpty()) {
+                              builder.withMessage(message);
                             }
 
-                            String fields = metadata.optString(HEC_FIELDS_KEY);
-                            if (!fields.isEmpty()) {
-                              try {
-                                builder.withFields(GSON.fromJson(fields, JsonObject.class));
-                              } catch (JsonParseException e) {
-                                LOG.warn(
-                                    "Unable to convert 'fields' metadata value:{} into JSON object",
-                                    fields);
-                              }
-                            }
                             // We remove the _metadata entry from the payload
                             // to avoid duplicates in Datadog. The relevant entries
                             // have been parsed and populated in the DatadogEvent metadata.
                             json.remove(METADATA_KEY);
-                            // If the event was not overridden in metadata above, use
-                            // the received JSON as event.
-                            if (event.isEmpty()) {
-                              builder.withEvent(json.toString());
+
+                            // If the message was not overridden in metadata above, use
+                            // the received JSON as message.
+                            if (message.isEmpty()) {
+                              builder.withMessage(json.toString());
                             }
                           }
 

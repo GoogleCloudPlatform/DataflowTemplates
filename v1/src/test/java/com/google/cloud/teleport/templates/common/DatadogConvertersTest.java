@@ -15,13 +15,10 @@
  */
 package com.google.cloud.teleport.templates.common;
 
-import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.datadog.DatadogEvent;
 import com.google.cloud.teleport.datadog.DatadogEventCoder;
 import com.google.cloud.teleport.values.FailsafeElement;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
@@ -40,8 +37,6 @@ public class DatadogConvertersTest {
   private static final TupleTag<FailsafeElement<String, String>> DATADOG_EVENT_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
-
-  private static final Gson GSON = new Gson();
 
   /** Test successful conversion of simple String payloads. */
   @Test
@@ -65,8 +60,8 @@ public class DatadogConvertersTest {
     PAssert.that(tuple.get(DATADOG_EVENT_DEADLETTER_OUT)).empty();
     PAssert.that(tuple.get(DATADOG_EVENT_OUT))
         .containsInAnyOrder(
-            DatadogEvent.newBuilder().withEvent("hello").build(),
-            DatadogEvent.newBuilder().withEvent("world").build());
+            DatadogEvent.newBuilder().withMessage("hello").withSource("gcp").build(),
+            DatadogEvent.newBuilder().withMessage("world").withSource("gcp").build());
 
     pipeline.run();
   }
@@ -81,7 +76,7 @@ public class DatadogConvertersTest {
             "" + "\t\"name\": \"Jim\",\n" + "}", "{\n" + "\t\"name\": \"Jim\",\n" + "}");
 
     DatadogEvent expectedDatadogEvent =
-        DatadogEvent.newBuilder().withEvent("{\n" + "\t\"name\": \"Jim\",\n" + "}").build();
+        DatadogEvent.newBuilder().withMessage("{\n" + "\t\"name\": \"Jim\",\n" + "}").withSource("gcp").build();
 
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
@@ -96,210 +91,253 @@ public class DatadogConvertersTest {
             "" + "\t\"name\": \"Jim\",\n" + "}", "{\n" + "\t\"name\": \"Jim\"\n" + "}");
 
     DatadogEvent expectedDatadogEvent =
-        DatadogEvent.newBuilder().withEvent("{\n" + "\t\"name\": \"Jim\"\n" + "}").build();
+        DatadogEvent.newBuilder().withMessage("{\n" + "\t\"name\": \"Jim\"\n" + "}").withSource("gcp").build();
 
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with a valid timestamp. */
+  /** Test successful conversion of JSON messages with a resource type. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEventValidTimestamp() {
-
-    FailsafeElement<String, String> input =
-        FailsafeElement.of(
-            "",
-            "{\n"
-                + "\t\"name\": \"Jim\",\n"
-                + "\t\"logName\": \"test-log-name\",\n"
-                + "\t\"timestamp\": \"2019-10-15T11:32:26.553Z\"\n"
-                + "}");
+  public void testFailsafeStringToDatadogEvent_WithResourceTypeSource() {
+    FailsafeElement<String, String> input = FailsafeElement.of(
+        "",
+        "{\n" +
+            "  \"name\": \"Jim\",\n" +
+            "  \"resource\": {\n" +
+            "    \"type\": \"resource_type_source\"\n" +
+            "  }\n" +
+            "}"
+    );
 
     DatadogEvent expectedDatadogEvent =
         DatadogEvent.newBuilder()
-            .withEvent(
-                "{\n"
-                    + "\t\"name\": \"Jim\",\n"
-                    + "\t\"logName\": \"test-log-name\",\n"
-                    + "\t\"timestamp\": \"2019-10-15T11:32:26.553Z\"\n"
-                    + "}")
-            .withTime(DateTime.parseRfc3339("2019-10-15T11:32:26.553Z").getValue())
+            .withMessage("{\n" +
+                "  \"name\": \"Jim\",\n" +
+                "  \"resource\": {\n" +
+                "    \"type\": \"resource_type_source\"\n" +
+                "  }\n" +
+                "}")
+            .withSource("gcp.resource.type.source")
             .build();
 
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with an invalid timestamp. */
+  /** Test successful conversion of JSON messages with valid resource labels. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEventInValidTimestamp() {
-
+  public void testFailsafeStringToDatadogEvent_withResourceLabels_Valid() {
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
-            "{\n"
-                + "\t\"name\": \"Jim\",\n"
-                + "\t\"logName\": \"test-log-name\",\n"
-                + "\t\"timestamp\": \"2019-1011:32:26.553Z\"\n"
-                + "}");
+            "{\n" +
+                "  \"name\": \"Jim\",\n" +
+                "  \"resource\": {\n" +
+                "    \"labels\": {\n" +
+                "      \"location\": \"us-east1-c\",\n" +
+                "      \"project_id\": \"sample-project\",\n" +
+                "      \"instance_id\": \"\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
 
     DatadogEvent expectedDatadogEvent =
         DatadogEvent.newBuilder()
-            .withEvent(
-                "{\n"
-                    + "\t\"name\": \"Jim\",\n"
-                    + "\t\"logName\": \"test-log-name\",\n"
-                    + "\t\"timestamp\": \"2019-1011:32:26.553Z\"\n"
-                    + "}")
+            .withMessage(
+                "{\n" +
+                    "  \"name\": \"Jim\",\n" +
+                    "  \"resource\": {\n" +
+                    "    \"labels\": {\n" +
+                    "      \"location\": \"us-east1-c\",\n" +
+                    "      \"project_id\": \"sample-project\",\n" +
+                    "      \"instance_id\": \"\"\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}"
+            )
+            .withSource("gcp")
+            .withTags("project_id:sample-project,location:us-east1-c")
             .build();
 
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with a user provided _metadata. */
+  /** Test successful conversion of JSON messages with empty resource labels. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEventValidSource() {
-
+  public void testFailsafeStringToDatadogEvent_withResourceLabels_Empty() {
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
-            "{\n"
-                + "\t\"name\": \"Jim\",\n"
-                + "\t\"_metadata\": {\"source\": \"test-log-name\"}\n"
-                + "}");
+            "{\n" +
+                "  \"name\": \"Jim\",\n" +
+                "  \"resource\": {\n" +
+                "    \"labels\": {\n" +
+                "    }\n" +
+                "  }\n" +
+                "}"
+        );
 
     DatadogEvent expectedDatadogEvent =
         DatadogEvent.newBuilder()
-            .withEvent("{\"name\":\"Jim\"}")
-            .withSource("test-log-name")
+            .withMessage(
+                "{\n" +
+                    "  \"name\": \"Jim\",\n" +
+                    "  \"resource\": {\n" +
+                    "    \"labels\": {\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}"
+            )
+            .withSource("gcp")
             .build();
 
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with a user provided host. */
+  /** Test successful conversion of JSON messages with invalid resource labels. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEventValidHost() {
-
+  public void testFailsafeStringToDatadogEvent_withResourceLabels_Invalid() {
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
-            "{\n"
-                + "\t\"name\": \"Jim\",\n"
-                + "\t\"_metadata\": {\"host\": \"test-host\"}\n"
-                + "}");
-
-    DatadogEvent expectedDatadogEvent =
-        DatadogEvent.newBuilder().withEvent("{\"name\":\"Jim\"}").withHost("test-host").build();
-
-    matchesDatadogEvent(input, expectedDatadogEvent);
-  }
-
-  /** Test successful conversion of JSON messages with a user provided index. */
-  @Test
-  @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEventValidIndex() {
-
-    FailsafeElement<String, String> input =
-        FailsafeElement.of(
-            "",
-            "{\n"
-                + "\t\"name\": \"Jim\",\n"
-                + "\t\"_metadata\": {\"host\": \"test-host\","
-                + "\"index\":\"test-index\"}\n"
-                + "}");
+            "{\n" +
+                "  \"name\": \"Jim\",\n" +
+                "  \"resource\": {\n" +
+                "    \"labels\": \"invalid-labels\"\n" +
+                "  }\n" +
+                "}"
+        );
 
     DatadogEvent expectedDatadogEvent =
         DatadogEvent.newBuilder()
-            .withEvent("{\"name\":\"Jim\"}")
-            .withHost("test-host")
-            .withIndex("test-index")
+            .withMessage(
+                "{\n" +
+                    "  \"name\": \"Jim\",\n" +
+                    "  \"resource\": {\n" +
+                    "    \"labels\": \"invalid-labels\"\n" +
+                    "  }\n" +
+                    "}"
+            )
+            .withSource("gcp")
             .build();
 
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with user provided index 'fields'. */
+  /** Test successful conversion of JSON messages with a user provided _metadata source. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEvent_withValidFields() {
+  public void testFailsafeStringToDatadogEvent_WithMetadataSource() {
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(
+            "",
+            "{\n" +
+                "  \"name\": \"Jim\",\n" +
+                "  \"resource\": {\n" +
+                "    \"type\": \"resource_type_source\"\n" +
+                "  },\n" +
+                "  \"_metadata\": {\n" +
+                "    \"ddsource\": \"_metadata_source\"\n" +
+                "  }\n" +
+                "}"
+        );
 
+    DatadogEvent expectedDatadogEvent =
+        DatadogEvent.newBuilder()
+            .withMessage("{\"resource\":{\"type\":\"resource_type_source\"},\"name\":\"Jim\"}")
+            .withSource("_metadata_source")
+            .build();
+
+    matchesDatadogEvent(input, expectedDatadogEvent);
+  }
+
+  /** Test successful conversion of JSON messages with a user provided _metadata tags. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToDatadogEvent_withMetadataTags() {
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(
+            "",
+            "{\n" +
+                "  \"name\": \"Jim\",\n" +
+                "  \"resource\": {\n" +
+                "    \"labels\": {\n" +
+                "      \"location\": \"us-east1-c\",\n" +
+                "      \"project_id\": \"sample-project\"\n" +
+                "    }\n" +
+                "  },\n" +
+                "  \"_metadata\": {\n" +
+                "    \"ddtags\": \"_metadata-tags\"\n" +
+                "  }\n" +
+                "}"
+        );
+
+    DatadogEvent expectedDatadogEvent =
+        DatadogEvent.newBuilder()
+            .withMessage(
+                "{\"resource\":{\"labels\":{\"project_id\":\"sample-project\",\"location\":\"us-east1-c\"}},\"name\":\"Jim\"}"
+            )
+            .withSource("gcp")
+            .withTags("_metadata-tags")
+            .build();
+
+    matchesDatadogEvent(input, expectedDatadogEvent);
+  }
+
+  /** Test successful conversion of JSON messages with a user provided _metadata hostname. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToDatadogEvent_withMetadataHostname() {
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
             "{\n"
                 + "\t\"name\": \"Jim\",\n"
-                + "\t\"_metadata\": {\"fields\":{\"test-key\":\"test-value\"}}\n"
+                + "\t\"_metadata\": {\"hostname\": \"test-host\"}\n"
                 + "}");
 
     DatadogEvent expectedDatadogEvent =
-        DatadogEvent.newBuilder()
-            .withEvent("{\"name\":\"Jim\"}")
-            .withFields(GSON.fromJson("{\"test-key\":\"test-value\"}", JsonObject.class))
-            .build();
+        DatadogEvent.newBuilder().withMessage("{\"name\":\"Jim\"}").withHostname("test-host").withSource("gcp").build();
 
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with user provided empty index 'fields'. */
+  /** Test successful conversion of JSON messages with a user provided _metadata service. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEvent_withEmptyFields() {
-
-    FailsafeElement<String, String> input =
-        FailsafeElement.of(
-            "", "{\n" + "\t\"name\": \"Jim\",\n" + "\t\"_metadata\": {\"fields\":{}}\n" + "}");
-
-    DatadogEvent expectedDatadogEvent =
-        DatadogEvent.newBuilder()
-            .withEvent("{\"name\":\"Jim\"}")
-            .withFields(GSON.fromJson("{}", JsonObject.class))
-            .build();
-
-    matchesDatadogEvent(input, expectedDatadogEvent);
-  }
-
-  /** Test successful conversion of JSON messages with user provided invalid index 'fields'. */
-  @Test
-  @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEvent_withInvalidFields() {
-
+  public void testFailsafeStringToDatadogEvent_withMetadataService() {
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
             "{\n"
                 + "\t\"name\": \"Jim\",\n"
-                + "\t\"_metadata\": {\"fields\":\"invalid-json-fields\"}\n"
+                + "\t\"_metadata\": {\"service\": \"test-service\"}\n"
                 + "}");
 
     DatadogEvent expectedDatadogEvent =
-        DatadogEvent.newBuilder().withEvent("{\"name\":\"Jim\"}").build();
+        DatadogEvent.newBuilder().withMessage("{\"name\":\"Jim\"}").withService("test-service").withSource("gcp").build();
 
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with provided overrides for time and source. */
+  /** Test successful conversion of JSON messages with a user provided _metadata message. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEventValidTimeOverride() {
-
+  public void testFailsafeStringToDatadogEvent_withMetadataMessage() {
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
             "{\n"
-                + "\t\"timestamp\": \"2019-10-15T11:32:26.553Z\",\n"
-                + "\t\"_metadata\": {\"time\": \"2019-11-22T11:32:26.553Z\", "
-                + "\"source\": \"test-source-name\"}\n"
+                + "\t\"name\": \"Jim\",\n"
+                + "\t\"_metadata\": {\"message\": \"test-message\"}\n"
                 + "}");
 
     DatadogEvent expectedDatadogEvent =
-        DatadogEvent.newBuilder()
-            .withEvent("{" + "\"timestamp\":\"2019-10-15T11:32:26.553Z\"" + "}")
-            .withSource("test-source-name")
-            .withTime(DateTime.parseRfc3339("2019-11-22T11:32:26.553Z").getValue())
-            .build();
+        DatadogEvent.newBuilder().withMessage("test-message").withSource("gcp").build();
 
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
