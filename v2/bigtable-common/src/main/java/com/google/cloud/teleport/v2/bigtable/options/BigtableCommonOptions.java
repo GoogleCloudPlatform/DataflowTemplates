@@ -207,8 +207,7 @@ public interface BigtableCommonOptions extends GcpOptions {
         helpText =
             "The Cloud Bigtable change streams connector metadata table ID to use. If not "
                 + "provided, a Cloud Bigtable change streams connector metadata table will automatically be "
-                + "created during the pipeline flow. This parameter must be provided when updating an "
-                + "existing pipeline and should not be provided otherwise.")
+                + "created during the pipeline flow.")
     @Default.String("")
     String getBigtableChangeStreamMetadataTableTableId();
 

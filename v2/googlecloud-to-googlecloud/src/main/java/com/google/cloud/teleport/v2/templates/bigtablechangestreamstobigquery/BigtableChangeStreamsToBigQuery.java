@@ -151,7 +151,6 @@ public final class BigtableChangeStreamsToBigQuery {
 
     String changelogTableName = getBigQueryChangelogTableName(options);
     String bigtableProject = getBigtableProjectId(options);
-    String changeStreamName = getChangeStreamName(options);
 
     // Retrieve and parse the startTimestamp
     Instant startTimestamp =
@@ -197,9 +196,8 @@ public final class BigtableChangeStreamsToBigQuery {
 
     BigtableIO.ReadChangeStream readChangeStream =
         BigtableIO.readChangeStream()
-            .withChangeStreamName(changeStreamName)
+            .withChangeStreamName(options.getBigtableChangeStreamName())
             .withProjectId(bigtableProject)
-            .withMetadataTableTableId(options.getBigtableChangeStreamMetadataTableTableId())
             .withMetadataTableInstanceId(options.getBigtableChangeStreamMetadataInstanceId())
             .withInstanceId(options.getBigtableReadInstanceId())
             .withTableId(options.getBigtableReadTableId())
@@ -318,16 +316,6 @@ public final class BigtableChangeStreamsToBigQuery {
                 .build());
 
     return pipeline.run();
-  }
-
-  private static String getChangeStreamName(BigtableChangeStreamToBigQueryOptions options) {
-    if (StringUtils.isBlank(options.getBigtableChangeStreamName())) {
-      String generatedName = UUID.randomUUID().toString();
-      LOG.info("Change stream name was not specified, generating a random one: {}", generatedName);
-      return generatedName;
-    } else {
-      return options.getBigtableChangeStreamName();
-    }
   }
 
   private static Instant toInstant(Timestamp timestamp) {
