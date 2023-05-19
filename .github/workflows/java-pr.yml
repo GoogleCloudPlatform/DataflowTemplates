@@ -81,7 +81,7 @@ jobs:
     needs: [spotless_check, java_build, java_unit_tests]
     timeout-minutes: 60
     # Run on any runner that matches all the specified runs-on values.
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2.6.0

@@ -34,6 +34,7 @@ func main() {
 		mvnFlags.IncludeDependents(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
+		mvnFlags.SkipShade(),
 		mvnFlags.SkipIntegrationTests(),
 		mvnFlags.FailAtTheEnd())
 	if err != nil {
