@@ -70,4 +70,35 @@ public class BigtableConfig {
 
     return builderBigtableTableConfig.build();
   }
+
+  public static CloudBigtableTableConfiguration generateCloudBigtableReadConfiguration(
+      BigtableCommonOptions.ReadOptions options) {
+    String projectId = options.getBigtableReadProjectId();
+    CloudBigtableTableConfiguration.Builder builderBigtableTableConfig =
+        new CloudBigtableTableConfiguration.Builder()
+            .withProjectId(projectId == null ? options.getProject() : projectId)
+            .withInstanceId(options.getBigtableReadInstanceId())
+            .withTableId(options.getBigtableReadTableId())
+            .withAppProfileId(options.getBigtableReadAppProfile())
+            .withConfiguration(BigtableOptionsFactory.INITIAL_ELAPSED_BACKOFF_MILLIS_KEY, "100")
+            .withConfiguration(BigtableOptionsFactory.MAX_ELAPSED_BACKOFF_MILLIS_KEY, "600000");
+
+    if (options.getBigtableRpcTimeoutMs() != null) {
+      builderBigtableTableConfig.withConfiguration(
+          BigtableOptionsFactory.BIGTABLE_RPC_TIMEOUT_MS_KEY,
+          String.valueOf(options.getBigtableRpcTimeoutMs()));
+    }
+    if (options.getBigtableRpcAttemptTimeoutMs() != null) {
+      builderBigtableTableConfig.withConfiguration(
+          BigtableOptionsFactory.BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS_KEY,
+          String.valueOf(options.getBigtableRpcAttemptTimeoutMs()));
+    }
+
+    if (options.getBigtableAdditionalRetryCodes() != null) {
+      builderBigtableTableConfig.withConfiguration(
+          BigtableOptionsFactory.ADDITIONAL_RETRY_CODES, options.getBigtableAdditionalRetryCodes());
+    }
+
+    return builderBigtableTableConfig.build();
+  }
 }

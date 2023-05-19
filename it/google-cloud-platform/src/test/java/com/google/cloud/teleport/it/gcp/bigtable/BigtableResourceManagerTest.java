@@ -84,7 +84,8 @@ public class BigtableResourceManagerTest {
   @Before
   public void setUp() throws IOException {
     testManager =
-        new BigtableResourceManager(TEST_ID, PROJECT_ID, bigtableResourceManagerClientFactory);
+        new BigtableResourceManager(
+            TEST_ID, PROJECT_ID, bigtableResourceManagerClientFactory, null);
     cluster =
         ImmutableList.of(
             BigtableResourceManagerCluster.create(
