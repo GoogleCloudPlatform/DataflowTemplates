@@ -102,7 +102,7 @@ public abstract class LoadTestBase {
 
   @After
   public void tearDownLoadTestBase() throws IOException {
-    launcher().cleanupAll();
+    pipelineLauncher.cleanupAll();
     monitoringClient.cleanupAll();
   }
 

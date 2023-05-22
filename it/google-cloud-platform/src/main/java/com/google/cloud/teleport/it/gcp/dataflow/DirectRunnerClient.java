@@ -36,9 +36,10 @@ import org.slf4j.LoggerFactory;
  * DirectRunner, and manages the state in-memory.
  */
 public class DirectRunnerClient implements PipelineLauncher {
+
   private static final Logger LOG = LoggerFactory.getLogger(DirectRunnerClient.class);
 
-  private static final Map<String, DirectRunnerJobThread> MANAGED_JOBS = new HashMap<>();
+  private final Map<String, DirectRunnerJobThread> managedJobs = new HashMap<>();
 
   private final Class<?> mainClass;
 
@@ -73,7 +74,7 @@ public class DirectRunnerClient implements PipelineLauncher {
 
       DirectRunnerJobThread jobThread =
           new DirectRunnerJobThread(project, region, jobId, mainClass, cmd);
-      MANAGED_JOBS.put(jobId, jobThread);
+      managedJobs.put(jobId, jobThread);
       jobThread.start();
 
       return LaunchInfo.builder()
@@ -95,22 +96,24 @@ public class DirectRunnerClient implements PipelineLauncher {
 
   @Override
   public Job getJob(String project, String region, String jobId) {
-    return MANAGED_JOBS.get(jobId).getJob();
+    return managedJobs.get(jobId).getJob();
   }
 
   @Override
   public Job getJob(String project, String region, String jobId, String jobView) {
-    return MANAGED_JOBS.get(jobId).getJob();
+    return managedJobs.get(jobId).getJob();
   }
 
   @Override
   public JobState getJobStatus(String project, String region, String jobId) {
-    return MANAGED_JOBS.get(jobId).getJobState();
+    return managedJobs.get(jobId).getJobState();
   }
 
   @Override
   public Job cancelJob(String project, String region, String jobId) {
-    MANAGED_JOBS.get(jobId).cancel();
+    LOG.warn("Cancelling direct runner job {}.", jobId);
+
+    managedJobs.get(jobId).cancel();
     return new Job().setId(jobId).setRequestedState(JobState.CANCELLED.toString());
   }
 
@@ -133,11 +136,15 @@ public class DirectRunnerClient implements PipelineLauncher {
 
   @Override
   public void cleanupAll() throws IOException {
-    // Direct runner jobs don't need to be cleaned up.
+    // Cancel / terminate all threads for DirectRunnerClient
+    for (DirectRunnerJobThread jobs : managedJobs.values()) {
+      jobs.cancel();
+    }
   }
 
   /** Builder for {@link DirectRunnerClient}. */
   public static final class Builder {
+
     private Credentials credentials;
     private Class<?> mainClass;
 
@@ -177,7 +184,12 @@ public class DirectRunnerClient implements PipelineLauncher {
         String jobId,
         Class<?> mainClass,
         List<String> commandLines) {
-      this.currentJob = new Job().setProjectId(projectId).setLocation(location).setId(jobId);
+      this.currentJob =
+          new Job()
+              .setProjectId(projectId)
+              .setLocation(location)
+              .setId(jobId)
+              .setCurrentState(JobState.QUEUED.toString());
       this.mainClass = mainClass;
       this.commandLines = commandLines;
     }
@@ -219,7 +231,7 @@ public class DirectRunnerClient implements PipelineLauncher {
     }
 
     public void cancel() {
-      if (!isAlive()) {
+      if (this.cancelled || !isAlive()) {
         return;
       }
 
