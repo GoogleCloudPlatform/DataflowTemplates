@@ -1,0 +1,9 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.AzureEventhubToPubsub",
+  "classPath": "/template/azure-eventhub-to-pubsub/*:/template/azure-eventhub-to-pubsub/libs/*:/template/azure-eventhub-to-pubsub/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"azure-eventhub-to-pubsub\"}",
+    "autoscalingAlgorithm": "THROUGHPUT_BASED",
+    "maxNumWorkers": "10"
+  }
+}
