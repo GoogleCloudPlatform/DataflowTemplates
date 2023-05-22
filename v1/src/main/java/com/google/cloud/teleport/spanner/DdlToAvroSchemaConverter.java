@@ -172,7 +172,6 @@ public class DdlToAvroSchemaConverter {
         fieldBuilder.type(avroType).noDefault();
       }
       outputBuilder.endRecord().noDefault();
-      ;
 
       Schema schema = fieldsAssembler.endRecord();
       schemas.add(schema);
