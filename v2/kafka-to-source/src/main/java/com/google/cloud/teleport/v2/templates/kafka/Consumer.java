@@ -40,7 +40,7 @@ public class Consumer {
 
     final Properties props = new Properties();
     props.setProperty("bootstrap.servers", bootstrapServers);
-    props.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "test123");
+    props.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "kafkaToSource");
     props.setProperty(
         ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     props.setProperty(

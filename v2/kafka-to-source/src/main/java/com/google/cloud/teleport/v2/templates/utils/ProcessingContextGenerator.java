@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.teleport.v2.templates.common.KafkaConnectionProfile;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
+import com.google.cloud.teleport.v2.templates.common.Schema;
 import com.google.cloud.teleport.v2.templates.common.Shard;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,22 +30,27 @@ public class ProcessingContextGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(ProcessingContextGenerator.class);
 
   public static List<ProcessingContext> getProcessingContext(
-      String sourceShardsFilePath, String sourceType, String kafkaClusterFilePath) {
+      String sourceShardsFilePath,
+      String sourceType,
+      String kafkaClusterFilePath,
+      String sourceSchemaFilePath) {
     List<Shard> shards = InputFileReader.getOrderedShardDetails(sourceShardsFilePath, sourceType);
     KafkaConnectionProfile kafkaConnectionProfileBase =
         InputFileReader.getKafkaConnectionProfile(kafkaClusterFilePath);
+    Schema schema = InputFileReader.getSourceSchemaProfile(sourceSchemaFilePath);
 
     int partitionId = 0;
     List<ProcessingContext> response = new ArrayList<>();
 
     try {
       for (Shard shard : shards) {
-
+        LOG.info(" The sorted shard is: {}", shard);
         KafkaConnectionProfile kafkaConnectionProfile =
             (KafkaConnectionProfile) kafkaConnectionProfileBase.clone();
         kafkaConnectionProfile.setPartitionId(partitionId);
         partitionId++;
-        ProcessingContext taskContext = new ProcessingContext(kafkaConnectionProfile, shard);
+        ProcessingContext taskContext =
+            new ProcessingContext(kafkaConnectionProfile, shard, schema);
         response.add(taskContext);
       }
     } catch (CloneNotSupportedException e) {

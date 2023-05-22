@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.teleport.v2.templates.common.KafkaConnectionProfile;
+import com.google.cloud.teleport.v2.templates.common.Schema;
 import com.google.cloud.teleport.v2.templates.common.Shard;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
@@ -62,7 +63,7 @@ public class InputFileReader {
               .fromJson(result, listOfShardObject);
 
       for (Shard s : shardList) {
-        LOG.info(" The shard is: " + s.toString());
+        LOG.info(" The shard is: {} ", s);
       }
 
       Collections.sort(
@@ -88,6 +89,7 @@ public class InputFileReader {
   }
 
   public static KafkaConnectionProfile getKafkaConnectionProfile(String kafkaClusterFilePath) {
+
     try (InputStream stream =
         Channels.newInputStream(
             FileSystems.open(FileSystems.matchNewResource(kafkaClusterFilePath, false)))) {
@@ -107,6 +109,27 @@ public class InputFileReader {
           e);
       throw new RuntimeException(
           "Failed to read kafka cluster input file. Make sure it is ASCII or UTF-8 encoded and"
+              + " contains a well-formed JSON string.",
+          e);
+    }
+  }
+
+  public static Schema getSourceSchemaProfile(String sourceSchemaFilePath) {
+    try (InputStream stream =
+        Channels.newInputStream(
+            FileSystems.open(FileSystems.matchNewResource(sourceSchemaFilePath, false)))) {
+      String result = IOUtils.toString(stream, StandardCharsets.UTF_8);
+
+      Schema response =
+          new GsonBuilder()
+              .setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE)
+              .create()
+              .fromJson(result, Schema.class);
+      return response;
+
+    } catch (IOException e) {
+      throw new RuntimeException(
+          "Failed to read Schema file input file. Make sure it is ASCII or UTF-8 encoded and"
               + " contains a well-formed JSON string.",
           e);
     }

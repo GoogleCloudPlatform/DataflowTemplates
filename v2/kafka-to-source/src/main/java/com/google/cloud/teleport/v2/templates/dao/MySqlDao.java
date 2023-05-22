@@ -15,8 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates.dao;
 
+import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import org.apache.commons.dbcp2.ConnectionFactory;
 import org.apache.commons.dbcp2.DriverManagerConnectionFactory;
@@ -59,7 +61,25 @@ public class MySqlDao {
     driver.registerPool("kafka-to-source", connectionPool);
   }
 
-  public void batchWrite(List<String> list) throws SQLException {
-    return;
+  public void batchWrite(List<String> batchStatements) throws SQLException {
+    Connection connObj = null;
+    Statement statement = null;
+    try {
+      connObj = DriverManager.getConnection("jdbc:apache:commons:dbcp:kafka-to-source");
+
+      statement = connObj.createStatement();
+      for (String stmt : batchStatements) {
+        statement.addBatch(stmt);
+      }
+      statement.executeBatch();
+    } finally {
+
+      if (statement != null) {
+        statement.close();
+      }
+      if (connObj != null) {
+        connObj.close();
+      }
+    }
   }
 }
