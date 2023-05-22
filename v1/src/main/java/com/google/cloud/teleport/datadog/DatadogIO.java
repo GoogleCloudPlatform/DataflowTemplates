@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link DatadogIO} class provides a {@link PTransform} that allows writing {@link DatadogEvent}
- * messages into a Datadog HTTP Event Collector end point.
+ * messages into a Datadog Logs API end point.
  */
 public class DatadogIO {
 
@@ -49,7 +49,7 @@ public class DatadogIO {
 
   /**
    * Class {@link Write} provides a {@link PTransform} that allows writing {@link DatadogEvent}
-   * records into a Datadog HTTP Event Collector end-point using HTTP POST requests. In the event of
+   * records into a Datadog Logs API end-point using HTTP POST requests. In the event of
    * an error, a {@link PCollection} of {@link DatadogWriteError} records are returned for further
    * processing or storing into a deadletter sink.
    */
@@ -108,9 +108,9 @@ public class DatadogIO {
       abstract Write autoBuild();
 
       /**
-       * Method to set the url for HEC event collector.
+       * Method to set the url for Logs API.
        *
-       * @param url for HEC event collector
+       * @param url for Logs API
        * @return {@link Builder}
        */
       public Builder withUrl(ValueProvider<String> url) {
@@ -121,7 +121,7 @@ public class DatadogIO {
       /**
        * Same as {@link Builder#withUrl(ValueProvider)} but without {@link ValueProvider}.
        *
-       * @param url for HEC event collector
+       * @param url for Logs API
        * @return {@link Builder}
        */
       public Builder withUrl(String url) {
@@ -130,9 +130,9 @@ public class DatadogIO {
       }
 
       /**
-       * Method to set the authentication token for HEC.
+       * Method to set the authentication token for Logs API.
        *
-       * @param token Authentication token for HEC event collector
+       * @param token Authentication token for Logs API
        * @return {@link Builder}
        */
       public Builder withToken(ValueProvider<String> token) {
@@ -143,7 +143,7 @@ public class DatadogIO {
       /**
        * Same as {@link Builder#withToken(ValueProvider)} but without {@link ValueProvider}.
        *
-       * @param token for HEC event collector
+       * @param token for Logs API
        * @return {@link Builder}
        */
       public Builder withToken(String token) {
@@ -198,7 +198,7 @@ public class DatadogIO {
       }
 
       public Write build() {
-        checkNotNull(url(), "HEC url is required.");
+        checkNotNull(url(), "Logs API url is required.");
         checkNotNull(token(), "Authorization token is required.");
 
         return autoBuild();

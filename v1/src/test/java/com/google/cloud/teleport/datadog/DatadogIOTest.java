@@ -66,7 +66,7 @@ public class DatadogIOTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  // We create a mock server to simulate an actual Datadog HEC server.
+  // We create a mock server to simulate an actual Datadog API server.
   private ClientAndServer mockServer;
 
   @Before

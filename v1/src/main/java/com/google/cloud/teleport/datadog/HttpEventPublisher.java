@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * {@link HttpEventPublisher} is a utility class that helps write {@link DatadogEvent}s to a Datadog
- * Event Collector (HEC) endpoint.
+ * Logs API endpoint.
  */
 @AutoValue
 public abstract class HttpEventPublisher {
@@ -98,8 +98,7 @@ public abstract class HttpEventPublisher {
   abstract Integer maxElapsedMillis();
 
   /**
-   * Executes a POST for the list of {@link DatadogEvent} objects into Datadog's Http Event Collector
-   * endpoint.
+   * Executes a POST for the list of {@link DatadogEvent} objects into Datadog's Logs API.
    *
    * @param events List of {@link DatadogEvent}s
    * @return {@link HttpResponse} for the POST.
@@ -157,7 +156,7 @@ public abstract class HttpEventPublisher {
    * HttpRequest}.
    *
    * @param request {@link HttpRequest} object to add headers to.
-   * @param token Datadog's HEC authorization token.
+   * @param token Datadog's Logs API authorization token.
    */
   private void setHeaders(HttpRequest request, String token) {
     request.getHeaders().set(DD_API_KEY_HEADER, token);
@@ -208,9 +207,9 @@ public abstract class HttpEventPublisher {
     abstract HttpEventPublisher autoBuild();
 
     /**
-     * Method to set the Datadog Http Event Collector URL.
+     * Method to set the Datadog Logs API URL.
      *
-     * @param url Event collector URL
+     * @param url Logs API URL
      * @return {@link Builder}
      */
     public Builder withUrl(String url) throws UnsupportedEncodingException {
@@ -219,9 +218,9 @@ public abstract class HttpEventPublisher {
     }
 
     /**
-     * Method to set the Datadog Http Event Collector authentication token.
+     * Method to set the Datadog Logs API authentication token.
      *
-     * @param token HEC's authentication token.
+     * @param token Logs API authentication token.
      * @return {@link Builder}
      */
     public Builder withToken(String token) {
@@ -274,7 +273,7 @@ public abstract class HttpEventPublisher {
     /**
      * Utility method to convert a baseUrl into a {@link GenericUrl}.
      *
-     * @param baseUrl url pointing to the hec endpoint.
+     * @param baseUrl url pointing to the Logs API endpoint.
      * @return {@link GenericUrl}
      */
     private GenericUrl getGenericUrl(String baseUrl) {
@@ -285,7 +284,7 @@ public abstract class HttpEventPublisher {
 
     /**
      * Utility method to create a {@link CloseableHttpClient} to make http POSTs against Datadog's
-     * HEC.
+     * Logs API.
      *
      */
     private CloseableHttpClient getHttpClient(

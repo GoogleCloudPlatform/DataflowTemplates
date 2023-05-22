@@ -51,7 +51,7 @@ public class DatadogEventWriterTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  // We create a MockServerRule to simulate an actual Datadog HEC server.
+  // We create a MockServerRule to simulate an actual Datadog API server.
   private ClientAndServer mockServer;
 
   @Before

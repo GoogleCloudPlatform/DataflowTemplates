@@ -64,7 +64,7 @@ public class DatadogConverters {
   /**
    * Returns a {@link FailsafeStringToDatadogEvent} {@link PTransform} that consumes {@link
    * FailsafeElement} messages, attempts to parse it as a JSON and extract metadata fields needed by
-   * Datadog's HEC endpoint (e.g. host, index etc) and creates {@link DatadogEvent} objects. Any
+   * Datadog's Logs API (e.g. hostname, source etc) and creates {@link DatadogEvent} objects. Any
    * conversion errors are wrapped into a {@link FailsafeElement} with appropriate error
    * information.
    *
@@ -86,9 +86,9 @@ public class DatadogConverters {
     @TemplateParameter.Text(
         order = 1,
         optional = true,
-        description = "HEC Authentication token.",
+        description = "Logs API token.",
         helpText =
-            "Datadog Http Event Collector (HEC) authentication token. Must be provided if the "
+            "Datadog Logs API authentication token. Must be provided if the "
                 + "tokenSource is set to PLAINTEXT or KMS.")
     ValueProvider<String> getToken();
 
@@ -96,10 +96,11 @@ public class DatadogConverters {
 
     @TemplateParameter.Text(
         order = 2,
-        description = "Datadog HEC URL.",
+        description = "Datadog Logs API url.",
         helpText =
-            "Datadog Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs.",
-        example = "https://datadog-hec-host:8088")
+            "Datadog Logs API url. This should be routable from the VPC in which the pipeline runs. " +
+                "See: https://docs.datadoghq.com/api/latest/logs/#send-logs",
+        example = "https://http-intake.logs.datadoghq.com")
     ValueProvider<String> getUrl();
 
     void setUrl(ValueProvider<String> url);
@@ -107,8 +108,8 @@ public class DatadogConverters {
     @TemplateParameter.Integer(
         order = 3,
         optional = true,
-        description = "Batch size for sending multiple events to Datadog HEC.",
-        helpText = "Batch size for sending multiple events to Datadog HEC. Defaults to 10. Max is 1000.")
+        description = "Batch size for sending multiple events to Datadog Logs API.",
+        helpText = "Batch size for sending multiple events to Datadog Logs API. Defaults to 10. Max is 1000.")
     ValueProvider<Integer> getBatchCount();
 
     void setBatchCount(ValueProvider<Integer> batchCount);
@@ -130,7 +131,7 @@ public class DatadogConverters {
         },
         description = "Google Cloud KMS encryption key for the token",
         helpText =
-            "The Cloud KMS key to decrypt the HEC token string. This parameter must be "
+            "The Cloud KMS key to decrypt the Logs API token string. This parameter must be "
                 + "provided if the tokenSource is set to KMS. If this parameter is provided, token "
                 + "string should be passed in encrypted. Encrypt parameters using the KMS API encrypt "
                 + "endpoint. The Key should be in the format "

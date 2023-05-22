@@ -21,8 +21,7 @@ import com.google.auto.value.AutoValue;
 import javax.annotation.Nullable;
 
 /**
- * A class for capturing errors writing {@link DatadogEvent}s to Datadog's Http Event Collector (HEC)
- * end point.
+ * A class for capturing errors writing {@link DatadogEvent}s to Datadog's Logs API.
  */
 @AutoValue
 public abstract class DatadogWriteError {

@@ -54,7 +54,7 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A {@link DoFn} to write {@link DatadogEvent}s to Datadog's HEC endpoint. */
+/** A {@link DoFn} to write {@link DatadogEvent}s to Datadog's Logs API. */
 @AutoValue
 public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>, DatadogWriteError> {
 
@@ -346,9 +346,9 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
   }
 
   /**
-   * Checks whether the HEC URL matches the format PROTOCOL://HOST[:PORT].
+   * Checks whether the Logs API URL matches the format PROTOCOL://HOST[:PORT].
    *
-   * @param url for HEC event collector
+   * @param url for Logs API
    * @return true if the URL is valid
    */
   private static boolean isValidUrlFormat(String url) {
@@ -386,9 +386,9 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
     abstract DatadogEventWriter autoBuild();
 
     /**
-     * Method to set the url for HEC event collector.
+     * Method to set the url for Logs API.
      *
-     * @param url for HEC event collector
+     * @param url for Logs API
      * @return {@link Builder}
      */
     public Builder withUrl(ValueProvider<String> url) {
@@ -402,7 +402,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
     /**
      * Same as {@link Builder#withUrl(ValueProvider)} but without {@link ValueProvider}.
      *
-     * @param url for HEC event collector
+     * @param url for Logs API
      * @return {@link Builder}
      */
     public Builder withUrl(String url) {
@@ -412,9 +412,9 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
     }
 
     /**
-     * Method to set the authentication token for HEC.
+     * Method to set the authentication token for Logs API.
      *
-     * @param token Authentication token for HEC event collector
+     * @param token Authentication token for Logs API
      * @return {@link Builder}
      */
     public Builder withToken(ValueProvider<String> token) {
@@ -425,7 +425,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
     /**
      * Same as {@link Builder#withToken(ValueProvider)} but without {@link ValueProvider}.
      *
-     * @param token for HEC event collector
+     * @param token for Logs API
      * @return {@link Builder}
      */
     public Builder withToken(String token) {

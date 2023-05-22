@@ -65,14 +65,14 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@link PubSubToDatadog} pipeline is a streaming pipeline which ingests data from Cloud
  * Pub/Sub, executes a UDF, converts the output to {@link DatadogEvent}s and writes those records
- * into Datadog's HEC endpoint. Any errors which occur in the execution of the UDF, conversion to
- * {@link DatadogEvent} or writing to HEC will be streamed into a Pub/Sub topic.
+ * into Datadog's Logs API. Any errors which occur in the execution of the UDF, conversion to
+ * {@link DatadogEvent} or writing to Logs API will be streamed into a Pub/Sub topic.
  *
  * <p><b>Pipeline Requirements</b>
  *
  * <ul>
  *   <li>The source Pub/Sub subscription exists.
- *   <li>HEC end-point is routable from the VPC where the Dataflow job executes.
+ *   <li>Logs API is routable from the VPC where the Dataflow job executes.
  *   <li>Deadletter topic exists.
  * </ul>
  *
@@ -85,7 +85,7 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Datadog",
     description =
-        "A pipeline that reads from a Pub/Sub subscription and writes to Datadog's HTTP Event Collector (HEC).",
+        "A pipeline that reads from a Pub/Sub subscription and writes to Datadog's Logs API.",
     optionsClass = PubSubToDatadogOptions.class,
     optionsOrder = {
       PubsubReadSubscriptionOptions.class,
@@ -172,10 +172,10 @@ public class PubSubToDatadog {
      *  2) Convert message to FailsafeElement for processing.
      *  3) Apply user provided UDF (if any) on the input strings.
      *  4) Convert successfully transformed messages into DatadogEvent objects
-     *  5) Write DatadogEvents to Datadog's HEC end point.
+     *  5) Write DatadogEvents to Datadog's Logs API.
      *  5a) Wrap write failures into a FailsafeElement.
      *  6) Collect errors from UDF transform (#3), DatadogEvent transform (#4)
-     *     and writing to Datadog HEC (#5) and stream into a Pub/Sub deadletter topic.
+     *     and writing to Datadog Logs API (#5) and stream into a Pub/Sub deadletter topic.
      */
 
     // 1) Read messages in from Pub/Sub
@@ -212,7 +212,7 @@ public class PubSubToDatadog {
                 DatadogConverters.failsafeStringToDatadogEvent(
                     DATADOG_EVENT_OUT, DATADOG_EVENT_DEADLETTER_OUT));
 
-    // 5) Write DatadogEvents to Datadog's HEC end point.
+    // 5) Write DatadogEvents to Datadog's Logs API.
     PCollection<DatadogWriteError> writeErrors =
         convertToEventTuple
             .get(DATADOG_EVENT_OUT)
@@ -256,7 +256,7 @@ public class PubSubToDatadog {
                 }));
 
     // 6) Collect errors from UDF transform (#4), DatadogEvent transform (#5)
-    //     and writing to Datadog HEC (#6) and stream into a Pub/Sub deadletter topic.
+    //     and writing to Datadog Logs API (#6) and stream into a Pub/Sub deadletter topic.
     PCollectionList.of(
             ImmutableList.of(
                 convertToEventTuple.get(DATADOG_EVENT_DEADLETTER_OUT),
