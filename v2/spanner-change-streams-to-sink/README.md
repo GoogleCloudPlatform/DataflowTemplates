@@ -9,5 +9,3 @@ ingests data supplied by Spanner change streams, orders the records per shard an
 * Java 11
 * Maven
 * Change stream is created on Spanner
-
-

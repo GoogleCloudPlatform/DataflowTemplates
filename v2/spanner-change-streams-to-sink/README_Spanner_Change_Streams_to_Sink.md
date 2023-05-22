@@ -48,7 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth login`
   * `gcloud auth application-default login`
 
-:star2: Those dependencies are pre-installed if you use Google Cloud Shell! 
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/spanner-change-streams-to-sink/src/main/java/com/google/cloud/teleport/v2/templates/SpannerChangeStreamsToSink.java)
 
 ### Templates Plugin
@@ -154,7 +154,7 @@ gcloud dataflow flex-template run "spanner-change-streams-to-sink-job" \
   --parameters "pubSubErrorTopicId=$PUB_SUB_ERROR_TOPIC_ID" \
   --parameters "pubSubEndpoint=$PUB_SUB_ENDPOINT" \
   --parameters "kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH" \
-  --parameters "sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" 
+  --parameters "sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH"
 ```
 
 For more information about the command, please check:
@@ -203,5 +203,3 @@ mvn clean package -PtemplatesRun \
 -pl v2/spanner-change-streams-to-sink \
 -am
 ```
-
-
