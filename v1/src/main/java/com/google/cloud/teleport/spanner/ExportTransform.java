@@ -23,6 +23,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
@@ -299,6 +300,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<String> allModelNames =
+        ddl.apply(
+            "List all model names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (Model model : ddl.models()) {
+                      c.output(model.name());
+                    }
+                  }
+                }));
+
     PCollection<String> allChangeStreamNames =
         ddl.apply(
             "List all change stream names",
@@ -426,6 +442,23 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<KV<String, Iterable<String>>> models =
+        allModelNames.apply(
+            "Export models",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String modelName = c.element();
+                    LOG.info("Exporting model: " + modelName);
+                    // This file will contain the schema definition for the model.
+                    c.output(
+                        KV.of(
+                            modelName, Collections.singleton(modelName + ".avro-00000-of-00001")));
+                  }
+                }));
+
     PCollection<KV<String, Iterable<String>>> changeStreams =
         allChangeStreamNames.apply(
             "Export change streams",
@@ -448,6 +481,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     // Avro files that only contain the Avro schemas.
     PCollection<KV<String, Iterable<String>>> emptySchemaFiles =
         PCollectionList.of(emptyTablesAndViews)
+            .and(models)
             .and(changeStreams)
             .apply("Combine all empty schema files", Flatten.pCollections());
 

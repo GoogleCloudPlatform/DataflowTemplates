@@ -76,7 +76,10 @@ public abstract class Model implements Serializable {
         .append(identifierQuote)
         .append(name())
         .append(identifierQuote);
+<<<<<<< HEAD
+=======
 
+>>>>>>> b68946b2 (More Tests.)
     if (!inputColumns().isEmpty()) {
       appendable.append("\nINPUT (");
       for (ModelColumn column : inputColumns()) {

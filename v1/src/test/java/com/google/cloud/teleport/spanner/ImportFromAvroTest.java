@@ -978,6 +978,128 @@ public class ImportFromAvroTest {
   }
 
   @Test
+  public void models() throws Exception {
+    String endpoint = "//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760";
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put(
+        "ModelAll.avro",
+        SchemaBuilder.record("Iris")
+            .prop("spannerEntity", "Model")
+            .prop("spannerRemote", "true")
+            .prop("spannerOption_0", "endpoint=\""+ endpoint + "\"")
+            .fields()
+            // Input columns.
+            .name("Input")
+            .type()
+            .record("Iris_Input")
+            .fields()
+            .name("f1")
+            .prop("sqlType", "FLOAT64")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("f2")
+            .prop("sqlType", "FLOAT64")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("f3")
+            .prop("sqlType", "FLOAT64")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("f4")
+            .prop("sqlType", "FLOAT64")
+            .type()
+            .booleanType()
+            .noDefault()
+            .endRecord()
+            .noDefault()
+            // Output columns.
+            .name("Output")
+            .type()
+            .record("Iris_Output")
+            .fields()
+            .name("classes")
+            .prop("sqlType", "ARRAY<STRING(MAX)>")
+            .type()
+            .array().items().stringType()
+            .noDefault()
+            .name("scores")
+            .prop("sqlType", "ARRAY<FLOAT64>")
+            .type()
+            .array().items()
+            .longType()
+            .noDefault()
+            .endRecord()
+            .noDefault()
+            .endRecord());
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addTables(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    // Create the target database.
+    String spannerSchema =
+        "CREATE TABLE `T` ("
+            + "`id` INT64 NOT NULL,"
+            + "`c1` BOOL,"
+            + "`c2` INT64,"
+            + ") PRIMARY KEY (`id`)";
+    spannerServer.createDatabase(dbName, Collections.singleton(spannerSchema));
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            spannerServer.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `T`"
+                + " ( `id` INT64 NOT NULL, `c1` BOOL, `c2` INT64, )"
+                + " PRIMARY KEY (`id` ASC)"
+                + " CREATE MODEL `Iris`"
+                + " INPUT ( `f1` FLOAT64, `f2` FLOAT64, `f3` FLOAT64, `f4` FLOAT64, )"
+                + " OUTPUT ( `classes` ARRAY<STRING(MAX)>, `scores` ARRAY<FLOAT64>, )"
+                + " REMOTE OPTIONS (endpoint=\"" + endpoint + "\")"));
+  }
+
+  @Test
   public void changeStreams() throws Exception {
     Map<String, Schema> avroFiles = new HashMap<>();
     avroFiles.put(

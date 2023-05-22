@@ -473,15 +473,19 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           }
                           Schema.Parser parser = new Schema.Parser();
                           List<KV<String, Schema>> missingTables = new ArrayList<>();
+                          List<KV<String, Schema>> missingModels = new ArrayList<>();
                           List<KV<String, Schema>> missingViews = new ArrayList<>();
                           List<KV<String, Schema>> missingChangeStreams = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
                             if (informationSchemaDdl.table(kv.getKey()) == null
+                                && informationSchemaDdl.model(kv.getKey()) == null
                                 && informationSchemaDdl.view(kv.getKey()) == null
                                 && informationSchemaDdl.changeStream(kv.getKey()) == null) {
                               Schema schema = parser.parse(kv.getValue());
                               if (schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE) != null) {
                                 missingChangeStreams.add(KV.of(kv.getKey(), schema));
+                              } else if ("Model".equals(schema.getProp("spannerEntity"))) {
+                                missingModels.add(KV.of(kv.getKey(), schema));
                               } else if (schema.getProp("spannerViewQuery") != null) {
                                 missingViews.add(KV.of(kv.getKey(), schema));
                               } else {
@@ -507,13 +511,21 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 newDdl.setOptionsStatements(spannerConfig.getDatabaseId().get()));
                           }
 
-                          if (!missingTables.isEmpty() || !missingViews.isEmpty()) {
+                          if (!missingTables.isEmpty()
+                              || !missingModels.isEmpty()
+                              || !missingViews.isEmpty()) {
                             Ddl.Builder builder = Ddl.builder(dialect);
                             for (KV<String, Schema> kv : missingViews) {
                               com.google.cloud.teleport.spanner.ddl.View view =
                                   converter.toView(kv.getKey(), kv.getValue());
                               builder.addView(view);
                               mergedDdl.addView(view);
+                            }
+                            for (KV<String, Schema> kv : missingModels) {
+                              com.google.cloud.teleport.spanner.ddl.Model model =
+                                  converter.toModel(kv.getKey(), kv.getValue());
+                              builder.addModel(model);
+                              mergedDdl.addModel(model);
                             }
                             for (KV<String, Schema> kv : missingTables) {
                               Table table = converter.toTable(kv.getKey(), kv.getValue());
@@ -525,6 +537,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             }
                             Ddl newDdl = builder.build();
                             ddlStatements.addAll(newDdl.createTableStatements());
+                            ddlStatements.addAll(newDdl.createModelStatements());
                             ddlStatements.addAll(newDdl.createViewStatements());
                             // If the total DDL statements exceed the threshold, execute the create
                             // index statements when tables are created.
@@ -558,7 +571,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           }
                           c.output(pendingChangeStreamsTag, createChangeStreamStatements);
                           LOG.info(
-                              "Applying DDL statements for tables and views: {}", ddlStatements);
+                              "Applying DDL statements for tables, models and views: {}",
+                              ddlStatements);
                           if (!ddlStatements.isEmpty()) {
                             DatabaseAdminClient databaseAdminClient =
                                 spannerAccessor.getDatabaseAdminClient();
@@ -579,8 +593,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           } else {
                             c.output(informationSchemaDdl);
                           }
-                          // In case of no tables, add empty list
-                          if (missingTables.isEmpty()) {
+                          // In case of no tables or models, add empty list
+                          if (missingTables.isEmpty() && missingModels.isEmpty()) {
                             c.output(pendingIndexesTag, createIndexStatements);
                             c.output(pendingForeignKeysTag, createForeignKeyStatements);
                           }
