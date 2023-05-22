@@ -17,7 +17,9 @@ package com.google.cloud.teleport.it.gcp.dataflow;
 
 import static com.google.cloud.teleport.it.common.logging.LogStrings.formatForLogging;
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.beam.sdk.testing.TestPipeline.PROPERTY_BEAM_TEST_PIPELINE_OPTIONS;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.googleapis.util.Utils;
 import com.google.api.services.dataflow.Dataflow;
 import com.google.api.services.dataflow.model.Job;
@@ -42,7 +44,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 import org.apache.beam.runners.dataflow.DataflowPipelineJob;
-import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.metrics.DistributionResult;
 import org.apache.beam.sdk.metrics.MetricNameFilter;
@@ -52,7 +53,10 @@ import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.util.common.ReflectHelpers;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Iterables;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +75,10 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
   private static final Map<String, PipelineResult> UNMANAGED_JOBS = new HashMap<>();
 
   private static final long UNKNOWN_METRIC_VALUE = -1L;
+
+  private static final ObjectMapper MAPPER =
+      new ObjectMapper()
+          .registerModules(ObjectMapper.findModules(ReflectHelpers.findClassLoader()));
 
   private static final Map<PipelineResult.State, JobState> PIPELINE_STATE_TRANSLATE =
       ImmutableMap.<PipelineResult.State, JobState>builder()
@@ -283,21 +291,33 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
             options.pipeline() != null,
             "Cannot launch a dataflow job "
                 + "without pipeline specified. Please specify pipeline and try again!");
+        PipelineOptions pipelineOptions = options.pipeline().getOptions();
         if ("DataflowRunner".equalsIgnoreCase(options.getParameter("runner"))) {
+          List<String> optionFromConfig = extractOptions(project, region, options);
+          // a few options need to be set in pipeline expansion time, so they need to be preserved
+          // here.
+          // known options included: --streaming(expansion depends on) --tempLocation(validation
+          // depends on)
+          if (pipelineOptions.as(StreamingOptions.class).isStreaming()) {
+            optionFromConfig.add("--streaming");
+          }
+          if (!Strings.isNullOrEmpty(pipelineOptions.getTempLocation())) {
+            optionFromConfig.add(
+                String.format("--tempLocation=%s", pipelineOptions.getTempLocation()));
+          }
+
           // dataflow runner specific options
-          PipelineOptions pipelineOptions =
-              PipelineOptionsFactory.fromArgs(
-                      extractOptions(project, region, options).toArray(new String[] {}))
-                  .as(DataflowPipelineOptions.class);
-          pipelineOptions.setJobName(options.jobName());
-          PipelineResult pipelineResult = options.pipeline().run(pipelineOptions);
+          PipelineOptions updatedOptions =
+              PipelineOptionsFactory.fromArgs(optionFromConfig.toArray(new String[] {})).create();
+          updatedOptions.setJobName(options.jobName());
+          PipelineResult pipelineResult = options.pipeline().run(updatedOptions);
           // dataflow runner generated a jobId of certain format for each job
           DataflowPipelineJob job = (DataflowPipelineJob) pipelineResult;
           jobId = job.getJobId();
           UNMANAGED_JOBS.put(jobId, pipelineResult);
           launchedJobs.add(jobId);
         } else {
-          PipelineOptions pipelineOptions = options.pipeline().getOptions();
+
           pipelineOptions.setRunner(PipelineUtils.getRunnerClass(options.getParameter("runner")));
           pipelineOptions.setJobName(options.jobName());
           // for unsupported runners (e.g. direct runner) runner, manually record job properties
@@ -365,6 +385,25 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
 
   private List<String> extractOptions(String project, String region, LaunchConfig options) {
     List<String> additionalOptions = new ArrayList<>();
+
+    // add pipeline options from beamTestPipelineOptions system property to preserve the
+    // pipeline options already set in TestPipeline.
+    @Nullable String beamTestPipelineOptions =
+        System.getProperty(PROPERTY_BEAM_TEST_PIPELINE_OPTIONS);
+    if (!Strings.isNullOrEmpty(beamTestPipelineOptions)) {
+      try {
+        additionalOptions.addAll(MAPPER.readValue(beamTestPipelineOptions, List.class));
+      } catch (IOException e) {
+        throw new RuntimeException(
+            "Unable to instantiate test options from system property "
+                + PROPERTY_BEAM_TEST_PIPELINE_OPTIONS
+                + ":"
+                + System.getProperty(PROPERTY_BEAM_TEST_PIPELINE_OPTIONS),
+            e);
+      }
+    }
+
+    // add pipeline options from options.parameters
     for (Map.Entry<String, String> parameter : options.parameters().entrySet()) {
       additionalOptions.add(String.format("--%s=%s", parameter.getKey(), parameter.getValue()));
     }

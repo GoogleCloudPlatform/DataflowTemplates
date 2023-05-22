@@ -26,6 +26,7 @@ import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.MetricsConfiguration;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
 import com.google.common.base.Strings;
@@ -283,8 +284,13 @@ public final class BigQueryIOLT extends IOLoadTestBase {
     assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
 
     // export metrics
+    MetricsConfiguration metricsConfig =
+        MetricsConfiguration.builder()
+            .setInputPCollection(WRITE_PCOLLECTION)
+            .setSeriesFilterFn(MetricsConfiguration.filterBeginEndHalfAveFn())
+            .build();
     try {
-      exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, WRITE_PCOLLECTION, null));
+      exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, metricsConfig));
     } catch (ParseException | InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -323,8 +329,13 @@ public final class BigQueryIOLT extends IOLoadTestBase {
     assertEquals(configuration.numRecords, numRecords, 0.5);
 
     // export metrics
+    MetricsConfiguration metricsConfig =
+        MetricsConfiguration.builder()
+            .setOutputPCollection(READ_PCOLLECTION)
+            .setSeriesFilterFn(MetricsConfiguration.filterBeginEndHalfAveFn())
+            .build();
     try {
-      exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, null, READ_PCOLLECTION));
+      exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, metricsConfig));
     } catch (ParseException | InterruptedException e) {
       throw new RuntimeException(e);
     }
