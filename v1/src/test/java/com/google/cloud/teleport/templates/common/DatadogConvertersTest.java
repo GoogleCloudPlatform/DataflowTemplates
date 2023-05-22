@@ -96,10 +96,10 @@ public class DatadogConvertersTest {
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with a resource type. */
+  /** Test successful conversion of partial Pubsub (data element only) JSON messages with a resource type. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEvent_WithResourceTypeSource() {
+  public void testFailsafeStringToDatadogEvent_DataOnly_WithResourceTypeSource() {
     FailsafeElement<String, String> input = FailsafeElement.of(
         "",
         "{\n" +
@@ -124,10 +124,48 @@ public class DatadogConvertersTest {
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with valid resource labels. */
+  /** Test successful conversion of full PubSub JSON messages with a resource type. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEvent_withResourceLabels_Valid() {
+  public void testFailsafeStringToDatadogEvent_FullPubsubMessage_WithResourceTypeSource() {
+    FailsafeElement<String, String> input = FailsafeElement.of(
+        "",
+        "{\n" +
+            "  \"data\": {\n" +
+            "    \"name\": \"Jim\",\n" +
+            "    \"resource\": {\n" +
+            "      \"type\": \"resource_type_source\"\n" +
+            "    }\n" +
+            "  },\n" +
+            "  \"attributes\": {\n" +
+            "    \"test-key\": \"test-value\"\n" +
+            "  }\n" +
+            "}"
+    );
+
+    DatadogEvent expectedDatadogEvent =
+        DatadogEvent.newBuilder()
+            .withMessage("{\n" +
+                "  \"data\": {\n" +
+                "    \"name\": \"Jim\",\n" +
+                "    \"resource\": {\n" +
+                "      \"type\": \"resource_type_source\"\n" +
+                "    }\n" +
+                "  },\n" +
+                "  \"attributes\": {\n" +
+                "    \"test-key\": \"test-value\"\n" +
+                "  }\n" +
+                "}")
+            .withSource("gcp.resource.type.source")
+            .build();
+
+    matchesDatadogEvent(input, expectedDatadogEvent);
+  }
+
+  /** Test successful conversion of partial Pubsub (data element only) JSON messages with valid resource labels. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToDatadogEvent_DataOnly_WithResourceLabels_Valid() {
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
@@ -164,10 +202,60 @@ public class DatadogConvertersTest {
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with empty resource labels. */
+  /** Test successful conversion of full Pubsub JSON messages with valid resource labels. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEvent_withResourceLabels_Empty() {
+  public void testFailsafeStringToDatadogEvent_FullPubsubMessage_WithResourceLabels_Valid() {
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(
+            "",
+            "{\n" +
+                "  \"data\": {\n" +
+                "    \"name\": \"Jim\",\n" +
+                "    \"resource\": {\n" +
+                "      \"labels\": {\n" +
+                "        \"location\": \"us-east1-c\",\n" +
+                "        \"project_id\": \"sample-project\",\n" +
+                "        \"instance_id\": \"\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  },\n" +
+                "  \"attributes\": {\n" +
+                "    \"test-key\": \"test-value\"\n" +
+                "  }\n" +
+                "}"
+        );
+
+    DatadogEvent expectedDatadogEvent =
+        DatadogEvent.newBuilder()
+            .withMessage(
+                "{\n" +
+                    "  \"data\": {\n" +
+                    "    \"name\": \"Jim\",\n" +
+                    "    \"resource\": {\n" +
+                    "      \"labels\": {\n" +
+                    "        \"location\": \"us-east1-c\",\n" +
+                    "        \"project_id\": \"sample-project\",\n" +
+                    "        \"instance_id\": \"\"\n" +
+                    "      }\n" +
+                    "    }\n" +
+                    "  },\n" +
+                    "  \"attributes\": {\n" +
+                    "    \"test-key\": \"test-value\"\n" +
+                    "  }\n" +
+                    "}"
+            )
+            .withSource("gcp")
+            .withTags("project_id:sample-project,location:us-east1-c")
+            .build();
+
+    matchesDatadogEvent(input, expectedDatadogEvent);
+  }
+
+  /** Test successful conversion of partial Pubsub (data element only) JSON messages with empty resource labels. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToDatadogEvent_DataOnly_WithResourceLabels_Empty() {
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
@@ -197,10 +285,53 @@ public class DatadogConvertersTest {
     matchesDatadogEvent(input, expectedDatadogEvent);
   }
 
-  /** Test successful conversion of JSON messages with invalid resource labels. */
+  /** Test successful conversion of full Pubsub JSON messages with empty resource labels. */
   @Test
   @Category(NeedsRunner.class)
-  public void testFailsafeStringToDatadogEvent_withResourceLabels_Invalid() {
+  public void testFailsafeStringToDatadogEvent_FullPubsubMessage_WithResourceLabels_Empty() {
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(
+            "",
+            "{\n" +
+                "  \"data\": {\n" +
+                "    \"name\": \"Jim\",\n" +
+                "    \"resource\": {\n" +
+                "      \"labels\": {\n" +
+                "      }\n" +
+                "    }\n" +
+                "  },\n" +
+                "  \"attributes\": {\n" +
+                "    \"test-key\": \"test-value\"\n" +
+                "  }\n" +
+                "}"
+        );
+
+    DatadogEvent expectedDatadogEvent =
+        DatadogEvent.newBuilder()
+            .withMessage(
+                "{\n" +
+                    "  \"data\": {\n" +
+                    "    \"name\": \"Jim\",\n" +
+                    "    \"resource\": {\n" +
+                    "      \"labels\": {\n" +
+                    "      }\n" +
+                    "    }\n" +
+                    "  },\n" +
+                    "  \"attributes\": {\n" +
+                    "    \"test-key\": \"test-value\"\n" +
+                    "  }\n" +
+                    "}"
+            )
+            .withSource("gcp")
+            .build();
+
+    matchesDatadogEvent(input, expectedDatadogEvent);
+  }
+
+  /** Test successful conversion of partial Pubsub (data element only) JSON messages with invalid resource labels. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToDatadogEvent_DataOnly_WithResourceLabels_Invalid() {
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
@@ -219,6 +350,47 @@ public class DatadogConvertersTest {
                     "  \"name\": \"Jim\",\n" +
                     "  \"resource\": {\n" +
                     "    \"labels\": \"invalid-labels\"\n" +
+                    "  }\n" +
+                    "}"
+            )
+            .withSource("gcp")
+            .build();
+
+    matchesDatadogEvent(input, expectedDatadogEvent);
+  }
+
+  /** Test successful conversion of full Pubsub JSON messages with invalid resource labels. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToDatadogEvent_FullPubsub_WithResourceLabels_Invalid() {
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(
+            "",
+            "{\n" +
+                "  \"data\": {\n" +
+                "    \"name\": \"Jim\",\n" +
+                "    \"resource\": {\n" +
+                "      \"labels\": \"invalid-labels\"\n" +
+                "    }\n" +
+                "  },\n" +
+                "  \"attributes\": {\n" +
+                "    \"test-key\": \"test-value\"\n" +
+                "  }\n" +
+                "}"
+        );
+
+    DatadogEvent expectedDatadogEvent =
+        DatadogEvent.newBuilder()
+            .withMessage(
+                "{\n" +
+                    "  \"data\": {\n" +
+                    "    \"name\": \"Jim\",\n" +
+                    "    \"resource\": {\n" +
+                    "      \"labels\": \"invalid-labels\"\n" +
+                    "    }\n" +
+                    "  },\n" +
+                    "  \"attributes\": {\n" +
+                    "    \"test-key\": \"test-value\"\n" +
                     "  }\n" +
                     "}"
             )

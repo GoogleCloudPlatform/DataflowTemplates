@@ -61,6 +61,9 @@ public class DatadogConverters {
   private static final String DD_SERVICE_KEY = "service";
   private static final String DD_MESSAGE_KEY = "message";
 
+  protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
+  protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
+
   /**
    * Returns a {@link FailsafeStringToDatadogEvent} {@link PTransform} that consumes {@link
    * FailsafeElement} messages, attempts to parse it as a JSON and extract metadata fields needed by
@@ -122,6 +125,17 @@ public class DatadogConverters {
     ValueProvider<Integer> getParallelism();
 
     void setParallelism(ValueProvider<Integer> parallelism);
+
+    @TemplateParameter.Boolean(
+        order = 6,
+        optional = true,
+        description = "Include full Pub/Sub message in the payload.",
+        helpText =
+            "Include full Pub/Sub message in the payload (true/false). Defaults to false "
+                + "(only data element is included in the payload).")
+    ValueProvider<Boolean> getIncludePubsubMessage();
+
+    void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
 
     @TemplateParameter.Text(
         order = 7,
@@ -217,51 +231,58 @@ public class DatadogConverters {
                         // extract some additional properties.
                         try {
 
-                          // If valid JSON, we attempt to treat it as a LogEntry
-                          // See: https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
                           JSONObject json = new JSONObject(input);
 
-                          // Check if the JSON we receive has a resource object
-                          // See: https://cloud.google.com/logging/docs/reference/v2/rest/v2/MonitoredResource
-                          JSONObject resource = json.optJSONObject(GCP_RESOURCE_KEY);
-                          boolean resourceAvailable = (resource != null && !resource.isEmpty());
+                          // If valid JSON, we attempt to treat it as a LogEntry
+                          // See: https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
+                          JSONObject data = isPubsubMessage(json) ?
+                              json.optJSONObject(PUBSUB_MESSAGE_DATA_FIELD) :
+                              json;
+                          boolean dataAvailable = (data != null && !data.isEmpty());
 
-                          if (resourceAvailable) {
+                          if (dataAvailable) {
+                            // Check if the JSON we receive has a resource object
+                            // See: https://cloud.google.com/logging/docs/reference/v2/rest/v2/MonitoredResource
+                            JSONObject resource = data.optJSONObject(GCP_RESOURCE_KEY);
+                            boolean resourceAvailable = (resource != null && !resource.isEmpty());
 
-                            // Check if the resource object has a type string
-                            // If so, convert it to a Datadog source string and add it to the DatadogEvent, i.e.
-                            // "gce_instance"
-                            // converts to
-                            // "gcp.gce.instance"
-                            String type = resource.optString(GCP_RESOURCE_TYPE_KEY);
-                            if (!type.isEmpty()) {
-                              String formattedSource = DD_DEFAULT_SOURCE + "." + type.replaceAll("_", ".");
-                              builder.withSource(formattedSource);
-                            }
+                            if (resourceAvailable) {
 
-                            // Check if the resource object has a labels object
-                            // If so, convert it to a Datadog tags string and add it to the DatadogEvent, i.e.
-                            // {"projectId": "my-project", "instanceId": "12345678901234", "zone": "us-central1-a"}
-                            // converts to
-                            // "projectId:my-project,instanceId:12345678901234,zone:us-central1-a"
-                            JSONObject labels = resource.optJSONObject(GCP_RESOURCE_LABELS_KEY);
-                            boolean labelsAvailable = (labels != null && !labels.isEmpty());
-
-                            if (labelsAvailable) {
-                              List<String> tags = new ArrayList<>();
-                              for(Map.Entry<String, Object> label : labels.toMap().entrySet()) {
-                                String labelName = label.getKey();
-                                String labelValue = label.getValue().toString();
-                                if(labelName.isEmpty() || labelValue.isEmpty()) {
-                                  continue;
-                                }
-
-                                tags.add(String.format("%s:%s", labelName, labelValue));
+                              // Check if the resource object has a type string
+                              // If so, convert it to a Datadog source string and add it to the DatadogEvent, i.e.
+                              // "gce_instance"
+                              // converts to
+                              // "gcp.gce.instance"
+                              String type = resource.optString(GCP_RESOURCE_TYPE_KEY);
+                              if (!type.isEmpty()) {
+                                String formattedSource = DD_DEFAULT_SOURCE + "." + type.replaceAll("_", ".");
+                                builder.withSource(formattedSource);
                               }
 
-                              String formattedTags = Joiner.on(",").join(tags);
-                              if(!formattedTags.isEmpty()) {
-                                builder.withTags(formattedTags);
+                              // Check if the resource object has a labels object
+                              // If so, convert it to a Datadog tags string and add it to the DatadogEvent, i.e.
+                              // {"projectId": "my-project", "instanceId": "12345678901234", "zone": "us-central1-a"}
+                              // converts to
+                              // "projectId:my-project,instanceId:12345678901234,zone:us-central1-a"
+                              JSONObject labels = resource.optJSONObject(GCP_RESOURCE_LABELS_KEY);
+                              boolean labelsAvailable = (labels != null && !labels.isEmpty());
+
+                              if (labelsAvailable) {
+                                List<String> tags = new ArrayList<>();
+                                for (Map.Entry<String, Object> label : labels.toMap().entrySet()) {
+                                  String labelName = label.getKey();
+                                  String labelValue = label.getValue().toString();
+                                  if (labelName.isEmpty() || labelValue.isEmpty()) {
+                                    continue;
+                                  }
+
+                                  tags.add(String.format("%s:%s", labelName, labelValue));
+                                }
+
+                                String formattedTags = Joiner.on(",").join(tags);
+                                if (!formattedTags.isEmpty()) {
+                                  builder.withTags(formattedTags);
+                                }
                               }
                             }
                           }
@@ -338,6 +359,17 @@ public class DatadogConverters {
                     }
                   })
               .withOutputTags(datadogEventOutputTag, TupleTagList.of(datadogDeadletterTag)));
+    }
+
+    /**
+     * Determines whether the JSON payload is a Pub/Sub message by checking for the 'data' and
+     * 'attributes' fields.
+     *
+     * @param json {@link JSONObject} payload
+     * @return true if the payload is a Pub/Sub message and false otherwise
+     */
+    private boolean isPubsubMessage(JSONObject json) {
+      return json.has(PUBSUB_MESSAGE_DATA_FIELD) && json.has(PUBSUB_MESSAGE_ATTRIBUTE_FIELD);
     }
   }
 }
