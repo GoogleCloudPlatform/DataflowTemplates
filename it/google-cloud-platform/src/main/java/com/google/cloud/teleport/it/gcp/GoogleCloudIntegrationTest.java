@@ -13,19 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.it.gcp.bigtable;
+package com.google.cloud.teleport.it.gcp;
 
-/**
- * Custom exception for {@link com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager}
- * implementations.
- */
-public class BigtableResourceManagerException extends RuntimeException {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-  public BigtableResourceManagerException(String errorMessage) {
-    super(errorMessage);
-  }
-
-  public BigtableResourceManagerException(String errorMessage, Throwable err) {
-    super(errorMessage, err);
-  }
-}
+/** Annotation that marks the test that requires GCP Resources. */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface GoogleCloudIntegrationTest {}

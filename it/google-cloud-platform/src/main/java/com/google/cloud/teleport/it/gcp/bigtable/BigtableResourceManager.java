@@ -40,6 +40,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.threeten.bp.Duration;
@@ -68,51 +70,76 @@ public class BigtableResourceManager implements ResourceManager {
   private final String instanceId;
   private final BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory;
 
-  private boolean hasInstance = false;
+  private List<String> createdTables;
+
+  private boolean hasInstance;
+  private final boolean usingStaticInstance;
 
   private BigtableResourceManager(BigtableResourceManager.Builder builder) throws IOException {
-    // Check that the project ID conforms to GCP standards
-    checkValidProjectId(builder.projectId);
-
-    // generate instance id based on given test id.
-    this.instanceId = generateInstanceId(builder.testId);
-
-    // create the bigtable admin and data client settings builders, and set the necessary id's for
-    // each.
-    BigtableInstanceAdminSettings.Builder bigtableInstanceAdminSettings =
-        BigtableInstanceAdminSettings.newBuilder().setProjectId(builder.projectId);
-    BigtableTableAdminSettings.Builder bigtableTableAdminSettings =
-        BigtableTableAdminSettings.newBuilder()
-            .setProjectId(builder.projectId)
-            .setInstanceId(this.instanceId);
-    BigtableDataSettings.Builder bigtableDataSettings =
-        BigtableDataSettings.newBuilder()
-            .setProjectId(builder.projectId)
-            .setInstanceId(this.instanceId);
-
-    // add the credentials to the builders, if set.
-    if (builder.credentialsProvider != null) {
-      bigtableInstanceAdminSettings.setCredentialsProvider(builder.credentialsProvider);
-      bigtableTableAdminSettings.setCredentialsProvider(builder.credentialsProvider);
-      bigtableDataSettings.setCredentialsProvider(builder.credentialsProvider);
-    }
-
-    this.projectId = builder.projectId;
-    this.bigtableResourceManagerClientFactory =
-        new BigtableResourceManagerClientFactory(
-            bigtableInstanceAdminSettings.build(),
-            bigtableTableAdminSettings.build(),
-            bigtableDataSettings.build());
+    this(builder, null);
   }
 
   @VisibleForTesting
   BigtableResourceManager(
-      String testId,
-      String projectId,
-      BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory) {
-    this.projectId = projectId;
-    this.instanceId = generateInstanceId(testId);
-    this.bigtableResourceManagerClientFactory = bigtableResourceManagerClientFactory;
+      BigtableResourceManager.Builder builder,
+      BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory)
+      throws IOException {
+
+    // Check that the project ID conforms to GCP standards
+    checkValidProjectId(builder.projectId);
+    this.projectId = builder.projectId;
+
+    // Check if RM was configured to use static Bigtable instance.
+    if (builder.useStaticInstance) {
+      if (builder.instanceId == null) {
+        throw new BigtableResourceManagerException(
+            "This manager was configured to use a static resource, but the instanceId was not properly set.");
+      }
+      this.instanceId = builder.instanceId;
+      this.hasInstance = true;
+      // List to store created tables for static RM
+      this.createdTables = new ArrayList<>();
+    } else {
+      if (builder.instanceId != null) {
+        throw new BigtableResourceManagerException(
+            "The instanceId property was set in the builder, but the useStaticInstance() method was not called.");
+      }
+      // Generate instance id based on given test id.
+      this.instanceId = generateInstanceId(builder.testId);
+      this.hasInstance = false;
+    }
+    this.usingStaticInstance = builder.useStaticInstance;
+
+    if (bigtableResourceManagerClientFactory != null) {
+      this.bigtableResourceManagerClientFactory = bigtableResourceManagerClientFactory;
+
+    } else {
+      // Create the bigtable admin and data client settings builders, and set the necessary id's for
+      // each.
+      BigtableInstanceAdminSettings.Builder bigtableInstanceAdminSettings =
+          BigtableInstanceAdminSettings.newBuilder().setProjectId(builder.projectId);
+      BigtableTableAdminSettings.Builder bigtableTableAdminSettings =
+          BigtableTableAdminSettings.newBuilder()
+              .setProjectId(builder.projectId)
+              .setInstanceId(this.instanceId);
+      BigtableDataSettings.Builder bigtableDataSettings =
+          BigtableDataSettings.newBuilder()
+              .setProjectId(builder.projectId)
+              .setInstanceId(this.instanceId);
+
+      // add the credentials to the builders, if set.
+      if (builder.credentialsProvider != null) {
+        bigtableInstanceAdminSettings.setCredentialsProvider(builder.credentialsProvider);
+        bigtableTableAdminSettings.setCredentialsProvider(builder.credentialsProvider);
+        bigtableDataSettings.setCredentialsProvider(builder.credentialsProvider);
+      }
+
+      this.bigtableResourceManagerClientFactory =
+          new BigtableResourceManagerClientFactory(
+              bigtableInstanceAdminSettings.build(),
+              bigtableTableAdminSettings.build(),
+              bigtableDataSettings.build());
+    }
   }
 
   public static BigtableResourceManager.Builder builder(String testId, String projectId)
@@ -276,6 +303,10 @@ public class BigtableResourceManager implements ResourceManager {
       throw new BigtableResourceManagerException("Failed to create table.", e);
     }
 
+    if (usingStaticInstance) {
+      createdTables.add(tableId);
+    }
+
     LOG.info("Successfully created table {}.{}", instanceId, tableId);
   }
 
@@ -389,12 +420,26 @@ public class BigtableResourceManager implements ResourceManager {
    * Deletes all created resources (instance and tables) and cleans up all Bigtable clients, making
    * the manager object unusable.
    *
+   * <p>If this Resource Manager was configured to use a static instance, the instance will not be
+   * cleaned up, but any created tables will be deleted.
+   *
    * @throws BigtableResourceManagerException if there is an error deleting the instance or tables
    *     in Bigtable.
    */
   @Override
   public synchronized void cleanupAll() {
     LOG.info("Attempting to cleanup manager.");
+
+    if (usingStaticInstance) {
+      try (BigtableTableAdminClient tableAdminClient =
+          bigtableResourceManagerClientFactory.bigtableTableAdminClient()) {
+        createdTables.forEach(tableAdminClient::deleteTable);
+        LOG.info(
+            "This manager was configured to use a static instance that will not be cleaned up.");
+        return;
+      }
+    }
+
     if (hasInstance) {
       try (BigtableInstanceAdminClient instanceAdminClient =
           bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
@@ -404,7 +449,6 @@ public class BigtableResourceManager implements ResourceManager {
         throw new BigtableResourceManagerException("Failed to delete resources.", e);
       }
     }
-
     LOG.info("Manager successfully cleaned up.");
   }
 
@@ -413,6 +457,8 @@ public class BigtableResourceManager implements ResourceManager {
 
     private final String testId;
     private final String projectId;
+    private String instanceId;
+    private boolean useStaticInstance;
     private CredentialsProvider credentialsProvider;
 
     private Builder(String testId, String projectId) {
@@ -420,8 +466,35 @@ public class BigtableResourceManager implements ResourceManager {
       this.projectId = projectId;
     }
 
+    /**
+     * Set the GCP credentials provider to connect to the project defined in the builder.
+     *
+     * @param credentialsProvider The GCP CredentialsProvider.
+     * @return this builder with the CredentialsProvider set.
+     */
     public Builder setCredentialsProvider(CredentialsProvider credentialsProvider) {
       this.credentialsProvider = credentialsProvider;
+      return this;
+    }
+
+    /**
+     * Set the instance ID of a static Bigtable instance for this Resource Manager to manage.
+     *
+     * @return this builder with the instance ID set.
+     */
+    public Builder setInstanceId(String instanceId) {
+      this.instanceId = instanceId;
+      return this;
+    }
+
+    /**
+     * Configures the resource manager to use a static GCP resource instead of creating a new
+     * instance of the resource.
+     *
+     * @return this builder object with the useStaticInstance option enabled.
+     */
+    public Builder useStaticInstance() {
+      this.useStaticInstance = true;
       return this;
     }
 
