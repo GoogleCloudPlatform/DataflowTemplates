@@ -30,7 +30,7 @@ import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.Fail
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubReadSubscriptionOptions;
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubWriteDeadletterTopicOptions;
-import com.google.cloud.teleport.util.TokenNestedValueProvider;
+import com.google.cloud.teleport.util.DatadogApiKeyNestedValueProvider;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
@@ -220,7 +220,7 @@ public class PubSubToDatadog {
                 "WriteToDatadog",
                 DatadogIO.writeBuilder()
                     .withApiKey(
-                        new TokenNestedValueProvider(
+                        new DatadogApiKeyNestedValueProvider(
                             options.getApiKeySecretId(),
                             options.getApiKeyKMSEncryptionKey(),
                             options.getApiKey(),
