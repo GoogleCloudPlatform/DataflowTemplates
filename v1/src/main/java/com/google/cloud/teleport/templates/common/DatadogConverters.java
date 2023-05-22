@@ -86,13 +86,13 @@ public class DatadogConverters {
     @TemplateParameter.Text(
         order = 1,
         optional = true,
-        description = "Logs API token.",
+        description = "Logs API key.",
         helpText =
-            "Datadog Logs API authentication token. Must be provided if the "
-                + "tokenSource is set to PLAINTEXT or KMS.")
-    ValueProvider<String> getToken();
+            "Datadog Logs API key. Must be provided if the apiKeySource is set to PLAINTEXT or KMS. " +
+                "See: https://docs.datadoghq.com/account_management/api-app-keys")
+    ValueProvider<String> getApiKey();
 
-    void setToken(ValueProvider<String> token);
+    void setApiKey(ValueProvider<String> apiKey);
 
     @TemplateParameter.Text(
         order = 2,
@@ -129,19 +129,19 @@ public class DatadogConverters {
         regexes = {
           "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
         },
-        description = "Google Cloud KMS encryption key for the token",
+        description = "Google Cloud KMS encryption key for the API key",
         helpText =
-            "The Cloud KMS key to decrypt the Logs API token string. This parameter must be "
-                + "provided if the tokenSource is set to KMS. If this parameter is provided, token "
+            "The Cloud KMS key to decrypt the Logs API key. This parameter must be "
+                + "provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey "
                 + "string should be passed in encrypted. Encrypt parameters using the KMS API encrypt "
                 + "endpoint. The Key should be in the format "
                 + "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. "
                 + "See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt ",
         example =
             "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name")
-    ValueProvider<String> getTokenKMSEncryptionKey();
+    ValueProvider<String> getApiKeyKMSEncryptionKey();
 
-    void setTokenKMSEncryptionKey(ValueProvider<String> keyName);
+    void setApiKeyKMSEncryptionKey(ValueProvider<String> keyName);
 
     @TemplateParameter.Text(
         order = 8,
@@ -151,26 +151,26 @@ public class DatadogConverters {
         },
         description = "Google Cloud Secret Manager ID.",
         helpText =
-            "Secret Manager secret ID for the token. This parameter should be provided if the tokenSource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
+            "Secret Manager secret ID for the apiKey. This parameter should be provided if the apiKeySource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
         example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
-    ValueProvider<String> getTokenSecretId();
+    ValueProvider<String> getApiKeySecretId();
 
-    void setTokenSecretId(ValueProvider<String> secretId);
+    void setApiKeySecretId(ValueProvider<String> secretId);
 
     @TemplateParameter.Enum(
         order = 9,
         optional = true,
         enumOptions = {"PLAINTEXT", "KMS", "SECRET_MANAGER"},
-        description = "Source of the token passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
+        description = "Source of the API key passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
         helpText =
-            "Source of the token. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter "
-                + "must be provided if secret manager is used. If tokenSource is set to KMS, "
-                + "tokenKMSEncryptionKey and encrypted token must be provided. If tokenSource is set to "
-                + "SECRET_MANAGER, tokenSecretId must be provided. If tokenSource is set to PLAINTEXT, "
-                + "token must be provided.")
-    ValueProvider<String> getTokenSource();
+            "Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter "
+                + "must be provided if secret manager is used. If apiKeySource is set to KMS, "
+                + "apiKeyKMSEncryptionKey and encrypted apiKey must be provided. If apiKeySource is set to "
+                + "SECRET_MANAGER, apiKeySecretId must be provided. If apiKeySource is set to PLAINTEXT, "
+                + "apiKey must be provided.")
+    ValueProvider<String> getApiKeySource();
 
-    void setTokenSource(ValueProvider<String> tokenSource);
+    void setApiKeySource(ValueProvider<String> apiKeySource);
   }
 
   private static class FailsafeStringToDatadogEvent

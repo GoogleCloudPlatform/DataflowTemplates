@@ -92,7 +92,7 @@ public abstract class HttpEventPublisher {
 
   abstract GenericUrl genericUrl();
 
-  abstract String token();
+  abstract String apiKey();
 
   @Nullable
   abstract Integer maxElapsedMillis();
@@ -119,7 +119,7 @@ public abstract class HttpEventPublisher {
         new HttpBackOffIOExceptionHandler(getConfiguredBackOff());
     request.setIOExceptionHandler(ioExceptionHandler);
 
-    setHeaders(request, token());
+    setHeaders(request, apiKey());
 
     return request.execute();
   }
@@ -152,14 +152,13 @@ public abstract class HttpEventPublisher {
   }
 
   /**
-   * Utility method to set Authorization and other relevant http headers into the {@link
-   * HttpRequest}.
+   * Utility method to set http headers into the {@link HttpRequest}.
    *
    * @param request {@link HttpRequest} object to add headers to.
-   * @param token Datadog's Logs API authorization token.
+   * @param apiKey Datadog's Logs API key.
    */
-  private void setHeaders(HttpRequest request, String token) {
-    request.getHeaders().set(DD_API_KEY_HEADER, token);
+  private void setHeaders(HttpRequest request, String apiKey) {
+    request.getHeaders().set(DD_API_KEY_HEADER, apiKey);
     request.getHeaders().setContentEncoding("gzip");
   }
 
@@ -196,9 +195,9 @@ public abstract class HttpEventPublisher {
 
     abstract GenericUrl genericUrl();
 
-    abstract Builder setToken(String token);
+    abstract Builder setApiKey(String apiKey);
 
-    abstract String token();
+    abstract String apiKey();
 
     abstract Builder setMaxElapsedMillis(Integer maxElapsedMillis);
 
@@ -218,14 +217,14 @@ public abstract class HttpEventPublisher {
     }
 
     /**
-     * Method to set the Datadog Logs API authentication token.
+     * Method to set the Datadog Logs API key.
      *
-     * @param token Logs API authentication token.
+     * @param apiKey Logs API key.
      * @return {@link Builder}
      */
-    public Builder withToken(String token) {
-      checkNotNull(token, "withToken(token) called with null input.");
-      return setToken(token);
+    public Builder withApiKey(String apiKey) {
+      checkNotNull(apiKey, "withApiKey(apiKey) called with null input.");
+      return setApiKey(apiKey);
     }
 
     /**
@@ -250,7 +249,7 @@ public abstract class HttpEventPublisher {
         throws NoSuchAlgorithmException,
             KeyManagementException {
 
-      checkNotNull(token(), "Authentication token needs to be specified via withToken(token).");
+      checkNotNull(apiKey(), "API Key needs to be specified via withApiKey(apiKey).");
       checkNotNull(genericUrl(), "URL needs to be specified via withUrl(url).");
 
       if (maxElapsedMillis() == null) {

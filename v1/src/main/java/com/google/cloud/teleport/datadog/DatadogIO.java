@@ -61,7 +61,7 @@ public class DatadogIO {
     abstract ValueProvider<String> url();
 
     @Nullable
-    abstract ValueProvider<String> token();
+    abstract ValueProvider<String> apiKey();
 
     @Nullable
     abstract ValueProvider<Integer> batchCount();
@@ -77,7 +77,7 @@ public class DatadogIO {
           DatadogEventWriter.newBuilder()
               .withUrl(url())
               .withInputBatchCount(batchCount())
-              .withToken((token()));
+              .withApiKey(apiKey());
 
       DatadogEventWriter writer = builder.build();
       LOG.info("DatadogEventWriter configured");
@@ -97,9 +97,9 @@ public class DatadogIO {
 
       abstract ValueProvider<String> url();
 
-      abstract Builder setToken(ValueProvider<String> token);
+      abstract Builder setApiKey(ValueProvider<String> apiKey);
 
-      abstract ValueProvider<String> token();
+      abstract ValueProvider<String> apiKey();
 
       abstract Builder setBatchCount(ValueProvider<Integer> batchCount);
 
@@ -130,25 +130,25 @@ public class DatadogIO {
       }
 
       /**
-       * Method to set the authentication token for Logs API.
+       * Method to set the API key for Logs API.
        *
-       * @param token Authentication token for Logs API
+       * @param apiKey API key for Logs API
        * @return {@link Builder}
        */
-      public Builder withToken(ValueProvider<String> token) {
-        checkArgument(token != null, "withToken(token) called with null input.");
-        return setToken(token);
+      public Builder withApiKey(ValueProvider<String> apiKey) {
+        checkArgument(apiKey != null, "withApiKey(apiKey) called with null input.");
+        return setApiKey(apiKey);
       }
 
       /**
-       * Same as {@link Builder#withToken(ValueProvider)} but without {@link ValueProvider}.
+       * Same as {@link Builder#withApiKey(ValueProvider)} but without {@link ValueProvider}.
        *
-       * @param token for Logs API
+       * @param apiKey for Logs API
        * @return {@link Builder}
        */
-      public Builder withToken(String token) {
-        checkArgument(token != null, "withToken(token) called with null input.");
-        return setToken(ValueProvider.StaticValueProvider.of(token));
+      public Builder withApiKey(String apiKey) {
+        checkArgument(apiKey != null, "withApiKey(apiKey) called with null input.");
+        return setApiKey(ValueProvider.StaticValueProvider.of(apiKey));
       }
 
       /**
@@ -199,7 +199,7 @@ public class DatadogIO {
 
       public Write build() {
         checkNotNull(url(), "Logs API url is required.");
-        checkNotNull(token(), "Authorization token is required.");
+        checkNotNull(apiKey(), "API key is required.");
 
         return autoBuild();
       }

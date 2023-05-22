@@ -219,12 +219,12 @@ public class PubSubToDatadog {
             .apply(
                 "WriteToDatadog",
                 DatadogIO.writeBuilder()
-                    .withToken(
+                    .withApiKey(
                         new TokenNestedValueProvider(
-                            options.getTokenSecretId(),
-                            options.getTokenKMSEncryptionKey(),
-                            options.getToken(),
-                            options.getTokenSource()))
+                            options.getApiKeySecretId(),
+                            options.getApiKeyKMSEncryptionKey(),
+                            options.getApiKey(),
+                            options.getApiKeySource()))
                     .withUrl(options.getUrl())
                     .withBatchCount(options.getBatchCount())
                     .withParallelism(options.getParallelism())

@@ -93,7 +93,7 @@ public class DatadogIOTest {
                 DatadogIO.writeBuilder()
                     .withParallelism(1)
                     .withBatchCount(DATADOG_EVENTS.size())
-                    .withToken("test-token")
+                    .withApiKey("test-api-key")
                     .withUrl(Joiner.on(':').join("http://localhost", mockServer.getPort()))
                     .build())
             .setCoder(DatadogWriteErrorCoder.of());
@@ -122,7 +122,7 @@ public class DatadogIOTest {
                 DatadogIO.writeBuilder()
                     .withParallelism(TEST_PARALLELISM)
                     .withBatchCount(DATADOG_EVENTS.size())
-                    .withToken("test-token")
+                    .withApiKey("test-api-key")
                     .withUrl(Joiner.on(':').join("http://localhost", mockServer.getPort()))
                     .build())
             .setCoder(DatadogWriteErrorCoder.of());
@@ -151,7 +151,7 @@ public class DatadogIOTest {
                 DatadogIO.writeBuilder()
                     .withParallelism(TEST_PARALLELISM)
                     .withBatchCount(1)
-                    .withToken("test-token")
+                    .withApiKey("test-api-key")
                     .withUrl(Joiner.on(':').join("http://localhost", mockServer.getPort()))
                     .build())
             .setCoder(DatadogWriteErrorCoder.of());

@@ -66,7 +66,7 @@ public class HttpEventPublisherTest {
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
-            .withToken("test-token")
+            .withApiKey("test-api-key")
             .build();
 
     String actual = publisher.getStringPayload(DATADOG_EVENTS);
@@ -94,7 +94,7 @@ public class HttpEventPublisherTest {
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
-            .withToken("test-token")
+            .withApiKey("test-api-key")
             .build();
 
     String expectedString =
@@ -123,7 +123,7 @@ public class HttpEventPublisherTest {
     HttpEventPublisher.Builder builder =
         HttpEventPublisher.newBuilder()
             .withUrl(baseURL)
-            .withToken("test-token");
+            .withApiKey("test-api-key");
 
     assertThat(
         builder.genericUrl(),
@@ -139,7 +139,7 @@ public class HttpEventPublisherTest {
     HttpEventPublisher publisherDefaultBackOff =
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
-            .withToken("test-token")
+            .withApiKey("test-api-key")
             .build();
 
     assertThat(
@@ -157,7 +157,7 @@ public class HttpEventPublisherTest {
     HttpEventPublisher publisherWithBackOff =
         HttpEventPublisher.newBuilder()
             .withUrl("http://example.com")
-            .withToken("test-token")
+            .withApiKey("test-api-key")
             .withMaxElapsedMillis(timeoutInMillis)
             .build();
 

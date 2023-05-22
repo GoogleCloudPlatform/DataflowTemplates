@@ -113,7 +113,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
   abstract ValueProvider<String> url();
 
   @Nullable
-  abstract ValueProvider<String> token();
+  abstract ValueProvider<String> apiKey();
 
   @Nullable
   abstract ValueProvider<Integer> inputBatchCount();
@@ -123,7 +123,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
 
     checkArgument(url().isAccessible(), "url is required for writing events.");
     checkArgument(isValidUrlFormat(url().get()), INVALID_URL_FORMAT_MESSAGE);
-    checkArgument(token().isAccessible(), "Access token is required for writing events.");
+    checkArgument(apiKey().isAccessible(), "API Key is required for writing events.");
 
     // Either user supplied or default batchCount.
     if (batchCount == null) {
@@ -141,7 +141,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
       HttpEventPublisher.Builder builder =
           HttpEventPublisher.newBuilder()
               .withUrl(url().get())
-              .withToken(token().get());
+              .withApiKey(apiKey().get());
 
       publisher = builder.build();
       LOG.info("Successfully created HttpEventPublisher");
@@ -377,9 +377,9 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
 
     abstract ValueProvider<String> url();
 
-    abstract Builder setToken(ValueProvider<String> token);
+    abstract Builder setApiKey(ValueProvider<String> apiKey);
 
-    abstract ValueProvider<String> token();
+    abstract ValueProvider<String> apiKey();
 
     abstract Builder setInputBatchCount(ValueProvider<Integer> inputBatchCount);
 
@@ -412,25 +412,25 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
     }
 
     /**
-     * Method to set the authentication token for Logs API.
+     * Method to set the API key for Logs API.
      *
-     * @param token Authentication token for Logs API
+     * @param apiKey API key for Logs API
      * @return {@link Builder}
      */
-    public Builder withToken(ValueProvider<String> token) {
-      checkArgument(token != null, "withToken(token) called with null input.");
-      return setToken(token);
+    public Builder withApiKey(ValueProvider<String> apiKey) {
+      checkArgument(apiKey != null, "withApiKey(apiKey) called with null input.");
+      return setApiKey(apiKey);
     }
 
     /**
-     * Same as {@link Builder#withToken(ValueProvider)} but without {@link ValueProvider}.
+     * Same as {@link Builder#withApiKey(ValueProvider)} but without {@link ValueProvider}.
      *
-     * @param token for Logs API
+     * @param apiKey for Logs API
      * @return {@link Builder}
      */
-    public Builder withToken(String token) {
-      checkArgument(token != null, "withToken(token) called with null input.");
-      return setToken(ValueProvider.StaticValueProvider.of(token));
+    public Builder withApiKey(String apiKey) {
+      checkArgument(apiKey != null, "withApiKey(apiKey) called with null input.");
+      return setApiKey(ValueProvider.StaticValueProvider.of(apiKey));
     }
 
     /**
@@ -452,7 +452,7 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
     /** Build a new {@link DatadogEventWriter} objects based on the configuration. */
     public DatadogEventWriter build() {
       checkNotNull(url(), "url needs to be provided.");
-      checkNotNull(token(), "token needs to be provided.");
+      checkNotNull(apiKey(), "apiKey needs to be provided.");
 
       return autoBuild();
     }

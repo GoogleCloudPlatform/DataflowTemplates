@@ -124,7 +124,7 @@ public class DatadogEventWriterTest {
             NullPointerException.class,
             () -> DatadogEventWriter.newBuilder().withUrl("http://test-url").build());
 
-    assertThat(thrown).hasMessageThat().contains("token needs to be provided");
+    assertThat(thrown).hasMessageThat().contains("apiKey needs to be provided");
   }
 
   /**
@@ -134,7 +134,7 @@ public class DatadogEventWriterTest {
   public void eventWriterDefaultBatchCount() {
 
     DatadogEventWriter writer =
-        DatadogEventWriter.newBuilder().withUrl("http://test-url").withToken("test-token").build();
+        DatadogEventWriter.newBuilder().withUrl("http://test-url").withApiKey("test-api-key").build();
 
     assertThat(writer.inputBatchCount()).isNull();
   }
@@ -148,7 +148,7 @@ public class DatadogEventWriterTest {
             IllegalArgumentException.class,
             () -> DatadogEventWriter.newBuilder()
                 .withUrl("http://test-url")
-                .withToken("test-token")
+                .withApiKey("test-api-key")
                 .withInputBatchCount(StaticValueProvider.of(1001))
                 .build());
 
@@ -163,7 +163,7 @@ public class DatadogEventWriterTest {
     DatadogEventWriter writer =
         DatadogEventWriter.newBuilder()
             .withUrl("http://test-url")
-            .withToken("test-token")
+            .withApiKey("test-api-key")
             .withInputBatchCount(StaticValueProvider.of(batchCount))
             .build();
 
@@ -214,7 +214,7 @@ public class DatadogEventWriterTest {
                         .withUrl(Joiner.on(':').join("http://localhost", testPort))
                         .withInputBatchCount(
                             StaticValueProvider.of(1)) // Test one request per DatadogEvent
-                        .withToken("test-token")
+                        .withApiKey("test-api-key")
                         .build()))
             .setCoder(DatadogWriteErrorCoder.of());
 
@@ -273,7 +273,7 @@ public class DatadogEventWriterTest {
                         .withInputBatchCount(
                             StaticValueProvider.of(
                                 testEvents.size())) // all requests in a single batch.
-                        .withToken("test-token")
+                        .withApiKey("test-api-key")
                         .build()))
             .setCoder(DatadogWriteErrorCoder.of());
 
@@ -322,7 +322,7 @@ public class DatadogEventWriterTest {
                         .withInputBatchCount(
                             StaticValueProvider.of(
                                 testEvents.size())) // all requests in a single batch.
-                        .withToken("test-token")
+                        .withApiKey("test-api-key")
                         .build()))
             .setCoder(DatadogWriteErrorCoder.of());
 
