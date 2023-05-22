@@ -25,10 +25,13 @@ public class ProcessingContext implements Serializable {
 
   private KafkaConnectionProfile kafkaConnectionProfile;
   private Shard shard;
+  private Schema schema;
 
-  public ProcessingContext(KafkaConnectionProfile kafkaConnectionProfile, Shard shard) {
+  public ProcessingContext(
+      KafkaConnectionProfile kafkaConnectionProfile, Shard shard, Schema schema) {
     this.shard = shard;
     this.kafkaConnectionProfile = kafkaConnectionProfile;
+    this.schema = schema;
   }
 
   public KafkaConnectionProfile getKafkaConnectionProfile() {
@@ -39,12 +42,18 @@ public class ProcessingContext implements Serializable {
     return shard;
   }
 
+  public Schema getSchema() {
+    return schema;
+  }
+
   @Override
   public String toString() {
     return "{ Shard details :"
         + shard.toString()
         + " kakfaClusterDetails: "
         + kafkaConnectionProfile.toString()
+        + " schema: "
+        + schema.toString()
         + "}";
   }
 }
