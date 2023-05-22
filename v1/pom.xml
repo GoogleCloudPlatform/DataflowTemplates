@@ -844,15 +844,6 @@
               <excludes>
                 <!-- Excluding generated proto java files -->
                 <exclude>com.google.cloud.teleport.spanner.proto</exclude>
-                <!-- Excluding generated AutoValue java files -->
-                <exclude>**/AutoValue*.class</exclude>
-              </excludes>
-            </rule>
-            <rule>
-              <element>CLASS</element>
-              <excludes>
-                <!-- Excluding generated AutoValue java files -->
-                <exclude>*AutoValue*</exclude>
               </excludes>
             </rule>
           </rules>

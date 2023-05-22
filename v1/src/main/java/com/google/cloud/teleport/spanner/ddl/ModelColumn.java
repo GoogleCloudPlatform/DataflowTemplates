@@ -65,8 +65,8 @@ public abstract class ModelColumn implements Serializable {
 
     // TODO(adrw-google): Print model column options once 29.5 is deployed to PROD.
     // if (columnOptions() != null && !columnOptions().isEmpty()) {
-    //  String optionsString = String.join(",", columnOptions());
-    //  appendable.append(" OPTIONS (").append(optionsString).append(")");
+    //   String optionsString = String.join(",", columnOptions());
+    //   appendable.append(" OPTIONS (").append(optionsString).append(")");
     // }
   }
 
