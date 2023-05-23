@@ -228,7 +228,7 @@ public class PubSubToDatadog {
                             options.getApiKeyKMSEncryptionKey(),
                             options.getApiKey(),
                             options.getApiKeySource()))
-                    .withUrl(options.getUrl())
+                    .withSite(options.getSite())
                     .withBatchCount(options.getBatchCount())
                     .withParallelism(options.getParallelism())
                     .build());
