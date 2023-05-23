@@ -37,11 +37,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoService(SchemaTransformProvider.class)
-public class DataGeneratorSchemaTransformProvider extends TypedSchemaTransformProvider<
-    DataGeneratorSchemaTransformConfiguration> {
+public class DataGeneratorSchemaTransformProvider
+    extends TypedSchemaTransformProvider<DataGeneratorSchemaTransformConfiguration> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(
-      DataGeneratorSchemaTransformProvider.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(DataGeneratorSchemaTransformProvider.class);
 
   @Override
   public SchemaTransform from(DataGeneratorSchemaTransformConfiguration configuration) {
@@ -51,9 +51,11 @@ public class DataGeneratorSchemaTransformProvider extends TypedSchemaTransformPr
       throw new IllegalArgumentException("No schema specified.");
     }
 
-    SchemaTransform transform = new DataGeneratorSchemaTransform(
-        configuration.getRecordsPerSecond(), configuration.getMinutesToRun(),
-        configuration.getSchema());
+    SchemaTransform transform =
+        new DataGeneratorSchemaTransform(
+            configuration.getRecordsPerSecond(),
+            configuration.getMinutesToRun(),
+            configuration.getSchema());
     return transform;
   }
 
@@ -64,13 +66,13 @@ public class DataGeneratorSchemaTransformProvider extends TypedSchemaTransformPr
 
   @Override
   public @UnknownKeyFor @NonNull @Initialized List<@UnknownKeyFor @NonNull @Initialized String>
-  inputCollectionNames() {
+      inputCollectionNames() {
     return Collections.emptyList();
   }
 
   @Override
   public @UnknownKeyFor @NonNull @Initialized List<@UnknownKeyFor @NonNull @Initialized String>
-  outputCollectionNames() {
+      outputCollectionNames() {
     return List.of("output");
   }
 
@@ -83,12 +85,10 @@ public class DataGeneratorSchemaTransformProvider extends TypedSchemaTransformPr
   @AutoValue
   public abstract static class DataGeneratorSchemaTransformConfiguration {
 
-    @SchemaFieldDescription(
-        "The number of records generated per second")
+    @SchemaFieldDescription("The number of records generated per second")
     public abstract @Nullable Long getRecordsPerSecond();
 
-    @SchemaFieldDescription(
-        "The number of minutes to run the generator.")
+    @SchemaFieldDescription("The number of minutes to run the generator.")
     public abstract @Nullable Long getMinutesToRun();
 
     @SchemaFieldDescription(
@@ -97,7 +97,9 @@ public class DataGeneratorSchemaTransformProvider extends TypedSchemaTransformPr
             + "(https://avro.apache.org/docs/1.10.2/spec.html#schemas).")
     public abstract String getSchema();
 
-    public static DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration.Builder builder() {
+    public static DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration
+            .Builder
+        builder() {
       return new AutoValue_DataGeneratorSchemaTransformProvider_DataGeneratorSchemaTransformConfiguration
           .Builder();
     }
@@ -105,17 +107,20 @@ public class DataGeneratorSchemaTransformProvider extends TypedSchemaTransformPr
     @AutoValue.Builder
     public abstract static class Builder {
 
-      public abstract DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration.Builder setRecordsPerSecond(
-          Long recordsPerSecond);
+      public abstract DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration
+              .Builder
+          setRecordsPerSecond(Long recordsPerSecond);
 
-      public abstract DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration.Builder setMinutesToRun(
-          Long minutesToRun);
+      public abstract DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration
+              .Builder
+          setMinutesToRun(Long minutesToRun);
 
-      public abstract DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration.Builder setSchema(
-          String schema);
+      public abstract DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration
+              .Builder
+          setSchema(String schema);
 
-      public abstract DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration build();
+      public abstract DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration
+          build();
     }
   }
 }
-

@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.syndeo.transforms.datagenerator;
 
 import com.google.common.flogger.GoogleLogger;
@@ -30,7 +29,8 @@ import org.apache.beam.sdk.values.Row.FieldValueBuilder;
 public final class RecordCreator {
 
   private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
-  private static final String ALPHA_NUMBERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvxyz";
+  private static final String ALPHA_NUMBERIC_STRING =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvxyz";
 
   public static Random random = new Random();
 

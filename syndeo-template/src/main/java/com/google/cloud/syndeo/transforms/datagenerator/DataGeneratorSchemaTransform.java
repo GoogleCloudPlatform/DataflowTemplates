@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.syndeo.transforms.datagenerator;
 
 import com.google.common.flogger.GoogleLogger;
@@ -30,7 +29,6 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.PeriodicImpulse;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SimpleFunction;
-import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
@@ -44,7 +42,6 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
   private long minutesToRun = 10;
   private String schema;
 
-
   public DataGeneratorSchemaTransform(long recordsPerSecond, long minutesToRun, String schema) {
     this.recordsPerSecond = recordsPerSecond;
     this.minutesToRun = minutesToRun;
@@ -56,22 +53,25 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
     return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
       @Override
       public PCollectionRowTuple expand(PCollectionRowTuple input) {
-        org.apache.beam.sdk.schemas.Schema beamSchema = AvroUtils.toBeamSchema(
-            new Parser().parse(schema));
+        org.apache.beam.sdk.schemas.Schema beamSchema =
+            AvroUtils.toBeamSchema(new Parser().parse(schema));
         final Instant startTime = Instant.now();
-        PCollection<Instant> instants = input.getPipeline()
-            .apply(
-                PeriodicImpulse.create()
-                    .startAt(startTime)
-                    .stopAt(Instant.now().plus(Duration.standardMinutes(minutesToRun)))
-                    .withInterval(Duration.millis(1000)).applyWindowing());
+        PCollection<Instant> instants =
+            input
+                .getPipeline()
+                .apply(
+                    PeriodicImpulse.create()
+                        .startAt(startTime)
+                        .stopAt(Instant.now().plus(Duration.standardMinutes(minutesToRun)))
+                        .withInterval(Duration.millis(1000))
+                        .applyWindowing());
         instants = instants.apply(Reshuffle.viaRandomKey());
 
-        PCollection rows = instants.apply(
-                FlatMapElements.via(new InstantToRowFn(startTime, schema)))
-            .setRowSchema(beamSchema);
-        return PCollectionRowTuple.of(
-            "output", rows);
+        PCollection rows =
+            instants
+                .apply(FlatMapElements.via(new InstantToRowFn(startTime, schema)))
+                .setRowSchema(beamSchema);
+        return PCollectionRowTuple.of("output", rows);
       }
     };
   }
@@ -91,17 +91,12 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
     public List<Row> apply(Instant input) {
       final Schema schema = Schema.parse(this.schema);
 
-      final long numSplits = recordsPerSecond*60;
+      final long numSplits = recordsPerSecond * 60;
       final long periodPerSplitMsecs = 1000;
-      long ordinal = (
-          input.minus(Duration.millis(startTime.getMillis())).getMillis()
-              / periodPerSplitMsecs);
-      return LongStream.range(
-              ordinal * recordsPerSecond,
-              (ordinal + 1) * recordsPerSecond)
-          .mapToObj(
-              intVal ->
-                  RecordCreator.createRowRecord(schema))
+      long ordinal =
+          (input.minus(Duration.millis(startTime.getMillis())).getMillis() / periodPerSplitMsecs);
+      return LongStream.range(ordinal * recordsPerSecond, (ordinal + 1) * recordsPerSecond)
+          .mapToObj(intVal -> RecordCreator.createRowRecord(schema))
           .collect(Collectors.toList());
     }
   }

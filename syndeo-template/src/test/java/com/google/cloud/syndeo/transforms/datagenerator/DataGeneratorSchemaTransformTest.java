@@ -16,6 +16,7 @@
 package com.google.cloud.syndeo.transforms.datagenerator;
 
 import static org.junit.Assert.assertNotNull;
+
 import com.google.cloud.syndeo.common.ProviderUtil;
 import com.google.cloud.syndeo.transforms.datagenerator.DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration;
 import org.apache.beam.sdk.Pipeline;
@@ -28,18 +29,26 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class DataGeneratorSchemaTransformTest {
 
-  private static final String schema = "{\"type\":\"record\",\"name\":\"user_info_flat\",\"namespace\":\"com.google.syndeo\",\"fields\":[{\"name\":\"id\",\"type\":\"long\"},{\"name\":\"username\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"10\"},{\"name\":\"age\",\"type\":\"long\",\"default\":0},{\"name\":\"introduction\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"1000\"},{\"name\":\"street\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"city\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"state\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"country\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"15\"}]}";
+  private static final String schema =
+      "{\"type\":\"record\",\"name\":\"user_info_flat\",\"namespace\":\"com.google.syndeo\",\"fields\":[{\"name\":\"id\",\"type\":\"long\"},{\"name\":\"username\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"10\"},{\"name\":\"age\",\"type\":\"long\",\"default\":0},{\"name\":\"introduction\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"1000\"},{\"name\":\"street\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"city\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"state\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"country\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"15\"}]}";
 
   @Test
   public void testBuildTransform() throws Exception {
-    DataGeneratorSchemaTransformProvider provider = (DataGeneratorSchemaTransformProvider) ProviderUtil.getProvider(
-        "syndeo:schematransform:com.google.cloud:data_generator:v1");
-    DataGeneratorSchemaTransform schemaTransform = (DataGeneratorSchemaTransform) provider.from(
-        DataGeneratorSchemaTransformConfiguration.builder().setSchema(schema)
-            .setMinutesToRun(1l).setRecordsPerSecond(100l).build());
-    PTransform<PCollectionRowTuple, PCollectionRowTuple> transform = schemaTransform.buildTransform();
+    DataGeneratorSchemaTransformProvider provider =
+        (DataGeneratorSchemaTransformProvider)
+            ProviderUtil.getProvider("syndeo:schematransform:com.google.cloud:data_generator:v1");
+    DataGeneratorSchemaTransform schemaTransform =
+        (DataGeneratorSchemaTransform)
+            provider.from(
+                DataGeneratorSchemaTransformConfiguration.builder()
+                    .setSchema(schema)
+                    .setMinutesToRun(1l)
+                    .setRecordsPerSecond(100l)
+                    .build());
+    PTransform<PCollectionRowTuple, PCollectionRowTuple> transform =
+        schemaTransform.buildTransform();
     Pipeline p = Pipeline.create();
-    PCollectionRowTuple input =  PCollectionRowTuple.empty(p);
+    PCollectionRowTuple input = PCollectionRowTuple.empty(p);
     transform.expand(input);
     assertNotNull(transform);
   }
