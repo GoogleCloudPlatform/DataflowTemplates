@@ -736,6 +736,7 @@ public class InformationSchemaScanner {
             Statement.of(
                 "SELECT t.model_name, t.option_name, t.option_type, t.option_value "
                     + " FROM information_schema.model_options AS t"
+                    + " WHERE t.model_catalog = '' AND t.model_schema = ''"
                     + " ORDER BY t.model_name, t.option_name"));
 
     Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
@@ -778,10 +779,10 @@ public class InformationSchemaScanner {
     ResultSet resultSet =
         context.executeQuery(
             Statement.of(
-                "SELECT t.model_name, t.column_kind, t.ordinal_position, t.column_name, "
-                    + " t.data_type FROM information_schema.model_columns as t WHERE"
-                    + " t.model_catalog = '' AND t.model_schema = '' ORDER BY t.model_name,"
-                    + " t.column_kind, t.ordinal_position"));
+                "SELECT t.model_name, t.column_kind, t.ordinal_position, t.column_name,"
+                    + " t.data_type FROM information_schema.model_columns as t"
+                    + " WHERE t.model_catalog = '' AND t.model_schema = ''"
+                    + " ORDER BY t.model_name, t.column_kind, t.ordinal_position"));
 
     while (resultSet.next()) {
       String modelName = resultSet.getString(0);
@@ -841,15 +842,15 @@ public class InformationSchemaScanner {
       if (optionType.equalsIgnoreCase("STRING")) {
         options.add(
             optionName
-                + "=\""
+                + "=" + DdlUtilityComponents.GSQL_LITERAL_QUOTE
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + "\"");
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
-                + "='"
+                + "=" + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + "'");
+                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
       } else {
         options.add(optionName + "=" + optionValue);
       }
