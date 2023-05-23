@@ -78,7 +78,6 @@ jobs:
         uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:
     name: Dataflow Templates Integration Smoke Tests
-    needs: [spotless_check, java_build, java_unit_tests]
     timeout-minutes: 60
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
