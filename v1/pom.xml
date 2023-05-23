@@ -834,6 +834,12 @@
         <artifactId>jacoco-maven-plugin</artifactId>
         <version>${jacoco.version}</version>
         <configuration>
+          <excludes>
+            <!-- Excluding classes covered only by integration tests. -->
+            <exclude>**/*InformationSchemaScanner.*</exclude>
+            <!-- Excluding auto-generated classes. -->
+            <exclude>**/*AutoValue_*</exclude>
+          </excludes>
           <rules>
             <rule>
               <element>PACKAGE</element>
