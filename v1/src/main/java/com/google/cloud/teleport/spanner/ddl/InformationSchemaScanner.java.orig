@@ -842,15 +842,23 @@ public class InformationSchemaScanner {
       if (optionType.equalsIgnoreCase("STRING")) {
         options.add(
             optionName
+<<<<<<< HEAD
+                + "=" + DdlUtilityComponents.GSQL_LITERAL_QUOTE
+=======
                 + "="
                 + DdlUtilityComponents.GSQL_LITERAL_QUOTE
+>>>>>>> e37fe1f89 (Spanner VertexAI Integration: Information Schema)
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
                 + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
+<<<<<<< HEAD
+                + "=" + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
+=======
                 + "="
                 + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
+>>>>>>> e37fe1f89 (Spanner VertexAI Integration: Information Schema)
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
                 + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
       } else {
