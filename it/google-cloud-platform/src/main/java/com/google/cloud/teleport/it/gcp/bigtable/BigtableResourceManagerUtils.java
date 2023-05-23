@@ -73,18 +73,13 @@ public final class BigtableResourceManagerUtils {
    * @param baseString The string to generate the id from.
    * @return The instance id string.
    */
-  static String generateInstanceId(
-      String baseString, BigtableResourceOverrides bigtableResourceOverrides) {
-    if (bigtableResourceOverrides == null) {
-      return generateResourceId(
-          baseString.toLowerCase(),
-          ILLEGAL_INSTANCE_ID_CHARS,
-          REPLACE_INSTANCE_ID_CHAR,
-          MAX_INSTANCE_ID_LENGTH,
-          TIME_FORMAT);
-    } else {
-      return bigtableResourceOverrides.getInstanceId();
-    }
+  static String generateInstanceId(String baseString) {
+    return generateResourceId(
+        baseString.toLowerCase(),
+        ILLEGAL_INSTANCE_ID_CHARS,
+        REPLACE_INSTANCE_ID_CHAR,
+        MAX_INSTANCE_ID_LENGTH,
+        TIME_FORMAT);
   }
 
   /**
