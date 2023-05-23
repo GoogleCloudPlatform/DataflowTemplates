@@ -255,8 +255,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThat(info.state()).isIn(PipelineLauncher.JobState.ACTIVE_STATES);
 
-    PipelineOperator.Result result =
-        new PipelineOperator(launcher()).waitUntilDoneAndFinish(createConfig(info));
+    PipelineOperator.Result result = pipelineOperator().waitUntilDoneAndFinish(createConfig(info));
 
     // Assert
     assertThat(result).isEqualTo(PipelineOperator.Result.LAUNCH_FINISHED);

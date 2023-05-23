@@ -143,7 +143,8 @@ public class KafkaToSource {
         ProcessingContextGenerator.getProcessingContext(
             options.getSourceShardsFilePath(),
             options.getSourceType(),
-            options.getKafkaClusterFilePath());
+            options.getKafkaClusterFilePath(),
+            options.getSessionFilePath());
 
     pipeline.apply(Create.of(processingContext)).apply(ParDo.of(new KafkaToSourceStreamer()));
     return pipeline.run();

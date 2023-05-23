@@ -669,6 +669,7 @@
     </profiles>
 
     <modules>
+        <module>azure-eventhub-to-pubsub</module>
         <module>bigtable-common</module>
         <module>bigquery-to-bigtable</module>
         <module>bigquery-to-parquet</module>
@@ -700,6 +701,7 @@
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-kafka</module>
         <module>pubsub-to-mongodb</module>
+        <module>spanner-change-streams-to-sink</module>
         <module>streaming-data-generator</module>
  </modules>
 
