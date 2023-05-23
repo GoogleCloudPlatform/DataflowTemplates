@@ -28,7 +28,8 @@ import org.apache.beam.sdk.values.TypeDescriptor;
 /** A {@link org.apache.beam.sdk.coders.Coder} for {@link DatadogWriteError} objects. */
 public class DatadogWriteErrorCoder extends AtomicCoder<DatadogWriteError> {
 
-  private static final DatadogWriteErrorCoder DATADOG_WRITE_ERROR_CODER = new DatadogWriteErrorCoder();
+  private static final DatadogWriteErrorCoder DATADOG_WRITE_ERROR_CODER =
+      new DatadogWriteErrorCoder();
 
   private static final TypeDescriptor<DatadogWriteError> TYPE_DESCRIPTOR =
       new TypeDescriptor<DatadogWriteError>() {};

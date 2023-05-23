@@ -91,8 +91,8 @@ public class DatadogConverters {
         optional = true,
         description = "Logs API key.",
         helpText =
-            "Datadog Logs API key. Must be provided if the apiKeySource is set to PLAINTEXT or KMS. " +
-                "See: https://docs.datadoghq.com/account_management/api-app-keys")
+            "Datadog Logs API key. Must be provided if the apiKeySource is set to PLAINTEXT or KMS. "
+                + "See: https://docs.datadoghq.com/account_management/api-app-keys")
     ValueProvider<String> getApiKey();
 
     void setApiKey(ValueProvider<String> apiKey);
@@ -101,16 +101,16 @@ public class DatadogConverters {
         order = 2,
         description = "Datadog site.",
         enumOptions = {
-            "datadoghq.com",
-            "us3.datadoghq.com",
-            "us5.datadoghq.com",
-            "ap1.datadoghq.com",
-            "datadoghq.eu",
-            "ddog-gov.com",
+          "datadoghq.com",
+          "us3.datadoghq.com",
+          "us5.datadoghq.com",
+          "ap1.datadoghq.com",
+          "datadoghq.eu",
+          "ddog-gov.com",
         },
         helpText =
-            "Datadog site. This should be routable from the VPC in which the pipeline runs. " +
-                "See: https://docs.datadoghq.com/getting_started/site",
+            "Datadog site. This should be routable from the VPC in which the pipeline runs. "
+                + "See: https://docs.datadoghq.com/getting_started/site",
         example = "datadoghq.com")
     ValueProvider<String> getSite();
 
@@ -120,7 +120,8 @@ public class DatadogConverters {
         order = 3,
         optional = true,
         description = "Batch size for sending multiple events to Datadog Logs API.",
-        helpText = "Batch size for sending multiple events to Datadog Logs API. Defaults to 10. Max is 1000.")
+        helpText =
+            "Batch size for sending multiple events to Datadog Logs API. Defaults to 10. Max is 1000.")
     ValueProvider<Integer> getBatchCount();
 
     void setBatchCount(ValueProvider<Integer> batchCount);
@@ -229,10 +230,12 @@ public class DatadogConverters {
 
                       try {
 
-                        // Start building a DatadogEvent with the payload as the message and a default source.
-                        DatadogEvent.Builder builder = DatadogEvent.newBuilder()
-                            .withMessage(input)
-                            .withSource(DD_DEFAULT_SOURCE);
+                        // Start building a DatadogEvent with the payload as the message and a
+                        // default source.
+                        DatadogEvent.Builder builder =
+                            DatadogEvent.newBuilder()
+                                .withMessage(input)
+                                .withSource(DD_DEFAULT_SOURCE);
 
                         // We will attempt to parse the input to see
                         // if it is a valid JSON and if so, whether we can
@@ -242,34 +245,41 @@ public class DatadogConverters {
                           JSONObject json = new JSONObject(input);
 
                           // If valid JSON, we attempt to treat it as a LogEntry
-                          // See: https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
-                          JSONObject data = isPubsubMessage(json) ?
-                              json.optJSONObject(PUBSUB_MESSAGE_DATA_FIELD) :
-                              json;
+                          // See:
+                          // https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
+                          JSONObject data =
+                              isPubsubMessage(json)
+                                  ? json.optJSONObject(PUBSUB_MESSAGE_DATA_FIELD)
+                                  : json;
                           boolean dataAvailable = (data != null && !data.isEmpty());
 
                           if (dataAvailable) {
                             // Check if the JSON we receive has a resource object
-                            // See: https://cloud.google.com/logging/docs/reference/v2/rest/v2/MonitoredResource
+                            // See:
+                            // https://cloud.google.com/logging/docs/reference/v2/rest/v2/MonitoredResource
                             JSONObject resource = data.optJSONObject(GCP_RESOURCE_KEY);
                             boolean resourceAvailable = (resource != null && !resource.isEmpty());
 
                             if (resourceAvailable) {
 
                               // Check if the resource object has a type string
-                              // If so, convert it to a Datadog source string and add it to the DatadogEvent, i.e.
+                              // If so, convert it to a Datadog source string and add it to the
+                              // DatadogEvent, i.e.
                               // "gce_instance"
                               // converts to
                               // "gcp.gce.instance"
                               String type = resource.optString(GCP_RESOURCE_TYPE_KEY);
                               if (!type.isEmpty()) {
-                                String formattedSource = DD_DEFAULT_SOURCE + "." + type.replaceAll("_", ".");
+                                String formattedSource =
+                                    DD_DEFAULT_SOURCE + "." + type.replaceAll("_", ".");
                                 builder.withSource(formattedSource);
                               }
 
                               // Check if the resource object has a labels object
-                              // If so, convert it to a Datadog tags string and add it to the DatadogEvent, i.e.
-                              // {"projectId": "my-project", "instanceId": "12345678901234", "zone": "us-central1-a"}
+                              // If so, convert it to a Datadog tags string and add it to the
+                              // DatadogEvent, i.e.
+                              // {"projectId": "my-project", "instanceId": "12345678901234", "zone":
+                              // "us-central1-a"}
                               // converts to
                               // "projectId:my-project,instanceId:12345678901234,zone:us-central1-a"
                               JSONObject labels = resource.optJSONObject(GCP_RESOURCE_LABELS_KEY);

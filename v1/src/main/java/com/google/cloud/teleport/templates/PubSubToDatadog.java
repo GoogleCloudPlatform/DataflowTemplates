@@ -66,8 +66,8 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@link PubSubToDatadog} pipeline is a streaming pipeline which ingests data from Cloud
  * Pub/Sub, executes a UDF, converts the output to {@link DatadogEvent}s and writes those records
- * into Datadog's Logs API. Any errors which occur in the execution of the UDF, conversion to
- * {@link DatadogEvent} or writing to Logs API will be streamed into a Pub/Sub topic.
+ * into Datadog's Logs API. Any errors which occur in the execution of the UDF, conversion to {@link
+ * DatadogEvent} or writing to Logs API will be streamed into a Pub/Sub topic.
  *
  * <p><b>Pipeline Requirements</b>
  *

@@ -59,9 +59,7 @@ public class HttpEventPublisherTest {
   /** Test whether payload is stringified as expected. */
   @Test
   public void stringPayloadTest()
-      throws NoSuchAlgorithmException,
-          KeyManagementException,
-          IOException {
+      throws NoSuchAlgorithmException, KeyManagementException, IOException {
 
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
@@ -72,24 +70,21 @@ public class HttpEventPublisherTest {
     String actual = publisher.getStringPayload(DATADOG_EVENTS);
 
     String expected =
-        "[" +
-            "{\"ddsource\":\"test-source-1\",\"ddtags\":\"test-tags-1\"," +
-            "\"hostname\":\"test-hostname-1\",\"service\":\"test-service-1\"," +
-            "\"message\":\"test-message-1\"}," +
-            "{\"ddsource\":\"test-source-2\",\"ddtags\":\"test-tags-2\"," +
-            "\"hostname\":\"test-hostname-2\",\"service\":\"test-service-2\"," +
-            "\"message\":\"test-message-2\"}" +
-            "]";
+        "["
+            + "{\"ddsource\":\"test-source-1\",\"ddtags\":\"test-tags-1\","
+            + "\"hostname\":\"test-hostname-1\",\"service\":\"test-service-1\","
+            + "\"message\":\"test-message-1\"},"
+            + "{\"ddsource\":\"test-source-2\",\"ddtags\":\"test-tags-2\","
+            + "\"hostname\":\"test-hostname-2\",\"service\":\"test-service-2\","
+            + "\"message\":\"test-message-2\"}"
+            + "]";
 
     assertThat(expected, is(equalTo(actual)));
   }
 
   /** Test whether {@link HttpContent} is created from the list of {@link DatadogEvent}s. */
   @Test
-  public void contentTest()
-      throws NoSuchAlgorithmException,
-          KeyManagementException,
-          IOException {
+  public void contentTest() throws NoSuchAlgorithmException, KeyManagementException, IOException {
 
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
@@ -98,14 +93,14 @@ public class HttpEventPublisherTest {
             .build();
 
     String expectedString =
-        "[" +
-            "{\"ddsource\":\"test-source-1\",\"ddtags\":\"test-tags-1\"," +
-            "\"hostname\":\"test-hostname-1\",\"service\":\"test-service-1\"," +
-            "\"message\":\"test-message-1\"}," +
-            "{\"ddsource\":\"test-source-2\",\"ddtags\":\"test-tags-2\"," +
-            "\"hostname\":\"test-hostname-2\",\"service\":\"test-service-2\"," +
-            "\"message\":\"test-message-2\"}" +
-            "]";
+        "["
+            + "{\"ddsource\":\"test-source-1\",\"ddtags\":\"test-tags-1\","
+            + "\"hostname\":\"test-hostname-1\",\"service\":\"test-service-1\","
+            + "\"message\":\"test-message-1\"},"
+            + "{\"ddsource\":\"test-source-2\",\"ddtags\":\"test-tags-2\","
+            + "\"hostname\":\"test-hostname-2\",\"service\":\"test-service-2\","
+            + "\"message\":\"test-message-2\"}"
+            + "]";
 
     try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
       HttpContent actualContent = publisher.getContent(DATADOG_EVENTS);
@@ -116,14 +111,11 @@ public class HttpEventPublisherTest {
   }
 
   @Test
-  public void genericURLTest()
-      throws IOException {
+  public void genericURLTest() throws IOException {
 
     String baseURL = "http://example.com";
     HttpEventPublisher.Builder builder =
-        HttpEventPublisher.newBuilder()
-            .withUrl(baseURL)
-            .withApiKey("test-api-key");
+        HttpEventPublisher.newBuilder().withUrl(baseURL).withApiKey("test-api-key");
 
     assertThat(
         builder.genericUrl(),
@@ -132,9 +124,7 @@ public class HttpEventPublisherTest {
 
   @Test
   public void configureBackOffDefaultTest()
-      throws NoSuchAlgorithmException,
-          KeyManagementException,
-          IOException {
+      throws NoSuchAlgorithmException, KeyManagementException, IOException {
 
     HttpEventPublisher publisherDefaultBackOff =
         HttpEventPublisher.newBuilder()
@@ -149,9 +139,7 @@ public class HttpEventPublisherTest {
 
   @Test
   public void configureBackOffCustomTest()
-      throws NoSuchAlgorithmException,
-          KeyManagementException,
-          IOException {
+      throws NoSuchAlgorithmException, KeyManagementException, IOException {
 
     int timeoutInMillis = 600000; // 10 minutes
     HttpEventPublisher publisherWithBackOff =

@@ -97,10 +97,7 @@ public class DatadogEventWriterTest {
     assertThat(thrown).hasMessageThat().contains(DatadogEventWriter.INVALID_URL_FORMAT_MESSAGE);
   }
 
-  /**
-   * Test building {@link DatadogEventWriter} with the 'api/v2/logs' path appended to
-   * the URL.
-   */
+  /** Test building {@link DatadogEventWriter} with the 'api/v2/logs' path appended to the URL. */
   @Test
   public void eventWriterFullEndpoint() {
 
@@ -127,14 +124,15 @@ public class DatadogEventWriterTest {
     assertThat(thrown).hasMessageThat().contains("apiKey needs to be provided");
   }
 
-  /**
-   * Test building {@link DatadogEventWriter} with default batchcount .
-   */
+  /** Test building {@link DatadogEventWriter} with default batchcount . */
   @Test
   public void eventWriterDefaultBatchCount() {
 
     DatadogEventWriter writer =
-        DatadogEventWriter.newBuilder().withUrl("http://test-url").withApiKey("test-api-key").build();
+        DatadogEventWriter.newBuilder()
+            .withUrl("http://test-url")
+            .withApiKey("test-api-key")
+            .build();
 
     assertThat(writer.inputBatchCount()).isNull();
   }
@@ -146,13 +144,16 @@ public class DatadogEventWriterTest {
     Exception thrown =
         assertThrows(
             IllegalArgumentException.class,
-            () -> DatadogEventWriter.newBuilder()
-                .withUrl("http://test-url")
-                .withApiKey("test-api-key")
-                .withInputBatchCount(StaticValueProvider.of(1001))
-                .build());
+            () ->
+                DatadogEventWriter.newBuilder()
+                    .withUrl("http://test-url")
+                    .withApiKey("test-api-key")
+                    .withInputBatchCount(StaticValueProvider.of(1001))
+                    .build());
 
-    assertThat(thrown).hasMessageThat().contains("inputBatchCount must be less than or equal to 1000");
+    assertThat(thrown)
+        .hasMessageThat()
+        .contains("inputBatchCount must be less than or equal to 1000");
   }
 
   /** Test building {@link DatadogEventWriter} with custom batchcount . */
@@ -333,9 +334,9 @@ public class DatadogEventWriterTest {
                 .withStatusCode(404)
                 .withStatusMessage("Not Found")
                 .withPayload(
-                    "{\"ddsource\":\"test-source-1\"," +
-                        "\"ddtags\":\"test-tags-1\",\"hostname\":\"test-hostname-1\"," +
-                        "\"service\":\"test-service-1\",\"message\":\"test-message-1\"}")
+                    "{\"ddsource\":\"test-source-1\","
+                        + "\"ddtags\":\"test-tags-1\",\"hostname\":\"test-hostname-1\","
+                        + "\"service\":\"test-service-1\",\"message\":\"test-message-1\"}")
                 .build());
 
     pipeline.run();

@@ -37,8 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link DatadogIO} class provides a {@link PTransform} that allows writing {@link DatadogEvent}
- * messages into a Datadog Logs API end point.
+ * The {@link DatadogIO} class provides a {@link PTransform} that allows writing {@link
+ * DatadogEvent} messages into a Datadog Logs API end point.
  */
 public class DatadogIO {
 
@@ -52,9 +52,9 @@ public class DatadogIO {
 
   /**
    * Class {@link Write} provides a {@link PTransform} that allows writing {@link DatadogEvent}
-   * records into a Datadog Logs API end-point using HTTP POST requests. In the event of
-   * an error, a {@link PCollection} of {@link DatadogWriteError} records are returned for further
-   * processing or storing into a deadletter sink.
+   * records into a Datadog Logs API end-point using HTTP POST requests. In the event of an error, a
+   * {@link PCollection} of {@link DatadogWriteError} records are returned for further processing or
+   * storing into a deadletter sink.
    */
   @AutoValue
   public abstract static class Write
@@ -95,14 +95,14 @@ public class DatadogIO {
     /** A builder for creating {@link Write} objects. */
     @AutoValue.Builder
     public abstract static class Builder {
-      private static final Set<String> VALID_SITES = Set.of(
-          "datadoghq.com",
-          "us3.datadoghq.com",
-          "us5.datadoghq.com",
-          "ap1.datadoghq.com",
-          "datadoghq.eu",
-          "ddog-gov.com"
-      );
+      private static final Set<String> VALID_SITES =
+          Set.of(
+              "datadoghq.com",
+              "us3.datadoghq.com",
+              "us5.datadoghq.com",
+              "ap1.datadoghq.com",
+              "datadoghq.eu",
+              "ddog-gov.com");
 
       @VisibleForTesting
       protected static final String INVALID_SITE_MESSAGE =
@@ -130,13 +130,12 @@ public class DatadogIO {
        */
       public Builder withSite(ValueProvider<String> site) {
         checkArgument(site != null, "withSite(site) called with null input.");
-        if(site.isAccessible()) {
+        if (site.isAccessible()) {
           checkArgument(isValidSite(site.get()), INVALID_SITE_MESSAGE);
         }
-        return setUrl(ValueProvider.NestedValueProvider.of(
-            site,
-            (SerializableFunction<String, String>) Builder::buildUrlFromSite
-        ));
+        return setUrl(
+            ValueProvider.NestedValueProvider.of(
+                site, (SerializableFunction<String, String>) Builder::buildUrlFromSite));
       }
 
       /**
@@ -148,9 +147,7 @@ public class DatadogIO {
       public Builder withSite(String site) {
         checkArgument(site != null, "withSite(site) called with null input.");
         checkArgument(isValidSite(site), INVALID_SITE_MESSAGE);
-        return setUrl(ValueProvider.StaticValueProvider.of(
-            buildUrlFromSite(site)
-        ));
+        return setUrl(ValueProvider.StaticValueProvider.of(buildUrlFromSite(site)));
       }
 
       /**
@@ -215,9 +212,7 @@ public class DatadogIO {
        * @return {@link Builder}
        */
       public Builder withBatchCount(Integer batchCount) {
-        checkArgument(
-            batchCount != null,
-            "withBatchCount(batchCount) called with null input.");
+        checkArgument(batchCount != null, "withBatchCount(batchCount) called with null input.");
         return setBatchCount(ValueProvider.StaticValueProvider.of(batchCount));
       }
 
@@ -249,6 +244,7 @@ public class DatadogIO {
 
         return autoBuild();
       }
+
       /**
        * Builds the url for the Logs API from site.
        *

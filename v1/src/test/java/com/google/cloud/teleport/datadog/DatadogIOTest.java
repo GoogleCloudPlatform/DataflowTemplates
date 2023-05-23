@@ -88,11 +88,7 @@ public class DatadogIOTest {
     Exception thrown =
         assertThrows(
             IllegalArgumentException.class,
-            () -> DatadogIO.writeBuilder()
-                .withApiKey("test-api-key")
-                .withSite("bad-site")
-                .build()
-        );
+            () -> DatadogIO.writeBuilder().withApiKey("test-api-key").withSite("bad-site").build());
 
     assertThat(thrown).hasMessageThat().contains(DatadogIO.Write.Builder.INVALID_SITE_MESSAGE);
   }
@@ -104,11 +100,11 @@ public class DatadogIOTest {
     Exception thrown =
         assertThrows(
             IllegalArgumentException.class,
-            () -> DatadogIO.writeBuilder()
-                .withApiKey("test-api-key")
-                .withSite(ValueProvider.StaticValueProvider.of("bad-site"))
-                .build()
-        );
+            () ->
+                DatadogIO.writeBuilder()
+                    .withApiKey("test-api-key")
+                    .withSite(ValueProvider.StaticValueProvider.of("bad-site"))
+                    .build());
 
     assertThat(thrown).hasMessageThat().contains(DatadogIO.Write.Builder.INVALID_SITE_MESSAGE);
   }
@@ -117,10 +113,8 @@ public class DatadogIOTest {
   @Test
   public void builderValidSite() {
 
-    DatadogIO.Write writer = DatadogIO.writeBuilder()
-        .withApiKey("test-api-key")
-        .withSite("datadoghq.com")
-        .build();
+    DatadogIO.Write writer =
+        DatadogIO.writeBuilder().withApiKey("test-api-key").withSite("datadoghq.com").build();
 
     assertThat(writer.url().get()).isEqualTo("https://http-intake.logs.datadoghq.com");
   }
@@ -129,10 +123,11 @@ public class DatadogIOTest {
   @Test
   public void builderValidSiteProvider() {
 
-    DatadogIO.Write writer = DatadogIO.writeBuilder()
-        .withApiKey("test-api-key")
-        .withSite(ValueProvider.StaticValueProvider.of("datadoghq.com"))
-        .build();
+    DatadogIO.Write writer =
+        DatadogIO.writeBuilder()
+            .withApiKey("test-api-key")
+            .withSite(ValueProvider.StaticValueProvider.of("datadoghq.com"))
+            .build();
 
     assertThat(writer.url().get()).isEqualTo("https://http-intake.logs.datadoghq.com");
   }

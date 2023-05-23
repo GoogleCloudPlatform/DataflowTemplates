@@ -39,7 +39,7 @@ UDFs allow you to customize functionality by providing a JavaScript function
 without having to maintain or build the entire template code.
 
 Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
-and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs) 
+and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
 for more information about how to create and test those functions.
 
 
@@ -54,7 +54,7 @@ for more information about how to create and test those functions.
   * `gcloud auth login`
   * `gcloud auth application-default login`
 
-:star2: Those dependencies are pre-installed if you use Google Cloud Shell! 
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/PubSubToDatadog.java)
 
 ### Templates Plugin
@@ -152,7 +152,7 @@ gcloud dataflow jobs run "cloud-pubsub-to-datadog-job" \
   --parameters "apiKeySource=$API_KEY_SOURCE" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
-  --parameters "outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC" 
+  --parameters "outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC"
 ```
 
 For more information about the command, please check:
@@ -197,4 +197,3 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
-

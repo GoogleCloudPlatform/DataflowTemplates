@@ -56,7 +56,8 @@ import org.slf4j.LoggerFactory;
 
 /** A {@link DoFn} to write {@link DatadogEvent}s to Datadog's Logs API. */
 @AutoValue
-public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>, DatadogWriteError> {
+public abstract class DatadogEventWriter
+    extends DoFn<KV<Integer, DatadogEvent>, DatadogWriteError> {
 
   private static final Integer DEFAULT_BATCH_COUNT = 10;
   private static final Integer MAX_BATCH_COUNT = 1000;
@@ -135,20 +136,19 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
       batchCount = MoreObjects.firstNonNull(batchCount, DEFAULT_BATCH_COUNT);
       LOG.info("Batch count set to: {}", batchCount);
     }
-    checkArgument(batchCount <= MAX_BATCH_COUNT, "batchCount must be less than or equal to %s", MAX_BATCH_COUNT);
+    checkArgument(
+        batchCount <= MAX_BATCH_COUNT,
+        "batchCount must be less than or equal to %s",
+        MAX_BATCH_COUNT);
 
     try {
       HttpEventPublisher.Builder builder =
-          HttpEventPublisher.newBuilder()
-              .withUrl(url().get())
-              .withApiKey(apiKey().get());
+          HttpEventPublisher.newBuilder().withUrl(url().get()).withApiKey(apiKey().get());
 
       publisher = builder.build();
       LOG.info("Successfully created HttpEventPublisher");
 
-    } catch (NoSuchAlgorithmException
-        | KeyManagementException
-        | IOException e) {
+    } catch (NoSuchAlgorithmException | KeyManagementException | IOException e) {
       LOG.error("Error creating HttpEventPublisher: {}", e.getMessage());
       throw new RuntimeException(e);
     }
@@ -443,7 +443,10 @@ public abstract class DatadogEventWriter extends DoFn<KV<Integer, DatadogEvent>,
       if (inputBatchCount != null && inputBatchCount.isAccessible()) {
         Integer batchCount = inputBatchCount.get();
         if (batchCount != null) {
-          checkArgument(batchCount <= MAX_BATCH_COUNT, "inputBatchCount must be less than or equal to %s", MAX_BATCH_COUNT);
+          checkArgument(
+              batchCount <= MAX_BATCH_COUNT,
+              "inputBatchCount must be less than or equal to %s",
+              MAX_BATCH_COUNT);
         }
       }
       return setInputBatchCount(inputBatchCount);

@@ -28,8 +28,8 @@ import org.junit.Test;
 public class DatadogWriteErrorCoderTest {
 
   /**
-   * Test whether {@link DatadogWriteErrorCoder} is able to encode/decode a {@link DatadogWriteError}
-   * correctly.
+   * Test whether {@link DatadogWriteErrorCoder} is able to encode/decode a {@link
+   * DatadogWriteError} correctly.
    *
    * @throws IOException
    */

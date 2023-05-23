@@ -28,7 +28,8 @@ import org.junit.Test;
 public class DatadogEventCoderTest {
 
   /**
-   * Test whether {@link DatadogEventCoder} is able to encode/decode a {@link DatadogEvent} correctly.
+   * Test whether {@link DatadogEventCoder} is able to encode/decode a {@link DatadogEvent}
+   * correctly.
    *
    * @throws IOException
    */

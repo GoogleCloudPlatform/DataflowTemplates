@@ -45,7 +45,8 @@ public class DatadogApiKeyNestedValueProvider implements ValueProvider<String>, 
       DatadogApiKeySource finalApiKeySource;
       if (apiKeySource.get() == null) {
         // Since apiKey source was introduced after KMS and plaintext options it may not be present.
-        // In that case we attempt to determine the apiKey source based on whether only the plaintext
+        // In that case we attempt to determine the apiKey source based on whether only the
+        // plaintext
         // apiKey is present or both encrypted apiKey and KMS Key params are present.
         // Passing a apiKeySource is mandatory if the apiKey is stored in Secret Manager.
         finalApiKeySource = resolveApiKeySource();

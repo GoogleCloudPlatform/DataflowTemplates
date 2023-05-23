@@ -69,8 +69,7 @@ public abstract class HttpEventPublisher {
   private static final Gson GSON =
       new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
 
-  @VisibleForTesting
-  protected static final String DD_URL_PATH = "api/v2/logs";
+  @VisibleForTesting protected static final String DD_URL_PATH = "api/v2/logs";
 
   private static final String DD_API_KEY_HEADER = "dd-api-key";
 
@@ -245,9 +244,7 @@ public abstract class HttpEventPublisher {
      *
      * @return {@link HttpEventPublisher}
      */
-    public HttpEventPublisher build()
-        throws NoSuchAlgorithmException,
-            KeyManagementException {
+    public HttpEventPublisher build() throws NoSuchAlgorithmException, KeyManagementException {
 
       checkNotNull(apiKey(), "API Key needs to be specified via withApiKey(apiKey).");
       checkNotNull(genericUrl(), "URL needs to be specified via withUrl(url).");
@@ -259,9 +256,7 @@ public abstract class HttpEventPublisher {
         setMaxElapsedMillis(ExponentialBackOff.DEFAULT_MAX_ELAPSED_TIME_MILLIS);
       }
 
-      CloseableHttpClient httpClient =
-          getHttpClient(
-              DEFAULT_MAX_CONNECTIONS);
+      CloseableHttpClient httpClient = getHttpClient(DEFAULT_MAX_CONNECTIONS);
 
       setTransport(new ApacheHttpTransport(httpClient));
       setRequestFactory(transport().createRequestFactory());
@@ -284,12 +279,9 @@ public abstract class HttpEventPublisher {
     /**
      * Utility method to create a {@link CloseableHttpClient} to make http POSTs against Datadog's
      * Logs API.
-     *
      */
-    private CloseableHttpClient getHttpClient(
-        int maxConnections)
-        throws NoSuchAlgorithmException,
-            KeyManagementException {
+    private CloseableHttpClient getHttpClient(int maxConnections)
+        throws NoSuchAlgorithmException, KeyManagementException {
 
       HttpClientBuilder builder = ApacheHttpTransport.newDefaultHttpClientBuilder();
 

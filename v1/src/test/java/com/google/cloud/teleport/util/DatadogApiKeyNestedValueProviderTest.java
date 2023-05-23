@@ -33,8 +33,8 @@ public class DatadogApiKeyNestedValueProviderTest {
   @Rule public ExpectedException expectedException = ExpectedException.none();
 
   /**
-   * Test that {@link DatadogApiKeyNestedValueProvider#resolveApiKeySource()} correctly resolves the apiKey
-   * source as {@code DatadogApiKeySource.KMS} when a apiKey and KMS Key are provided.
+   * Test that {@link DatadogApiKeyNestedValueProvider#resolveApiKeySource()} correctly resolves the
+   * apiKey source as {@code DatadogApiKeySource.KMS} when a apiKey and KMS Key are provided.
    */
   @Test
   public void testResolveApiKeySource_kms() {
@@ -52,8 +52,9 @@ public class DatadogApiKeyNestedValueProviderTest {
   }
 
   /**
-   * Test that {@link DatadogApiKeyNestedValueProvider#resolveApiKeySource()} correctly resolves the apiKey
-   * source as {@code DatadogApiKeySource.PLAINTEXT} when only a plaintext apiKey is provided.
+   * Test that {@link DatadogApiKeyNestedValueProvider#resolveApiKeySource()} correctly resolves the
+   * apiKey source as {@code DatadogApiKeySource.PLAINTEXT} when only a plaintext apiKey is
+   * provided.
    */
   @Test
   public void testResolveApiKeySource_plaintext() {
@@ -70,8 +71,8 @@ public class DatadogApiKeyNestedValueProviderTest {
   }
 
   /**
-   * Test that {@link DatadogApiKeyNestedValueProvider#resolveApiKeySource()} fails when a Secret Manager
-   * Secret ID is passed without a apiKey source.
+   * Test that {@link DatadogApiKeyNestedValueProvider#resolveApiKeySource()} fails when a Secret
+   * Manager Secret ID is passed without a apiKey source.
    */
   @Test
   public void testResolveApiKeySource_secretManager() {
@@ -92,9 +93,9 @@ public class DatadogApiKeyNestedValueProviderTest {
   }
 
   /**
-   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} returns an instance of
-   * {@link SecretManagerValueProvider} when a Secret ID and 'SECRET_MANAGER' apiKey source are
-   * provided.
+   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} returns an
+   * instance of {@link SecretManagerValueProvider} when a Secret ID and 'SECRET_MANAGER' apiKey
+   * source are provided.
    */
   @Test
   public void testGetApiKey_secretManager() {
@@ -114,8 +115,8 @@ public class DatadogApiKeyNestedValueProviderTest {
   }
 
   /**
-   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} fails when the apiKey
-   * source is 'SECRET_MANAGER' and no Secret ID is provided.
+   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} fails when
+   * the apiKey source is 'SECRET_MANAGER' and no Secret ID is provided.
    */
   @Test
   public void testGetApiKey_secretManagerInvalidParams() {
@@ -136,9 +137,9 @@ public class DatadogApiKeyNestedValueProviderTest {
   }
 
   /**
-   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} returns an instance of
-   * {@link KMSEncryptedNestedValueProvider} when a KMS Key, encrypted apiKey and 'KMS' apiKey source
-   * are provided.
+   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} returns an
+   * instance of {@link KMSEncryptedNestedValueProvider} when a KMS Key, encrypted apiKey and 'KMS'
+   * apiKey source are provided.
    */
   @Test
   public void testGetApiKey_kms() {
@@ -158,8 +159,8 @@ public class DatadogApiKeyNestedValueProviderTest {
   }
 
   /**
-   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} fails when the apiKey
-   * source is 'KMS' but no KMS Key or encrypted apiKey params are provided.
+   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} fails when
+   * the apiKey source is 'KMS' but no KMS Key or encrypted apiKey params are provided.
    */
   @Test
   public void testGetApiKey_kmsInvalidParams() {
@@ -180,8 +181,8 @@ public class DatadogApiKeyNestedValueProviderTest {
   }
 
   /**
-   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} returns a plaintext
-   * apiKey when the apiKey source is 'PLAINTEXT'.
+   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} returns a
+   * plaintext apiKey when the apiKey source is 'PLAINTEXT'.
    */
   @Test
   public void testGetApiKey_plaintext() {
@@ -201,8 +202,8 @@ public class DatadogApiKeyNestedValueProviderTest {
   }
 
   /**
-   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} fails when the apiKey
-   * source is 'PLAINTEXT' but no plaintext apiKey is provided.
+   * Test that {@link DatadogApiKeyNestedValueProvider#getApiKey(DatadogApiKeySource)} fails when
+   * the apiKey source is 'PLAINTEXT' but no plaintext apiKey is provided.
    */
   @Test
   public void testGetApiKey_plaintextInvalidParams() {
