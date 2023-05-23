@@ -32,7 +32,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.matchers.Times;
+import org.mockserver.model.ConnectionOptions;
 import org.mockserver.model.Header;
+import org.mockserver.model.HttpError;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.JsonBody;
@@ -286,6 +288,33 @@ public class NewRelicPipelineTest {
     // Then
     // One single request has been performed
     mockServerClient.verify(baseJsonRequest(), VerificationTimes.exactly(1));
+  }
+
+  @Test
+  public void testRetriesForIOExceptions() {
+    // Given
+    NewRelicPipeline pipeline =
+      new NewRelicPipeline(
+        testPipeline,
+        Create.of(PLAINTEXT_MESSAGE),
+        new NewRelicIO(getPipelineOptions(url, 1, 2, 1, false)));
+    mockServerClient.reset();
+
+    // First request is answered with a Connection Reset (RST), rest of requests are answered with 202
+    mockServerClient
+      .when(HttpRequest.request(EXPECTED_PATH), Times.exactly(1))
+      .error(HttpError.error().withDropConnection(true));
+    mockServerClient
+      .when(HttpRequest.request(EXPECTED_PATH))
+      .respond(HttpResponse.response().withStatusCode(202));
+
+    // When
+    pipeline.run().waitUntilFinish(Duration.millis(50));
+
+    // Then
+    // Two identical requests were performed, as the Http Client retries sending the original
+    // payload after receiving the first connection reset
+    mockServerClient.verify(baseJsonRequest(), VerificationTimes.exactly(2));
   }
 
   private NewRelicPipelineOptions getPipelineOptions(

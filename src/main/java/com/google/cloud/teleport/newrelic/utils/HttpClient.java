@@ -21,12 +21,14 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import com.google.api.client.http.ByteArrayContent;
 import com.google.api.client.http.GZipEncoding;
 import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpBackOffIOExceptionHandler;
 import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
 import com.google.api.client.http.HttpContent;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestFactory;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.apache.v2.ApacheHttpTransport;
+import com.google.api.client.util.BackOff;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.client.util.StringUtils;
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
@@ -72,7 +74,9 @@ public class HttpClient {
   // If a POST request fails, the following response handler will determine whether the request
   // should be reattempted
   // and will sleep for some time before retrying, by following an exponential backoff mechanism.
-  private static final HttpBackOffUnsuccessfulResponseHandler RESPONSE_HANDLER;
+  private static final BackOff BACKOFF = new ExponentialBackOff.Builder().setMaxElapsedTimeMillis(MAX_ELAPSED_MILLIS).build();
+  private static final HttpBackOffUnsuccessfulResponseHandler RESPONSE_HANDLER = new HttpBackOffUnsuccessfulResponseHandler(BACKOFF);
+  private static final HttpBackOffIOExceptionHandler IOEXCEPTION_RESPONSE_HANDLER = new HttpBackOffIOExceptionHandler(BACKOFF);
   public static final GZipEncoding GZIP_ENCODING = new GZipEncoding();
   public static final String APPLICATION_GZIP = "application/gzip";
   public static final String APPLICATION_JSON = "application/json";
@@ -81,9 +85,6 @@ public class HttpClient {
   private static final String PLUGIN_SOURCE_VALUE = "gcp-dataflow-" + PLUGIN_VERSION;
 
   static {
-    RESPONSE_HANDLER =
-        new HttpBackOffUnsuccessfulResponseHandler(
-            new ExponentialBackOff.Builder().setMaxElapsedTimeMillis(MAX_ELAPSED_MILLIS).build());
     RESPONSE_HANDLER.setBackOffRequired(
         (HttpResponse response) -> RETRYABLE_STATUS_CODES.contains(response.getStatusCode()));
   }
@@ -191,6 +192,7 @@ public class HttpClient {
 
     final HttpRequest request = requestFactory.buildPostRequest(logsApiUrl, content);
     request.setUnsuccessfulResponseHandler(RESPONSE_HANDLER);
+    request.setIOExceptionHandler(IOEXCEPTION_RESPONSE_HANDLER);
     request.getHeaders().set(API_KEY, licenseKey);
     if (useCompression) {
       request.setEncoding(GZIP_ENCODING);
