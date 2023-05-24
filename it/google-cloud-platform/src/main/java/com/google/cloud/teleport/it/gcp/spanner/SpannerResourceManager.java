@@ -23,6 +23,7 @@ import static com.google.cloud.teleport.it.gcp.spanner.utils.SpannerResourceMana
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.InstanceAdminClient;
 import com.google.cloud.spanner.InstanceConfigId;
 import com.google.cloud.spanner.InstanceId;
@@ -68,6 +69,8 @@ public final class SpannerResourceManager implements ResourceManager {
   private final String databaseId;
   private final String region;
 
+  private final Dialect dialect;
+
   private final Spanner spanner;
   private final InstanceAdminClient instanceAdminClient;
   private final DatabaseAdminClient databaseAdminClient;
@@ -77,11 +80,13 @@ public final class SpannerResourceManager implements ResourceManager {
         SpannerOptions.newBuilder().setProjectId(builder.projectId).build().getService(),
         builder.testId,
         builder.projectId,
-        builder.region);
+        builder.region,
+        builder.dialect);
   }
 
   @VisibleForTesting
-  SpannerResourceManager(Spanner spanner, String testId, String projectId, String region) {
+  SpannerResourceManager(
+      Spanner spanner, String testId, String projectId, String region, Dialect dialect) {
     // Check that the project ID conforms to GCP standards
     checkValidProjectId(projectId);
 
@@ -93,13 +98,18 @@ public final class SpannerResourceManager implements ResourceManager {
     this.databaseId = generateDatabaseId(testId);
 
     this.region = region;
+    this.dialect = dialect;
     this.spanner = spanner;
     this.instanceAdminClient = spanner.getInstanceAdminClient();
     this.databaseAdminClient = spanner.getDatabaseAdminClient();
   }
 
   public static Builder builder(String testId, String projectId, String region) {
-    return new Builder(testId, projectId, region);
+    return new Builder(testId, projectId, region, Dialect.GOOGLE_STANDARD_SQL);
+  }
+
+  public static Builder builder(String testId, String projectId, String region, Dialect dialect) {
+    return new Builder(testId, projectId, region, dialect);
   }
 
   private synchronized void maybeCreateInstance() {
@@ -131,7 +141,14 @@ public final class SpannerResourceManager implements ResourceManager {
     }
     LOG.info("Creating database {} in instance {}.", databaseId, instanceId);
     try {
-      databaseAdminClient.createDatabase(instanceId, databaseId, ImmutableList.of()).get();
+      databaseAdminClient
+          .createDatabase(
+              databaseAdminClient
+                  .newDatabaseBuilder(DatabaseId.of(projectId, instanceId, databaseId))
+                  .setDialect(dialect)
+                  .build(),
+              ImmutableList.of())
+          .get();
       hasDatabase = true;
       LOG.info("Successfully created database {}.", databaseId);
     } catch (ExecutionException | InterruptedException | SpannerException e) {
@@ -314,10 +331,13 @@ public final class SpannerResourceManager implements ResourceManager {
     private final String projectId;
     private final String region;
 
-    private Builder(String testId, String projectId, String region) {
+    private final Dialect dialect;
+
+    private Builder(String testId, String projectId, String region, Dialect dialect) {
       this.testId = testId;
       this.projectId = projectId;
       this.region = region;
+      this.dialect = dialect;
     }
 
     public SpannerResourceManager build() {
