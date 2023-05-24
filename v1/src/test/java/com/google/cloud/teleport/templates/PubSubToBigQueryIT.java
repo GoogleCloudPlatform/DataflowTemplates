@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertT
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
@@ -39,9 +40,13 @@ import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -57,6 +62,8 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
   private static final int MESSAGES_COUNT = 10;
   private static final int BAD_MESSAGES_COUNT = 3;
+
+  private static final Schema BIG_QUERY_DLQ_SCHEMA = getDlqSchema();
 
   private PubsubResourceManager pubsubResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
@@ -99,6 +106,11 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     bigQueryResourceManager.createDataset(REGION);
     TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
 
+    TableId dlqTable =
+        bigQueryResourceManager.createTable(
+            table.getTable() + PubSubToBigQuery.DEFAULT_DEADLETTER_TABLE_SUFFIX,
+            BIG_QUERY_DLQ_SCHEMA);
+
     // Act
     LaunchInfo info =
         launchTemplate(
@@ -106,30 +118,64 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
                 .addParameter("inputTopic", topic.toString())
                 .addParameter("outputTableSpec", toTableSpecLegacy(table))
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
+                .addParameter("javascriptTextTransformFunctionName", "uppercaseName")
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(dlqTable)));
     assertThatPipeline(info).isRunning();
 
-    ByteString messageData =
-        ByteString.copyFromUtf8(
-            new JSONObject(Map.of("id", 1, "job", testName, "name", "message")).toString());
-    pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+    List<Map<String, Object>> expectedMessages = new ArrayList<>();
+    List<ByteString> goodData = new ArrayList<>();
+    for (int i = 1; i <= MESSAGES_COUNT; i++) {
+      Map<String, Object> message =
+          new HashMap<>(
+              Map.of("id", i, "job", testName, "name", RandomStringUtils.randomAlphabetic(1, 20)));
+      ByteString messageData = ByteString.copyFromUtf8(new JSONObject(message).toString());
+      goodData.add(messageData);
+      pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+      message.put("name", message.get("name").toString().toUpperCase());
+      expectedMessages.add(message);
+    }
+
+    List<ByteString> badData = new ArrayList<>();
+    for (int i = 1; i <= BAD_MESSAGES_COUNT; i++) {
+      ByteString messageData = ByteString.copyFromUtf8("bad id " + i);
+      pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+      badData.add(messageData);
+    }
+
+    // For tests that run against topics, sending repeatedly will make it work for
+    // cases in which the on-demand subscription is created after sending messages.
+    Supplier<Boolean> pubSubMessageSender =
+        () -> {
+          goodData.forEach(
+              goodMessage -> pubsubResourceManager.publish(topic, ImmutableMap.of(), goodMessage));
+          badData.forEach(
+              badMessage -> pubsubResourceManager.publish(topic, ImmutableMap.of(), badMessage));
+          return true;
+        };
 
     Result result =
         pipelineOperator()
             .waitForConditionsAndFinish(
                 createConfig(info),
-                () -> {
-                  pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
-                  return BigQueryRowsCheck.builder(bigQueryResourceManager, table)
-                      .setMinRows(1)
-                      .build()
-                      .get();
-                });
+                pubSubMessageSender,
+                BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+                    .setMinRows(MESSAGES_COUNT)
+                    .build(),
+                BigQueryRowsCheck.builder(bigQueryResourceManager, dlqTable)
+                    .setMinRows(BAD_MESSAGES_COUNT)
+                    .build());
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThatBigQueryRecords(bigQueryResourceManager.readTable(table))
-        .allMatch(Map.of("id", 1, "job", testName, "name", "MESSAGE"));
+    TableResult records = bigQueryResourceManager.readTable(table);
+
+    // Make sure record can be read and UDF changed name to uppercase
+    assertThatBigQueryRecords(records).hasRecordsUnordered(expectedMessages);
+
+    TableResult dlqRecords = bigQueryResourceManager.readTable(dlqTable);
+    assertThat(dlqRecords.getValues().iterator().next().toString())
+        .contains("Expected json literal but found");
+    assertThat(dlqRecords.getTotalRows()).isAtLeast(BAD_MESSAGES_COUNT);
   }
 
   @Test
@@ -149,11 +195,11 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "input-sub-1");
     bigQueryResourceManager.createDataset(REGION);
     TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
+
     TableId dlqTable =
-        TableId.of(
-            PROJECT,
-            table.getDataset(),
-            table.getTable() + PubSubToBigQuery.DEFAULT_DEADLETTER_TABLE_SUFFIX);
+        bigQueryResourceManager.createTable(
+            table.getTable() + PubSubToBigQuery.DEFAULT_DEADLETTER_TABLE_SUFFIX,
+            BIG_QUERY_DLQ_SCHEMA);
 
     // Act
     LaunchInfo info =
@@ -162,13 +208,19 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
                 .addParameter("inputSubscription", subscription.toString())
                 .addParameter("outputTableSpec", toTableSpecLegacy(table))
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
+                .addParameter("javascriptTextTransformFunctionName", "uppercaseName")
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(dlqTable)));
     assertThatPipeline(info).isRunning();
 
+    List<Map<String, Object>> expectedMessages = new ArrayList<>();
     for (int i = 1; i <= MESSAGES_COUNT; i++) {
-      Map<String, Object> message = Map.of("id", i, "job", testName, "name", "message");
+      Map<String, Object> message =
+          new HashMap<>(
+              Map.of("id", i, "job", testName, "name", RandomStringUtils.randomAlphabetic(1, 20)));
       ByteString messageData = ByteString.copyFromUtf8(new JSONObject(message).toString());
       pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+      message.put("name", message.get("name").toString().toUpperCase());
+      expectedMessages.add(message);
     }
 
     for (int i = 1; i <= BAD_MESSAGES_COUNT; i++) {
@@ -192,11 +244,42 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     TableResult records = bigQueryResourceManager.readTable(table);
 
     // Make sure record can be read and UDF changed name to uppercase
-    assertThatBigQueryRecords(records)
-        .hasRecordsUnordered(List.of(Map.of("id", 1, "job", testName, "name", "MESSAGE")));
+    assertThatBigQueryRecords(records).hasRecordsUnordered(expectedMessages);
 
     TableResult dlqRecords = bigQueryResourceManager.readTable(dlqTable);
     assertThat(dlqRecords.getValues().iterator().next().toString())
         .contains("Expected json literal but found");
+    assertThat(dlqRecords.getTotalRows()).isAtLeast(BAD_MESSAGES_COUNT);
+  }
+
+  private static Schema getDlqSchema() {
+    return Schema.of(
+        Arrays.asList(
+            Field.newBuilder("timestamp", StandardSQLTypeName.TIMESTAMP)
+                .setMode(Field.Mode.REQUIRED)
+                .build(),
+            Field.newBuilder("payloadString", StandardSQLTypeName.STRING)
+                .setMode(Field.Mode.REQUIRED)
+                .build(),
+            Field.newBuilder("payloadBytes", StandardSQLTypeName.BYTES)
+                .setMode(Field.Mode.REQUIRED)
+                .build(),
+            Field.newBuilder(
+                    "attributes",
+                    LegacySQLTypeName.RECORD,
+                    Field.newBuilder("key", StandardSQLTypeName.STRING)
+                        .setMode(Field.Mode.NULLABLE)
+                        .build(),
+                    Field.newBuilder("value", StandardSQLTypeName.STRING)
+                        .setMode(Field.Mode.NULLABLE)
+                        .build())
+                .setMode(Field.Mode.REPEATED)
+                .build(),
+            Field.newBuilder("errorMessage", StandardSQLTypeName.STRING)
+                .setMode(Field.Mode.NULLABLE)
+                .build(),
+            Field.newBuilder("stacktrace", StandardSQLTypeName.STRING)
+                .setMode(Field.Mode.NULLABLE)
+                .build()));
   }
 }
