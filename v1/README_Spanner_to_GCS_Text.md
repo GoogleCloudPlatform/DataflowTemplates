@@ -27,6 +27,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerPriority** (Priority for Spanner RPC invocations): The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].
 * **spannerHost** (Cloud Spanner Endpoint to call): The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
 * **spannerSnapshotTime** (Snapshot time): If set, specifies the time when the snapshot must be taken. String is in the RFC 3339 format in UTC time.  Timestamp must be in the past and Maximum timestamp staleness applies.https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness (Example: 1990-12-31T23:59:60Z). Defaults to empty.
+* **dataBoostEnabled** (Use independent compute resource (Spanner DataBoost).): Use Spanner on-demand compute so the export job will run on independent compute resources and have no impact to current Spanner workloads. This will incur additional charges in Spanner. Defaults to: false.
 
 
 
@@ -120,6 +121,7 @@ export CSV_TEMP_DIRECTORY=<csvTempDirectory>
 export SPANNER_PRIORITY=<spannerPriority>
 export SPANNER_HOST="https://batch-spanner.googleapis.com"
 export SPANNER_SNAPSHOT_TIME=""
+export DATA_BOOST_ENABLED=false
 
 gcloud dataflow jobs run "spanner-to-gcs-text-job" \
   --project "$PROJECT" \
@@ -133,6 +135,7 @@ gcloud dataflow jobs run "spanner-to-gcs-text-job" \
   --parameters "spannerDatabaseId=$SPANNER_DATABASE_ID" \
   --parameters "spannerHost=$SPANNER_HOST" \
   --parameters "spannerSnapshotTime=$SPANNER_SNAPSHOT_TIME" \
+  --parameters "dataBoostEnabled=$DATA_BOOST_ENABLED" \
   --parameters "textWritePrefix=$TEXT_WRITE_PREFIX"
 ```
 
@@ -163,6 +166,7 @@ export CSV_TEMP_DIRECTORY=<csvTempDirectory>
 export SPANNER_PRIORITY=<spannerPriority>
 export SPANNER_HOST="https://batch-spanner.googleapis.com"
 export SPANNER_SNAPSHOT_TIME=""
+export DATA_BOOST_ENABLED=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -171,7 +175,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-to-gcs-text-job" \
 -DtemplateName="Spanner_to_GCS_Text" \
--Dparameters="csvTempDirectory=$CSV_TEMP_DIRECTORY,spannerPriority=$SPANNER_PRIORITY,spannerTable=$SPANNER_TABLE,spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabaseId=$SPANNER_DATABASE_ID,spannerHost=$SPANNER_HOST,spannerSnapshotTime=$SPANNER_SNAPSHOT_TIME,textWritePrefix=$TEXT_WRITE_PREFIX" \
+-Dparameters="csvTempDirectory=$CSV_TEMP_DIRECTORY,spannerPriority=$SPANNER_PRIORITY,spannerTable=$SPANNER_TABLE,spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabaseId=$SPANNER_DATABASE_ID,spannerHost=$SPANNER_HOST,spannerSnapshotTime=$SPANNER_SNAPSHOT_TIME,dataBoostEnabled=$DATA_BOOST_ENABLED,textWritePrefix=$TEXT_WRITE_PREFIX" \
 -pl v1 \
 -am
 ```

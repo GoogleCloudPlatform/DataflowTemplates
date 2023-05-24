@@ -19,7 +19,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **driverJars** (Cloud Storage paths for JDBC drivers): Comma separate Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
 * **driverClassName** (JDBC driver class name.): JDBC driver class name to use. (Example: com.mysql.jdbc.Driver).
 * **connectionURL** (JDBC connection URL string. Connection string can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.): Url connection string to connect to the JDBC source. (Example: jdbc:mysql://some-host:3306/sampledb).
-* **query** (JDBC source SQL query.): Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table).
+* **query** (JDBC source SQL query.): Query to be executed on the source to extract the data. If a Cloud Storage path is given (gs://...), the query will be fetched from that file. (Example: select * from sampledb.sample_table).
 * **outputTable** (BigQuery output table): BigQuery table location to write the output to. The table's schema must match the input objects.
 * **bigQueryLoadingTemporaryDirectory** (Temporary directory for BigQuery loading process): Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
 

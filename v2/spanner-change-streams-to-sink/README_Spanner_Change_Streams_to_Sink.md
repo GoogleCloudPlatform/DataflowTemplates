@@ -28,9 +28,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **startTimestamp** (Changes are read from the given timestamp): Read changes from the given timestamp. Defaults to empty.
 * **endTimestamp** (Changes are read until the given timestamp): Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
 * **incrementInterval** (Time interval to increment the Stateful timer.): The timer gets incremented by the specified time interval in seconds. By default, the next timer is set to the current real time.
-* **pubSubProjectId** (Project ID for pubsub): Project Id for pubsub. By default, takes the same project as Spanner.
-* **pubSubDataTopicId** (PubSub topic where records will get written to.): PubSub topic where records will get written to. Must be provided if sink is pubsub. Defaults to empty.
-* **pubSubErrorTopicId** (PubSub topic where error records will get written to.): PubSub topic where error records will get written to. Must be provided if sink is pubsub. Defaults to empty.
+* **pubSubDataTopicId** (PubSub topic where records will get written to, in the format of 'projects/your-project-id/topics/your-topic-name'): PubSub topic where records will get written to, in the format of 'projects/your-project-id/topics/your-topic-name'. Must be provided if sink is pubsub.
+* **pubSubErrorTopicId** (PubSub topic where error records will get written to , in the format of 'projects/your-project-id/topics/your-topic-name'): PubSub topic where error records will get written to, in the format of 'projects/your-project-id/topics/your-topic-name'. Must be provided if sink is pubsub.
 * **pubSubEndpoint** (Endpoint for pubsub): Endpoint for pubsub. Must be provided if sink is pubsub. Defaults to empty.
 * **kafkaClusterFilePath** (Path to GCS file containing Kafka cluster details): This is the path to GCS file containing Kafka cluster details. Must be provided if sink is kafka.
 * **sourceShardsFilePath** (Path to GCS file containing the the Source shard details): Path to GCS file containing connection profile info for source shards. Must be provided if sink is kafka.
@@ -128,9 +127,8 @@ export SINK_TYPE=<sinkType>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
 export INCREMENT_INTERVAL=0
-export PUB_SUB_PROJECT_ID=""
-export PUB_SUB_DATA_TOPIC_ID=""
-export PUB_SUB_ERROR_TOPIC_ID=""
+export PUB_SUB_DATA_TOPIC_ID=<pubSubDataTopicId>
+export PUB_SUB_ERROR_TOPIC_ID=<pubSubErrorTopicId>
 export PUB_SUB_ENDPOINT=""
 export KAFKA_CLUSTER_FILE_PATH=<kafkaClusterFilePath>
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
@@ -149,7 +147,6 @@ gcloud dataflow flex-template run "spanner-change-streams-to-sink-job" \
   --parameters "endTimestamp=$END_TIMESTAMP" \
   --parameters "incrementInterval=$INCREMENT_INTERVAL" \
   --parameters "sinkType=$SINK_TYPE" \
-  --parameters "pubSubProjectId=$PUB_SUB_PROJECT_ID" \
   --parameters "pubSubDataTopicId=$PUB_SUB_DATA_TOPIC_ID" \
   --parameters "pubSubErrorTopicId=$PUB_SUB_ERROR_TOPIC_ID" \
   --parameters "pubSubEndpoint=$PUB_SUB_ENDPOINT" \
@@ -185,9 +182,8 @@ export SINK_TYPE=<sinkType>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
 export INCREMENT_INTERVAL=0
-export PUB_SUB_PROJECT_ID=""
-export PUB_SUB_DATA_TOPIC_ID=""
-export PUB_SUB_ERROR_TOPIC_ID=""
+export PUB_SUB_DATA_TOPIC_ID=<pubSubDataTopicId>
+export PUB_SUB_ERROR_TOPIC_ID=<pubSubErrorTopicId>
 export PUB_SUB_ENDPOINT=""
 export KAFKA_CLUSTER_FILE_PATH=<kafkaClusterFilePath>
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
@@ -199,7 +195,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-sink-job" \
 -DtemplateName="Spanner_Change_Streams_to_Sink" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,incrementInterval=$INCREMENT_INTERVAL,sinkType=$SINK_TYPE,pubSubProjectId=$PUB_SUB_PROJECT_ID,pubSubDataTopicId=$PUB_SUB_DATA_TOPIC_ID,pubSubErrorTopicId=$PUB_SUB_ERROR_TOPIC_ID,pubSubEndpoint=$PUB_SUB_ENDPOINT,kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,incrementInterval=$INCREMENT_INTERVAL,sinkType=$SINK_TYPE,pubSubDataTopicId=$PUB_SUB_DATA_TOPIC_ID,pubSubErrorTopicId=$PUB_SUB_ERROR_TOPIC_ID,pubSubEndpoint=$PUB_SUB_ENDPOINT,kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" \
 -pl v2/spanner-change-streams-to-sink \
 -am
 ```

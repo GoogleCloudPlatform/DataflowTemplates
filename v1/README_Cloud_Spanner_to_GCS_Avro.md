@@ -29,6 +29,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **tableNames** (Cloud Spanner table name(s).): If provided, only this comma separated list of tables are exported. Ancestor tables and tables that are referenced via foreign keys are required. If not explicitly listed, the `shouldExportRelatedTables` flag must be set for a successful export. Defaults to empty.
 * **shouldExportRelatedTables** (Export necessary Related Spanner tables.): Used in conjunction with `tableNames`. If true, add related tables necessary for the export, such as interleaved parent tables and foreign keys tables.  If `tableNames` is specified but doesn't include related tables, this option must be set to true for a successful export. Defaults to: false.
 * **spannerPriority** (Priority for Spanner RPC invocations): The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].
+* **dataBoostEnabled** (Use independent compute resource (Spanner DataBoost).): Use Spanner on-demand compute so the export job will run on independent compute resources and have no impact to current Spanner workloads. This will incur additional charges in Spanner. Defaults to: false.
 
 
 
@@ -124,6 +125,7 @@ export SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE=false
 export TABLE_NAMES=""
 export SHOULD_EXPORT_RELATED_TABLES=false
 export SPANNER_PRIORITY=<spannerPriority>
+export DATA_BOOST_ENABLED=false
 
 gcloud dataflow jobs run "cloud-spanner-to-gcs-avro-job" \
   --project "$PROJECT" \
@@ -139,7 +141,8 @@ gcloud dataflow jobs run "cloud-spanner-to-gcs-avro-job" \
   --parameters "shouldExportTimestampAsLogicalType=$SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE" \
   --parameters "tableNames=$TABLE_NAMES" \
   --parameters "shouldExportRelatedTables=$SHOULD_EXPORT_RELATED_TABLES" \
-  --parameters "spannerPriority=$SPANNER_PRIORITY"
+  --parameters "spannerPriority=$SPANNER_PRIORITY" \
+  --parameters "dataBoostEnabled=$DATA_BOOST_ENABLED"
 ```
 
 For more information about the command, please check:
@@ -171,6 +174,7 @@ export SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE=false
 export TABLE_NAMES=""
 export SHOULD_EXPORT_RELATED_TABLES=false
 export SPANNER_PRIORITY=<spannerPriority>
+export DATA_BOOST_ENABLED=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -179,7 +183,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-spanner-to-gcs-avro-job" \
 -DtemplateName="Cloud_Spanner_to_GCS_Avro" \
--Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,outputDir=$OUTPUT_DIR,avroTempDirectory=$AVRO_TEMP_DIRECTORY,spannerHost=$SPANNER_HOST,snapshotTime=$SNAPSHOT_TIME,spannerProjectId=$SPANNER_PROJECT_ID,shouldExportTimestampAsLogicalType=$SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE,tableNames=$TABLE_NAMES,shouldExportRelatedTables=$SHOULD_EXPORT_RELATED_TABLES,spannerPriority=$SPANNER_PRIORITY" \
+-Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,outputDir=$OUTPUT_DIR,avroTempDirectory=$AVRO_TEMP_DIRECTORY,spannerHost=$SPANNER_HOST,snapshotTime=$SNAPSHOT_TIME,spannerProjectId=$SPANNER_PROJECT_ID,shouldExportTimestampAsLogicalType=$SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE,tableNames=$TABLE_NAMES,shouldExportRelatedTables=$SHOULD_EXPORT_RELATED_TABLES,spannerPriority=$SPANNER_PRIORITY,dataBoostEnabled=$DATA_BOOST_ENABLED" \
 -pl v1 \
 -am
 ```
