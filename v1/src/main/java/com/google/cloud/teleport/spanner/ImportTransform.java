@@ -480,7 +480,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 && informationSchemaDdl.view(kv.getKey()) == null
                                 && informationSchemaDdl.changeStream(kv.getKey()) == null) {
                               Schema schema = parser.parse(kv.getValue());
-                              if (schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE) != null) {
+                              if (schema.getProp(AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE)
+                                  != null) {
                                 missingChangeStreams.add(KV.of(kv.getKey(), schema));
                               } else if (schema.getProp("spannerViewQuery") != null) {
                                 missingViews.add(KV.of(kv.getKey(), schema));
