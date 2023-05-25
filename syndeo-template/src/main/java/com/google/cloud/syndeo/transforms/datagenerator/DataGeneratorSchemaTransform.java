@@ -67,7 +67,7 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
 
         PCollection rows =
             instants
-                .apply(FlatMapElements.via(new InstantToRowFn(startTime, schema)))
+                .apply(FlatMapElements.via(new InstantToRowFn(startTime, schema, beamSchema)))
                 .setRowSchema(beamSchema);
         return PCollectionRowTuple.of("output", rows);
       }
@@ -75,20 +75,30 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
   }
 
   private class InstantToRowFn extends SimpleFunction<Instant, List<Row>> {
-    private final Instant startTime;
-    private final String schema;
 
-    public InstantToRowFn(Instant startTime, String schema) {
+    private final Instant startTime;
+    /**
+     * The avro schema string. This is needed to pass addition attributes like the string field size
+     * and a list of values for a field.
+     * TODO: Once implementing support for passing additional attributes in Beam Schema,
+     * avroSchemaString can be removed.
+     */
+    private final String avroSchemaString;
+    private final org.apache.beam.sdk.schemas.Schema beamSchema;
+
+    public InstantToRowFn(Instant startTime, String avroSchemaString,
+        org.apache.beam.sdk.schemas.Schema beamSchema) {
       this.startTime = startTime;
-      this.schema = schema;
+      this.avroSchemaString = avroSchemaString;
+      this.beamSchema = beamSchema;
     }
 
     @Override
     public List<Row> apply(Instant input) {
-      final Schema schema = Schema.parse(this.schema);
+      final Schema schema = Schema.parse(this.avroSchemaString);
       long ordinal = (input.minus(Duration.millis(startTime.getMillis())).getMillis() / 1000);
       return LongStream.range(ordinal * recordsPerSecond, (ordinal + 1) * recordsPerSecond)
-          .mapToObj(intVal -> RecordCreator.createRowRecord(schema))
+          .mapToObj(intVal -> RecordCreator.createRowRecord(schema, beamSchema))
           .collect(Collectors.toList());
     }
   }

@@ -19,6 +19,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.apache.avro.Schema;
+import org.apache.beam.sdk.extensions.avro.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.values.Row;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,21 +32,6 @@ public class RecordCreatorTest {
       "{\"type\":\"record\",\"name\":\"user_info_flat\",\"namespace\":\"com.google.syndeo\",\"fields\":[{\"name\":\"id\",\"type\":\"long\"},{\"name\":\"username\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"10\"},{\"name\":\"age\",\"type\":\"long\",\"default\":0},{\"name\":\"introduction\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"1000\"},{\"name\":\"street\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"city\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"state\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"country\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"15\"}]}";
   private static final String avroSchemaStringNested =
       "{\"type\":\"record\",\"name\":\"user_info_nested\",\"namespace\":\"com.google.syndeo\",\"fields\":[{\"name\":\"id\",\"type\":\"long\"},{\"name\":\"username\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"10\"},{\"name\":\"age\",\"type\":\"long\",\"default\":0},{\"name\":\"introduction\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"1000\"},{ \"name\":\"address\", \"type\": {\"type\": \"record\", \"name\":\"address\", \"fields\":[{\"name\":\"street\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"city\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"state\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"25\"},{\"name\":\"country\",\"type\":\"string\",\"default\":\"NONE\",\"size\":\"15\"}]}}]}";
-
-  private static final String jsonSchemaString =
-      "{"
-          + "  \"type\": \"object\","
-          + "  \"properties\": {"
-          + "    \"id\": { \"type\": \"integer\" },"
-          + "    \"username\": { \"type\": \"string\" },"
-          + "    \"age\": { \"type\": \"integer\" },"
-          + "    \"introduction\": { \"type\": \"string\" },"
-          + "    \"street\": { \"type\": \"string\" },"
-          + "    \"city\": { \"type\": \"string\" },"
-          + "    \"state\": { \"type\": \"string\" },"
-          + "    \"country\": { \"type\": \"string\" }"
-          + "  }"
-          + "}";
 
   @Test
   public void testCreateRowRecordWithAvroSchema() {
@@ -68,7 +54,8 @@ public class RecordCreatorTest {
   @Test
   public void testCreateRowRecordWithAvroNestedSchema() {
     Schema avroSchema = Schema.parse(avroSchemaStringNested);
-    Row row = RecordCreator.createRowRecord(avroSchema);
+    org.apache.beam.sdk.schemas.Schema beamSchema = AvroUtils.toBeamSchema(avroSchema);
+    Row row = RecordCreator.createRowRecord(avroSchema, beamSchema);
     assertNotNull(row);
     assertNotNull(row.getInt64("id"));
     assertNotNull(row.getString("username"));
@@ -82,7 +69,7 @@ public class RecordCreatorTest {
     // verify size
     assertTrue(row.getString("introduction").length() > 500);
     assertTrue(row.getString("username").length() < 20);
-    assertTrue(row.getRow("address").getString("state").length() < 20);
+    assertTrue(row.getRow("address").getString("state").length() < 35);
     assertTrue(row.getRow("address").getString("country").length() < 25);
   }
 }

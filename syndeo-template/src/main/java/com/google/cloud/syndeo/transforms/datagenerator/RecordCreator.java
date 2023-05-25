@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Random;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
-import org.apache.beam.sdk.schemas.utils.AvroUtils;
+import org.apache.beam.sdk.extensions.avro.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.Row.FieldValueBuilder;
 
@@ -30,12 +30,24 @@ public final class RecordCreator {
 
   public static Random random = new Random();
 
-  public static Row createRowRecord(Schema schema) {
-    org.apache.beam.sdk.schemas.Schema beamSchema = AvroUtils.toBeamSchema(schema);
+  public static Row createRowRecord(Schema avroSchema) {
+    return createRowRecord(avroSchema, AvroUtils.toBeamSchema(avroSchema));
+  }
+
+  /**
+   * Creates Row record based on schema
+   *
+   * @param avroSchema the AvroSchema passing fields with additional attributes like field size
+   *     and list of selected values. This can be removed later once the beam schema can be used to
+   *     pass the same attributes.
+   * @param beamSchema the BeamSchema object for building Row.
+   */
+  public static Row createRowRecord(Schema avroSchema,
+      org.apache.beam.sdk.schemas.Schema beamSchema) {
     Row.Builder builder = Row.withSchema(beamSchema);
     FieldValueBuilder fvbuilder = null;
 
-    for (Field field : schema.getFields()) {
+    for (Field field : avroSchema.getFields()) {
       if (field.schema().getType() != Schema.Type.RECORD) {
         Object value = generateRandomValue(field);
         if (fvbuilder == null) {
@@ -45,9 +57,11 @@ public final class RecordCreator {
         }
       } else {
         if (fvbuilder == null) {
-          fvbuilder = builder.withFieldValue(field.name(), createRowRecord(field.schema()));
+          fvbuilder = builder.withFieldValue(field.name(),
+              createRowRecord(field.schema()));
         } else {
-          fvbuilder = fvbuilder.withFieldValue(field.name(), createRowRecord(field.schema()));
+          fvbuilder = fvbuilder.withFieldValue(field.name(),
+              createRowRecord(field.schema()));
         }
       }
     }
