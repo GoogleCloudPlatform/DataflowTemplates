@@ -15,6 +15,26 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import static com.google.cloud.teleport.spanner.AvroUtil.DEFAULT_EXPRESSION;
+import static com.google.cloud.teleport.spanner.AvroUtil.GENERATION_EXPRESSION;
+import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
+import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
+import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
+import static com.google.cloud.teleport.spanner.AvroUtil.STORED;
 import static com.google.cloud.teleport.spanner.AvroUtil.unpackNullable;
 
 import com.google.cloud.spanner.Dialect;
@@ -53,11 +73,11 @@ public class AvroSchemaToDdlConverter {
   public Ddl toDdl(Collection<Schema> avroSchemas) {
     Ddl.Builder builder = Ddl.builder(dialect);
     for (Schema schema : avroSchemas) {
-      if (schema.getProp("spannerViewQuery") != null) {
+      if (schema.getProp(SPANNER_VIEW_QUERY) != null) {
         builder.addView(toView(null, schema));
-      } else if ("Model".equals(schema.getProp("spannerEntity"))) {
+      } else if (SPANNER_ENTITY_MODEL.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addModel(toModel(null, schema));
-      } else if (schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE) != null) {
+      } else if (schema.getProp(SPANNER_CHANGE_STREAM_FOR_CLAUSE) != null) {
         builder.addChangeStream(toChangeStream(null, schema));
       } else {
         builder.addTable(toTable(null, schema));
@@ -73,9 +93,9 @@ public class AvroSchemaToDdlConverter {
     LOG.debug("Converting to Ddl viewName {}", viewName);
 
     View.Builder builder =
-        View.builder(dialect).name(viewName).query(schema.getProp("spannerViewQuery"));
-    if (schema.getProp("spannerViewSecurity") != null) {
-      builder.security(View.SqlSecurity.valueOf(schema.getProp("spannerViewSecurity")));
+        View.builder(dialect).name(viewName).query(schema.getProp(SPANNER_VIEW_QUERY));
+    if (schema.getProp(SPANNER_VIEW_SECURITY) != null) {
+      builder.security(View.SqlSecurity.valueOf(schema.getProp(SPANNER_VIEW_SECURITY)));
     }
     return builder.build();
   }
@@ -88,23 +108,23 @@ public class AvroSchemaToDdlConverter {
 
     Model.Builder builder = Model.builder(dialect);
     builder.name(modelName);
-    builder.remote(Boolean.parseBoolean(schema.getProp("spannerRemote")));
+    builder.remote(Boolean.parseBoolean(schema.getProp(SPANNER_REMOTE)));
     builder.options(toOptionsList(schema));
 
     for (Schema.Field f : schema.getFields()) {
-      if (f.name().equals("Input")) {
+      if (f.name().equals(INPUT)) {
         for (Schema.Field c : f.schema().getFields()) {
           builder
               .inputColumn(c.name())
-              .parseType(c.getProp("sqlType"))
+              .parseType(c.getProp(SQL_TYPE))
               .columnOptions(toOptionsList(c))
               .endInputColumn();
         }
-      } else if (f.name().equals("Output")) {
+      } else if (f.name().equals(OUTPUT)) {
         for (Schema.Field c : f.schema().getFields()) {
           builder
               .outputColumn(c.name())
-              .parseType(c.getProp("sqlType"))
+              .parseType(c.getProp(SQL_TYPE))
               .columnOptions(toOptionsList(c))
               .endOutputColumn();
         }
@@ -119,7 +139,7 @@ public class AvroSchemaToDdlConverter {
   private ImmutableList<String> toOptionsList(JsonProperties json) {
     ImmutableList.Builder<String> columnOptions = ImmutableList.builder();
     for (int i = 0; ; i++) {
-      String spannerOption = json.getProp("spannerOption_" + i);
+      String spannerOption = json.getProp(SPANNER_OPTION + i);
       if (spannerOption == null) {
         break;
       }
@@ -137,11 +157,11 @@ public class AvroSchemaToDdlConverter {
     ChangeStream.Builder builder =
         ChangeStream.builder(dialect)
             .name(changeStreamName)
-            .forClause(schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE));
+            .forClause(schema.getProp(SPANNER_CHANGE_STREAM_FOR_CLAUSE));
 
     ImmutableList.Builder<String> changeStreamOptions = ImmutableList.builder();
     for (int i = 0; ; i++) {
-      String spannerOption = schema.getProp("spannerOption_" + i);
+      String spannerOption = schema.getProp(SPANNER_OPTION + i);
       if (spannerOption == null) {
         break;
       }
@@ -162,21 +182,21 @@ public class AvroSchemaToDdlConverter {
     table.name(tableName);
     for (Schema.Field f : schema.getFields()) {
       Column.Builder column = table.column(f.name());
-      String sqlType = f.getProp("sqlType");
-      String expression = f.getProp("generationExpression");
+      String sqlType = f.getProp(SQL_TYPE);
+      String expression = f.getProp(GENERATION_EXPRESSION);
       if (expression != null) {
         // This is a generated column.
         if (Strings.isNullOrEmpty(sqlType)) {
           throw new IllegalArgumentException(
               "Property sqlType is missing for generated column " + f.name());
         }
-        String notNull = f.getProp("notNull");
+        String notNull = f.getProp(NOT_NULL);
         if (notNull == null) {
           throw new IllegalArgumentException(
               "Property notNull is missing for generated column " + f.name());
         }
         column.parseType(sqlType).notNull(Boolean.parseBoolean(notNull)).generatedAs(expression);
-        String stored = f.getProp("stored");
+        String stored = f.getProp(STORED);
         if (stored == null) {
           throw new IllegalArgumentException(
               "Property stored is missing for generated column " + f.name());
@@ -198,12 +218,12 @@ public class AvroSchemaToDdlConverter {
           Type spannerType = inferType(avroType, true);
           sqlType = toString(spannerType, true);
         }
-        String defaultExpression = f.getProp("defaultExpression");
+        String defaultExpression = f.getProp(DEFAULT_EXPRESSION);
         column.parseType(sqlType).notNull(!nullable).defaultExpression(defaultExpression);
       }
       ImmutableList.Builder<String> columnOptions = ImmutableList.builder();
       for (int i = 0; ; i++) {
-        String spannerOption = f.getProp("spannerOption_" + i);
+        String spannerOption = f.getProp(SPANNER_OPTION + i);
         if (spannerOption == null) {
           break;
         }
@@ -214,7 +234,7 @@ public class AvroSchemaToDdlConverter {
     }
 
     for (int i = 0; ; i++) {
-      String spannerPrimaryKey = schema.getProp("spannerPrimaryKey_" + i);
+      String spannerPrimaryKey = schema.getProp(SPANNER_PRIMARY_KEY + "_" + i);
       if (spannerPrimaryKey == null) {
         break;
       }
@@ -229,19 +249,19 @@ public class AvroSchemaToDdlConverter {
       }
     }
 
-    table.indexes(getNumberedPropsWithPrefix(schema, "spannerIndex_"));
+    table.indexes(getNumberedPropsWithPrefix(schema, SPANNER_INDEX));
 
-    table.foreignKeys(getNumberedPropsWithPrefix(schema, "spannerForeignKey_"));
+    table.foreignKeys(getNumberedPropsWithPrefix(schema, SPANNER_FOREIGN_KEY));
 
-    table.checkConstraints(getNumberedPropsWithPrefix(schema, "spannerCheckConstraint_"));
+    table.checkConstraints(getNumberedPropsWithPrefix(schema, SPANNER_CHECK_CONSTRAINT));
 
     // Table parent options.
-    String spannerParent = schema.getProp("spannerParent");
+    String spannerParent = schema.getProp(SPANNER_PARENT);
     if (!Strings.isNullOrEmpty(spannerParent)) {
       table.interleaveInParent(spannerParent);
 
       // Process the on delete action.
-      String onDeleteAction = schema.getProp("spannerOnDeleteAction");
+      String onDeleteAction = schema.getProp(SPANNER_ON_DELETE_ACTION);
       if (onDeleteAction == null) {
         // Preserve behavior for old versions of exporter that did not provide the
         // spannerOnDeleteAction property.

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
+
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
@@ -61,7 +63,7 @@ public class SpannerRecordConverter {
       String fieldName = field.name();
       Schema type = field.schema();
       // Empty string to avoid null checks.
-      String spannerType = Strings.nullToEmpty(field.getProp("sqlType"));
+      String spannerType = Strings.nullToEmpty(field.getProp(SQL_TYPE));
       boolean nullable = false;
       if (type.getType() == Schema.Type.UNION) {
         Schema unpack = AvroUtil.unpackNullable(field.schema());

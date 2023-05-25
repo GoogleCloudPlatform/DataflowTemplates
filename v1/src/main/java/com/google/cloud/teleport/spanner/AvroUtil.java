@@ -22,8 +22,29 @@ import org.apache.avro.Schema;
 public class AvroUtil {
   private AvroUtil() {}
 
-  // The property name for change stream for-clause in Avro schema.
-  public static final String CHANGE_STREAM_FOR_CLAUSE = "spannerChangeStreamForClause";
+  // The property names in Avro schema.
+  public static final String DEFAULT_EXPRESSION = "defaultExpression";
+  public static final String GENERATION_EXPRESSION = "generationExpression";
+  public static final String GOOGLE_FORMAT_VERSION = "googleFormatVersion";
+  public static final String GOOGLE_STORAGE = "googleStorage";
+  public static final String INPUT = "Input";
+  public static final String NOT_NULL = "notNull";
+  public static final String OUTPUT = "Output";
+  public static final String SQL_TYPE = "sqlType";
+  public static final String SPANNER_CHECK_CONSTRAINT = "spannerCheckConstraint_";
+  public static final String SPANNER_CHANGE_STREAM_FOR_CLAUSE = "spannerChangeStreamForClause";
+  public static final String SPANNER_ENTITY = "spannerEntity";
+  public static final String SPANNER_ENTITY_MODEL = "Model";
+  public static final String SPANNER_FOREIGN_KEY = "spannerForeignKey_";
+  public static final String SPANNER_INDEX = "spannerIndex_";
+  public static final String SPANNER_ON_DELETE_ACTION = "spannerOnDeleteAction";
+  public static final String SPANNER_OPTION = "spannerOption_";
+  public static final String SPANNER_PARENT = "spannerParent";
+  public static final String SPANNER_PRIMARY_KEY = "spannerPrimaryKey";
+  public static final String SPANNER_REMOTE = "spannerRemote";
+  public static final String SPANNER_VIEW_QUERY = "spannerViewQuery";
+  public static final String SPANNER_VIEW_SECURITY = "spannerViewSecurity";
+  public static final String STORED = "stored";
 
   public static Schema unpackNullable(Schema schema) {
     if (schema.getType() != Schema.Type.UNION) {

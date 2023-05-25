@@ -1,0 +1,10 @@
+{
+  "tables": [{
+    "name": "Singers",
+    "manifestFile": "Singers-manifest.json"
+  }, {
+    "name": "EmptyTable",
+    "manifestFile": "EmptyTable-manifest.json"
+  }],
+  "dialect": "POSTGRESQL"
+}
