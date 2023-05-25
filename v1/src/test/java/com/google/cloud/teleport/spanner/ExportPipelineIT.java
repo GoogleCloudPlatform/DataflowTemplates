@@ -114,6 +114,7 @@ public class ExportPipelineIT extends TemplateTestBase {
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("outputDir", getGcsPath("output/"));
