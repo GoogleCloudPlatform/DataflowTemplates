@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertEquals;
@@ -38,6 +39,7 @@ import com.google.cloud.teleport.spanner.ExportTransform.SerializableSchemaSuppl
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export.Builder;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.Export.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.TableManifest;
 import com.google.common.collect.ImmutableList;
@@ -129,6 +131,8 @@ public class ExportTransformTest {
   public void buildDatabaseManifestFile() throws InvalidProtocolBufferException {
     Map<String, String> tablesAndManifests =
         ImmutableMap.of(
+            "model1",
+            "model1 manifest",
             "table1",
             "table1 manifest",
             "table2",
@@ -149,6 +153,7 @@ public class ExportTransformTest {
                 .build());
     Ddl.Builder ddlBuilder = Ddl.builder();
     ddlBuilder.mergeDatabaseOptions(databaseOptions);
+    ddlBuilder.createModel("model1").remote(true).endModel();
     ddlBuilder.createChangeStream("changeStream").endChangeStream();
     Ddl ddl = ddlBuilder.build();
     PCollectionView<Ddl> ddlView = pipeline.apply(Create.of(ddl)).apply(View.asSingleton());
@@ -176,13 +181,13 @@ public class ExportTransformTest {
                     throw new RuntimeException(e);
                   }
                   Export manifestProto = builder1.build();
-                  assertThat(manifestProto.getTablesCount(), is(2));
                   assertThat(manifestProto.getDialect(), is(ProtoDialect.GOOGLE_STANDARD_SQL));
-                  String table1Name = manifestProto.getTables(0).getName();
-                  assertThat(table1Name, startsWith("table"));
-                  assertThat(
-                      manifestProto.getTables(0).getManifestFile(),
-                      is(table1Name + "-manifest.json"));
+
+                  assertThat(manifestProto.getTablesCount(), is(3));
+                  for (Table table : manifestProto.getTablesList()) {
+                    assertThat(table.getName(), anyOf(startsWith("table"), startsWith("model")));
+                    assertThat(table.getManifestFile(), is(table.getName() + "-manifest.json"));
+                  }
 
                   Export.DatabaseOption dbOptions = manifestProto.getDatabaseOptions(0);
                   String optionName = dbOptions.getOptionName();
