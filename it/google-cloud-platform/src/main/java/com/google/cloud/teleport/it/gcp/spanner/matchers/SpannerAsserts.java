@@ -17,6 +17,7 @@ package com.google.cloud.teleport.it.gcp.spanner.matchers;
 
 import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
 
+import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class SpannerAsserts {
 
@@ -57,6 +59,27 @@ public class SpannerAsserts {
   }
 
   /**
+   * Convert Spanner {@link Mutation} list to a list of maps.
+   *
+   * @param mutations Mutations to parse
+   * @return List of maps to use in {@link RecordsSubject}
+   */
+  public static List<Map<String, Object>> mutationsToRecords(List<Mutation> mutations) {
+    try {
+      List<Map<String, Object>> records = new ArrayList<>();
+      mutations.forEach(
+          entry ->
+              records.add(
+                  entry.asMap().entrySet().stream()
+                      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))));
+
+      return records;
+    } catch (Exception e) {
+      throw new RuntimeException("Error converting TableResult to Records", e);
+    }
+  }
+
+  /**
    * Creates a {@link RecordsSubject} to assert information within a list of records.
    *
    * @param structs Records in Spanner {@link Struct} format to use in the comparison.
@@ -64,5 +87,15 @@ public class SpannerAsserts {
    */
   public static RecordsSubject assertThatStructs(List<Struct> structs) {
     return assertThatRecords(structsToRecords(structs));
+  }
+
+  /**
+   * Creates a {@link RecordsSubject} to assert information within a list of records.
+   *
+   * @param mutations Mutations in Spanner {@link Mutation} format to use in the comparison.
+   * @return Truth Subject to chain assertions.
+   */
+  public static RecordsSubject assertThatMutations(List<Mutation> mutations) {
+    return assertThatRecords(mutationsToRecords(mutations));
   }
 }
