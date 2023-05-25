@@ -979,14 +979,15 @@ public class ImportFromAvroTest {
 
   @Test
   public void models() throws Exception {
-    String endpoint = "//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760";
+    String endpoint =
+        "//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760";
     Map<String, Schema> avroFiles = new HashMap<>();
     avroFiles.put(
         "ModelAll.avro",
         SchemaBuilder.record("Iris")
             .prop("spannerEntity", "Model")
             .prop("spannerRemote", "true")
-            .prop("spannerOption_0", "endpoint=\""+ endpoint + "\"")
+            .prop("spannerOption_0", "endpoint=\"" + endpoint + "\"")
             .fields()
             // Input columns.
             .name("Input")
@@ -1023,12 +1024,15 @@ public class ImportFromAvroTest {
             .name("classes")
             .prop("sqlType", "ARRAY<STRING(MAX)>")
             .type()
-            .array().items().stringType()
+            .array()
+            .items()
+            .stringType()
             .noDefault()
             .name("scores")
             .prop("sqlType", "ARRAY<FLOAT64>")
             .type()
-            .array().items()
+            .array()
+            .items()
             .longType()
             .noDefault()
             .endRecord()
@@ -1096,7 +1100,9 @@ public class ImportFromAvroTest {
                 + " CREATE MODEL `Iris`"
                 + " INPUT ( `f1` FLOAT64, `f2` FLOAT64, `f3` FLOAT64, `f4` FLOAT64, )"
                 + " OUTPUT ( `classes` ARRAY<STRING(MAX)>, `scores` ARRAY<FLOAT64>, )"
-                + " REMOTE OPTIONS (endpoint=\"" + endpoint + "\")"));
+                + " REMOTE OPTIONS (endpoint=\""
+                + endpoint
+                + "\")"));
   }
 
   @Test
