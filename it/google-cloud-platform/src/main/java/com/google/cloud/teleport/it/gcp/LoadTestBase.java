@@ -26,6 +26,7 @@ import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.MetricsConfiguration;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.monitoring.MonitoringClient;
 import com.google.common.base.MoreObjects;
@@ -38,6 +39,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import javax.annotation.Nullable;
 import org.junit.After;
 import org.junit.Before;
@@ -188,16 +190,10 @@ public abstract class LoadTestBase {
    *
    * @param metrics a map of raw metrics. The results are also appened in the map.
    * @param launchInfo Job info of the job
-   * @param inputPcollection input pcollection of the dataflow job to query additional metrics. If
-   *     not provided, the metrics will not be calculated.
-   * @param outputPcollection output pcollection of the dataflow job to query additional metrics. If
-   *     not provided, the metrics will not be calculated.
+   * @param config a {@class MetricsConfiguration}
    */
   private void computeDataflowMetrics(
-      Map<String, Double> metrics,
-      LaunchInfo launchInfo,
-      @Nullable String inputPcollection,
-      @Nullable String outputPcollection)
+      Map<String, Double> metrics, LaunchInfo launchInfo, MetricsConfiguration config)
       throws ParseException {
     // cost info
     LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), project);
@@ -219,12 +215,13 @@ public abstract class LoadTestBase {
     metrics.put("EstimatedCost", cost);
     metrics.put("ElapsedTime", monitoringClient.getElapsedTime(project, launchInfo));
 
-    Double dataProcessed = monitoringClient.getDataProcessed(project, launchInfo, inputPcollection);
+    Double dataProcessed =
+        monitoringClient.getDataProcessed(project, launchInfo, config.inputPCollection());
     if (dataProcessed != null) {
       metrics.put("EstimatedDataProcessedGB", dataProcessed / 1e9d);
     }
     metrics.putAll(getCpuUtilizationMetrics(launchInfo));
-    metrics.putAll(getThroughputMetrics(launchInfo, inputPcollection, outputPcollection));
+    metrics.putAll(getThroughputMetrics(launchInfo, config));
   }
 
   /**
@@ -232,16 +229,10 @@ public abstract class LoadTestBase {
    *
    * @param metrics a map of raw metrics. The results are also appened in the map.
    * @param launchInfo Job info of the job
-   * @param inputPcollection input pcollection of the job to query additional metrics. Currently
-   *     unused.
-   * @param outputPcollection output pcollection of the job to query additional metrics. Currently
-   *     unused.
+   * @param config the {@class MetricsConfiguration}, currently unused.
    */
   private void computeDirectMetrics(
-      Map<String, Double> metrics,
-      LaunchInfo launchInfo,
-      @Nullable String inputPcollection,
-      @Nullable String outputPcollection)
+      Map<String, Double> metrics, LaunchInfo launchInfo, MetricsConfiguration config)
       throws ParseException {
     // TODO: determine elapsed time more accurately if Direct runner supports do so.
     metrics.put(
@@ -268,17 +259,12 @@ public abstract class LoadTestBase {
       LaunchInfo launchInfo, @Nullable String inputPcollection, @Nullable String outputPcollection)
       throws InterruptedException, IOException, ParseException {
     Map<String, Double> metrics = pipelineLauncher.getMetrics(project, region, launchInfo.jobId());
-    if (launchInfo.runner().contains("Dataflow")) {
-      // monitoring metrics take up to 3 minutes to show up
-      // TODO(pranavbhandari): We should use a library like http://awaitility.org/ to poll for
-      // metrics instead of hard coding X minutes.
-      LOG.info("Sleeping for 4 minutes to query Dataflow runner metrics.");
-      Thread.sleep(Duration.ofMinutes(4).toMillis());
-      computeDataflowMetrics(metrics, launchInfo, inputPcollection, outputPcollection);
-    } else if ("DirectRunner".equalsIgnoreCase(launchInfo.runner())) {
-      computeDirectMetrics(metrics, launchInfo, inputPcollection, outputPcollection);
-    }
-    return metrics;
+    return getMetrics(
+        launchInfo,
+        MetricsConfiguration.builder()
+            .setInputPCollection(inputPcollection)
+            .setOutputPCollection(outputPcollection)
+            .build());
   }
 
   /**
@@ -311,6 +297,22 @@ public abstract class LoadTestBase {
     return getMetrics(launchInfo, null, null);
   }
 
+  protected Map<String, Double> getMetrics(LaunchInfo launchInfo, MetricsConfiguration config)
+      throws IOException, InterruptedException, ParseException {
+    Map<String, Double> metrics = pipelineLauncher.getMetrics(project, region, launchInfo.jobId());
+    if (launchInfo.runner().contains("Dataflow")) {
+      // monitoring metrics take up to 3 minutes to show up
+      // TODO(pranavbhandari): We should use a library like http://awaitility.org/ to poll for
+      // metrics instead of hard coding X minutes.
+      LOG.info("Sleeping for 4 minutes to query Dataflow runner metrics.");
+      Thread.sleep(Duration.ofMinutes(4).toMillis());
+      computeDataflowMetrics(metrics, launchInfo, config);
+    } else if ("DirectRunner".equalsIgnoreCase(launchInfo.runner())) {
+      computeDirectMetrics(metrics, launchInfo, config);
+    }
+    return metrics;
+  }
+
   /**
    * Computes CPU Utilization metrics of the given job.
    *
@@ -325,7 +327,8 @@ public abstract class LoadTestBase {
     if (cpuUtilization == null) {
       return cpuUtilizationMetrics;
     }
-    cpuUtilizationMetrics.put("AvgCpuUtilization", calculateAverage(cpuUtilization));
+    cpuUtilizationMetrics.put(
+        "AvgCpuUtilization", MetricsConfiguration.calculateAverage(cpuUtilization));
     cpuUtilizationMetrics.put("MaxCpuUtilization", Collections.max(cpuUtilization));
     return cpuUtilizationMetrics;
   }
@@ -334,27 +337,30 @@ public abstract class LoadTestBase {
    * Computes throughput metrics of the given pcollection in dataflow job.
    *
    * @param launchInfo Job info of the job
-   * @param inputPcollection input pcollection of the dataflow job to query additional metrics
-   * @param outputPcollection output pcollection of the dataflow job to query additional metrics
+   * @param config the {@class MetricsConfiguration}
    * @return throughput metrics of the pcollection
    * @throws ParseException if timestamp is inaccurate
    */
   protected Map<String, Double> getThroughputMetrics(
-      LaunchInfo launchInfo, @Nullable String inputPcollection, @Nullable String outputPcollection)
-      throws ParseException {
+      LaunchInfo launchInfo, MetricsConfiguration config) throws ParseException {
     List<Double> inputThroughputBytesPerSec =
-        monitoringClient.getThroughputBytesPerSecond(project, launchInfo, inputPcollection);
+        monitoringClient.getThroughputBytesPerSecond(
+            project, launchInfo, config.inputPCollection());
     List<Double> inputThroughputElementsPerSec =
-        monitoringClient.getThroughputElementsPerSecond(project, launchInfo, inputPcollection);
+        monitoringClient.getThroughputElementsPerSecond(
+            project, launchInfo, config.inputPCollection());
     List<Double> outputThroughputBytesPerSec =
-        monitoringClient.getThroughputBytesPerSecond(project, launchInfo, outputPcollection);
+        monitoringClient.getThroughputBytesPerSecond(
+            project, launchInfo, config.outputPCollection());
     List<Double> outputThroughputElementsPerSec =
-        monitoringClient.getThroughputElementsPerSecond(project, launchInfo, outputPcollection);
+        monitoringClient.getThroughputElementsPerSecond(
+            project, launchInfo, config.outputPCollection());
     return getThroughputMetrics(
         inputThroughputBytesPerSec,
         inputThroughputElementsPerSec,
         outputThroughputBytesPerSec,
-        outputThroughputElementsPerSec);
+        outputThroughputElementsPerSec,
+        config.seriesFilterFn());
   }
 
   /**
@@ -371,7 +377,8 @@ public abstract class LoadTestBase {
     if (dataFreshness == null) {
       return dataFreshnessMetrics;
     }
-    dataFreshnessMetrics.put("AvgDataFreshness", calculateAverage(dataFreshness));
+    dataFreshnessMetrics.put(
+        "AvgDataFreshness", MetricsConfiguration.calculateAverage(dataFreshness));
     dataFreshnessMetrics.put("MaxDataFreshness", Collections.max(dataFreshness));
     return dataFreshnessMetrics;
   }
@@ -390,7 +397,8 @@ public abstract class LoadTestBase {
     if (systemLatency == null) {
       return systemLatencyMetrics;
     }
-    systemLatencyMetrics.put("AvgSystemLatency", calculateAverage(systemLatency));
+    systemLatencyMetrics.put(
+        "AvgSystemLatency", MetricsConfiguration.calculateAverage(systemLatency));
     systemLatencyMetrics.put("MaxSystemLatency", Collections.max(systemLatency));
     return systemLatencyMetrics;
   }
@@ -399,33 +407,36 @@ public abstract class LoadTestBase {
       List<Double> inputThroughput,
       List<Double> inputThroughputElementsPerSec,
       List<Double> outputThroughput,
-      List<Double> outputThroughputElementsPerSec) {
+      List<Double> outputThroughputElementsPerSec,
+      Function<List<Double>, List<Double>> filterFn) {
     Map<String, Double> throughputMetrics = new HashMap<>();
     if (inputThroughput != null) {
-      throughputMetrics.put("AvgInputThroughputBytesPerSec", calculateAverage(inputThroughput));
+      throughputMetrics.put(
+          "AvgInputThroughputBytesPerSec",
+          MetricsConfiguration.calculateAverage(inputThroughput, filterFn));
       throughputMetrics.put("MaxInputThroughputBytesPerSec", Collections.max(inputThroughput));
     }
     if (inputThroughputElementsPerSec != null) {
       throughputMetrics.put(
-          "AvgInputThroughputElementsPerSec", calculateAverage(inputThroughputElementsPerSec));
+          "AvgInputThroughputElementsPerSec",
+          MetricsConfiguration.calculateAverage(inputThroughputElementsPerSec, filterFn));
       throughputMetrics.put(
           "MaxInputThroughputElementsPerSec", Collections.max(inputThroughputElementsPerSec));
     }
     if (outputThroughput != null) {
-      throughputMetrics.put("AvgOutputThroughputBytesPerSec", calculateAverage(outputThroughput));
+      throughputMetrics.put(
+          "AvgOutputThroughputBytesPerSec",
+          MetricsConfiguration.calculateAverage(outputThroughput, filterFn));
       throughputMetrics.put("MaxOutputThroughputBytesPerSec", Collections.max(outputThroughput));
     }
     if (outputThroughputElementsPerSec != null) {
       throughputMetrics.put(
-          "AvgOutputThroughputElementsPerSec", calculateAverage(outputThroughputElementsPerSec));
+          "AvgOutputThroughputElementsPerSec",
+          MetricsConfiguration.calculateAverage(outputThroughputElementsPerSec, filterFn));
       throughputMetrics.put(
           "MaxOutputThroughputElementsPerSec", Collections.max(outputThroughputElementsPerSec));
     }
     return throughputMetrics;
-  }
-
-  private Double calculateAverage(List<Double> values) {
-    return values.stream().mapToDouble(d -> d).average().orElse(0.0);
   }
 
   public static PipelineOperator.Config createConfig(LaunchInfo info, Duration timeout) {

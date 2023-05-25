@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.MetricsConfiguration;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
 import com.google.common.collect.ImmutableMap;
@@ -223,9 +224,15 @@ public class FileBasedIOLT extends IOLoadTestBase {
     assertEquals(configuration.numRecords, numRecords, 0.5);
 
     // export metrics
+    MetricsConfiguration metricsConfig =
+        MetricsConfiguration.builder()
+            .setInputPCollection(writePCollection)
+            .setOutputPCollection(readPCollection)
+            .setSeriesFilterFn(MetricsConfiguration.filterBeginEndHalfAveFn())
+            .build();
     try {
-      exportMetricsToBigQuery(writeInfo, getMetrics(writeInfo, writePCollection, null));
-      exportMetricsToBigQuery(readInfo, getMetrics(readInfo, null, readPCollection));
+      exportMetricsToBigQuery(writeInfo, getMetrics(writeInfo, metricsConfig));
+      exportMetricsToBigQuery(readInfo, getMetrics(readInfo, metricsConfig));
     } catch (ParseException | InterruptedException e) {
       throw new RuntimeException(e);
     }

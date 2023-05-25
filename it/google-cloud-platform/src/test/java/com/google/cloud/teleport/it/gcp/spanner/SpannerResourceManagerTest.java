@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Database;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Instance;
 import com.google.cloud.spanner.InstanceAdminClient;
 import com.google.cloud.spanner.Mutation;
@@ -66,6 +67,7 @@ public final class SpannerResourceManagerTest {
   private static final String TEST_ID = "test";
   private static final String PROJECT_ID = "test-project";
   private static final String REGION = "us-east1";
+  private static final Dialect DIALECT = Dialect.GOOGLE_STANDARD_SQL;
   private SpannerResourceManager testManager;
 
   @Captor private ArgumentCaptor<Iterable<Mutation>> writeMutationCaptor;
@@ -75,7 +77,7 @@ public final class SpannerResourceManagerTest {
 
   @Before
   public void setUp() {
-    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
+    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT);
   }
 
   private void prepareCreateInstanceMock() throws ExecutionException, InterruptedException {
@@ -106,7 +108,7 @@ public final class SpannerResourceManagerTest {
       throws ExecutionException, InterruptedException {
     // arrange
     prepareCreateInstanceMock();
-    when(spanner.getDatabaseAdminClient().createDatabase(any(), any(), any()).get())
+    when(spanner.getDatabaseAdminClient().createDatabase(any(), any()).get())
         .thenThrow(InterruptedException.class);
     prepareUpdateDatabaseMock();
     String statement =
@@ -160,7 +162,7 @@ public final class SpannerResourceManagerTest {
     // verify createInstance, createDatabase, and updateDatabaseDdl were called twice - once in
     // create table, once in their respective prepareMock helper methods.
     verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
-    verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any(), any());
+    verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
     verify(spanner.getDatabaseAdminClient(), times(2))
         .updateDatabaseDdl(
             instanceIdCaptor.capture(),
@@ -186,11 +188,11 @@ public final class SpannerResourceManagerTest {
     when(spanner.getDatabaseClient(any()).write(any())).thenReturn(Timestamp.now());
     // spotless:off
     Mutation testMutation =
-        Mutation.newInsertOrUpdateBuilder("SingerId")
-            .set("SingerId").to(1)
-            .set("FirstName").to("Marc")
-            .set("LastName").to("Richards")
-            .build();
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                    .set("SingerId").to(1)
+                    .set("FirstName").to("Marc")
+                    .set("LastName").to("Richards")
+                    .build();
     // spotless:on
 
     // act
@@ -207,11 +209,11 @@ public final class SpannerResourceManagerTest {
     // arrange
     // spotless:off
     Mutation testMutation =
-        Mutation.newInsertOrUpdateBuilder("SingerId")
-            .set("SingerId").to(1)
-            .set("FirstName").to("Marc")
-            .set("LastName").to("Richards")
-            .build();
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                    .set("SingerId").to(1)
+                    .set("FirstName").to("Marc")
+                    .set("LastName").to("Richards")
+                    .build();
     // spotless:on
 
     // act & assert
@@ -226,11 +228,11 @@ public final class SpannerResourceManagerTest {
     when(spanner.getDatabaseClient(any()).write(any())).thenThrow(SpannerException.class);
     // spotless:off
     Mutation testMutation =
-        Mutation.newInsertOrUpdateBuilder("SingerId")
-            .set("SingerId").to(1)
-            .set("FirstName").to("Marc")
-            .set("LastName").to("Richards")
-            .build();
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                    .set("SingerId").to(1)
+                    .set("FirstName").to("Marc")
+                    .set("LastName").to("Richards")
+                    .build();
     // spotless:on
 
     // act & assert
@@ -245,17 +247,17 @@ public final class SpannerResourceManagerTest {
     when(spanner.getDatabaseClient(any()).write(any())).thenReturn(Timestamp.now());
     // spotless:off
     ImmutableList<Mutation> testMutations =
-        ImmutableList.of(
-            Mutation.newInsertOrUpdateBuilder("SingerId")
-                .set("SingerId").to(1)
-                .set("FirstName").to("Marc")
-                .set("LastName").to("Richards")
-                .build(),
-            Mutation.newInsertOrUpdateBuilder("SingerId")
-                .set("SingerId").to(2)
-                .set("FirstName").to("Catalina")
-                .set("LastName").to("Smith")
-                .build());
+            ImmutableList.of(
+                    Mutation.newInsertOrUpdateBuilder("SingerId")
+                            .set("SingerId").to(1)
+                            .set("FirstName").to("Marc")
+                            .set("LastName").to("Richards")
+                            .build(),
+                    Mutation.newInsertOrUpdateBuilder("SingerId")
+                            .set("SingerId").to(2)
+                            .set("FirstName").to("Catalina")
+                            .set("LastName").to("Smith")
+                            .build());
     // spotless:on
 
     // act
@@ -273,17 +275,17 @@ public final class SpannerResourceManagerTest {
     // arrange
     // spotless:off
     ImmutableList<Mutation> testMutations =
-        ImmutableList.of(
-            Mutation.newInsertOrUpdateBuilder("SingerId")
-                .set("SingerId").to(1)
-                .set("FirstName").to("Marc")
-                .set("LastName").to("Richards")
-                .build(),
-            Mutation.newInsertOrUpdateBuilder("SingerId")
-                .set("SingerId").to(2)
-                .set("FirstName").to("Catalina")
-                .set("LastName").to("Smith")
-                .build());
+            ImmutableList.of(
+                    Mutation.newInsertOrUpdateBuilder("SingerId")
+                            .set("SingerId").to(1)
+                            .set("FirstName").to("Marc")
+                            .set("LastName").to("Richards")
+                            .build(),
+                    Mutation.newInsertOrUpdateBuilder("SingerId")
+                            .set("SingerId").to(2)
+                            .set("FirstName").to("Catalina")
+                            .set("LastName").to("Smith")
+                            .build());
     // spotless:on
 
     // act & assert
@@ -298,17 +300,17 @@ public final class SpannerResourceManagerTest {
     when(spanner.getDatabaseClient(any()).write(any())).thenThrow(SpannerException.class);
     // spotless:off
     ImmutableList<Mutation> testMutations =
-        ImmutableList.of(
-            Mutation.newInsertOrUpdateBuilder("SingerId")
-                .set("SingerId").to(1)
-                .set("FirstName").to("Marc")
-                .set("LastName").to("Richards")
-                .build(),
-            Mutation.newInsertOrUpdateBuilder("SingerId")
-                .set("SingerId").to(2)
-                .set("FirstName").to("Catalina")
-                .set("LastName").to("Smith")
-                .build());
+            ImmutableList.of(
+                    Mutation.newInsertOrUpdateBuilder("SingerId")
+                            .set("SingerId").to(1)
+                            .set("FirstName").to("Marc")
+                            .set("LastName").to("Richards")
+                            .build(),
+                    Mutation.newInsertOrUpdateBuilder("SingerId")
+                            .set("SingerId").to(2)
+                            .set("FirstName").to("Catalina")
+                            .set("LastName").to("Smith")
+                            .build());
     // spotless:on
 
     // act & assert
@@ -323,17 +325,17 @@ public final class SpannerResourceManagerTest {
     when(resultSet.next()).thenReturn(true).thenReturn(true).thenReturn(false);
     // spotless:off
     Struct struct1 =
-        Struct.newBuilder()
-            .set("SingerId").to(int64(1))
-            .set("FirstName").to(string("Marc"))
-            .set("LastName").to(string("Richards"))
-            .build();
+            Struct.newBuilder()
+                    .set("SingerId").to(int64(1))
+                    .set("FirstName").to(string("Marc"))
+                    .set("LastName").to(string("Richards"))
+                    .build();
     Struct struct2 =
-        Struct.newBuilder()
-            .set("SingerId").to(int64(2))
-            .set("FirstName").to(string("Catalina"))
-            .set("LastName").to(string("Smith"))
-            .build();
+            Struct.newBuilder()
+                    .set("SingerId").to(int64(2))
+                    .set("FirstName").to(string("Catalina"))
+                    .set("LastName").to(string("Smith"))
+                    .build();
     // spotless:on
     when(resultSet.getCurrentRowAsStruct()).thenReturn(struct1).thenReturn(struct2);
     when(spanner.getDatabaseClient(any()).singleUse().read(any(), any(), any()))
@@ -356,11 +358,11 @@ public final class SpannerResourceManagerTest {
     when(resultSet.next()).thenReturn(true).thenReturn(false);
     // spotless:off
     Struct struct =
-        Struct.newBuilder()
-            .set("SingerId").to(int64(1))
-            .set("FirstName").to(string("Marc"))
-            .set("LastName").to(string("Richards"))
-            .build();
+            Struct.newBuilder()
+                    .set("SingerId").to(int64(1))
+                    .set("FirstName").to(string("Marc"))
+                    .set("LastName").to(string("Richards"))
+                    .build();
     // spotless:on
     when(resultSet.getCurrentRowAsStruct()).thenReturn(struct);
     when(spanner.getDatabaseClient(any()).singleUse().read(any(), any(), any()))
@@ -408,7 +410,7 @@ public final class SpannerResourceManagerTest {
     // arrange
     doThrow(SpannerException.class).when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
-    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
+    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT);
 
     // act & assert
     assertThrows(SpannerResourceManagerException.class, () -> testManager.cleanupAll());
@@ -419,7 +421,7 @@ public final class SpannerResourceManagerTest {
     // arrange
     doNothing().when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
-    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
+    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT);
 
     // act
     testManager.cleanupAll();
@@ -435,7 +437,7 @@ public final class SpannerResourceManagerTest {
     doNothing().when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
     when(spanner.isClosed()).thenReturn(true);
-    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION);
+    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT);
     testManager.cleanupAll();
     String statement =
         "CREATE TABLE Singers (\n"
@@ -445,11 +447,11 @@ public final class SpannerResourceManagerTest {
             + ") PRIMARY KEY (SingerId)";
     // spotless:off
     Mutation testMutation =
-        Mutation.newInsertOrUpdateBuilder("SingerId")
-            .set("SingerId").to(1)
-            .set("FirstName").to("Marc")
-            .set("LastName").to("Richards")
-            .build();
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                    .set("SingerId").to(1)
+                    .set("FirstName").to("Marc")
+                    .set("LastName").to("Richards")
+                    .build();
     // spotless:on
     ImmutableList<String> columnNames = ImmutableList.of("SingerId");
 
@@ -466,7 +468,7 @@ public final class SpannerResourceManagerTest {
 
   private void prepareCreateDatabaseMock() throws ExecutionException, InterruptedException {
     Mockito.lenient()
-        .when(spanner.getDatabaseAdminClient().createDatabase(any(), any(), any()).get())
+        .when(spanner.getDatabaseAdminClient().createDatabase(any(), any()).get())
         .thenReturn(database);
   }
 

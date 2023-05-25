@@ -54,7 +54,7 @@
     <spring.version>5.2.22.RELEASE</spring.version>
     <tensorflow.version>1.15.0</tensorflow.version>
     <dlp.version>2.1.0</dlp.version>
-    <hbase.version>1.4.5</hbase.version>
+    <hbase.version>2.5.3-hadoop3</hbase.version>
     <scassandra.version>1.1.2</scassandra.version>
     <cassandra.driver.version>3.6.0</cassandra.driver.version>
     <kms.version>1.40.0</kms.version>

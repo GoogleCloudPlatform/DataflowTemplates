@@ -154,6 +154,9 @@ public abstract class TemplateTestBase {
     if (template == null) {
       return;
     }
+    if (template.placeholderClass() != void.class) {
+      templateClass = template.placeholderClass();
+    }
     if (TestProperties.hasAccessToken()) {
       credentials = TestProperties.googleCredentials();
     } else {
