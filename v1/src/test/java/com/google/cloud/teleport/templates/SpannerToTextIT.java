@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.asser
 import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
 import static com.google.cloud.teleport.it.gcp.spanner.matchers.SpannerAsserts.mutationsToRecords;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
@@ -49,17 +50,20 @@ public class SpannerToTextIT extends TemplateTestBase {
 
   private static final int MESSAGES_COUNT = 100;
 
-  private SpannerResourceManager spannerResourceManager;
+  private SpannerResourceManager googleSqlResourceManager;
+  private SpannerResourceManager postgresResourceManager;
 
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    googleSqlResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    postgresResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL).build();
   }
 
   @After
   public void teardown() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager);
+    ResourceManagerUtils.cleanResources(googleSqlResourceManager, postgresResourceManager);
   }
 
   @Test
@@ -73,15 +77,74 @@ public class SpannerToTextIT extends TemplateTestBase {
                 + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             testName);
-    spannerResourceManager.createTable(createTableStatement);
+    googleSqlResourceManager.createTable(createTableStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s", testName));
-    spannerResourceManager.write(expectedData);
+    googleSqlResourceManager.write(expectedData);
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("spannerProjectId", PROJECT)
-            .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
-            .addParameter("spannerDatabaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("spannerInstanceId", googleSqlResourceManager.getInstanceId())
+            .addParameter("spannerDatabaseId", googleSqlResourceManager.getDatabaseId())
+            .addParameter("spannerTable", testName)
+            .addParameter("textWritePrefix", getGcsPath("output/" + testName));
+
+    // Act
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    List<Artifact> textArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*%s.*\\.csv.*", testName)));
+
+    List<Map<String, Object>> records = new ArrayList<>();
+    textArtifacts.forEach(
+        artifact -> {
+          List<String> lines =
+              List.of(new String(artifact.contents()).replace("\"", "").split("\n"));
+          lines.forEach(
+              line -> {
+                List<Object> values = List.of(line.split(","));
+                records.add(
+                    Map.of(
+                        "Id",
+                        values.get(0),
+                        "FirstName",
+                        values.get(1),
+                        "LastName",
+                        values.get(2)));
+              });
+        });
+
+    List<Map<String, Object>> expectedRecords = mutationsToRecords(expectedData);
+
+    assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
+  }
+
+  @Test
+  public void testPostgresSpannerToGCSText() throws IOException {
+    // Arrange
+    String createTableStatement =
+        String.format(
+            "CREATE TABLE \"%s\" (\n"
+                + "  \"Id\" bigint NOT NULL,\n"
+                + "  \"FirstName\" character varying(256),\n"
+                + "  \"LastName\" character varying(256),\n"
+                + " PRIMARY KEY(\"Id\"))",
+            testName);
+    postgresResourceManager.createTable(createTableStatement);
+    List<Mutation> expectedData = generateTableRows(String.format("%s", testName));
+    postgresResourceManager.write(expectedData);
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("spannerInstanceId", postgresResourceManager.getInstanceId())
+            .addParameter("spannerDatabaseId", postgresResourceManager.getDatabaseId())
             .addParameter("spannerTable", testName)
             .addParameter("textWritePrefix", getGcsPath("output/" + testName));
 
