@@ -15,7 +15,6 @@
  */
 package com.google.cloud.syndeo.transforms.datagenerator;
 
-import com.google.common.flogger.GoogleLogger;
 import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -36,15 +35,13 @@ import org.joda.time.Duration;
 import org.joda.time.Instant;
 
 public class DataGeneratorSchemaTransform implements SchemaTransform, Serializable {
+  private final long recordsPerSecond;
+  private final long secondsToRun;
+  private final String schema;
 
-  private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
-  private long recordsPerSecond = 1000l;
-  private long minutesToRun = 10;
-  private String schema;
-
-  public DataGeneratorSchemaTransform(long recordsPerSecond, long minutesToRun, String schema) {
+  public DataGeneratorSchemaTransform(long recordsPerSecond, long secondsToRun, String schema) {
     this.recordsPerSecond = recordsPerSecond;
-    this.minutesToRun = minutesToRun;
+    this.secondsToRun = secondsToRun;
     this.schema = schema;
   }
 
@@ -62,7 +59,7 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
                 .apply(
                     PeriodicImpulse.create()
                         .startAt(startTime)
-                        .stopAt(Instant.now().plus(Duration.standardMinutes(minutesToRun)))
+                        .stopAt(Instant.now().plus(Duration.standardSeconds(secondsToRun)))
                         .withInterval(Duration.millis(1000))
                         .applyWindowing());
         instants = instants.apply(Reshuffle.viaRandomKey());
@@ -78,9 +75,8 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
 
   private class InstantToRowFn extends SimpleFunction<Instant, List<Row>> {
 
-    private Instant startTime;
-    private String schema;
-    private String format;
+    private final Instant startTime;
+    private final String schema;
 
     public InstantToRowFn(Instant startTime, String schema) {
       this.startTime = startTime;
@@ -90,11 +86,7 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
     @Override
     public List<Row> apply(Instant input) {
       final Schema schema = Schema.parse(this.schema);
-
-      final long numSplits = recordsPerSecond * 60;
-      final long periodPerSplitMsecs = 1000;
-      long ordinal =
-          (input.minus(Duration.millis(startTime.getMillis())).getMillis() / periodPerSplitMsecs);
+      long ordinal = (input.minus(Duration.millis(startTime.getMillis())).getMillis() / 1000);
       return LongStream.range(ordinal * recordsPerSecond, (ordinal + 1) * recordsPerSecond)
           .mapToObj(intVal -> RecordCreator.createRowRecord(schema))
           .collect(Collectors.toList());

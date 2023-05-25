@@ -15,20 +15,16 @@
  */
 package com.google.cloud.syndeo.transforms.datagenerator;
 
-import com.google.common.flogger.GoogleLogger;
 import java.util.List;
 import java.util.Random;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.Row.FieldValueBuilder;
 
 public final class RecordCreator {
 
-  private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
   private static final String ALPHA_NUMBERIC_STRING =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvxyz";
 
@@ -38,6 +34,7 @@ public final class RecordCreator {
     org.apache.beam.sdk.schemas.Schema beamSchema = AvroUtils.toBeamSchema(schema);
     Row.Builder builder = Row.withSchema(beamSchema);
     FieldValueBuilder fvbuilder = null;
+
     for (Field field : schema.getFields()) {
       if (field.schema().getType() != Schema.Type.RECORD) {
         Object value = generateRandomValue(field);
@@ -48,28 +45,16 @@ public final class RecordCreator {
         }
       } else {
         if (fvbuilder == null) {
-          fvbuilder = builder.withFieldValue(field.name(), createGenericRecord(field.schema()));
+          fvbuilder = builder.withFieldValue(field.name(), createRowRecord(field.schema()));
         } else {
-          fvbuilder = fvbuilder.withFieldValue(field.name(), createGenericRecord(field.schema()));
+          fvbuilder = fvbuilder.withFieldValue(field.name(), createRowRecord(field.schema()));
         }
       }
     }
-    Row row = fvbuilder.build();
-    return row;
-  }
-
-  public static GenericRecord createGenericRecord(Schema schema) {
-    GenericRecordBuilder builder = new GenericRecordBuilder(schema);
-
-    for (Field field : schema.getFields()) {
-      if (field.schema().getType() != Schema.Type.RECORD) {
-        builder.set(field, generateRandomValue(field));
-      } else {
-        builder.set(field, createGenericRecord(field.schema()));
-      }
+    if (fvbuilder == null) {
+      return null;
     }
-
-    return builder.build();
+    return fvbuilder.build();
   }
 
   private static Object generateRandomValue(Field field) {
@@ -77,7 +62,6 @@ public final class RecordCreator {
     if (selectObj != null) {
       List<Object> selectValues = (List) selectObj;
       Object valueObj = selectValues.get(random.nextInt(selectValues.size()));
-      logger.atInfo().log("Select size: " + selectValues.size() + ", random selected: " + valueObj);
 
       String valueStr = String.valueOf(valueObj);
       if (field.schema().getType() == Schema.Type.STRING) {

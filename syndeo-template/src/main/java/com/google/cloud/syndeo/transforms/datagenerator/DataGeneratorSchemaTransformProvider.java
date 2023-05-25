@@ -33,15 +33,10 @@ import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @AutoService(SchemaTransformProvider.class)
 public class DataGeneratorSchemaTransformProvider
     extends TypedSchemaTransformProvider<DataGeneratorSchemaTransformConfiguration> {
-
-  private static final Logger LOG =
-      LoggerFactory.getLogger(DataGeneratorSchemaTransformProvider.class);
 
   @Override
   public SchemaTransform from(DataGeneratorSchemaTransformConfiguration configuration) {
@@ -54,7 +49,7 @@ public class DataGeneratorSchemaTransformProvider
     SchemaTransform transform =
         new DataGeneratorSchemaTransform(
             configuration.getRecordsPerSecond(),
-            configuration.getMinutesToRun(),
+            configuration.getSecondsToRun(),
             configuration.getSchema());
     return transform;
   }
@@ -88,8 +83,8 @@ public class DataGeneratorSchemaTransformProvider
     @SchemaFieldDescription("The number of records generated per second")
     public abstract @Nullable Long getRecordsPerSecond();
 
-    @SchemaFieldDescription("The number of minutes to run the generator.")
-    public abstract @Nullable Long getMinutesToRun();
+    @SchemaFieldDescription("The number of seconds to run the generator.")
+    public abstract @Nullable Long getSecondsToRun();
 
     @SchemaFieldDescription(
         "The AVRO schema string in which the data generated is encoded. "
@@ -113,7 +108,7 @@ public class DataGeneratorSchemaTransformProvider
 
       public abstract DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration
               .Builder
-          setMinutesToRun(Long minutesToRun);
+          setSecondsToRun(Long secondsToRun);
 
       public abstract DataGeneratorSchemaTransformProvider.DataGeneratorSchemaTransformConfiguration
               .Builder
