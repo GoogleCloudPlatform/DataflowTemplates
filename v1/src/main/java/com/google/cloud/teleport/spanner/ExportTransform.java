@@ -477,8 +477,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
-    // Empty tables, views and change streams are handled together, because we export them as empty
-    // Avro files that only contain the Avro schemas.
+    // Empty tables, views, models and change streams are handled together,
+    // because we export them as empty Avro files that only contain the Avro schemas.
     PCollection<KV<String, Iterable<String>>> emptySchemaFiles =
         PCollectionList.of(emptyTablesAndViews)
             .and(models)
