@@ -35,6 +35,7 @@ import org.joda.time.Duration;
 import org.joda.time.Instant;
 
 public class DataGeneratorSchemaTransform implements SchemaTransform, Serializable {
+
   private final long recordsPerSecond;
   private final long secondsToRun;
   private final String schema;
@@ -74,7 +75,6 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
   }
 
   private class InstantToRowFn extends SimpleFunction<Instant, List<Row>> {
-
     private final Instant startTime;
     private final String schema;
 

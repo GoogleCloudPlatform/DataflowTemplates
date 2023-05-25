@@ -59,7 +59,7 @@ public final class RecordCreator {
 
   private static Object generateRandomValue(Field field) {
     Object selectObj = field.getObjectProp("select");
-    if (selectObj != null) {
+    if (selectObj != null && selectObj instanceof List) {
       List<Object> selectValues = (List) selectObj;
       Object valueObj = selectValues.get(random.nextInt(selectValues.size()));
 
