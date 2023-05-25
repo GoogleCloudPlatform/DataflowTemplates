@@ -834,6 +834,12 @@
         <artifactId>jacoco-maven-plugin</artifactId>
         <version>${jacoco.version}</version>
         <configuration>
+          <excludes>
+            <!-- Excluding classes covered only by integration tests. -->
+            <exclude>**/*InformationSchemaScanner.*</exclude>
+            <!-- Excluding auto-generated classes. -->
+            <exclude>**/*AutoValue_*</exclude>
+          </excludes>
           <rules>
             <rule>
               <element>PACKAGE</element>
@@ -842,6 +848,8 @@
                 <include>com.google.cloud.teleport.spanner.**</include>
               </includes>
               <excludes>
+                <!-- Excluding classes covered by integration tests. -->
+                <exclude>com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner</exclude>
                 <!-- Excluding generated proto java files -->
                 <exclude>com.google.cloud.teleport.spanner.proto</exclude>
               </excludes>
