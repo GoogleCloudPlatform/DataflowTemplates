@@ -115,6 +115,7 @@ public class ImportPipelineIT extends TemplateTestBase {
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
             .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
             .addParameter("inputDir", getGcsPath("input/"));
@@ -156,6 +157,7 @@ public class ImportPipelineIT extends TemplateTestBase {
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", postgresResourceManager.getInstanceId())
             .addParameter("databaseId", postgresResourceManager.getDatabaseId())
             .addParameter("inputDir", getGcsPath("input/"));
