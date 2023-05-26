@@ -101,10 +101,10 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(Function.identity());
+    testBacklog(Function.identity());
   }
 
-  public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+  public void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // Arrange
     String tableId = generateTableId(testName);
@@ -142,7 +142,8 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
     // check to see if messages reached the output bigtable table
-    assertThat(bigtableResourceManager.readTable(tableId)).isNotEmpty();
+    // TODO(pranavbhandari): Check if there is a way to make this assertion stronger.
+    assertThat(bigtableResourceManager.readTable(tableId, 5L)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));

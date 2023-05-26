@@ -125,7 +125,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
             artifactClient
                 .uploadArtifact(
                     "input/schema.json",
-                    Resources.getResource("TextIOtoBigQueryLT/schema.json").getPath())
+                    Resources.getResource("TextIOToBigQueryLT/schema.json").getPath())
                 .name());
     String udfPath =
         getFullGcsPath(

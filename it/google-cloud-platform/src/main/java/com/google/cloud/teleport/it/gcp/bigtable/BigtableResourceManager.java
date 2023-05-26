@@ -338,6 +338,22 @@ public class BigtableResourceManager implements ResourceManager {
    *     IOException when attempting to retrieve the bigtable data client.
    */
   public synchronized ImmutableList<Row> readTable(String tableId) {
+    return readTable(tableId, null);
+  }
+
+  /**
+   * Reads all the rows in a table. This method requires {@link
+   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * beforehand.
+   *
+   * @param tableId The id of table to read rows from.
+   * @param limit Limits the number of rows that can be returned
+   * @return A List object containing all the rows in the table.
+   * @throws BigtableResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no instance, if the table does not exist or if there is an
+   *     IOException when attempting to retrieve the bigtable data client.
+   */
+  public synchronized ImmutableList<Row> readTable(String tableId, Long limit) {
     checkHasInstance();
     checkHasTable(tableId);
 
@@ -351,6 +367,9 @@ public class BigtableResourceManager implements ResourceManager {
         bigtableResourceManagerClientFactory.bigtableDataClient()) {
 
       Query query = Query.create(tableId);
+      if (limit != null) {
+        query.limit(limit);
+      }
       ServerStream<Row> rowStream = dataClient.readRows(query);
       for (Row row : rowStream) {
         tableRowsBuilder.add(row);
