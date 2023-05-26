@@ -37,13 +37,13 @@ public final class RecordCreator {
   /**
    * Creates Row record based on schema
    *
-   * @param avroSchema the AvroSchema passing fields with additional attributes like field size
-   *     and list of selected values. This can be removed later once the beam schema can be used to
-   *     pass the same attributes.
+   * @param avroSchema the AvroSchema passing fields with additional attributes like field size and
+   *     list of selected values. This can be removed later once the beam schema can be used to pass
+   *     the same attributes.
    * @param beamSchema the BeamSchema object for building Row.
    */
-  public static Row createRowRecord(Schema avroSchema,
-      org.apache.beam.sdk.schemas.Schema beamSchema) {
+  public static Row createRowRecord(
+      Schema avroSchema, org.apache.beam.sdk.schemas.Schema beamSchema) {
     Row.Builder builder = Row.withSchema(beamSchema);
     FieldValueBuilder fvbuilder = null;
 
@@ -57,11 +57,9 @@ public final class RecordCreator {
         }
       } else {
         if (fvbuilder == null) {
-          fvbuilder = builder.withFieldValue(field.name(),
-              createRowRecord(field.schema()));
+          fvbuilder = builder.withFieldValue(field.name(), createRowRecord(field.schema()));
         } else {
-          fvbuilder = fvbuilder.withFieldValue(field.name(),
-              createRowRecord(field.schema()));
+          fvbuilder = fvbuilder.withFieldValue(field.name(), createRowRecord(field.schema()));
         }
       }
     }

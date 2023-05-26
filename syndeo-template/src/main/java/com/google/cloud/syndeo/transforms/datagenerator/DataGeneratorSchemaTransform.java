@@ -77,17 +77,18 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
   private class InstantToRowFn extends SimpleFunction<Instant, List<Row>> {
 
     private final Instant startTime;
+
     /**
      * The avro schema string. This is needed to pass addition attributes like the string field size
-     * and a list of values for a field.
-     * TODO: Once implementing support for passing additional attributes in Beam Schema,
-     * avroSchemaString can be removed.
+     * and a list of values for a field. TODO: Once implementing support for passing additional
+     * attributes in Beam Schema, avroSchemaString can be removed.
      */
     private final String avroSchemaString;
+
     private final org.apache.beam.sdk.schemas.Schema beamSchema;
 
-    public InstantToRowFn(Instant startTime, String avroSchemaString,
-        org.apache.beam.sdk.schemas.Schema beamSchema) {
+    public InstantToRowFn(
+        Instant startTime, String avroSchemaString, org.apache.beam.sdk.schemas.Schema beamSchema) {
       this.startTime = startTime;
       this.avroSchemaString = avroSchemaString;
       this.beamSchema = beamSchema;
