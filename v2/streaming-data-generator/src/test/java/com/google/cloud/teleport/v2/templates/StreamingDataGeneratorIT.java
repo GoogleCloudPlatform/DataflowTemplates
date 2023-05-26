@@ -288,7 +288,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             "quest",
             "score",
             "completed");
-    spannerResourceManager.createTable(createTableStatement);
+    spannerResourceManager.executeDdlStatement(createTableStatement);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
