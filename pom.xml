@@ -45,7 +45,7 @@
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.47.0</beam.version>
+    <beam.version>2.48.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->
@@ -430,6 +430,13 @@
       </modules>
     </profile>
   </profiles>
+
+  <repositories>
+    <repository>
+      <id>apache.candidate</id>
+      <url>https://repository.apache.org/content/repositories/orgapachebeam-1346/</url>
+    </repository>
+  </repositories>
 
   <modules>
     <module>metadata</module>
