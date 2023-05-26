@@ -1,0 +1,53 @@
+{
+  "name": "Pub/Sub to Jms",
+  "description": "Streaming pipeline. Ingests  Message Strings from Pub/Sub to a JMS Server (Queue/Topic)",
+  "parameters": [
+    {
+      "name": "inputSubscription",
+      "label": "Pub/Sub input Subscription",
+      "helpText": "Pub/Sub Subscription to read the input, in the format of 'projects/yourproject/subscriptions/yoursubscription'",
+      "regexes": [
+        "^projects\\/[^\\n\\r\\/]+\\/subscriptions\\/[^\\n\\r\\/]+$"
+      ],
+      "paramType": "PUBSUBSUBSCRIPTION"
+    },
+    {
+      "name": "jmsServer",
+      "label": "JMS host Server IP",
+      "helpText": "JMS host servers IP in format ip:port",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputName",
+      "label": "JMS input Queue/Topic",
+      "helpText": "output JMS queue/topic to read data",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputType",
+      "label": "JMS Destination Type",
+      "helpText": "Output JMS queue to read data",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+
+    {
+      "name": "username",
+      "isOptional": true,
+      "label": "JMS Username",
+      "helpText": "Username to authenticate with JMS server",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "password",
+      "isOptional": true,
+      "label": "JMS Password",
+      "helpText": "Password for the username with JMS server",
+      "regexes": [],
+      "paramType": "TEXT"
+    }
+  ]
+}

@@ -699,6 +699,7 @@
         <module>mqtt-to-pubsub</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
+        <module>pubsub-to-jms</module>
         <module>pubsub-to-kafka</module>
         <module>pubsub-to-mongodb</module>
         <module>spanner-change-streams-to-sink</module>
