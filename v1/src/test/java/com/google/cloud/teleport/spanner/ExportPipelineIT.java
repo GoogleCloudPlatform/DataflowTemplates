@@ -112,8 +112,8 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + ") PRIMARY KEY(Id)",
             testName);
 
-    googleSqlResourceManager.createTable(createEmptyTableStatement);
-    googleSqlResourceManager.createTable(createSingersTableStatement);
+    googleSqlResourceManager.executeDdlStatement(createEmptyTableStatement);
+    googleSqlResourceManager.executeDdlStatement(createSingersTableStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
     googleSqlResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
@@ -164,8 +164,8 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + "PRIMARY KEY(\"Id\"))",
             testName);
 
-    postgresResourceManager.createTable(createEmptyTableStatement);
-    postgresResourceManager.createTable(createSingersTableStatement);
+    postgresResourceManager.executeDdlStatement(createEmptyTableStatement);
+    postgresResourceManager.executeDdlStatement(createSingersTableStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
     postgresResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =

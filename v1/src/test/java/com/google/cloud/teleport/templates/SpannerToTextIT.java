@@ -77,7 +77,7 @@ public class SpannerToTextIT extends TemplateTestBase {
                 + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             testName);
-    googleSqlResourceManager.createTable(createTableStatement);
+    googleSqlResourceManager.executeDdlStatement(createTableStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s", testName));
     googleSqlResourceManager.write(expectedData);
 
@@ -136,7 +136,7 @@ public class SpannerToTextIT extends TemplateTestBase {
                 + "  \"LastName\" character varying(256),\n"
                 + " PRIMARY KEY(\"Id\"))",
             testName);
-    postgresResourceManager.createTable(createTableStatement);
+    postgresResourceManager.executeDdlStatement(createTableStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s", testName));
     postgresResourceManager.write(expectedData);
 

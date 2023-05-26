@@ -101,7 +101,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
                 + "  completed BOOL,\n"
                 + ") PRIMARY KEY(eventId)",
             name);
-    spannerResourceManager.createTable(createTableStatement);
+    spannerResourceManager.executeDdlStatement(createTableStatement);
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
             .setQPS("1000000")
