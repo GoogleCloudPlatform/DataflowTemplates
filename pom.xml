@@ -125,6 +125,11 @@
         <artifactId>avro</artifactId>
         <version>${avro.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.google.apis</groupId>
+        <artifactId>google-api-services-storage</artifactId>
+        <version>v1-rev20230301-2.0.0</version>
+      </dependency>
 
       <!-- If any module uses log4j 2.x, enforce it is patched by default -->
       <dependency>
