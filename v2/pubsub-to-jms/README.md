@@ -1,6 +1,6 @@
-# Dataflow Flex Template to ingest data from JMS Broker Server to Pub/Sub
+# Dataflow Flex Template to ingest data from Pub/Sub to JMS Server
 
-A Dataflow pipeline to stream records from JMS Queue/Topic to Pub/Sub topic.
+A Dataflow pipeline to stream messages from Pub/Sub subscription to JMS Queue/Topic.
 
 ## Requirements
 
@@ -23,7 +23,7 @@ Execute the following command from the directory containing the parent pom.xml
 (DataflowTemplates/):
 
 ```shell
-mvn clean compile -pl v2/jms-to-pubsub -am
+mvn clean compile -pl v2/pubsub-to-jms -am
 ```
 
 ### Executing unit tests
@@ -32,7 +32,7 @@ Execute the following command from the directory containing the parent pom.xml
 (DataflowTemplates/):
 
 ```shell
-mvn clean test -pl v2/jms-to-pubsub -am
+mvn clean test -pl v2/pubsub-to-jms -am
 ```
 
 ## Uploading Templates
@@ -51,8 +51,8 @@ __Set environment variables that will be used in the build process.__
 
 ```sh
 export PROJECT=my-project
-export IMAGE_NAME=jms-to-pubsub-image
-export MODULE_NAME=jms-to-pubsub
+export IMAGE_NAME=pubsub-to-jms-image
+export MODULE_NAME=pubsub-to-jms
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
@@ -77,12 +77,12 @@ mvn clean package -pl "v2/${MODULE_NAME}" -am \
 Create a file with the metadata required for launching the Flex template. Once
 created, this file should be placed in GCS.
 
-The `jms-to-pubsub-metadata.json` file in this directory
+The `pubsub-to-jms-metadata.json` file in this directory
 contains most of the content for this file. To build image spec file on GCS, use following-:
 ```shell
 export BUCKET_NAME=dataflow-template-bucket  #bucket where image spec file will be stored
-export METADATA_FILEPATH=v2/jms-to-pubsub/src/main/resources/jms-to-pubsub-metadata.json
-export TEMPLATE_SPEC_GCSPATH="gs://${BUCKET_NAME}/templates/specs/jms-to-pubsub"
+export METADATA_FILEPATH=v2/pubsub-to-jms/src/main/resources/pubsub-to-jms-metadata.json
+export TEMPLATE_SPEC_GCSPATH="gs://${BUCKET_NAME}/templates/specs/pubsub-to-jms"
 
 gcloud dataflow flex-template build "${TEMPLATE_SPEC_GCSPATH}" \
     --image "${TARGET_GCR_IMAGE}" \
@@ -94,13 +94,14 @@ gcloud dataflow flex-template build "${TEMPLATE_SPEC_GCSPATH}" \
 
 The template requires the following parameters:
 
+* inputSubscription: Pub/Sub Subscription to read messages. For example-
+  projects/<project-id>/subscriptions/<subscription-name>.
 * jmsServer: JMS (ActiveMQ) Server IP. For example-
   tcp://<ActiveMQ-HostIP>:<PORT>
-* inputName: Input JMS Queue/Topic to read from. For
-  example- inputQueue.
-* inputType: JMS Destination Type , can be queue or topic
-* outputTopic: Pub/Sub topic to output records. For example-
-  projects/<project-id>/topics/<topic-name>.
+* outputName: Output JMS Queue/Topic to read from. For
+  example- outputQueue.
+* outputType: JMS Destination Type , can be queue or topic
+
 
 
 The template has the following optional parameters:
@@ -116,10 +117,10 @@ export REGION=us-central1   #update based on requirement
 gcloud dataflow flex-template run "$JOB_NAME-$(date +'%Y%m%d%H%M%S')" \
   --project "$PROJECT" --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters inputSubscription="projects/exampleproject/subscriptions/examplesubscription" \
   --parameters jmsServer="tcp://10.128.15.197:61616" \
-  --parameters inputName="test"  \
-  --parameters inputType="queue" \
-  --parameters outputTopic="projects/exampleproject/topics/exampletopic" \
+  --parameters outputName="test"  \
+  --parameters outputType="queue" \
   --parameters username="" \
   --parameters password=""
 ```

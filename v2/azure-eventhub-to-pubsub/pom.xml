@@ -52,6 +52,10 @@
             <artifactId>kafka-common</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-messaging-eventhubs</artifactId>
+            <version>5.15.0</version>
+        </dependency>
     </dependencies>
 </project>

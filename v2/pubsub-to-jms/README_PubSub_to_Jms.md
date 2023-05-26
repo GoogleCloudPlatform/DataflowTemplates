@@ -1,10 +1,10 @@
-JMS to Pubsub Template
+Pubsub to Jms Template
 ---
-A pipeline to extract data from JMS Server(Queue/Topic) and write to Pubsub Topic.
+A pipeline to extract data from Pubsub Subscription and write to JMS Server(Queue/Topic).
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=JMS_to_PubSub).
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_to_JMS).
 
 
 :bulb: This is a generated documentation based
@@ -15,10 +15,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
+* **inputSubscription** (Input Pub/Sub Subscription): The name of the Subscription from which data should be read, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
 * **jmsServer** jmsServer: JMS (ActiveMQ) Server IP. For example-tcp://<ActiveMQ-Host>:<PORT>
-* **inputName** (JMS(ActiveMQ) queue/topic to read the input from): JMS Queue/Topic to read the input from. (Example: queue1/topic1).
-* **inputType** (JMS(ActiveMQ)  Destination to read from , can be queue or topic.
-* **outputTopic** (Output Pub/Sub topic): The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **outputName** (JMS(ActiveMQ) queue/topic to write the input to): JMS Queue/Topic to write the input to. (Example: queue1/topic1).
+* **outputType** (JMS(ActiveMQ)  Destination to write, can be queue or topic.
 
 ### Optional Parameters
 * **username** : username for authentication with JMS server (Example: sampleusername).
@@ -38,7 +38,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
     * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/jms-to-pubsub/src/main/java/com/google/cloud/teleport/v2/templates/JmsToPubsub.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/pubsub-to-jms/src/main/java/com/google/cloud/teleport/v2/templates/PubsubToJms.java)
 
 ### Templates Plugin
 
@@ -73,8 +73,8 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
--DtemplateName="Jms_to_PubSub" \
--pl v2/jms-to-pubsub \
+-DtemplateName="PubSub_to_Jms" \
+-pl v2/pubsub-to-jms \
 -am
 ```
 
@@ -82,7 +82,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/Jms_to_PubSub
+Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_to_Jms
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -102,27 +102,28 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Jms_to_PubSub"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_to_Jms"
 
 ### Required
+export INPUT_SUBSCRIPTION=<inputSubscription>
 export JMS_SERVER=<jmsServer>
-export INPUT_NAME=<inputName>
-export INPUT_TYPE=<inputType>
-export OUTPUT_TOPIC=<outputTopic>
+export OUTPUT_NAME=<outputName>
+export OUTPUT_TYPE=<outputType>
+
 
 
 ### Optional
 export USERNAME=<username>
 export PASSWORD=<password>
 
-gcloud dataflow flex-template run "jms-to-pubsub-job" \
+gcloud dataflow flex-template run "pubsub-to-jms-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "inputSubscription=$INPUT_SUBSCRIPTION" \
   --parameters "brokerServer=$BROKER_SERVER" \
-  --parameters "inputType=$INPUT_NAME" \
-  --parameters "inputType=$INPUT_TYPE" \
-  --parameters "outputTopic=$OUTPUT_TOPIC" \
+  --parameters "outputName=$OUTPUT_NAME" \
+  --parameters "outputType=$OUTPUT_TYPE" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD"
 ```
@@ -143,10 +144,11 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
+export INPUT_SUBSCRIPTION=<inputSubscription>
 export JMS_SERVER=<jmsServer>
-export INPUT_NAME=<inputName>
-export INPUT_TYPE=<inputType>
-export OUTPUT_TOPIC=<outputTopic>
+export OUTPUT_NAME=<outputName>
+export OUTPUT_TYPE=<outputType>
+
 
 
 ### Optional
@@ -158,9 +160,9 @@ mvn clean package -PtemplatesRun \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="jms-to-pubsub-job" \
--DtemplateName="Jms_to_PubSub" \
--Dparameters="jmsServer=$JMS_SERVER,inputName=$INPUT_NAME,inputType=$INPUT_TYPE,,outputTopic=$OUTPUT_TOPIC,username=$USERNAME,password=$PASSWORD" \
--pl v2/jms-to-pubsub \
+-DjobName="pubsub-to-jms-job" \
+-DtemplateName="PubSub_to_Jms" \
+-Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,jmsServer=$JMS_SERVER,outputName=$OUTPUT_NAME,outputType=$OUTPUT_TYPE,username=$USERNAME,password=$PASSWORD" \
+-pl v2/pubsub-to-jms \
 -am
 ```

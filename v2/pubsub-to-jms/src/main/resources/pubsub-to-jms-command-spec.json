@@ -1,0 +1,9 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.PubsubToJms",
+  "classPath": "/template/pubsub-to-jms/*:/template/pubsub-to-jms/libs/*:/template/pubsub-to-jms/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"pubsub-to-jms\"}",
+    "autoscalingAlgorithm": "THROUGHPUT_BASED",
+    "maxNumWorkers": "10"
+  }
+}
