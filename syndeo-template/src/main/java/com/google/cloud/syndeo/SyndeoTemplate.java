@@ -194,30 +194,44 @@ public class SyndeoTemplate {
 
   private static Object parseJsonNode(KV<Field, JsonNode> fieldPair) {
     if (fieldPair == null) return null;
+    JsonNode fieldNode = fieldPair.getValue();
+    // Field field = fieldPair.getKey();
+
+    // Object parsedField =
+    //     fieldNode == null
+    //         ? null
+    //         : fieldNode.isBoolean()
+    //             ? fieldNode.asBoolean()
+    //             : fieldNode.isFloatingPointNumber()
+    //                 ? fieldNode.asDouble()
+    //                 : fieldNode.isNumber()
+    //                     ? fieldNode.asLong()
+    //                     : !fieldNode.isContainerNode()
+    //                         ? fieldNode.asText()
+    //                         : fieldNode.isArray()
+    //                             ? new ObjectMapper().convertValue(fieldNode, List.class)
+    //                             : field.getType().getTypeName() == TypeName.MAP
+    //                                 ? new ObjectMapper().convertValue(fieldNode, Map.class)
+    //                                 : field.getType().getTypeName() == TypeName.ROW
+    //                                     ? convertJsonNodeToRow(fieldPair)
+    //                                     : new ObjectMapper().convertValue(fieldNode,
+    // Object.class);
+
+    // return parsedField;
+
+    if (fieldNode == null) return null;
+    if (fieldNode.isBoolean()) return fieldNode.asBoolean();
+    if (fieldNode.isFloatingPointNumber()) return fieldNode.asDouble();
+    if (fieldNode.isNumber()) return fieldNode.asLong();
+    if (!fieldNode.isContainerNode()) return fieldNode.asText();
+    if (fieldNode.isArray()) return new ObjectMapper().convertValue(fieldNode, List.class);
 
     Field field = fieldPair.getKey();
-    JsonNode fieldNode = fieldPair.getValue();
+    if (field.getType().getTypeName() == TypeName.MAP)
+      return new ObjectMapper().convertValue(fieldNode, Map.class);
+    if (field.getType().getTypeName() == TypeName.ROW) return convertJsonNodeToRow(fieldPair);
 
-    Object parsedField =
-        fieldNode == null
-            ? null
-            : fieldNode.isBoolean()
-                ? fieldNode.asBoolean()
-                : fieldNode.isFloatingPointNumber()
-                    ? fieldNode.asDouble()
-                    : fieldNode.isNumber()
-                        ? fieldNode.asLong()
-                        : !fieldNode.isContainerNode()
-                            ? fieldNode.asText()
-                            : fieldNode.isArray()
-                                ? new ObjectMapper().convertValue(fieldNode, List.class)
-                                : field.getType().getTypeName() == TypeName.MAP
-                                    ? new ObjectMapper().convertValue(fieldNode, Map.class)
-                                    : field.getType().getTypeName() == TypeName.ROW
-                                        ? convertJsonNodeToRow(fieldPair)
-                                        : new ObjectMapper().convertValue(fieldNode, Object.class);
-
-    return parsedField;
+    return new ObjectMapper().convertValue(fieldNode, Object.class);
   }
 
   private static Row convertJsonNodeToRow(KV<Field, JsonNode> fieldPair) {
