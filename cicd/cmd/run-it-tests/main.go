@@ -53,6 +53,7 @@ func main() {
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
+		mvnFlags.SkipShade(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunIntegrationTests(),
 		mvnFlags.ThreadCount(4),
