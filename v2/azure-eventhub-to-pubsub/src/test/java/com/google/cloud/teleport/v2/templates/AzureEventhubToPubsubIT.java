@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -83,6 +84,7 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(AzureEventhubToPubsub.class)
 @RunWith(JUnit4.class)
+@Ignore("Need static resources to run")
 public class AzureEventhubToPubsubIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(AzureEventhubToPubsubIT.class);
