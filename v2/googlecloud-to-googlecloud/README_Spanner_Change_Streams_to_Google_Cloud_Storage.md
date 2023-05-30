@@ -25,6 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Optional Parameters
 
 * **spannerProjectId** (Spanner Project ID): Project to read change streams from. The default for this parameter is the project where the Dataflow pipeline is running.
+* **spannerDatabaseRole** (Spanner database role): Database role user assumes while reading from the change stream. The database role should have required privileges to read from change stream. If a database role is not specified, the user should have required IAM permissions to read from the database.
 * **spannerMetadataTableName** (Cloud Spanner metadata table name): The Cloud Spanner change streams connector metadata table name to use. If not provided, a Cloud Spanner change streams connector metadata table will automatically be created during the pipeline flow. This parameter must be provided when updating an existing pipeline and should not be provided otherwise.
 * **startTimestamp** (The timestamp to read change streams from): The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.
 * **endTimestamp** (The timestamp to read change streams to): The ending DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an infinite time in the future.
@@ -125,6 +126,7 @@ export GCS_OUTPUT_DIRECTORY=<gcsOutputDirectory>
 
 ### Optional
 export SPANNER_PROJECT_ID=""
+export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
@@ -142,6 +144,7 @@ gcloud dataflow flex-template run "spanner-change-streams-to-google-cloud-storag
   --parameters "spannerProjectId=$SPANNER_PROJECT_ID" \
   --parameters "spannerInstanceId=$SPANNER_INSTANCE_ID" \
   --parameters "spannerDatabase=$SPANNER_DATABASE" \
+  --parameters "spannerDatabaseRole=$SPANNER_DATABASE_ROLE" \
   --parameters "spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID" \
   --parameters "spannerMetadataDatabase=$SPANNER_METADATA_DATABASE" \
   --parameters "spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME" \
@@ -182,6 +185,7 @@ export GCS_OUTPUT_DIRECTORY=<gcsOutputDirectory>
 
 ### Optional
 export SPANNER_PROJECT_ID=""
+export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
@@ -199,7 +203,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-google-cloud-storage-job" \
 -DtemplateName="Spanner_Change_Streams_to_Google_Cloud_Storage" \
--Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,spannerHost=$SPANNER_HOST,outputFileFormat=$OUTPUT_FILE_FORMAT,windowDuration=$WINDOW_DURATION,rpcPriority=$RPC_PRIORITY,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS" \
+-Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,spannerHost=$SPANNER_HOST,outputFileFormat=$OUTPUT_FILE_FORMAT,windowDuration=$WINDOW_DURATION,rpcPriority=$RPC_PRIORITY,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS" \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
