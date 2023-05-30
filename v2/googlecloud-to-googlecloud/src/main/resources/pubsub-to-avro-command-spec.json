@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.PubsubToAvro",
+  "classPath": "/template/pubsub-to-avro/pubsub-to-avro-conscrypt.jar:/template/pubsub-to-avro*:/template/pubsub-to-avro/libs/*:/template/pubsub-to-avro/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"pubsub-to-avro\"}"
+  }
+}
