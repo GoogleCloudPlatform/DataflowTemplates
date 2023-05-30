@@ -53,6 +53,16 @@ public class JsonTestUtil {
   }
 
   /**
+   * Read Json records to a list of Maps.
+   *
+   * @param contents String with contents to read.
+   * @return A list with all records.
+   */
+  public static List<Map<String, Object>> readRecords(String contents) throws IOException {
+    return readRecords(contents.getBytes());
+  }
+
+  /**
    * Read Json record to a Map.
    *
    * @param contents Byte array with contents to read.
@@ -61,5 +71,15 @@ public class JsonTestUtil {
   public static Map<String, Object> readRecord(byte[] contents) throws IOException {
     JsonMapper mapper = new JsonMapper();
     return mapper.readerFor(mapTypeRef).readValue(contents);
+  }
+
+  /**
+   * Read Json record to a Map.
+   *
+   * @param contents String with contents to read.
+   * @return A map with the records.
+   */
+  public static Map<String, Object> readRecord(String contents) throws IOException {
+    return readRecord(contents.getBytes());
   }
 }
