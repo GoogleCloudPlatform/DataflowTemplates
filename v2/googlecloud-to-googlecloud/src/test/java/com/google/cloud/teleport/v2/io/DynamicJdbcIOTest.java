@@ -129,7 +129,7 @@ public class DynamicJdbcIOTest {
     DynamicJdbcIO.DynamicDataSourceConfiguration config =
         DynamicJdbcIO.DynamicDataSourceConfiguration.create(
             "org.apache.derby.jdbc.ClientDriver",
-            maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null));
+            maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null).get());
     try (Connection conn = config.buildDatasource().getConnection()) {
       assertTrue(conn.isValid(0));
     }
@@ -137,14 +137,14 @@ public class DynamicJdbcIOTest {
 
   @Test
   public void testDataSourceConfigurationUsernameAndPassword() throws Exception {
-    String usename = "sa";
+    String username = "sa";
     String password = "sa";
     DynamicJdbcIO.DynamicDataSourceConfiguration config =
         DynamicJdbcIO.DynamicDataSourceConfiguration.create(
                 "org.apache.derby.jdbc.ClientDriver",
-                maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null))
-            .withUsername(maybeDecrypt(usename, null))
-            .withPassword(maybeDecrypt(password, null));
+                maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null).get())
+            .withUsername(maybeDecrypt(username, null).get())
+            .withPassword(maybeDecrypt(password, null).get());
 
     try (Connection conn = config.buildDatasource().getConnection()) {
       assertTrue(conn.isValid(0));
@@ -158,9 +158,9 @@ public class DynamicJdbcIOTest {
     DynamicJdbcIO.DynamicDataSourceConfiguration config =
         DynamicJdbcIO.DynamicDataSourceConfiguration.create(
                 "org.apache.derby.jdbc.ClientDriver",
-                maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null))
-            .withUsername(maybeDecrypt(usename, null))
-            .withPassword(maybeDecrypt(password, null));
+                maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null).get())
+            .withUsername(maybeDecrypt(usename, null).get())
+            .withPassword(maybeDecrypt(password, null).get());
 
     try (Connection conn = config.buildDatasource().getConnection()) {
       assertTrue(conn.isValid(0));
@@ -174,9 +174,9 @@ public class DynamicJdbcIOTest {
     DynamicJdbcIO.DynamicDataSourceConfiguration config =
         DynamicJdbcIO.DynamicDataSourceConfiguration.create(
                 "org.apache.derby.jdbc.ClientDriver",
-                maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null))
-            .withUsername(maybeDecrypt(usename, null))
-            .withPassword(maybeDecrypt(password, null));
+                maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null).get())
+            .withUsername(maybeDecrypt(usename, null).get())
+            .withPassword(maybeDecrypt(password, null).get());
 
     try (Connection conn = config.buildDatasource().getConnection()) {
       assertTrue(conn.isValid(0));

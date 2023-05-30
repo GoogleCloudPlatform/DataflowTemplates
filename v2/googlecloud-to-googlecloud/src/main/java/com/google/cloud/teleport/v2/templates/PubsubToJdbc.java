@@ -114,17 +114,17 @@ public class PubsubToJdbc {
     DynamicJdbcIO.DynamicDataSourceConfiguration dataSourceConfiguration =
         DynamicJdbcIO.DynamicDataSourceConfiguration.create(
                 options.getDriverClassName(),
-                maybeDecrypt(options.getConnectionUrl(), options.getKMSEncryptionKey()))
+                maybeDecrypt(options.getConnectionUrl(), options.getKMSEncryptionKey()).get())
             .withDriverJars(options.getDriverJars());
     if (options.getUsername() != null) {
       dataSourceConfiguration =
           dataSourceConfiguration.withUsername(
-              maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()));
+              maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()).get());
     }
     if (options.getPassword() != null) {
       dataSourceConfiguration =
           dataSourceConfiguration.withPassword(
-              maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()));
+              maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()).get());
     }
     if (options.getConnectionProperties() != null) {
       dataSourceConfiguration =
