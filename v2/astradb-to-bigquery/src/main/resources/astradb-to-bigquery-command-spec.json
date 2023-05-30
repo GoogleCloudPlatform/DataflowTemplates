@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.astradb.templates.AstraDbToBigQuery",
+  "classPath": "/template/astradb-to-bigquery/astradb-to-bigquery-conscrypt.jar:/template/astradb-to-bigquery/*:/template/astradb-to-bigquery/libs/*:/template/astradb-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"astradb_to_bigquery\"}"
+  }
+}
