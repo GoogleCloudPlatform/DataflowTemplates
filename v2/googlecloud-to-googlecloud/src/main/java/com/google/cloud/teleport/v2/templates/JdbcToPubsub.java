@@ -30,6 +30,7 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.values.PCollection;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -142,7 +143,7 @@ public class JdbcToPubsub {
      */
     JdbcIO.DataSourceConfiguration dataSourceConfiguration =
         JdbcIO.DataSourceConfiguration.create(
-                options.getDriverClassName(),
+                StaticValueProvider.of(options.getDriverClassName()),
                 maybeDecrypt(options.getConnectionUrl(), options.getKMSEncryptionKey()))
             .withDriverJars(options.getDriverJars());
     if (options.getUsername() != null) {

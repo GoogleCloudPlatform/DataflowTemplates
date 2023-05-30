@@ -46,6 +46,8 @@ import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.io.splunk.SplunkIO;
 import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -158,7 +160,7 @@ public final class GCSToSplunk {
    * @return The pipeline result.
    */
   public static PipelineResult run(GCSToSplunkOptions options) {
-    String token = getMaybeDecryptedToken(options);
+    ValueProvider<String> token = getMaybeDecryptedToken(options);
     Pipeline pipeline = Pipeline.create(options);
 
     CoderRegistry registry = pipeline.getCoderRegistry();
@@ -219,8 +221,8 @@ public final class GCSToSplunk {
     return SplunkConverters.failsafeStringToSplunkEvent(SPLUNK_EVENT_OUT, SPLUNK_EVENT_ERROR_OUT);
   }
 
-  static SplunkIO.Write writeToSplunk(GCSToSplunkOptions options, String token) {
-    return SplunkIO.write(options.getUrl(), token)
+  static SplunkIO.Write writeToSplunk(GCSToSplunkOptions options, ValueProvider<String> token) {
+    return SplunkIO.write(StaticValueProvider.of(options.getUrl()), token)
         .withBatchCount(options.getBatchCount())
         .withParallelism(options.getParallelism())
         .withDisableCertificateValidation(options.getDisableCertificateValidation())
@@ -295,7 +297,7 @@ public final class GCSToSplunk {
     }
   }
 
-  private static String getMaybeDecryptedToken(GCSToSplunkOptions options) {
+  private static ValueProvider<String> getMaybeDecryptedToken(GCSToSplunkOptions options) {
     SplunkTokenSource splunkTokenSource =
         EnumUtils.getEnum(SplunkTokenSource.class, options.getTokenSource());
     switch (splunkTokenSource) {
@@ -304,7 +306,7 @@ public final class GCSToSplunk {
             options.getTokenSecretId() != null,
             "tokenSecretId is required to retrieve token from Secret Manager");
         LOG.info("Using token secret stored in Secret Manager");
-        return SecretManagerUtils.getSecret(options.getTokenSecretId());
+        return StaticValueProvider.of(SecretManagerUtils.getSecret(options.getTokenSecretId()));
       case KMS:
         checkArgument(
             options.getToken() != null && options.getTokenKMSEncryptionKey() != null,
@@ -317,7 +319,7 @@ public final class GCSToSplunk {
         LOG.warn(
             "Using plaintext token. Consider storing the token in Secret Manager or "
                 + "pass an encrypted token and a KMS Key to decrypt it");
-        return options.getToken();
+        return StaticValueProvider.of(options.getToken());
     }
   }
 }

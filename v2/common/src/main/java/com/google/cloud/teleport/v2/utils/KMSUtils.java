@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.regex.Pattern;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,23 +37,35 @@ public class KMSUtils {
           "projects/([^/]+)/locations/([a-zA-Z0-9_-]{1,63})/keyRings/"
               + "[a-zA-Z0-9_-]{1,63}/cryptoKeys/[a-zA-Z0-9_-]{1,63}");
 
-  public static String maybeDecrypt(String unencrypted, String kmsKey) {
+  public static ValueProvider<String> maybeDecrypt(String unencrypted, String kmsKey) {
     if (kmsKey == null || kmsKey.isEmpty()) {
       LOG.info("KMS Key is not specified. Not decrypting.");
-      return unencrypted;
-    } else if (!isKmsKey(kmsKey)) {
+      return StaticValueProvider.of(unencrypted);
+    }
+
+    if (!isKmsKey(kmsKey)) {
       IllegalArgumentException exception =
           new IllegalArgumentException("Provided KMS Key %s is invalid");
       throw new RuntimeException(exception);
-    } else {
-      String decrypted;
-      try {
-        decrypted = decryptWithKMS(unencrypted /*value*/, kmsKey /*key*/);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-      return decrypted;
     }
+
+    return new ValueProvider<>() {
+      @Override
+      public String get() {
+        String decrypted;
+        try {
+          decrypted = decryptWithKMS(unencrypted /*value*/, kmsKey /*key*/);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+        return decrypted;
+      }
+
+      @Override
+      public boolean isAccessible() {
+        return true;
+      }
+    };
   }
 
   private static boolean isKmsKey(String kmsKey) {

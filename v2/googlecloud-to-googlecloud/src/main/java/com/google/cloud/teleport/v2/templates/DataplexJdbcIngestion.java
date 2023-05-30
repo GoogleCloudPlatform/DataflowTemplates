@@ -63,6 +63,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.DataSourceConfiguration;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.Distinct;
@@ -483,7 +484,7 @@ public class DataplexJdbcIngestion {
   static DataSourceConfiguration configDataSource(DataplexJdbcIngestionOptions options) {
     JdbcIO.DataSourceConfiguration dataSourceConfiguration =
         JdbcIO.DataSourceConfiguration.create(
-                options.getDriverClassName(),
+                StaticValueProvider.of(options.getDriverClassName()),
                 maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
             .withUsername(maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
             .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
