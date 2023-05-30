@@ -429,6 +429,19 @@
         <module>syndeo-template</module>
       </modules>
     </profile>
+    <!-- The following snapshot profile allows us to test Templates with
+     unreleased Apache Beam versions, for example:
+     mvn test -Psnapshot -Dbeam.version=2.48.0-SNAPSHOT
+  -->
+    <profile>
+      <id>snapshot</id>
+      <repositories>
+        <repository>
+          <id>apache.snapshots</id>
+          <url>https://repository.apache.org/content/repositories/snapshots</url>
+        </repository>
+      </repositories>
+    </profile>
   </profiles>
 
   <modules>
