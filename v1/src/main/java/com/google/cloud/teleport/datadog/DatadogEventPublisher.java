@@ -56,13 +56,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link HttpEventPublisher} is a utility class that helps write {@link DatadogEvent}s to a Datadog
- * Logs API endpoint.
+ * {@link DatadogEventPublisher} is a utility class that helps write {@link DatadogEvent}s to a
+ * Datadog Logs API endpoint.
  */
 @AutoValue
-public abstract class HttpEventPublisher {
+public abstract class DatadogEventPublisher {
 
-  private static final Logger LOG = LoggerFactory.getLogger(HttpEventPublisher.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DatadogEventPublisher.class);
 
   private static final int DEFAULT_MAX_CONNECTIONS = 1;
 
@@ -82,7 +82,7 @@ public abstract class HttpEventPublisher {
   private static final String HTTPS_PROTOCOL_PREFIX = "https";
 
   public static Builder newBuilder() {
-    return new AutoValue_HttpEventPublisher.Builder();
+    return new AutoValue_DatadogEventPublisher.Builder();
   }
 
   abstract ApacheHttpTransport transport();
@@ -124,7 +124,7 @@ public abstract class HttpEventPublisher {
   }
 
   /**
-   * Same as {@link HttpEventPublisher#execute(List)} but with a single {@link DatadogEvent}.
+   * Same as {@link DatadogEventPublisher#execute(List)} but with a single {@link DatadogEvent}.
    *
    * @param event {@link DatadogEvent} object.
    */
@@ -202,7 +202,7 @@ public abstract class HttpEventPublisher {
 
     abstract Integer maxElapsedMillis();
 
-    abstract HttpEventPublisher autoBuild();
+    abstract DatadogEventPublisher autoBuild();
 
     /**
      * Method to set the Datadog Logs API URL.
@@ -240,11 +240,11 @@ public abstract class HttpEventPublisher {
     }
 
     /**
-     * Validates and builds a {@link HttpEventPublisher} object.
+     * Validates and builds a {@link DatadogEventPublisher} object.
      *
-     * @return {@link HttpEventPublisher}
+     * @return {@link DatadogEventPublisher}
      */
-    public HttpEventPublisher build() throws NoSuchAlgorithmException, KeyManagementException {
+    public DatadogEventPublisher build() throws NoSuchAlgorithmException, KeyManagementException {
 
       checkNotNull(apiKey(), "API Key needs to be specified via withApiKey(apiKey).");
       checkNotNull(genericUrl(), "URL needs to be specified via withUrl(url).");

@@ -64,7 +64,7 @@ public class DatadogIOTest {
   private static final List<DatadogEvent> DATADOG_EVENTS =
       ImmutableList.of(DATADOG_TEST_EVENT_1, DATADOG_TEST_EVENT_2);
 
-  private static final String EXPECTED_PATH = "/" + HttpEventPublisher.DD_URL_PATH;
+  private static final String EXPECTED_PATH = "/" + DatadogEventPublisher.DD_URL_PATH;
   private static final int TEST_PARALLELISM = 2;
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();

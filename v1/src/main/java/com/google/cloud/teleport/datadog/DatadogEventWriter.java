@@ -101,7 +101,7 @@ public abstract class DatadogEventWriter
   private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
   private Integer batchCount;
-  private HttpEventPublisher publisher;
+  private DatadogEventPublisher publisher;
 
   private static final Gson GSON =
       new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
@@ -142,8 +142,8 @@ public abstract class DatadogEventWriter
         MAX_BATCH_COUNT);
 
     try {
-      HttpEventPublisher.Builder builder =
-          HttpEventPublisher.newBuilder().withUrl(url().get()).withApiKey(apiKey().get());
+      DatadogEventPublisher.Builder builder =
+          DatadogEventPublisher.newBuilder().withUrl(url().get()).withApiKey(apiKey().get());
 
       publisher = builder.build();
       LOG.info("Successfully created HttpEventPublisher");
@@ -205,7 +205,7 @@ public abstract class DatadogEventWriter
   }
 
   /**
-   * Utility method to flush a batch of events via {@link HttpEventPublisher}.
+   * Utility method to flush a batch of events via {@link DatadogEventPublisher}.
    *
    * @param receiver Receiver to write {@link DatadogWriteError}s to
    */

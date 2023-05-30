@@ -32,8 +32,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import org.junit.Test;
 
-/** Unit tests for {@link com.google.cloud.teleport.datadog.HttpEventPublisher} class. */
-public class HttpEventPublisherTest {
+/** Unit tests for {@link DatadogEventPublisher} class. */
+public class DatadogEventPublisherTest {
 
   private static final DatadogEvent DATADOG_TEST_EVENT_1 =
       DatadogEvent.newBuilder()
@@ -61,8 +61,8 @@ public class HttpEventPublisherTest {
   public void stringPayloadTest()
       throws NoSuchAlgorithmException, KeyManagementException, IOException {
 
-    HttpEventPublisher publisher =
-        HttpEventPublisher.newBuilder()
+    DatadogEventPublisher publisher =
+        DatadogEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withApiKey("test-api-key")
             .build();
@@ -86,8 +86,8 @@ public class HttpEventPublisherTest {
   @Test
   public void contentTest() throws NoSuchAlgorithmException, KeyManagementException, IOException {
 
-    HttpEventPublisher publisher =
-        HttpEventPublisher.newBuilder()
+    DatadogEventPublisher publisher =
+        DatadogEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withApiKey("test-api-key")
             .build();
@@ -114,8 +114,8 @@ public class HttpEventPublisherTest {
   public void genericURLTest() throws IOException {
 
     String baseURL = "http://example.com";
-    HttpEventPublisher.Builder builder =
-        HttpEventPublisher.newBuilder().withUrl(baseURL).withApiKey("test-api-key");
+    DatadogEventPublisher.Builder builder =
+        DatadogEventPublisher.newBuilder().withUrl(baseURL).withApiKey("test-api-key");
 
     assertThat(
         builder.genericUrl(),
@@ -126,8 +126,8 @@ public class HttpEventPublisherTest {
   public void configureBackOffDefaultTest()
       throws NoSuchAlgorithmException, KeyManagementException, IOException {
 
-    HttpEventPublisher publisherDefaultBackOff =
-        HttpEventPublisher.newBuilder()
+    DatadogEventPublisher publisherDefaultBackOff =
+        DatadogEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withApiKey("test-api-key")
             .build();
@@ -142,8 +142,8 @@ public class HttpEventPublisherTest {
       throws NoSuchAlgorithmException, KeyManagementException, IOException {
 
     int timeoutInMillis = 600000; // 10 minutes
-    HttpEventPublisher publisherWithBackOff =
-        HttpEventPublisher.newBuilder()
+    DatadogEventPublisher publisherWithBackOff =
+        DatadogEventPublisher.newBuilder()
             .withUrl("http://example.com")
             .withApiKey("test-api-key")
             .withMaxElapsedMillis(timeoutInMillis)

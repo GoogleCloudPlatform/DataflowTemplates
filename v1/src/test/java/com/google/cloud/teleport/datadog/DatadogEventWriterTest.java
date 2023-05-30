@@ -47,7 +47,7 @@ import org.mockserver.verify.VerificationTimes;
 /** Unit tests for {@link com.google.cloud.teleport.datadog.DatadogEventWriter} class. */
 public class DatadogEventWriterTest {
 
-  private static final String EXPECTED_PATH = "/" + HttpEventPublisher.DD_URL_PATH;
+  private static final String EXPECTED_PATH = "/" + DatadogEventPublisher.DD_URL_PATH;
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
