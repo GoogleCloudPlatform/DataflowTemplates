@@ -87,7 +87,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "  BirthDate     DATE,\n"
             + "  LastModified  TIMESTAMP,\n"
             + ") PRIMARY KEY (SingerId)";
-    googleSqlResourceManager.createTable(statement);
+    googleSqlResourceManager.executeDdlStatement(statement);
 
     String manifestJson =
         "{\n"
@@ -178,7 +178,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "  BirthDate     DATE,\n"
             + "  LastModified  TIMESTAMP,\n"
             + ") PRIMARY KEY (SingerId)";
-    googleSqlResourceManager.createTable(statement);
+    googleSqlResourceManager.executeDdlStatement(statement);
 
     String manifestJson =
         "{\n"
@@ -267,7 +267,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "  \"BirthDate\"     date,\n"
             + "  \"LastModified\"  timestamp with time zone,\n"
             + " PRIMARY KEY (\"SingerId\"))";
-    postgresResourceManager.createTable(statement);
+    postgresResourceManager.executeDdlStatement(statement);
 
     String manifestJson =
         "{\n"

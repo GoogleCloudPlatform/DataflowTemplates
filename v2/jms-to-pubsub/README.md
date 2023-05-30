@@ -80,8 +80,8 @@ created, this file should be placed in GCS.
 The `jms-to-pubsub-metadata.json` file in this directory
 contains most of the content for this file. To build image spec file on GCS, use following-:
 ```shell
-export BUCKET_NAME=dataflow-template-bucket  #bucket where inage spec file will be stored
-export METADATA_FILEPATH=v2/mqtt-to-pubsub/src/main/resources/jms-to-pubsub-metadata.json
+export BUCKET_NAME=dataflow-template-bucket  #bucket where image spec file will be stored
+export METADATA_FILEPATH=v2/jms-to-pubsub/src/main/resources/jms-to-pubsub-metadata.json
 export TEMPLATE_SPEC_GCSPATH="gs://${BUCKET_NAME}/templates/specs/jms-to-pubsub"
 
 gcloud dataflow flex-template build "${TEMPLATE_SPEC_GCSPATH}" \

@@ -26,6 +26,7 @@ import org.apache.beam.sdk.options.Validation;
  * org.apache.beam.sdk.io.gcp.bigtable.BigtableIO}.
  */
 public interface BigtableCommonOptions extends GcpOptions {
+
   @TemplateParameter.Integer(
       order = 1,
       optional = true,
@@ -56,6 +57,7 @@ public interface BigtableCommonOptions extends GcpOptions {
 
   /** Provides {@link PipelineOptions} to write records to a Bigtable table. */
   interface WriteOptions extends BigtableCommonOptions {
+
     @TemplateParameter.Text(
         order = 1,
         regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
@@ -136,5 +138,147 @@ public interface BigtableCommonOptions extends GcpOptions {
     Integer getBigtableBulkWriteMaxRequestSizeBytes();
 
     void setBigtableBulkWriteMaxRequestSizeBytes(Integer value);
+  }
+
+  interface ReadOptions extends BigtableCommonOptions {
+
+    @TemplateParameter.Text(
+        order = 1,
+        regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
+        description = "Source Bigtable Instance ID",
+        helpText = "The ID of the Cloud Bigtable instance that contains the table")
+    @Validation.Required
+    String getBigtableReadInstanceId();
+
+    void setBigtableReadInstanceId(String value);
+
+    @TemplateParameter.Text(
+        order = 2,
+        description = "Source Cloud Bigtable table ID",
+        helpText = "The Cloud Bigtable table to read from.")
+    @Validation.Required
+    String getBigtableReadTableId();
+
+    void setBigtableReadTableId(String value);
+
+    @TemplateParameter.ProjectId(
+        order = 3,
+        optional = true,
+        description = "Source Cloud Bigtable Project ID",
+        helpText =
+            "Project to read Cloud Bigtable data from. The default for this parameter is the "
+                + "project where the Dataflow pipeline is running.")
+    @Default.String("")
+    String getBigtableReadProjectId();
+
+    void setBigtableReadProjectId(String projectId);
+
+    @TemplateParameter.Text(
+        order = 4,
+        optional = true,
+        regexes = {"[a-z][a-z0-9\\-_]+[a-z0-9]"},
+        description = "Bigtable App Profile",
+        helpText =
+            "Bigtable App Profile to use for reads. The default for this parameter "
+                + "is the Bigtable instance's default app profile")
+    @Default.String("default")
+    String getBigtableReadAppProfile();
+
+    void setBigtableReadAppProfile(String value);
+  }
+
+  interface ReadChangeStreamOptions extends BigtableCommonOptions.ReadOptions {
+
+    @TemplateParameter.Text(
+        order = 1,
+        optional = true,
+        description = "Cloud Bigtable change streams metadata instance ID",
+        helpText =
+            "The Cloud Bigtable instance to use for the change streams connector metadata table.")
+    @Default.String("")
+    String getBigtableChangeStreamMetadataInstanceId();
+
+    void setBigtableChangeStreamMetadataInstanceId(String value);
+
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        description = "Cloud Bigtable change streams metadata table ID",
+        helpText =
+            "The Cloud Bigtable change streams connector metadata table ID to use. If not "
+                + "provided, a Cloud Bigtable change streams connector metadata table will automatically be "
+                + "created during the pipeline flow.")
+    @Default.String("")
+    String getBigtableChangeStreamMetadataTableTableId();
+
+    void setBigtableChangeStreamMetadataTableTableId(String value);
+
+    @TemplateParameter.Text(
+        order = 3,
+        regexes = {"[a-z][a-z0-9\\-_]+[a-z0-9]"},
+        description = "Cloud Bigtable application profile ID",
+        helpText = "The application profile is used to distinguish workload in Cloud Bigtable")
+    @Validation.Required
+    String getBigtableChangeStreamAppProfile();
+
+    void setBigtableChangeStreamAppProfile(String value);
+
+    @TemplateParameter.Text(
+        order = 4,
+        optional = true,
+        description =
+            "Bigtable change streams charset name when reading values and column qualifiers",
+        helpText =
+            "Bigtable change streams charset name when reading values and column qualifiers. "
+                + "Default is UTF-8")
+    @Default.String("UTF-8")
+    String getBigtableChangeStreamCharset();
+
+    void setBigtableChangeStreamCharset(String value);
+
+    @TemplateParameter.DateTime(
+        order = 5,
+        optional = true,
+        description = "The timestamp to read change streams from",
+        helpText =
+            "The starting DateTime, inclusive, to use for reading change streams "
+                + "(https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the "
+                + "timestamp when the pipeline starts.")
+    @Default.String("")
+    String getBigtableChangeStreamStartTimestamp();
+
+    void setBigtableChangeStreamStartTimestamp(String startTimestamp);
+
+    @TemplateParameter.Text(
+        order = 6,
+        optional = true,
+        description = "Cloud Bigtable change streams column families to ignore",
+        helpText =
+            "A comma-separated list of column family names changes to which won't be captured")
+    @Default.String("")
+    String getBigtableChangeStreamIgnoreColumnFamilies();
+
+    void setBigtableChangeStreamIgnoreColumnFamilies(String value);
+
+    @TemplateParameter.Text(
+        order = 7,
+        optional = true,
+        description = "Cloud Bigtable change streams columns to ignore",
+        helpText = "A comma-separated list of column names changes to which won't be captured")
+    @Default.String("")
+    String getBigtableChangeStreamIgnoreColumns();
+
+    void setBigtableChangeStreamIgnoreColumns(String value);
+
+    @TemplateParameter.Text(
+        order = 8,
+        optional = true,
+        description = "A unique name of the client pipeline",
+        helpText =
+            "Allows to resume processing from the point where a "
+                + "previously running pipeline stopped")
+    String getBigtableChangeStreamName();
+
+    void setBigtableChangeStreamName(String value);
   }
 }

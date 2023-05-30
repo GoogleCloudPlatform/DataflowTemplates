@@ -191,33 +191,34 @@ public final class SpannerResourceManager implements ResourceManager {
   }
 
   /**
-   * Creates a table given a CREATE TABLE DDL statement.
+   * Executes a DDL statement.
    *
    * <p>Note: Implementations may do instance creation and database creation here.
    *
-   * @param statement The CREATE TABLE DDL statement.
+   * @param statement The DDL statement.
    * @throws IllegalStateException if method is called after resources have been cleaned up.
    */
-  public synchronized void createTable(String statement) throws IllegalStateException {
+  public synchronized void executeDdlStatement(String statement) throws IllegalStateException {
     checkIsUsable();
     maybeCreateInstance();
     maybeCreateDatabase();
 
-    LOG.info("Creating table in database {} using statement '{}'.", databaseId, statement);
+    LOG.info("Executing DDL statement '{}' on database {}.", statement, databaseId);
     try {
       databaseAdminClient
           .updateDatabaseDdl(
               instanceId, databaseId, ImmutableList.of(statement), /* operationId= */ null)
           .get();
-      LOG.info("Successfully created table in database {}.", databaseId);
+      LOG.info("Successfully executed DDL statement '{}' on database {}.", statement, databaseId);
     } catch (ExecutionException | InterruptedException | SpannerException e) {
-      throw new SpannerResourceManagerException("Failed to create table.", e);
+      throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
   }
 
   /**
    * Writes a given record into a table. This method requires {@link
-   * SpannerResourceManager#createTable(String)} to be called for the target table beforehand.
+   * SpannerResourceManager#executeDdlStatement(String)} to be called for the target table
+   * beforehand.
    *
    * @param tableRecord A mutation object representing the table record.
    * @throws IllegalStateException if method is called after resources have been cleaned up or if
@@ -229,7 +230,8 @@ public final class SpannerResourceManager implements ResourceManager {
 
   /**
    * Writes a collection of table records into one or more tables. This method requires {@link
-   * SpannerResourceManager#createTable(String)} to be called for the target table beforehand.
+   * SpannerResourceManager#executeDdlStatement(String)} to be called for the target table
+   * beforehand.
    *
    * @param tableRecords A collection of mutation objects representing table records.
    * @throws IllegalStateException if method is called after resources have been cleaned up or if
@@ -252,7 +254,8 @@ public final class SpannerResourceManager implements ResourceManager {
 
   /**
    * Reads all the rows in a table. This method requires {@link
-   * SpannerResourceManager#createTable(String)} to be called for the target table beforehand.
+   * SpannerResourceManager#executeDdlStatement(String)} to be called for the target table
+   * beforehand.
    *
    * @param tableId The id of the table to read rows from.
    * @param columnNames The table's column names.
@@ -267,7 +270,8 @@ public final class SpannerResourceManager implements ResourceManager {
 
   /**
    * Reads all the rows in a table.This method requires {@link
-   * SpannerResourceManager#createTable(String)} to be called for the target table beforehand.
+   * SpannerResourceManager#executeDdlStatement(String)} to be called for the target table
+   * beforehand.
    *
    * @param tableId The id of table to read rows from.
    * @param columnNames A collection of the table's column names.

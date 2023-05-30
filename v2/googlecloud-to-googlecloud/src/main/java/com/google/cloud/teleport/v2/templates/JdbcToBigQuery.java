@@ -102,7 +102,7 @@ public class JdbcToBigQuery {
      */
     JdbcIO.DataSourceConfiguration dataSourceConfiguration =
         JdbcIO.DataSourceConfiguration.create(
-                options.getDriverClassName(),
+                StaticValueProvider.of(options.getDriverClassName()),
                 maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
             .withUsername(maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
             .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))

@@ -238,6 +238,7 @@ public class DirectRunnerClient implements PipelineLauncher {
       LOG.info("Finishing job {}...", currentJob.getId());
 
       this.cancelled = true;
+      currentJob.setCurrentState(JobState.CANCELLED.toString());
 
       try {
         this.stop();

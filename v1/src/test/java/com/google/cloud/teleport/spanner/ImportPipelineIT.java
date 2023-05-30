@@ -103,7 +103,7 @@ public class ImportPipelineIT extends TemplateTestBase {
     uploadImportPipelineArtifacts("googlesql");
     String createEmptyTableStatement =
         "CREATE TABLE EmptyTable (\n" + "  id INT64 NOT NULL,\n" + ") PRIMARY KEY(id)";
-    googleSqlResourceManager.createTable(createEmptyTableStatement);
+    googleSqlResourceManager.executeDdlStatement(createEmptyTableStatement);
 
     String createSingersTableStatement =
         "CREATE TABLE Singers (\n"
@@ -111,7 +111,7 @@ public class ImportPipelineIT extends TemplateTestBase {
             + "  FirstName STRING(MAX),\n"
             + "  LastName STRING(MAX),\n"
             + ") PRIMARY KEY(Id)";
-    googleSqlResourceManager.createTable(createSingersTableStatement);
+    googleSqlResourceManager.executeDdlStatement(createSingersTableStatement);
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -145,7 +145,7 @@ public class ImportPipelineIT extends TemplateTestBase {
     uploadImportPipelineArtifacts("postgres");
     String createEmptyTableStatement =
         "CREATE TABLE \"EmptyTable\" (\n" + "  id bigint NOT NULL,\nPRIMARY KEY(id)\n" + ")";
-    postgresResourceManager.createTable(createEmptyTableStatement);
+    postgresResourceManager.executeDdlStatement(createEmptyTableStatement);
 
     String createSingersTableStatement =
         "CREATE TABLE \"Singers\" (\n"
@@ -153,7 +153,7 @@ public class ImportPipelineIT extends TemplateTestBase {
             + "  \"FirstName\" character varying(256),\n"
             + "  \"LastName\" character varying(256),\n"
             + "PRIMARY KEY(\"Id\"))";
-    postgresResourceManager.createTable(createSingersTableStatement);
+    postgresResourceManager.executeDdlStatement(createSingersTableStatement);
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)

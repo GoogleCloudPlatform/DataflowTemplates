@@ -30,6 +30,7 @@ mvn clean package -pl v2/pubsub-binary-to-bigquery -am
 
 ## Template Pipelines
 
+* [Azure Eventhub To Pub/Sub](v2/azure-eventhub-to-pubsub/src/main/java/com/google/cloud/teleport/v2/templates/AzureEventhubToPubsub.java)
 * [BigQuery to Bigtable](v2/bigquery-to-bigtable/src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToBigtable.java)
 * [BigQuery to Datastore](v1/src/main/java/com/google/cloud/teleport/templates/BigQueryToDatastore.java)
 * [BigQuery to TFRecords](v1/src/main/java/com/google/cloud/teleport/templates/BigQueryToTFRecord.java)

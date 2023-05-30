@@ -85,7 +85,7 @@ public final class SpannerResourceManagerTest {
   }
 
   @Test
-  public void testCreateTableShouldThrowExceptionWhenSpannerCreateInstanceFails()
+  public void testExecuteDdlStatementShouldThrowExceptionWhenSpannerCreateInstanceFails()
       throws ExecutionException, InterruptedException {
     // arrange
     when(spanner.getInstanceAdminClient().createInstance(any()).get())
@@ -100,11 +100,12 @@ public final class SpannerResourceManagerTest {
             + ") PRIMARY KEY (SingerId)";
 
     // act & assert
-    assertThrows(SpannerResourceManagerException.class, () -> testManager.createTable(statement));
+    assertThrows(
+        SpannerResourceManagerException.class, () -> testManager.executeDdlStatement(statement));
   }
 
   @Test
-  public void testCreateTableShouldThrowExceptionWhenSpannerCreateDatabaseFails()
+  public void testExecuteDdlStatementShouldThrowExceptionWhenSpannerCreateDatabaseFails()
       throws ExecutionException, InterruptedException {
     // arrange
     prepareCreateInstanceMock();
@@ -119,11 +120,12 @@ public final class SpannerResourceManagerTest {
             + ") PRIMARY KEY (SingerId)";
 
     // act & assert
-    assertThrows(SpannerResourceManagerException.class, () -> testManager.createTable(statement));
+    assertThrows(
+        SpannerResourceManagerException.class, () -> testManager.executeDdlStatement(statement));
   }
 
   @Test
-  public void testCreateTableShouldThrowExceptionWhenSpannerUpdateDatabaseFails()
+  public void testExecuteDdlStatementShouldThrowExceptionWhenSpannerUpdateDatabaseFails()
       throws ExecutionException, InterruptedException {
     // arrange
     prepareCreateInstanceMock();
@@ -138,11 +140,12 @@ public final class SpannerResourceManagerTest {
             + ") PRIMARY KEY (SingerId)";
 
     // act & assert
-    assertThrows(SpannerResourceManagerException.class, () -> testManager.createTable(statement));
+    assertThrows(
+        SpannerResourceManagerException.class, () -> testManager.executeDdlStatement(statement));
   }
 
   @Test
-  public void testCreateTableShouldWorkWhenSpannerDoesntThrowAnyError()
+  public void testExecuteDdlStatementShouldWorkWhenSpannerDoesntThrowAnyError()
       throws ExecutionException, InterruptedException {
     //   arrange
     prepareCreateInstanceMock();
@@ -156,7 +159,7 @@ public final class SpannerResourceManagerTest {
             + ") PRIMARY KEY (SingerId)";
 
     // act
-    testManager.createTable(statement);
+    testManager.executeDdlStatement(statement);
 
     // assert
     // verify createInstance, createDatabase, and updateDatabaseDdl were called twice - once in
@@ -205,7 +208,7 @@ public final class SpannerResourceManagerTest {
   }
 
   @Test
-  public void testWriteSingleRecordShouldThrowExceptionWhenCalledBeforeCreateTable() {
+  public void testWriteSingleRecordShouldThrowExceptionWhenCalledBeforeExecuteDdlStatement() {
     // arrange
     // spotless:off
     Mutation testMutation =
@@ -271,7 +274,7 @@ public final class SpannerResourceManagerTest {
   }
 
   @Test
-  public void testWriteMultipleRecordsShouldThrowExceptionWhenCalledBeforeCreateTable() {
+  public void testWriteMultipleRecordsShouldThrowExceptionWhenCalledBeforeExecuteDdlStatement() {
     // arrange
     // spotless:off
     ImmutableList<Mutation> testMutations =
@@ -378,7 +381,7 @@ public final class SpannerResourceManagerTest {
   }
 
   @Test
-  public void testReadRecordsShouldThrowExceptionWhenCalledBeforeCreateTable() {
+  public void testReadRecordsShouldThrowExceptionWhenCalledBeforeExecuteDdlStatement() {
     ImmutableList<String> columnNames = ImmutableList.of("SingerId");
 
     assertThrows(
@@ -456,7 +459,7 @@ public final class SpannerResourceManagerTest {
     ImmutableList<String> columnNames = ImmutableList.of("SingerId");
 
     // act & assert
-    assertThrows(IllegalStateException.class, () -> testManager.createTable(statement));
+    assertThrows(IllegalStateException.class, () -> testManager.executeDdlStatement(statement));
     assertThrows(
         IllegalStateException.class, () -> testManager.readTableRecords("Singers", "SingerId"));
     assertThrows(
@@ -482,6 +485,6 @@ public final class SpannerResourceManagerTest {
     prepareCreateInstanceMock();
     prepareCreateDatabaseMock();
     prepareUpdateDatabaseMock();
-    testManager.createTable("");
+    testManager.executeDdlStatement("");
   }
 }

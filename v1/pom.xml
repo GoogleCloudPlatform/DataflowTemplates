@@ -900,20 +900,6 @@
   </build>
 
   <profiles>
-    <!-- The following snapshot profile allows us to test teleport with
-         unreleased apache sw. E.g. to test with a snapshot version of beam we
-         could do
-              mvn test -Psnapshot -Dbeam.version=A.B.C-SNAPSHOT
-      -->
-    <profile>
-      <id>snapshot</id>
-      <repositories>
-        <repository>
-          <id>apache.snapshots</id>
-          <url>https://repository.apache.org/content/repositories/snapshots</url>
-        </repository>
-      </repositories>
-    </profile>
     <profile>
       <id>missing-artifact-repos</id>
       <activation>

@@ -31,7 +31,11 @@
             <artifactId>beam-sdks-java-io-jms</artifactId>
             <version>${beam.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.google.cloud.teleport.v2</groupId>
+            <artifactId>common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.activemq</groupId>
             <artifactId>activemq-client</artifactId>
