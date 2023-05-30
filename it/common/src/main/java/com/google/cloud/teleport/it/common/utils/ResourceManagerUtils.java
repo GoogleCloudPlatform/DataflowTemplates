@@ -39,7 +39,7 @@ public class ResourceManagerUtils {
 
   private static final int MIN_PROJECT_ID_LENGTH = 4;
   private static final int MAX_PROJECT_ID_LENGTH = 30;
-  private static final Pattern ILLEGAL_PROJECT_CHARS = Pattern.compile("[^a-zA-Z0-9-!']");
+  private static final Pattern ILLEGAL_PROJECT_CHARS = Pattern.compile("[^a-zA-Z0-9-!:\\.']");
   private static final String TIME_ZONE = "UTC";
 
   /**
@@ -123,8 +123,8 @@ public class ResourceManagerUtils {
       throw new IllegalArgumentException(
           "Project ID "
               + idToCheck
-              + " is not a valid ID. Only letters, numbers, hyphens, single quotes and exclamation"
-              + " points are allowed.");
+              + " is not a valid ID. Only letters, numbers, hyphens, single quotes, colon, dot and"
+              + " exclamation points are allowed.");
     }
   }
 
