@@ -128,10 +128,11 @@ public class JdbcToBigQuery {
               .withPartitionColumn(options.getPartitionColumn())
               .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
       if (options.getNumPartitions() != null) {
-        readIO.withNumPartitions(options.getNumPartitions());
+        readIO = readIO.withNumPartitions(options.getNumPartitions());
       }
       if (options.getLowerBound() != null && options.getUpperBound() != null) {
-        readIO.withLowerBound(options.getLowerBound()).withUpperBound(options.getUpperBound());
+        readIO =
+            readIO.withLowerBound(options.getLowerBound()).withUpperBound(options.getUpperBound());
       }
       rows = pipeline.apply("Read from JDBC with Partitions", readIO);
     } else {
