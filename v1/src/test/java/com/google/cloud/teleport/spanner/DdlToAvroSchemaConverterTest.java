@@ -867,7 +867,7 @@ public class DdlToAvroSchemaConverterTest {
             .inputColumn("i1")
             .type(Type.bool())
             .size(-1)
-            .columnOptions(ImmutableList.of("required=false"))
+            .columnOptions(ImmutableList.of("required=FALSE"))
             .endInputColumn()
             .inputColumn("i2")
             .type(Type.string())
@@ -876,7 +876,7 @@ public class DdlToAvroSchemaConverterTest {
             .outputColumn("o1")
             .type(Type.int64())
             .size(-1)
-            .columnOptions(ImmutableList.of("required=true"))
+            .columnOptions(ImmutableList.of("required=TRUE"))
             .endOutputColumn()
             .outputColumn("o2")
             .type(Type.float64())
@@ -922,7 +922,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(s.getFields().get(0).schema().getFields().get(0).getProp(SQL_TYPE), equalTo("BOOL"));
     assertThat(
         s.getFields().get(0).schema().getFields().get(0).getProp(SPANNER_OPTION + "0"),
-        equalTo("required=false"));
+        equalTo("required=FALSE"));
     assertThat(s.getFields().get(0).schema().getFields().get(1).name(), equalTo("i2"));
     assertThat(
         s.getFields().get(0).schema().getFields().get(1).schema().getType(),
@@ -942,7 +942,7 @@ public class DdlToAvroSchemaConverterTest {
         s.getFields().get(1).schema().getFields().get(0).getProp(SQL_TYPE), equalTo("INT64"));
     assertThat(
         s.getFields().get(1).schema().getFields().get(0).getProp(SPANNER_OPTION + "0"),
-        equalTo("required=true"));
+        equalTo("required=TRUE"));
     assertThat(s.getFields().get(1).schema().getFields().get(1).name(), equalTo("o2"));
     assertThat(
         s.getFields().get(1).schema().getFields().get(1).schema().getType(),

@@ -22,6 +22,7 @@ import com.google.cloud.teleport.spanner.common.Type;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
 /** Cloud Spanner model column. */
@@ -63,7 +64,16 @@ public abstract class ModelColumn implements Serializable {
         .append(String.format("%1$-40s", identifierQuote + name() + identifierQuote))
         .append(typeString());
 
-    // TODO(adrw-google): Print model column options once 29.5 is deployed to PROD.
+    if (columnOptions() != null && !columnOptions().isEmpty()) {
+      // TODO(adrw-google): Print required option once 29.6 is deployed to PROD.
+      String optionsString =
+          columnOptions().stream()
+              .filter(option -> !"required=TRUE".equals(option))
+              .collect(Collectors.joining(","));
+      if (!optionsString.isEmpty()) {
+        appendable.append(" OPTIONS (").append(optionsString).append(")");
+      }
+    }
   }
 
   public String prettyPrint() {
