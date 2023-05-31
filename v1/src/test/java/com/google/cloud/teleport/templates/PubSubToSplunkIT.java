@@ -21,10 +21,12 @@ import static com.google.cloud.teleport.it.splunk.matchers.SplunkAsserts.splunkE
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.kms.v1.CryptoKey;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.gcp.kms.KMSResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.it.splunk.SplunkResourceManager;
@@ -41,6 +43,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.json.JSONObject;
 import org.junit.After;
@@ -62,6 +65,10 @@ public class PubSubToSplunkIT extends TemplateTestBase {
 
   private PubsubResourceManager pubsubResourceManager;
   private SplunkResourceManager splunkResourceManager;
+  private KMSResourceManager kmsResourceManager;
+
+  private static final String KEYRING_ID = "PubSubToSplunkIT";
+  private static final String CRYPTO_KEY_NAME = "heccryptokey";
 
   private TopicName pubSubTopic;
   private TopicName pubSubDlqTopic;
@@ -75,6 +82,8 @@ public class PubSubToSplunkIT extends TemplateTestBase {
             .credentialsProvider(credentialsProvider)
             .build();
     splunkResourceManager = SplunkResourceManager.builder(testName).build();
+    kmsResourceManager =
+        KMSResourceManager.builder(PROJECT).setCredentialsProvider(credentialsProvider).build();
 
     gcsClient.createArtifact(
         "udf.js",
@@ -203,6 +212,22 @@ public class PubSubToSplunkIT extends TemplateTestBase {
             .addParameter("token", splunkResourceManager.getHecToken())
             .addParameter("batchCount", "1")
             .addParameter("includePubsubMessage", "true");
+    testPubSubToSplunkMain(parameters, false);
+  }
+
+  @Test
+  @Category(DirectRunnerTest.class)
+  public void testPubSubToSplunkEncryptedToken() throws IOException {
+
+    Function<String, String> encrypt =
+        message -> kmsResourceManager.encrypt(KEYRING_ID, CRYPTO_KEY_NAME, message);
+    CryptoKey cryptoKey = kmsResourceManager.getOrCreateCryptoKey(KEYRING_ID, CRYPTO_KEY_NAME);
+
+    PipelineLauncher.LaunchConfig.Builder parameters =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("token", encrypt.apply(splunkResourceManager.getHecToken()))
+            .addParameter("batchCount", "1")
+            .addParameter("tokenKMSEncryptionKey", cryptoKey.getName());
     testPubSubToSplunkMain(parameters, false);
   }
 
