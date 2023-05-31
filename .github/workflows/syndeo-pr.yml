@@ -41,7 +41,9 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout Code
-        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -60,7 +62,9 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout Code
-        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
