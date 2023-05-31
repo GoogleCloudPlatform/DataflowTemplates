@@ -369,8 +369,8 @@ public class PubsubDlqIT {
   private void publishLargeMsgToPubsub() {
     // Publish large message with the correct schema
     // Max data that can be sent over Pubsub is 10000000 bytes but
-    // it reserves 214 bytes, so the effective size is 9999797 bytes.
-    Long msgSize = 10000000L - 214L;
+    // it reserves 222 bytes, so the effective size is 9999778 bytes.
+    Long msgSize = 10000000L - 222L;
     StringBuilder sb = new StringBuilder();
     for (Long i = 0L; i < (msgSize); i++) {
       sb.append('a');
