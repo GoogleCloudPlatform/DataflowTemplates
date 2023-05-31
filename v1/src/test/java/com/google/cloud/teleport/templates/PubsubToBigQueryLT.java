@@ -20,9 +20,11 @@ import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.asser
 import static com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManagerUtils.toTableSpec;
 
 import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
@@ -40,6 +42,7 @@ import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
+import java.util.Map;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
@@ -71,7 +74,11 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
           Field.of("username", StandardSQLTypeName.STRING),
           Field.of("quest", StandardSQLTypeName.STRING),
           Field.of("score", StandardSQLTypeName.INT64),
-          Field.of("completed", StandardSQLTypeName.BOOL));
+          Field.of("completed", StandardSQLTypeName.BOOL),
+          // add a insert timestamp column to query latency values
+          Field.newBuilder("_metadata_insert_timestamp", StandardSQLTypeName.TIMESTAMP)
+              .setDefaultValueExpression("CURRENT_TIMESTAMP()")
+              .build());
   private static final String INPUT_PCOLLECTION =
       "ReadPubSubSubscription/PubsubUnboundedSource.out0";
   private static final String OUTPUT_PCOLLECTION =
@@ -200,7 +207,30 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
     // Assert
     assertThatResult(result).meetsConditions();
 
+    Map<String, Double> metrics = getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION);
+    // Query end to end latency metrics from BigQuery
+    TableResult latencyResult =
+        bigQueryResourceManager.runQuery(
+            String.format(
+                "WITH difference AS (SELECT\n"
+                    + "    TIMESTAMP_DIFF(_metadata_insert_timestamp,\n"
+                    + "    TIMESTAMP_MILLIS(eventTimestamp), SECOND) AS latency,\n"
+                    + "    FROM %s.%s)\n"
+                    + "    SELECT\n"
+                    + "      PERCENTILE_CONT(difference.latency, 0.5) OVER () AS median,\n"
+                    + "      PERCENTILE_CONT(difference.latency, 0.9) OVER () as percentile_90,\n"
+                    + "      PERCENTILE_CONT(difference.latency, 0.95) OVER () as percentile_95,\n"
+                    + "      PERCENTILE_CONT(difference.latency, 0.99) OVER () as percentile_99\n"
+                    + "    FROM difference LIMIT 1",
+                bigQueryResourceManager.getDatasetId(), testName));
+
+    FieldValueList latencyValues = latencyResult.getValues().iterator().next();
+    metrics.put("median_latency", latencyValues.get(0).getDoubleValue());
+    metrics.put("percentile_90_latency", latencyValues.get(1).getDoubleValue());
+    metrics.put("percentile_95_latency", latencyValues.get(2).getDoubleValue());
+    metrics.put("percentile_99_latency", latencyValues.get(3).getDoubleValue());
+
     // export results
-    exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
+    exportMetricsToBigQuery(info, metrics);
   }
 }
