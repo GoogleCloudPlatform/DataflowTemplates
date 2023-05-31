@@ -69,7 +69,7 @@ public abstract class ModelColumn implements Serializable {
       String optionsString =
           columnOptions().stream()
               .filter(option -> !"required=TRUE".equals(option))
-              .collect(Collectors.joining(","));
+              .collect(Collectors.joining(", "));
       if (!optionsString.isEmpty()) {
         appendable.append(" OPTIONS (").append(optionsString).append(")");
       }
