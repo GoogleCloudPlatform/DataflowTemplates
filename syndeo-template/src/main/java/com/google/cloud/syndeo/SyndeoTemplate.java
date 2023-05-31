@@ -195,29 +195,6 @@ public class SyndeoTemplate {
   private static Object parseJsonNode(KV<Field, JsonNode> fieldPair) {
     if (fieldPair == null) return null;
     JsonNode fieldNode = fieldPair.getValue();
-    // Field field = fieldPair.getKey();
-
-    // Object parsedField =
-    //     fieldNode == null
-    //         ? null
-    //         : fieldNode.isBoolean()
-    //             ? fieldNode.asBoolean()
-    //             : fieldNode.isFloatingPointNumber()
-    //                 ? fieldNode.asDouble()
-    //                 : fieldNode.isNumber()
-    //                     ? fieldNode.asLong()
-    //                     : !fieldNode.isContainerNode()
-    //                         ? fieldNode.asText()
-    //                         : fieldNode.isArray()
-    //                             ? new ObjectMapper().convertValue(fieldNode, List.class)
-    //                             : field.getType().getTypeName() == TypeName.MAP
-    //                                 ? new ObjectMapper().convertValue(fieldNode, Map.class)
-    //                                 : field.getType().getTypeName() == TypeName.ROW
-    //                                     ? convertJsonNodeToRow(fieldPair)
-    //                                     : new ObjectMapper().convertValue(fieldNode,
-    // Object.class);
-
-    // return parsedField;
 
     if (fieldNode == null) return null;
     if (fieldNode.isBoolean()) return fieldNode.asBoolean();
