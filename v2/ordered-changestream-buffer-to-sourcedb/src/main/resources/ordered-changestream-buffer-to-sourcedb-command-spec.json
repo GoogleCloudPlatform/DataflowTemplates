@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.OrderedChangestreamBufferToSourceDb",
+  "classPath": "/template/ordered-changestream-buffer-to-sourcedb/ordered-changestream-buffer-to-sourcedb-conscrypt.jar:/template/ordered-changestream-buffer-to-sourcedb/*:/template/ordered-changestream-buffer-to-sourcedb/libs/*:/template/ordered-changestream-buffer-to-sourcedb/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"ordered_changestream_buffer_to_sourcedb\"}"
+  }
+}

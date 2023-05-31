@@ -678,12 +678,12 @@
         <module>kafka-common</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
-        <module>kafka-to-source</module>
         <module>kafka-to-pubsub</module>
         <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>
         <module>mongodb-to-googlecloud</module>
         <module>mqtt-to-pubsub</module>
+        <module>ordered-changestream-buffer-to-sourcedb</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-jms</module>

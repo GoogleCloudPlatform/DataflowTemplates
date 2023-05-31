@@ -1,7 +1,0 @@
-{
-  "mainClass": "com.google.cloud.teleport.v2.templates.KafkaToSource",
-  "classPath": "/template/kafka-to-source/kafka-to-source-conscrypt.jar:/template/kafka-to-source/*:/template/kafka-to-source/libs/*:/template/kafka-to-source/classes",
-  "defaultParameterValues": {
-    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"kafka_to_source\"}"
-  }
-}
