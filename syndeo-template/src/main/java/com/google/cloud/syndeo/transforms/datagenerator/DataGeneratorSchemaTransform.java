@@ -34,6 +34,56 @@ import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 
+/**
+ * The DataGeneratorSchemaTransform class is an implementation of the SchemaTransform that generates
+ * testing data based on <a href="https://avro.apache.org/docs/1.10.2/spec.html#schemas">AVRO</a>
+ * schema, data records per second and total running time in seconds. It can be directly used as
+ * data source with urn: <b>xsyndeo:schematransform:com.google.cloud:data_generator:v1</b> in a
+ * Syndeo pipeline as shown in following example:
+ *
+ * <pre>
+ *    {
+ *      "source": {
+ *         "urn": "syndeo:schematransform:com.google.cloud:data_generator:v1",
+ *         "configurationParameters": {
+ *            "recordsPerSecond": 1000,
+ *            "secondsToRun": 300,
+ *            "schema": "test_schema.json"
+ *          }
+ *      }
+ *    }
+ * </pre>
+ *
+ * <p>AVRO schema example:
+ *
+ * <pre>
+ *   {
+ *   "type": "record",
+ *   "name": "user_info_flat",
+ *   "namespace": "com.google.syndeo",
+ *   "fields": [
+ *     {
+ *       "name": "id",
+ *       "type": "long"
+ *     },
+ *     {
+ *       "name": "username",
+ *       "type": "string",
+ *       "size": "10"
+ *     },
+ *     {
+ *       "name": "age",
+ *       "type": "long"
+ *     }
+ *   ]
+ * }
+ * </pre>
+ *
+ * Random value will be generated for each field according to its type, for example, for a field of
+ * type long, a random long value will be generated. For string field, random alpha-numeric string
+ * will be generated. The default size of the string is 100, which can be specified using the
+ * attribute <b>size</b>.
+ */
 public class DataGeneratorSchemaTransform implements SchemaTransform, Serializable {
 
   private final long recordsPerSecond;
@@ -59,12 +109,16 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
                 .getPipeline()
                 .apply(
                     PeriodicImpulse.create()
+                        // set start time as current time
                         .startAt(startTime)
+                        // set stop time
                         .stopAt(Instant.now().plus(Duration.standardSeconds(secondsToRun)))
+                        // set data generating interval to 1 second
                         .withInterval(Duration.millis(1000))
                         .applyWindowing());
         instants = instants.apply(Reshuffle.viaRandomKey());
 
+        // for each instant generated (every second), create data records.
         PCollection rows =
             instants
                 .apply(FlatMapElements.via(new InstantToRowFn(startTime, schema, beamSchema)))

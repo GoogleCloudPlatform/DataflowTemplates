@@ -42,8 +42,8 @@ public class DataGeneratorSchemaTransformTest {
             provider.from(
                 DataGeneratorSchemaTransformConfiguration.builder()
                     .setSchema(schema)
-                    .setSecondsToRun(5l)
-                    .setRecordsPerSecond(100l)
+                    .setSecondsToRun(5L)
+                    .setRecordsPerSecond(100L)
                     .build());
     PTransform<PCollectionRowTuple, PCollectionRowTuple> transform =
         schemaTransform.buildTransform();
