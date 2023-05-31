@@ -33,17 +33,6 @@
     <dlp.version>2.1.0</dlp.version>
   </properties>
 
-  <dependencyManagement>
-    <dependencies>
-      <!-- TODO(bvolpato): remove hardcoded API -->
-      <dependency>
-        <groupId>com.google.api.grpc</groupId>
-        <artifactId>proto-google-cloud-kms-v1</artifactId>
-        <version>0.87.0</version>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
-
   <build>
     <plugins>
       <plugin>
