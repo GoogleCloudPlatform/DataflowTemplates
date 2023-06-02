@@ -2,7 +2,8 @@ Ordered change stream buffer to Source DB Template
 ---
 Streaming pipeline. Reads ordered Spanner change stream message from Pub/SubKafka, transforms them, and writes them to a Source Database like MySQL.
 
-:memo: Please check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/ordered-changestream-buffer-to-sourcedb)
+:memo: This is a Google-provided template! Please
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/ordered-changestream-buffer-to-sourcedb)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Ordered_Changestream_Buffer_to_Sourcedb).
 
 

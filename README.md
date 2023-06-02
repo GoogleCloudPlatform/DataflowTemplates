@@ -377,6 +377,20 @@ function transform(inJson) {
 }
 ```
 
+
+## Generated Documentation
+
+This repository contains generated documentation, which contains a list of parameters
+and instructions on how to customize and/or build every template.
+
+To generate the documentation for all templates, the following command can be used:
+
+```shell
+mvn clean prepare-package \
+  -DskipTests \
+  -PtemplatesSpec
+```
+
 ## Release Process
 
 Templates are released in a weekly basis (best-effort) as part of the efforts to
@@ -388,7 +402,7 @@ To execute the release of multiple templates, we provide a single Maven command 
 stage all templates while running additional validations.
 
 ```shell
-mvn clean package -PtemplatesRelease  \
+mvn clean package -PtemplatesRelease \
   -DprojectId="{projectId}" \
   -DbucketName="{bucketName}" \
   -DlibrariesBucketName="{bucketName}-libraries" \
