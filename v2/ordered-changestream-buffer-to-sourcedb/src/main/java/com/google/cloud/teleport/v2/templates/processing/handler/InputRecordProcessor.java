@@ -83,7 +83,9 @@ public class InputRecordProcessor {
       dao.batchWrite(dmlBatch);
       Instant daoEndTime = Instant.now();
       LOG.info(
-          "Write to mysql for "
+          "Shard: "
+              + shardId
+              + " : Write to mysql for "
               + recordList.size()
               + " took : "
               + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)
@@ -98,34 +100,27 @@ public class InputRecordProcessor {
     }
   }
 
-  private static List<String> parseRecord(String rec) {
+  public static List<String> parseRecord(String rec) {
 
     List<String> response = new ArrayList<>();
+    try {
+      JSONObject json = new JSONObject(rec);
 
-    String tablesub = rec.substring(rec.indexOf("tableName=") + 10);
+      String tableName = json.getString("tableName");
+      response.add(tableName);
+      String keyValuesJson = json.getJSONArray("mods").getJSONObject(0).getString("keysJson");
+      response.add(keyValuesJson);
+      String newValuesJson = json.getJSONArray("mods").getJSONObject(0).getString("newValuesJson");
+      response.add(newValuesJson);
+      String modType = json.getString("modType");
+      response.add(modType);
+      long secs = json.getJSONObject("commitTimestamp").getBigDecimal("seconds").longValue();
 
-    String tablestr = tablesub.substring(1, tablesub.indexOf(",") - 1);
-    response.add(tablestr);
-    String keysub = tablesub.substring(tablesub.indexOf("keysJson=") + 9);
-
-    String keystr = keysub.substring(0, keysub.indexOf(", oldValuesJson"));
-    response.add(keystr);
-    String newValueSub = keysub.substring(keysub.indexOf("newValuesJson=") + 15);
-
-    String newValuesJsonStr = newValueSub.substring(0, newValueSub.indexOf("'}], modType"));
-    response.add(newValuesJsonStr);
-    String modvaluesub = newValueSub.substring(newValueSub.indexOf("'}], modType=") + 13);
-
-    String modvaluestr =
-        modvaluesub.substring(0, modvaluesub.indexOf(", numberOfRecordsInTransaction="));
-
-    response.add(modvaluestr.trim());
-
-    String commitTsSub = rec.substring(rec.indexOf("commitTimestamp=") + 16);
-
-    String commitTs = commitTsSub.substring(0, commitTsSub.indexOf("serverTransactionId=") - 2);
-    response.add(commitTs);
-
-    return response;
+      int nanosec = json.getJSONObject("commitTimestamp").getBigDecimal("nanos").intValue();
+      response.add(Timestamp.ofTimeSecondsAndNanos(secs, nanosec).toString());
+      return response;
+    } catch (Exception e) {
+      throw new RuntimeException("Input record is not as expected: " + rec);
+    }
   }
 }

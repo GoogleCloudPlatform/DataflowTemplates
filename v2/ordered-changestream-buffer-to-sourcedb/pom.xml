@@ -33,6 +33,7 @@
 
  <properties>
     <kafka.version>2.3.0</kafka.version>
+    <junit.version>4.13.2</junit.version>
   </properties>
 
     <dependencies>
@@ -65,6 +66,12 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-pool2</artifactId>
             <version>2.11.1</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

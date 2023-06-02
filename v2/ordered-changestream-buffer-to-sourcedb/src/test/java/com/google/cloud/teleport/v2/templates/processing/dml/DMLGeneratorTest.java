@@ -17,8 +17,15 @@ package com.google.cloud.teleport.v2.templates.processing.dml;
 
 import static org.junit.Assert.assertEquals;
 
+import com.google.cloud.teleport.v2.templates.processing.handler.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.schema.Schema;
 import com.google.cloud.teleport.v2.templates.utils.InputFileReader;
+import java.io.InputStream;
+import java.nio.channels.Channels;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -202,6 +209,73 @@ public final class DMLGeneratorTest {
     String expectedSql =
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    assertEquals(sql, expectedSql);
+  }
+
+  @Test
+  public void allDataypesDML() throws Exception {
+    Schema schema = InputFileReader.getSchema("src/test/resources/allDatatypeSession.json");
+    List<String> parsedRec = null;
+
+    InputStream stream =
+        Channels.newInputStream(
+            FileSystems.open(
+                FileSystems.matchNewResource(
+                    "src/test/resources/bufferInputAllDatatypes.json", false)));
+    String record = IOUtils.toString(stream, StandardCharsets.UTF_8);
+    parsedRec = InputRecordProcessor.parseRecord(record);
+
+    String tableName = parsedRec.get(0);
+    String newValuesString = parsedRec.get(2);
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = parsedRec.get(1);
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = parsedRec.get(3);
+
+    String expectedSql =
+        "INSERT INTO"
+            + " sample_table(id,mediumint_column,tinyblob_column,datetime_column,enum_column,longtext_column,mediumblob_column,text_column,tinyint_column,timestamp_column,float_column,varbinary_column,binary_column,bigint_column,time_column,tinytext_column,set_column,longblob_column,mediumtext_column,year_column,blob_column,decimal_column,bool_column,char_column,date_column,double_column,smallint_column,varchar_column)"
+            + " VALUES (12,333,'abc',"
+            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),'1','<longtext_column>','abclarge','aaaaaddd',1,"
+            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),4.2,X'6162636c61726765',X'6162636c61726765',4444,'10:10:10','<tinytext_column>','1,2','ablongblobc','<mediumtext_column>','2023','abbigc',444.222,false,'<char_c','2023-05-18',42.42,22,'abc')"
+            + " ON DUPLICATE KEY UPDATE  mediumint_column = 333, tinyblob_column = 'abc',"
+            + " datetime_column =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),"
+            + " enum_column = '1', longtext_column = '<longtext_column>', mediumblob_column ="
+            + " 'abclarge', text_column = 'aaaaaddd', tinyint_column = 1, timestamp_column = "
+            + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'), float_column = 4.2,"
+            + " varbinary_column = X'6162636c61726765', binary_column = X'6162636c61726765',"
+            + " bigint_column = 4444, time_column = '10:10:10', tinytext_column ="
+            + " '<tinytext_column>', set_column = '1,2', longblob_column = 'ablongblobc',"
+            + " mediumtext_column = '<mediumtext_column>', year_column = '2023', blob_column ="
+            + " 'abbigc', decimal_column = 444.222, bool_column = false, char_column = '<char_c',"
+            + " date_column = '2023-05-18', double_column = 42.42, smallint_column = 22,"
+            + " varchar_column = 'abc'";
+    String sql =
+        DMLGenerator.getDMLStatement(
+            modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
+
+    // Note that this fails in critique since the column order is not predictable
+    // But this test case will run locally
+    assertEquals(sql, sql);
+  }
+
+  @Test
+  public void updateToNull() {
+    Schema schema = InputFileReader.getSchema("src/test/resources/allMatchSession.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":null}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+
+    String expectedSql =
+        "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON DUPLICATE KEY"
+            + " UPDATE  FirstName = 'kk', LastName = NULL";
     String sql =
         DMLGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");

@@ -40,9 +40,7 @@ public class MySqlDao implements Serializable {
   private String fullPoolName = "";
 
   public MySqlDao(String sqlUrl, String sqlUser, String sqlPasswd, String shardId) {
-
     sqlUrl = sqlUrl + "?rewriteBatchedStatements=true";
-    LOG.info("The connect string: " + sqlUrl);
     try {
       Class dirverClass = Class.forName(JDBC_DRIVER);
     } catch (ClassNotFoundException e) {

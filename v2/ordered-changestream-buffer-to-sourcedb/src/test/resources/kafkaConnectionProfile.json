@@ -1,0 +1,6 @@
+{
+  "bootstrapServer" : "thewall",
+  "dataTopic" : "winterfell",
+  "errorTopic" : "redkeep"
+  }
+  
