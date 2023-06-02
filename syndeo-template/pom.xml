@@ -449,6 +449,7 @@
                                     <artifact>org.apache.beam:beam-sdks-java-io-google-cloud-platform</artifact>
                                     <includes>
                                         <include>org/apache/beam/sdk/io/gcp/**</include>
+                                        <include>META-INF/**</include>
                                     </includes>
                                 </filter>
                                 <filter>
