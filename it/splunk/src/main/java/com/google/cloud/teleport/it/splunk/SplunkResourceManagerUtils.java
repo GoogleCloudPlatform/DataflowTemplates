@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.gen
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 
 /** Utilities for {@link SplunkResourceManager} implementations. */
@@ -75,15 +76,6 @@ public final class SplunkResourceManagerUtils {
    * @return The generated password.
    */
   static String generateHecToken() {
-    int numLower = 1;
-    int numUpper = 1;
-    int numSpecial = 0;
-    return generatePassword(
-        MIN_PASSWORD_LENGTH,
-        MAX_PASSWORD_LENGTH,
-        numLower,
-        numUpper,
-        numSpecial,
-        /* specialChars= */ null);
+    return UUID.randomUUID().toString();
   }
 }
