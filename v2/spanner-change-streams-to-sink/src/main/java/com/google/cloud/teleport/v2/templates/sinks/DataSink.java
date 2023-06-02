@@ -18,13 +18,11 @@ package com.google.cloud.teleport.v2.templates.sinks;
 import com.google.cloud.teleport.v2.templates.common.TrimmedDataChangeRecord;
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 /** Interface to write messages for the supported sinks. */
 public interface DataSink {
 
   void createClient() throws IOException;
 
-  void write(String shardId, List<TrimmedDataChangeRecord> recordsToOutput)
-      throws InterruptedException, Throwable, ExecutionException;
+  void write(String shardId, List<TrimmedDataChangeRecord> recordsToOutput) throws Exception;
 }

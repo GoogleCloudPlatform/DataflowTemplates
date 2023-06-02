@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.sinks;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.cloud.teleport.v2.templates.common.InputFileReader;
 import com.google.cloud.teleport.v2.templates.common.Shard;
 import com.google.cloud.teleport.v2.templates.common.TrimmedDataChangeRecord;
@@ -52,6 +54,7 @@ public class KafkaSink implements DataSink, Serializable {
   }
 
   public void createClient() {
+    // TODO: Configure retry settings.
     Properties props = new Properties();
     props.put(Constants.BOOTSTRAP_SERVER_CONFIG, kafkaConn.getBootstrapServer());
     props.put(Constants.ACKS_CONFIG, "1");
@@ -60,13 +63,23 @@ public class KafkaSink implements DataSink, Serializable {
     this.producer = new KafkaProducer<>(props);
   }
 
-  public void write(String shardId, List<TrimmedDataChangeRecord> recordsToOutput) {
-    for (TrimmedDataChangeRecord rec : recordsToOutput) {
-      ProducerRecord<String, String> record =
-          new ProducerRecord<>(
-              kafkaConn.getDataTopic(), shardIdToPartitionId.get(shardId), shardId, rec.toString());
-      producer.send(record);
+  public void write(String shardId, List<TrimmedDataChangeRecord> recordsToOutput)
+      throws Exception {
+    try {
+      // TODO: Consider configuring callbacks for error handling.
+      ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+      for (TrimmedDataChangeRecord rec : recordsToOutput) {
+        ProducerRecord<String, String> record =
+            new ProducerRecord<>(
+                kafkaConn.getDataTopic(),
+                shardIdToPartitionId.get(shardId),
+                shardId,
+                ow.writeValueAsString(rec));
+        producer.send(record);
+      }
+      producer.flush();
+    } catch (Exception e) {
+      throw new Exception("error while writing to kafka: " + e);
     }
-    producer.flush();
   }
 }

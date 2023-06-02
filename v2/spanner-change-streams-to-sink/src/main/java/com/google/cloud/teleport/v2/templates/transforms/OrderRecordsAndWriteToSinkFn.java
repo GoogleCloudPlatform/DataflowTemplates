@@ -183,7 +183,7 @@ public class OrderRecordsAndWriteToSinkFn extends DoFn<KV<String, TrimmedDataCha
                   + recordsToOutput.size()
                   + " records to sink for expiry time: "
                   + context.timestamp());
-        } catch (Throwable e) {
+        } catch (Exception e) {
           LOG.error(
               "Shard "
                   + shardId
@@ -191,6 +191,7 @@ public class OrderRecordsAndWriteToSinkFn extends DoFn<KV<String, TrimmedDataCha
                   + " records for this shard: "
                   + e.toString());
           stopProcessing.write(true);
+          return;
         }
 
       } else {

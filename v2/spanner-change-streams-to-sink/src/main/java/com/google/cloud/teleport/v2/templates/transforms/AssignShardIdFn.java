@@ -34,10 +34,15 @@ public class AssignShardIdFn
   public void processElement(ProcessContext c) {
     TrimmedDataChangeRecord record = c.element();
     try {
-      String newValueJson = record.getMods().get(0).getNewValuesJson();
-      JSONObject jsonObject = new JSONObject(newValueJson);
-      if (jsonObject.has(Constants.HB_SHARD_ID_COLUMN)) {
-        String shardId = jsonObject.getString(Constants.HB_SHARD_ID_COLUMN);
+      String keysJsonStr = record.getMods().get(0).getKeysJson();
+      String newValueJsonStr = record.getMods().get(0).getNewValuesJson();
+      JSONObject keysJson = new JSONObject(keysJsonStr);
+      JSONObject newValueJson = new JSONObject(newValueJsonStr);
+      if (newValueJson.has(Constants.HB_SHARD_ID_COLUMN)) {
+        String shardId = newValueJson.getString(Constants.HB_SHARD_ID_COLUMN);
+        c.output(KV.of(shardId, record));
+      } else if (keysJson.has(Constants.HB_SHARD_ID_COLUMN)) {
+        String shardId = keysJson.getString(Constants.HB_SHARD_ID_COLUMN);
         c.output(KV.of(shardId, record));
       } else {
         LOG.error(
