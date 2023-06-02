@@ -564,20 +564,30 @@ public class DdlTest {
         Model.builder()
             .name("user_model")
             .remote(true)
-            .options(ImmutableList.of("endpoint = \"test\""));
+            .options(ImmutableList.of("endpoint=\"test\""));
 
-    model.inputColumn("i1").type(Type.bool()).size(-1).endInputColumn();
+    model
+        .inputColumn("i1")
+        .type(Type.bool())
+        .size(-1)
+        .columnOptions(ImmutableList.of("required=FALSE"))
+        .endInputColumn();
     model.inputColumn("i2").type(Type.string()).size(-1).endInputColumn();
-    model.outputColumn("o1").type(Type.int64()).size(-1).endOutputColumn();
+    model
+        .outputColumn("o1")
+        .type(Type.int64())
+        .size(-1)
+        .columnOptions(ImmutableList.of("required=TRUE"))
+        .endOutputColumn();
     model.outputColumn("o2").type(Type.float64()).size(-1).endOutputColumn();
 
     assertThat(
         model.build().prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE MODEL `user_model`"
-                + " INPUT ( `i1` BOOL, `i2` STRING(MAX), )"
+                + " INPUT ( `i1` BOOL OPTIONS (required=FALSE), `i2` STRING(MAX), )"
                 + " OUTPUT ( `o1` INT64, `o2` FLOAT64, )"
-                + " REMOTE OPTIONS (endpoint = \"test\")"));
+                + " REMOTE OPTIONS (endpoint=\"test\")"));
   }
 
   @Test
@@ -586,20 +596,20 @@ public class DdlTest {
         Model.builder(Dialect.POSTGRESQL)
             .name("user_model")
             .remote(true)
-            .options(ImmutableList.of("endpoint = \"test\""));
+            .options(ImmutableList.of("endpoint=\"test\""));
 
     model
         .inputColumn("i1")
         .type(Type.bool())
         .size(-1)
-        .columnOptions(ImmutableList.of("required = false"))
+        .columnOptions(ImmutableList.of("required=FALSE"))
         .endInputColumn();
     model.inputColumn("i2").type(Type.string()).size(-1).endInputColumn();
     model
         .outputColumn("o1")
         .type(Type.int64())
         .size(-1)
-        .columnOptions(ImmutableList.of("required = true"))
+        .columnOptions(ImmutableList.of("required=TRUE"))
         .endOutputColumn();
     model.outputColumn("o2").type(Type.float64()).size(-1).endOutputColumn();
 
