@@ -63,8 +63,10 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
   private static final String ROW_ID = "row_id";
   private static final String NAME = "name";
+  private static final String FULL_NAME = "full_name";
   private static final String AGE = "age";
   private static final String MEMBER = "member";
+  private static final String IS_MEMBER = "is_member";
   private static final String ENTRY_ADDED = "entry_added";
 
   private MySQLResourceManager mySQLResourceManager;
@@ -110,7 +112,12 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         MYSQL_DRIVER,
         mySqlDriverGCSPath(),
         mySQLResourceManager,
-        config -> config.addParameter("query", "SELECT * FROM " + testName));
+        true,
+        config ->
+            config.addParameter(
+                "query",
+                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                    + testName));
   }
 
   @Test
@@ -133,7 +140,12 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         POSTGRES_DRIVER,
         postgresDriverGCSPath(),
         postgresResourceManager,
-        config -> config.addParameter("query", "SELECT * FROM " + testName));
+        true,
+        config ->
+            config.addParameter(
+                "query",
+                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                    + testName));
   }
 
   @Test
@@ -163,7 +175,12 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         ORACLE_DRIVER,
         oracleDriverGCSPath(),
         oracleResourceManager,
-        config -> config.addParameter("query", "SELECT * FROM " + testName));
+        true,
+        config ->
+            config.addParameter(
+                "query",
+                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                    + testName));
   }
 
   @Test
@@ -187,7 +204,12 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         MSSQL_DRIVER,
         msSqlDriverGCSPath(),
         msSQLResourceManager,
-        config -> config.addParameter("query", "SELECT * FROM " + testName));
+        true,
+        config ->
+            config.addParameter(
+                "query",
+                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                    + testName));
   }
 
   @Test
@@ -209,6 +231,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         POSTGRES_DRIVER,
         postgresDriverGCSPath(),
         postgresResourceManager,
+        false,
         config -> config.addParameter("table", testName).addParameter("partitionColumn", ROW_ID));
   }
 
@@ -218,20 +241,22 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
       String driverClassName,
       String driverJars,
       JDBCResourceManager jdbcResourceManager,
+      boolean useColumnAlias,
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
 
     // Arrange
+    List<Map<String, Object>> jdbcData =
+        getJdbcData(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED));
     jdbcResourceManager.createTable(testName, schema);
-    jdbcResourceManager.write(
-        testName, getJdbcData(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED)));
+    jdbcResourceManager.write(testName, jdbcData);
 
     List<Field> bqSchemaFields =
         Arrays.asList(
             Field.of(ROW_ID, StandardSQLTypeName.INT64),
-            Field.of(NAME, StandardSQLTypeName.STRING),
+            Field.of(useColumnAlias ? FULL_NAME : NAME, StandardSQLTypeName.STRING),
             Field.of(AGE, StandardSQLTypeName.FLOAT64),
-            Field.of(MEMBER, StandardSQLTypeName.STRING),
+            Field.of(useColumnAlias ? IS_MEMBER : MEMBER, StandardSQLTypeName.STRING),
             Field.of(ENTRY_ADDED, StandardSQLTypeName.STRING));
     Schema bqSchema = Schema.of(bqSchemaFields);
 
@@ -249,7 +274,10 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
                 .addParameter("driverJars", driverJars)
                 .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
                 .addParameter("username", jdbcResourceManager.getUsername())
-                .addParameter("password", jdbcResourceManager.getPassword()));
+                .addParameter("password", jdbcResourceManager.getPassword())
+                .addParameter("useColumnAlias", "true")
+                .addParameter("connectionProperties", "characterEncoding=UTF-8")
+                .addParameter("disabledAlgorithms", "SSLv3, GCM"));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -260,8 +288,15 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Assert
     assertThat(result).isEqualTo(PipelineOperator.Result.LAUNCH_FINISHED);
 
+    if (useColumnAlias) {
+      jdbcData.forEach(
+          row -> {
+            row.put("full_name", row.remove("name"));
+            row.put("is_member", row.remove("member"));
+          });
+    }
     assertThatBigQueryRecords(bigQueryResourceManager.readTable(testName))
-        .hasRecordsUnorderedCaseInsensitiveColumns(jdbcResourceManager.readTable(testName));
+        .hasRecordsUnorderedCaseInsensitiveColumns(jdbcData);
   }
 
   /**
