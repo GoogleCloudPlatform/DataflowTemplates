@@ -111,8 +111,9 @@ public class DirectRunnerClient implements PipelineLauncher {
   }
 
   @Override
-  public List<JobMessage> listMessages(String project, String region, String jobId) {
-    return null;
+  public List<JobMessage> listMessages(
+      String project, String region, String jobId, String minimumImportance) {
+    return new ArrayList<>();
   }
 
   @Override

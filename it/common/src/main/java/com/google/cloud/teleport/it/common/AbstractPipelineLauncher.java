@@ -94,7 +94,8 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   }
 
   @Override
-  public List<JobMessage> listMessages(String project, String region, String jobId) {
+  public List<JobMessage> listMessages(
+      String project, String region, String jobId, String minimumImportance) {
     LOG.info("Listing messages of {} under {}", jobId, project);
     ListJobMessagesResponse response =
         Failsafe.with(clientRetryPolicy())
@@ -106,6 +107,7 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
                         .jobs()
                         .messages()
                         .list(project, region, jobId)
+                        .setMinimumImportance(minimumImportance)
                         .execute());
     List<JobMessage> messages = response.getJobMessages();
     LOG.info("Received {} messages for {} under {}", messages.size(), jobId, project);

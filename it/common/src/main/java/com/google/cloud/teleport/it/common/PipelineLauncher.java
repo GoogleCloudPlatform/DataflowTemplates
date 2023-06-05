@@ -370,9 +370,11 @@ public interface PipelineLauncher {
    * @param project the project that the job is running under
    * @param region the region that the job was launched in
    * @param jobId the id of the job
+   * @param minimumImportance indicates the importance of the message.
    * @return the list of messages of the job.
    */
-  List<JobMessage> listMessages(String project, String region, String jobId);
+  List<JobMessage> listMessages(
+      String project, String region, String jobId, String minimumImportance);
 
   /**
    * Cancels the given job.

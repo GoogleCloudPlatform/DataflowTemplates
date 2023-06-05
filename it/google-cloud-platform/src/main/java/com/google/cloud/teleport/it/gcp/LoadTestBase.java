@@ -70,7 +70,9 @@ public abstract class LoadTestBase {
   private static final double PD_SSD_PER_GB_HR = 0.000298;
   private static final double SHUFFLE_PER_GB_BATCH = 0.011;
   private static final double SHUFFLE_PER_GB_STREAMING = 0.018;
-  private static final Pattern WORKER_START_PATTERN = Pattern.compile("^Starting \\d+ workers.*$");
+  private static final Pattern WORKER_START_PATTERN =
+      Pattern.compile(
+          "^All workers have finished the startup processes and began to receive work requests.*$");
   private static final Pattern WORKER_STOP_PATTERN = Pattern.compile("^Stopping worker pool.*$");
 
   protected static final Credentials CREDENTIALS = TestProperties.googleCredentials();
@@ -412,10 +414,10 @@ public abstract class LoadTestBase {
   }
 
   /** Gets the time interval when workers were active to be used by monitoring client. */
-  // TODO (pranavbhandari): This does not work with Runner V2, due to different worker messages.
   protected TimeInterval getWorkerTimeInterval(LaunchInfo info) throws ParseException {
     TimeInterval.Builder builder = TimeInterval.newBuilder();
-    List<JobMessage> messages = pipelineLauncher.listMessages(project, region, info.jobId());
+    List<JobMessage> messages =
+        pipelineLauncher.listMessages(project, region, info.jobId(), "JOB_MESSAGE_DETAILED");
     for (JobMessage jobMessage : messages) {
       if (jobMessage.getMessageText() != null && !jobMessage.getMessageText().isEmpty()) {
         if (WORKER_START_PATTERN.matcher(jobMessage.getMessageText()).find()) {
