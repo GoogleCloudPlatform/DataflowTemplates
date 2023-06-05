@@ -122,11 +122,12 @@ public class ReadSessionFileTest {
     t1SpColDefs.put("c1", new ColumnDef("new_product_id"));
     t1SpColDefs.put("c2", new ColumnDef("new_quantity"));
     t1SpColDefs.put("c3", new ColumnDef("new_user_id"));
-    spSchema.put("t1", new CreateTable("new_cart", new String[] {"c1", "c2", "c3"}, t1SpColDefs));
+    spSchema.put(
+        "t1", new CreateTable("new_cart", new String[] {"c1", "c2", "c3"}, t1SpColDefs, null));
     Map<String, ColumnDef> t2SpColDefs = new HashMap<String, ColumnDef>();
     t2SpColDefs.put("c5", new ColumnDef("new_name"));
     t2SpColDefs.put("c6", new ColumnDef("synth_id"));
-    spSchema.put("t2", new CreateTable("new_people", new String[] {"c5", "c6"}, t2SpColDefs));
+    spSchema.put("t2", new CreateTable("new_people", new String[] {"c5", "c6"}, t2SpColDefs, null));
     return spSchema;
   }
 
@@ -179,5 +180,44 @@ public class ReadSessionFileTest {
         + "      }\n"
         + "    }\n"
         + "}";
+  }
+
+  @Test
+  public void readShardedSessionFile() throws Exception {
+    Path sessionFile = Paths.get(Resources.getResource("session-file-sharded.json").getPath());
+    Session session = (new ReadSessionFile(sessionFile.toString())).getSession();
+    Session expectedSession = getShardedSessionObject();
+    // Validates that the session object created is correct.
+    assertThat(session, is(expectedSession));
+  }
+
+  public static Session getShardedSessionObject() {
+    // Add SrcSchema.
+    Map<String, SrcSchema> srcSchema = getSampleSrcSchema();
+    // Add SpSchema.
+    Map<String, CreateTable> spSchema = getSampleShardedSpSchema();
+    // Add ToSpanner.
+    Map<String, NameAndCols> toSpanner = getToSpanner();
+    // Add SrcToID.
+    Map<String, NameAndCols> srcToId = getSrcToId();
+    Session expectedSession = new Session(spSchema, new HashMap<>(), srcSchema);
+    expectedSession.setToSpanner(toSpanner);
+    expectedSession.setSrcToID(srcToId);
+    return expectedSession;
+  }
+
+  public static Map<String, CreateTable> getSampleShardedSpSchema() {
+    Map<String, CreateTable> spSchema = new HashMap<String, CreateTable>();
+    Map<String, ColumnDef> t1SpColDefs = new HashMap<String, ColumnDef>();
+    t1SpColDefs.put("c1", new ColumnDef("new_product_id"));
+    t1SpColDefs.put("c2", new ColumnDef("new_quantity"));
+    t1SpColDefs.put("c3", new ColumnDef("new_user_id"));
+    spSchema.put(
+        "t1", new CreateTable("new_cart", new String[] {"c1", "c2", "c3"}, t1SpColDefs, null));
+    Map<String, ColumnDef> t2SpColDefs = new HashMap<String, ColumnDef>();
+    t2SpColDefs.put("c5", new ColumnDef("new_name"));
+    t2SpColDefs.put("c6", new ColumnDef("migration_shard_id"));
+    spSchema.put("t2", new CreateTable("new_people", new String[] {"c5", "c6"}, t2SpColDefs, "c6"));
+    return spSchema;
   }
 }

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.session;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 
 /** CreateTable object to store Spanner table name and column name mapping information. */
 public class CreateTable implements Serializable {
@@ -31,10 +32,15 @@ public class CreateTable implements Serializable {
   /** Maps the column ID to the column name. */
   private final Map<String, ColumnDef> colDefs;
 
-  public CreateTable(String name, String[] colIds, Map<String, ColumnDef> colDefs) {
+  /** Points to the id of the sharded column. Will be null for non-sharded migrations */
+  private final String shardedColId;
+
+  public CreateTable(
+      String name, String[] colIds, Map<String, ColumnDef> colDefs, String shardedColId) {
     this.name = name;
     this.colIds = colIds;
     this.colDefs = colDefs;
+    this.shardedColId = shardedColId;
   }
 
   public String getName() {
@@ -49,9 +55,14 @@ public class CreateTable implements Serializable {
     return colDefs;
   }
 
+  public String getShardedColId() {
+    return shardedColId;
+  }
+
   public String toString() {
     return String.format(
-        "{ 'name': '%s', 'colIds': '%s', 'colDefs': '%s' }", name, colIds, colDefs);
+        "{ 'name': '%s', 'colIds': '%s', 'colDefs': '%s', shardedColId: '%s' }",
+        name, colIds, colDefs, shardedColId);
   }
 
   @Override
@@ -62,9 +73,11 @@ public class CreateTable implements Serializable {
     if (!(o instanceof CreateTable)) {
       return false;
     }
+
     final CreateTable other = (CreateTable) o;
     return this.name.equals(other.name)
         && Arrays.equals(this.colIds, other.colIds)
-        && this.colDefs.equals(other.colDefs);
+        && this.colDefs.equals(other.colDefs)
+        && Objects.equals(this.shardedColId, other.shardedColId);
   }
 }

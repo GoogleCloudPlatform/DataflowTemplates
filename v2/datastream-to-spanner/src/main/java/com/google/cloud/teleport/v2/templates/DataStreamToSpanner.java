@@ -33,7 +33,13 @@ import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -294,7 +300,20 @@ public class DataStreamToSpanner {
     @Default.Boolean(false)
     Boolean getRoundJsonDecimals();
 
-    void setRoundJsonDecimals(Boolean value);
+    @TemplateParameter.Text(
+        order = 20,
+        optional = true,
+        description =
+            "For datastreams across multiple logical shards(databases) pass the dbName to shardId"
+                + "  map which is used to decide the value of shard id based on the name of the "
+                + "db which is being migrated",
+        helpText =
+            "This will be used during sharded migrations to populate the shard id in  shardId "
+                + " column used to identify the source of the data")
+    @Default.String("")
+    String getShardingConfig();
+
+    void setShardingConfig(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -381,6 +400,7 @@ public class DataStreamToSpanner {
 
     // Ingest session file into memory.
     Session session = (new ReadSessionFile(options.getSessionFilePath())).getSession();
+
     /*
      * Stage 1: Ingest/Normalize Data to FailsafeElement with JSON Strings and
      * read Cloud Spanner information schema.
@@ -448,6 +468,7 @@ public class DataStreamToSpanner {
                 spannerConfig,
                 ddlView,
                 session,
+                buildShardingConfig(options),
                 options.getShadowTablePrefix(),
                 options.getDatastreamSourceType(),
                 options.getRoundJsonDecimals()));
@@ -512,5 +533,15 @@ public class DataStreamToSpanner {
 
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
+  }
+
+  private static Map<String, String> buildShardingConfig(Options options) {
+    if (options.getShardingConfig() == null || options.getShardingConfig().isBlank()) {
+      return new HashMap<>();
+    }
+    JsonParser parser = new JsonParser();
+    JsonObject shardingConfig = parser.parseString(options.getShardingConfig()).getAsJsonObject();
+    return shardingConfig.asMap().entrySet().stream()
+        .collect(Collectors.toMap(Entry::getKey, entry -> String.valueOf(entry.getValue())));
   }
 }

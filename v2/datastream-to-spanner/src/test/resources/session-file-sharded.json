@@ -1,0 +1,285 @@
+{
+    "SpSchema": {
+        "t1": {
+            "Name": "new_cart",
+            "ColIds": [
+                "c1",
+                "c2",
+                "c3"
+            ],
+            "ColDefs": {
+                "c1": {
+                    "Name": "new_product_id",
+                    "Type": {
+                        "Name": "STRING",
+                        "Len": 20,
+                        "IsArray": false
+                    },
+                    "NotNull": true,
+                    "Comment": "From: product_id varchar(20)",
+                    "Id":"c1"
+                },
+                "c2": {
+                    "Name": "new_quantity",
+                    "Type": {
+                        "Name": "INT64",
+                        "Len": 0,
+                        "IsArray": false
+                    },
+                    "NotNull": false,
+                    "Comment": "From: quantity bigint",
+                    "Id":"c2"
+                },
+                "c3": {
+                    "Name": "new_user_id",
+                    "Type": {
+                        "Name": "STRING",
+                        "Len": 20,
+                        "IsArray": false
+                    },
+                    "NotNull": true,
+                    "Comment": "From: user_id varchar(20)",
+                    "Id":"c3"
+                }
+            },
+            "PrimaryKeys": [
+                {
+                    "ColId": "c3",
+                    "Desc": false,
+                    "Order": 1
+                },
+                {
+                    "ColId": "c1",
+                    "Desc": false,
+                    "Order": 2
+                }
+            ],
+            "ForeignKeys": [
+                {
+                    "Name": "user_cart",
+                    "Id": "fk1",
+                    "ColumnIds": [
+                        "c3"
+                    ],
+                    "ReferTableId": "t4",
+                    "ReferColumnIds": [
+                        "c11"
+                    ]
+                }
+            ],
+            "Indexes": [
+                {
+                    "Name": "quant",
+                    "TableId": "t1",
+                    "Unique": false,
+                    "Id": "i2",
+                    "Keys": [
+                        {
+                            "ColId": "c2",
+                            "Desc": false,
+                            "Order": 1
+                        }
+                    ]
+                }
+            ],
+            "Id":"t1",
+            "ParentId": "",
+            "Comment": "Spanner schema for source table cart"
+        },
+        "t2": {
+            "Name": "new_people",
+            "ColIds": [
+                "c5",
+                "c6"
+            ],
+            "ShardedColId": "c6",
+            "ColDefs": {
+                "c5": {
+                    "Name": "new_name",
+                    "Type": {
+                        "Name": "STRING",
+                        "Len": 20,
+                        "IsArray": false
+                    },
+                    "NotNull": false,
+                    "Comment": "From: name varchar(20)",
+                    "Id":"c5"
+                },
+                "c6": {
+                    "Name": "migration_shard_id",
+                    "Type": {
+                        "Name": "STRING",
+                        "Len": 20,
+                        "`IsArray": false
+                    },
+                    "NotNull": false,
+                    "Comment": "",
+                    "Id":"c6"
+                }
+            },
+            "PrimaryKeys": [
+                {
+                    "ColId": "c6",
+                    "Desc": false,
+                    "Order": 1
+                },
+                {
+                    "ColId": "c5",
+                    "Desc": false,
+                    "Order": 1
+                }
+            ],
+            "ForeignKeys": null,
+            "Indexes": null,
+            "Id":"t2",
+            "ParentId": "",
+            "Comment": "Spanner schema for source table people"
+        }
+    },
+    "SyntheticPKeys": {
+    },
+    "SrcSchema": {
+        "t1": {
+            "Name": "cart",
+            "Schema": "my_schema",
+            "ColIds": [
+                "c3",
+                "c1",
+                "c2"
+            ],
+            "ColDefs": {
+                "c1": {
+                    "Name": "product_id",
+                    "Type": {
+                        "Name": "varchar",
+                        "Mods": [
+                            20
+                        ],
+                        "ArrayBounds": null
+                    },
+                    "Ignored": {
+                        "Check": false,
+                        "Identity": false,
+                        "Default": false,
+                        "Exclusion": false,
+                        "ForeignKey": false,
+                        "AutoIncrement": false
+                    },
+                    "NotNull": true,
+                    "Id":"c1"
+                },
+                "c2": {
+                    "Name": "quantity",
+                    "Type": {
+                        "Name": "bigint",
+                        "Mods": null,
+                        "ArrayBounds": null
+                    },
+                    "Ignored": {
+                        "Check": false,
+                        "Identity": false,
+                        "Default": false,
+                        "Exclusion": false,
+                        "ForeignKey": false,
+                        "AutoIncrement": false
+                    },
+                    "NotNull": false,
+                    "Id":"c2"
+                },
+                "c3": {
+                    "Name": "user_id",
+                    "Type": {
+                        "Name": "varchar",
+                        "Mods": [
+                            20
+                        ],
+                        "ArrayBounds": null
+                    },
+                    "Ignored": {
+                        "Check": false,
+                        "Identity": false,
+                        "Default": false,
+                        "Exclusion": false,
+                        "ForeignKey": false,
+                        "AutoIncrement": false
+                    },
+                    "NotNull": true,
+                    "Id":"c3"
+                }
+            },
+            "PrimaryKeys": [
+                {
+                    "ColId": "c3",
+                    "Desc": false,
+                    "Order": 1
+                },
+                {
+                    "ColId": "c1",
+                    "Desc": false,
+                    "Order": 2
+                }
+            ],
+            "ForeignKeys": [
+                {
+                    "Name": "user_cart",
+                    "Id": "fk1",
+                    "ColumnIds": [
+                        "c3"
+                    ],
+                    "ReferTableId": "t4",
+                    "ReferColumnIds": [
+                        "c11"
+                    ]
+                }
+            ],
+            "Indexes": [
+                {
+                    "Name": "quant",
+                    "Unique": false,
+                    "Id": "i2",
+                    "Keys": [
+                        {
+                            "ColId": "c2",
+                            "Desc": false,
+                            "Order": 1
+                        }
+                    ]
+                }
+            ],
+            "Id": "t1"
+        },
+        "t2": {
+            "Name": "people",
+            "Schema": "my_schema",
+            "ColIds": [
+                "c5"
+            ],
+            "ColDefs": {
+                "c5": {
+                    "Name": "name",
+                    "Type": {
+                        "Name": "varchar",
+                        "Mods": [
+                            20
+                        ],
+                        "ArrayBounds": null
+                    },
+                    "Ignored": {
+                        "Check": false,
+                        "Identity": false,
+                        "Default": false,
+                        "Exclusion": false,
+                        "ForeignKey": false,
+                        "AutoIncrement": false
+                    },
+                    "NotNull": false,
+                    "Id": "c5"
+                }
+            },
+            "PrimaryKeys": null,
+            "ForeignKeys": null,
+            "Indexes": null,
+            "Id": "t2"
+        }
+    }
+}

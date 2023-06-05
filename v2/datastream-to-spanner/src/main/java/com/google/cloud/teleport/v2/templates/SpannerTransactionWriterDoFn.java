@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_METADATA_KEY_PREFIX;
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_SCHEMA_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
 import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_UUID_KEY;
 
@@ -38,6 +39,7 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFact
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.templates.session.ColumnDef;
+import com.google.cloud.teleport.v2.templates.session.CreateTable;
 import com.google.cloud.teleport.v2.templates.session.NameAndCols;
 import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.session.SrcSchema;
@@ -92,6 +94,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   private final Session session;
 
+  private final Map<String, String> shardingConfig;
+
   private final SpannerConfig spannerConfig;
 
   // The prefix for shadow tables.
@@ -134,6 +138,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
       Session session,
+      Map<String, String> shardingConfig,
       String shadowTablePrefix,
       String sourceType,
       Boolean roundJsonDecimals) {
@@ -141,6 +146,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.session = session;
+    this.shardingConfig = shardingConfig;
     this.shadowTablePrefix =
         (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
     this.sourceType = sourceType;
@@ -277,6 +283,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     // Convert table and column names in change event.
     changeEvent = convertTableAndColumnNames(changeEvent, tableName);
 
+    // Add shard id to change event
+    changeEvent = populateShardId(changeEvent, tableId);
+
     // Add synthetic PK to change event.
     changeEvent = addSyntheticPKs(changeEvent, tableId);
 
@@ -301,6 +310,21 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         ((ObjectNode) changeEvent).remove(srcCol);
       }
     }
+    return changeEvent;
+  }
+
+  JsonNode populateShardId(JsonNode changeEvent, String tableId) {
+    if (shardingConfig.isEmpty()) {
+      return changeEvent; // Nothing to do
+    }
+    CreateTable table = session.getSpSchema().get(tableId);
+    ColumnDef shardedColDef = table.getColDefs().get(table.getShardedColId());
+
+    if (shardedColDef == null) {
+      return changeEvent;
+    }
+    String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
+    ((ObjectNode) changeEvent).put(shardedColDef.getName(), shardingConfig.get(schemaName));
     return changeEvent;
   }
 
