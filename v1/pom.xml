@@ -46,7 +46,6 @@
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
     <commons-csv.version>1.8</commons-csv.version>
     <commons-text.version>1.10.0</commons-text.version>
-    <google-cloud-bigquery.version>1.108.0</google-cloud-bigquery.version>
     <grpc.gen.version>1.13.1</grpc.gen.version>
     <derby.version>10.14.2.0</derby.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
@@ -366,7 +365,6 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-bigquery</artifactId>
-      <version>${google-cloud-bigquery.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
