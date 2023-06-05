@@ -25,6 +25,8 @@ import com.google.api.client.util.ArrayMap;
 import com.google.api.services.dataflow.Dataflow;
 import com.google.api.services.dataflow.model.Environment;
 import com.google.api.services.dataflow.model.Job;
+import com.google.api.services.dataflow.model.JobMessage;
+import com.google.api.services.dataflow.model.ListJobMessagesResponse;
 import com.google.api.services.dataflow.model.MetricUpdate;
 import com.google.cloud.teleport.it.common.logging.LogStrings;
 import com.google.common.base.Strings;
@@ -89,6 +91,25 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   @Override
   public JobState getJobStatus(String project, String region, String jobId) throws IOException {
     return handleJobState(getJob(project, region, jobId));
+  }
+
+  @Override
+  public List<JobMessage> listMessages(String project, String region, String jobId) {
+    LOG.info("Listing messages of {} under {}", jobId, project);
+    ListJobMessagesResponse response =
+        Failsafe.with(clientRetryPolicy())
+            .get(
+                () ->
+                    client
+                        .projects()
+                        .locations()
+                        .jobs()
+                        .messages()
+                        .list(project, region, jobId)
+                        .execute());
+    List<JobMessage> messages = response.getJobMessages();
+    LOG.info("Received {} messages for {} under {}", messages.size(), jobId, project);
+    return messages;
   }
 
   @Override
@@ -239,25 +260,19 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
             .setState(state);
     // add all environment params to parameters in LaunchInfo so that these are exported for load
     // tests
-    Map<String, String> parameters = new HashMap<>();
-    parameters.putAll(options.parameters());
+    Map<String, String> parameters = new HashMap<>(options.parameters());
     options.environment().forEach((key, val) -> parameters.put(key, val.toString()));
     builder.setParameters(ImmutableMap.copyOf(parameters));
     if (labels != null && !labels.isEmpty()) {
       builder
-          .setTemplateType(
-              job.getLabels().getOrDefault("goog-dataflow-provided-template-type", null))
-          .setTemplateVersion(
-              job.getLabels().getOrDefault("goog-dataflow-provided-template-version", null))
-          .setTemplateName(
-              job.getLabels().getOrDefault("goog-dataflow-provided-template-name", null));
+          .setTemplateType(job.getLabels().get("goog-dataflow-provided-template-type"))
+          .setTemplateVersion(job.getLabels().get("goog-dataflow-provided-template-version"))
+          .setTemplateName(job.getLabels().get("goog-dataflow-provided-template-name"));
     }
     return builder.build();
   }
 
   /** Waits until the specified job is not in a pending state. */
-  // TODO(pranavbhandari): This method fails if any request to dataflow fails. Make this method more
-  // robust.
   public JobState waitUntilActive(String project, String region, String jobId) throws IOException {
     JobState state = getJobStatus(project, region, jobId);
     while (PENDING_STATES.contains(state)) {

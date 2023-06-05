@@ -18,11 +18,13 @@ package com.google.cloud.teleport.it.common;
 import static com.google.cloud.teleport.it.common.utils.PipelineUtils.createJobName;
 
 import com.google.api.services.dataflow.model.Job;
+import com.google.api.services.dataflow.model.JobMessage;
 import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
@@ -111,10 +113,10 @@ public interface PipelineLauncher {
     private final String jobName;
     private final ImmutableMap<String, String> parameters;
     private final ImmutableMap<String, Object> environment;
-    @Nullable private final String specPath;
-    @Nullable private final Sdk sdk;
-    @Nullable private final String executable;
-    @Nullable private final Pipeline pipeline;
+    private final @Nullable String specPath;
+    private final @Nullable Sdk sdk;
+    private final @Nullable String executable;
+    private final @Nullable Pipeline pipeline;
 
     private LaunchConfig(Builder builder) {
       this.jobName = builder.jobName;
@@ -138,8 +140,7 @@ public interface PipelineLauncher {
       return environment;
     }
 
-    @Nullable
-    public String getParameter(String key) {
+    public @Nullable String getParameter(String key) {
       return parameters.get(key);
     }
 
@@ -192,8 +193,7 @@ public interface PipelineLauncher {
         return jobName;
       }
 
-      @Nullable
-      public String getParameter(String key) {
+      public @Nullable String getParameter(String key) {
         return parameters.get(key);
       }
 
@@ -207,8 +207,7 @@ public interface PipelineLauncher {
         return this;
       }
 
-      @Nullable
-      public Object getEnvironment(String key) {
+      public @Nullable Object getEnvironment(String key) {
         return environment.get(key);
       }
 
@@ -217,13 +216,11 @@ public interface PipelineLauncher {
         return this;
       }
 
-      @Nullable
-      public String getSpecPath() {
+      public @Nullable String getSpecPath() {
         return specPath;
       }
 
-      @Nullable
-      public Sdk getSdk() {
+      public @Nullable Sdk getSdk() {
         return sdk;
       }
 
@@ -232,8 +229,7 @@ public interface PipelineLauncher {
         return this;
       }
 
-      @Nullable
-      public String getExecutable() {
+      public @Nullable String getExecutable() {
         return executable;
       }
 
@@ -242,8 +238,7 @@ public interface PipelineLauncher {
         return this;
       }
 
-      @Nullable
-      public Pipeline getPipeline() {
+      public @Nullable Pipeline getPipeline() {
         return pipeline;
       }
 
@@ -279,14 +274,11 @@ public interface PipelineLauncher {
 
     public abstract String runner();
 
-    @Nullable
-    public abstract String templateName();
+    public abstract @Nullable String templateName();
 
-    @Nullable
-    public abstract String templateType();
+    public abstract @Nullable String templateType();
 
-    @Nullable
-    public abstract String templateVersion();
+    public abstract @Nullable String templateVersion();
 
     public abstract ImmutableMap<String, String> parameters();
 
@@ -315,14 +307,11 @@ public interface PipelineLauncher {
 
       public abstract Builder setRunner(String value);
 
-      @Nullable
-      public abstract Builder setTemplateName(String value);
+      public abstract Builder setTemplateName(@Nullable String value);
 
-      @Nullable
-      public abstract Builder setTemplateType(String value);
+      public abstract Builder setTemplateType(@Nullable String value);
 
-      @Nullable
-      public abstract Builder setTemplateVersion(String value);
+      public abstract Builder setTemplateVersion(@Nullable String value);
 
       public abstract Builder setParameters(ImmutableMap<String, String> value);
 
@@ -374,6 +363,16 @@ public interface PipelineLauncher {
    * @throws IOException if there is an issue sending the request
    */
   JobState getJobStatus(String project, String region, String jobId) throws IOException;
+
+  /**
+   * Gets the messages of a job.
+   *
+   * @param project the project that the job is running under
+   * @param region the region that the job was launched in
+   * @param jobId the id of the job
+   * @return the list of messages of the job.
+   */
+  List<JobMessage> listMessages(String project, String region, String jobId);
 
   /**
    * Cancels the given job.
