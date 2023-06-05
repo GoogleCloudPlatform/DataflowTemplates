@@ -15,10 +15,17 @@
  */
 package com.google.cloud.teleport.templates.common;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.datadog.DatadogEvent;
 import com.google.cloud.teleport.datadog.DatadogEventCoder;
 import com.google.cloud.teleport.values.FailsafeElement;
+import com.google.gson.JsonParser;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
@@ -81,7 +88,7 @@ public class DatadogConvertersTest {
             .withSource("gcp")
             .build();
 
-    matchesDatadogEvent(input, expectedDatadogEvent);
+    matchesDatadogEvent(input, expectedDatadogEvent, false);
   }
 
   /** Test successful conversion of JSON messages. */
@@ -529,7 +536,13 @@ public class DatadogConvertersTest {
 
   @Category(NeedsRunner.class)
   private void matchesDatadogEvent(
-      FailsafeElement<String, String> input, DatadogEvent expectedDatadogEvent) {
+      FailsafeElement<String, String> input, DatadogEvent expectedEvent) {
+    matchesDatadogEvent(input, expectedEvent, true);
+  }
+
+  @Category(NeedsRunner.class)
+  private void matchesDatadogEvent(
+      FailsafeElement<String, String> input, DatadogEvent expectedEvent, boolean jsonCompare) {
     pipeline.getCoderRegistry().registerCoderForClass(DatadogEvent.class, DatadogEventCoder.of());
 
     PCollectionTuple tuple =
@@ -542,7 +555,34 @@ public class DatadogConvertersTest {
                     DATADOG_EVENT_OUT, DATADOG_EVENT_DEADLETTER_OUT));
 
     PAssert.that(tuple.get(DATADOG_EVENT_DEADLETTER_OUT)).empty();
-    PAssert.that(tuple.get(DATADOG_EVENT_OUT)).containsInAnyOrder(expectedDatadogEvent);
+    PAssert.IterableAssert<DatadogEvent> allEvents = PAssert.that(tuple.get(DATADOG_EVENT_OUT));
+    if (jsonCompare) {
+      String expectedSource = expectedEvent.ddsource();
+      String expectedTags = expectedEvent.ddtags();
+      String expectedHostname = expectedEvent.hostname();
+      String expectedService = expectedEvent.service();
+      String expectedMessage = expectedEvent.message();
+
+      allEvents.satisfies(
+          iterable -> {
+            List<DatadogEvent> actualEvents = new ArrayList<>();
+            iterable.forEach(actualEvents::add);
+            assertThat(actualEvents, hasSize(1));
+
+            DatadogEvent actualEvent = actualEvents.get(0);
+            assertThat(actualEvent.ddsource(), equalTo(expectedSource));
+            assertThat(actualEvent.ddtags(), equalTo(expectedTags));
+            assertThat(actualEvent.hostname(), equalTo(expectedHostname));
+            assertThat(actualEvent.service(), equalTo(expectedService));
+            assertThat(
+                JsonParser.parseString(actualEvent.message()),
+                equalTo(JsonParser.parseString(expectedMessage)));
+
+            return null;
+          });
+    } else {
+      allEvents.containsInAnyOrder(expectedEvent);
+    }
 
     pipeline.run();
   }
