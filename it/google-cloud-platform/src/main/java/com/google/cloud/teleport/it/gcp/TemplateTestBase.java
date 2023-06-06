@@ -382,8 +382,13 @@ public abstract class TemplateTestBase {
 
     // Property allows testing with Runner v2 / Unified Worker
     if (System.getProperty("unifiedWorker") != null) {
-      options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+      options.addEnvironment(
+          "additionalExperiments", List.of("use_runner_v2", "enable_cleanup_state"));
+    } else {
+      options.addEnvironment(
+          "additionalExperiments", Collections.singletonList("enable_cleanup_state"));
     }
+
     // Property allows testing with Streaming Engine Enabled
     if (System.getProperty("enableStreamingEngine") != null) {
       options.addEnvironment("enableStreamingEngine", true);
