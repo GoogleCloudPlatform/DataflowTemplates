@@ -80,7 +80,7 @@ public class RecordsSubject extends Subject {
    */
   public void hasRecordSubset(Map<String, Object> subset) {
 
-    Map<String, Object> expected = new TreeMap<>(subset);
+    Map<String, Object> expected = convertMapToTreeMap(subset);
     for (Map<String, Object> candidate : actual) {
       boolean match = true;
       for (Map.Entry<String, Object> entry : subset.entrySet()) {
@@ -111,9 +111,9 @@ public class RecordsSubject extends Subject {
   public void hasRecordsUnordered(List<Map<String, Object>> records) {
 
     for (Map<String, Object> record : records) {
-      String expected = new TreeMap<>(record).toString();
+      String expected = convertMapToTreeMap(record).toString();
       if (actual.stream()
-          .noneMatch(candidate -> new TreeMap<>(candidate).toString().equals(expected))) {
+          .noneMatch(candidate -> convertMapToTreeMap(candidate).toString().equals(expected))) {
         failWithoutActual(
             Fact.simpleFact(
                 "expected that contains unordered record "
@@ -122,6 +122,30 @@ public class RecordsSubject extends Subject {
                     + actual));
       }
     }
+  }
+
+  /**
+   * Helper method that does a deep recursive mapping of a Map to TreeMap such that nested Map's are
+   * also converted to TreeMap's.
+   *
+   * @param record The Map to convert to TreeMap.
+   * @return The converted TreeMap.
+   */
+  private TreeMap<String, Object> convertMapToTreeMap(Map<String, Object> record) {
+    TreeMap<String, Object> result = new TreeMap<>(record);
+    result.forEach(
+        (key, value) -> {
+          if (value instanceof Map) {
+            result.put(
+                key,
+                convertMapToTreeMap(
+                    ((Map<?, ?>) value)
+                        .entrySet().stream()
+                            .collect(
+                                Collectors.toMap(e -> e.getKey().toString(), Entry::getValue))));
+          }
+        });
+    return result;
   }
 
   /**
@@ -134,7 +158,7 @@ public class RecordsSubject extends Subject {
 
     for (String expected : strings) {
       if (actual.stream()
-          .noneMatch(candidate -> new TreeMap<>(candidate).toString().contains(expected))) {
+          .noneMatch(candidate -> convertMapToTreeMap(candidate).toString().contains(expected))) {
         failWithoutActual(
             Fact.simpleFact(
                 "expected that contains the string " + expected + ", but only had " + actual));
@@ -155,11 +179,13 @@ public class RecordsSubject extends Subject {
   public void hasRecordsUnorderedCaseInsensitiveColumns(List<Map<String, Object>> records) {
 
     for (Map<String, Object> record : records) {
-      String expected = convertKeysToUpperCase(new TreeMap<>(record)).toString();
+      String expected = convertKeysToUpperCase(convertMapToTreeMap(record)).toString();
       if (actual.stream()
           .noneMatch(
               candidate ->
-                  convertKeysToUpperCase(new TreeMap<>(candidate)).toString().equals(expected))) {
+                  convertKeysToUpperCase(convertMapToTreeMap(candidate))
+                      .toString()
+                      .equals(expected))) {
         failWithoutActual(
             Fact.simpleFact(
                 "expected that contains unordered record (and case insensitive) "
@@ -170,8 +196,8 @@ public class RecordsSubject extends Subject {
     }
   }
 
-  private TreeMap<String, Object> convertKeysToUpperCase(Map<String, Object> map) {
-    return new TreeMap<>(
+  private Map<String, Object> convertKeysToUpperCase(Map<String, Object> map) {
+    return convertMapToTreeMap(
         map.entrySet().stream()
             .collect(Collectors.toMap(entry -> entry.getKey().toUpperCase(), Entry::getValue)));
   }
