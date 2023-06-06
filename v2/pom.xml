@@ -39,6 +39,7 @@
         <jib.maven.version>2.6.0</jib.maven.version>
         <junit-dep.version>4.10</junit-dep.version>
         <opencensus.version>0.31.0</opencensus.version>
+        <protoc.version>3.21.12</protoc.version>
 
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
 
@@ -272,6 +273,30 @@
         </pluginManagement>
 
         <plugins>
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.6.1</version>
+                <configuration>
+                    <protocArtifact>com.google.protobuf:protoc:${protoc.version}:exe:${os.detected.classifier}</protocArtifact>
+                    <writeDescriptorSet>true</writeDescriptorSet>
+                    <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>
+                    <descriptorSetFileName>schema.pb</descriptorSetFileName>
+                    <!-- This path must be unique, or else it may delete existing files. -->
+                    <descriptorSetOutputDirectory>${basedir}/target/generated-test-sources/protobuf/schema</descriptorSetOutputDirectory>
+                    <additionalProtoPathElements>
+                        <additionalProtoPathElement>${basedir}/src/test/proto</additionalProtoPathElement>
+                    </additionalProtoPathElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>test-compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>

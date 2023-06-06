@@ -27,7 +27,7 @@ public abstract class ConditionCheck implements Supplier<Boolean> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConditionCheck.class);
 
-  private ConditionCheck next;
+  private ConditionCheck prev;
 
   protected abstract String getDescription();
 
@@ -48,15 +48,15 @@ public abstract class ConditionCheck implements Supplier<Boolean> {
         getDescription(),
         result.message == null ? "" : result.message);
 
-    if (next != null) {
-      return result.success && next.get();
+    if (prev != null) {
+      return result.success && prev.get();
     }
 
     return true;
   }
 
   public ConditionCheck and(ConditionCheck next) {
-    this.next = next;
+    next.prev = this;
     return next;
   }
 
