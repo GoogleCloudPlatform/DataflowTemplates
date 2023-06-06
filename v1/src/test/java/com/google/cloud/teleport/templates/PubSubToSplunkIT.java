@@ -30,6 +30,7 @@ import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.it.splunk.SplunkResourceManager;
 import com.google.cloud.teleport.it.splunk.conditions.SplunkEventsCheck;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -206,6 +207,8 @@ public class PubSubToSplunkIT extends TemplateTestBase {
   }
 
   @Test
+  // TODO: Skip DirectRunner because batching/timers are not working appropriately
+  @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
   public void testPubSubToSplunkWithBatchAndParallelism() throws IOException {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
