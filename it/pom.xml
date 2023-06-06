@@ -221,5 +221,6 @@
     <module>splunk</module>
     <module>testcontainers</module>
     <module>truthmatchers</module>
+    <module>datadog</module>
   </modules>
 </project>
