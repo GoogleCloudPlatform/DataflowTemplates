@@ -43,9 +43,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.OrderWith;
 import org.junit.runner.RunWith;
-import org.junit.runner.manipulation.Alphanumeric;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +52,6 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(TextToPubsubStream.class)
 @RunWith(JUnit4.class)
-@OrderWith(Alphanumeric.class)
 public class TextToPubsubStreamLT extends TemplateLoadTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(TextToPubsubStreamLT.class);
   private static final String SPEC_PATH =
@@ -95,12 +92,12 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
   }
 
   @Test
-  public void test1Backlog10gb() throws IOException, ParseException, InterruptedException {
+  public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
     testBacklog(Function.identity());
   }
 
   @Test
-  public void test2SteadyState1hr() throws IOException, ParseException, InterruptedException {
+  public void testSteadyState1hr() throws IOException, ParseException, InterruptedException {
     testSteadyState1hr(Function.identity());
   }
 
