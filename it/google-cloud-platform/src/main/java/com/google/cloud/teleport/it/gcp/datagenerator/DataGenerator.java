@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.it.gcp.datagenerator;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
 import static com.google.cloud.teleport.it.gcp.LoadTestBase.createConfig;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.auth.Credentials;
 import com.google.cloud.teleport.it.common.PipelineLauncher;

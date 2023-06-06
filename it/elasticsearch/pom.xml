@@ -32,13 +32,8 @@
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>it-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>${testcontainers.version}</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>

@@ -31,6 +31,7 @@
     <commons-math3.version>3.6.1</commons-math3.version>
     <failsafe.version>3.3.0</failsafe.version>
     <testcontainers.version>1.17.5</testcontainers.version>
+    <dataflow-api.version>v1b3-rev20220920-2.0.0</dataflow-api.version>
 
     <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
   </properties>
@@ -152,6 +153,7 @@
   </profiles>
   <modules>
     <module>common</module>
+    <module>conditions</module>
     <module>cassandra</module>
     <module>elasticsearch</module>
     <module>google-cloud-platform</module>
@@ -159,5 +161,7 @@
     <module>kafka</module>
     <module>mongodb</module>
     <module>splunk</module>
+    <module>testcontainers</module>
+    <module>truthmatchers</module>
   </modules>
 </project>

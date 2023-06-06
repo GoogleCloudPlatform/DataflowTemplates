@@ -28,9 +28,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Common utilities for ResourceManager implementations. */
 public class ResourceManagerUtils {

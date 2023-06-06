@@ -18,7 +18,7 @@ package com.google.cloud.teleport.it.kafka;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
+import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;

@@ -18,7 +18,7 @@ package com.google.cloud.teleport.it.elasticsearch;
 import static com.google.cloud.teleport.it.elasticsearch.ElasticsearchUtils.checkValidIndexName;
 
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
+import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.ArrayList;

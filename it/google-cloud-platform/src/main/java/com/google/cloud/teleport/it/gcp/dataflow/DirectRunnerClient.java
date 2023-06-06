@@ -153,7 +153,7 @@ public class DirectRunnerClient implements PipelineLauncher {
   public static final class Builder {
 
     private Credentials credentials;
-    private Class<?> mainClass;
+    private final Class<?> mainClass;
 
     private Builder(Class<?> mainClass) {
       this.mainClass = mainClass;

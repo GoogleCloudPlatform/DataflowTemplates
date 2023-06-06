@@ -26,13 +26,22 @@
     <artifactId>it-google-cloud-platform</artifactId>
 
     <properties>
-        <dataflow-api.version>v1b3-rev20220920-2.0.0</dataflow-api.version>
         <parquet-avro.version>1.12.0</parquet-avro.version>
     </properties>
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>
             <artifactId>it-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>conditions</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>truthmatchers</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- File Formats -->

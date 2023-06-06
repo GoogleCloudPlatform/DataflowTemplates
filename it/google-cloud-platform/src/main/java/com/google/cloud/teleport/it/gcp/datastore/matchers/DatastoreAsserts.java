@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.it.gcp.datastore.matchers;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
 
 import com.google.cloud.datastore.Entity;
-import com.google.cloud.teleport.it.common.matchers.RecordsSubject;
+import com.google.cloud.teleport.it.truthmatchers.RecordsSubject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;

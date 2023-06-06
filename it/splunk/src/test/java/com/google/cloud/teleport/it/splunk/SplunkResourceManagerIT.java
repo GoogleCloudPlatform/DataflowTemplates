@@ -19,8 +19,8 @@ import static com.google.cloud.teleport.it.splunk.matchers.SplunkAsserts.assertT
 import static com.google.cloud.teleport.it.splunk.matchers.SplunkAsserts.splunkEventsToRecords;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
-import com.google.cloud.teleport.it.common.testcontainers.TestContainersIntegrationTest;
 import com.google.cloud.teleport.it.splunk.conditions.SplunkEventsCheck;
+import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;

@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.it.gcp.bigtable.matchers;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
 
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowCell;
-import com.google.cloud.teleport.it.common.matchers.RecordsSubject;
+import com.google.cloud.teleport.it.truthmatchers.RecordsSubject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

@@ -15,12 +15,12 @@
  */
 package com.google.cloud.teleport.it.cassandra.matchers;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
 
 import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.type.DataTypes;
-import com.google.cloud.teleport.it.common.matchers.RecordsSubject;
+import com.google.cloud.teleport.it.truthmatchers.RecordsSubject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

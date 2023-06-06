@@ -28,7 +28,6 @@ import com.google.api.services.dataflow.model.LaunchFlexTemplateRequest;
 import com.google.api.services.dataflow.model.LaunchFlexTemplateResponse;
 import com.google.auth.Credentials;
 import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.cloud.teleport.it.common.AbstractPipelineLauncher;
 import dev.failsafe.Failsafe;
 import java.io.IOException;
 import org.slf4j.Logger;
