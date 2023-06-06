@@ -20,6 +20,7 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,6 +46,7 @@ import org.junit.runners.JUnit4;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.internal.verification.Times;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
@@ -84,7 +86,9 @@ public class BigtableResourceManagerTest {
   @Before
   public void setUp() throws IOException {
     testManager =
-        new BigtableResourceManager(TEST_ID, PROJECT_ID, bigtableResourceManagerClientFactory);
+        new BigtableResourceManager(
+            BigtableResourceManager.builder(TEST_ID, PROJECT_ID),
+            bigtableResourceManagerClientFactory);
     cluster =
         ImmutableList.of(
             BigtableResourceManagerCluster.create(
@@ -93,17 +97,6 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testCreateResourceManagerCreatesCorrectIdValues() {
-    assertThat(testManager.getInstanceId()).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
-    assertThat(testManager.getProjectId()).matches(PROJECT_ID);
-  }
-
-  @Test
-  public void testResourceManagerBuilderGeneratesBigtableResourceManagerClientFactory()
-      throws IOException {
-    testManager =
-        BigtableResourceManager.builder(TEST_ID, PROJECT_ID)
-            .setCredentialsProvider(credentialsProvider)
-            .build();
     assertThat(testManager.getInstanceId()).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
     assertThat(testManager.getProjectId()).matches(PROJECT_ID);
   }
@@ -139,6 +132,20 @@ public class BigtableResourceManagerTest {
     doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).close();
 
     assertThrows(BigtableResourceManagerException.class, () -> testManager.createInstance(cluster));
+  }
+
+  @Test
+  public void testCreateInstanceShouldThrowErrorWhenUsingStaticInstance() throws IOException {
+    String instanceId = "static-instance";
+    testManager =
+        new BigtableResourceManager(
+            BigtableResourceManager.builder(TEST_ID, PROJECT_ID)
+                .setInstanceId(instanceId)
+                .useStaticInstance(),
+            bigtableResourceManagerClientFactory);
+
+    assertThrows(IllegalStateException.class, () -> testManager.createInstance(cluster));
+    assertThat(testManager.getInstanceId()).matches(instanceId);
   }
 
   @Test
@@ -544,6 +551,32 @@ public class BigtableResourceManagerTest {
   }
 
   @Test
+  public void testCleanupAllShouldNotCleanupStaticInstance() throws IOException {
+    String instanceId = "static-instance";
+    testManager =
+        new BigtableResourceManager(
+            BigtableResourceManager.builder(TEST_ID, PROJECT_ID)
+                .setInstanceId(instanceId)
+                .useStaticInstance(),
+            bigtableResourceManagerClientFactory);
+
+    // use mocked instance admin client object
+    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
+        .thenReturn(bigtableInstanceAdminClient);
+    // use mocked table admin client object
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
+        .thenReturn(bigtableTableAdminClient);
+    when(bigtableTableAdminClient.exists(anyString())).thenReturn(false);
+
+    testManager.createTable(TABLE_ID, ImmutableList.of("cf1"));
+
+    testManager.cleanupAll();
+    verify(bigtableTableAdminClient).deleteTable(TABLE_ID);
+    verify(bigtableTableAdminClient, new Times(1)).deleteTable(anyString());
+    verify(bigtableResourceManagerClientFactory, never()).bigtableInstanceAdminClient();
+  }
+
+  @Test
   public void testCleanupAllShouldWorkWhenBigtableDoesNotThrowAnyError() {
     // use mocked instance admin client object
     when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
@@ -562,6 +595,7 @@ public class BigtableResourceManagerTest {
     testManager.cleanupAll();
 
     verify(bigtableDataClient).close();
+    verify(bigtableTableAdminClient, never()).deleteTable(TABLE_ID);
     verify(bigtableInstanceAdminClient).deleteInstance(anyString());
   }
 }

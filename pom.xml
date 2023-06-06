@@ -402,6 +402,7 @@
               <groups>
                 ${direct-runner.tests}
                 com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest
+                com.google.cloud.teleport.it.gcp.GoogleCloudIntegrationTest
               </groups>
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>
