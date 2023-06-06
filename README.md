@@ -13,7 +13,7 @@ their functionality.
 
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git)
 
-## Note on Default Branch
+## Note on Default Branch ######
 
 As of November 18, 2021, our default branch is now named "main". This does not
 affect forks. If you would like your fork and its local clone to reflect these
