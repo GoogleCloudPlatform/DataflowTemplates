@@ -318,13 +318,13 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       return changeEvent; // Nothing to do
     }
     CreateTable table = session.getSpSchema().get(tableId);
-    ColumnDef shardedColDef = table.getColDefs().get(table.getShardedColId());
+    ColumnDef shardIdColDef = table.getColDefs().get(table.getShardIdColumn());
 
-    if (shardedColDef == null) {
+    if (shardIdColDef == null) {
       return changeEvent;
     }
     String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-    ((ObjectNode) changeEvent).put(shardedColDef.getName(), shardingConfig.get(schemaName));
+    ((ObjectNode) changeEvent).put(shardIdColDef.getName(), shardingConfig.get(schemaName));
     return changeEvent;
   }
 

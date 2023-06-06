@@ -92,7 +92,7 @@
                 "c5",
                 "c6"
             ],
-            "ShardedColId": "c6",
+            "ShardIdColumn": "c6",
             "ColDefs": {
                 "c5": {
                     "Name": "new_name",

@@ -33,14 +33,14 @@ public class CreateTable implements Serializable {
   private final Map<String, ColumnDef> colDefs;
 
   /** Points to the id of the sharded column. Will be null for non-sharded migrations */
-  private final String shardedColId;
+  private final String shardIdColumn;
 
   public CreateTable(
-      String name, String[] colIds, Map<String, ColumnDef> colDefs, String shardedColId) {
+      String name, String[] colIds, Map<String, ColumnDef> colDefs, String shardIdColumn) {
     this.name = name;
     this.colIds = colIds;
     this.colDefs = colDefs;
-    this.shardedColId = shardedColId;
+    this.shardIdColumn = shardIdColumn;
   }
 
   public String getName() {
@@ -55,14 +55,14 @@ public class CreateTable implements Serializable {
     return colDefs;
   }
 
-  public String getShardedColId() {
-    return shardedColId;
+  public String getShardIdColumn() {
+    return shardIdColumn;
   }
 
   public String toString() {
     return String.format(
-        "{ 'name': '%s', 'colIds': '%s', 'colDefs': '%s', shardedColId: '%s' }",
-        name, colIds, colDefs, shardedColId);
+        "{ 'name': '%s', 'colIds': '%s', 'colDefs': '%s', shardIdColumn: '%s' }",
+        name, colIds, colDefs, shardIdColumn);
   }
 
   @Override
@@ -78,6 +78,6 @@ public class CreateTable implements Serializable {
     return this.name.equals(other.name)
         && Arrays.equals(this.colIds, other.colIds)
         && this.colDefs.equals(other.colDefs)
-        && Objects.equals(this.shardedColId, other.shardedColId);
+        && Objects.equals(this.shardIdColumn, other.shardIdColumn);
   }
 }
