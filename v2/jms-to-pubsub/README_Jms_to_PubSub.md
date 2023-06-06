@@ -1,10 +1,10 @@
 JMS to Pubsub Template
 ---
-A pipeline to extract data from JMS Server(Queue/Topic) and write to Pubsub Topic.
+A streaming pipeline which inserts data from a JMS Broker Server(Topic/Queue) and writes to Pubsub Topic.
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=JMS_to_PubSub).
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Jms_to_PubSub).
 
 
 :bulb: This is a generated documentation based
@@ -15,14 +15,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **jmsServer** jmsServer: JMS (ActiveMQ) Server IP. For example-tcp://<ActiveMQ-Host>:<PORT>
-* **inputName** (JMS(ActiveMQ) queue/topic to read the input from): JMS Queue/Topic to read the input from. (Example: queue1/topic1).
-* **inputType** (JMS(ActiveMQ)  Destination to read from , can be queue or topic.
+* **inputName** (JMS Queue/Topic Name to read the input from): JMS Queue/Topic Name to read the input from. (Example: queue).
+* **inputType** (JMS Destination Type to read the input from): JMS Destination Type to read the input from. (Example: queue).
 * **outputTopic** (Output Pub/Sub topic): The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **username** (JMS Username): JMS username for authentication with JMS server (Example: sampleusername).
+* **password** (JMS Password): Password for username provided for authentication with JMS server (Example: samplepassword).
 
 ### Optional Parameters
-* **username** : username for authentication with JMS server (Example: sampleusername).
-* **password** : Password for username provided for authentication with JMS server (Example: samplepassword).
+
+* **jmsServer** (JMS Host IP): Server IP for JMS Host (Example: host:5672).
 
 
 
@@ -34,8 +35,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
-    * `gcloud auth login`
-    * `gcloud auth application-default login`
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/jms-to-pubsub/src/main/java/com/google/cloud/teleport/v2/templates/JmsToPubsub.java)
@@ -105,22 +106,21 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Jms_to_PubSub"
 
 ### Required
-export JMS_SERVER=<jmsServer>
 export INPUT_NAME=<inputName>
 export INPUT_TYPE=<inputType>
 export OUTPUT_TOPIC=<outputTopic>
-
-
-### Optional
 export USERNAME=<username>
 export PASSWORD=<password>
+
+### Optional
+export JMS_SERVER=<jmsServer>
 
 gcloud dataflow flex-template run "jms-to-pubsub-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "brokerServer=$BROKER_SERVER" \
-  --parameters "inputType=$INPUT_NAME" \
+  --parameters "jmsServer=$JMS_SERVER" \
+  --parameters "inputName=$INPUT_NAME" \
   --parameters "inputType=$INPUT_TYPE" \
   --parameters "outputTopic=$OUTPUT_TOPIC" \
   --parameters "username=$USERNAME" \
@@ -143,15 +143,14 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export JMS_SERVER=<jmsServer>
 export INPUT_NAME=<inputName>
 export INPUT_TYPE=<inputType>
 export OUTPUT_TOPIC=<outputTopic>
-
-
-### Optional
 export USERNAME=<username>
 export PASSWORD=<password>
+
+### Optional
+export JMS_SERVER=<jmsServer>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -160,7 +159,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="jms-to-pubsub-job" \
 -DtemplateName="Jms_to_PubSub" \
--Dparameters="jmsServer=$JMS_SERVER,inputName=$INPUT_NAME,inputType=$INPUT_TYPE,,outputTopic=$OUTPUT_TOPIC,username=$USERNAME,password=$PASSWORD" \
+-Dparameters="jmsServer=$JMS_SERVER,inputName=$INPUT_NAME,inputType=$INPUT_TYPE,outputTopic=$OUTPUT_TOPIC,username=$USERNAME,password=$PASSWORD" \
 -pl v2/jms-to-pubsub \
 -am
 ```
