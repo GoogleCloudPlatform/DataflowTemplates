@@ -73,14 +73,14 @@ public interface PipelineLauncher {
 
     /** States that indicate that the job is done. */
     public static final ImmutableSet<JobState> DONE_STATES =
-        ImmutableSet.of(CANCELLED, DONE, DRAINED, STOPPED, RESOURCE_CLEANING_UP);
+        ImmutableSet.of(CANCELLED, DONE, DRAINED, STOPPED);
 
     /** States that indicate that the job has failed. */
     public static final ImmutableSet<JobState> FAILED_STATES = ImmutableSet.of(FAILED);
 
     /** States that indicate that the job is in the process of finishing. */
     public static final ImmutableSet<JobState> FINISHING_STATES =
-        ImmutableSet.of(DRAINING, CANCELLING);
+        ImmutableSet.of(DRAINING, CANCELLING, RESOURCE_CLEANING_UP);
 
     private final String text;
 
