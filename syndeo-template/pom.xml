@@ -24,14 +24,14 @@
 
     <properties>
         <auto-value.version>1.9</auto-value.version>
-        <avro.version>1.11.1</avro.version>
+        <!-- <avro.version>1.11.1</avro.version> -->
         <awaitility.version>4.2.0</awaitility.version>
         <beam.version>2.48.0</beam.version>
         <beam.snapshot.version>2.49.0-SNAPSHOT</beam.snapshot.version>
-        <bigtable.version>1.15.0</bigtable.version>
-        <bigquery.version>2.9.0</bigquery.version>
-        <commons.version>1.8</commons.version>
-        <commons-text.version>1.10.0</commons-text.version>
+        <!-- <bigtable.version>1.15.0</bigtable.version> -->
+        <!-- <bigquery.version>2.9.0</bigquery.version> -->
+        <!-- <commons.version>1.8</commons.version> -->
+        <!-- <commons-text.version>1.10.0</commons-text.version> -->
         <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
         <java.version>11</java.version>
         <kafka.version>2.4.1</kafka.version>
@@ -39,8 +39,8 @@
         <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
         <protobuf.version>3.21.9</protobuf.version>
         <truth.version>1.0.1</truth.version>
-        <secretmanager.version>2.1.2</secretmanager.version>
-        <slf4j.version>1.7.25</slf4j.version>
+        <!-- <secretmanager.version>2.1.2</secretmanager.version> -->
+        <!-- <slf4j.version>1.7.25</slf4j.version> -->
         <jib.maven.version>2.6.0</jib.maven.version>
         <skipTests>false</skipTests>
         <skipUnitTests>${skipTests}</skipUnitTests>
@@ -79,16 +79,16 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
+            <!-- <dependency>
                 <groupId>org.apache.beam</groupId>
                 <artifactId>beam-sdks-java-io-kafka</artifactId>
                 <version>${beam.snapshot.version}</version>
-            </dependency>
-            <dependency>
+            </dependency> -->
+            <!-- <dependency>
                 <groupId>com.google.api-client</groupId>
                 <artifactId>google-api-client</artifactId>
                 <version>1.35.2</version>
-            </dependency>
+            </dependency> -->
         </dependencies>
     </dependencyManagement>
     <!-- TODO(pabloem): Remove the following section before full support.
@@ -234,12 +234,12 @@
             <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
             <version>${beam.snapshot.version}</version>
         </dependency>
-        <dependency>
+        <!-- <dependency> -->
             <!-- Direct runner included for local development and testing. -->
-            <groupId>org.apache.beam</groupId>
+            <!-- <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-direct-java</artifactId>
             <version>${beam.snapshot.version}</version>
-        </dependency>
+        </dependency> -->
 
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -258,11 +258,11 @@
             <type>pom</type>
         </dependency>
 
-        <dependency>
+        <!-- <dependency>
             <groupId>com.github.erosb</groupId>
             <artifactId>everit-json-schema</artifactId>
             <version>1.14.1</version>
-        </dependency>
+        </dependency> -->
 
         <dependency>
             <groupId>com.google.auto.service</groupId>
@@ -292,11 +292,11 @@
             <version>2.10.3</version>
         </dependency>
 
-        <dependency>
+        <!-- <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-memory-unsafe</artifactId>
             <version>9.0.0</version>
-        </dependency>
+        </dependency> -->
 
         <!-- Proto schema support for pubsub and kafka -->
         <dependency>
