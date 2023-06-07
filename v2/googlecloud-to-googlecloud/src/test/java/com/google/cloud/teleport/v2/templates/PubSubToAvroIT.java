@@ -32,6 +32,7 @@ import com.google.cloud.teleport.v2.avro.AvroPubsubMessageRecord;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.List;
@@ -86,6 +87,7 @@ public class PubSubToAvroIT extends TemplateTestBase {
             LaunchConfig.builder(testName, specPath)
                 .addParameter("inputTopic", topic.toString())
                 .addParameter("outputDirectory", getGcsPath(testName))
+                .addParameter("windowDuration", "10s")
                 .addParameter("avroTempDirectory", getGcsPath("avro_tmp"))
                 .addParameter("outputFilenamePrefix", "topic-output-"));
     assertThatPipeline(info).isRunning();
@@ -107,6 +109,52 @@ public class PubSubToAvroIT extends TemplateTestBase {
                         topic, ImmutableMap.of(), ByteString.copyFromUtf8(message));
                   }
 
+                  artifacts.set(gcsClient.listArtifacts(testName, expectedFilePattern));
+                  return !artifacts.get().isEmpty();
+                });
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+    assertThat(
+            artifacts.get().stream()
+                .flatMap(a -> deserialize(a.contents()))
+                .map(r -> new String(r.getMessage()))
+                .collect(Collectors.toUnmodifiableSet()))
+        .isEqualTo(messages);
+  }
+
+  @Test
+  public void testSubscriptionToAvro() throws IOException {
+    // Arrange
+    String name = testName;
+    Pattern expectedFilePattern = Pattern.compile(".*subscription-output-.*");
+    TopicName topic = pubsubResourceManager.createTopic("input-topic");
+    SubscriptionName subscriptionName =
+        pubsubResourceManager.createSubscription(topic, "input-subscription");
+
+    ImmutableSet<String> messages =
+        ImmutableSet.of("message1-" + name, "message2-" + name, "message3-" + name);
+    for (String message : messages) {
+      pubsubResourceManager.publish(topic, ImmutableMap.of(), ByteString.copyFromUtf8(message));
+    }
+
+    // Act
+    LaunchInfo info =
+        launchTemplate(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputSubscription", subscriptionName.toString())
+                .addParameter("outputDirectory", getGcsPath(testName))
+                .addParameter("windowDuration", "10s")
+                .addParameter("avroTempDirectory", getGcsPath("avro_tmp"))
+                .addParameter("outputFilenamePrefix", "subscription-output-"));
+    assertThatPipeline(info).isRunning();
+
+    AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
+    Result result =
+        pipelineOperator()
+            .waitForConditionAndFinish(
+                createConfig(info),
+                () -> {
                   artifacts.set(gcsClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
