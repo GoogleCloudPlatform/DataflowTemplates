@@ -131,20 +131,18 @@ public final class MonitoringClient {
    * Gets the CPU Utilization time series data for a given Job.
    *
    * @param project the project that the job is running under
-   * @param launchInfo information about the job
+   * @param jobId dataflow job id
+   * @param timeInterval interval for the monitoring query
    * @return CPU Utilization time series data for the given job.
-   * @throws ParseException if timestamp is inaccurate
    */
-  public List<Double> getCpuUtilization(String project, LaunchInfo launchInfo)
-      throws ParseException {
-    LOG.info("Getting CPU utilization for {} under {}", launchInfo.jobId(), project);
+  public List<Double> getCpuUtilization(String project, String jobId, TimeInterval timeInterval) {
+    LOG.info("Getting CPU utilization for {} under {}", jobId, project);
     String filter =
         String.format(
             "metric.type = \"compute.googleapis.com/instance/cpu/utilization\" "
                 + "AND resource.labels.project_id = \"%s\" "
                 + "AND metadata.user_labels.dataflow_job_id = \"%s\"",
-            project, launchInfo.jobId());
-    TimeInterval timeInterval = getTimeInterval(launchInfo.createTime());
+            project, jobId);
     Aggregation aggregation =
         Aggregation.newBuilder()
             .setAlignmentPeriod(Duration.newBuilder().setSeconds(60).build())
@@ -171,19 +169,17 @@ public final class MonitoringClient {
    * Gets the System Latency time series data for a given Job.
    *
    * @param project the project that the job is running under
-   * @param launchInfo information about the job
+   * @param jobId dataflow job id
+   * @param timeInterval interval for the monitoring query
    * @return System Latency time series data for the given job.
-   * @throws ParseException if timestamp is inaccurate
    */
-  public List<Double> getSystemLatency(String project, LaunchInfo launchInfo)
-      throws ParseException {
-    LOG.info("Getting system latency for {} under {}", launchInfo.jobId(), project);
+  public List<Double> getSystemLatency(String project, String jobId, TimeInterval timeInterval) {
+    LOG.info("Getting system latency for {} under {}", jobId, project);
     String filter =
         String.format(
             "metric.type = \"dataflow.googleapis.com/job/per_stage_system_lag\" "
                 + "AND metric.labels.job_id = \"%s\"",
-            launchInfo.jobId());
-    TimeInterval timeInterval = getTimeInterval(launchInfo.createTime());
+            jobId);
     Aggregation aggregation =
         Aggregation.newBuilder()
             .setAlignmentPeriod(Duration.newBuilder().setSeconds(60).build())
@@ -209,19 +205,17 @@ public final class MonitoringClient {
    * Gets the Data freshness time series data for a given Job.
    *
    * @param project the project that the job is running under
-   * @param launchInfo information about the job
+   * @param jobId dataflow job id
+   * @param timeInterval interval for the monitoring query
    * @return Data freshness time series data for the given job.
-   * @throws ParseException if timestamp is inaccurate
    */
-  public List<Double> getDataFreshness(String project, LaunchInfo launchInfo)
-      throws ParseException {
-    LOG.info("Getting data freshness for {} under {}", launchInfo.jobId(), project);
+  public List<Double> getDataFreshness(String project, String jobId, TimeInterval timeInterval) {
+    LOG.info("Getting data freshness for {} under {}", jobId, project);
     String filter =
         String.format(
             "metric.type = \"dataflow.googleapis.com/job/per_stage_data_watermark_age\" "
                 + "AND metric.labels.job_id = \"%s\"",
-            launchInfo.jobId());
-    TimeInterval timeInterval = getTimeInterval(launchInfo.createTime());
+            jobId);
     Aggregation aggregation =
         Aggregation.newBuilder()
             .setAlignmentPeriod(Duration.newBuilder().setSeconds(60).build())
@@ -248,25 +242,24 @@ public final class MonitoringClient {
    * interval.
    *
    * @param project the project that the job is running under
+   * @param jobId dataflow job id
    * @param pcollection name of the pcollection
-   * @param launchInfo information about the job
+   * @param timeInterval interval for the monitoring query
    * @return output throughput from a particular PCollection during job run interval
-   * @throws ParseException if timestamp is inaccurate
    */
   public List<Double> getThroughputBytesPerSecond(
-      String project, LaunchInfo launchInfo, String pcollection) throws ParseException {
+      String project, String jobId, String pcollection, TimeInterval timeInterval) {
     if (pcollection == null) {
       LOG.warn("Output PCollection name not provided. Unable to calculate throughput.");
       return null;
     }
-    LOG.info("Getting throughput (bytes/sec) for {} under {}", launchInfo.jobId(), project);
+    LOG.info("Getting throughput (bytes/sec) for {} under {}", jobId, project);
     String filter =
         String.format(
             "metric.type = \"dataflow.googleapis.com/job/estimated_bytes_produced_count\" "
                 + "AND metric.labels.job_id=\"%s\" "
                 + "AND metric.labels.pcollection=\"%s\" ",
-            launchInfo.jobId(), pcollection);
-    TimeInterval timeInterval = getTimeInterval(launchInfo.createTime());
+            jobId, pcollection);
     Aggregation aggregation =
         Aggregation.newBuilder()
             .setAlignmentPeriod(Duration.newBuilder().setSeconds(60).build())
@@ -292,25 +285,24 @@ public final class MonitoringClient {
    * interval.
    *
    * @param project the project that the job is running under
+   * @param jobId dataflow job id
    * @param pcollection name of the pcollection
-   * @param launchInfo information about the job
+   * @param timeInterval interval for the monitoring query
    * @return output throughput from a particular PCollection during job run interval
-   * @throws ParseException if timestamp is inaccurate
    */
   public List<Double> getThroughputElementsPerSecond(
-      String project, LaunchInfo launchInfo, String pcollection) throws ParseException {
+      String project, String jobId, String pcollection, TimeInterval timeInterval) {
     if (pcollection == null) {
       LOG.warn("Output PCollection name not provided. Unable to calculate throughput.");
       return null;
     }
-    LOG.info("Getting throughput (elements/sec) for {} under {}", launchInfo.jobId(), project);
+    LOG.info("Getting throughput (elements/sec) for {} under {}", jobId, project);
     String filter =
         String.format(
             "metric.type = \"dataflow.googleapis.com/job/elements_produced_count\" "
                 + "AND metric.labels.job_id=\"%s\" "
                 + "AND metric.labels.pcollection=\"%s\" ",
-            launchInfo.jobId(), pcollection);
-    TimeInterval timeInterval = getTimeInterval(launchInfo.createTime());
+            jobId, pcollection);
     Aggregation aggregation =
         Aggregation.newBuilder()
             .setAlignmentPeriod(Duration.newBuilder().setSeconds(60).build())

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.it.gcp.dataflow;
 import static com.google.cloud.teleport.it.common.logging.LogStrings.formatForLogging;
 
 import com.google.api.services.dataflow.model.Job;
+import com.google.api.services.dataflow.model.JobMessage;
 import com.google.auth.Credentials;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import java.io.IOException;
@@ -107,6 +108,12 @@ public class DirectRunnerClient implements PipelineLauncher {
   @Override
   public JobState getJobStatus(String project, String region, String jobId) {
     return managedJobs.get(jobId).getJobState();
+  }
+
+  @Override
+  public List<JobMessage> listMessages(
+      String project, String region, String jobId, String minimumImportance) {
+    return new ArrayList<>();
   }
 
   @Override

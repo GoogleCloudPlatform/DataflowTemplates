@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.it.common.logging.LogStrings.formatForLo
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.api.services.dataflow.model.JobMessage;
 import com.google.auth.Credentials;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
@@ -30,6 +31,7 @@ import com.google.cloud.teleport.it.common.utils.MetricsConfiguration;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.monitoring.MonitoringClient;
 import com.google.common.base.MoreObjects;
+import com.google.monitoring.v3.TimeInterval;
 import com.google.protobuf.util.Timestamps;
 import java.io.IOException;
 import java.text.ParseException;
@@ -40,6 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.junit.After;
 import org.junit.Before;
@@ -67,6 +70,11 @@ public abstract class LoadTestBase {
   private static final double PD_SSD_PER_GB_HR = 0.000298;
   private static final double SHUFFLE_PER_GB_BATCH = 0.011;
   private static final double SHUFFLE_PER_GB_STREAMING = 0.018;
+  private static final Pattern WORKER_START_PATTERN =
+      Pattern.compile(
+          "^All workers have finished the startup processes and began to receive work requests.*$");
+  private static final Pattern WORKER_STOP_PATTERN = Pattern.compile("^Stopping worker pool.*$");
+
   protected static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   protected static final CredentialsProvider CREDENTIALS_PROVIDER =
       FixedCredentialsProvider.create(CREDENTIALS);
@@ -197,14 +205,20 @@ public abstract class LoadTestBase {
       throws ParseException {
     // cost info
     LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), project);
+    TimeInterval workerTimeInterval = getWorkerTimeInterval(launchInfo);
+    metrics.put(
+        "RunTime",
+        (double)
+            Timestamps.between(workerTimeInterval.getStartTime(), workerTimeInterval.getEndTime())
+                .getSeconds());
     double cost = 0;
     if (launchInfo.jobType().equals("JOB_TYPE_STREAMING")) {
       cost += metrics.get("TotalVcpuTime") / 3600 * VCPU_PER_HR_STREAMING;
       cost += (metrics.get("TotalMemoryUsage") / 1000) / 3600 * MEM_PER_GB_HR_STREAMING;
       cost += metrics.get("TotalShuffleDataProcessed") * SHUFFLE_PER_GB_STREAMING;
       // Also, add other streaming metrics
-      metrics.putAll(getDataFreshnessMetrics(launchInfo));
-      metrics.putAll(getSystemLatencyMetrics(launchInfo));
+      metrics.putAll(getDataFreshnessMetrics(launchInfo.jobId(), workerTimeInterval));
+      metrics.putAll(getSystemLatencyMetrics(launchInfo.jobId(), workerTimeInterval));
     } else {
       cost += metrics.get("TotalVcpuTime") / 3600 * VCPU_PER_HR_BATCH;
       cost += (metrics.get("TotalMemoryUsage") / 1000) / 3600 * MEM_PER_GB_HR_BATCH;
@@ -220,8 +234,8 @@ public abstract class LoadTestBase {
     if (dataProcessed != null) {
       metrics.put("EstimatedDataProcessedGB", dataProcessed / 1e9d);
     }
-    metrics.putAll(getCpuUtilizationMetrics(launchInfo));
-    metrics.putAll(getThroughputMetrics(launchInfo, config));
+    metrics.putAll(getCpuUtilizationMetrics(launchInfo.jobId(), workerTimeInterval));
+    metrics.putAll(getThroughputMetrics(launchInfo.jobId(), config, workerTimeInterval));
   }
 
   /**
@@ -258,7 +272,6 @@ public abstract class LoadTestBase {
   protected Map<String, Double> getMetrics(
       LaunchInfo launchInfo, @Nullable String inputPcollection, @Nullable String outputPcollection)
       throws InterruptedException, IOException, ParseException {
-    Map<String, Double> metrics = pipelineLauncher.getMetrics(project, region, launchInfo.jobId());
     return getMetrics(
         launchInfo,
         MetricsConfiguration.builder()
@@ -316,13 +329,12 @@ public abstract class LoadTestBase {
   /**
    * Computes CPU Utilization metrics of the given job.
    *
-   * @param launchInfo Job info of the job
+   * @param jobId dataflow job id
+   * @param timeInterval interval for the monitoring query
    * @return CPU Utilization metrics of the job
-   * @throws ParseException if timestamp is inaccurate
    */
-  protected Map<String, Double> getCpuUtilizationMetrics(LaunchInfo launchInfo)
-      throws ParseException {
-    List<Double> cpuUtilization = monitoringClient.getCpuUtilization(project, launchInfo);
+  protected Map<String, Double> getCpuUtilizationMetrics(String jobId, TimeInterval timeInterval) {
+    List<Double> cpuUtilization = monitoringClient.getCpuUtilization(project, jobId, timeInterval);
     Map<String, Double> cpuUtilizationMetrics = new HashMap<>();
     if (cpuUtilization == null) {
       return cpuUtilizationMetrics;
@@ -336,25 +348,25 @@ public abstract class LoadTestBase {
   /**
    * Computes throughput metrics of the given pcollection in dataflow job.
    *
-   * @param launchInfo Job info of the job
+   * @param jobId dataflow job id
    * @param config the {@class MetricsConfiguration}
+   * @param timeInterval interval for the monitoring query
    * @return throughput metrics of the pcollection
-   * @throws ParseException if timestamp is inaccurate
    */
   protected Map<String, Double> getThroughputMetrics(
-      LaunchInfo launchInfo, MetricsConfiguration config) throws ParseException {
+      String jobId, MetricsConfiguration config, TimeInterval timeInterval) {
     List<Double> inputThroughputBytesPerSec =
         monitoringClient.getThroughputBytesPerSecond(
-            project, launchInfo, config.inputPCollection());
+            project, jobId, config.inputPCollection(), timeInterval);
     List<Double> inputThroughputElementsPerSec =
         monitoringClient.getThroughputElementsPerSecond(
-            project, launchInfo, config.inputPCollection());
+            project, jobId, config.inputPCollection(), timeInterval);
     List<Double> outputThroughputBytesPerSec =
         monitoringClient.getThroughputBytesPerSecond(
-            project, launchInfo, config.outputPCollection());
+            project, jobId, config.outputPCollection(), timeInterval);
     List<Double> outputThroughputElementsPerSec =
         monitoringClient.getThroughputElementsPerSecond(
-            project, launchInfo, config.outputPCollection());
+            project, jobId, config.outputPCollection(), timeInterval);
     return getThroughputMetrics(
         inputThroughputBytesPerSec,
         inputThroughputElementsPerSec,
@@ -366,13 +378,12 @@ public abstract class LoadTestBase {
   /**
    * Computes Data freshness metrics of the given job.
    *
-   * @param launchInfo Job info of the job
+   * @param jobId dataflow job id
+   * @param timeInterval interval for the monitoring query
    * @return Data freshness metrics of the job
-   * @throws ParseException if timestamp is inaccurate
    */
-  protected Map<String, Double> getDataFreshnessMetrics(LaunchInfo launchInfo)
-      throws ParseException {
-    List<Double> dataFreshness = monitoringClient.getDataFreshness(project, launchInfo);
+  protected Map<String, Double> getDataFreshnessMetrics(String jobId, TimeInterval timeInterval) {
+    List<Double> dataFreshness = monitoringClient.getDataFreshness(project, jobId, timeInterval);
     Map<String, Double> dataFreshnessMetrics = new HashMap<>();
     if (dataFreshness == null) {
       return dataFreshnessMetrics;
@@ -386,13 +397,12 @@ public abstract class LoadTestBase {
   /**
    * Computes System latency metrics of the given job.
    *
-   * @param launchInfo Job info of the job
+   * @param jobId dataflow job id
+   * @param timeInterval interval for the monitoring query
    * @return System latency metrics of the job
-   * @throws ParseException if timestamp is inaccurate
    */
-  protected Map<String, Double> getSystemLatencyMetrics(LaunchInfo launchInfo)
-      throws ParseException {
-    List<Double> systemLatency = monitoringClient.getSystemLatency(project, launchInfo);
+  protected Map<String, Double> getSystemLatencyMetrics(String jobId, TimeInterval timeInterval) {
+    List<Double> systemLatency = monitoringClient.getSystemLatency(project, jobId, timeInterval);
     Map<String, Double> systemLatencyMetrics = new HashMap<>();
     if (systemLatency == null) {
       return systemLatencyMetrics;
@@ -401,6 +411,26 @@ public abstract class LoadTestBase {
         "AvgSystemLatency", MetricsConfiguration.calculateAverage(systemLatency));
     systemLatencyMetrics.put("MaxSystemLatency", Collections.max(systemLatency));
     return systemLatencyMetrics;
+  }
+
+  /** Gets the time interval when workers were active to be used by monitoring client. */
+  protected TimeInterval getWorkerTimeInterval(LaunchInfo info) throws ParseException {
+    TimeInterval.Builder builder = TimeInterval.newBuilder();
+    List<JobMessage> messages =
+        pipelineLauncher.listMessages(project, region, info.jobId(), "JOB_MESSAGE_DETAILED");
+    for (JobMessage jobMessage : messages) {
+      if (jobMessage.getMessageText() != null && !jobMessage.getMessageText().isEmpty()) {
+        if (WORKER_START_PATTERN.matcher(jobMessage.getMessageText()).find()) {
+          LOG.info("Found worker start message in job messages.");
+          builder.setStartTime(Timestamps.parse(jobMessage.getTime()));
+        }
+        if (WORKER_STOP_PATTERN.matcher(jobMessage.getMessageText()).find()) {
+          LOG.info("Found worker stop message in job messages.");
+          builder.setEndTime(Timestamps.parse(jobMessage.getTime()));
+        }
+      }
+    }
+    return builder.build();
   }
 
   private Map<String, Double> getThroughputMetrics(
