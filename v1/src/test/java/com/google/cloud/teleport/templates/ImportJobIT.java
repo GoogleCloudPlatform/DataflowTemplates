@@ -26,6 +26,7 @@ import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
@@ -40,7 +41,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link ImportJobPlaceholder} classic template. */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(ImportJobPlaceholder.class)
 @RunWith(JUnit4.class)
 public class ImportJobIT extends TemplateTestBase {
