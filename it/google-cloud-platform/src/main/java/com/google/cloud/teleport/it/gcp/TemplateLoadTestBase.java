@@ -16,17 +16,18 @@
 package com.google.cloud.teleport.it.gcp;
 
 import com.google.cloud.teleport.it.common.PipelineLauncher;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.gcp.dataflow.ClassicTemplateClient;
 import com.google.cloud.teleport.it.gcp.dataflow.FlexTemplateClient;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
+import java.util.Collections;
 
 /** Base class for Templates Load Tests. */
 public class TemplateLoadTestBase extends LoadTestBase {
 
   PipelineLauncher launcher() {
     // If there is a TemplateLoadTest annotation, return appropriate dataflow template client
-    // Else, return null.
     TemplateLoadTest annotation = getClass().getAnnotation(TemplateLoadTest.class);
     if (annotation == null) {
       throw new RuntimeException(
@@ -47,5 +48,19 @@ public class TemplateLoadTestBase extends LoadTestBase {
     } else {
       return ClassicTemplateClient.builder().setCredentials(CREDENTIALS).build();
     }
+  }
+
+  protected LaunchConfig.Builder enableRunnerV2(LaunchConfig.Builder config) {
+    return config.addEnvironment(
+        "additionalExperiments", Collections.singletonList("use_runner_v2"));
+  }
+
+  protected LaunchConfig.Builder disableRunnerV2(LaunchConfig.Builder config) {
+    return config.addEnvironment(
+        "additionalExperiments", Collections.singletonList("disable_runner_v2"));
+  }
+
+  protected LaunchConfig.Builder enableStreamingEngine(LaunchConfig.Builder config) {
+    return config.addEnvironment("enableStreamingEngine", true);
   }
 }
