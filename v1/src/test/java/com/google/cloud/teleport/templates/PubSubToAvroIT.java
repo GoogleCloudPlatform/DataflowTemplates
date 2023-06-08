@@ -86,6 +86,7 @@ public class PubSubToAvroIT extends TemplateTestBase {
             LaunchConfig.builder(testName, specPath)
                 .addParameter("inputTopic", topic.toString())
                 .addParameter("outputDirectory", getGcsPath(testName))
+                .addParameter("windowDuration", "10s")
                 .addParameter("avroTempDirectory", getGcsPath("avro_tmp"))
                 .addParameter("outputFilenamePrefix", "topic-output-"));
     assertThatPipeline(info).isRunning();
