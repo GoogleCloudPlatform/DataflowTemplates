@@ -1,0 +1,9 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.PubSubCdcToBigQuery",
+  "classPath": "/template/pubsub-cdc-to-bigquery/pubsub-cdc-to-bigquery-conscrypt.jar:/template/pubsub-cdc-to-bigquery/*:/template/pubsub-cdc-to-bigquery/libs/*:/template/pubsub-cdc-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"pubsub_cdc_to_bigquery\"}",
+    "autoscalingAlgorithm": "THROUGHPUT_BASED",
+    "maxNumWorkers": "10"
+  }
+}

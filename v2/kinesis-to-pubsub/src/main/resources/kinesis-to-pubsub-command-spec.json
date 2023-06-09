@@ -1,0 +1,9 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.KinesisToPubsub",
+  "classPath": "/template/kinesis-to-pubsub/*:/template/kinesis-to-pubsub/libs/*:/template/kinesis-to-pubsub/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"kinesis_to_pubsub\"}",
+    "autoscalingAlgorithm": "THROUGHPUT_BASED",
+    "maxNumWorkers": "10"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Any-To-Any-Template",
+  "description": "A Beam pipeline that reads from any IO and produces any IO.",
+  "parameters": [
+    {
+      "name": "pipelineSpec",
+      "label": "Pipeline spec location",
+      "helpText": "GCS url for the pipeline spec proto",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "jsonSpecPayload",
+      "label": "JSON-based pipeline spec",
+      "helpText": "A JSON string that defines the source+sink configuration of the template.",
+      "isOptional": true,
+      "paramType": "TEXT"
+    }
+  ]
+}

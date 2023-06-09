@@ -1,0 +1,79 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Checks that are intended to run on PRs containing Java code.
+
+name: Syndeo PR
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+    paths:
+      - 'syndeo-template/**.java'
+      - 'syndeo-template/**.xml'
+      # Include relevant GitHub Action files for running these checks.
+      # This will make it easier to verify action changes don't break anything.
+      - '.github/workflows/syndeo-pr.yml'
+  schedule:
+    - cron: "0 */12 * * *"
+
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+
+permissions: read-all
+
+jobs:
+  java_integration_tests_syndeo:
+    name: Syndeo Integration Tests
+    timeout-minutes: 60
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+      - name: Build with Maven
+        run: mvn install -f pom.xml -pl syndeo-template -am -DskipTests -Djib.skip=true
+      - name: Run integration tests with Maven
+        run: mvn failsafe:integration-test failsafe:verify -Djib.skip=true -DskipUnitTests -f pom.xml -pl syndeo-template -Dproject=cloud-teleport-testing -Dregion=us-east1 -DartifactBucket=cloud-teleport-testing-df-staging -DtempLocation=gs://cloud-teleport-testing-df-staging/${{ github.job }}/temp -DforkCount=1 -DbeamTestPipelineOptions="[]"
+  java_load_tests_syndeo:
+    name: Syndeo Load Tests
+    timeout-minutes: 60
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+      - name: Build with Maven
+        run: mvn install -f pom.xml -pl .,metadata,plaintext-logging,it,syndeo-template,v1 -DskipTests -Djib.skip=true
+      - name: Run load tests with Maven
+        run: mvn failsafe:integration-test failsafe:verify -Pload-tests -Dconfiguration=local -Djib.skip=true -DskipUnitTests -f pom.xml -pl syndeo-template -Dproject=cloud-teleport-testing -Dregion=us-east1 -DartifactBucket=cloud-teleport-testing-df-staging -DtempLocation=gs://cloud-teleport-testing-df-staging/${{ github.job }}/temp -DforkCount=4 -DbeamTestPipelineOptions="[]"
+      - name: Publish Load Test Report
+        if: success() || failure()
+        uses: scacap/action-surefire-report@v1
+

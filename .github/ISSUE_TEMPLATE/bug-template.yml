@@ -1,0 +1,51 @@
+name: Bug
+description: File a bug issue
+title: "[Bug]: <Please Replace with a Summary of the Bug> "
+labels: ["bug", "p2", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Thank you so much for taking the time to fill out this bug report!
+        
+        **Please note: any issue that is currently affecting your production should be directed to Google Cloud customer support.**
+  - type: input
+    id: template
+    attributes:
+      label: Related Template(s)
+      description: "Which template(s) is this bug affecting?"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Please share what you expected and what happened!
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: Beam Version
+      description: What version of beam are you using?
+      options:
+        - Newer than 2.46.0
+        - 2.46.0
+        - 2.45.0
+        - 2.44.0
+        - 2.43.0
+        - 2.42.0
+        - 2.41.0
+        - 2.40.0
+        - 2.39.0
+        - 2.38.0
+        - Older than 2.38.0
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks. In case of exceptions, please paste the entire stacktrace.
+      render: shell

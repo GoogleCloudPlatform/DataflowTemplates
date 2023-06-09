@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package com.google.cloud.teleport.spanner.proto;
+
+option java_package = "com.google.cloud.teleport.spanner.proto";
+option java_outer_classname = "TextImportProtos";
+
+import "export.proto";
+
+// Protobuf of the import manifest, consisting of a list of TableManifest.
+message ImportManifest {
+  // The per-table import manifest.
+  message TableManifest {
+    // The name of the destination table.
+    string table_name = 1;
+    // Text files to be imported. These can be either file name or GLOB pattern.
+    // File pattern will be expanded to include all matching files during
+    // importing process.
+    // (-- When using GLOB patterns in the files field, please make sure the
+    // patterns match input files properly. For example, assuming input files
+    // include part.tbl.1 and part.tbl.2 for table PART, partsupp.tbl.1 and
+    // partsupp.tbl.2 for table PARTSUPP. Table PARTSUPP can use pattern
+    // "partsupp*". However, table PART cannot use "part*", as it will
+    // incorrectly match file partsupp.tbl.1 as well. Using a more specific
+    // pattern such as "part.tbl.*" will work. Another way is to use
+    // "part.tbl*" and "partsupp.tbl*" for PART and PARTSUPP, respectively.--)
+    repeated string file_patterns = 2;
+    message Column {
+      // The name of the column of the destination table.
+      string column_name = 1;
+      // The type of the column. Currently, the following datatypes are
+      // supported: BOOL, INT64, FLOAT64, STRING, DATE, TIMESTAMP.
+      string type_name = 2;
+    }
+    repeated Column columns = 3;
+  }
+  // The TableManifest of the tables to be imported.
+  repeated TableManifest tables = 1;
+
+  // The dialect of the database to be imported.
+  ProtoDialect dialect = 2;
+}

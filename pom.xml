@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~ Copyright (C) 2022 Google Inc.
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License"); you may not
+  ~ use this file except in compliance with the License. You may obtain a copy of
+  ~ the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+  ~ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+  ~ License for the specific language governing permissions and limitations under
+  ~ the License.
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.google.cloud.teleport</groupId>
+  <artifactId>templates</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  <name>Google Cloud Dataflow Templates</name>
+  <packaging>pom</packaging>
+  <description>
+    Unifies all the template libraries under one POM for easier automation and
+    to allow for more reusable and modular dependencies.
+  </description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <java.version>11</java.version>
+
+    <!-- Plugins -->
+    <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
+    <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
+    <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
+    <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
+    <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
+    <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
+    <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
+    <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
+    <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
+
+    <!-- Beam and linked versions -->
+    <beam.version>2.47.0</beam.version>
+    <jackson.version>2.14.1</jackson.version>
+
+    <!-- Common dependency versions -->
+    <autovalue.version>1.8.2</autovalue.version>
+    <avro.version>1.11.1</avro.version>
+    <checkstyle.version>10.7.0</checkstyle.version>
+    <commons-codec.version>1.15</commons-codec.version>
+    <commons-io.version>2.11.0</commons-io.version>
+    <commons-lang3.version>3.12.0</commons-lang3.version>
+    <conscrypt.version>2.5.2</conscrypt.version>
+    <hadoop.version>3.3.5</hadoop.version>
+    <hamcrest.version>2.1</hamcrest.version>
+    <guava.version>31.0.1-jre</guava.version>
+    <mockito.version>4.11.0</mockito.version>
+    <log4j-2.version>2.17.2</log4j-2.version>
+    <json.version>20230227</json.version>
+    <junit.version>4.13.2</junit.version>
+    <re2j.version>1.6</re2j.version>
+    <slf4j.version>1.7.25</slf4j.version>
+    <snakeyaml.version>2.0</snakeyaml.version>
+    <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
+    <surefire.version>2.21.0</surefire.version>
+    <truth.version>1.0.1</truth.version>
+
+    <!-- JDBC driver / Connector versions -->
+    <!-- Note: File it/src/main/java/com/google/cloud/teleport/it/common/JDBCBaseIT.java -->
+    <!-- should be updated when these versions are changed. -->
+    <mysql-connector-java.version>8.0.30</mysql-connector-java.version>
+    <postgresql.version>42.2.27</postgresql.version>
+    <ojdbc8.version>19.3.0.0</ojdbc8.version>
+    <mssql-jdbc.version>6.4.0.jre8</mssql-jdbc.version>
+
+    <integration.tests>
+      com.google.cloud.teleport.metadata.TemplateIntegrationTest
+    </integration.tests>
+    <direct-runner.tests>
+      com.google.cloud.teleport.metadata.DirectRunnerTest
+    </direct-runner.tests>
+    <excluded.spanner.tests></excluded.spanner.tests>
+
+    <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.beam</groupId>
+        <artifactId>beam-sdks-java-google-cloud-platform-bom</artifactId>
+        <version>${beam.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>${junit.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-codec</groupId>
+        <artifactId>commons-codec</artifactId>
+        <version>${commons-codec.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>${commons-io.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro</artifactId>
+        <version>${avro.version}</version>
+      </dependency>
+
+      <!-- If any module uses log4j 2.x, enforce it is patched by default -->
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j</artifactId>
+        <version>${log4j-2.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-api</artifactId>
+        <version>${log4j-2.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-core</artifactId>
+        <version>${log4j-2.version}</version>
+      </dependency>
+
+      <!-- Enforce updated version of SnakeYAML -->
+      <dependency>
+        <groupId>org.yaml</groupId>
+        <artifactId>snakeyaml</artifactId>
+        <version>${snakeyaml.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>${maven-source-plugin.version}</version>
+          <executions>
+            <execution>
+              <id>attach-sources</id>
+              <goals>
+                <goal>jar</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire.version}</version>
+        <configuration>
+          <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
+          They can be run manually using 'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
+          <excludedGroups>${integration.tests}</excludedGroups>
+          <excludedGroups>${excluded.spanner.tests}</excludedGroups>
+          <systemPropertyVariables>
+            <!-- Allow this project to be tested with JDK 21 -->
+            <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless-maven-plugin.version}</version>
+        <configuration>
+          <formats>
+            <!-- Avoid trailing whitespace and require ending newline. -->
+            <format>
+              <includes>
+                <include>*.md</include>
+                <include>.gitignore</include>
+              </includes>
+              <trimTrailingWhitespace/>
+              <endWithNewline/>
+            </format>
+          </formats>
+          <java>
+            <!-- Exclude Beam code from formatting/license headers -->
+            <excludes>
+              <exclude>src/main/java/org/apache/beam/**</exclude>
+              <exclude>src/test/java/org/apache/beam/**</exclude>
+            </excludes>
+            <toggleOffOn/>
+            <googleJavaFormat>
+              <version>1.17.0</version>
+              <style>GOOGLE</style>
+            </googleJavaFormat>
+            <licenseHeader>
+              <file>${licenseHeaderFile}</file>
+            </licenseHeader>
+          </java>
+        </configuration>
+        <!-- Bind to verify. -->
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${maven-checkstyle-plugin.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>${checkstyle.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <configLocation>checkstyle/checkstyle.xml</configLocation>
+          <suppressionsLocation>checkstyle/suppressions.xml</suppressionsLocation>
+          <consoleOutput>true</consoleOutput>
+          <failOnViolation>true</failOnViolation>
+          <includeResources>false</includeResources>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+        </configuration>
+        <executions>
+          <!--
+            Execute checkstyle after compilation but before tests.
+
+            This ensures that any parsing or type checking errors are from
+            javac, so they look as expected. Beyond that, we want to
+            fail as early as possible.
+          -->
+          <execution>
+            <phase>test-compile</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <id>templatesIntegrationTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Some modules may yield no integration tests -->
+        <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*IT.java</include>
+              </includes>
+              <excludedGroups>${direct-runner.tests}</excludedGroups>
+              <groups>
+                ${integration.tests}
+              </groups>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>templatesLoadTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Some modules may yield no load tests -->
+        <failIfNoTests>false</failIfNoTests>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*LT.java</include>
+              </includes>
+              <excludedGroups></excludedGroups>
+              <groups>
+                com.google.cloud.teleport.metadata.TemplateLoadTest
+              </groups>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>templatesIntegrationDirectTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Skip shade for faster runs -->
+        <skipShade>true</skipShade>
+        <!-- Some modules may yield no integration tests -->
+        <failIfNoTests>false</failIfNoTests>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*IT.java</include>
+              </includes>
+              <excludedGroups>
+                com.google.cloud.teleport.metadata.SkipDirectRunnerTest
+              </excludedGroups>
+              <groups>
+                ${integration.tests}
+                ${direct-runner.tests}
+              </groups>
+              <systemProperties>
+                <!-- Pass on the flag directRunnerTest to the templates test base -->
+                <property>
+                  <name>directRunnerTest</name>
+                  <value>true</value>
+                </property>
+              </systemProperties>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>templatesIntegrationSmokeTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Some modules may yield no integration tests -->
+        <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*IT.java</include>
+              </includes>
+              <groups>
+                ${direct-runner.tests}
+                com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest
+              </groups>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>pluginOutputDir</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <directory>${project.basedir}/target/plugin/${pluginRunId}</directory>
+      </build>
+    </profile>
+    <profile>
+      <id>oss-build</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <modules>
+        <module>syndeo-template</module>
+      </modules>
+    </profile>
+  </profiles>
+
+  <modules>
+    <module>metadata</module>
+    <module>plugins</module>
+    <module>it</module>
+    <module>v1</module>
+    <module>v2</module>
+    <module>structured-logging</module>
+    <module>plaintext-logging</module>
+  </modules>
+</project>

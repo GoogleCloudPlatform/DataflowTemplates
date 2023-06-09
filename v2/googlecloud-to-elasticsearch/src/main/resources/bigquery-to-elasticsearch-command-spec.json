@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.elasticsearch.templates.BigQueryToElasticsearch",
+  "classPath": "/template/bigquery-to-elasticsearch/bigquery-to-elasticsearch-conscrypt.jar:/template/bigquery-to-elasticsearch/*:/template/bigquery-to-elasticsearch/libs/*:/template/bigquery-to-elasticsearch/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"bigquery_to_elasticsearch\"}"
+  }
+}

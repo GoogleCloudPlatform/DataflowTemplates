@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.DataStreamToPostgres",
+  "classPath": "/template/datastream-to-postgres/datastream-to-postgres-conscrypt.jar:/template/datastream-to-postgres/*:/template/datastream-to-postgres/libs/*:/template/datastream-to-postgres/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"datastream_to_postgres\"}"
+  }
+}

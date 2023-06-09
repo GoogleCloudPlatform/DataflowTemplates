@@ -1,0 +1,75 @@
+{
+  "name": "Kafka to Pub/Sub",
+  "description": "Streaming pipeline. Ingests UTF8-encoded messages from Kafka to a Pub/Sub topic",
+  "parameters": [
+    {
+      "name": "bootstrapServers",
+      "label": "Kafka Bootstrap Servers",
+      "helpText": "Comma separated kafka bootstrap servers in format ip:port",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "inputTopics",
+      "label": "Kafka input topics",
+      "helpText": "Comma separated Kafka topics to read data",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputTopic",
+      "label": "Pub/Sub output topic",
+      "helpText": "Pub/Sub topic to write the output, in the format of 'projects/yourproject/topics/yourtopic'",
+      "regexes": [
+        "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "javascriptTextTransformGcsPath",
+      "label": "GCS location of your JavaScript UDF",
+      "helpText": "The full URL of your .js file. Example: gs://your-bucket/your-function.js",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_READ_FILE"
+    },
+    {
+      "name": "javascriptTextTransformFunctionName",
+      "label": "The name of the JavaScript function you wish to call as your UDF",
+      "helpText": "The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'.",
+      "isOptional": true,
+      "regexes": [
+        "[a-zA-Z0-9_]+"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputDeadLetterTopic",
+      "label": "Pub/Sub topic for messages failed to reach the output topic(aka. DeadLetter topic)",
+      "helpText": "Messages failed while applying JavaScript Transformation (UDF) are sent to this Pub/Sub topic. If it doesn't exist, it will be created during pipeline execution. Ex: 'projects/yourproject/topics/yourtopic'",
+      "isOptional": true,
+      "regexes": [
+        "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "secretStoreUrl",
+      "label": "URL to credentials in Vault",
+      "helpText": "URL to Kafka credentials in HashiCorp Vault secret storage in format 'http(s)://vaultip:vaultport/path/to/credentials'",
+      "regexes": [],
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "vaultToken",
+      "label": "Vault token",
+      "helpText": "Token to access HashiCorp Vault secret storage",
+      "regexes": [],
+      "paramType": "TEXT",
+      "isOptional": true
+    }
+  ]
+}
