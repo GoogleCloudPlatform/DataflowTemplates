@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.it.gcp.pubsub.conditions;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.it.common.conditions.ConditionCheck;
+import com.google.cloud.teleport.it.conditions.ConditionCheck;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.PullResponse;

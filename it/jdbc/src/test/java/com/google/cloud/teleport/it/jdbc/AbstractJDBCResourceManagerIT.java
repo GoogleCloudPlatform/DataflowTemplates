@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.it.common.testcontainers.TestContainersIntegrationTest;
+import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

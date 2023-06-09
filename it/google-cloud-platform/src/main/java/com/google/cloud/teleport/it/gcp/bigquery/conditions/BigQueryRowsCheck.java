@@ -17,7 +17,7 @@ package com.google.cloud.teleport.it.gcp.bigquery.conditions;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.it.common.conditions.ConditionCheck;
+import com.google.cloud.teleport.it.conditions.ConditionCheck;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import javax.annotation.Nullable;
 

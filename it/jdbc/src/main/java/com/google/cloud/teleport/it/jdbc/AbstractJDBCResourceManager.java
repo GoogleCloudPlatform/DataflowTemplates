@@ -19,7 +19,7 @@ import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.checkVa
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generateDatabaseName;
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generateJdbcPassword;
 
-import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
+import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;

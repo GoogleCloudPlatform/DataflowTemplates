@@ -15,12 +15,12 @@
  */
 package com.google.cloud.teleport.it.gcp.artifacts.matchers;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
 import static com.google.cloud.teleport.it.gcp.artifacts.matchers.ArtifactsSubject.genericRecordToRecords;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
 import static com.google.common.truth.Truth.assertAbout;
 
-import com.google.cloud.teleport.it.common.matchers.RecordsSubject;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
+import com.google.cloud.teleport.it.truthmatchers.RecordsSubject;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.avro.generic.GenericRecord;

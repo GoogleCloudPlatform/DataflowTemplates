@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.it.common;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
@@ -102,7 +101,6 @@ public final class PipelineOperatorTest {
     when(client.getJobStatus(any(), any(), any())).thenReturn(JobState.RUNNING);
     Result result = new PipelineOperator(client).waitUntilDone(DEFAULT_CONFIG);
     assertThat(result).isEqualTo(Result.TIMEOUT);
-    assertThatResult(result).hasTimedOut();
   }
 
   @Test
@@ -123,7 +121,6 @@ public final class PipelineOperatorTest {
     assertThat(regionCaptor.getValue()).isEqualTo(REGION);
     assertThat(jobIdCaptor.getValue()).isEqualTo(JOB_ID);
     assertThat(result).isEqualTo(Result.CONDITION_MET);
-    assertThatResult(result).meetsConditions();
   }
 
   @Test
@@ -135,7 +132,6 @@ public final class PipelineOperatorTest {
     Result result = new PipelineOperator(client).waitForCondition(DEFAULT_CONFIG, () -> false);
 
     assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
-    assertThatResult(result).isLaunchFinished();
   }
 
   @Test
@@ -177,7 +173,7 @@ public final class PipelineOperatorTest {
     assertThat(allProjects).containsExactly(PROJECT);
     assertThat(allRegions).containsExactly(REGION);
     assertThat(allJobIds).containsExactly(JOB_ID);
-    assertThatResult(result).meetsConditions();
+    assertThat(result).isEqualTo(Result.CONDITION_MET);
   }
 
   @Test

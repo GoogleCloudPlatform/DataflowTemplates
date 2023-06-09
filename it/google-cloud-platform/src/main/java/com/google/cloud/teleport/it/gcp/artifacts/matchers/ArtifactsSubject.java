@@ -15,17 +15,17 @@
  */
 package com.google.cloud.teleport.it.gcp.artifacts.matchers;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
 import static com.google.cloud.teleport.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatGenericRecords;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
 import static com.google.common.hash.Hashing.sha256;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.teleport.it.common.matchers.RecordsSubject;
 import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
 import com.google.cloud.teleport.it.gcp.artifacts.utils.AvroTestUtil;
 import com.google.cloud.teleport.it.gcp.artifacts.utils.JsonTestUtil;
 import com.google.cloud.teleport.it.gcp.artifacts.utils.ParquetTestUtil;
+import com.google.cloud.teleport.it.truthmatchers.RecordsSubject;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
 import java.util.ArrayList;

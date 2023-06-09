@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
 import static com.google.cloud.teleport.it.gcp.datastore.matchers.DatastoreAsserts.assertThatDatastoreRecords;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.datastore.Entity;
@@ -31,8 +31,8 @@ import com.google.cloud.teleport.it.gcp.datastore.DatastoreResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
-import org.elasticsearch.common.collect.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

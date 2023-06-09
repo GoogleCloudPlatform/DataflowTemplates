@@ -16,10 +16,10 @@
 package com.google.cloud.teleport.templates;
 
 import static com.google.cloud.teleport.it.common.TestProperties.getProperty;
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
 import static com.google.cloud.teleport.it.gcp.bigquery.matchers.BigQueryAsserts.bigQueryRowsToRecords;
 import static com.google.cloud.teleport.it.gcp.datastore.matchers.DatastoreAsserts.assertThatDatastoreRecords;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.Tuple;

@@ -17,8 +17,8 @@ package com.google.cloud.teleport.it.mongodb;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.it.common.testcontainers.TestContainersIntegrationTest;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
 import com.mongodb.client.FindIterable;
 import java.util.ArrayList;
 import java.util.List;

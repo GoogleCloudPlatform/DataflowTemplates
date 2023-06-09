@@ -144,19 +144,19 @@ public interface PipelineLauncher {
       return parameters.get(key);
     }
 
-    public String specPath() {
+    public @Nullable String specPath() {
       return specPath;
     }
 
-    public Sdk sdk() {
+    public @Nullable Sdk sdk() {
       return sdk;
     }
 
-    public String executable() {
+    public @Nullable String executable() {
       return executable;
     }
 
-    public Pipeline pipeline() {
+    public @Nullable Pipeline pipeline() {
       return pipeline;
     }
 
@@ -347,7 +347,7 @@ public interface PipelineLauncher {
    * @param project the project that the job is running under
    * @param region the region that the job was launched in
    * @param jobId the id of the job
-   * @param jobView
+   * @param jobView the level of information requested in response.
    * @return dataflow job information
    * @throws IOException if there is an issue sending the request
    */

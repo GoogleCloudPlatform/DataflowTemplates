@@ -20,7 +20,7 @@ import static com.google.cloud.teleport.it.splunk.SplunkResourceManagerUtils.gen
 import static com.google.cloud.teleport.it.splunk.SplunkResourceManagerUtils.splunkEventToMap;
 
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
+import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.splunk.Job;
 import com.splunk.ResultsReader;
@@ -312,21 +312,20 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
     try {
       ResultsReader reader = new ResultsReaderXml(job.getEvents());
       reader.forEach(
-          event -> {
-            results.add(
-                SplunkEvent.newBuilder()
-                    .withEvent(event.get("_raw"))
-                    .withSource(event.get("source"))
-                    .withSourceType(event.get("_sourcetype"))
-                    .withHost(event.get("host"))
-                    .withTime(
-                        OffsetDateTime.parse(
-                                event.get("_time"), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                            .toInstant()
-                            .toEpochMilli())
-                    .withIndex(event.get("index"))
-                    .create());
-          });
+          event ->
+              results.add(
+                  SplunkEvent.newBuilder()
+                      .withEvent(event.get("_raw"))
+                      .withSource(event.get("source"))
+                      .withSourceType(event.get("_sourcetype"))
+                      .withHost(event.get("host"))
+                      .withTime(
+                          OffsetDateTime.parse(
+                                  event.get("_time"), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                              .toInstant()
+                              .toEpochMilli())
+                      .withIndex(event.get("index"))
+                      .create()));
 
     } catch (Exception e) {
       throw new SplunkResourceManagerException("Error parsing XML results from Splunk.", e);

@@ -19,7 +19,7 @@ import static com.google.cloud.teleport.it.cassandra.matchers.CassandraAsserts.a
 import static com.google.common.truth.Truth.assertThat;
 
 import com.datastax.oss.driver.api.core.cql.Row;
-import com.google.cloud.teleport.it.common.testcontainers.TestContainersIntegrationTest;
+import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
