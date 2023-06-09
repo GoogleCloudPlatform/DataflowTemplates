@@ -234,7 +234,11 @@ public class BigtableResourceManager implements ResourceManager {
    * Creates a table within the current instance given a table ID and a collection of column family
    * names.
    *
-   * <p>The columns in this table will be automatically garbage collected after one hour.
+   * <p>Bigtable has the capability to store multiple versions of data in a single cell, which are
+   * indexed using timestamp values. The timestamp can be set by Bigtable, with the default
+   * timestamp value being 1970-01-01, or can be set explicitly. The columns in the created table
+   * will be automatically garbage collected once they reach an age of 1-hour after the set
+   * timestamp.
    *
    * <p>Note: Implementations may do instance creation here, if one does not already exist.
    *
@@ -250,8 +254,11 @@ public class BigtableResourceManager implements ResourceManager {
    * Creates a table within the current instance given a table ID and a collection of column family
    * names.
    *
-   * <p>The columns in this table will be automatically garbage collected once they reach the age
-   * specified by {@code maxAge}.
+   * <p>Bigtable has the capability to store multiple versions of data in a single cell, which are
+   * indexed using timestamp values. The timestamp can be set by Bigtable, with the default
+   * timestamp value being 1970-01-01, or can be set explicitly. The columns in the created table
+   * will be automatically garbage collected once they reach an age of {@code maxAge} after the set
+   * timestamp.
    *
    * <p>Note: Implementations may do instance creation here, if one does not already exist.
    *
