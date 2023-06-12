@@ -48,6 +48,8 @@ public final class Mod implements Serializable {
   private static final long serialVersionUID = 8703757194338184299L;
 
   private static final String PATTERN_FORMAT = "yyyy-MM-dd HH:mm:ss.SSSSSS";
+  private static final ThreadLocal<ObjectMapper> OBJECT_MAPPER =
+      ThreadLocal.withInitial(ObjectMapper::new);
   private static final ThreadLocal<DateTimeFormatter> TIMESTAMP_FORMATTER =
       ThreadLocal.withInitial(
           () -> DateTimeFormatter.ofPattern(PATTERN_FORMAT).withZone(ZoneId.of("UTC")));
@@ -151,10 +153,6 @@ public final class Mod implements Serializable {
     propertiesMap.put(ChangelogColumn.COLUMN_FAMILY.name(), deleteFamily.getFamilyName());
   }
 
-  public static Mod fromJson(String json) throws IOException {
-    return new ObjectMapper().readValue(json, Mod.class);
-  }
-
   /**
    * @return JSON object as String representing the changelog record
    */
@@ -219,7 +217,11 @@ public final class Mod implements Serializable {
   }
 
   public String toJson() throws JsonProcessingException {
-    return new ObjectMapper().writeValueAsString(this);
+    return OBJECT_MAPPER.get().writeValueAsString(this);
+  }
+
+  public static Mod fromJson(String json) throws IOException {
+    return OBJECT_MAPPER.get().readValue(json, Mod.class);
   }
 
   private String encodeBytes(ByteString rowKey) {
@@ -268,7 +270,7 @@ public final class Mod implements Serializable {
 
   private String convertPropertiesToJson(Map<String, Object> propertiesMap) {
     try {
-      return new ObjectMapper().writeValueAsString(propertiesMap);
+      return OBJECT_MAPPER.get().writeValueAsString(propertiesMap);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
