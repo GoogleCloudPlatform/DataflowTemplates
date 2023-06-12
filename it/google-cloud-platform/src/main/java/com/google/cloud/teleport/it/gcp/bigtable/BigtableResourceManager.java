@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -260,7 +260,8 @@ public class BigtableResourceManager implements ResourceManager {
    * @param columnFamilies A collection of column family names for the table.
    * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
    */
-  public synchronized void createTable(String tableId, Iterable<String> columnFamilies) {
+  public synchronized void createTable(String tableId, Iterable<String> columnFamilies)
+      throws BigtableResourceManagerException {
     BigtableTableSpec spec = new BigtableTableSpec();
     spec.setColumnFamilies(columnFamilies);
     spec.setMaxAge(Duration.ofHours(1));
@@ -608,20 +609,6 @@ public class BigtableResourceManager implements ResourceManager {
      */
     public Builder useStaticInstance() {
       this.useStaticInstance = true;
-      return this;
-    }
-
-    /**
-     * Looks at the system properties if there's an instance id, and reuses it if configured.
-     *
-     * @return this builder object with the useStaticInstance option enabled and instance set if
-     *     configured, the same builder otherwise.
-     */
-    public Builder maybeUseStaticInstance() {
-      if (System.getProperty("bigtableInstanceId") != null) {
-        this.useStaticInstance = true;
-        this.instanceId = System.getProperty("bigtableInstanceId");
-      }
       return this;
     }
 
