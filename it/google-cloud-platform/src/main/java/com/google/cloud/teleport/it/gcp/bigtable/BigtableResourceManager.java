@@ -254,8 +254,7 @@ public class BigtableResourceManager implements ResourceManager {
    *
    * @param tableId The id of the table.
    * @param columnFamilies A collection of column family names for the table.
-   * @throws BigtableResourceManagerException if there is an error creating the table in
-   *     Bigtable.
+   * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
    */
   public synchronized void createTable(String tableId, Iterable<String> columnFamilies) {
     BigtableTableSpec spec = new BigtableTableSpec();
@@ -279,8 +278,7 @@ public class BigtableResourceManager implements ResourceManager {
    * @param tableId The id of the table.
    * @param columnFamilies A collection of column family names for the table.
    * @param maxAge Sets the maximum age the columns can persist before being garbage collected.
-   * @throws BigtableResourceManagerException if there is an error creating the table in
-   *     Bigtable.
+   * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
    */
   public synchronized void createTable(
       String tableId, Iterable<String> columnFamilies, Duration maxAge) {
@@ -304,8 +302,7 @@ public class BigtableResourceManager implements ResourceManager {
    *
    * @param tableId The id of the table.
    * @param bigtableTableSpec Other table configurations
-   * @throws BigtableResourceManagerException if there is an error creating the table in
-   *     Bigtable.
+   * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
    */
   public synchronized void createTable(String tableId, BigtableTableSpec bigtableTableSpec) {
     // Check table ID
@@ -337,8 +334,8 @@ public class BigtableResourceManager implements ResourceManager {
       if (!tableAdminClient.exists(tableId)) {
         CreateTableRequest createTableRequest = CreateTableRequest.of(tableId);
         for (String columnFamily : bigtableTableSpec.getColumnFamilies()) {
-          createTableRequest.addFamily(columnFamily,
-              GCRules.GCRULES.maxAge(bigtableTableSpec.getMaxAge()));
+          createTableRequest.addFamily(
+              columnFamily, GCRules.GCRULES.maxAge(bigtableTableSpec.getMaxAge()));
         }
         // TODO: Set CDC enabled
         tableAdminClient.createTable(createTableRequest);
@@ -368,8 +365,8 @@ public class BigtableResourceManager implements ResourceManager {
    * @param clusters Clusters where traffic is going to be routed. If more than one cluster is
    *     specified, a multi-cluster routing is used. A single-cluster routing is used when a single
    *     cluster is specified.
-   * @throws BigtableResourceManagerException if there is an error creating the application
-   *     profile in Bigtable.
+   * @throws BigtableResourceManagerException if there is an error creating the application profile
+   *     in Bigtable.
    */
   public synchronized void createAppProfile(
       String appProfileId, boolean allowTransactionWrites, List<String> clusters) {
@@ -410,28 +407,28 @@ public class BigtableResourceManager implements ResourceManager {
   }
 
   /**
-   * Writes a given row into a table. This method requires
-   * {@link BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * Writes a given row into a table. This method requires {@link
+   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableRow A mutation object representing the table row.
-   * @throws BigtableResourceManagerException if method is called after resources have been
-   *     cleaned up, if the manager object has no instance, if the table does not exist or if there
-   *     is an IOException when attempting to retrieve the bigtable data client.
+   * @throws BigtableResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no instance, if the table does not exist or if there is an
+   *     IOException when attempting to retrieve the bigtable data client.
    */
   public void write(RowMutation tableRow) {
     write(ImmutableList.of(tableRow));
   }
 
   /**
-   * Writes a collection of table rows into one or more tables. This method requires
-   * {@link BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * Writes a collection of table rows into one or more tables. This method requires {@link
+   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableRows A collection of mutation objects representing table rows.
-   * @throws BigtableResourceManagerException if method is called after resources have been
-   *     cleaned up, if the manager object has no instance, if the table does not exist or if there
-   *     is an IOException when attempting to retrieve the bigtable data client.
+   * @throws BigtableResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no instance, if the table does not exist or if there is an
+   *     IOException when attempting to retrieve the bigtable data client.
    */
   public synchronized void write(Iterable<RowMutation> tableRows) {
     checkHasInstance();
@@ -457,31 +454,31 @@ public class BigtableResourceManager implements ResourceManager {
   }
 
   /**
-   * Reads all the rows in a table. This method requires
-   * {@link BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * Reads all the rows in a table. This method requires {@link
+   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableId The id of table to read rows from.
    * @return A List object containing all the rows in the table.
-   * @throws BigtableResourceManagerException if method is called after resources have been
-   *     cleaned up, if the manager object has no instance, if the table does not exist or if there
-   *     is an IOException when attempting to retrieve the bigtable data client.
+   * @throws BigtableResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no instance, if the table does not exist or if there is an
+   *     IOException when attempting to retrieve the bigtable data client.
    */
   public synchronized ImmutableList<Row> readTable(String tableId) {
     return readTable(tableId, null);
   }
 
   /**
-   * Reads all the rows in a table. This method requires
-   * {@link BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * Reads all the rows in a table. This method requires {@link
+   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableId The id of table to read rows from.
    * @param limit Limits the number of rows that can be returned
    * @return A List object containing all the rows in the table.
-   * @throws BigtableResourceManagerException if method is called after resources have been
-   *     cleaned up, if the manager object has no instance, if the table does not exist or if there
-   *     is an IOException when attempting to retrieve the bigtable data client.
+   * @throws BigtableResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no instance, if the table does not exist or if there is an
+   *     IOException when attempting to retrieve the bigtable data client.
    */
   public synchronized ImmutableList<Row> readTable(String tableId, Long limit) {
     checkHasInstance();
@@ -522,8 +519,8 @@ public class BigtableResourceManager implements ResourceManager {
    * <p>If this Resource Manager was configured to use a static instance, the instance will not be
    * cleaned up, but any created tables will be deleted.
    *
-   * @throws BigtableResourceManagerException if there is an error deleting the instance or
-   *     tables in Bigtable.
+   * @throws BigtableResourceManagerException if there is an error deleting the instance or tables
+   *     in Bigtable.
    */
   @Override
   public synchronized void cleanupAll() {
@@ -560,9 +557,7 @@ public class BigtableResourceManager implements ResourceManager {
     return false;
   }
 
-  /**
-   * Builder for {@link BigtableResourceManager}.
-   */
+  /** Builder for {@link BigtableResourceManager}. */
   public static final class Builder {
 
     private final String testId;

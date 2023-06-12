@@ -68,9 +68,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This pipeline ingests {@link ChangeStreamMutation} from Bigtable change stream. The
- * {@link ChangeStreamMutation} is then broken into {@link Mod}, which converted into
- * {@link TableRow} and inserted into BigQuery table.
+ * This pipeline ingests {@link ChangeStreamMutation} from Bigtable change stream. The {@link
+ * ChangeStreamMutation} is then broken into {@link Mod}, which converted into {@link TableRow} and
+ * inserted into BigQuery table.
  */
 @Template(
     name = "Bigtable_Change_Streams_to_BigQuery",
@@ -83,9 +83,7 @@ import org.slf4j.LoggerFactory;
     contactInformation = "https://cloud.google.com/support")
 public final class BigtableChangeStreamsToBigQuery {
 
-  /**
-   * String/String Coder for {@link FailsafeElement}.
-   */
+  /** String/String Coder for {@link FailsafeElement}. */
   public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
@@ -211,52 +209,53 @@ public final class BigtableChangeStreamsToBigQuery {
             .apply(Values.create());
 
     PCollection<TableRow> changeStreamMutationToTableRow =
-        dataChangeRecord
-            .apply(
-                "ChangeStreamMutation To TableRow",
-                ParDo.of(new ChangeStreamMutationToTableRowFn(sourceInfo, bigQuery)));
+        dataChangeRecord.apply(
+            "ChangeStreamMutation To TableRow",
+            ParDo.of(new ChangeStreamMutationToTableRowFn(sourceInfo, bigQuery)));
 
     // -- DLQ reading -->
     PCollectionTuple dlqModJson =
         dlqManager.getReconsumerDataTransform(
             pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
-    PCollection<FailsafeElement<String, String>> failsafeModJson = dlqModJson.get(
-        DeadLetterQueueManager.RETRYABLE_ERRORS).setCoder(FAILSAFE_ELEMENT_CODER);
+    PCollection<FailsafeElement<String, String>> failsafeModJson =
+        dlqModJson.get(DeadLetterQueueManager.RETRYABLE_ERRORS).setCoder(FAILSAFE_ELEMENT_CODER);
 
     FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions
         failsafeModJsonToTableRowOptions =
-        FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
-            .setCoder(FAILSAFE_ELEMENT_CODER)
-            .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
-            .build();
+            FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
+                .setCoder(FAILSAFE_ELEMENT_CODER)
+                .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
+                .build();
 
     FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow
         failsafeModJsonToTableRow =
-        new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
-            bigQuery, failsafeModJsonToTableRowOptions);
+            new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
+                bigQuery, failsafeModJsonToTableRowOptions);
     PCollectionTuple tableRowTuple =
         failsafeModJson.apply("Mod JSON To TableRow", failsafeModJsonToTableRow);
     // <-- DLQ reading --
 
-    PCollection<TableRow> dlqSourceTableRows = tableRowTuple.get(
-        failsafeModJsonToTableRow.transformOut);
-    PCollection<TableRow> mergeSourceWithDlq = PCollectionList.of(changeStreamMutationToTableRow)
-        .and(dlqSourceTableRows)
-        .apply(Flatten.pCollections());
+    PCollection<TableRow> dlqSourceTableRows =
+        tableRowTuple.get(failsafeModJsonToTableRow.transformOut);
+    PCollection<TableRow> mergeSourceWithDlq =
+        PCollectionList.of(changeStreamMutationToTableRow)
+            .and(dlqSourceTableRows)
+            .apply(Flatten.pCollections());
 
-    WriteResult writeResult = mergeSourceWithDlq.apply(
-        "Write To BigQuery",
-        BigQueryIO.<TableRow>write()
-            .to(bigQuery.getDynamicDestinations())
-            .withFormatFunction(
-                BigtableChangeStreamsToBigQuery::removeIntermediateMetadataFields)
-            .withFormatRecordOnFailureFunction(element -> element)
-            .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-            .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-            .withExtendedErrorInfo()
-            .withMethod(Write.Method.STREAMING_INSERTS)
-            .withAutoSharding()
-            .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+    WriteResult writeResult =
+        mergeSourceWithDlq.apply(
+            "Write To BigQuery",
+            BigQueryIO.<TableRow>write()
+                .to(bigQuery.getDynamicDestinations())
+                .withFormatFunction(
+                    BigtableChangeStreamsToBigQuery::removeIntermediateMetadataFields)
+                .withFormatRecordOnFailureFunction(element -> element)
+                .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+                .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                .withExtendedErrorInfo()
+                .withMethod(Write.Method.STREAMING_INSERTS)
+                .withAutoSharding()
+                .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
     PCollection<String> transformDlqJson =
         tableRowTuple
@@ -370,8 +369,8 @@ public final class BigtableChangeStreamsToBigQuery {
    */
   static class ChangeStreamMutationToTableRowFn extends DoFn<ChangeStreamMutation, TableRow> {
 
-    private final static ThreadLocal<ObjectMapper> OBJECT_MAPPER = ThreadLocal.withInitial(
-        ObjectMapper::new);
+    private static final ThreadLocal<ObjectMapper> OBJECT_MAPPER =
+        ThreadLocal.withInitial(ObjectMapper::new);
     private final BigtableSource sourceInfo;
     private final BigQueryUtils bigQuery;
 
