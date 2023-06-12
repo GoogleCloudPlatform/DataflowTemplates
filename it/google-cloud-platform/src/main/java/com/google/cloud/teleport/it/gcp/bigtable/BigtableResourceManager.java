@@ -26,6 +26,11 @@ import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminSettings;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings;
+import com.google.cloud.bigtable.admin.v2.models.AppProfile;
+import com.google.cloud.bigtable.admin.v2.models.AppProfile.MultiClusterRoutingPolicy;
+import com.google.cloud.bigtable.admin.v2.models.AppProfile.RoutingPolicy;
+import com.google.cloud.bigtable.admin.v2.models.AppProfile.SingleClusterRoutingPolicy;
+import com.google.cloud.bigtable.admin.v2.models.CreateAppProfileRequest;
 import com.google.cloud.bigtable.admin.v2.models.CreateInstanceRequest;
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
 import com.google.cloud.bigtable.admin.v2.models.GCRules;
@@ -41,7 +46,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.threeten.bp.Duration;
@@ -72,6 +79,8 @@ public class BigtableResourceManager implements ResourceManager {
 
   private List<String> createdTables;
 
+  private List<String> createdAppProfiles;
+
   private boolean hasInstance;
   private final boolean usingStaticInstance;
 
@@ -97,8 +106,9 @@ public class BigtableResourceManager implements ResourceManager {
       }
       this.instanceId = builder.instanceId;
       this.hasInstance = true;
-      // List to store created tables for static RM
+      // List to store created tables and app profiles for static RM
       this.createdTables = new ArrayList<>();
+      this.createdAppProfiles = new ArrayList<>();
     } else {
       if (builder.instanceId != null) {
         throw new BigtableResourceManagerException(
@@ -244,10 +254,14 @@ public class BigtableResourceManager implements ResourceManager {
    *
    * @param tableId The id of the table.
    * @param columnFamilies A collection of column family names for the table.
-   * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
+   * @throws BigtableResourceManagerException if there is an error creating the table in
+   *     Bigtable.
    */
   public synchronized void createTable(String tableId, Iterable<String> columnFamilies) {
-    createTable(tableId, columnFamilies, Duration.ofHours(1));
+    BigtableTableSpec spec = new BigtableTableSpec();
+    spec.setColumnFamilies(columnFamilies);
+    spec.setMaxAge(Duration.ofHours(1));
+    createTable(tableId, spec);
   }
 
   /**
@@ -265,15 +279,40 @@ public class BigtableResourceManager implements ResourceManager {
    * @param tableId The id of the table.
    * @param columnFamilies A collection of column family names for the table.
    * @param maxAge Sets the maximum age the columns can persist before being garbage collected.
-   * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
+   * @throws BigtableResourceManagerException if there is an error creating the table in
+   *     Bigtable.
    */
   public synchronized void createTable(
       String tableId, Iterable<String> columnFamilies, Duration maxAge) {
+    BigtableTableSpec spec = new BigtableTableSpec();
+    spec.setColumnFamilies(columnFamilies);
+    spec.setMaxAge(maxAge);
+    createTable(tableId, spec);
+  }
+
+  /**
+   * Creates a table within the current instance given a table ID and a collection of column family
+   * names.
+   *
+   * <p>Bigtable has the capability to store multiple versions of data in a single cell, which are
+   * indexed using timestamp values. The timestamp can be set by Bigtable, with the default
+   * timestamp value being 1970-01-01, or can be set explicitly. The columns in the created table
+   * will be automatically garbage collected once they reach an age of {@code maxAge} after the set
+   * timestamp.
+   *
+   * <p>Note: Implementations may do instance creation here, if one does not already exist.
+   *
+   * @param tableId The id of the table.
+   * @param bigtableTableSpec Other table configurations
+   * @throws BigtableResourceManagerException if there is an error creating the table in
+   *     Bigtable.
+   */
+  public synchronized void createTable(String tableId, BigtableTableSpec bigtableTableSpec) {
     // Check table ID
     checkValidTableId(tableId);
 
     // Check for at least one column family
-    if (!columnFamilies.iterator().hasNext()) {
+    if (!bigtableTableSpec.getColumnFamilies().iterator().hasNext()) {
       throw new IllegalArgumentException(
           "There must be at least one column family specified when creating a table.");
     }
@@ -297,11 +336,12 @@ public class BigtableResourceManager implements ResourceManager {
         bigtableResourceManagerClientFactory.bigtableTableAdminClient()) {
       if (!tableAdminClient.exists(tableId)) {
         CreateTableRequest createTableRequest = CreateTableRequest.of(tableId);
-        for (String columnFamily : columnFamilies) {
-          createTableRequest.addFamily(columnFamily, GCRules.GCRULES.maxAge(maxAge));
+        for (String columnFamily : bigtableTableSpec.getColumnFamilies()) {
+          createTableRequest.addFamily(columnFamily,
+              GCRules.GCRULES.maxAge(bigtableTableSpec.getMaxAge()));
         }
+        // TODO: Set CDC enabled
         tableAdminClient.createTable(createTableRequest);
-
       } else {
         throw new IllegalStateException(
             "Table " + tableId + " already exists for instance " + instanceId + ".");
@@ -318,28 +358,80 @@ public class BigtableResourceManager implements ResourceManager {
   }
 
   /**
-   * Writes a given row into a table. This method requires {@link
-   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * Creates an application profile within the current instance
+   *
+   * <p>Note: Implementations may do instance creation here, if one does not already exist.
+   *
+   * @param appProfileId The id of the app profile.
+   * @param allowTransactionWrites Allows transactional writes when single cluster routing is
+   *     enabled
+   * @param clusters Clusters where traffic is going to be routed. If more than one cluster is
+   *     specified, a multi-cluster routing is used. A single-cluster routing is used when a single
+   *     cluster is specified.
+   * @throws BigtableResourceManagerException if there is an error creating the application
+   *     profile in Bigtable.
+   */
+  public synchronized void createAppProfile(
+      String appProfileId, boolean allowTransactionWrites, List<String> clusters) {
+    checkHasInstance();
+    if (clusters == null || clusters.isEmpty()) {
+      throw new IllegalArgumentException("Cluster list cannot be empty");
+    }
+
+    RoutingPolicy routingPolicy;
+
+    if (clusters.size() == 1) {
+      routingPolicy = SingleClusterRoutingPolicy.of(clusters.get(0), allowTransactionWrites);
+    } else {
+      routingPolicy = MultiClusterRoutingPolicy.of(new HashSet<>(clusters));
+    }
+
+    LOG.info("Creating appProfile {} for instance project {}.", appProfileId, instanceId);
+
+    try (BigtableInstanceAdminClient instanceAdminClient =
+        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
+      List<AppProfile> existingAppProfiles = instanceAdminClient.listAppProfiles(instanceId);
+      if (!doesAppProfileExist(appProfileId, existingAppProfiles)) {
+        CreateAppProfileRequest request =
+            CreateAppProfileRequest.of(instanceId, appProfileId).setRoutingPolicy(routingPolicy);
+        instanceAdminClient.createAppProfile(request);
+        LOG.info("Successfully created appProfile {}.", appProfileId);
+      } else {
+        throw new IllegalStateException(
+            "App profile " + appProfileId + " already exists for instance " + instanceId + ".");
+      }
+    } catch (Exception e) {
+      throw new BigtableResourceManagerException("Failed to create app profile.", e);
+    }
+
+    if (usingStaticInstance) {
+      createdAppProfiles.add(appProfileId);
+    }
+  }
+
+  /**
+   * Writes a given row into a table. This method requires
+   * {@link BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableRow A mutation object representing the table row.
-   * @throws BigtableResourceManagerException if method is called after resources have been cleaned
-   *     up, if the manager object has no instance, if the table does not exist or if there is an
-   *     IOException when attempting to retrieve the bigtable data client.
+   * @throws BigtableResourceManagerException if method is called after resources have been
+   *     cleaned up, if the manager object has no instance, if the table does not exist or if there
+   *     is an IOException when attempting to retrieve the bigtable data client.
    */
   public void write(RowMutation tableRow) {
     write(ImmutableList.of(tableRow));
   }
 
   /**
-   * Writes a collection of table rows into one or more tables. This method requires {@link
-   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * Writes a collection of table rows into one or more tables. This method requires
+   * {@link BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableRows A collection of mutation objects representing table rows.
-   * @throws BigtableResourceManagerException if method is called after resources have been cleaned
-   *     up, if the manager object has no instance, if the table does not exist or if there is an
-   *     IOException when attempting to retrieve the bigtable data client.
+   * @throws BigtableResourceManagerException if method is called after resources have been
+   *     cleaned up, if the manager object has no instance, if the table does not exist or if there
+   *     is an IOException when attempting to retrieve the bigtable data client.
    */
   public synchronized void write(Iterable<RowMutation> tableRows) {
     checkHasInstance();
@@ -365,31 +457,31 @@ public class BigtableResourceManager implements ResourceManager {
   }
 
   /**
-   * Reads all the rows in a table. This method requires {@link
-   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * Reads all the rows in a table. This method requires
+   * {@link BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableId The id of table to read rows from.
    * @return A List object containing all the rows in the table.
-   * @throws BigtableResourceManagerException if method is called after resources have been cleaned
-   *     up, if the manager object has no instance, if the table does not exist or if there is an
-   *     IOException when attempting to retrieve the bigtable data client.
+   * @throws BigtableResourceManagerException if method is called after resources have been
+   *     cleaned up, if the manager object has no instance, if the table does not exist or if there
+   *     is an IOException when attempting to retrieve the bigtable data client.
    */
   public synchronized ImmutableList<Row> readTable(String tableId) {
     return readTable(tableId, null);
   }
 
   /**
-   * Reads all the rows in a table. This method requires {@link
-   * BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
+   * Reads all the rows in a table. This method requires
+   * {@link BigtableResourceManager#createTable(String, Iterable)} to be called for the target table
    * beforehand.
    *
    * @param tableId The id of table to read rows from.
    * @param limit Limits the number of rows that can be returned
    * @return A List object containing all the rows in the table.
-   * @throws BigtableResourceManagerException if method is called after resources have been cleaned
-   *     up, if the manager object has no instance, if the table does not exist or if there is an
-   *     IOException when attempting to retrieve the bigtable data client.
+   * @throws BigtableResourceManagerException if method is called after resources have been
+   *     cleaned up, if the manager object has no instance, if the table does not exist or if there
+   *     is an IOException when attempting to retrieve the bigtable data client.
    */
   public synchronized ImmutableList<Row> readTable(String tableId, Long limit) {
     checkHasInstance();
@@ -430,8 +522,8 @@ public class BigtableResourceManager implements ResourceManager {
    * <p>If this Resource Manager was configured to use a static instance, the instance will not be
    * cleaned up, but any created tables will be deleted.
    *
-   * @throws BigtableResourceManagerException if there is an error deleting the instance or tables
-   *     in Bigtable.
+   * @throws BigtableResourceManagerException if there is an error deleting the instance or
+   *     tables in Bigtable.
    */
   @Override
   public synchronized void cleanupAll() {
@@ -459,7 +551,18 @@ public class BigtableResourceManager implements ResourceManager {
     LOG.info("Manager successfully cleaned up.");
   }
 
-  /** Builder for {@link BigtableResourceManager}. */
+  private boolean doesAppProfileExist(String appProfileId, List<AppProfile> existingAppProfiles) {
+    for (AppProfile existingProfile : existingAppProfiles) {
+      if (StringUtils.equals(appProfileId, existingProfile.getId())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Builder for {@link BigtableResourceManager}.
+   */
   public static final class Builder {
 
     private final String testId;
