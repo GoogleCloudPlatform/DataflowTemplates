@@ -75,6 +75,7 @@ public abstract class StreamingHandler {
           taskContext.getShard().getLogicalShardId(),
           taskContext.getSourceDbTimezoneOffset());
       inputBufferReader.acknowledge();
+      dao.cleanup();
       LOG.info(" Successfully processed ");
     } catch (Exception e) {
       // TODO: Error handling and retry
