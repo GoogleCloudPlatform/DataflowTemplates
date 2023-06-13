@@ -70,6 +70,7 @@ public class MySqlDao implements Serializable {
     driver.registerPool(this.poolName, connectionPool);
   }
 
+  // writes to database in a batch
   public void batchWrite(List<String> batchStatements) throws SQLException {
     Connection connObj = null;
     Statement statement = null;
@@ -97,5 +98,10 @@ public class MySqlDao implements Serializable {
         }
       }
     }
+  }
+
+  // frees up the pooling resources
+  public void cleanup() throws Exception {
+    driver.closePool(this.poolName);
   }
 }
