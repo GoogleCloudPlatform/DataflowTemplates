@@ -15,16 +15,12 @@
  */
 package com.google.cloud.teleport.it.datadog;
 
-import static com.google.cloud.teleport.it.datadog.matchers.DatadogAsserts.assertThatDatadogEvents;
-import static com.google.cloud.teleport.it.datadog.matchers.DatadogAsserts.datadogEventsToRecords;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+import static com.google.cloud.teleport.it.datadog.matchers.DatadogAsserts.assertThatDatadogLogEntries;
+import static com.google.cloud.teleport.it.datadog.matchers.DatadogAsserts.datadogEntriesToRecords;
 
 import com.google.cloud.teleport.it.common.testcontainers.TestContainersIntegrationTest;
-import com.google.cloud.teleport.it.datadog.conditions.DatadogEventsCheck;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.beam.sdk.io.datadog.DatadogEvent;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -51,45 +47,27 @@ public class DatadogResourceManagerIT {
     // Arrange
     String source = RandomStringUtils.randomAlphabetic(1, 20);
     String host = RandomStringUtils.randomAlphabetic(1, 20);
-    String sourceType = RandomStringUtils.randomAlphabetic(1, 20);
-    List<DatadogEvent> httpEventsSent = generateHttpEvents(source, sourceType, host);
+    List<DatadogLogEntry> httpEventsSent = generateHttpEvents(source, host);
 
     datadogResourceManager.sendHttpEvents(httpEventsSent);
 
-    // Act
-    String query = "search source=" + source + " sourcetype=" + sourceType + " host=" + host;
-    await("Retrieving events from Datadog")
-        .atMost(Duration.ofMinutes(1))
-        .pollInterval(Duration.ofMillis(500))
-        .until(
-            () ->
-                DatadogEventsCheck.builder(datadogResourceManager)
-                    .setQuery(query)
-                    .setMinEvents(httpEventsSent.size())
-                    .build()
-                    .get());
-
-    List<DatadogEvent> httpEventsReceived = datadogResourceManager.getEvents(query);
+    List<DatadogLogEntry> httpEventsReceived = datadogResourceManager.getEntries();
 
     // Assert
-    assertThatDatadogEvents(httpEventsReceived)
-        .hasRecordsUnordered(datadogEventsToRecords(httpEventsSent));
+    assertThatDatadogLogEntries(httpEventsReceived)
+        .hasRecordsUnordered(datadogEntriesToRecords(httpEventsSent));
   }
 
-  private static List<DatadogEvent> generateHttpEvents(
-      String source, String sourceType, String host) {
-    List<DatadogEvent> events = new ArrayList<>();
-    long currentTime = System.currentTimeMillis();
+  private static List<DatadogLogEntry> generateHttpEvents(String source, String hostname) {
+    List<DatadogLogEntry> events = new ArrayList<>();
     for (int i = 0; i < NUM_EVENTS; i++) {
-      String event = RandomStringUtils.randomAlphabetic(1, 20);
+      String message = RandomStringUtils.randomAlphabetic(1, 20);
       events.add(
-          DatadogEvent.newBuilder()
-              .withEvent(event)
+          DatadogLogEntry.newBuilder()
+              .withMessage(message)
               .withSource(source)
-              .withSourceType(sourceType)
-              .withHost(host)
-              .withTime(currentTime + i)
-              .create());
+              .withHostname(hostname)
+              .build());
     }
 
     return events;

@@ -15,21 +15,33 @@
  */
 package com.google.cloud.teleport.templates;
 
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
+import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
+import static com.google.cloud.teleport.it.datadog.matchers.DatadogAsserts.datadogEntriesToRecords;
+
+import com.google.cloud.teleport.datadog.DatadogEvent;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.datadog.DatadogLogEntry;
+import com.google.cloud.teleport.it.datadog.DatadogResourceManager;
+import com.google.cloud.teleport.it.datadog.conditions.DatadogLogEntriesCheck;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
-import com.google.cloud.teleport.it.datadog.DatadogResourceManager;
-import com.google.cloud.teleport.it.datadog.conditions.DatadogEventsCheck;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
-import org.apache.beam.sdk.io.datadog.DatadogEvent;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -38,18 +50,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
-
-import java.io.IOException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
-import static com.google.cloud.teleport.it.datadog.DatadogResourceManagerUtils.datadogEventToMap;
-import static com.google.cloud.teleport.it.datadog.matchers.DatadogAsserts.assertThatDatadogEvents;
-import static com.google.cloud.teleport.it.datadog.matchers.DatadogAsserts.datadogEventsToRecords;
 
 /** Integration test for {@link PubSubToDatadog} classic template. */
 @Category(TemplateIntegrationTest.class)
@@ -78,11 +78,11 @@ public class PubSubToDatadogIT extends TemplateTestBase {
 
     gcsClient.createArtifact(
         "udf.js",
-        "function uppercaseHost(value) {\n"
+        "function uppercaseHostname(value) {\n"
             + "  const obj = JSON.parse(value);\n"
             + "  const includePubsubMessage = obj.data && obj.attributes;\n"
             + "  const data = includePubsubMessage ? obj.data : obj;"
-            + "  data._metadata.host = data._metadata.host.toUpperCase();\n"
+            + "  data._metadata = {hostname: data.hostname.toUpperCase()};\n"
             + "  return JSON.stringify(data);\n"
             + "}");
 
@@ -104,37 +104,33 @@ public class PubSubToDatadogIT extends TemplateTestBase {
             parameters
                 .addParameter("inputSubscription", pubSubSubscription.toString())
                 .addParameter("url", datadogResourceManager.getHttpEndpoint())
-                .addParameter("disableCertificateValidation", "true")
                 .addParameter("outputDeadletterTopic", pubSubDlqTopic.toString())
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                .addParameter("javascriptTextTransformFunctionName", "uppercaseHost"));
+                .addParameter("javascriptTextTransformFunctionName", "uppercaseHostname"));
     assertThatPipeline(info).isRunning();
 
-    List<DatadogEvent> httpEventsSent = new ArrayList<>();
+    List<DatadogEvent> sentEvents = new ArrayList<>();
 
-    String source = RandomStringUtils.randomAlphabetic(1, 20);
-    String host = RandomStringUtils.randomAlphabetic(1, 20).toUpperCase();
-    String sourceType = RandomStringUtils.randomAlphabetic(1, 20);
-    long currentTime = System.currentTimeMillis();
+    String hostname = RandomStringUtils.randomAlphabetic(1, 20).toUpperCase();
     for (int i = 1; i <= MESSAGES_COUNT; i++) {
-      String event = RandomStringUtils.randomAlphabetic(1, 20);
-      long usingEpochTime = currentTime + i;
-      DatadogEvent.Builder datadogEventBuilder =
+      DatadogEvent sentEvent =
           DatadogEvent.newBuilder()
-              .withEvent(event)
-              .withSource(source)
-              .withSourceType(sourceType)
-              .withTime(usingEpochTime);
-      DatadogEvent datadogEventBeforeUdf = datadogEventBuilder.withHost(host.toLowerCase()).create();
-      DatadogEvent datadogEventAfterUdf = datadogEventBuilder.withHost(host.toUpperCase()).create();
+              .withHostname(hostname.toLowerCase())
+              .withMessage(RandomStringUtils.randomAlphabetic(1, 20))
+              .build();
+      String pubSubMessage = new JSONObject(datadogEventToRecord(sentEvent)).toString();
 
-      Map<String, Object> datadogMap = datadogEventToMap(datadogEventBeforeUdf);
-      datadogMap.put("time", Instant.ofEpochMilli(usingEpochTime));
-      String pubSubMessage = new JSONObject(Map.of("_metadata", datadogMap)).toString();
+      DatadogEvent transformedEvent =
+          DatadogEvent.newBuilder()
+              .withSource("gcp") // done by the conversion from FailSafeElement to DatadogEvent
+              .withHostname(hostname.toUpperCase()) // done by the UDF being specified above
+              .withMessage(pubSubMessage)
+              .build();
+
       ByteString messageData = ByteString.copyFromUtf8(pubSubMessage);
       pubsubResourceManager.publish(pubSubTopic, ImmutableMap.of(), messageData);
 
-      httpEventsSent.add(datadogEventAfterUdf);
+      sentEvents.add(transformedEvent);
     }
 
     for (int i = 1; i <= BAD_MESSAGES_COUNT; i++) {
@@ -147,22 +143,20 @@ public class PubSubToDatadogIT extends TemplateTestBase {
             .setMinMessages(allDlq ? MESSAGES_COUNT + BAD_MESSAGES_COUNT : BAD_MESSAGES_COUNT)
             .build();
 
-    String query = "search source=" + source + " sourcetype=" + sourceType + " host=" + host;
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForConditionsAndFinish(
                 createConfig(info),
-                DatadogEventsCheck.builder(datadogResourceManager)
-                    .setQuery(query)
-                    .setMinEvents(allDlq ? 0 : MESSAGES_COUNT)
+                DatadogLogEntriesCheck.builder(datadogResourceManager)
+                    .setMinEntries(allDlq ? 0 : MESSAGES_COUNT)
                     .build(),
                 dlqCheck);
     assertThatResult(result).meetsConditions();
 
-    List<DatadogEvent> httpEventsReceived = datadogResourceManager.getEvents(query);
+    List<DatadogLogEntry> receivedEntries = datadogResourceManager.getEntries();
 
-    assertThatDatadogEvents(httpEventsSent)
-        .hasRecordsUnordered(datadogEventsToRecords(httpEventsReceived));
+    assertThatRecords(datadogEventsToRecords(sentEvents))
+        .hasRecordsUnordered(datadogEntriesToRecords(receivedEntries));
   }
 
   @Test
@@ -170,7 +164,7 @@ public class PubSubToDatadogIT extends TemplateTestBase {
   public void testPubSubToDatadogBase() throws IOException {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("token", datadogResourceManager.getHecToken())
+            .addParameter("apiKey", datadogResourceManager.getApiKey())
             .addParameter("batchCount", "1");
     testPubSubToDatadogMain(parameters, false);
   }
@@ -180,7 +174,7 @@ public class PubSubToDatadogIT extends TemplateTestBase {
   public void testPubSubToDatadogWithBatch() throws IOException {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("token", datadogResourceManager.getHecToken())
+            .addParameter("apiKey", datadogResourceManager.getApiKey())
             .addParameter("batchCount", "20");
     testPubSubToDatadogMain(parameters, false);
   }
@@ -190,7 +184,7 @@ public class PubSubToDatadogIT extends TemplateTestBase {
   public void testPubSubToDatadogUnBatchDeadLetter() throws IOException {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("token", "invalid-token")
+            .addParameter("apiKey", "invalid-api-key")
             .addParameter("batchCount", "5");
     testPubSubToDatadogMain(parameters, true);
   }
@@ -200,7 +194,7 @@ public class PubSubToDatadogIT extends TemplateTestBase {
   public void testPubSubToDatadogIncludePubSub() throws IOException {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("token", datadogResourceManager.getHecToken())
+            .addParameter("apiKey", datadogResourceManager.getApiKey())
             .addParameter("batchCount", "1")
             .addParameter("includePubsubMessage", "true");
     testPubSubToDatadogMain(parameters, false);
@@ -210,9 +204,25 @@ public class PubSubToDatadogIT extends TemplateTestBase {
   public void testPubSubToDatadogWithBatchAndParallelism() throws IOException {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("token", datadogResourceManager.getHecToken())
+            .addParameter("apiKey", datadogResourceManager.getApiKey())
             .addParameter("batchCount", "10")
             .addParameter("parallelism", "5");
     testPubSubToDatadogMain(parameters, false);
+  }
+
+  private static List<Map<String, Object>> datadogEventsToRecords(List<DatadogEvent> events) {
+    return events.stream()
+        .map(PubSubToDatadogIT::datadogEventToRecord)
+        .collect(Collectors.toList());
+  }
+
+  private static Map<String, Object> datadogEventToRecord(DatadogEvent e) {
+    Map<String, Object> map = new HashMap<>();
+    map.put("ddsource", e.ddsource());
+    map.put("ddtags", e.ddtags());
+    map.put("hostname", e.hostname());
+    map.put("service", e.service());
+    map.put("message", e.message());
+    return map;
   }
 }

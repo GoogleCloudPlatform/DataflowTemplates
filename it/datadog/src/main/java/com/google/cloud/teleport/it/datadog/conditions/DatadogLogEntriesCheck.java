@@ -22,75 +22,66 @@ import javax.annotation.Nullable;
 
 /** ConditionCheck to validate if Datadog has received a certain amount of events. */
 @AutoValue
-public abstract class DatadogEventsCheck extends ConditionCheck {
+public abstract class DatadogLogEntriesCheck extends ConditionCheck {
 
   abstract DatadogResourceManager resourceManager();
 
-  @Nullable
-  abstract String query();
-
-  abstract Integer minEvents();
+  abstract Integer minEntries();
 
   @Nullable
-  abstract Integer maxEvents();
+  abstract Integer maxEntries();
 
   @Override
   public String getDescription() {
-    if (maxEvents() != null) {
+    if (maxEntries() != null) {
       return String.format(
-          "Datadog check if logs have between %d and %d events", minEvents(), maxEvents());
+          "Datadog check if logs have between %d and %d events", minEntries(), maxEntries());
     }
-    return String.format("Datadog check if logs have %d events", minEvents());
+    return String.format("Datadog check if logs have %d events", minEntries());
   }
 
   @Override
   public CheckResult check() {
-    long totalEvents;
-    if (query() != null) {
-      totalEvents = resourceManager().getEvents(query()).size();
-    } else {
-      totalEvents = resourceManager().getEvents().size();
-    }
-    if (totalEvents < minEvents()) {
+    long totalEvents = resourceManager().getEntries().size();
+
+    if (totalEvents < minEntries()) {
       return new CheckResult(
-          false, String.format("Expected %d but has only %d", minEvents(), totalEvents));
+          false, String.format("Expected %d but has only %d", minEntries(), totalEvents));
     }
-    if (maxEvents() != null && totalEvents > maxEvents()) {
+    if (maxEntries() != null && totalEvents > maxEntries()) {
       return new CheckResult(
-          false, String.format("Expected up to %d but found %d events", maxEvents(), totalEvents));
+          false, String.format("Expected up to %d but found %d events", maxEntries(), totalEvents));
     }
 
-    if (maxEvents() != null) {
+    if (maxEntries() != null) {
       return new CheckResult(
           true,
           String.format(
               "Expected between %d and %d events and found %d",
-              minEvents(), maxEvents(), totalEvents));
+              minEntries(), maxEntries(), totalEvents));
     }
 
     return new CheckResult(
-        true, String.format("Expected at least %d events and found %d", minEvents(), totalEvents));
+        true, String.format("Expected at least %d events and found %d", minEntries(), totalEvents));
   }
 
   public static Builder builder(DatadogResourceManager resourceManager) {
-    return new AutoValue_DatadogEventsCheck.Builder().setResourceManager(resourceManager);
+    return new AutoValue_DatadogLogEntriesCheck.Builder().setResourceManager(resourceManager);
   }
 
-  /** Builder for {@link DatadogEventsCheck}. */
+  /** Builder for {@link DatadogLogEntriesCheck}. */
   @AutoValue.Builder
   public abstract static class Builder {
 
     public abstract Builder setResourceManager(DatadogResourceManager resourceManager);
 
-    public abstract Builder setQuery(String query);
+    public abstract Builder setMinEntries(Integer minEvents);
 
-    public abstract Builder setMinEvents(Integer minEvents);
+    public abstract Builder setMaxEntries(Integer maxEvents);
 
-    public abstract Builder setMaxEvents(Integer maxEvents);
+    abstract DatadogLogEntriesCheck autoBuild();
 
-    abstract DatadogEventsCheck autoBuild();
-
-    public DatadogEventsCheck build() {
+    public DatadogLogEntriesCheck build() {
       return autoBuild();
     }
   }

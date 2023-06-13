@@ -16,48 +16,50 @@
 package com.google.cloud.teleport.it.datadog.matchers;
 
 import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.cloud.teleport.it.datadog.DatadogResourceManagerUtils.datadogEventToMap;
+import static com.google.cloud.teleport.it.datadog.DatadogResourceManagerUtils.datadogEntryToMap;
 
 import com.google.cloud.teleport.it.common.matchers.RecordsSubject;
+import com.google.cloud.teleport.it.datadog.DatadogLogEntry;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.io.datadog.DatadogEvent;
 
 /** Assert utilities for Datadog tests. */
 public class DatadogAsserts {
 
   /**
-   * Convert Datadog {@link DatadogEvent} to a list of maps.
+   * Convert Datadog {@link DatadogLogEntry} to a list of maps.
    *
-   * @param events List of DatadogEvents to parse
+   * @param entries List of com.google.cloud.teleport.it.datadog.DatadogLogEntrys to parse
    * @return List of maps to use in {@link RecordsSubject}
    */
-  public static List<Map<String, Object>> datadogEventsToRecords(Collection<DatadogEvent> events) {
+  public static List<Map<String, Object>> datadogEntriesToRecords(
+      Collection<DatadogLogEntry> entries) {
     try {
       List<Map<String, Object>> records = new ArrayList<>();
 
-      for (DatadogEvent event : events) {
-        Map<String, Object> converted = datadogEventToMap(event);
+      for (DatadogLogEntry entry : entries) {
+        Map<String, Object> converted = datadogEntryToMap(entry);
         records.add(converted);
       }
 
       return records;
     } catch (Exception e) {
-      throw new RuntimeException("Error converting DatadogEvents to Records", e);
+      throw new RuntimeException("Error converting DatadogLogEntries to Records", e);
     }
   }
 
   /**
    * Creates a {@link RecordsSubject} to assert information within a list of records.
    *
-   * @param events List of DatadogEvents in Datadog {@link DatadogEvent} format to use in the
+   * @param entries List of DatadogLogEntrys in Datadog {@link DatadogLogEntry} format to use in the
    *     comparison.
    * @return Truth Subject to chain assertions.
    */
-  public static RecordsSubject assertThatDatadogEvents(@Nullable Collection<DatadogEvent> events) {
-    return assertThatRecords(datadogEventsToRecords(events));
+  public static RecordsSubject assertThatDatadogLogEntries(
+      @Nullable Collection<DatadogLogEntry> entries) {
+    return assertThatRecords(datadogEntriesToRecords(entries));
   }
 }

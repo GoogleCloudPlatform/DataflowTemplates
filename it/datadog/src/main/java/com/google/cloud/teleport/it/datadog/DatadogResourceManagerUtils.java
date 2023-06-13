@@ -15,67 +15,39 @@
  */
 package com.google.cloud.teleport.it.datadog;
 
-import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generatePassword;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import org.apache.beam.sdk.io.datadog.DatadogEvent;
 
 /** Utilities for {@link DatadogResourceManager} implementations. */
 public final class DatadogResourceManagerUtils {
 
-  static final String DEFAULT_DATADOG_INDEX = "main";
-
   // Datadog event metadata keys
-  private static final String DATADOG_EVENT_KEY = "event";
-  private static final String DATADOG_HOST_KEY = "host";
-  private static final String DATADOG_INDEX_KEY = "index";
-  private static final String DATADOG_TIME_KEY = "time";
-  private static final String DATADOG_SOURCE_KEY = "source";
-  private static final String DATADOG_SOURCE_TYPE_KEY = "sourcetype";
-
-  private static final int MIN_PASSWORD_LENGTH = 8;
-  private static final int MAX_PASSWORD_LENGTH = 20;
+  private static final String DD_SOURCE_KEY = "ddsource";
+  private static final String DD_TAGS_KEY = "ddtags";
+  private static final String DD_HOSTNAME_KEY = "hostname";
+  private static final String DD_SERVICE_KEY = "service";
+  private static final String DD_MESSAGE_KEY = "message";
 
   private DatadogResourceManagerUtils() {}
 
-  public static Map<String, Object> datadogEventToMap(DatadogEvent event) {
+  public static Map<String, Object> datadogEntryToMap(DatadogLogEntry entry) {
     Map<String, Object> eventMap = new HashMap<>();
-    eventMap.put(DATADOG_EVENT_KEY, event.event());
-    eventMap.put(DATADOG_HOST_KEY, event.host());
-    eventMap.put(DATADOG_INDEX_KEY, event.index() != null ? event.index() : DEFAULT_DATADOG_INDEX);
-    eventMap.put(DATADOG_SOURCE_KEY, event.source());
-    eventMap.put(DATADOG_SOURCE_TYPE_KEY, event.sourceType());
-    eventMap.put(DATADOG_TIME_KEY, event.time());
+    eventMap.put(DD_SOURCE_KEY, entry.ddsource());
+    eventMap.put(DD_TAGS_KEY, entry.ddtags());
+    eventMap.put(DD_HOSTNAME_KEY, entry.hostname());
+    eventMap.put(DD_SERVICE_KEY, entry.service());
+    eventMap.put(DD_MESSAGE_KEY, entry.message());
 
     return eventMap;
   }
 
   /**
-   * Generates a secure, valid Datadog password.
+   * Generates a secure, valid Datadog API key.
    *
    * @return The generated password.
    */
-  static String generateDatadogPassword() {
-    int numLower = 2;
-    int numUpper = 2;
-    int numSpecial = 0;
-    return generatePassword(
-        MIN_PASSWORD_LENGTH,
-        MAX_PASSWORD_LENGTH,
-        numLower,
-        numUpper,
-        numSpecial,
-        /* specialChars= */ null);
-  }
-
-  /**
-   * Generates a secure, valid Datadog HEC authentication token.
-   *
-   * @return The generated password.
-   */
-  static String generateHecToken() {
+  static String generateApiKey() {
     return UUID.randomUUID().toString();
   }
 }

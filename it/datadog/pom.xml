@@ -26,41 +26,21 @@
 
     <artifactId>it-datadog</artifactId>
 
-    <properties>
-      <datadog.version>1.9.4</datadog.version>
-    </properties>
-
     <dependencies>
-        <dependency>
-            <groupId>com.datadog</groupId>
-            <artifactId>datadog</artifactId>
-            <version>${datadog.version}</version>
-        </dependency>
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>
             <artifactId>it-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-sdks-java-io-datadog</artifactId>
-            <version>${beam.version}</version>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mockserver</artifactId>
+            <version>${testcontainers.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mock-server</groupId>
+            <artifactId>mockserver-client-java</artifactId>
+            <version>5.14.0</version>
         </dependency>
     </dependencies>
-
-    <profiles>
-        <profile>
-            <id>datadog-build</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <repositories>
-                <repository>
-                    <id>datadog-artifactory</id>
-                    <name>Datadog Releases</name>
-                    <url>https://datadog.jfrog.io/datadog/ext-releases-local</url>
-                </repository>
-            </repositories>
-        </profile>
-    </profiles>
 </project>

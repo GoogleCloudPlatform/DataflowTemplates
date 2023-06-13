@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package for managing MongoDB resources within integration tests. */
+/** Package for managing Datadog resources within integration tests. */
 package com.google.cloud.teleport.it.datadog;

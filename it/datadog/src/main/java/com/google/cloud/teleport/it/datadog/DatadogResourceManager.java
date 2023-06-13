@@ -15,244 +15,196 @@
  */
 package com.google.cloud.teleport.it.datadog;
 
-import static com.google.cloud.teleport.it.datadog.DatadogResourceManagerUtils.generateHecToken;
-import static com.google.cloud.teleport.it.datadog.DatadogResourceManagerUtils.generateDatadogPassword;
-import static com.google.cloud.teleport.it.datadog.DatadogResourceManagerUtils.datadogEventToMap;
+import static com.google.cloud.teleport.it.datadog.DatadogResourceManagerUtils.datadogEntryToMap;
+import static com.google.cloud.teleport.it.datadog.DatadogResourceManagerUtils.generateApiKey;
+import static org.mockserver.model.HttpRequest.request;
+import static org.mockserver.model.HttpResponse.response;
+import static org.mockserver.model.JsonSchemaBody.jsonSchema;
 
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
-import com.datadog.Job;
-import com.datadog.ResultsReader;
-import com.datadog.ResultsReaderXml;
-import com.datadog.ServiceArgs;
+import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
+import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import org.apache.beam.sdk.io.datadog.DatadogEvent;
+import org.apache.http.client.entity.GzipCompressingEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.json.JSONObject;
+import org.mockserver.client.MockServerClient;
+import org.mockserver.model.HttpRequest;
+import org.mockserver.model.MediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.images.builder.Transferable;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
+import org.testcontainers.containers.MockServerContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Client for managing Kafka resources.
+ * Client for managing Datadog resources.
  *
- * <p>The class supports one Datadog server instance.
+ * <p>The class supports one mock Datadog server instance.
  *
  * <p>The class is thread-safe.
  *
- * <p>Note: The Datadog TestContainer will only run on M1 Mac's if the Docker version is >= 4.16.0
- * and the "Use Rosetta for x86/amd64 emulation on Apple Silicon" setting is enabled.
+ * <p>Note: The MockServer TestContainer will only run on M1 Mac's if the Docker version is >=
+ * 4.16.0 and the "Use Rosetta for x86/amd64 emulation on Apple Silicon" setting is enabled.
  */
-public class DatadogResourceManager extends TestContainerResourceManager<DatadogContainer>
+public class DatadogResourceManager extends TestContainerResourceManager<MockServerContainer>
     implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(DatadogResourceManager.class);
-  private static final String DEFAULT_DATADOG_CONTAINER_NAME = "datadog/datadog";
+  private static final String DEFAULT_MOCKSERVER_CONTAINER_NAME = "mockserver/mockserver";
 
-  // A list of available Datadog Docker image tags can be found at
-  // https://hub.docker.com/r/datadog/datadog/tags
-  private static final String DEFAULT_DATADOG_CONTAINER_TAG = "8.2";
+  // A list of available Mockserver Docker image tags can be found at
+  // https://hub.docker.com/r/mockserver/mockserver/tags
+  private static final String DEFAULT_MOCKSERVER_CONTAINER_TAG =
+      MockServerClient.class.getPackage().getImplementationVersion();
 
-  // 8088 is the default port that Datadog HEC is configured to listen on
-  private static final int DEFAULT_DATADOG_HEC_INTERNAL_PORT = 8088;
-  // 8089 is the default port that Datadogd is configured to listen on
-  private static final int DEFAULT_DATADOGD_INTERNAL_PORT = 8089;
+  // See: https://docs.datadoghq.com/api/latest/logs/#send-logs
+  private static final String SEND_LOGS_JSON_SCHEMA =
+      "{"
+          + "  \"$schema\": \"http://json-schema.org/draft-04/schema#\","
+          + "  \"type\": \"array\","
+          + "  \"items\": ["
+          + "    {"
+          + "      \"type\": \"object\","
+          + "      \"properties\": {"
+          + "        \"ddsource\": {"
+          + "          \"type\": \"string\""
+          + "        },"
+          + "        \"ddtags\": {"
+          + "          \"type\": \"string\""
+          + "        },"
+          + "        \"hostname\": {"
+          + "          \"type\": \"string\""
+          + "        },"
+          + "        \"message\": {"
+          + "          \"type\": \"string\""
+          + "        },"
+          + "        \"service\": {"
+          + "          \"type\": \"string\""
+          + "        }"
+          + "      },"
+          + "      \"required\": ["
+          + "        \"message\""
+          + "      ]"
+          + "    }"
+          + "  ]"
+          + "}";
 
-  private static final String DEFAULT_DATADOG_USERNAME = "admin";
+  private static final Gson GSON = new Gson();
 
-  private final ServiceArgs loginArgs;
-  private final int hecPort;
-  private final String hecScheme;
-  private final String hecToken;
-
+  private final String apiKey;
   private final DatadogClientFactory clientFactory;
 
-  @SuppressWarnings("resource")
   private DatadogResourceManager(DatadogResourceManager.Builder builder) {
     this(
         new DatadogClientFactory(),
-        new DatadogContainer(
-                DockerImageName.parse(builder.containerImageName)
-                    .withTag(builder.containerImageTag))
-            .withDatadogdSslDisabled(),
+        new MockServerContainer(
+            DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
         builder);
   }
 
   @VisibleForTesting
   DatadogResourceManager(
       DatadogClientFactory clientFactory,
-      DatadogContainer container,
+      MockServerContainer container,
       DatadogResourceManager.Builder builder) {
-    super(setup(container, builder), builder);
+    super(container, builder);
 
-    String username = DEFAULT_DATADOG_USERNAME;
-    if (builder.useStaticContainer && builder.username != null) {
-      username = builder.username;
-    }
-    hecPort =
-        builder.useStaticContainer ? builder.hecPort : container.getMappedPort(builder.hecPort);
-    int datadogdPort =
-        builder.useStaticContainer
-            ? builder.datadogdPort
-            : container.getMappedPort(builder.datadogdPort);
-
-    // TODO - add support for https scheme
-    String datadogdScheme = "http";
-    hecScheme = "http";
-
-    hecToken = builder.hecToken;
-
-    // Create Datadog service login args
-    this.loginArgs = new ServiceArgs();
-    this.loginArgs.setPort(datadogdPort);
-    this.loginArgs.setHost(this.getHost());
-    this.loginArgs.setScheme(datadogdScheme);
-    this.loginArgs.setUsername(username);
-    this.loginArgs.setPassword(builder.password);
-
-    // Initialize the clients
+    this.apiKey = builder.apiKey;
     this.clientFactory = clientFactory;
-  }
 
-  /**
-   * Helper method for injecting config information from the builder into the given DatadogContainer.
-   *
-   * @param container The DatadogContainer before config info is injected.
-   * @param builder The DatadogResourceManager.Builder to extract config info from.
-   * @return The DatadogContainer with all config info injected.
-   */
-  private static DatadogContainer setup(DatadogContainer container, Builder builder) {
-    // Validate builder args
-    if (builder.useStaticContainer) {
-      if (builder.hecPort < 0 || builder.datadogdPort < 0) {
-        throw new DatadogResourceManagerException(
-            "This manager was configured to use a static resource, but the hecPort and datadogdPort were not properly set.");
-      }
-    }
-
-    builder.hecPort = builder.hecPort < 0 ? DEFAULT_DATADOG_HEC_INTERNAL_PORT : builder.hecPort;
-    builder.datadogdPort =
-        builder.datadogdPort < 0 ? DEFAULT_DATADOGD_INTERNAL_PORT : builder.datadogdPort;
-    builder.hecToken = builder.hecToken == null ? generateHecToken() : builder.hecToken;
-    builder.password = builder.password == null ? generateDatadogPassword() : builder.password;
-    // TODO - add support for ssl
-    return container
-        .withDefaultsFile(
-            Transferable.of(
-                String.format(
-                    "datadog:\n"
-                        + "  hec:\n"
-                        + "    enable: true\n"
-                        + "    ssl: %b\n"
-                        + "    port: %s\n"
-                        + "    token: %s",
-                    false, builder.hecPort, builder.hecToken)))
-        .withPassword(builder.password);
+    acceptRequests();
   }
 
   public static DatadogResourceManager.Builder builder(String testId) {
     return new DatadogResourceManager.Builder(testId);
   }
 
+  /** Returns the port to connect to the mock Datadog server. */
+  public int getPort() {
+    return super.getPort(MockServerContainer.PORT);
+  }
+
   /**
-   * Returns the HTTP endpoint that this Datadog server is configured to listen on.
+   * Returns the HTTP endpoint that this mock Datadog server is configured to listen on.
    *
    * @return the HTTP endpoint.
    */
   public String getHttpEndpoint() {
-    return String.format("%s://%s:%d", hecScheme, getHost(), hecPort);
+    return String.format("http://%s:%d", getHost(), getPort());
   }
 
   /**
-   * Returns the HTTP Event Collector (HEC) endpoint that this Datadog server is configured to
-   * receive events at.
+   * Returns the API endpoint that this mock Datadog server is configured to receive events at.
    *
-   * <p>This will be the HTTP endpoint concatenated with <code>'/services/collector/event'</code>.
+   * <p>This will be the HTTP endpoint concatenated with <code>'/api/v2/logs'</code>.
    *
-   * @return the HEC service endpoint.
+   * @return the API endpoint.
    */
-  public String getHecEndpoint() {
-    return getHttpEndpoint() + "/services/collector/event";
+  public String getApiEndpoint() {
+    return getHttpEndpoint() + "/api/v2/logs";
   }
 
   /**
-   * Returns the Datadog Http Event Collector (HEC) authentication token used to connect to this
-   * Datadog instance's HEC service.
+   * Returns the Datadog API key used to connect to this mock Datadog server.
    *
-   * @return the HEC authentication token.
+   * @return the API key.
    */
-  public String getHecToken() {
-    return hecToken;
+  public String getApiKey() {
+    return apiKey;
   }
 
   /**
-   * Helper method for converting the given DatadogEvent into JSON format.
+   * Helper method for converting the given DatadogLogEntry into JSON format.
    *
-   * @param event The DatadogEvent to parse.
+   * @param event The DatadogLogEntry to parse.
    * @return JSON String.
    */
-  private static String datadogEventToJson(DatadogEvent event) {
-    return new JSONObject(datadogEventToMap(event)).toString();
+  private static String datadogEventToJson(DatadogLogEntry event) {
+    return new JSONObject(datadogEntryToMap(event)).toString();
   }
 
   /**
-   * Sends the given HTTP event to the Datadog Http Event Collector (HEC) service.
+   * Sends the given HTTP event to the mock Datadog server.
    *
-   * <p>Note: Setting the <code>index</code> field in the Datadog event requires the index already
-   * being configured in the Datadog instance. Unless using a static Datadog instance, omit this field
-   * from the event.
-   *
-   * @param event The SpunkEvent to send to the HEC service.
+   * @param event The {@link DatadogLogEntry} to send to the API.
    * @return True, if the request was successful.
    */
-  public synchronized boolean sendHttpEvent(DatadogEvent event) {
+  public synchronized boolean sendHttpEvent(DatadogLogEntry event) {
     return sendHttpEvents(List.of(event));
   }
 
   /**
-   * Sends the given HTTP events to the Datadog Http Event Collector (HEC) service.
+   * Sends the given HTTP events to the mock Datadog server.
    *
-   * <p>Note: Setting the <code>index</code> field in the Datadog event requires the index already
-   * being configured in the Datadog instance. Unless using a static Datadog instance, omit this field
-   * from the events.
-   *
-   * @param events The SpunkEvents to send to the HEC service.
+   * @param events The {@link DatadogLogEntry}s to send to the API.
    * @return True, if the request was successful.
    */
-  public synchronized boolean sendHttpEvents(Collection<DatadogEvent> events) {
+  public synchronized boolean sendHttpEvents(Collection<DatadogLogEntry> events) {
 
-    LOG.info("Attempting to send {} events to {}.", events.size(), getHecEndpoint());
+    LOG.info("Attempting to send {} events to {}.", events.size(), getApiEndpoint());
 
-    // Construct base HEC request
-    HttpPost httppost = new HttpPost(getHecEndpoint());
-    httppost.addHeader("Authorization", "Datadog " + hecToken);
+    // Construct base API request
+    HttpPost httppost = new HttpPost(getApiEndpoint());
+    httppost.addHeader("Content-Encoding", "gzip");
+    httppost.addHeader("Content-Type", "application/json");
+    httppost.addHeader("dd-api-key", apiKey);
 
-    // Loop over events and send one-by-one
-    StringBuilder eventsData = new StringBuilder();
-    events.forEach(
-        event -> {
-          String eventStr = datadogEventToJson(event);
-          eventsData.append(eventStr);
-          LOG.info("Sending HTTP event: {}", eventStr);
-        });
+    String eventsData = GSON.toJson(events);
 
     try (CloseableHttpClient httpClient = clientFactory.getHttpClient()) {
       // Set request data
       try {
-        httppost.setEntity(new StringEntity(eventsData.toString()));
+        httppost.setEntity(new GzipCompressingEntity(new StringEntity(eventsData)));
       } catch (UnsupportedEncodingException e) {
         throw new DatadogResourceManagerException(
             "Error setting HTTP message data to " + eventsData, e);
@@ -262,7 +214,7 @@ public class DatadogResourceManager extends TestContainerResourceManager<Datadog
       try (CloseableHttpResponse response = httpClient.execute(httppost)) {
         // Check error code
         int code = response.getStatusLine().getStatusCode();
-        if (code != 200) {
+        if (code != 202) {
           throw new DatadogResourceManagerException(
               "Received http error code " + code + " sending event.");
         }
@@ -279,155 +231,77 @@ public class DatadogResourceManager extends TestContainerResourceManager<Datadog
   }
 
   /**
-   * Return a list of all Datadog events retrieved from the Datadog server.
+   * Return a list of all Datadog entries retrieved from the mock Datadog server.
    *
-   * @return All Datadog events on the server.
+   * @return All Datadog entries on the server.
    */
-  public synchronized List<DatadogEvent> getEvents() {
-    return getEvents("search");
+  public synchronized List<DatadogLogEntry> getEntries() {
+    MockServerClient serviceClient = clientFactory.getServiceClient(getHost(), getPort());
+    LOG.info("Reading events from Datadog");
+
+    List<DatadogLogEntry> results = new ArrayList<>();
+    for (HttpRequest request : serviceClient.retrieveRecordedRequests(null)) {
+      String requestBody = request.getBodyAsString();
+
+      List<AutoValue_DatadogLogEntry> events;
+      try {
+        events = GSON.fromJson(requestBody, new TypeToken<>() {});
+      } catch (JsonParseException e) {
+        throw new DatadogResourceManagerException(
+            "Received a request with invalid JSON: " + requestBody, e);
+      }
+
+      results.addAll(events);
+    }
+
+    LOG.info("Successfully retrieved {} results.", results.size());
+    return results;
   }
 
   /**
-   * Return a list of Datadog events retrieved from the Datadog server based on the given query.
-   *
-   * <p>e.g. query: <code>'search source=mySource sourcetype=mySourceType host=myHost'</code>
-   *
-   * @param query The query to filter events by.
-   * @return All Datadog events on the server that match the given query.
+   * Sets up request definitions the mock Datadog server expects to receive, all other requests
+   * return 404.
    */
-  public synchronized List<DatadogEvent> getEvents(String query) {
-    LOG.info("Reading events from Datadog using query: {}.", query);
-
-    // Run a simple search by first creating the search job
-    Job job = clientFactory.getServiceClient(loginArgs).getJobs().create(query);
-
-    // Wait up to 1 minute for search results to be ready
-    Awaitility.await("Retrieving events from Datadog")
-        .atMost(Duration.ofMinutes(1))
-        .pollInterval(Duration.ofMillis(500))
-        .until(job::isDone);
-
-    // Read results
-    List<DatadogEvent> results = new ArrayList<>();
-    try {
-      ResultsReader reader = new ResultsReaderXml(job.getEvents());
-      reader.forEach(
-          event -> {
-            results.add(
-                DatadogEvent.newBuilder()
-                    .withEvent(event.get("_raw"))
-                    .withSource(event.get("source"))
-                    .withSourceType(event.get("_sourcetype"))
-                    .withHost(event.get("host"))
-                    .withTime(
-                        OffsetDateTime.parse(
-                                event.get("_time"), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                            .toInstant()
-                            .toEpochMilli())
-                    .withIndex(event.get("index"))
-                    .create());
-          });
-
-    } catch (Exception e) {
-      throw new DatadogResourceManagerException("Error parsing XML results from Datadog.", e);
-    }
-
-    LOG.info("Successfully retrieved {} events.", results.size());
-    return results;
+  private void acceptRequests() {
+    MockServerClient serviceClient = clientFactory.getServiceClient(getHost(), getPort());
+    serviceClient
+        .when(
+            request()
+                .withMethod("POST")
+                .withContentType(MediaType.APPLICATION_JSON)
+                .withHeader("dd-api-key", apiKey)
+                .withHeader("content-encoding", "(?i)^(?:identity|gzip|deflate)$")
+                .withBody(jsonSchema(SEND_LOGS_JSON_SCHEMA)))
+        .respond(response().withStatusCode(202));
   }
 
   /** Builder for {@link DatadogResourceManager}. */
   public static final class Builder
       extends TestContainerResourceManager.Builder<DatadogResourceManager> {
 
-    private String username;
-    private String password;
-    private String hecToken;
-    private int hecPort;
-    private int datadogdPort;
+    private String apiKey;
 
     private Builder(String testId) {
       super(testId);
-      this.containerImageName = DEFAULT_DATADOG_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_DATADOG_CONTAINER_TAG;
-      this.hecPort = -1;
-      this.datadogdPort = -1;
+      this.containerImageName = DEFAULT_MOCKSERVER_CONTAINER_NAME;
+      this.containerImageTag = DEFAULT_MOCKSERVER_CONTAINER_TAG;
     }
 
     /**
-     * Set the username used to connect to a static Datadog instance.
+     * Manually set the Datadog API key to the given key. This key will be used by the resource
+     * manager to authenticate with the mock Datadog server.
      *
-     * <p>Note: This method should only be used if {@code useStaticContainer()} is also called.
-     *
-     * @param username the username for the Datadog instance.
-     * @return this builder with the username manually set.
+     * @param apiKey the API key for the mock Datadog server.
+     * @return this builder with the API key manually set.
      */
-    public Builder setUsername(String username) {
-      this.username = username;
-      return this;
-    }
-
-    /**
-     * Manually set the Datadog password to the given password. This password will be used by the
-     * resource manager to authenticate with Datadog.
-     *
-     * @param password the password for the Datadog instance.
-     * @return this builder with the password manually set.
-     */
-    public Builder setPassword(String password) {
-      this.password = password;
-      return this;
-    }
-
-    /**
-     * Manually set the Datadog HTTP Event Collector (HEC) token to the given token. This token will
-     * be used by the resource manager to authenticate with Datadog.
-     *
-     * @param hecToken the HEC token for the Datadog instance.
-     * @return this builder with the HEC token manually set.
-     */
-    public Builder setHecToken(String hecToken) {
-      this.hecToken = hecToken;
-      return this;
-    }
-
-    @Override
-    public Builder setHost(String containerHost) {
-      super.setHost(containerHost);
-      this.port = 0;
-      return this;
-    }
-
-    @Override
-    public Builder setPort(int port) {
-      throw new UnsupportedOperationException(
-          "Please use setHecPort() and setDatadogdPort() instead.");
-    }
-
-    /**
-     * Sets the port that the Datadog Http Event Collector (HEC) service is hosted on.
-     *
-     * @param port the port hosting the HEC service.
-     * @return this builder object with the HEC port set.
-     */
-    public Builder setHecPort(int port) {
-      this.hecPort = port;
-      return this;
-    }
-
-    /**
-     * Sets the port that the Datadogd service is hosted on.
-     *
-     * @param port the port hosting the Datadogd service.
-     * @return this builder object with the Datadogd port set.
-     */
-    public Builder setDatadogdPort(int port) {
-      this.datadogdPort = port;
+    public Builder setApiKey(String apiKey) {
+      this.apiKey = apiKey;
       return this;
     }
 
     @Override
     public DatadogResourceManager build() {
+      apiKey = apiKey == null ? generateApiKey() : apiKey;
       return new DatadogResourceManager(this);
     }
   }

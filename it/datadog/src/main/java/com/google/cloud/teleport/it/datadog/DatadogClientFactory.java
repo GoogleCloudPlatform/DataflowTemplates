@@ -15,31 +15,31 @@
  */
 package com.google.cloud.teleport.it.datadog;
 
-import com.datadog.Service;
-import com.datadog.ServiceArgs;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.mockserver.client.MockServerClient;
 
 /** Datadog Driver Factory class. */
 class DatadogClientFactory {
   DatadogClientFactory() {}
 
   /**
-   * Returns an HTTP client that is used to send HTTP messages to a Datadog Server instance with HEC.
+   * Returns an HTTP client that is used to send HTTP messages to Datadog API.
    *
-   * @return An HTTP client for sending HTTP messages to Datadog HEC.
+   * @return An HTTP client for sending HTTP messages to Datadog API.
    */
   CloseableHttpClient getHttpClient() {
-    return HttpClientBuilder.create().build();
+    return HttpClientBuilder.create().disableContentCompression().build();
   }
 
   /**
-   * Returns a Datadog Service client for sending requests to a Datadog Server instance.
+   * Returns a {@link MockServerClient} for sending requests to a MockServer instance.
    *
-   * @param serviceArgs the service arguments to connect to the server with.
-   * @return A Datadog service client to retrieve messages from a Datadog server instance.
+   * @param host the service host.
+   * @param port the service port.
+   * @return A {@link MockServerClient} to retrieve messages from a MockServer instance.
    */
-  Service getServiceClient(ServiceArgs serviceArgs) {
-    return Service.connect(serviceArgs);
+  MockServerClient getServiceClient(String host, int port) {
+    return new MockServerClient(host, port);
   }
 }
