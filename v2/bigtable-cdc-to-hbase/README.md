@@ -16,7 +16,7 @@ The [BigtableToHBase](src/main/java/com/google/cloud/teleport/v2/templates/Bigta
 ### Notes on Bidirectional Replication
 
 This template can be configured to be used with the [Hbase-Bigtable replicator](https://github.com/googleapis/java-bigtable-hbase/blob/main/hbase-migration-tools/bigtable-hbase-replication/README.md) out of the box.
-To configure, enable `bidirectional replication` settings in the `Running Template` section below.
+To configure, enable `bidirectional replication` settings in the `Running Template` section below. 
 
 #### Beware
 
@@ -47,7 +47,7 @@ export ZOOKEEPER_QUORUM_PORT=<zookeeper-quorum-port, e.g. 2181>
 export HBASE_ROOT_DIR=<hbase-root-dir, e.g. hdfs://my-server/hbase>
 
 # Optional bidirectional replication settings. Disabled by default.
-# export BIDIRECTIONAL_REPLICATION=true
+# export BIDIRECTIONAL_REPLICATION=false
 # Be wary setting your own qualifiers. They need to match between Hbase and
 # Bigtable replicators to correctly prevent replication loops.
 # The replicator will use these column qualifier keywords to filter out and
