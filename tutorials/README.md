@@ -21,3 +21,5 @@ Template.
 
 *   [Flex Templates](flex-template.md): Develop a simple Flex Template and run
     it on Google Cloud.
+*   [Load Tests](load-test.md): Write a load test for an Apache Beam pipeline on
+    Dataflow and gather performance metrics.
