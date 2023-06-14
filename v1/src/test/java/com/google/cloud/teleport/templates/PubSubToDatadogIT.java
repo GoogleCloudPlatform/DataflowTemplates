@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatResult;
 import static com.google.cloud.teleport.it.datadog.matchers.DatadogAsserts.datadogEntriesToRecords;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.datadog.DatadogEvent;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
@@ -31,6 +31,7 @@ import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -201,6 +202,8 @@ public class PubSubToDatadogIT extends TemplateTestBase {
   }
 
   @Test
+  // TODO: Skip DirectRunner because batching/timers are not working appropriately
+  @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
   public void testPubSubToDatadogWithBatchAndParallelism() throws IOException {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)

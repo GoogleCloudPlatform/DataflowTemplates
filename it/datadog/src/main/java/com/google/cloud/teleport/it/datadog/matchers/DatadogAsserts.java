@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.it.datadog.matchers;
 
-import static com.google.cloud.teleport.it.common.matchers.TemplateAsserts.assertThatRecords;
 import static com.google.cloud.teleport.it.datadog.DatadogResourceManagerUtils.datadogEntryToMap;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
 
-import com.google.cloud.teleport.it.common.matchers.RecordsSubject;
 import com.google.cloud.teleport.it.datadog.DatadogLogEntry;
+import com.google.cloud.teleport.it.truthmatchers.RecordsSubject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;

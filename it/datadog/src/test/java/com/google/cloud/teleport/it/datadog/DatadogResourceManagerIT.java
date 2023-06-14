@@ -18,7 +18,7 @@ package com.google.cloud.teleport.it.datadog;
 import static com.google.cloud.teleport.it.datadog.matchers.DatadogAsserts.assertThatDatadogLogEntries;
 import static com.google.cloud.teleport.it.datadog.matchers.DatadogAsserts.datadogEntriesToRecords;
 
-import com.google.cloud.teleport.it.common.testcontainers.TestContainersIntegrationTest;
+import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;

@@ -29,7 +29,17 @@
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>it-common</artifactId>
+            <artifactId>testcontainers</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>truthmatchers</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>conditions</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
