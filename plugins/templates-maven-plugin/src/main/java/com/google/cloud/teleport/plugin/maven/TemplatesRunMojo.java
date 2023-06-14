@@ -81,6 +81,9 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${artifactRegion}", readonly = true, required = false)
   protected String artifactRegion;
 
+  @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
+  protected String gcpTempLocation;
+
   @Parameter(
       name = "baseContainerImage",
       defaultValue =
@@ -142,6 +145,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               stagePrefix,
               useRegion,
               artifactRegion,
+              gcpTempLocation,
               baseContainerImage);
 
       String useJobName =
