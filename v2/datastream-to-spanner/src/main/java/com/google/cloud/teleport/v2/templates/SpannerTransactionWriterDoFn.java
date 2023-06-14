@@ -48,6 +48,8 @@ import com.google.cloud.teleport.v2.templates.spanner.common.Type;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
@@ -67,6 +69,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,7 +97,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   private final Session session;
 
-  private final Map<String, String> shardingConfig;
+  private final JsonObject transformationContext;
 
   private final SpannerConfig spannerConfig;
 
@@ -138,7 +141,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
       Session session,
-      Map<String, String> shardingConfig,
+      JsonObject transformationContext,
       String shadowTablePrefix,
       String sourceType,
       Boolean roundJsonDecimals) {
@@ -146,7 +149,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.session = session;
-    this.shardingConfig = shardingConfig;
+    this.transformationContext = transformationContext;
     this.shadowTablePrefix =
         (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
     this.sourceType = sourceType;
@@ -314,7 +317,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   }
 
   JsonNode populateShardId(JsonNode changeEvent, String tableId) {
-    if (shardingConfig.isEmpty()) {
+    if (transformationContext.asMap().isEmpty()) {
       return changeEvent; // Nothing to do
     }
     CreateTable table = session.getSpSchema().get(tableId);
@@ -323,8 +326,13 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     if (shardIdColDef == null) {
       return changeEvent;
     }
+    JsonElement schemaToShardId = transformationContext.asMap().get("schemaToShardId");
+    if(schemaToShardId==null || !schemaToShardId.isJsonObject()) {
+      return changeEvent;
+    }
     String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-    ((ObjectNode) changeEvent).put(shardIdColDef.getName(), shardingConfig.get(schemaName));
+    String shardId = ((JsonObject)schemaToShardId).get(schemaName).getAsString();
+    ((ObjectNode) changeEvent).put(shardIdColDef.getName(), shardId);
     return changeEvent;
   }
 

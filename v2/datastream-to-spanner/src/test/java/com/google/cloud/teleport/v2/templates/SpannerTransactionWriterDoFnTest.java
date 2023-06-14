@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.json.Json;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
@@ -31,6 +32,9 @@ import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.session.ReadSessionFileTest;
 import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -78,7 +82,7 @@ public class SpannerTransactionWriterDoFnTest {
     Session session = ReadSessionFileTest.getSessionObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, session, new HashMap<>(), "", "", false);
+            SpannerConfig.create(), null, session, new JsonObject(), "", "", false);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("product_id", "A");
     changeEvent.put("quantity", 1);
@@ -102,7 +106,7 @@ public class SpannerTransactionWriterDoFnTest {
     Session session = ReadSessionFileTest.getSessionObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, session, new HashMap<>(), "", "", false);
+            SpannerConfig.create(), null, session, new JsonObject(), "", "", false);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "people");
@@ -124,7 +128,7 @@ public class SpannerTransactionWriterDoFnTest {
   public void transformChangeEventDataTest() throws Exception {
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, null, new HashMap<>(), "", "", true);
+            SpannerConfig.create(), null, null, new JsonObject(), "", "", true);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
@@ -161,12 +165,9 @@ public class SpannerTransactionWriterDoFnTest {
 
   @Test
   public void shardedConfigDataTest() throws Exception {
-    Map<String, String> shardingConfig = new HashMap<>();
-    shardingConfig.put("db_01", "1");
-    shardingConfig.put("db_02", "2");
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, null, shardingConfig, "", "", true);
+            SpannerConfig.create(), null, null, buildTransformationContext(), "", "", true);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
@@ -187,13 +188,10 @@ public class SpannerTransactionWriterDoFnTest {
 
   @Test
   public void transformChangeEventViaShardedSessionFileTest() {
-    Map<String, String> shardingConfig = new HashMap<>();
-    shardingConfig.put("db_01", "1");
-    shardingConfig.put("db_02", "2");
     Session session = ReadSessionFileTest.getShardedSessionObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, session, shardingConfig, "", "", false);
+            SpannerConfig.create(), null, session, buildTransformationContext(), "", "", false);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
     changeEvent.put(DatastreamConstants.EVENT_SCHEMA_KEY, "db_01");
@@ -211,5 +209,14 @@ public class SpannerTransactionWriterDoFnTest {
     changeEventNew.put("migration_shard_id", "1");
     JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
     assertEquals(expectedEvent, actualEvent);
+  }
+
+  private JsonObject buildTransformationContext() {
+    JsonObject shardingConfig = new JsonObject();
+    shardingConfig.add("db_01", new JsonPrimitive("1"));
+    shardingConfig.add("db_02", new JsonPrimitive("2"));
+    JsonObject transformationContext = new JsonObject();
+    transformationContext.add("schemaNameToShardIdMap", shardingConfig);
+    return transformationContext;
   }
 }

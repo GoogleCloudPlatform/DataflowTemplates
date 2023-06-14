@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.api.client.json.Json;
 import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -33,6 +34,7 @@ import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
@@ -300,20 +302,20 @@ public class DataStreamToSpanner {
     @Default.Boolean(false)
     Boolean getRoundJsonDecimals();
 
+    void setRoundJsonDecimals(Boolean value);
+
     @TemplateParameter.Text(
         order = 20,
         optional = true,
         description =
-            "For datastreams across multiple logical shards(databases) pass the dbName to shardId"
-                + "  map which is used to decide the value of shard id based on the name of the "
-                + "db which is being migrated",
+            "Used to populate data used in transformations performed during migrations "
+                + "  Eg: The shard id to db name to identify the db from which a row was migrated",
         helpText =
-            "This will be used during sharded migrations to populate the shard id in  shardId "
-                + " column used to identify the source of the data")
+            "Used to populate transformation logic as configured in the session file")
     @Default.String("")
-    String getShardingConfig();
+    String getTransformationContext();
 
-    void setShardingConfig(String value);
+    void setTransformationContext(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -468,7 +470,7 @@ public class DataStreamToSpanner {
                 spannerConfig,
                 ddlView,
                 session,
-                buildShardingConfig(options),
+                buildTransformationContext(options),
                 options.getShadowTablePrefix(),
                 options.getDatastreamSourceType(),
                 options.getRoundJsonDecimals()));
@@ -535,13 +537,11 @@ public class DataStreamToSpanner {
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
   }
 
-  private static Map<String, String> buildShardingConfig(Options options) {
-    if (options.getShardingConfig() == null || options.getShardingConfig().isBlank()) {
-      return new HashMap<>();
+  private static JsonObject buildTransformationContext(Options options) {
+    if (options.getTransformationContext() == null || options.getTransformationContext().isBlank()) {
+      return new JsonObject();
     }
     JsonParser parser = new JsonParser();
-    JsonObject shardingConfig = parser.parseString(options.getShardingConfig()).getAsJsonObject();
-    return shardingConfig.asMap().entrySet().stream()
-        .collect(Collectors.toMap(Entry::getKey, entry -> String.valueOf(entry.getValue())));
+    return parser.parseString(options.getTransformationContext()).getAsJsonObject();
   }
 }
