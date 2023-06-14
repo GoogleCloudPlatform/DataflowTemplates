@@ -19,8 +19,6 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
-import com.google.common.annotations.VisibleForTesting;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.BigEndianIntegerCoder;
@@ -29,7 +27,6 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
@@ -95,18 +92,6 @@ public class DatadogIO {
     /** A builder for creating {@link Write} objects. */
     @AutoValue.Builder
     public abstract static class Builder {
-      private static final Set<String> VALID_SITES =
-          Set.of(
-              "datadoghq.com",
-              "us3.datadoghq.com",
-              "us5.datadoghq.com",
-              "ap1.datadoghq.com",
-              "datadoghq.eu",
-              "ddog-gov.com");
-
-      @VisibleForTesting
-      protected static final String INVALID_SITE_MESSAGE =
-          String.format("Invalid site. Must be one of: %s", VALID_SITES);
 
       abstract Builder setUrl(ValueProvider<String> url);
 
@@ -121,34 +106,6 @@ public class DatadogIO {
       abstract Builder setParallelism(ValueProvider<Integer> parallelism);
 
       abstract Write autoBuild();
-
-      /**
-       * Method to set the site for Logs API.
-       *
-       * @param site for Logs API
-       * @return {@link Builder}
-       */
-      public Builder withSite(ValueProvider<String> site) {
-        checkArgument(site != null, "withSite(site) called with null input.");
-        if (site.isAccessible()) {
-          checkArgument(isValidSite(site.get()), INVALID_SITE_MESSAGE);
-        }
-        return setUrl(
-            ValueProvider.NestedValueProvider.of(
-                site, (SerializableFunction<String, String>) Builder::buildUrlFromSite));
-      }
-
-      /**
-       * Same as {@link Builder#withSite(ValueProvider)} but without {@link ValueProvider}.
-       *
-       * @param site for Logs API
-       * @return {@link Builder}
-       */
-      public Builder withSite(String site) {
-        checkArgument(site != null, "withSite(site) called with null input.");
-        checkArgument(isValidSite(site), INVALID_SITE_MESSAGE);
-        return setUrl(ValueProvider.StaticValueProvider.of(buildUrlFromSite(site)));
-      }
 
       /**
        * Method to set the url for Logs API.
@@ -243,26 +200,6 @@ public class DatadogIO {
         checkNotNull(apiKey(), "API key is required.");
 
         return autoBuild();
-      }
-
-      /**
-       * Builds the url for the Logs API from site.
-       *
-       * @param site for Logs API
-       * @return url for Logs API
-       */
-      private static String buildUrlFromSite(String site) {
-        return String.format("https://http-intake.logs.%s", site);
-      }
-
-      /**
-       * Checks whether the Logs API site is valid.
-       *
-       * @param site for Logs API
-       * @return true if the site is valid
-       */
-      private static boolean isValidSite(String site) {
-        return VALID_SITES.contains(site);
       }
     }
 
