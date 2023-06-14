@@ -32,7 +32,6 @@ All commands are assumed to be run in the root directory of this repository.
 * Set environment variables.
 
 ```shell
-# necessary parameters
 # Bigtable configs
 export PROJECT=<gcp-project-id>
 export INSTANCE=<bigtable-instance-id>
@@ -46,29 +45,28 @@ export ZOOKEEPER_QUORUM_HOST=<zookeeper-quorum-host, e.g. my-zookeeper-server>
 export ZOOKEEPER_QUORUM_PORT=<zookeeper-quorum-port, e.g. 2181>
 export HBASE_ROOT_DIR=<hbase-root-dir, e.g. hdfs://my-server/hbase>
 
-# Optional bidirectional replication settings. Disabled by default.
-# export BIDIRECTIONAL_REPLICATION=false
+# Optional bidirectional replication settings. Feature disabled by default.
+export BIDIRECTIONAL_REPLICATION=false
 # Be wary setting your own qualifiers. They need to match between Hbase and
 # Bigtable replicators to correctly prevent replication loops.
 # The replicator will use these column qualifier keywords to filter out and
 # tag source mutations for bidirectional replication.
-# export CBT_QUALIFIER=SOURCE_CBT
-# export HBASE_QUALIFIER=SOURCE_HBASE
+export CBT_QUALIFIER=SOURCE_CBT
+export HBASE_QUALIFIER=SOURCE_HBASE
 # Dry run mode is for testing, does not write to Hbase. Disabled by default.
-# export DRY_RUN_ENABLED=false
+export DRY_RUN_ENABLED=false
 ```
 
 * Stage and run template in Dataflow:
 
 ```shell
 mvn clean package -am -PtemplatesRun \
-  -Dcheckstyle.skip \
-  -DskipTests \
   -DprojectId=$PROJECT \
   -DbucketName=$GCS_BUCKET_NAME \
   -Dregion=$REGION \
   -DtemplateName="bigtable-cdc-to-hbase" \
-  -Dparameters="bigtableReadProjectId=$PROJECT,bigtableReadInstanceId=$INSTANCE,bigtableReadTableId=$TABLE,bigtableChangeStreamAppProfile=$APP_PROFILE,hbaseZookeeperQuorumHost=$ZOOKEEPER_QUORUM_HOST, hbaseZookeeperQuorumPort=$ZOOKEEPER_QUORUM_PORT,hbaseRootDir=$HBASE_ROOT_DIR,bidirectionalReplicationEnabled=$BIDIRECTIONAL_REPLICATION,cbtQualifier=$CBT_QUALIFIER,hbaseQualifier=$HBASE_QUALIFIER" \
+  -Dparameters="bigtableReadProjectId=$PROJECT,bigtableReadInstanceId=$INSTANCE,bigtableReadTableId=$TABLE,bigtableChangeStreamAppProfile=$APP_PROFILE,hbaseZookeeperQuorumHost=$ZOOKEEPER_QUORUM_HOST, hbaseZookeeperQuorumPort=$ZOOKEEPER_QUORUM_PORT,hbaseRootDir=$HBASE_ROOT_DIR,bidirectionalReplicationEnabled=$BIDIRECTIONAL_REPLICATION,cbtQualifier=$CBT_QUALIFIER,hbaseQualifier=$HBASE_QUALIFIER,
+  dryRunEnabled=$DRY_RUN_ENABLED" \
   -pl v2/bigtable-cdc-to-hbase
 ```
 ### Testing Template
