@@ -16,7 +16,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required Parameters
 
 * **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **site** (Datadog site.): Datadog site. This should be routable from the VPC in which the pipeline runs. See: https://docs.datadoghq.com/getting_started/site (Example: datadoghq.com).
+* **url** (Datadog Logs API URL.): Datadog Logs API URL. This should be routable from the VPC in which the pipeline runs. See: https://docs.datadoghq.com/api/latest/logs/#send-logs (Example: https://http-intake.logs.datadoghq.com).
 * **outputDeadletterTopic** (Output deadletter Pub/Sub topic): The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.
 
 ### Optional Parameters
@@ -126,7 +126,7 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/Cloud_PubSub_to_Datado
 
 ### Required
 export INPUT_SUBSCRIPTION=<inputSubscription>
-export SITE=<site>
+export URL=<url>
 export OUTPUT_DEADLETTER_TOPIC=<outputDeadletterTopic>
 
 ### Optional
@@ -146,7 +146,7 @@ gcloud dataflow jobs run "cloud-pubsub-to-datadog-job" \
   --gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "inputSubscription=$INPUT_SUBSCRIPTION" \
   --parameters "apiKey=$API_KEY" \
-  --parameters "site=$SITE" \
+  --parameters "url=$URL" \
   --parameters "batchCount=$BATCH_COUNT" \
   --parameters "parallelism=$PARALLELISM" \
   --parameters "includePubsubMessage=$INCLUDE_PUBSUB_MESSAGE" \
@@ -175,7 +175,7 @@ export REGION=us-central1
 
 ### Required
 export INPUT_SUBSCRIPTION=<inputSubscription>
-export SITE=<site>
+export URL=<url>
 export OUTPUT_DEADLETTER_TOPIC=<outputDeadletterTopic>
 
 ### Optional
@@ -196,7 +196,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-pubsub-to-datadog-job" \
 -DtemplateName="Cloud_PubSub_to_Datadog" \
--Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,apiKey=$API_KEY,site=$SITE,batchCount=$BATCH_COUNT,parallelism=$PARALLELISM,includePubsubMessage=$INCLUDE_PUBSUB_MESSAGE,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC" \
+-Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,apiKey=$API_KEY,url=$URL,batchCount=$BATCH_COUNT,parallelism=$PARALLELISM,includePubsubMessage=$INCLUDE_PUBSUB_MESSAGE,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC" \
 -pl v1 \
 -am
 ```
