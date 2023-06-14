@@ -97,24 +97,16 @@ public class DatadogConverters {
 
     void setApiKey(ValueProvider<String> apiKey);
 
-    @TemplateParameter.Enum(
+    @TemplateParameter.Text(
         order = 2,
-        description = "Datadog site.",
-        enumOptions = {
-          "datadoghq.com",
-          "us3.datadoghq.com",
-          "us5.datadoghq.com",
-          "ap1.datadoghq.com",
-          "datadoghq.eu",
-          "ddog-gov.com",
-        },
+        description = "Datadog Logs API URL.",
         helpText =
-            "Datadog site. This should be routable from the VPC in which the pipeline runs. "
-                + "See: https://docs.datadoghq.com/getting_started/site",
-        example = "datadoghq.com")
-    ValueProvider<String> getSite();
+            "Datadog Logs API URL. This should be routable from the VPC in which the pipeline runs. "
+                + "See: https://docs.datadoghq.com/api/latest/logs/#send-logs",
+        example = "https://http-intake.logs.datadoghq.com")
+    ValueProvider<String> getUrl();
 
-    void setSite(ValueProvider<String> site);
+    void setUrl(ValueProvider<String> url);
 
     @TemplateParameter.Integer(
         order = 3,

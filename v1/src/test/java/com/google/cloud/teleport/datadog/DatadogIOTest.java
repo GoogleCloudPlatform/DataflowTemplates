@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.datadog;
 
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertThrows;
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 
 import com.google.common.base.Joiner;
@@ -24,7 +22,6 @@ import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.List;
-import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -79,57 +76,6 @@ public class DatadogIOTest {
     int port = socket.getLocalPort();
     socket.close();
     mockServer = startClientAndServer(port);
-  }
-
-  /** Test the builder with an invalid site. */
-  @Test
-  public void builderInvalidSite() {
-
-    Exception thrown =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> DatadogIO.writeBuilder().withApiKey("test-api-key").withSite("bad-site").build());
-
-    assertThat(thrown).hasMessageThat().contains(DatadogIO.Write.Builder.INVALID_SITE_MESSAGE);
-  }
-
-  /** Test the builder with an invalid site provider. */
-  @Test
-  public void builderInvalidSiteProvider() {
-
-    Exception thrown =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                DatadogIO.writeBuilder()
-                    .withApiKey("test-api-key")
-                    .withSite(ValueProvider.StaticValueProvider.of("bad-site"))
-                    .build());
-
-    assertThat(thrown).hasMessageThat().contains(DatadogIO.Write.Builder.INVALID_SITE_MESSAGE);
-  }
-
-  /** Test the builder with a valid site. */
-  @Test
-  public void builderValidSite() {
-
-    DatadogIO.Write writer =
-        DatadogIO.writeBuilder().withApiKey("test-api-key").withSite("datadoghq.com").build();
-
-    assertThat(writer.url().get()).isEqualTo("https://http-intake.logs.datadoghq.com");
-  }
-
-  /** Test the builder with a valid site provider. */
-  @Test
-  public void builderValidSiteProvider() {
-
-    DatadogIO.Write writer =
-        DatadogIO.writeBuilder()
-            .withApiKey("test-api-key")
-            .withSite(ValueProvider.StaticValueProvider.of("datadoghq.com"))
-            .build();
-
-    assertThat(writer.url().get()).isEqualTo("https://http-intake.logs.datadoghq.com");
   }
 
   /** Test successful multi-event POST request for DatadogIO without parallelism. */
