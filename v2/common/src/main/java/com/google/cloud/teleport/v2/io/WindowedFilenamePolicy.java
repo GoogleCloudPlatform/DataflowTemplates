@@ -365,8 +365,8 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
   }
 
   /**
-   * Replaces the last occurrence of a substring. If there are no occurrences,
-   * returns the original string.
+   * Replaces the last occurrence of a substring. If there are no occurrences, returns the original
+   * string.
    */
   private static String replaceLast(String find, String replacement, String str) {
     int lastIndex = str.lastIndexOf(find);

@@ -285,8 +285,8 @@ public class WindowedFilenamePolicyTest {
   }
 
   /**
-   * Tests that windowedFilename() produces the correct directory when it unintentionally
-   * contains {@link DateTime} patterns.
+   * Tests that windowedFilename() produces the correct directory when it unintentionally contains
+   * {@link DateTime} patterns.
    */
   @Test
   public void testWindowedDirectoryUnintentionalPattern() {
