@@ -16,7 +16,7 @@ The [BigtableToHBase](src/main/java/com/google/cloud/teleport/v2/templates/Bigta
 ### Notes on Bidirectional Replication
 
 This template can be configured to be used with the [Hbase-Bigtable replicator](https://github.com/googleapis/java-bigtable-hbase/blob/main/hbase-migration-tools/bigtable-hbase-replication/README.md) out of the box.
-To configure, enable `bidirectional replication` settings in the `Running Template` section below. 
+To configure, enable `bidirectional replication` settings in the `Running Template` section below.
 
 #### Beware
 
