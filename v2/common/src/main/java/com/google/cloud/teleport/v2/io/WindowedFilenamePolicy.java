@@ -353,15 +353,32 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
       final DateTimeFormatter hourFormatter = DateTimeFormat.forPattern(jodaHourPattern);
       final DateTimeFormatter minuteFormatter = DateTimeFormat.forPattern(jodaMinutePattern);
 
-      directoryPath = directoryPath.replace(yearPattern(), yearFormatter.print(time));
-      directoryPath = directoryPath.replace(monthPattern(), monthFormatter.print(time));
-      directoryPath = directoryPath.replace(dayPattern(), dayFormatter.print(time));
-      directoryPath = directoryPath.replace(hourPattern(), hourFormatter.print(time));
-      directoryPath = directoryPath.replace(minutePattern(), minuteFormatter.print(time));
+      directoryPath = replaceLast(yearPattern(), yearFormatter.print(time), directoryPath);
+      directoryPath = replaceLast(monthPattern(), monthFormatter.print(time), directoryPath);
+      directoryPath = replaceLast(dayPattern(), dayFormatter.print(time), directoryPath);
+      directoryPath = replaceLast(hourPattern(), hourFormatter.print(time), directoryPath);
+      directoryPath = replaceLast(minutePattern(), minuteFormatter.print(time), directoryPath);
     } catch (IllegalArgumentException e) {
       throw new RuntimeException("Could not resolve custom DateTime pattern. " + e.getMessage(), e);
     }
     return bucket + directoryPath;
+  }
+
+  /**
+   * Replaces the last occurrence of a substring. If there are no occurrences,
+   * returns the original string.
+   */
+  private static String replaceLast(String find, String replacement, String str) {
+    int lastIndex = str.lastIndexOf(find);
+
+    if (lastIndex == -1) {
+      return str;
+    }
+
+    String left = str.substring(0, lastIndex);
+    String right = str.substring(lastIndex + find.length());
+
+    return left + replacement + right;
   }
 
   /**
