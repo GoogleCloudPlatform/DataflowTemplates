@@ -284,6 +284,38 @@ public class WindowedFilenamePolicyTest {
     assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
+  /**
+   * Tests that windowedFilename() produces the correct directory when it unintentionally
+   * contains {@link DateTime} patterns.
+   */
+  @Test
+  public void testWindowedDirectoryUnintentionalPattern() {
+    IntervalWindow window = mock(IntervalWindow.class);
+    PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
+
+    Instant windowBegin = new DateTime(2017, 1, 8, 10, 55, 0).toInstant();
+    Instant windowEnd = new DateTime(2017, 1, 8, 10, 56, 0).toInstant();
+    when(window.maxTimestamp()).thenReturn(windowEnd);
+    when(window.start()).thenReturn(windowBegin);
+    when(window.end()).thenReturn(windowEnd);
+
+    WindowedFilenamePolicy policy =
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory("gs://test-bucket-mmmm/recommmmendations/mmmm/")
+            .withOutputFilenamePrefix("output")
+            .withShardTemplate("-SSS-of-NNN")
+            .withSuffix("")
+            .withMinutePattern("mmmm");
+
+    ResourceId filename =
+        policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
+
+    assertThat(filename).isNotNull();
+    assertThat(filename.getCurrentDirectory().toString())
+        .isEqualTo("gs://test-bucket-mmmm/recommmmendations/0056/");
+    assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
+  }
+
   @Test
   public void testWindowedDirectoryWrappedPattern() {
     // Arrange
