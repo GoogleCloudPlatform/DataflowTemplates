@@ -217,7 +217,8 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
     // Act
 
     // Start up Debezium connector
-    String mavenCmd = "mvn exec:java -pl cdc-embedded-connector -Dexec.args=\"" + path + "\"";
+    String mavenCmd =
+        "mvn compile exec:java -pl cdc-embedded-connector -Dexec.args=\"" + path + "\"";
     try {
       exec = Runtime.getRuntime().exec(mavenCmd, null, new File("../"));
       IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
