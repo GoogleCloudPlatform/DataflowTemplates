@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /** SpannerTable object to store Spanner table name and column name mapping information. */
@@ -36,15 +37,19 @@ public class SpannerTable implements Serializable {
 
   private final ColumnPK[] primaryKeys;
 
+  /** Points to the id of the sharded column. Will be null for non-sharded migrations */
+  private final String shardIdColumn;
   public SpannerTable(
       String name,
       String[] colIds,
       Map<String, SpannerColumnDefinition> colDefs,
-      ColumnPK[] primaryKeys) {
+      ColumnPK[] primaryKeys,
+      String shardIdColumn) {
     this.name = name;
     this.colIds = (colIds == null) ? (new String[] {}) : colIds;
     this.colDefs = (colDefs == null) ? (new HashMap<String, SpannerColumnDefinition>()) : colDefs;
     this.primaryKeys = (primaryKeys == null) ? (new ColumnPK[] {}) : primaryKeys;
+    this.shardIdColumn = shardIdColumn;
   }
 
   public String getName() {
@@ -77,6 +82,10 @@ public class SpannerTable implements Serializable {
     return response;
   }
 
+  public String getShardIdColumn() {
+    return shardIdColumn;
+  }
+
   public String toString() {
     String pvalues = "";
     if (primaryKeys != null) {
@@ -86,8 +95,8 @@ public class SpannerTable implements Serializable {
       }
     }
     return String.format(
-        "{ 'name': '%s', colIds': '%s', 'colDefs': '%s','primaryKeys': '%s' }",
-        name, colIds, colDefs, pvalues);
+        "{ 'name': '%s', colIds': '%s', 'colDefs': '%s','primaryKeys': '%s', shardIdColumn: '%s' }",
+        name, colIds, colDefs, pvalues, shardIdColumn);
   }
 
   @Override
@@ -102,6 +111,6 @@ public class SpannerTable implements Serializable {
     return this.name.equals(other.name)
         && Arrays.equals(this.colIds, other.colIds)
         && this.colDefs.equals(other.colDefs)
-        && Arrays.equals(this.primaryKeys, other.primaryKeys);
+        && Arrays.equals(this.primaryKeys, other.primaryKeys) && Objects.equals(this.shardIdColumn, other.shardIdColumn);
   }
 }

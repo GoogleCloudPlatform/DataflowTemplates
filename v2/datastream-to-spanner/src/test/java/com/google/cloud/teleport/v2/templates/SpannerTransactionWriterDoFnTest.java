@@ -37,6 +37,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefin
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import java.io.IOException;
@@ -85,7 +86,7 @@ public class SpannerTransactionWriterDoFnTest {
   public void transformChangeEventViaSessionFileNamesTest() {
     Schema schema = getSchemaObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, schema, "", "", false, true);
+        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, schema,new TransformationContext(), "", "", false, true);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("product_id", "A");
     changeEvent.put("quantity", 1);
@@ -108,7 +109,7 @@ public class SpannerTransactionWriterDoFnTest {
   public void transformChangeEventViaSessionFileSynthPKTest() {
     Schema schema = getSchemaObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, schema, "", "", false, true);
+        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, schema, new TransformationContext(), "", "", false, true);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "people");
@@ -129,7 +130,7 @@ public class SpannerTransactionWriterDoFnTest {
   @Test
   public void transformChangeEventDataTest() throws Exception {
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, null, "", "", true, true);
+        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, null, new TransformationContext(), "", "", true, true);
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
@@ -239,7 +240,7 @@ public class SpannerTransactionWriterDoFnTest {
             "new_cart",
             new String[] {"c1", "c2", "c3"},
             t1SpColDefs,
-            new ColumnPK[] {new ColumnPK("c3", 1), new ColumnPK("c1", 2)}));
+            new ColumnPK[] {new ColumnPK("c3", 1), new ColumnPK("c1", 2)},""));
     Map<String, SpannerColumnDefinition> t2SpColDefs =
         new HashMap<String, SpannerColumnDefinition>();
     t2SpColDefs.put(
@@ -252,7 +253,7 @@ public class SpannerTransactionWriterDoFnTest {
             "new_people",
             new String[] {"c5", "c6"},
             t2SpColDefs,
-            new ColumnPK[] {new ColumnPK("c6", 1)}));
+            new ColumnPK[] {new ColumnPK("c6", 1)},""));
     return spSchema;
   }
 
@@ -280,5 +281,113 @@ public class SpannerTransactionWriterDoFnTest {
     t2ColIds.put("name", "c5");
     srcToId.put("people", new NameAndCols("t2", t2ColIds));
     return srcToId;
+  }
+
+  public static TransformationContext getTransformationContext() {
+    Map<String,String> shardingConfig = new HashMap<>();
+    shardingConfig.put("db_01","1");
+    shardingConfig.put("db_02","2");
+
+    TransformationContext transformationContext = new TransformationContext(shardingConfig);
+    return transformationContext;
+  }
+
+  @Test
+  public void shardedConfigDataTest() throws Exception {
+    TransformationContext transformationContext = getTransformationContext();
+    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
+            new SpannerTransactionWriterDoFn(
+                    SpannerConfig.create(), null, null, transformationContext, "", "", true);
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actualEvent =
+            spannerTransactionWriterDoFn.transformChangeEventData(ce, databaseClient, getTestDdl());
+
+    changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode expectedEvent = parseChangeEvent(changeEvent.toString());
+
+    assertEquals(expectedEvent, actualEvent);
+  }
+
+  @Test
+  public void transformChangeEventViaShardedSessionFileTest() {
+    Schema schema = getShardedSchemaObject();
+    TransformationContext transformationContext = getTransformationContext();
+    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
+            new SpannerTransactionWriterDoFn(
+                    SpannerConfig.create(), null, schema, transformationContext, "", "mysql", false);
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    changeEvent.put(DatastreamConstants.EVENT_SCHEMA_KEY, "db_01");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEventViaSessionFile(ce);
+
+    JSONObject changeEventNew = new JSONObject();
+    changeEventNew.put("new_name", "A");
+    changeEventNew.put(DatastreamConstants.EVENT_SCHEMA_KEY, "db_01");
+    changeEventNew.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "new_people");
+    changeEventNew.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
+    changeEventNew.put("migration_shard_id", "1");
+    JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
+    assertEquals(expectedEvent, actualEvent);
+  }
+
+  public static Schema getShardedSchemaObject() {
+    // Add SrcSchema.
+    Map<String, SourceTable> srcSchema = getSampleSrcSchema();
+    // Add SpSchema.
+    Map<String, SpannerTable> spSchema = getSampleShardedSpSchema();
+    // Add ToSpanner.
+    Map<String, NameAndCols> toSpanner = getToSpanner();
+    // Add SrcToID.
+    Map<String, NameAndCols> srcToId = getSrcToId();
+    Schema expectedSchema = new Schema(spSchema, new HashMap<>(), srcSchema);
+    expectedSchema.setToSpanner(toSpanner);
+    expectedSchema.setToSource(new HashMap<String, NameAndCols>());
+    expectedSchema.setSrcToID(srcToId);
+    expectedSchema.setSpannerToID(new HashMap<String, NameAndCols>());
+    return expectedSchema;
+  }
+
+  public static Map<String, SpannerTable> getSampleShardedSpSchema() {
+    Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
+    Map<String, SpannerColumnDefinition> t1SpColDefs = new HashMap<String, SpannerColumnDefinition>();
+    t1SpColDefs.put(
+            "c1",
+            new SpannerColumnDefinition("new_product_id", new SpannerColumnType("STRING", false)));
+    t1SpColDefs.put(
+            "c2", new SpannerColumnDefinition("new_quantity", new SpannerColumnType("INT64", false)));
+    t1SpColDefs.put(
+            "c3", new SpannerColumnDefinition("new_user_id", new SpannerColumnType("STRING", false)));
+    spSchema.put(
+            "t1",
+            new SpannerTable(
+                    "new_cart",
+                    new String[] {"c1", "c2", "c3"},
+                    t1SpColDefs,
+                    new ColumnPK[] {new ColumnPK("c3", 1), new ColumnPK("c1", 2)}, null));
+    Map<String, SpannerColumnDefinition> t2SpColDefs = new HashMap<String, SpannerColumnDefinition>();
+    t2SpColDefs.put(
+            "c5", new SpannerColumnDefinition("new_name", new SpannerColumnType("STRING", false)));
+    t2SpColDefs.put(
+            "c6", new SpannerColumnDefinition("migration_shard_id", new SpannerColumnType("STRING", false)));
+    spSchema.put(
+            "t2",
+            new SpannerTable(
+                    "new_people",
+                    new String[] {"c5", "c6"},
+                    t2SpColDefs,
+                    new ColumnPK[] {new ColumnPK("c6", 1),new ColumnPK("c5", 2)}, "c6"));
+    return spSchema;
   }
 }
