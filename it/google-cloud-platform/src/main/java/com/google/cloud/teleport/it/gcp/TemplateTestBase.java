@@ -50,6 +50,7 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -79,6 +80,7 @@ import org.slf4j.LoggerFactory;
 public abstract class TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(TemplateTestBase.class);
+  public static final String ADDITIONAL_EXPERIMENTS_ENVIRONMENT = "additionalExperiments";
 
   public String testName;
 
@@ -382,11 +384,11 @@ public abstract class TemplateTestBase {
 
     // Property allows testing with Runner v2 / Unified Worker
     if (System.getProperty("unifiedWorker") != null) {
-      options.addEnvironment(
-          "additionalExperiments", List.of("use_runner_v2", "enable_cleanup_state"));
-    } else {
-      options.addEnvironment(
-          "additionalExperiments", Collections.singletonList("enable_cleanup_state"));
+      appendExperiment(options, "use_runner_v2");
+    }
+
+    if (System.getProperty("enableCleanupState") != null) {
+      appendExperiment(options, "enable_cleanup_state");
     }
 
     // Property allows testing with Streaming Engine Enabled
@@ -492,6 +494,27 @@ public abstract class TemplateTestBase {
         table.getProject() != null ? table.getProject() : PROJECT,
         table.getDataset(),
         table.getTable());
+  }
+
+  /**
+   * Append experiment to the given launch options.
+   *
+   * @param options Launch Options to extend.
+   * @param experiment Experiment to add to the list.
+   */
+  protected void appendExperiment(LaunchConfig.Builder options, String experiment) {
+    Object additionalExperiments = options.getEnvironment(ADDITIONAL_EXPERIMENTS_ENVIRONMENT);
+    if (additionalExperiments == null) {
+      options.addEnvironment(
+          ADDITIONAL_EXPERIMENTS_ENVIRONMENT, Collections.singletonList(experiment));
+    } else if (additionalExperiments instanceof Collection) {
+      List<String> list = new ArrayList<>((Collection<String>) additionalExperiments);
+      list.add(experiment);
+
+      options.addEnvironment(ADDITIONAL_EXPERIMENTS_ENVIRONMENT, list);
+    } else {
+      throw new IllegalStateException("Invalid additionalExperiments " + additionalExperiments);
+    }
   }
 
   protected PipelineOperator pipelineOperator() {
