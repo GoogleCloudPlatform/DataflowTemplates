@@ -181,7 +181,7 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
 
     bigQueryResourceManager.createDataset(REGION);
 
-    Path path = tmpFolder.newFile("property_file.properties").toPath();
+    Path path = tmpFolder.newFile("property_file_" + singleTopicMode + ".properties").toPath();
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder.append("databaseName=" + testName + System.lineSeparator());
     stringBuilder.append(
