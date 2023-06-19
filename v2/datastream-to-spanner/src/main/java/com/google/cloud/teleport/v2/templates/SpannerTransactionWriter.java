@@ -80,13 +80,17 @@ public class SpannerTransactionWriter
   // If set to true, round decimals inside jsons.
   private final Boolean roundJsonDecimals;
 
+  /* The run mode, whether it is regular or retry. */
+  private final Boolean isRegularRunMode;
+
   public SpannerTransactionWriter(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
       Schema schema,
       String shadowTablePrefix,
       String sourceType,
-      Boolean roundJsonDecimals) {
+      Boolean roundJsonDecimals,
+      Boolean isRegularRunMode) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
@@ -94,6 +98,7 @@ public class SpannerTransactionWriter
     this.shadowTablePrefix = shadowTablePrefix;
     this.sourceType = sourceType;
     this.roundJsonDecimals = roundJsonDecimals;
+    this.isRegularRunMode = isRegularRunMode;
   }
 
   @Override
@@ -109,7 +114,8 @@ public class SpannerTransactionWriter
                         schema,
                         shadowTablePrefix,
                         sourceType,
-                        roundJsonDecimals))
+                        roundJsonDecimals,
+                        isRegularRunMode))
                 .withSideInputs(ddlView)
                 .withOutputTags(
                     SUCCESSFUL_EVENT_TAG,

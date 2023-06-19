@@ -112,7 +112,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private transient SpannerAccessor spannerAccessor;
 
   private final Counter processedEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Total Events in Spanner Sink");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, "Total events processed");
 
   private final Counter sucessfulEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Successful events");
@@ -121,7 +121,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Skipped events");
 
   private final Counter failedEvents =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Other errors");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, "Other permanent errors");
 
   private final Counter conversionErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Conversion errors");
@@ -132,13 +132,17 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   // The max length of tag allowed in Spanner Transaction tags.
   private static final int MAX_TXN_TAG_LENGTH = 50;
 
+  /* The run mode, whether it is regular or retry. */
+  private final Boolean isRegularRunMode;
+
   SpannerTransactionWriterDoFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
       Schema schema,
       String shadowTablePrefix,
       String sourceType,
-      Boolean roundJsonDecimals) {
+      Boolean roundJsonDecimals,
+      Boolean isRegularRunMode) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
@@ -147,6 +151,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
     this.sourceType = sourceType;
     this.roundJsonDecimals = roundJsonDecimals;
+    this.isRegularRunMode = isRegularRunMode;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -169,13 +174,21 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     Ddl ddl = c.sideInput(ddlView);
     processedEvents.inc();
 
+    boolean isRetryRecord = false;
     /*
      * Try Catch block to capture any exceptions that might occur while processing
      * DataStream events while writing to Cloud Spanner. All Exceptions that are caught
      * can be retried based on the exception type.
      */
     try {
+
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
+
+      JsonNode retryCount = changeEvent.get("_metadata_retry_count");
+
+      if (retryCount != null) {
+        isRetryRecord = true;
+      }
       if (!schema.isEmpty()) {
         verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = transformChangeEventViaSessionFile(changeEvent);
@@ -218,6 +231,12 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
       sucessfulEvents.inc();
+
+      // decrement the retry error count if this was retry attempt
+      if (isRegularRunMode && isRetryRecord) {
+        retryableErrors.dec();
+      }
+
     } catch (DroppedTableException e) {
       // Errors when table exists in source but was dropped during conversion. We do not output any
       // errors to dlq for this.
@@ -241,7 +260,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
        * 3. Any transient errors in Cloud Spanner.
        */
       outputWithErrorTag(c, msg, se, SpannerTransactionWriter.RETRYABLE_ERROR_TAG);
-      retryableErrors.inc();
+      // do not increment the retry error count if this was retry attempt
+      if (!isRetryRecord) {
+        retryableErrors.inc();
+      }
     } catch (Exception e) {
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
