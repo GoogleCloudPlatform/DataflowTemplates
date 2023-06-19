@@ -324,7 +324,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   }
 
   JsonNode populateShardId(JsonNode changeEvent, String tableId) {
-    if (transformationContext.getSchemaToShardId().isEmpty()) {
+    if (transformationContext.getSchemaToShardId() ==null || transformationContext.getSchemaToShardId().isEmpty()) {
       return changeEvent; // Nothing to do
     }
 
