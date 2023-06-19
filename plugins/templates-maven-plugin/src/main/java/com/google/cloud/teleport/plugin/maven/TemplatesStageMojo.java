@@ -16,11 +16,14 @@
 package com.google.cloud.teleport.plugin.maven;
 
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
+import static org.twdata.maven.mojoexecutor.MojoExecutor.artifactId;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.configuration;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.element;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.executeMojo;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.executionEnvironment;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.goal;
+import static org.twdata.maven.mojoexecutor.MojoExecutor.groupId;
+import static org.twdata.maven.mojoexecutor.MojoExecutor.name;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.plugin;
 
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
@@ -37,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.BuildPluginManager;
@@ -342,7 +346,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                     + stagePrefix.toLowerCase()
                     + "/"
                     + containerName);
-    ;
     LOG.info("Stage image to GCR: {}", imagePath);
 
     File metadataFile =
@@ -351,6 +354,22 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     String appRoot = "/template/" + containerName;
     String commandSpec = appRoot + "/resources/" + commandSpecFile.getName();
+
+    for (String dependency : definition.getTemplateAnnotation().additionalDependencies()) {
+      if (StringUtils.isEmpty(dependency)) {
+        continue;
+      }
+
+      LOG.info("Downloading dependency {}...", dependency);
+
+      executeMojo(
+          plugin(groupId("org.apache.maven.plugins"), artifactId("maven-dependency-plugin")),
+          goal("copy"),
+          configuration(
+              element(name("artifact"), dependency),
+              element(name("outputDirectory"), "target/extra_libs_" + containerName)),
+          executionEnvironment(project, session, pluginManager));
+    }
 
     executeMojo(
         plugin("com.google.cloud.tools", "jib-maven-plugin"),
@@ -366,7 +385,16 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                 // Keep the original entrypoint
                 element("entrypoint", "INHERIT"),
                 // Point to the command spec
-                element("environment", element("DATAFLOW_JAVA_COMMAND_SPEC", commandSpec)))),
+                element("environment", element("DATAFLOW_JAVA_COMMAND_SPEC", commandSpec))),
+            // Copy any extra_libs_{containerName} to the container
+            element(
+                "extraDirectories",
+                element(
+                    "paths",
+                    element(
+                        "path",
+                        element("from", "target/extra_libs_" + containerName),
+                        element("into", appRoot + "/libs"))))),
         executionEnvironment(project, session, pluginManager));
 
     String templatePath =

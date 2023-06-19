@@ -22,6 +22,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
+import com.google.cloud.teleport.v2.options.MySQLToBigQueryOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.common.annotations.VisibleForTesting;
@@ -61,6 +62,22 @@ import org.apache.beam.sdk.values.PCollection;
     flexContainerName = "jdbc-to-bigquery",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
+@Template(
+    name = "MySQL_to_BigQuery",
+    category = TemplateCategory.BATCH,
+    displayName = "MySQL to BigQuery",
+    description =
+        "A pipeline that reads from MySQL and writes to a BigQuery table. JDBC connection"
+            + " string, user name and password can be passed in directly as plaintext or encrypted"
+            + " using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified,"
+            + " connectionURL, username, and password should be all in encrypted format.",
+    optionsClass = MySQLToBigQueryOptions.class,
+    flexContainerName = "mysql-to-bigquery",
+    skipOptions = {"driverJars", "driverClassName"},
+    additionalDependencies = {"mysql:mysql-connector-java:8.0.30"},
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/mysql-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class JdbcToBigQuery {
 
@@ -105,8 +122,11 @@ public class JdbcToBigQuery {
                 StaticValueProvider.of(options.getDriverClassName()),
                 maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
             .withUsername(maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
-            .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
-            .withDriverJars(options.getDriverJars());
+            .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()));
+
+    if (options.getDriverJars() != null) {
+      dataSourceConfiguration = dataSourceConfiguration.withDriverJars(options.getDriverJars());
+    }
 
     if (options.getConnectionProperties() != null) {
       dataSourceConfiguration =

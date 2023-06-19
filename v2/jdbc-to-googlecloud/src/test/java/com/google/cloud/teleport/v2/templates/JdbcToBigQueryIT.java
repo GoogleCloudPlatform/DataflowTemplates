@@ -55,7 +55,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link JdbcToBigQuery} Flex template. */
 @Category(TemplateIntegrationTest.class)
-@TemplateIntegrationTest(JdbcToBigQuery.class)
+@TemplateIntegrationTest(value = JdbcToBigQuery.class, template = "Jdbc_to_BigQuery_Flex")
 @RunWith(JUnit4.class)
 public class JdbcToBigQueryIT extends JDBCBaseIT {
 

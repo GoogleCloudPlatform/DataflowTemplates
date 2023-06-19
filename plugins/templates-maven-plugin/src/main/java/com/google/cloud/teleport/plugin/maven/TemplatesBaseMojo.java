@@ -79,10 +79,7 @@ public abstract class TemplatesBaseMojo extends AbstractMojo {
       }
     }
 
-    URLClassLoader loader =
-        new URLClassLoader(
-            projectClasspathList.toArray(new URL[0]),
-            Thread.currentThread().getContextClassLoader());
-    return loader;
+    return new URLClassLoader(
+        projectClasspathList.toArray(new URL[0]), Thread.currentThread().getContextClassLoader());
   }
 }

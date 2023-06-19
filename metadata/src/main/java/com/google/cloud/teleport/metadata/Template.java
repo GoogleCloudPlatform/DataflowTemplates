@@ -71,4 +71,7 @@ public @interface Template {
 
   /** Contact information for the Template. */
   String contactInformation() default "";
+
+  /** Additional Dependencies to import. */
+  String[] additionalDependencies() default "";
 }
