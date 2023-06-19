@@ -90,7 +90,8 @@ public class DataCatalogSchemaUtils {
     }
 
     String formattedParent =
-        DataCatalogClient.formatEntryGroupName(gcpProject, DEFAULT_LOCATION, entryGroupId);
+        String.format(
+            "projects/%s/locations/%s/entryGroups/%s", gcpProject, DEFAULT_LOCATION, entryGroupId);
 
     List<Entry> entries = new ArrayList<>();
     ListEntriesRequest request = ListEntriesRequest.newBuilder().setParent(formattedParent).build();

@@ -13,33 +13,34 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.schema;
+package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
 
-/** ColumnPK object to store Source table PK. */
-public class ColumnPK implements Serializable {
+/** SpannerColumnType object to store Source column type. */
+public class SpannerColumnType implements Serializable {
 
   /** Represents the name of the Spanner column. */
-  private final String colId;
+  private final String name;
 
-  private final int order;
+  /** Represents if the column is an array. */
+  private final Boolean isArray;
 
-  public ColumnPK(String colId, int order) {
-    this.colId = colId;
-    this.order = order;
+  public SpannerColumnType(String name, Boolean isArray) {
+    this.name = name;
+    this.isArray = isArray;
   }
 
-  public String getColId() {
-    return colId;
+  public String getName() {
+    return name;
   }
 
-  public int getOrder() {
-    return order;
+  public Boolean getIsArray() {
+    return isArray;
   }
 
   public String toString() {
-    return String.format("{ 'colId': '%s' , 'order': '%s' }", colId, order);
+    return String.format("{ 'name': '%s' , 'isArray' :  '%s' }", name, isArray);
   }
 
   @Override
@@ -47,10 +48,10 @@ public class ColumnPK implements Serializable {
     if (o == this) {
       return true;
     }
-    if (!(o instanceof ColumnPK)) {
+    if (!(o instanceof SpannerColumnType)) {
       return false;
     }
-    final ColumnPK other = (ColumnPK) o;
-    return this.colId.equals(other.colId);
+    final SpannerColumnType other = (SpannerColumnType) o;
+    return this.name.equals(other.name) && this.isArray.equals(other.isArray);
   }
 }

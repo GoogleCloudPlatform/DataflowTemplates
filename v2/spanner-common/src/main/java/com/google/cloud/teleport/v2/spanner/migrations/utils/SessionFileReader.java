@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,8 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.session;
+package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -28,22 +29,15 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Class to read the session file in GCS and convert it into a Session object. */
-public class ReadSessionFile {
-  private static final Logger LOG = LoggerFactory.getLogger(ReadSessionFile.class);
+/** Class to read the HarbourBridge session file in GCS and convert it into a Schema object. */
+public class SessionFileReader {
+  private static final Logger LOG = LoggerFactory.getLogger(SessionFileReader.class);
 
-  /** Path of the session file on GCS. */
-  private String sessionFilePath;
-
-  public ReadSessionFile(String sessionFilePath) {
-    this.sessionFilePath = sessionFilePath;
-  }
-
-  public Session getSession() {
-    if (this.sessionFilePath == null) {
-      return new Session();
+  public static Schema read(String sessionFilePath) {
+    if (sessionFilePath == null) {
+      return new Schema();
     }
-    return readFileIntoMemory(this.sessionFilePath);
+    return readFileIntoMemory(sessionFilePath);
   }
 
   private static void validateSessionFields(JsonObject sessionJSON) {
@@ -58,7 +52,7 @@ public class ReadSessionFile {
     }
   }
 
-  private static Session readFileIntoMemory(String filePath) {
+  private static Schema readFileIntoMemory(String filePath) {
     try (InputStream stream =
         Channels.newInputStream(FileSystems.open(FileSystems.matchNewResource(filePath, false)))) {
       String result = IOUtils.toString(stream, StandardCharsets.UTF_8);
@@ -66,16 +60,15 @@ public class ReadSessionFile {
       JsonObject sessionJSON = parser.parseString(result).getAsJsonObject();
       validateSessionFields(sessionJSON);
 
-      Session session =
+      Schema schema =
           new GsonBuilder()
               .setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE)
               .create()
-              .fromJson(result, Session.class);
-      session.setEmpty(false);
-      session.computeToSpanner();
-      session.computeSrcToID();
-      LOG.info("Session obj: " + session.toString());
-      return session;
+              .fromJson(result, Schema.class);
+      schema.setEmpty(false);
+      schema.generateMappings();
+      LOG.info("Read session file: " + schema.toString());
+      return schema;
     } catch (IOException e) {
       LOG.error(
           "Failed to read session file. Make sure it is ASCII or UTF-8 encoded and contains a"

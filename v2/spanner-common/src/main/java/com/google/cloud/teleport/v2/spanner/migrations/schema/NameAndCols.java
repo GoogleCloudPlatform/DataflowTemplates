@@ -13,33 +13,35 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.schema;
+package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
+import java.util.Map;
 
-/** ColumnType object to store Source column type. */
-public class ColumnType implements Serializable {
+/** NameAndCols object to store Spanner table name and column name mapping information. */
+public class NameAndCols implements Serializable {
 
-  /** Represents the name of the Spanner column. */
+  /** Represents the name/id of the table. */
   private final String name;
 
-  private final Boolean isArray;
+  /** Mapping the column names/Ids. */
+  private final Map<String, String> cols;
 
-  public ColumnType(String name, Boolean isArray) {
+  public NameAndCols(String name, Map<String, String> cols) {
     this.name = name;
-    this.isArray = isArray;
+    this.cols = cols;
   }
 
   public String getName() {
     return name;
   }
 
-  public Boolean getIsArray() {
-    return isArray;
+  public Map<String, String> getCols() {
+    return cols;
   }
 
   public String toString() {
-    return String.format("{ 'name': '%s' , 'isArray' :  '%s' }", name, isArray);
+    return String.format("{ 'name': '%s', 'cols': '%s' }", name, cols);
   }
 
   @Override
@@ -47,10 +49,10 @@ public class ColumnType implements Serializable {
     if (o == this) {
       return true;
     }
-    if (!(o instanceof ColumnType)) {
+    if (!(o instanceof NameAndCols)) {
       return false;
     }
-    final ColumnType other = (ColumnType) o;
-    return this.name.equals(other.name);
+    final NameAndCols other = (NameAndCols) o;
+    return this.name.equals(other.name) && this.cols.equals(other.cols);
   }
 }

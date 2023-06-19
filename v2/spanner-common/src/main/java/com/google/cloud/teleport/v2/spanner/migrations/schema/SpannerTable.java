@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.schema;
+package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -22,31 +22,26 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** SpannerSchema object to store Spanner table name and column name mapping information. */
-public class SpannerSchema implements Serializable {
+/** SpannerTable object to store Spanner table name and column name mapping information. */
+public class SpannerTable implements Serializable {
 
-  /** Represents the name of the Source table. */
+  /** Represents the name of the Spanner table. */
   private final String name;
-
-  /** Represents the name of the Source schema. */
-  private final String schema;
 
   /** List of all the column IDs in the same order as in the Spanner table. */
   private final String[] colIds;
 
-  /** Maps the column ID to the column name. */
+  /** Maps the column ID to the column definition. */
   private final Map<String, SpannerColumnDefinition> colDefs;
 
   private final ColumnPK[] primaryKeys;
 
-  public SpannerSchema(
+  public SpannerTable(
       String name,
-      String schema,
       String[] colIds,
       Map<String, SpannerColumnDefinition> colDefs,
       ColumnPK[] primaryKeys) {
     this.name = name;
-    this.schema = schema;
     this.colIds = (colIds == null) ? (new String[] {}) : colIds;
     this.colDefs = (colDefs == null) ? (new HashMap<String, SpannerColumnDefinition>()) : colDefs;
     this.primaryKeys = (primaryKeys == null) ? (new ColumnPK[] {}) : primaryKeys;
@@ -54,10 +49,6 @@ public class SpannerSchema implements Serializable {
 
   public String getName() {
     return name;
-  }
-
-  public String getSchema() {
-    return schema;
   }
 
   public String[] getColIds() {
@@ -95,8 +86,8 @@ public class SpannerSchema implements Serializable {
       }
     }
     return String.format(
-        "{ 'name': '%s', 'schema': '%s', 'colIds': '%s', 'colDefs': '%s','primaryKeys': '%s' }",
-        name, schema, colIds, colDefs, pvalues);
+        "{ 'name': '%s', colIds': '%s', 'colDefs': '%s','primaryKeys': '%s' }",
+        name, colIds, colDefs, pvalues);
   }
 
   @Override
@@ -104,13 +95,13 @@ public class SpannerSchema implements Serializable {
     if (o == this) {
       return true;
     }
-    if (!(o instanceof SpannerSchema)) {
+    if (!(o instanceof SpannerTable)) {
       return false;
     }
-    final SpannerSchema other = (SpannerSchema) o;
+    final SpannerTable other = (SpannerTable) o;
     return this.name.equals(other.name)
-        && this.schema.equals(other.schema)
         && Arrays.equals(this.colIds, other.colIds)
-        && this.colDefs.equals(other.colDefs);
+        && this.colDefs.equals(other.colDefs)
+        && Arrays.equals(this.primaryKeys, other.primaryKeys);
   }
 }

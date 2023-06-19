@@ -31,7 +31,7 @@
         <commons.version>1.8</commons.version>
         <commons-text.version>1.10.0</commons-text.version>
         <nashorn.version>15.4</nashorn.version>
-        <protoc.version>3.15.8</protoc.version>
+        <protoc.version>3.21.12</protoc.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
         <secretmanager.version>2.1.2</secretmanager.version>
     </properties>

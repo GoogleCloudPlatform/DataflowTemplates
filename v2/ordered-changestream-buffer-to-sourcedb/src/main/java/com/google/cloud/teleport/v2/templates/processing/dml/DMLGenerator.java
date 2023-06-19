@@ -15,12 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates.processing.dml;
 
-import com.google.cloud.teleport.v2.templates.schema.ColumnDefinition;
-import com.google.cloud.teleport.v2.templates.schema.ColumnPK;
-import com.google.cloud.teleport.v2.templates.schema.Schema;
-import com.google.cloud.teleport.v2.templates.schema.SourceSchema;
-import com.google.cloud.teleport.v2.templates.schema.SpannerColumnDefinition;
-import com.google.cloud.teleport.v2.templates.schema.SpannerSchema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -44,65 +44,52 @@ public class DMLGenerator {
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset) {
 
-    String spannerTableId = schema.getTableIdFromSpannerSchema(spannerTableName);
-    SpannerSchema spannerTableSchema = schema.getSpannerSchema().get(spannerTableId);
+    String spannerTableId = schema.getSpannerToID().get(spannerTableName).getName();
+    SpannerTable spannerTable = schema.getSpSchema().get(spannerTableId);
 
-    SourceSchema sourceTableSchema = schema.getSourceSchema().get(spannerTableId);
-    if (sourceTableSchema == null) {
+    SourceTable sourceTable = schema.getSrcSchema().get(spannerTableId);
+    if (sourceTable == null) {
       LOG.warn("The table {} was not found in source", spannerTableName);
       return "";
     }
 
-    if (sourceTableSchema.getPrimaryKeys() == null
-        || sourceTableSchema.getPrimaryKeys().length == 0) {
+    if (sourceTable.getPrimaryKeys() == null || sourceTable.getPrimaryKeys().length == 0) {
       LOG.warn(
           "Cannot reverse replicate for table {} without primary key, skipping the record",
-          sourceTableSchema.getName());
+          sourceTable.getName());
       return "";
     }
 
     if ("INSERT".equals(modType) || "UPDATE".equals(modType)) {
       Map<String, String> pkcolumnNameValues =
           getPkColumnValues(
-              spannerTableSchema,
-              sourceTableSchema,
-              newValuesJson,
-              keyValuesJson,
-              sourceDbTimezoneOffset);
+              spannerTable, sourceTable, newValuesJson, keyValuesJson, sourceDbTimezoneOffset);
       if (pkcolumnNameValues == null) {
         LOG.warn(
             "Cannot reverse replicate for table {} without primary key, skipping the record",
-            sourceTableSchema.getName());
+            sourceTable.getName());
         return "";
       }
       Map<String, String> columnNameValues =
           getColumnValues(
-              spannerTableSchema,
-              sourceTableSchema,
-              newValuesJson,
-              keyValuesJson,
-              sourceDbTimezoneOffset);
+              spannerTable, sourceTable, newValuesJson, keyValuesJson, sourceDbTimezoneOffset);
       return getUpsertStatement(
-          sourceTableSchema.getName(),
-          sourceTableSchema.getPrimaryKeySet(),
+          sourceTable.getName(),
+          sourceTable.getPrimaryKeySet(),
           columnNameValues,
           pkcolumnNameValues);
     } else if ("DELETE".equals(modType)) {
 
       Map<String, String> pkcolumnNameValues =
           getPkColumnValues(
-              spannerTableSchema,
-              sourceTableSchema,
-              newValuesJson,
-              keyValuesJson,
-              sourceDbTimezoneOffset);
+              spannerTable, sourceTable, newValuesJson, keyValuesJson, sourceDbTimezoneOffset);
       if (pkcolumnNameValues == null) {
         LOG.warn(
             "Cannot reverse replicate for table {} without primary key, skipping the record",
-            sourceTableSchema.getName());
+            sourceTable.getName());
         return "";
       }
-      return getDeleteStatement(sourceTableSchema.getName(), pkcolumnNameValues);
+      return getDeleteStatement(sourceTable.getName(), pkcolumnNameValues);
     } else {
       LOG.warn("Unsupported modType: " + modType);
       return "";
@@ -190,8 +177,8 @@ public class DMLGenerator {
   }
 
   private static Map<String, String> getColumnValues(
-      SpannerSchema spannerTableSchema,
-      SourceSchema sourceTableSchema,
+      SpannerTable spannerTable,
+      SourceTable sourceTable,
       JSONObject newValuesJson,
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset) {
@@ -210,9 +197,9 @@ public class DMLGenerator {
     if the column does not exist in any of the JSON - continue to next,
       as the column will be stored with default/null values
     */
-    Set<String> sourcePKs = sourceTableSchema.getPrimaryKeySet();
-    for (Map.Entry<String, ColumnDefinition> entry : sourceTableSchema.getColDefs().entrySet()) {
-      ColumnDefinition sourceColDef = entry.getValue();
+    Set<String> sourcePKs = sourceTable.getPrimaryKeySet();
+    for (Map.Entry<String, SourceColumnDefinition> entry : sourceTable.getColDefs().entrySet()) {
+      SourceColumnDefinition sourceColDef = entry.getValue();
 
       String colName = sourceColDef.getName();
       if (sourcePKs.contains(colName)) {
@@ -220,7 +207,7 @@ public class DMLGenerator {
       }
 
       String colId = entry.getKey();
-      SpannerColumnDefinition spannerColDef = spannerTableSchema.getColDefs().get(colId);
+      SpannerColumnDefinition spannerColDef = spannerTable.getColDefs().get(colId);
       if (spannerColDef == null) {
         continue;
       }
@@ -255,8 +242,8 @@ public class DMLGenerator {
   }
 
   private static Map<String, String> getPkColumnValues(
-      SpannerSchema spannerTableSchema,
-      SourceSchema sourceTableSchema,
+      SpannerTable spannerTable,
+      SourceTable sourceTable,
       JSONObject newValuesJson,
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset) {
@@ -272,13 +259,13 @@ public class DMLGenerator {
       if so, get the string value
     if the column does not exist in any of the JSON - return null
     */
-    ColumnPK[] sourcePKs = sourceTableSchema.getPrimaryKeys();
+    ColumnPK[] sourcePKs = sourceTable.getPrimaryKeys();
 
     for (int i = 0; i < sourcePKs.length; i++) {
       ColumnPK currentSourcePK = sourcePKs[i];
       String colId = currentSourcePK.getColId();
-      ColumnDefinition sourceColDef = sourceTableSchema.getColDefs().get(colId);
-      SpannerColumnDefinition spannerColDef = spannerTableSchema.getColDefs().get(colId);
+      SourceColumnDefinition sourceColDef = sourceTable.getColDefs().get(colId);
+      SpannerColumnDefinition spannerColDef = spannerTable.getColDefs().get(colId);
       if (spannerColDef == null) {
         LOG.warn(
             "The corresponsing primary key column {} was not found in Spanner",
@@ -318,7 +305,7 @@ public class DMLGenerator {
 
   private static String getMappedColumnValue(
       SpannerColumnDefinition spannerColDef,
-      ColumnDefinition sourceColDef,
+      SourceColumnDefinition sourceColDef,
       JSONObject valuesJson,
       String sourceDbTimezoneOffset) {
 

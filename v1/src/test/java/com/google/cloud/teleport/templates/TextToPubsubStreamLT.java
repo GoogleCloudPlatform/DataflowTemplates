@@ -136,7 +136,13 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
 
     // Waits until a number of messages condition is met
     PipelineOperator.Result result =
-        pipelineOperator.waitForConditionAndFinish(
+        // The method waitForConditionAndCancel was used because the streaming pipeline template
+        // includes a call to Splittable DoFn. Invoking a splittable DoFn causes the job to remain
+        // in the Draining state indefinitely.
+        // @see <a
+        // href="https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#important_information_about_draining_a_job">
+        // Important information about draining a job</a>
+        pipelineOperator.waitForConditionAndCancel(
             createConfig(info, Duration.ofMinutes(TIMEOUT_FOR_10_GB_TEST_MINUTES)),
             () -> {
               Long currentMessages =
@@ -192,7 +198,13 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
 
     // Waits until a number of messages condition is met
     PipelineOperator.Result result =
-        pipelineOperator.waitForConditionAndFinish(
+        // The method waitForConditionAndCancel was used because the streaming pipeline template
+        // includes a call to Splittable DoFn. Invoking a splittable DoFn causes the job to remain
+        // in the Draining state indefinitely.
+        // @see <a
+        // href="https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#important_information_about_draining_a_job">
+        // Important information about draining a job</a>
+        pipelineOperator.waitForConditionAndCancel(
             createConfig(info, Duration.ofMinutes(TIMEOUT_FOR_1_HOUR_TEST_MINUTES)),
             () -> {
               Long currentMessages =

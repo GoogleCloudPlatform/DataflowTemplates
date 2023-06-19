@@ -89,6 +89,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${artifactRegistry}", readonly = true, required = false)
   protected String artifactRegistry;
 
+  @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
+  protected String gcpTempLocation;
+
   @Parameter(
       name = "baseContainerImage",
       defaultValue =
@@ -112,6 +115,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String stagePrefix,
       String region,
       String artifactRegion,
+      String gcpTempLocation,
       String baseContainerImage) {
     this.project = project;
     this.session = session;
@@ -126,6 +130,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     this.stagePrefix = stagePrefix;
     this.region = region;
     this.artifactRegion = artifactRegion;
+    this.gcpTempLocation = gcpTempLocation;
     this.baseContainerImage = baseContainerImage;
   }
 
@@ -231,6 +236,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     arguments.add(element("argument", "--templateLocation=" + templatePath));
     arguments.add(element("argument", "--project=" + projectId));
     arguments.add(element("argument", "--region=" + region));
+
+    if (gcpTempLocation != null) {
+      String gcpTempLocationPath = "gs://" + bucketNameOnly(gcpTempLocation) + "/temp/";
+      arguments.add(element("argument", "--gcpTempLocation=" + gcpTempLocationPath));
+    }
+
     arguments.add(
         element(
             "argument",

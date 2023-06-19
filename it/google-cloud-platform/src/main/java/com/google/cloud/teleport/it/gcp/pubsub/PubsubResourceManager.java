@@ -121,6 +121,15 @@ public final class PubsubResourceManager implements ResourceManager {
   }
 
   /**
+   * Return the test ID this Resource Manager uses to manage Pub/Sub instances.
+   *
+   * @return the test ID.
+   */
+  public String getTestId() {
+    return testId;
+  }
+
+  /**
    * Creates a topic with the given name on Pub/Sub.
    *
    * @param topicName Topic name to create. The underlying implementation may not use the topic name
@@ -132,15 +141,22 @@ public final class PubsubResourceManager implements ResourceManager {
     checkIsUsable();
 
     TopicName name = getTopicName(topicName);
-    LOG.info("Creating topic '{}'...", name.toString());
+    return createTopicInternal(name);
+  }
 
-    Topic topic = topicAdminClient.createTopic(name);
-    TopicName reference = PubsubUtils.toTopicName(topic);
-    createdTopics.add(reference);
+  /**
+   * Creates a topic with the given name on Pub/Sub.
+   *
+   * @param topicName Topic name to create. The underlying implementation will use the topic name
+   *     directly.
+   * @return The instance of the TopicName that was just created.
+   */
+  public TopicName createTopicWithoutPrefix(String topicName) {
+    checkArgument(!topicName.isEmpty(), "topicName can not be empty");
+    checkIsUsable();
 
-    LOG.info("Topic '{}' was created successfully!", reference);
-
-    return reference;
+    TopicName name = TopicName.of(projectId, topicName);
+    return createTopicInternal(name);
   }
 
   /**
@@ -315,6 +331,19 @@ public final class PubsubResourceManager implements ResourceManager {
     if (isNotUsable()) {
       throw new IllegalStateException("Manager has cleaned up resources and is unusable.");
     }
+  }
+
+  /** Internal method to create a Pub/Sub topic used by this resource manager. */
+  private TopicName createTopicInternal(TopicName topicName) {
+    LOG.info("Creating topic '{}'...", topicName.toString());
+
+    Topic topic = topicAdminClient.createTopic(topicName);
+    TopicName reference = PubsubUtils.toTopicName(topic);
+    createdTopics.add(reference);
+
+    LOG.info("Topic '{}' was created successfully!", reference);
+
+    return reference;
   }
 
   private boolean isNotUsable() {

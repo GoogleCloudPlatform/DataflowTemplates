@@ -98,7 +98,7 @@ public class BigtableCdcToHbase {
         description = "Bidirectional replication",
         helpText =
             "Whether bidirectional replication between hbase and bigtable is enabled, adds additional logic to filter out hbase-replicated mutations")
-    @Default.Boolean(true)
+    @Default.Boolean(false)
     boolean getBidirectionalReplicationEnabled();
 
     void setBidirectionalReplicationEnabled(boolean bidirectionalReplicationEnabled);

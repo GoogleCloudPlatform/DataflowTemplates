@@ -66,6 +66,9 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${artifactRegion}", readonly = true, required = false)
   protected String artifactRegion;
 
+  @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
+  protected String gcpTempLocation;
+
   @Parameter(
       name = "baseContainerImage",
       defaultValue =
@@ -131,6 +134,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 stagePrefix,
                 useRegion,
                 artifactRegion,
+                gcpTempLocation,
                 baseContainerImage);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);

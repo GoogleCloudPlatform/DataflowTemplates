@@ -13,26 +13,34 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.session;
+package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
 
-/** ColumnDef object to store Spanner table name and column name mapping information. */
-public class ColumnDef implements Serializable {
+/** ColumnPK object to store table PK for both Spanner and Source. */
+public class ColumnPK implements Serializable {
 
   /** Represents the name of the Spanner column. */
-  private final String name;
+  private final String colId;
 
-  public ColumnDef(String name) {
-    this.name = name;
+  /** Represents the position of the col in the primary key. */
+  private final int order;
+
+  public ColumnPK(String colId, int order) {
+    this.colId = colId;
+    this.order = order;
   }
 
-  public String getName() {
-    return name;
+  public String getColId() {
+    return colId;
+  }
+
+  public int getOrder() {
+    return order;
   }
 
   public String toString() {
-    return String.format("{ 'name': '%s' }", name);
+    return String.format("{ 'colId': '%s' , 'order': '%s' }", colId, order);
   }
 
   @Override
@@ -40,10 +48,10 @@ public class ColumnDef implements Serializable {
     if (o == this) {
       return true;
     }
-    if (!(o instanceof ColumnDef)) {
+    if (!(o instanceof ColumnPK)) {
       return false;
     }
-    final ColumnDef other = (ColumnDef) o;
-    return this.name.equals(other.name);
+    final ColumnPK other = (ColumnPK) o;
+    return this.colId.equals(other.colId) && this.order == other.order;
   }
 }

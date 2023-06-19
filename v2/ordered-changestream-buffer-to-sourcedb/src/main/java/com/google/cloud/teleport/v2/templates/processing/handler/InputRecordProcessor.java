@@ -16,9 +16,9 @@
 package com.google.cloud.teleport.v2.templates.processing.handler;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
 import com.google.cloud.teleport.v2.templates.processing.dml.DMLGenerator;
-import com.google.cloud.teleport.v2.templates.schema.Schema;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;

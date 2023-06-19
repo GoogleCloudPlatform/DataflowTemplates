@@ -21,7 +21,6 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.templates.common.Shard;
 import com.google.cloud.teleport.v2.templates.kafka.KafkaConnectionProfile;
-import com.google.cloud.teleport.v2.templates.schema.Schema;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
@@ -84,23 +83,5 @@ public final class InputFileReaderTest {
                 InputFileReader.getKafkaConnectionProfile(
                     "src/test/resources/somemisingfile.json"));
     assertTrue(thrown.getMessage().contains("Failed to read kafka cluster input file"));
-  }
-
-  @Test
-  public void schemaFileRead() {
-    Schema schema = InputFileReader.getSchema("src/test/resources/allMatchSession.json");
-
-    assertEquals(schema.getSpannerSchema().size(), 4);
-    assertEquals(schema.getSourceSchema().size(), 4);
-  }
-
-  @Test
-  public void schemaFileReadFileNotExist() {
-
-    RuntimeException thrown =
-        assertThrows(
-            RuntimeException.class,
-            () -> InputFileReader.getSchema("src/test/resources/somemisingfile.json"));
-    assertTrue(thrown.getMessage().contains("Failed to read Schema file input file"));
   }
 }

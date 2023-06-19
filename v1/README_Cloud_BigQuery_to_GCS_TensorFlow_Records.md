@@ -82,6 +82,9 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
+temp files to during serialization. The path used will be `gs://<temp-bucket-name>/temp/`.
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 

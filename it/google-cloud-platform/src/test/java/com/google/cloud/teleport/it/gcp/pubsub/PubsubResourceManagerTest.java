@@ -109,6 +109,14 @@ public final class PubsubResourceManagerTest {
   }
 
   @Test
+  public void testCreateTopicWithoutPrefixWithInvalidNameShouldFail() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class, () -> testManager.createTopicWithoutPrefix(""));
+    assertThat(exception).hasMessageThat().contains("topicName can not be empty");
+  }
+
+  @Test
   public void testCreateSubscriptionWithInvalidNameShouldFail() {
     IllegalArgumentException exception =
         assertThrows(
@@ -128,6 +136,19 @@ public final class PubsubResourceManagerTest {
     TopicName actualTopicName = topicNameCaptor.getValue();
     assertThat(actualTopicName.getProject()).isEqualTo(PROJECT_ID);
     assertThat(actualTopicName.getTopic()).matches(TEST_ID + "-\\d{17}-topic-name");
+  }
+
+  @Test
+  public void testCreateTopicWithoutPrefixShouldCreate() {
+    when(topicAdminClient.createTopic(any(TopicName.class))).thenReturn(topic);
+
+    TopicName createTopic = testManager.createTopicWithoutPrefix("topic-name");
+
+    assertThat(createTopic).isNotNull();
+    verify(topicAdminClient).createTopic(topicNameCaptor.capture());
+    TopicName actualTopicName = topicNameCaptor.getValue();
+    assertThat(actualTopicName.getProject()).isEqualTo(PROJECT_ID);
+    assertThat(actualTopicName.getTopic()).matches("topic-name");
   }
 
   @Test

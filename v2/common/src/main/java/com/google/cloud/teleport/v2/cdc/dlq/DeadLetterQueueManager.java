@@ -75,6 +75,16 @@ public class DeadLetterQueueManager implements Serializable {
     return new DeadLetterQueueManager(retryDlqUri, severeDlqUri, maxRetries);
   }
 
+  public static DeadLetterQueueManager create(
+      String dlqDirectory, String retryDlqUri, int maxRetries) {
+
+    String severeDlqUri =
+        FileSystems.matchNewResource(dlqDirectory, true)
+            .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
+            .toString();
+    return new DeadLetterQueueManager(retryDlqUri, severeDlqUri, maxRetries);
+  }
+
   public String getRetryDlqDirectory() {
     return retryDlqDirectory;
   }

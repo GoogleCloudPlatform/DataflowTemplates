@@ -13,6 +13,5 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
-/** Holds the Spanner and Source schema. */
-package com.google.cloud.teleport.v2.templates.schema;
+/** A set of utilities to store session file information generated via HarbourBridge. */
+package com.google.cloud.teleport.v2.spanner.migrations.utils;

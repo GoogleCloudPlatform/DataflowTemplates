@@ -17,9 +17,9 @@ package com.google.cloud.teleport.v2.templates.processing.dml;
 
 import static org.junit.Assert.assertEquals;
 
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.processing.handler.InputRecordProcessor;
-import com.google.cloud.teleport.v2.templates.schema.Schema;
-import com.google.cloud.teleport.v2.templates.utils.InputFileReader;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
@@ -36,7 +36,7 @@ public final class DMLGeneratorTest {
 
   @Test
   public void tableAndAllColumnNameTypesMatch() {
-    Schema schema = InputFileReader.getSchema("src/test/resources/allMatchSession.json");
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -59,7 +59,7 @@ public final class DMLGeneratorTest {
 
   @Test
   public void tableNameMismatchAllColumnNameTypesMatch() {
-    Schema schema = InputFileReader.getSchema("src/test/resources/tableNameMismatchSession.json");
+    Schema schema = SessionFileReader.read("src/test/resources/tableNameMismatchSession.json");
     String tableName = "leChanteur";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -82,8 +82,7 @@ public final class DMLGeneratorTest {
 
   @Test
   public void tableNameMatchColumnNameTypeMismatch() {
-    Schema schema =
-        InputFileReader.getSchema("src/test/resources/coulmnNameTypeMismatchSession.json");
+    Schema schema = SessionFileReader.read("src/test/resources/coulmnNameTypeMismatchSession.json");
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"222\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -107,7 +106,7 @@ public final class DMLGeneratorTest {
   @Test
   public void tableNameMatchSourceColumnNotPresentInSpanner() {
     Schema schema =
-        InputFileReader.getSchema("src/test/resources/sourceColumnAbsentInSpannerSession.json");
+        SessionFileReader.read("src/test/resources/sourceColumnAbsentInSpannerSession.json");
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -132,7 +131,7 @@ public final class DMLGeneratorTest {
   public void tableNameMatchSpannerColumnNotPresentInSource() {
 
     Schema schema =
-        InputFileReader.getSchema("src/test/resources/spannerColumnAbsentInSourceSession.json");
+        SessionFileReader.read("src/test/resources/spannerColumnAbsentInSourceSession.json");
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"hb_shardId\":\"shardA\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -155,7 +154,7 @@ public final class DMLGeneratorTest {
 
   @Test
   public void primaryKeyNotFoundInJson() {
-    Schema schema = InputFileReader.getSchema("src/test/resources/allMatchSession.json");
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -176,7 +175,7 @@ public final class DMLGeneratorTest {
 
   @Test
   public void primaryKeyNotPresentInSourceSchema() {
-    Schema schema = InputFileReader.getSchema("src/test/resources/sourceNoPkSession.json");
+    Schema schema = SessionFileReader.read("src/test/resources/sourceNoPkSession.json");
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -198,7 +197,7 @@ public final class DMLGeneratorTest {
 
   @Test
   public void timezoneOffsetMismatch() {
-    Schema schema = InputFileReader.getSchema("src/test/resources/timeZoneSession.json");
+    Schema schema = SessionFileReader.read("src/test/resources/timeZoneSession.json");
     String tableName = "Singers";
     String newValuesString = "{\"Bday\":\"2023-05-18T12:01:13.088397258Z\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -222,7 +221,7 @@ public final class DMLGeneratorTest {
 
   @Test
   public void primaryKeyMismatch() {
-    Schema schema = InputFileReader.getSchema("src/test/resources/primarykeyMismatchSession.json");
+    Schema schema = SessionFileReader.read("src/test/resources/primarykeyMismatchSession.json");
     String tableName = "Singers";
     String newValuesString = "{\"SingerId\":\"999\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -245,7 +244,7 @@ public final class DMLGeneratorTest {
 
   @Test
   public void allDataypesDML() throws Exception {
-    Schema schema = InputFileReader.getSchema("src/test/resources/allDatatypeSession.json");
+    Schema schema = SessionFileReader.read("src/test/resources/allDatatypeSession.json");
     List<String> parsedRec = null;
 
     InputStream stream =
@@ -294,7 +293,7 @@ public final class DMLGeneratorTest {
 
   @Test
   public void updateToNull() {
-    Schema schema = InputFileReader.getSchema("src/test/resources/allMatchSession.json");
+    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
