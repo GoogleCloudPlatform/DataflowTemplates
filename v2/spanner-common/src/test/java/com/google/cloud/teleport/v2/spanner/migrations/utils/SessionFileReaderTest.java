@@ -169,7 +169,7 @@ public class SessionFileReaderTest {
             "new_cart",
             new String[] {"c1", "c2", "c3"},
             t1SpColDefs,
-            new ColumnPK[] {new ColumnPK("c3", 1), new ColumnPK("c1", 2)}));
+            new ColumnPK[] {new ColumnPK("c3", 1), new ColumnPK("c1", 2)}, null));
     Map<String, SpannerColumnDefinition> t2SpColDefs =
         new HashMap<String, SpannerColumnDefinition>();
     t2SpColDefs.put(
@@ -182,7 +182,7 @@ public class SessionFileReaderTest {
             "new_people",
             new String[] {"c5", "c6"},
             t2SpColDefs,
-            new ColumnPK[] {new ColumnPK("c6", 1)}));
+            new ColumnPK[] {new ColumnPK("c6", 1)}, null));
     return spSchema;
   }
 
@@ -235,5 +235,62 @@ public class SessionFileReaderTest {
         + "      }\n"
         + "    }\n"
         + "}";
+  }
+
+  @Test
+  public void readShardedSessionFile() throws Exception {
+    Path sessionFile = Paths.get(Resources.getResource("session-file-sharded.json").getPath());
+    Schema schema = SessionFileReader.read(sessionFile.toString());
+    Schema expectedSchema = getShardedSchemaObject();
+    // Validates that the session object created is correct.
+    assertThat(schema.getSpSchema(), is(expectedSchema.getSpSchema()));
+  }
+  public static Schema getShardedSchemaObject() {
+    // Add SrcSchema.
+    Map<String, SourceTable> srcSchema = getSampleSrcSchema();
+    // Add SpSchema.
+    Map<String, SpannerTable> spSchema = getSampleShardedSpSchema();
+    // Add ToSpanner.
+    Map<String, NameAndCols> toSpanner = getToSpanner();
+    // Add SrcToID.
+    Map<String, NameAndCols> srcToId = getSrcToId();
+    Schema expectedSchema = new Schema(spSchema, new HashMap<>(), srcSchema);
+    expectedSchema.setToSpanner(toSpanner);
+    expectedSchema.setToSource(new HashMap<String, NameAndCols>());
+    expectedSchema.setSrcToID(srcToId);
+    expectedSchema.setSpannerToID(new HashMap<String, NameAndCols>());
+    return expectedSchema;
+  }
+
+  public static Map<String, SpannerTable> getSampleShardedSpSchema() {
+    Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
+    Map<String, SpannerColumnDefinition> t1SpColDefs = new HashMap<String, SpannerColumnDefinition>();
+    t1SpColDefs.put(
+            "c1",
+            new SpannerColumnDefinition("new_product_id", new SpannerColumnType("STRING", false)));
+    t1SpColDefs.put(
+            "c2", new SpannerColumnDefinition("new_quantity", new SpannerColumnType("INT64", false)));
+    t1SpColDefs.put(
+            "c3", new SpannerColumnDefinition("new_user_id", new SpannerColumnType("STRING", false)));
+    spSchema.put(
+            "t1",
+            new SpannerTable(
+                    "new_cart",
+                    new String[] {"c1", "c2", "c3"},
+                    t1SpColDefs,
+                    new ColumnPK[] {new ColumnPK("c3", 1), new ColumnPK("c1", 2)}, null));
+    Map<String, SpannerColumnDefinition> t2SpColDefs = new HashMap<String, SpannerColumnDefinition>();
+    t2SpColDefs.put(
+            "c5", new SpannerColumnDefinition("new_name", new SpannerColumnType("STRING", false)));
+    t2SpColDefs.put(
+            "c6", new SpannerColumnDefinition("migration_shard_id", new SpannerColumnType("STRING", false)));
+    spSchema.put(
+            "t2",
+            new SpannerTable(
+                    "new_people",
+                    new String[] {"c5", "c6"},
+                    t2SpColDefs,
+                    new ColumnPK[] {new ColumnPK("c6", 1),new ColumnPK("c5", 2)}, "c6"));
+    return spSchema;
   }
 }
