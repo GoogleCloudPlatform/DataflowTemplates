@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,20 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.ReadContext;
-import com.google.cloud.spanner.ResultSet;
-import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
@@ -37,131 +28,70 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefin
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import com.google.common.io.Resources;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.json.JSONObject;
-import org.junit.Before;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.junit.Rule;
 import org.junit.Test;
-import org.mockito.Mock;
 
-/** Unit tests SpannerTransactionWriterDoFn class. */
-public class SpannerTransactionWriterDoFnTest {
-  @Mock private DatabaseClient databaseClient;
-  @Mock private ReadContext queryReadContext;
-  @Mock private ResultSet queryResultSet;
+/** Tests for SessionFileReaderTest class. */
+public class SessionFileReaderTest {
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  public static JsonNode parseChangeEvent(String json) {
-    try {
-      ObjectMapper mapper = new ObjectMapper();
-      mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-      return mapper.readTree(json);
+  @Test
+  public void readSessionFile() throws Exception {
+    Path sessionFile = Paths.get(Resources.getResource("session-file.json").getPath());
+    Schema schema = SessionFileReader.read(sessionFile.toString());
+    Schema expectedSchema = getSchemaObject();
+    // Validates that the session object created is correct.
+    assertThat(schema.getSpSchema(), is(expectedSchema.getSpSchema()));
+  }
+
+  @Test
+  public void readEmptySessionFilePath() throws Exception {
+    String sessionFile = null;
+    Schema schema = SessionFileReader.read(sessionFile);
+    Schema expectedSchema = new Schema();
+    // Validates that the schema object created is correct.
+    assertThat(schema, is(expectedSchema));
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void readSessionFileWithMissingSpannerSchema() throws Exception {
+    Path sessionFile = Files.createTempFile("session-file-without-SpSchema", ".json");
+    Charset charset = Charset.forName("UTF-8");
+    try (BufferedWriter writer = Files.newBufferedWriter(sessionFile, charset)) {
+      String jsonString = getSessionStringWithoutSpSchema();
+      writer.write(jsonString, 0, jsonString.length());
     } catch (IOException e) {
-      // No action. Return null.
+      e.printStackTrace();
     }
-    return null;
+    Schema schema = SessionFileReader.read(sessionFile.toString());
   }
 
-  @Before
-  public void setUp() throws IOException {
-    mockDbClient();
+  @Test(expected = RuntimeException.class)
+  public void readSessionFileWithMissingSyntheicPK() throws Exception {
+    Path sessionFile = Files.createTempFile("session-file-without-SyntheticPKey", ".json");
+    Charset charset = Charset.forName("UTF-8");
+    try (BufferedWriter writer = Files.newBufferedWriter(sessionFile, charset)) {
+      String jsonString = getSessionStringWithoutSyntheticPK();
+      writer.write(jsonString, 0, jsonString.length());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    Schema schema = SessionFileReader.read(sessionFile.toString());
   }
 
-  private void mockDbClient() throws IOException {
-    databaseClient = mock(DatabaseClient.class);
-    queryReadContext = mock(ReadContext.class);
-    queryResultSet = mock(ResultSet.class);
-    when(databaseClient.singleUse()).thenReturn(queryReadContext);
-    when(queryReadContext.executeQuery(any(Statement.class))).thenReturn(queryResultSet);
-    when(queryResultSet.next()).thenReturn(true, false); // only return one row
-    when(queryResultSet.getJson(any(String.class)))
-        .thenReturn("{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
-  }
-
-  @Test
-  public void transformChangeEventViaSessionFileNamesTest() {
-    Schema schema = getSchemaObject();
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, schema, "", "", false);
-    JSONObject changeEvent = new JSONObject();
-    changeEvent.put("product_id", "A");
-    changeEvent.put("quantity", 1);
-    changeEvent.put("user_id", "B");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "cart");
-    JsonNode ce = parseChangeEvent(changeEvent.toString());
-
-    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEventViaSessionFile(ce);
-
-    JSONObject changeEventNew = new JSONObject();
-    changeEventNew.put("new_product_id", "A");
-    changeEventNew.put("new_quantity", 1);
-    changeEventNew.put("new_user_id", "B");
-    changeEventNew.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "new_cart");
-    JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
-    assertEquals(expectedEvent, actualEvent);
-  }
-
-  @Test
-  public void transformChangeEventViaSessionFileSynthPKTest() {
-    Schema schema = getSchemaObject();
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, schema, "", "", false);
-    JSONObject changeEvent = new JSONObject();
-    changeEvent.put("name", "A");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "people");
-    changeEvent.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
-    JsonNode ce = parseChangeEvent(changeEvent.toString());
-
-    JsonNode actualEvent = spannerTransactionWriterDoFn.transformChangeEventViaSessionFile(ce);
-
-    JSONObject changeEventNew = new JSONObject();
-    changeEventNew.put("new_name", "A");
-    changeEventNew.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "new_people");
-    changeEventNew.put(DatastreamConstants.EVENT_UUID_KEY, "abc-123");
-    changeEventNew.put("synth_id", "abc-123");
-    JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
-    assertEquals(expectedEvent, actualEvent);
-  }
-
-  @Test
-  public void transformChangeEventDataTest() throws Exception {
-    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(SpannerConfig.create(), null, null, "", "", true);
-    JSONObject changeEvent = new JSONObject();
-    changeEvent.put("first_name", "A");
-    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    JsonNode ce = parseChangeEvent(changeEvent.toString());
-
-    JsonNode actualEvent =
-        spannerTransactionWriterDoFn.transformChangeEventData(ce, databaseClient, getTestDdl());
-
-    changeEvent = new JSONObject();
-    changeEvent.put("first_name", "A");
-    changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    JsonNode expectedEvent = parseChangeEvent(changeEvent.toString());
-
-    assertEquals(expectedEvent, actualEvent);
-  }
-
-  static Ddl getTestDdl() {
-    Ddl ddl =
-        Ddl.builder()
-            .createTable("Users")
-            .column("first_name")
-            .string()
-            .max()
-            .endColumn()
-            .column("last_name")
-            .json()
-            .endColumn()
-            .endTable()
-            .build();
-    return ddl;
+  @Test(expected = RuntimeException.class)
+  public void nonExistentFileRead() {
+    SessionFileReader.read("src/test/resources/nonExistentFile.json");
   }
 
   private static Schema getSchemaObject() {
@@ -280,5 +210,30 @@ public class SpannerTransactionWriterDoFnTest {
     t2ColIds.put("name", "c5");
     srcToId.put("people", new NameAndCols("t2", t2ColIds));
     return srcToId;
+  }
+
+  private static String getSessionStringWithoutSpSchema() {
+    return "{\n"
+        + "    \"SyntheticPKeys\": {\n"
+        + "      \"products\": {\n"
+        + "        \"Col\": \"synth_id\",\n"
+        + "        \"Sequence\": 0\n"
+        + "      }\n"
+        + "    }\n"
+        + "}";
+  }
+
+  private static String getSessionStringWithoutSyntheticPK() {
+    return "{\n"
+        + "    \"ToSpanner\": {\n"
+        + "      \"products\": {\n"
+        + "        \"Name\": \"products\",\n"
+        + "        \"Cols\": {\n"
+        + "          \"price\": \"price\",\n"
+        + "          \"product_id\": \"product_id\"\n"
+        + "        }\n"
+        + "      }\n"
+        + "    }\n"
+        + "}";
   }
 }

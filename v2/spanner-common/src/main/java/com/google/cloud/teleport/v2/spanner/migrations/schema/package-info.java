@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,4 +14,4 @@
  * the License.
  */
 /** A set of utilities to store session file information generated via HarbourBridge. */
-package com.google.cloud.teleport.v2.templates.session;
+package com.google.cloud.teleport.v2.spanner.migrations.schema;

@@ -10,7 +10,7 @@
           "ColDefs": {
               "c1": {
                   "Name": "new_product_id",
-                  "Type": {
+                  "T": {
                       "Name": "STRING",
                       "Len": 20,
                       "IsArray": false
@@ -21,7 +21,7 @@
               },
               "c2": {
                   "Name": "new_quantity",
-                  "Type": {
+                  "T": {
                       "Name": "INT64",
                       "Len": 0,
                       "IsArray": false
@@ -32,7 +32,7 @@
               },
               "c3": {
                   "Name": "new_user_id",
-                  "Type": {
+                  "T": {
                       "Name": "STRING",
                       "Len": 20,
                       "IsArray": false
@@ -95,7 +95,7 @@
           "ColDefs": {
               "c5": {
                   "Name": "new_name",
-                  "Type": {
+                  "T": {
                       "Name": "STRING",
                       "Len": 20,
                       "IsArray": false
@@ -106,10 +106,10 @@
               },
               "c6": {
                   "Name": "synth_id",
-                  "Type": {
+                  "T": {
                       "Name": "INT64",
                       "Len": 0,
-                      "`IsArray": false
+                      "IsArray": false
                   },
                   "NotNull": false,
                   "Comment": "",

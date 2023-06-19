@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.teleport.v2.templates.common.Shard;
 import com.google.cloud.teleport.v2.templates.kafka.KafkaConnectionProfile;
-import com.google.cloud.teleport.v2.templates.schema.Schema;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -109,27 +108,6 @@ public class InputFileReader {
           e);
       throw new RuntimeException(
           "Failed to read kafka cluster input file. Make sure it is ASCII or UTF-8 encoded and"
-              + " contains a well-formed JSON string.",
-          e);
-    }
-  }
-
-  public static Schema getSchema(String sessionFilePath) {
-    try (InputStream stream =
-        Channels.newInputStream(
-            FileSystems.open(FileSystems.matchNewResource(sessionFilePath, false)))) {
-      String result = IOUtils.toString(stream, StandardCharsets.UTF_8);
-
-      Schema response =
-          new GsonBuilder()
-              .setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE)
-              .create()
-              .fromJson(result, Schema.class);
-      return response;
-
-    } catch (IOException e) {
-      throw new RuntimeException(
-          "Failed to read Schema file input file. Make sure it is ASCII or UTF-8 encoded and"
               + " contains a well-formed JSON string.",
           e);
     }

@@ -27,8 +27,8 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
-import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.InformationSchemaScanner;
@@ -140,18 +140,18 @@ public class SpannerStreamingWriteIntegrationTest {
 
   private void constructAndRunPipeline(PCollection<FailsafeElement<String, String>> jsonRecords) {
     String shadowTablePrefix = "shadow";
-    SpannerConfig sourceConfig = spannerServer.getSpannerConfig(testDb);
+    SpannerConfig spannerConfig = spannerServer.getSpannerConfig(testDb);
     PCollection<Ddl> ddl =
         testPipeline.apply(
             "Process Information Schema",
-            new ProcessInformationSchema(sourceConfig, true, shadowTablePrefix, "oracle"));
+            new ProcessInformationSchema(spannerConfig, true, shadowTablePrefix, "oracle"));
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
-    Session session = new Session();
+    Schema schema = new Schema();
 
     jsonRecords.apply(
         "Write events to Cloud Spanner",
         new SpannerTransactionWriter(
-            sourceConfig, ddlView, session, shadowTablePrefix, "oracle", false));
+            spannerConfig, ddlView, schema, shadowTablePrefix, "oracle", false));
 
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();

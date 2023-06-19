@@ -24,10 +24,10 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
-import com.google.cloud.teleport.v2.templates.session.ReadSessionFile;
-import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -379,8 +379,8 @@ public class DataStreamToSpanner {
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
-    // Ingest session file into memory.
-    Session session = (new ReadSessionFile(options.getSessionFilePath())).getSession();
+    // Ingest session file into schema object.
+    Schema schema = SessionFileReader.read(options.getSessionFilePath());
     /*
      * Stage 1: Ingest/Normalize Data to FailsafeElement with JSON Strings and
      * read Cloud Spanner information schema.
@@ -447,7 +447,7 @@ public class DataStreamToSpanner {
             new SpannerTransactionWriter(
                 spannerConfig,
                 ddlView,
-                session,
+                schema,
                 options.getShadowTablePrefix(),
                 options.getDatastreamSourceType(),
                 options.getRoundJsonDecimals()));

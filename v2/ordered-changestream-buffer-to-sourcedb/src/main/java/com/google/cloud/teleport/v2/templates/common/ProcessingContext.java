@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.common;
 
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.kafka.KafkaConnectionProfile;
 import com.google.cloud.teleport.v2.templates.pubsub.PubSubConsumerProfile;
-import com.google.cloud.teleport.v2.templates.schema.Schema;
 import java.io.Serializable;
 
 /**

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.schema;
+package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -22,8 +22,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** SourceSchema object to store Spanner table name and column name mapping information. */
-public class SourceSchema implements Serializable {
+/** SourceTable object to store Source table name and column name mapping information. */
+public class SourceTable implements Serializable {
 
   /** Represents the name of the Source table. */
   private final String name;
@@ -31,25 +31,27 @@ public class SourceSchema implements Serializable {
   /** Represents the name of the Source schema. */
   private final String schema;
 
-  /** List of all the column IDs in the same order as in the Spanner table. */
+  /** List of all the column IDs in the same order as in the Source table. */
   private final String[] colIds;
 
-  /** Maps the column ID to the column name. */
-  private final Map<String, ColumnDefinition> colDefs;
+  /** Maps the column ID to the column definition. */
+  private final Map<String, SourceColumnDefinition> colDefs;
 
   private final ColumnPK[] primaryKeys;
 
-  public SourceSchema(
+  public SourceTable(
       String name,
       String schema,
       String[] colIds,
-      Map<String, ColumnDefinition> colDefs,
+      Map<String, SourceColumnDefinition> colDefs,
       ColumnPK[] primaryKeys) {
     this.name = name;
     this.schema = schema;
     this.colIds = (colIds == null) ? (new String[] {}) : colIds;
-    this.colDefs = (colDefs == null) ? (new HashMap<String, ColumnDefinition>()) : colDefs;
-    this.primaryKeys = (primaryKeys == null) ? (new ColumnPK[] {}) : primaryKeys;
+    this.colDefs = (colDefs == null) ? (new HashMap<String, SourceColumnDefinition>()) : colDefs;
+    // We don't replace nulls with empty arrays as the session file for this field can contain null
+    // values.
+    this.primaryKeys = primaryKeys;
   }
 
   public String getName() {
@@ -64,7 +66,7 @@ public class SourceSchema implements Serializable {
     return colIds;
   }
 
-  public Map<String, ColumnDefinition> getColDefs() {
+  public Map<String, SourceColumnDefinition> getColDefs() {
     return colDefs;
   }
 
@@ -77,7 +79,7 @@ public class SourceSchema implements Serializable {
     Set<String> response = new HashSet<>();
     if (primaryKeys != null && colDefs != null) {
       for (ColumnPK p : primaryKeys) {
-        ColumnDefinition pkColDef = colDefs.get(p.getColId());
+        SourceColumnDefinition pkColDef = colDefs.get(p.getColId());
         if (pkColDef != null) {
           response.add(pkColDef.getName());
         }
@@ -104,13 +106,14 @@ public class SourceSchema implements Serializable {
     if (o == this) {
       return true;
     }
-    if (!(o instanceof SourceSchema)) {
+    if (!(o instanceof SourceTable)) {
       return false;
     }
-    final SourceSchema other = (SourceSchema) o;
+    final SourceTable other = (SourceTable) o;
     return this.name.equals(other.name)
         && this.schema.equals(other.schema)
         && Arrays.equals(this.colIds, other.colIds)
-        && this.colDefs.equals(other.colDefs);
+        && this.colDefs.equals(other.colDefs)
+        && Arrays.equals(this.primaryKeys, other.primaryKeys);
   }
 }

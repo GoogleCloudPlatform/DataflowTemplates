@@ -15,11 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.Shard;
 import com.google.cloud.teleport.v2.templates.kafka.KafkaConnectionProfile;
 import com.google.cloud.teleport.v2.templates.pubsub.PubSubConsumerProfile;
-import com.google.cloud.teleport.v2.templates.schema.Schema;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +44,7 @@ public class ProcessingContextGenerator {
     List<Shard> shards = InputFileReader.getOrderedShardDetails(sourceShardsFilePath, sourceType);
     KafkaConnectionProfile kafkaConnectionProfileBase =
         InputFileReader.getKafkaConnectionProfile(kafkaClusterFilePath);
-    Schema schema = InputFileReader.getSchema(sessionFilePath);
+    Schema schema = SessionFileReader.read(sessionFilePath);
 
     int partitionId = 0;
     Map<String, ProcessingContext> response = new HashMap<>();
@@ -77,7 +78,7 @@ public class ProcessingContextGenerator {
     LOG.info(" In getProcessingContextForPubSub");
 
     List<Shard> shards = InputFileReader.getOrderedShardDetails(sourceShardsFilePath, sourceType);
-    Schema schema = InputFileReader.getSchema(sessionFilePath);
+    Schema schema = SessionFileReader.read(sessionFilePath);
     PubSubConsumerProfile pubSubConsumerProfile =
         new PubSubConsumerProfile(projectId, pubsubMaxReadCount);
     Map<String, ProcessingContext> response = new HashMap<>();

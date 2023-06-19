@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.session;
+package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
 
@@ -24,8 +24,7 @@ public class SyntheticPKey implements Serializable {
   private final String colId;
 
   /**
-   * This is a field in the HarbourBridge session file used to generate PK values. However, we do
-   * not use it in this template.
+   * This is a field in the HarbourBridge session file used to generate PK values via bit-reversal.
    */
   private long sequence;
 

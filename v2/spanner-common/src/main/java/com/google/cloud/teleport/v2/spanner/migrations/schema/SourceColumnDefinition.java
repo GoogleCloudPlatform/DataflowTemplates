@@ -13,19 +13,22 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.schema;
+package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
 
-/** ColumnDefinition object to store Spanner table name and column name mapping information. */
-public class ColumnDefinition implements Serializable {
+/**
+ * SourceColumnDefinition object to store Spanner table name and column name mapping information.
+ */
+public class SourceColumnDefinition implements Serializable {
 
-  /** Represents the name of the Spanner column. */
+  /** Represents the name of the Source column. */
   private final String name;
 
-  private final ColumnType type;
+  /** Represents the type of the Source column. */
+  private final SourceColumnType type;
 
-  public ColumnDefinition(String name, ColumnType type) {
+  public SourceColumnDefinition(String name, SourceColumnType type) {
     this.name = name;
     this.type = type;
   }
@@ -34,7 +37,7 @@ public class ColumnDefinition implements Serializable {
     return name;
   }
 
-  public ColumnType getType() {
+  public SourceColumnType getType() {
     return type;
   }
 
@@ -47,10 +50,10 @@ public class ColumnDefinition implements Serializable {
     if (o == this) {
       return true;
     }
-    if (!(o instanceof ColumnDefinition)) {
+    if (!(o instanceof SourceColumnDefinition)) {
       return false;
     }
-    final ColumnDefinition other = (ColumnDefinition) o;
-    return this.name.equals(other.name);
+    final SourceColumnDefinition other = (SourceColumnDefinition) o;
+    return this.name.equals(other.name) && this.type.equals(other.type);
   }
 }
