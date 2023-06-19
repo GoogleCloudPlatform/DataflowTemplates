@@ -17,7 +17,8 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.it.common.utils.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
@@ -45,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.function.Function;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,7 +55,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link JdbcToBigQuery} Flex template. */
 @Category(TemplateIntegrationTest.class)
@@ -298,12 +299,12 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(PipelineLauncher.JobState.ACTIVE_STATES);
+    assertThatPipeline(info).isRunning();
 
     PipelineOperator.Result result = pipelineOperator().waitUntilDoneAndFinish(createConfig(info));
 
     // Assert
-    assertThat(result).isEqualTo(PipelineOperator.Result.LAUNCH_FINISHED);
+    assertThatResult(result).isLaunchFinished();
 
     if (useColumnAlias) {
       jdbcData.forEach(

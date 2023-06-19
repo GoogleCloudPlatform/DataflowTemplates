@@ -17,7 +17,8 @@ package com.google.cloud.teleport.templates;
 
 import static com.google.cloud.teleport.it.common.utils.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
@@ -276,12 +277,12 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(PipelineLauncher.JobState.ACTIVE_STATES);
+    assertThatPipeline(info).isRunning();
 
     PipelineOperator.Result result = pipelineOperator().waitUntilDoneAndFinish(createConfig(info));
 
     // Assert
-    assertThat(result).isEqualTo(PipelineOperator.Result.LAUNCH_FINISHED);
+    assertThatResult(result).isLaunchFinished();
 
     jdbcData.forEach(
         row -> {
