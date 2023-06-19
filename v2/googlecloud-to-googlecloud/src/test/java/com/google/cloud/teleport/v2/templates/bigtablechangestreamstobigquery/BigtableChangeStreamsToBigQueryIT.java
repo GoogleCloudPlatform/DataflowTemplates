@@ -81,6 +81,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   private static final String TEST_REGION = "us-central1";
   private static final String TEST_ZONE = "us-central1-a";
   public static final String BIGTABLE_STATIC_INSTANCE_ID_ENV_PROPERTY = "staticBigtableInstanceId";
+  private static final String CLUSTER_NAME = "cluster-c1";
   private static BigtableResourceManager bigtableResourceManager;
   private static BigQueryResourceManager bigQueryResourceManager;
 
@@ -93,13 +94,13 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
           + "us to set up CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQuerySingleMutationE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
-    String clusterName = "cluster-c1";
     String appProfileId = generateAppProfileId();
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
+    clusters.add(
+        BigtableResourceManagerCluster.create(CLUSTER_NAME, TEST_ZONE, 1, StorageType.HDD));
 
-    // bigtableResourceManager.createInstance(clusters);
+    bigtableResourceManager.createInstance(clusters);
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
@@ -107,7 +108,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     // bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
+        appProfileId, true, Lists.asList(CLUSTER_NAME, new String[] {}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 
@@ -172,13 +173,13 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
           + "for us to set up CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQueryMutationsStartTimeE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
-    String clusterName = "cluster-c1";
     String appProfileId = generateAppProfileId();
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
+    clusters.add(
+        BigtableResourceManagerCluster.create(CLUSTER_NAME, TEST_ZONE, 1, StorageType.HDD));
 
-    // bigtableResourceManager.createInstance(clusters);
+    bigtableResourceManager.createInstance(clusters);
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
@@ -186,7 +187,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     // bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
+        appProfileId, true, Lists.asList(CLUSTER_NAME, new String[] {}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 
@@ -279,13 +280,13 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
           + "us to set up CDC-enabled resources")
   public void testBigtableChangeStreamsToBigQueryDeadLetterQueueE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
-    String clusterName = "cluster-c1";
     String appProfileId = generateAppProfileId();
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
+    clusters.add(
+        BigtableResourceManagerCluster.create(CLUSTER_NAME, TEST_ZONE, 1, StorageType.HDD));
 
-    // bigtableResourceManager.createInstance(clusters);
+    bigtableResourceManager.createInstance(clusters);
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
@@ -293,7 +294,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     // bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
+        appProfileId, true, Lists.asList(CLUSTER_NAME, new String[] {}));
 
     bigQueryResourceManager.createDataset(TEST_REGION);
 

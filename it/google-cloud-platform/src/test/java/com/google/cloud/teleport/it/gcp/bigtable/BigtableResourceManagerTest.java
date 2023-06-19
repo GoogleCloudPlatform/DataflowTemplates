@@ -135,7 +135,7 @@ public class BigtableResourceManagerTest {
   }
 
   @Test
-  public void testCreateInstanceShouldThrowErrorWhenUsingStaticInstance() throws IOException {
+  public void testCreateInstanceShouldBeAllowedWhenUsingStaticInstance() throws IOException {
     String instanceId = "static-instance";
     testManager =
         new BigtableResourceManager(
@@ -144,7 +144,11 @@ public class BigtableResourceManagerTest {
                 .useStaticInstance(),
             bigtableResourceManagerClientFactory);
 
-    assertThrows(IllegalStateException.class, () -> testManager.createInstance(cluster));
+    // createInstance is not required
+    assertThat(testManager.getInstanceId()).matches(instanceId);
+    // createInstance is allowed to be called, but it won't create an instance when static instance
+    // is used
+    testManager.createInstance(cluster);
     assertThat(testManager.getInstanceId()).matches(instanceId);
   }
 

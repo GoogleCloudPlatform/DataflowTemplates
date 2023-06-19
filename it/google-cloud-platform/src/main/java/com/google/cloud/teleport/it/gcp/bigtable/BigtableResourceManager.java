@@ -105,7 +105,6 @@ public class BigtableResourceManager implements ResourceManager {
             "This manager was configured to use a static resource, but the instanceId was not properly set.");
       }
       this.instanceId = builder.instanceId;
-      this.hasInstance = true;
       // List to store created tables and app profiles for static RM
       this.createdTables = new ArrayList<>();
       this.createdAppProfiles = new ArrayList<>();
@@ -116,8 +115,8 @@ public class BigtableResourceManager implements ResourceManager {
       }
       // Generate instance id based on given test id.
       this.instanceId = generateInstanceId(builder.testId);
-      this.hasInstance = false;
     }
+    this.hasInstance = false;
     this.usingStaticInstance = builder.useStaticInstance;
 
     if (bigtableResourceManagerClientFactory != null) {
@@ -191,26 +190,30 @@ public class BigtableResourceManager implements ResourceManager {
           "Instance " + instanceId + " already exists for project " + projectId + ".");
     }
 
-    LOG.info("Creating instance {} in project {}.", instanceId, projectId);
+    if (usingStaticInstance) {
+      LOG.info("Skipping instance creation. Static instance is used: {}", instanceId);
+    } else {
+      LOG.info("Creating instance {} in project {}.", instanceId, projectId);
 
-    // Create instance request object and add all the given clusters to the request
-    CreateInstanceRequest request = CreateInstanceRequest.of(instanceId);
-    for (BigtableResourceManagerCluster cluster : clusters) {
-      request.addCluster(
-          cluster.clusterId(), cluster.zone(), cluster.numNodes(), cluster.storageType());
-    }
+      // Create instance request object and add all the given clusters to the request
+      CreateInstanceRequest request = CreateInstanceRequest.of(instanceId);
+      for (BigtableResourceManagerCluster cluster : clusters) {
+        request.addCluster(
+            cluster.clusterId(), cluster.zone(), cluster.numNodes(), cluster.storageType());
+      }
 
-    // Send the instance request to Google Cloud
-    try (BigtableInstanceAdminClient instanceAdminClient =
-        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
-      instanceAdminClient.createInstance(request);
-    } catch (Exception e) {
-      throw new BigtableResourceManagerException(
-          "Failed to create instance " + instanceId + ".", e);
+      // Send the instance request to Google Cloud
+      try (BigtableInstanceAdminClient instanceAdminClient =
+          bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
+        instanceAdminClient.createInstance(request);
+      } catch (Exception e) {
+        throw new BigtableResourceManagerException(
+            "Failed to create instance " + instanceId + ".", e);
+      }
+
+      LOG.info("Successfully created instance {}.", instanceId);
     }
     hasInstance = true;
-
-    LOG.info("Successfully created instance {}.", instanceId);
   }
 
   /**
