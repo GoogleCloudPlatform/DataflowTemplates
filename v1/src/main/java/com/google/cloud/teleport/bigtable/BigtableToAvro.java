@@ -39,6 +39,7 @@ import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -116,6 +117,7 @@ public class BigtableToAvro {
         order = 5,
         description = "Avro file prefix",
         helpText = "The prefix of the Avro file name. For example, \"table1-\"")
+    @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
     @SuppressWarnings("unused")

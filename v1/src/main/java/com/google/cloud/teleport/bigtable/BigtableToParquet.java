@@ -113,7 +113,7 @@ public class BigtableToParquet {
         order = 5,
         description = "Parquet file prefix",
         helpText = "The prefix of the Parquet file name. For example, \"table1-\"")
-    @Default.String("output")
+    @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
     @SuppressWarnings("unused")
