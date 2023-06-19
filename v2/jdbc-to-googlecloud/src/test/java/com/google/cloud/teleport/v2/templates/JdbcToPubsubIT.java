@@ -42,13 +42,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link JdbcToPubsub} template. */
 @Category(TemplateIntegrationTest.class)
