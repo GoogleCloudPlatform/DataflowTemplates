@@ -675,6 +675,8 @@
         <module>googlecloud-to-mongodb</module>
         <module>googlecloud-to-neo4j</module>
         <module>googlecloud-to-splunk</module>
+        <module>jdbc-common</module>
+        <module>jdbc-to-googlecloud</module>
         <module>jms-to-pubsub</module>
         <module>kafka-common</module>
         <module>kafka-to-bigquery</module>
