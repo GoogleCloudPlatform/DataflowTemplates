@@ -140,9 +140,10 @@ public abstract class LoadTestBase {
       rowContent.put("sdk", launchInfo.sdk());
       rowContent.put("version", launchInfo.version());
       rowContent.put("job_type", launchInfo.jobType());
-      rowContent.put("template_name", launchInfo.templateName());
-      rowContent.put("template_version", launchInfo.templateVersion());
-      rowContent.put("template_type", launchInfo.templateType());
+      putOptional(rowContent, "template_name", launchInfo.templateName());
+      putOptional(rowContent, "template_version", launchInfo.templateVersion());
+      putOptional(rowContent, "template_type", launchInfo.templateType());
+      putOptional(rowContent, "pipeline_name", launchInfo.pipelineName());
       rowContent.put("test_name", testName);
       // Convert parameters map to list of table row since it's a repeated record
       List<TableRow> parameterRows = new ArrayList<>();
@@ -467,6 +468,12 @@ public abstract class LoadTestBase {
           "MaxOutputThroughputElementsPerSec", Collections.max(outputThroughputElementsPerSec));
     }
     return throughputMetrics;
+  }
+
+  private static void putOptional(Map<String, Object> map, String key, @Nullable Object value) {
+    if (value != null) {
+      map.put(key, value);
+    }
   }
 
   public static PipelineOperator.Config createConfig(LaunchInfo info, Duration timeout) {

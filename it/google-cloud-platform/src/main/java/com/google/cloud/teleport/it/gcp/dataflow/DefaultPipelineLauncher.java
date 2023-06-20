@@ -382,6 +382,12 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
     return getJobInfo(options, state, job);
   }
 
+  protected LaunchInfo.Builder getJobInfoBuilder(LaunchConfig options, JobState state, Job job) {
+    LaunchInfo.Builder builder = super.getJobInfoBuilder(options, state, job);
+    builder.setPipelineName(PipelineUtils.extractJobName(options.jobName()));
+    return builder;
+  }
+
   private List<String> extractOptions(String project, String region, LaunchConfig options) {
     List<String> additionalOptions = new ArrayList<>();
 

@@ -240,8 +240,11 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
     return Strings.isNullOrEmpty(currentState) ? JobState.UNKNOWN : JobState.parse(currentState);
   }
 
-  /** Creates a JobInfo object from the provided parameters. */
-  protected LaunchInfo getJobInfo(LaunchConfig options, JobState state, Job job) {
+  /**
+   * Creates a JobInfo builder object from the provided parameters, enable derived class to add info
+   * incrementally.
+   */
+  protected LaunchInfo.Builder getJobInfoBuilder(LaunchConfig options, JobState state, Job job) {
     Map<String, String> labels = job.getLabels();
     String runner = "Dataflow Legacy Runner";
     Environment environment = job.getEnvironment();
@@ -267,12 +270,18 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
     options.environment().forEach((key, val) -> parameters.put(key, val.toString()));
     builder.setParameters(ImmutableMap.copyOf(parameters));
     if (labels != null && !labels.isEmpty()) {
+      // template job
       builder
           .setTemplateType(job.getLabels().get("goog-dataflow-provided-template-type"))
           .setTemplateVersion(job.getLabels().get("goog-dataflow-provided-template-version"))
           .setTemplateName(job.getLabels().get("goog-dataflow-provided-template-name"));
     }
-    return builder.build();
+    return builder;
+  }
+
+  /** Creates a JobInfo object from the provided parameters. */
+  protected final LaunchInfo getJobInfo(LaunchConfig options, JobState state, Job job) {
+    return getJobInfoBuilder(options, state, job).build();
   }
 
   /** Waits until the specified job is not in a pending state. */
