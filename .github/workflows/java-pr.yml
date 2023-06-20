@@ -39,7 +39,7 @@ jobs:
   spotless_check:
     name: Spotless
     timeout-minutes: 10
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
         uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
@@ -51,7 +51,7 @@ jobs:
   java_build:
     name: Build
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
         uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
@@ -65,7 +65,7 @@ jobs:
   java_unit_tests:
     name: Unit Tests
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
         uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
