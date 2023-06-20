@@ -280,6 +280,8 @@ public interface PipelineLauncher {
 
     public abstract @Nullable String templateVersion();
 
+    public abstract @Nullable String pipelineName();
+
     public abstract ImmutableMap<String, String> parameters();
 
     public static Builder builder() {
@@ -312,6 +314,8 @@ public interface PipelineLauncher {
       public abstract Builder setTemplateType(@Nullable String value);
 
       public abstract Builder setTemplateVersion(@Nullable String value);
+
+      public abstract Builder setPipelineName(@Nullable String value);
 
       public abstract Builder setParameters(ImmutableMap<String, String> value);
 

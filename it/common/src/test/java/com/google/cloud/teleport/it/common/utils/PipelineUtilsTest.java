@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.it.common.utils;
 
 import static com.google.cloud.teleport.it.common.utils.PipelineUtils.createJobName;
+import static com.google.cloud.teleport.it.common.utils.PipelineUtils.extractJobName;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,5 +36,11 @@ public class PipelineUtilsTest {
   @Test
   public void testCreateJobNameWithUppercase() {
     assertThat(createJobName("testWithUpperCase")).matches("test-with-upper-case" + "-\\d{17}");
+  }
+
+  @Test
+  public void testCreateExtractJobName() {
+    String name = "create-job-name";
+    assertEquals(name, extractJobName(createJobName(name)));
   }
 }
