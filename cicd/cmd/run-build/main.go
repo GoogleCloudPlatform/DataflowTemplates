@@ -29,9 +29,7 @@ func main() {
 	flag.Parse()
 
 	mvnFlags := workflows.NewMavenFlags()
-	err := workflows.MvnCleanInstall().Run(
-		mvnFlags.IncludeDependencies(),
-		mvnFlags.IncludeDependents(),
+	err := workflows.MvnCleanInstallAll().Run(
 		mvnFlags.SkipDependencyAnalysis(), // TODO(zhoufek): Fix our dependencies then remove this flag
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),

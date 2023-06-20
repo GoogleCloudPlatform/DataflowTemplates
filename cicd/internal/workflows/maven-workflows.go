@@ -142,6 +142,16 @@ func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanInstallCmd, args...)
 }
 
+type mvnCleanInstallAllWorkflow struct{}
+
+func MvnCleanInstallAll() Workflow {
+	return &mvnCleanInstallAllWorkflow{}
+}
+
+func (*mvnCleanInstallAllWorkflow) Run(args ...string) error {
+	return op.RunMavenOnPom(unifiedPom, cleanInstallCmd, args...)
+}
+
 type mvnCleanTestWorkflow struct{}
 
 func MvnCleanTest() Workflow {
