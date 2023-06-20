@@ -39,7 +39,7 @@ jobs:
   spotless_check:
     name: Spotless
     timeout-minutes: 10
-    runs-on: [self-hosted, it]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
@@ -64,6 +64,7 @@ jobs:
         uses: ./.github/actions/cleanup-java-env
   java_unit_tests:
     name: Unit Tests
+    needs: [java_build]
     timeout-minutes: 60
     runs-on: [self-hosted, it]
     steps:
@@ -78,6 +79,7 @@ jobs:
         uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:
     name: Dataflow Templates Integration Smoke Tests
+    needs: [java_build]
     timeout-minutes: 60
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
