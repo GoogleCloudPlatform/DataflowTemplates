@@ -54,7 +54,10 @@ public class MongoDBResourceManagerTest {
 
   @Mock private MongoClient mongoClient;
   @Mock private MongoDatabase database;
-  @Mock private MongoCollection<Document> collection;
+
+  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+  private MongoCollection<Document> collection;
+
   @Mock private MongoCursor<String> collectionNames;
   @Mock private MongoDBContainer container;
 

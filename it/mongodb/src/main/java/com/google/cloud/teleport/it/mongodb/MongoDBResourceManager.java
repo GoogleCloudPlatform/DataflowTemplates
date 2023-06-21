@@ -28,6 +28,8 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -220,22 +222,43 @@ public class MongoDBResourceManager extends TestContainerResourceManager<MongoDB
    * Reads all the Documents in a collection.
    *
    * @param collectionName The name of the collection to read from.
-   * @return An iterable of all the Documents in the collection.
+   * @return A List of all the Documents in the collection.
    * @throws MongoDBResourceManagerException if there is an error reading the collection.
    */
-  public synchronized FindIterable<Document> readCollection(String collectionName) {
+  public synchronized List<Document> readCollection(String collectionName) {
     LOG.info("Reading all documents from {}.{}", databaseName, collectionName);
 
-    FindIterable<Document> documents;
+    FindIterable<Document> fetchRecords;
     try {
-      documents = getMongoDBCollection(collectionName, /* createCollection= */ false).find();
+      fetchRecords = getMongoDBCollection(collectionName, /* createCollection= */ false).find();
     } catch (Exception e) {
       throw new MongoDBResourceManagerException("Error reading collection.", e);
     }
+    List<Document> documents =
+        StreamSupport.stream(fetchRecords.spliterator(), false).collect(Collectors.toList());
 
     LOG.info("Successfully loaded documents from {}.{}", databaseName, collectionName);
 
     return documents;
+  }
+
+  /**
+   * Counts the number of Documents in a collection.
+   *
+   * @param collectionName The name of the collection to read from.
+   * @return The number of Documents in the collection.
+   * @throws MongoDBResourceManagerException if there is an error reading the collection.
+   */
+  public synchronized long countCollection(String collectionName) {
+    LOG.info("Counting all documents from {}.{}", databaseName, collectionName);
+
+    long numDocuments =
+        getMongoDBCollection(collectionName, /* createCollection= */ false).countDocuments();
+
+    LOG.info(
+        "Successfully counted {} documents from {}.{}", numDocuments, databaseName, collectionName);
+
+    return numDocuments;
   }
 
   @Override
