@@ -27,13 +27,11 @@
     <artifactId>common</artifactId>
 
     <properties>
-        <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.10.0</commons-text.version>
         <nashorn.version>15.4</nashorn.version>
         <protoc.version>3.21.12</protoc.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
-        <secretmanager.version>2.1.2</secretmanager.version>
     </properties>
 
     <dependencies>
@@ -109,17 +107,6 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-bigquery</artifactId>
-            <version>${bigquery.version}</version>
-            <exclusions>
-              <exclusion>
-                <groupId>com.google.protobuf</groupId>
-                <artifactId>*</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>com.google.apis</groupId>
-                <artifactId>google-api-services-bigquery</artifactId>
-              </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
           <groupId>com.google.cloud</groupId>
@@ -128,27 +115,10 @@
         <dependency>
           <groupId>com.google.cloud</groupId>
           <artifactId>google-cloud-secretmanager</artifactId>
-          <version>${secretmanager.version}</version>
-          <exclusions>
-            <exclusion>
-              <groupId>io.grpc</groupId>
-              <artifactId>*</artifactId>
-            </exclusion>
-          </exclusions>
         </dependency>
         <dependency>
           <groupId>com.google.cloud</groupId>
           <artifactId>google-cloud-kms</artifactId>
-          <exclusions>
-            <exclusion>
-              <groupId>io.grpc</groupId>
-              <artifactId>*</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>com.google.cloud</groupId>
-              <artifactId>google-cloud-core-grpc</artifactId>
-            </exclusion>
-          </exclusions>
         </dependency>
 
         <!-- UDFs -->
