@@ -194,7 +194,7 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
 
     Result result =
         pipelineOperator()
-            .waitForCondition(
+            .waitForConditionsAndFinish(
                 createConfig(info),
                 BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(20).build(),
                 BigQueryRowsCheck.builder(bigQueryClient, deadletterTableId)

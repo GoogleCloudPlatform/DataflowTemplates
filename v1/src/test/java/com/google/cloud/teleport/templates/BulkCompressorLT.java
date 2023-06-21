@@ -34,6 +34,7 @@ import com.google.common.base.MoreObjects;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.junit.After;
 import org.junit.Before;
@@ -64,23 +65,30 @@ public class BulkCompressorLT extends TemplateLoadTestBase {
   }
 
   @After
-  public void teardown() {
+  public void tearDown() {
     ResourceManagerUtils.cleanResources(artifactClient);
   }
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
     // 35,000,000 messages of the given schema make up approximately 10GB
-    testBacklog("35000000");
+    testBacklog("35000000", this::disableRunnerV2);
   }
 
   @Test
   public void testBacklog100gb() throws IOException, ParseException, InterruptedException {
     // 350,000,000 messages of the given schema make up approximately 100GB
-    testBacklog("350000000");
+    testBacklog("350000000", this::disableRunnerV2);
   }
 
-  public void testBacklog(String numMessages)
+  @Test
+  public void testBacklog10gbUsingRunnerV2()
+      throws IOException, ParseException, InterruptedException {
+    testBacklog("35000000", this::enableRunnerV2);
+  }
+
+  public void testBacklog(
+      String numMessages, Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
@@ -94,11 +102,13 @@ public class BulkCompressorLT extends TemplateLoadTestBase {
             .build();
     dataGenerator.execute(Duration.ofMinutes(60));
     LaunchConfig options =
-        LaunchConfig.builder(testName, SPEC_PATH)
-            .addParameter("inputFilePattern", getTestMethodDirPath() + "/input/*")
-            .addParameter("outputDirectory", getTestMethodDirPath() + "/output")
-            .addParameter("outputFailureFile", getTestMethodDirPath() + "/failed.csv")
-            .addParameter("compression", "GZIP")
+        paramsAdder
+            .apply(
+                LaunchConfig.builder(testName, SPEC_PATH)
+                    .addParameter("inputFilePattern", getTestMethodDirPath() + "/input/*")
+                    .addParameter("outputDirectory", getTestMethodDirPath() + "/output")
+                    .addParameter("outputFailureFile", getTestMethodDirPath() + "/failed.csv")
+                    .addParameter("compression", "GZIP"))
             .build();
     // Act
     LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);

@@ -39,6 +39,7 @@ import java.time.Duration;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -64,9 +65,8 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
   private static final String OUTPUT_PCOLLECTION = "Write to PubSub/MapElements/Map.out0";
 
   // 35,000,000 messages of the given schema make up approximately 10GB
-  private static final long NUM_MESSAGES_FOR_10GB = 35000000L;
+  private static final long NUM_MESSAGES_FOR_10GB = 35_000_000L;
   private static final long TIMEOUT_FOR_10_GB_TEST_MINUTES = 30;
-  private static final long TIMEOUT_FOR_1_HOUR_TEST_MINUTES = 60;
 
   private static PubsubResourceManager pubsubResourceManager;
   private static ArtifactClient gcsClient;
@@ -86,18 +86,31 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
   }
 
   @After
-  public void teardown() {
+  public void tearDown() {
     ResourceManagerUtils.cleanResources(pubsubResourceManager, gcsClient);
   }
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog(Function.identity());
+    testBacklog(this::disableRunnerV2);
   }
 
   @Test
   public void testSteadyState1hr() throws IOException, ParseException, InterruptedException {
-    testSteadyState1hr(Function.identity());
+    testSteadyState1hr(this::disableRunnerV2);
+  }
+
+  @Ignore("RunnerV2 is disabled on streaming templates.")
+  @Test
+  public void testSteadyState1hrUsingRunnerV2()
+      throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(this::enableRunnerV2);
+  }
+
+  @Test
+  public void testSteadyState1hrUsingStreamingEngine()
+      throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(this::enableStreamingEngine);
   }
 
   private void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
@@ -125,7 +138,8 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addEnvironment("maxWorkers", 100)
+                    .addEnvironment("maxWorkers", 10)
+                    .addEnvironment("numWorkers", 7)
                     .addParameter("outputTopic", outputTopic.toString())
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*"))
             .build();
@@ -176,14 +190,15 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
             .setOutputDirectory(getTestMethodDirPath())
             .setNumShards("20")
             .setNumWorkers("10")
-            .setMaxNumWorkers("100")
+            .setMaxNumWorkers("15")
             .build();
 
     LaunchConfig options =
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addEnvironment("maxWorkers", 100)
+                    .addEnvironment("maxWorkers", 10)
+                    .addEnvironment("numWorkers", 5)
                     .addParameter("outputTopic", outputTopic.toString())
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*"))
             .build();
@@ -204,7 +219,7 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
         // href="https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#important_information_about_draining_a_job">
         // Important information about draining a job</a>
         pipelineOperator.waitForConditionAndCancel(
-            createConfig(info, Duration.ofMinutes(TIMEOUT_FOR_1_HOUR_TEST_MINUTES)),
+            createConfig(info, Duration.ofMinutes(20)),
             () -> {
               Long currentMessages =
                   monitoringClient.getNumMessagesInSubscription(
