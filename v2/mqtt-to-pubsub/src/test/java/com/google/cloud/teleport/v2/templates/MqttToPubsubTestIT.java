@@ -124,7 +124,7 @@ public class MqttToPubsubTestIT extends TemplateTestBase {
     assertThatPipeline(info).isRunning();
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(
+            .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
                   mqttClient

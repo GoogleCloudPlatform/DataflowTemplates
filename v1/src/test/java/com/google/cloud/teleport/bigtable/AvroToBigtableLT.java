@@ -58,10 +58,8 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   private static final String TEST_ROOT_DIR = AvroToBigtableLT.class.getSimpleName().toLowerCase();
   // 56,000,000 messages of the given schema make up approximately 10GB
   private static final String NUM_MESSAGES = "56000000";
-  private static final String INPUT_PCOLLECTION =
-      "Read from Avro/Read/ParDo(BoundedSourceAsSDFWrapper)/ParMultiDo(BoundedSourceAsSDFWrapper).out0";
-  private static final String OUTPUT_PCOLLECTION =
-      "Transform to Bigtable/ParMultiDo(AvroToBigtable).out0";
+  private static final String INPUT_PCOLLECTION = "Read from Avro/Read.out0";
+  private static final String OUTPUT_PCOLLECTION = "Transform to Bigtable.out0";
   private static BigtableResourceManager bigtableResourceManager;
   private static ArtifactClient gcsClient;
   private static String generatorSchemaPath;
@@ -95,13 +93,19 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   }
 
   @After
-  public void teardown() {
+  public void tearDown() {
     ResourceManagerUtils.cleanResources(bigtableResourceManager, gcsClient);
   }
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog(Function.identity());
+    testBacklog(this::disableRunnerV2);
+  }
+
+  @Test
+  public void testBacklog10gbUsingRunnerV2()
+      throws IOException, ParseException, InterruptedException {
+    testBacklog(this::enableRunnerV2);
   }
 
   public void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)

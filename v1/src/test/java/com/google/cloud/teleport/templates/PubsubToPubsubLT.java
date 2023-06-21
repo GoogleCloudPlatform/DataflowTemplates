@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.templates;
 
+import static com.google.cloud.teleport.it.common.TestProperties.getProperty;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -33,6 +34,7 @@ import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
@@ -69,35 +71,34 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
   }
 
   @After
-  public void teardown() {
+  public void tearDown() {
     ResourceManagerUtils.cleanResources(pubsubResourceManager);
   }
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(Function.identity());
-  }
-
-  @Ignore("Ignore Streaming Engine tests by default.")
-  @Test
-  public void testBacklog10gbUsingStreamingEngine()
-      throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(config -> config.addEnvironment("enableStreamingEngine", true));
+    testBacklog(this::disableRunnerV2);
   }
 
   @Test
   public void testSteadyState1hr() throws IOException, ParseException, InterruptedException {
-    testSteadyState1hr(Function.identity());
+    testSteadyState1hr(this::disableRunnerV2);
   }
 
-  @Ignore("Ignore Streaming Engine tests by default.")
   @Test
   public void testSteadyState1hrUsingStreamingEngine()
       throws IOException, ParseException, InterruptedException {
-    testSteadyState1hr(config -> config.addEnvironment("enableStreamingEngine", true));
+    testSteadyState1hr(this::enableStreamingEngine);
   }
 
-  public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+  @Ignore("RunnerV2 is disabled on streaming templates.")
+  @Test
+  public void testSteadyState1hrUsingRunnerV2()
+      throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(this::enableRunnerV2);
+  }
+
+  public void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // Arrange
     TopicName backlogTopic = pubsubResourceManager.createTopic("backlog-input");
@@ -120,7 +121,9 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addEnvironment("maxWorkers", 100)
+                    .addEnvironment("maxWorkers", 5)
+                    .addEnvironment("numWorkers", 4)
+                    .addEnvironment("machineType", "e2-standard-2")
                     .addParameter("inputSubscription", backlogSubscription.toString())
                     .addParameter("outputTopic", outputTopic.toString()))
             .build();
@@ -129,7 +132,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
     LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result =
-        pipelineOperator.waitForConditionAndFinish(
+        pipelineOperator.waitForConditionAndCancel(
             createConfig(info, Duration.ofMinutes(60)),
             () -> {
               Long currentMessages =
@@ -152,6 +155,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
   public void testSteadyState1hr(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // Arrange
+    String qps = getProperty("qps", "100000", TestProperties.Type.PROPERTY);
     TopicName inputTopic = pubsubResourceManager.createTopic("steady-state-input");
     SubscriptionName backlogSubscription =
         pubsubResourceManager.createSubscription(inputTopic, "steady-state-subscription");
@@ -160,16 +164,19 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
         pubsubResourceManager.createSubscription(inputTopic, "output-subscription");
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
-            .setQPS("100000")
+            .setQPS(qps)
             .setTopic(inputTopic.toString())
-            .setNumWorkers("10")
-            .setMaxNumWorkers("100")
+            .setNumWorkers("8")
+            .setMaxNumWorkers("10")
             .build();
     LaunchConfig options =
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addEnvironment("maxWorkers", 100)
+                    .addEnvironment("maxWorkers", 10)
+                    .addEnvironment("numWorkers", 6)
+                    .addEnvironment("machineType", "e2-standard-2")
+                    .addEnvironment("additionalUserLabels", Collections.singletonMap("qps", qps))
                     .addParameter("inputSubscription", backlogSubscription.toString())
                     .addParameter("outputTopic", outputTopic.toString()))
             .build();
@@ -180,8 +187,8 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
     // ElementCount metric in dataflow is approximate, allow for 1% difference
     Integer expectedMessages = (int) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
     Result result =
-        pipelineOperator.waitForConditionAndFinish(
-            createConfig(info, Duration.ofMinutes(60)),
+        pipelineOperator.waitForConditionAndCancel(
+            createConfig(info, Duration.ofMinutes(20)),
             () -> {
               Long currentMessages =
                   monitoringClient.getNumMessagesInSubscription(

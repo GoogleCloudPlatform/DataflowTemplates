@@ -164,7 +164,7 @@ public class AzureEventhubToPubsubIT extends TemplateTestBase {
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(
+            .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
                   EventDataBatch eventDataBatch = eventHubProducerClient.createBatch();
