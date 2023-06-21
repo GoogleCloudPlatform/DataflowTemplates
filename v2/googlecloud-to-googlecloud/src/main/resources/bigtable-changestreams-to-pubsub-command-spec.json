@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.BigtableChangeStreamsToPubSub",
+  "classPath": "/template/bigtable-changestreams-to-pubsub/*:/template/bigtable-changestreams-to-pubsub/libs/*:/template/bigtable-changestreams-to-pubsub/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"bigtable-changestreams-to-pubsub\"}"
+  }
+}

@@ -1,0 +1,25 @@
+{
+    "name" : "ChangelogEntry",
+    "type" : "record",
+    "namespace" : "com.google.cloud.teleport.bigtable",
+    "fields" : [
+      { "name" : "rowKey", "type" : "bytes"},
+      {
+        "name" : "modType",
+        "type" : {
+          "name": "ModType",
+          "type": "enum",
+          "symbols": ["SET_CELL", "DELETE_FAMILY", "DELETE_CELLS", "UNKNOWN"]}
+      },
+      { "name": "isGc", "type": "boolean" },
+      { "name": "tieBreaker", "type": "int"},
+      { "name": "columnFamily", "type": "string"},
+      { "name": "commitTimestamp", "type" : "long", "logicalType" : "timestamp-micros"},
+      { "name": "lowWatermark", "type" : "long", "logicalType" : "timestamp-micros"},
+      { "name": "column", "type" : ["bytes", "null"]},
+      { "name": "timestamp", "type" : ["long", "null"], "logicalType" : "timestamp-micros"},
+      { "name": "timestampFrom", "type" : ["long", "null"], "logicalType" : "timestamp-micros"},
+      { "name": "timestampTo", "type" : ["long", "null"], "logicalType" : "timestamp-micros"},
+      { "name" : "value", "type" : ["bytes", "null"]}
+   ]
+}

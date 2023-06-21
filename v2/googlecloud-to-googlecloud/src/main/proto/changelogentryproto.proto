@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package com.google.cloud.teleport.v2;
+
+option java_outer_classname = "ChangeLogEntryProto";
+
+message ChangelogEntryProto{
+  bytes rowKey = 1;
+  enum ModType {
+    SET_CELL = 0;
+    DELETE_FAMILY = 1;
+    DELETE_CELLS = 2;
+    UNKNOWN = 3;
+  }
+  ModType modType = 2;
+  bool isGC = 3;
+  int32 tieBreaker = 4;
+  string columnFamily = 5;
+  int64 commitTimestamp = 6;
+}
