@@ -44,12 +44,12 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
 
   void setOutputShardTemplate(ValueProvider<String> value);
 
-  @TemplateCreationParameter(value = "1")
+  @TemplateCreationParameter(value = "0")
   @Description(
       "The maximum number of output shards produced when writing. A higher number of shards means"
           + " higher throughput for writing to Cloud Storage, but potentially higher data"
           + " aggregation cost across shards when processing output Cloud Storage files.")
-  @Default.Integer(1)
+  @Default.Integer(0)
   Integer getNumShards();
 
   void setNumShards(Integer value);
