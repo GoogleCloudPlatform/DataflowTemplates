@@ -47,7 +47,6 @@
     <commons-csv.version>1.8</commons-csv.version>
     <commons-text.version>1.10.0</commons-text.version>
     <grpc.gen.version>1.13.1</grpc.gen.version>
-    <derby.version>10.14.2.0</derby.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
     <threetenbp.version>1.4.4</threetenbp.version>
     <spring.version>5.2.22.RELEASE</spring.version>

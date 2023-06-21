@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  * PubSub.
  *
  * <p>Check out <a
- * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Jdbc_to_PubSub.md">README</a>
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/jdbc-to-googlecloud/README_Jdbc_to_PubSub.md">README</a>
  * for instructions on how to use or modify this template.
  */
 @Template(
