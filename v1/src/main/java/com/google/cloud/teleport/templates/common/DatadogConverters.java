@@ -97,24 +97,16 @@ public class DatadogConverters {
 
     void setApiKey(ValueProvider<String> apiKey);
 
-    @TemplateParameter.Enum(
+    @TemplateParameter.Text(
         order = 2,
-        description = "Datadog site.",
-        enumOptions = {
-          "datadoghq.com",
-          "us3.datadoghq.com",
-          "us5.datadoghq.com",
-          "ap1.datadoghq.com",
-          "datadoghq.eu",
-          "ddog-gov.com",
-        },
+        description = "Datadog Logs API URL.",
         helpText =
-            "Datadog site. This should be routable from the VPC in which the pipeline runs. "
-                + "See: https://docs.datadoghq.com/getting_started/site",
-        example = "datadoghq.com")
-    ValueProvider<String> getSite();
+            "Datadog Logs API URL. This should be routable from the VPC in which the pipeline runs. "
+                + "See: https://docs.datadoghq.com/api/latest/logs/#send-logs",
+        example = "https://http-intake.logs.datadoghq.com")
+    ValueProvider<String> getUrl();
 
-    void setSite(ValueProvider<String> site);
+    void setUrl(ValueProvider<String> url);
 
     @TemplateParameter.Integer(
         order = 3,
@@ -127,7 +119,7 @@ public class DatadogConverters {
     void setBatchCount(ValueProvider<Integer> batchCount);
 
     @TemplateParameter.Integer(
-        order = 5,
+        order = 4,
         optional = true,
         description = "Maximum number of parallel requests.",
         helpText = "Maximum number of parallel requests. Default 1 (no parallelism).")
@@ -136,7 +128,7 @@ public class DatadogConverters {
     void setParallelism(ValueProvider<Integer> parallelism);
 
     @TemplateParameter.Boolean(
-        order = 6,
+        order = 5,
         optional = true,
         description = "Include full Pub/Sub message in the payload.",
         helpText =
@@ -147,7 +139,7 @@ public class DatadogConverters {
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
 
     @TemplateParameter.Text(
-        order = 7,
+        order = 6,
         optional = true,
         regexes = {
           "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
@@ -167,7 +159,7 @@ public class DatadogConverters {
     void setApiKeyKMSEncryptionKey(ValueProvider<String> keyName);
 
     @TemplateParameter.Text(
-        order = 8,
+        order = 7,
         optional = true,
         regexes = {
           "^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$"
@@ -181,7 +173,7 @@ public class DatadogConverters {
     void setApiKeySecretId(ValueProvider<String> secretId);
 
     @TemplateParameter.Enum(
-        order = 9,
+        order = 8,
         optional = true,
         enumOptions = {"PLAINTEXT", "KMS", "SECRET_MANAGER"},
         description = "Source of the API key passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
