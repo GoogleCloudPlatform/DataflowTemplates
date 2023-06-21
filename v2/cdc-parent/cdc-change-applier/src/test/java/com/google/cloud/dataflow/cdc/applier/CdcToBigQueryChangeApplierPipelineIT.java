@@ -88,7 +88,7 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
   private static final String OWNER = "owner";
 
   private static final Pattern JDBC_PORT_PATTERN =
-      Pattern.compile("^jdbc:mysql://(.*?):([0-9]+).*$");
+      Pattern.compile("^jdbc:mysql://(?<host>.*?):(?<port>[0-9]+).*$");
 
   @Before
   public void setUp() throws IOException {
@@ -336,8 +336,8 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
     if (!match.matches()) {
       throw new IllegalArgumentException(
           String.format(
-              "JDBC URL is not in ^jdbc:mysql://(.*?):[0-9]+/.*$ format: \"%s\"", jdbcUrl));
+              "JDBC URL is not in ^jdbc:mysql://(.*):[0-9]+/.*$ format: \"%s\"", jdbcUrl));
     }
-    return match.group(1);
+    return match.group("port");
   }
 }
