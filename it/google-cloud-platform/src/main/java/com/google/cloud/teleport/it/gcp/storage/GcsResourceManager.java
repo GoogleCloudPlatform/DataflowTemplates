@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.it.gcp.storage;
 
 import com.google.api.gax.paging.Page;
+import com.google.auth.Credentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
@@ -40,10 +41,12 @@ public class GcsResourceManager implements ResourceManager {
 
   private final String project;
   private final String bucket;
+  private final Credentials credentials;
 
-  GcsResourceManager(String project, String bucket) {
+  GcsResourceManager(String project, String bucket, Credentials credentials) {
     this.project = project;
     this.bucket = bucket;
+    this.credentials = credentials;
   }
 
   private static final List<Notification> NOTIFICATION_LIST = new ArrayList<>();
@@ -51,7 +54,11 @@ public class GcsResourceManager implements ResourceManager {
   private static final List<String> MANAGED_TEMP_DIRS = new ArrayList<>();
 
   Storage getStorageClient() {
-    return StorageOptions.newBuilder().setProjectId(project).build().getService();
+    StorageOptions.Builder builder = StorageOptions.newBuilder().setProjectId(project);
+    if (credentials != null) {
+      builder = builder.setCredentials(credentials);
+    }
+    return builder.build().getService();
   }
 
   /**
@@ -154,6 +161,7 @@ public class GcsResourceManager implements ResourceManager {
   public static class Builder {
     private String project;
     private String bucket;
+    private Credentials credentials;
 
     /**
      * Sets the GCP project for the builder.
@@ -177,6 +185,11 @@ public class GcsResourceManager implements ResourceManager {
       return this;
     }
 
+    public Builder setCredentials(Credentials credentials) {
+      this.credentials = credentials;
+      return this;
+    }
+
     /**
      * Builds a new instance of {@link GcsResourceManager} with the specified project and bucket.
      *
@@ -192,7 +205,7 @@ public class GcsResourceManager implements ResourceManager {
         throw new IllegalArgumentException(
             "A GCS bucket must be provided to build a GCS resource manager.");
       }
-      return new GcsResourceManager(project, bucket);
+      return new GcsResourceManager(project, bucket, credentials);
     }
   }
 }

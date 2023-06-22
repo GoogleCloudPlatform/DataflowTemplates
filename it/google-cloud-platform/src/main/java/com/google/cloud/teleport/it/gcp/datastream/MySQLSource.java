@@ -19,8 +19,6 @@ import com.google.cloud.datastream.v1.MysqlDatabase;
 import com.google.cloud.datastream.v1.MysqlRdbms;
 import com.google.cloud.datastream.v1.MysqlSourceConfig;
 import com.google.cloud.datastream.v1.MysqlTable;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Client for MySQL resource used by Datastream.
@@ -40,34 +38,29 @@ public class MySQLSource extends JDBCSource {
 
   @Override
   public MysqlSourceConfig config() {
-    MysqlRdbms.Builder mysqlRdmsBuilder = MysqlRdbms.newBuilder();
-    for (String db : this.allowedTables().keySet()) {
-      MysqlDatabase.Builder mysqlDbBuilder = MysqlDatabase.newBuilder().setDatabase(db);
-      for (String table : this.allowedTables().get(db)) {
-        mysqlDbBuilder.addMysqlTables(MysqlTable.newBuilder().setTable(table));
+    MysqlSourceConfig.Builder configBuilder = MysqlSourceConfig.newBuilder();
+    if (this.allowedTables().size() > 0) {
+      MysqlRdbms.Builder mysqlRdmsBuilder = MysqlRdbms.newBuilder();
+      for (String db : this.allowedTables().keySet()) {
+        MysqlDatabase.Builder mysqlDbBuilder = MysqlDatabase.newBuilder().setDatabase(db);
+        for (String table : this.allowedTables().get(db)) {
+          mysqlDbBuilder.addMysqlTables(MysqlTable.newBuilder().setTable(table));
+        }
+        mysqlRdmsBuilder.addMysqlDatabases(mysqlDbBuilder);
       }
-      mysqlRdmsBuilder.addMysqlDatabases(mysqlDbBuilder);
+      configBuilder.setIncludeObjects(mysqlRdmsBuilder);
     }
-    return MysqlSourceConfig.newBuilder().setIncludeObjects(mysqlRdmsBuilder).build();
+    return configBuilder.build();
   }
 
-  public static Builder builder(
-      String hostname,
-      String username,
-      String password,
-      int port,
-      Map<String, List<String>> allowedTables) {
-    return new Builder(hostname, username, password, port, allowedTables);
+  public static Builder builder(String hostname, String username, String password, int port) {
+    return new Builder(hostname, username, password, port);
   }
 
+  /** Builder for {@link MySQLSource}. */
   public static class Builder extends JDBCSource.Builder<MySQLSource> {
-    public Builder(
-        String hostname,
-        String username,
-        String password,
-        int port,
-        Map<String, List<String>> allowedTables) {
-      super(hostname, username, password, port, allowedTables);
+    public Builder(String hostname, String username, String password, int port) {
+      super(hostname, username, password, port);
     }
 
     @Override

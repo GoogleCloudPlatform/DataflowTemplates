@@ -66,23 +66,23 @@ public abstract class JDBCSource {
   }
 
   public abstract static class Builder<T extends JDBCSource> {
-    private String hostname;
-    private String username;
-    private String password;
-    private int port;
+    private final String hostname;
+    private final String username;
+    private final String password;
+    private final int port;
     private Map<String, List<String>> allowedTables;
 
-    public Builder(
-        String hostname,
-        String username,
-        String password,
-        int port,
-        Map<String, List<String>> allowedTables) {
+    public Builder(String hostname, String username, String password, int port) {
       this.hostname = hostname;
       this.username = username;
       this.password = password;
       this.port = port;
+      this.allowedTables = Map.of();
+    }
+
+    public Builder<T> setAllowedTables(Map<String, List<String>> allowedTables) {
       this.allowedTables = allowedTables;
+      return this;
     }
 
     public abstract T build();

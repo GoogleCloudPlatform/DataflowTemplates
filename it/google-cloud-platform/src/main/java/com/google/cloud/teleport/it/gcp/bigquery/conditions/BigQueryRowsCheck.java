@@ -49,11 +49,11 @@ public abstract class BigQueryRowsCheck extends ConditionCheck {
     long totalRows = resourceManager().getRowCount(tableId().getTable());
     if (totalRows < minRows()) {
       return new CheckResult(
-          false, String.format("Expected %d but has only %d", minRows(), totalRows));
+          false, String.format("Expected %d rows but has only %d", minRows(), totalRows));
     }
     if (maxRows() != null && totalRows > maxRows()) {
       return new CheckResult(
-          false, String.format("Expected up to %d but found %d rows", maxRows(), totalRows));
+          false, String.format("Expected up to %d rows but found %d", maxRows(), totalRows));
     }
 
     if (maxRows() != null) {
