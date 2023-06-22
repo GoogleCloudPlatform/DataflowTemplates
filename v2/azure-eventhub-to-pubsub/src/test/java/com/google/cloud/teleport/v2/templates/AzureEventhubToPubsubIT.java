@@ -24,6 +24,7 @@ import com.azure.messaging.eventhubs.EventHubClientBuilder;
 import com.azure.messaging.eventhubs.EventHubProducerClient;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
+import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -33,8 +34,8 @@ import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -84,19 +85,31 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(AzureEventhubToPubsub.class)
 @RunWith(JUnit4.class)
-@Ignore("Need static resources to run")
 public class AzureEventhubToPubsubIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(AzureEventhubToPubsubIT.class);
 
   private PubsubResourceManager pubsubClient;
   private EventHubProducerClient eventHubProducerClient;
-  private static final String eventHubNameSpaceURL = "GIVE_YOUR_EVENTHUB_URL_NAME";
-  private static final String secret = "GIVE_YOUR_SECRET_NAME";
-  private static final String eventHubName = "GIVE_INPUT_EVENTHUBNAME";
+  public static final String SECRET = "secret";
+  public static final String EVENTHUB_NAMESPACE = "eventHubNameSpaceURL";
+  public static final String EVENTHUB_NAME = "eventHubName";
+  private String eventHubNameSpaceURL;
+  private String secret;
+  private String eventHubName;
+  private boolean skipped = true;
 
   @Before
   public void setup() throws IOException {
+    eventHubNameSpaceURL = getEventhubNamespace();
+    secret = getSecret();
+    eventHubName = getEventhubName();
+    if (secret.isBlank() || eventHubName.isBlank() || eventHubNameSpaceURL.isBlank()) {
+      LOG.warn(
+          "Ignoring the test! Please provide required parameters for this Template Integration Test: Secret, Eventhub namespace, Eventhub name");
+      skipped = false;
+      return;
+    }
     String connectionString = SecretManagerUtils.getSecret(secret);
     eventHubProducerClient =
         new EventHubClientBuilder()
@@ -111,7 +124,9 @@ public class AzureEventhubToPubsubIT extends TemplateTestBase {
   @After
   public void tearDownClass() {
     boolean producedError = false;
-
+    if (!skipped) {
+      return;
+    }
     try {
       pubsubClient.cleanupAll();
     } catch (Exception e) {
@@ -133,6 +148,7 @@ public class AzureEventhubToPubsubIT extends TemplateTestBase {
 
   @Test
   public void testAzureEventhubToPubsub() throws IOException {
+    Assume.assumeTrue("Skipping Integration Test", skipped);
     String jobName = testName;
     String psTopic = testName + "output";
     TopicName topicName = pubsubClient.createTopic(psTopic);
@@ -164,5 +180,17 @@ public class AzureEventhubToPubsubIT extends TemplateTestBase {
                 });
     // Assert
     assertThatResult(result).meetsConditions();
+  }
+
+  private String getSecret() {
+    return TestProperties.getProperty(SECRET, "", TestProperties.Type.PROPERTY);
+  }
+
+  private String getEventhubNamespace() {
+    return TestProperties.getProperty(EVENTHUB_NAMESPACE, "", TestProperties.Type.PROPERTY);
+  }
+
+  private String getEventhubName() {
+    return TestProperties.getProperty(EVENTHUB_NAME, "", TestProperties.Type.PROPERTY);
   }
 }

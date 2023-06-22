@@ -56,7 +56,6 @@ public final class TestProperties {
   public static final String EXPORT_TABLE_KEY = "exportTable";
   public static final String SPEC_PATH_KEY = "specPath";
   public static final String HOST_IP = "hostIp";
-
   // From environment variables
   public static final String ACCESS_TOKEN_KEY = "DT_IT_ACCESS_TOKEN";
 
