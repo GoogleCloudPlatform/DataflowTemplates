@@ -59,8 +59,13 @@ public @interface Template {
   /** The external class that holds the template code. */
   Class<?> placeholderClass() default void.class;
 
-  /** The interface that holds options/parameters to be passed. */
+  /**
+   * The interface that holds options/parameters to be passed. Not mandatory when "blocks" are used
+   * for automatic templates.
+   */
   Class<?> optionsClass() default void.class;
+
+  Class<?>[] blocks() default void.class;
 
   /** An array that specifies the orders. */
   Class<?>[] optionsOrder() default void.class;
