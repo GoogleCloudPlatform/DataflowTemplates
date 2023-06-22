@@ -20,6 +20,8 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToSink.Options;
 import com.google.cloud.teleport.v2.templates.common.TrimmedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -235,6 +237,17 @@ public class SpannerChangeStreamsToSink {
     String getSourceShardsFilePath();
 
     void setSourceShardsFilePath(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 16,
+        optional = false,
+        description = "Session File Path in Cloud Storage",
+        helpText =
+            "Session file path in Cloud Storage that contains mapping information from"
+                + " HarbourBridge")
+    String getSessionFilePath();
+
+    void setSessionFilePath(String value);
   }
 
   private static void validateSinkParams(Options options) {
@@ -306,12 +319,15 @@ public class SpannerChangeStreamsToSink {
           new KafkaSink(options.getKafkaClusterFilePath(), options.getSourceShardsFilePath());
     }
 
+    Schema schema = SessionFileReader.read(options.getSessionFilePath());
+    LOG.info("Found schema in main: " + schema);
+
     pipeline
         .apply(getReadChangeStreamDoFn(options))
         .apply(ParDo.of(new FilterRecordsFn()))
         .apply(ParDo.of(new PreprocessRecordsFn()))
         .setCoder(SerializableCoder.of(TrimmedDataChangeRecord.class))
-        .apply(ParDo.of(new AssignShardIdFn()))
+        .apply(ParDo.of(new AssignShardIdFn(schema)))
         .apply(
             ParDo.of(new OrderRecordsAndWriteToSinkFn(options.getIncrementInterval(), dataSink)));
 

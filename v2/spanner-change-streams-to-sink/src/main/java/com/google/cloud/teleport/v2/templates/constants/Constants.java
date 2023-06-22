@@ -30,9 +30,6 @@ public class Constants {
   // Kafka property config name for value serializer.
   public static final String VALUE_SERIALIZER_CLASS_CONFIG = "value.serializer";
 
-  // Metadata column name containing the logical shardId in the DataChangeRecord.
-  public static final String HB_SHARD_ID_COLUMN = "hb_shardId";
-
   // Transaction tag prefix used in the forward migration job.
   public static final String FWD_MIGRATION_TRANSACTION_TAG_PREFIX = "txBy=";
 

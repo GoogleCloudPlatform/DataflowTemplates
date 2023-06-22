@@ -15,8 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.templates.common.TrimmedDataChangeRecord;
-import com.google.cloud.teleport.v2.templates.constants.Constants;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
@@ -30,30 +33,66 @@ public class AssignShardIdFn
     extends DoFn<TrimmedDataChangeRecord, KV<String, TrimmedDataChangeRecord>> {
   private static final Logger LOG = LoggerFactory.getLogger(AssignShardIdFn.class);
 
+  private final Schema schema;
+
+  public AssignShardIdFn(Schema schema) {
+    LOG.info("Found schema in constructor: " + schema);
+    this.schema = schema;
+    LOG.info("Found schema in constructor2: " + this.schema);
+  }
+
   @ProcessElement
   public void processElement(ProcessContext c) {
     TrimmedDataChangeRecord record = c.element();
+
     try {
+      String shardIdColumn = getShardIdColumnForTableName(record.getTableName());
       String keysJsonStr = record.getMods().get(0).getKeysJson();
       String newValueJsonStr = record.getMods().get(0).getNewValuesJson();
       JSONObject keysJson = new JSONObject(keysJsonStr);
       JSONObject newValueJson = new JSONObject(newValueJsonStr);
-      if (newValueJson.has(Constants.HB_SHARD_ID_COLUMN)) {
-        String shardId = newValueJson.getString(Constants.HB_SHARD_ID_COLUMN);
+      if (newValueJson.has(shardIdColumn)) {
+        String shardId = newValueJson.getString(shardIdColumn);
         c.output(KV.of(shardId, record));
-      } else if (keysJson.has(Constants.HB_SHARD_ID_COLUMN)) {
-        String shardId = keysJson.getString(Constants.HB_SHARD_ID_COLUMN);
+      } else if (keysJson.has(shardIdColumn)) {
+        String shardId = keysJson.getString(shardIdColumn);
         c.output(KV.of(shardId, record));
       } else {
         LOG.error(
             "Cannot find entry for HarbourBridge shard id column '"
-                + Constants.HB_SHARD_ID_COLUMN
+                + shardIdColumn
                 + "' in record.");
         return;
       }
+    } catch (IllegalArgumentException e) {
+      LOG.error("Error fetching shard Id column for table: " + e.getMessage());
+      return;
     } catch (Exception e) {
-      LOG.error("Error while parsing json: " + e.getMessage());
+      StringWriter errors = new StringWriter();
+      e.printStackTrace(new PrintWriter(errors));
+      LOG.error("Error while parsing json: " + e.getMessage() + ": " + errors.toString());
       return;
     }
+  }
+
+  private String getShardIdColumnForTableName(String tableName) throws IllegalArgumentException {
+    if (!schema.getSpannerToID().containsKey(tableName)) {
+      throw new IllegalArgumentException(
+          "Table " + tableName + " found in change record but not found in session file.");
+    }
+    String tableId = schema.getSpannerToID().get(tableName).getName();
+    if (!schema.getSpSchema().containsKey(tableId)) {
+      throw new IllegalArgumentException(
+          "Table " + tableId + " not found in session file. Please provide a valid session file.");
+    }
+    SpannerTable spTable = schema.getSpSchema().get(tableId);
+    String shardColId = spTable.getShardIdColumn();
+    if (!spTable.getColDefs().containsKey(shardColId)) {
+      throw new IllegalArgumentException(
+          "ColumnId "
+              + shardColId
+              + " not found in session file. Please provide a valid session file.");
+    }
+    return spTable.getColDefs().get(shardColId).getName();
   }
 }
