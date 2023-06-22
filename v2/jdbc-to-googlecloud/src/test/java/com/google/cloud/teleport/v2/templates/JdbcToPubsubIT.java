@@ -63,6 +63,7 @@ public class JdbcToPubsubIT extends JDBCBaseIT {
   private static final String AGE = "age";
   private static final String MEMBER = "member";
   private static final String ENTRY_ADDED = "entry_added";
+  private static final String LONG_DESCRIPTION = "long_description";
 
   @Before
   public void setUp() throws IOException {
@@ -87,6 +88,7 @@ public class JdbcToPubsubIT extends JDBCBaseIT {
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(LONG_DESCRIPTION, "VARCHAR(2000)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
     mysqlResourceManager.createTable(testName, schema);
     List<Map<String, Object>> generatedData = generateData();
@@ -152,6 +154,7 @@ public class JdbcToPubsubIT extends JDBCBaseIT {
       values.put(AGE, new Random().nextInt(100));
       values.put(MEMBER, i % 2 == 0 ? "Y" : "N");
       values.put(ENTRY_ADDED, Instant.now().toString());
+      values.put(LONG_DESCRIPTION, RandomStringUtils.randomAlphanumeric(100, 2000));
       data.add(values);
     }
 
