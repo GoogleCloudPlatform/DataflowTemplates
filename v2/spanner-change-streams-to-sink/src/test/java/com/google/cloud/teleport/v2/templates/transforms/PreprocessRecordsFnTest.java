@@ -64,11 +64,11 @@ public class PreprocessRecordsFnTest {
             new Mod(
                 "{\"accountId\": \"Id1\"}",
                 "{}",
-                "{\"accountName\": \"abc\", \"hb_shardId\": \"shard1\"}"),
+                "{\"accountName\": \"abc\", \"migration_shard_id\": \"shard1\"}"),
             new Mod(
                 "{\"accountId\": \"Id1\"}",
                 "{}",
-                "{\"accountName\": \"abc\", \"hb_shardId\": \"shard2\"}")),
+                "{\"accountName\": \"abc\", \"migration_shard_id\": \"shard2\"}")),
         ModType.valueOf("INSERT"),
         ValueCaptureType.valueOf("NEW_ROW"),
         5,
@@ -88,7 +88,7 @@ public class PreprocessRecordsFnTest {
             new Mod(
                 "{\"accountId\": \"Id1\"}",
                 "{}",
-                "{\"accountName\": \"abc\", \"hb_shardId\": \"" + shardId + "\"}")),
+                "{\"accountName\": \"abc\", \"migration_shard_id\": \"" + shardId + "\"}")),
         ModType.valueOf("INSERT"),
         5,
         "txnTag");
