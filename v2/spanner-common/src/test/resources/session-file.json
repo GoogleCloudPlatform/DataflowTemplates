@@ -7,6 +7,7 @@
               "c2",
               "c3"
           ],
+          "ShardIdColumn": "",
           "ColDefs": {
               "c1": {
                   "Name": "new_product_id",
@@ -92,6 +93,7 @@
               "c5",
               "c6"
           ],
+          "ShardIdColumn": "",
           "ColDefs": {
               "c5": {
                   "Name": "new_name",

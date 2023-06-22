@@ -50,6 +50,9 @@ public class DatastreamConstants {
   /* The value for Postgres databases in the source type key */
   public static final String POSTGRES_SOURCE_TYPE = "postgresql";
 
+  /* The key for the schema name in the event json */
+  public static final String EVENT_SCHEMA_KEY = "_metadata_schema";
+
   /* The key for the table name in the event json */
   public static final String EVENT_TABLE_NAME_KEY = "_metadata_table";
 

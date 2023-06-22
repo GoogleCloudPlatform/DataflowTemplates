@@ -25,7 +25,9 @@ import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
@@ -312,6 +314,18 @@ public class DataStreamToSpanner {
     String getRunMode();
 
     void setRunMode(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 21,
+        optional = true,
+        helpText =
+            "Transformation context file path in cloud storage used to populate data used in"
+                + " transformations performed during migrations   Eg: The shard id to db name to"
+                + " identify the db from which a row was migrated",
+        description = "Transformation context file path in cloud storage")
+    String getTransformationContextFilePath();
+
+    void setTransformationContextFilePath(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -480,6 +494,12 @@ public class DataStreamToSpanner {
     /*
      * Stage 2: Write records to Cloud Spanner
      */
+
+    // Ingest transformation context file into memory.
+    TransformationContext transformationContext =
+        TransformationContextReader.getTransformationContext(
+            options.getTransformationContextFilePath());
+
     SpannerTransactionWriter.Result spannerWriteResults =
         jsonRecords.apply(
             "Write events to Cloud Spanner",
@@ -487,6 +507,7 @@ public class DataStreamToSpanner {
                 spannerConfig,
                 ddlView,
                 schema,
+                transformationContext,
                 options.getShadowTablePrefix(),
                 options.getDatastreamSourceType(),
                 options.getRoundJsonDecimals(),
