@@ -215,7 +215,7 @@ public abstract class LoadTestBase {
     if (launchInfo.jobType().equals("JOB_TYPE_STREAMING")) {
       cost += metrics.get("TotalVcpuTime") / 3600 * VCPU_PER_HR_STREAMING;
       cost += (metrics.get("TotalMemoryUsage") / 1000) / 3600 * MEM_PER_GB_HR_STREAMING;
-      cost += metrics.get("TotalShuffleDataProcessed") * SHUFFLE_PER_GB_STREAMING;
+      cost += metrics.get("TotalStreamingDataProcessed") * SHUFFLE_PER_GB_STREAMING;
       // Also, add other streaming metrics
       metrics.putAll(getDataFreshnessMetrics(launchInfo.jobId(), workerTimeInterval));
       metrics.putAll(getSystemLatencyMetrics(launchInfo.jobId(), workerTimeInterval));
