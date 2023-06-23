@@ -27,7 +27,6 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.TypeCode;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ValueCaptureType;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -43,8 +42,6 @@ import org.junit.runners.JUnit4;
 /** Test cases for the {@link WriteDataChangeRecordsToGcsAvro} class. */
 @RunWith(JUnit4.class)
 public class WriteDataChangeRecordsToGcsAvroTest {
-  /** Rule for pipeline testing. */
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   /** Rule for exception testing. */
   @Rule public ExpectedException expectedException = ExpectedException.none();
@@ -56,11 +53,9 @@ public class WriteDataChangeRecordsToGcsAvroTest {
   private static final Integer NUM_SHARDS = 1;
   private static String fakeDir;
   private static String fakeTempLocation;
-  private PipelineOptions options;
 
   @Before
   public void setUp() throws InterruptedException, IOException {
-    options = TestPipeline.testingPipelineOptions();
     fakeDir = tmpDir.newFolder("output").getAbsolutePath();
     fakeTempLocation = tmpDir.newFolder("temporaryLocation").getAbsolutePath();
   }
@@ -70,7 +65,7 @@ public class WriteDataChangeRecordsToGcsAvroTest {
   public void testBasicWrite() {
     // First run the transform in a separate pipeline.
     final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
-    Pipeline p = Pipeline.create(options);
+    Pipeline p = Pipeline.create();
     p.apply("CreateInput", Create.of(dataChangeRecord))
         .apply(
             "WriteTextFile(s)",
@@ -83,6 +78,7 @@ public class WriteDataChangeRecordsToGcsAvroTest {
     p.run();
 
     // Then, read the records back from the output directory using AvrioIO.read.
+    Pipeline pipeline = Pipeline.create();
     PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
         pipeline.apply(
             "readRecords",
@@ -103,6 +99,8 @@ public class WriteDataChangeRecordsToGcsAvroTest {
     expectedException.expectMessage(
         "withGcsOutputDirectory(gcsOutputDirectory) called with null input.");
     final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
+
+    TestPipeline pipeline = TestPipeline.create();
     pipeline
         .apply("CreateInput", Create.of(dataChangeRecord))
         .apply(
@@ -125,6 +123,8 @@ public class WriteDataChangeRecordsToGcsAvroTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withTempLocation(tempLocation) called with null input.");
     final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
+
+    TestPipeline pipeline = TestPipeline.create();
     pipeline
         .apply("CreateInput", Create.of(dataChangeRecord))
         .apply(
