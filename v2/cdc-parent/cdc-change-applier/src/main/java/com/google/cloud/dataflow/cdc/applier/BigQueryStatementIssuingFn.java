@@ -45,13 +45,16 @@ public class BigQueryStatementIssuingFn extends DoFn<KV<String, BigQueryAction>,
 
   final String jobIdPrefix;
 
-  BigQueryStatementIssuingFn(String jobIdPrefix) {
+  private final String projectId;
+
+  BigQueryStatementIssuingFn(String jobIdPrefix, String projectId) {
     this.jobIdPrefix = jobIdPrefix;
+    this.projectId = projectId;
   }
 
   @Setup
   public void setUp() {
-    bigQueryClient = BigQueryOptions.getDefaultInstance().getService();
+    bigQueryClient = BigQueryOptions.newBuilder().setProjectId(projectId).build().getService();
   }
 
   @ProcessElement
