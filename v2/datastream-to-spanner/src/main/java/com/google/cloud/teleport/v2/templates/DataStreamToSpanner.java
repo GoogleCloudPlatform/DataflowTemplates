@@ -307,7 +307,7 @@ public class DataStreamToSpanner {
     @TemplateParameter.Enum(
         order = 20,
         optional = true,
-        description = "Run mode - curerntly supported are : regular or retryDLQ",
+        description = "Run mode - currently supported are : regular or retryDLQ",
         enumOptions = {"regular", "retryDLQ"},
         helpText = "This is the run mode type, whether regular or with retryDLQ.")
     @Default.String("regular")
