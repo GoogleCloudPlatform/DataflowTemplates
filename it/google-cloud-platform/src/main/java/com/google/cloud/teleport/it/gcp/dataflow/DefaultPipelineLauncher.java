@@ -62,6 +62,8 @@ import org.slf4j.LoggerFactory;
 /** Default class for implementation of {@link PipelineLauncher} interface. */
 public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultPipelineLauncher.class);
+  private static final String READ_PIPELINE_NAME_OVERWRITE = "readPipelineNameOverride";
+  private static final String WRITE_PIPELINE_NAME_OVERWRITE = "writePipelineNameOverride";
   private static final Pattern JOB_ID_PATTERN = Pattern.compile("Submitted job: (\\S+)");
 
   // For unsupported runners (other than dataflow), implement launcher methods by operating with
@@ -385,8 +387,20 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
   }
 
   protected LaunchInfo.Builder getJobInfoBuilder(LaunchConfig options, JobState state, Job job) {
+    // get intermediate builder from base class method
     LaunchInfo.Builder builder = super.getJobInfoBuilder(options, state, job);
-    builder.setPipelineName(PipelineUtils.extractJobName(options.jobName()));
+    // config pipelineName
+    String pipelineName = PipelineUtils.extractJobName(options.jobName());
+    String overrideName = null;
+    if (pipelineName.endsWith("write")) {
+      overrideName = System.getProperty(WRITE_PIPELINE_NAME_OVERWRITE);
+    } else if (pipelineName.endsWith("read")) {
+      overrideName = System.getProperty(READ_PIPELINE_NAME_OVERWRITE);
+    }
+    if (!Strings.isNullOrEmpty(overrideName)) {
+      pipelineName = overrideName;
+    }
+    builder.setPipelineName(pipelineName);
     return builder;
   }
 
