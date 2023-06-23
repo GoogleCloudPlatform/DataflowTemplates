@@ -35,8 +35,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **dlqRetryMinutes** (Dead letter queue retry minutes): The number of minutes between dead letter queue retries. Defaults to 10.
 * **dlqMaxRetryCount** (Dead letter queue maximum retry count): The max number of times temporary errors can be retried through DLQ. Defaults to 500.
 * **dataStreamRootUrl** (Datastream API Root URL (only required for testing)): Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
-* **datastreamSourceType** (Datastream source type (only required for testing)): This is the type of source used for Datastream. Example - mysql/oracle.
+* **datastreamSourceType** (Datastream source type (only required for testing)): This is the type of source database that Datastream connects to. Example - mysql/oracle. Need to be set when testing without an actual running Datastream.
 * **roundJsonDecimals** (If true, rounds the decimal values in json columns to a number that can be stored without loss of precision.): This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
+* **runMode** (Run mode - currently supported are : regular or retryDLQ): This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
 
 
 
@@ -92,6 +93,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -140,6 +142,7 @@ export DLQ_MAX_RETRY_COUNT=500
 export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
 export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ROUND_JSON_DECIMALS=false
+export RUN_MODE="regular"
 
 gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --project "$PROJECT" \
@@ -163,7 +166,8 @@ gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --parameters "dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT" \
   --parameters "dataStreamRootUrl=$DATA_STREAM_ROOT_URL" \
   --parameters "datastreamSourceType=$DATASTREAM_SOURCE_TYPE" \
-  --parameters "roundJsonDecimals=$ROUND_JSON_DECIMALS"
+  --parameters "roundJsonDecimals=$ROUND_JSON_DECIMALS" \
+  --parameters "runMode=$RUN_MODE"
 ```
 
 For more information about the command, please check:
@@ -203,6 +207,7 @@ export DLQ_MAX_RETRY_COUNT=500
 export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
 export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ROUND_JSON_DECIMALS=false
+export RUN_MODE="regular"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -211,7 +216,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-spanner-job" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE" \
 -pl v2/datastream-to-spanner \
 -am
 ```
