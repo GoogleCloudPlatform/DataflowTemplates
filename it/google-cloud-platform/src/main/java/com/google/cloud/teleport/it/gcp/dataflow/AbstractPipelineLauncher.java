@@ -71,22 +71,16 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
 
   @Override
   public Job getJob(String project, String region, String jobId, String view) {
-    LOG.info("Getting the status of {} under {}", jobId, project);
-
-    Job job =
-        Failsafe.with(clientRetryPolicy())
-            .get(
-                () ->
-                    client
-                        .projects()
-                        .locations()
-                        .jobs()
-                        .get(project, region, jobId)
-                        .setView(view)
-                        .execute());
-
-    LOG.info("Received job on get request for {}:\n{}", jobId, formatForLogging(job));
-    return job;
+    return Failsafe.with(clientRetryPolicy())
+        .get(
+            () ->
+                client
+                    .projects()
+                    .locations()
+                    .jobs()
+                    .get(project, region, jobId)
+                    .setView(view)
+                    .execute());
   }
 
   @Override

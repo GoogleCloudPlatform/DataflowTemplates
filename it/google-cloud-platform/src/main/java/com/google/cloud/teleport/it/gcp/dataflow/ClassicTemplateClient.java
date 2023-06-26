@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 /** Client for interacting with Dataflow Classic Templates using the Dataflow SDK. */
 public final class ClassicTemplateClient extends AbstractPipelineLauncher {
+
   private static final Logger LOG = LoggerFactory.getLogger(ClassicTemplateClient.class);
 
   private ClassicTemplateClient(Builder builder) {
@@ -88,6 +89,8 @@ public final class ClassicTemplateClient extends AbstractPipelineLauncher {
     // Wait until the job is active to get more information
     JobState state = waitUntilActive(project, region, job.getId());
     job = getJob(project, region, job.getId(), "JOB_VIEW_DESCRIPTION");
+    LOG.info("Received classic template job {}: {}", job.getId(), formatForLogging(job));
+
     launchedJobs.add(job.getId());
     return getJobInfo(options, state, job);
   }
@@ -100,6 +103,7 @@ public final class ClassicTemplateClient extends AbstractPipelineLauncher {
 
   /** Builder for {@link ClassicTemplateClient}. */
   public static final class Builder {
+
     private Credentials credentials;
 
     private Builder() {}
