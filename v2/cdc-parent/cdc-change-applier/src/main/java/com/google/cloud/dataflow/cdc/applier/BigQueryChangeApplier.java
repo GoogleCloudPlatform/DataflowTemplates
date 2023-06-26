@@ -189,7 +189,9 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
               SerializableCoder.of(
                   TypeDescriptors.kvs(
                       TypeDescriptors.strings(), TypeDescriptor.of(BigQueryAction.class))))
-          .apply("IssueMergeStatements", ParDo.of(new BigQueryStatementIssuingFn(jobPrefix)));
+          .apply(
+              "IssueMergeStatements",
+              ParDo.of(new BigQueryStatementIssuingFn(jobPrefix, gcpProjectId)));
     }
     return PDone.in(p);
   }
