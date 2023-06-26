@@ -119,8 +119,8 @@ public class SyndeoTemplate {
             Set.of(),
             "syndeo:schematransform:com.google.cloud:pubsub_dlq_write:v1",
             Set.of(),
-            "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
-            Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId")));
+            "beam:schematransform:org.apache.beam:bigtable_write:v1",
+            Set.of()));
     SUPPORTED_URNS.putAll(SUPPORTED_SCALAR_TRANSFORM_URNS);
   }
 

@@ -26,7 +26,6 @@ import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.syndeo.SyndeoTemplate;
 import com.google.cloud.syndeo.common.ProviderUtil;
 import com.google.cloud.syndeo.transforms.BigTableSchemaTransformTest;
-import com.google.cloud.syndeo.transforms.bigtable.BigTableWriteSchemaTransformConfiguration;
 import com.google.cloud.syndeo.v1.SyndeoV1;
 import com.google.cloud.teleport.it.common.TestProperties;
 import java.io.IOException;
@@ -55,7 +54,7 @@ public class BigTableWriteIT {
   public void testBigQueryToBigTableSmallNonTemplateJob() throws IOException {
     String bigTableName =
         "syndeo-test-" + BigTableSchemaTransformTest.randomString(6).replaceAll("[^a-zA-Z0-9]", "");
-    String bigQueryName = PROJECT + ":syndeo_dataset." + bigTableName;
+    String bigQueryName = PROJECT + ":dipatel_syndeo." + bigTableName;
 
     BigTableSchemaTransformTest.setUpBigQueryResources(null, bigQueryName);
 
@@ -63,20 +62,19 @@ public class BigTableWriteIT {
         SyndeoV1.PipelineDescription.newBuilder()
             .addTransforms(
                 new ProviderUtil.TransformSpec(
-                        "bigquery:read", Arrays.asList(bigQueryName, null, null, null, null))
+                        "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+                        Arrays.asList(null, null, null, bigQueryName))
                     .toProto())
             .addTransforms(
                 new ProviderUtil.TransformSpec(
-                        "bigtable:write",
-                        BigTableWriteSchemaTransformConfiguration.builder()
-                            .setProjectId(PROJECT)
-                            .setInstanceId("teleport")
-                            .setTableId(bigTableName)
-                            .setKeyColumns(Arrays.asList("name", "birthday"))
-                            .setEndpoint("")
-                            .build()
-                            .toBeamRow()
-                            .getValues())
+                        "beam:schematransform:org.apache.beam:bigtable_write:v1",
+                        Arrays.asList(
+                            "",
+                            "",
+                            "dippatel-syndeo",
+                            Arrays.asList("name", "birthday"),
+                            PROJECT,
+                            bigTableName))
                     .toProto())
             .build();
     try {
@@ -88,7 +86,7 @@ public class BigTableWriteIT {
           BigtableDataClient.create(
               BigtableDataSettings.newBuilder()
                   .setProjectId(PROJECT)
-                  .setInstanceId("teleport")
+                  .setInstanceId("dippatel-syndeo")
                   .build())) {
         ServerStream<Row> rowstream = btClient.readRows(Query.create(bigTableName));
         assert Lists.newArrayList(rowstream.iterator()).size() == 6;
@@ -96,12 +94,12 @@ public class BigTableWriteIT {
 
     } finally {
       Bigquery client = BigqueryClient.getNewBigqueryClient("SyndeoTests");
-      client.tables().delete(PROJECT, "syndeo_dataset", bigTableName);
+      client.tables().delete(PROJECT, "dipatel_syndeo", bigTableName);
       try (BigtableTableAdminClient btClient =
           BigtableTableAdminClient.create(
               BigtableTableAdminSettings.newBuilder()
                   .setProjectId(PROJECT)
-                  .setInstanceId("teleport")
+                  .setInstanceId("dippatel-syndeo")
                   .build())) {
         btClient.deleteTable(bigTableName);
       } catch (Exception e) { // IGNORE TEARDOWN EXCEPTION
