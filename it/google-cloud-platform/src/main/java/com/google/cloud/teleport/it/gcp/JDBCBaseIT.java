@@ -141,7 +141,13 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
         throw new RuntimeException("Error retrieving Maven repo path, check Maven logs.");
       }
 
-      String basePath = new String(inStream.readAllBytes(), StandardCharsets.UTF_8);
+      byte[] allBytes = inStream.readAllBytes();
+      String basePath = new String(allBytes, StandardCharsets.UTF_8);
+
+      // Remove color reset chars "\033[0m" sent to terminal output
+      basePath =
+          basePath.replace(new String(new byte[] {27, 91, 48, 109}, StandardCharsets.UTF_8), "");
+
       inStream.close();
 
       return basePath;
