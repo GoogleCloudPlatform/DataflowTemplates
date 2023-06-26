@@ -22,11 +22,13 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.kms.v1.CryptoKey;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.kms.KMSResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
 import com.google.cloud.teleport.it.jdbc.MSSQLResourceManager;
 import com.google.cloud.teleport.it.jdbc.MySQLResourceManager;
@@ -41,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -67,16 +70,22 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   private static final String IS_MEMBER = "is_member";
   private static final String ENTRY_ADDED = "entry_added";
 
+  private static final String KEYRING_ID = "JdbcToBigQueryIT";
+  private static final String CRYPTO_KEY_NAME = "key1";
+
   private MySQLResourceManager mySQLResourceManager;
   private PostgresResourceManager postgresResourceManager;
   private OracleResourceManager oracleResourceManager;
   private MSSQLResourceManager msSQLResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
+  private KMSResourceManager kmsResourceManager;
 
   @Before
   public void setUp() {
     bigQueryResourceManager =
         BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+    kmsResourceManager =
+        KMSResourceManager.builder(PROJECT).setCredentialsProvider(credentialsProvider).build();
   }
 
   @After
@@ -86,7 +95,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         msSQLResourceManager,
         postgresResourceManager,
         oracleResourceManager,
-        bigQueryResourceManager);
+        bigQueryResourceManager,
+        kmsResourceManager);
   }
 
   @Test
@@ -244,17 +254,22 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     bigQueryResourceManager.createTable(testName, bqSchema);
     String tableSpec = PROJECT + ":" + bigQueryResourceManager.getDatasetId() + "." + testName;
 
+    Function<String, String> encrypt =
+        message -> kmsResourceManager.encrypt(KEYRING_ID, CRYPTO_KEY_NAME, message);
+    CryptoKey cryptoKey = kmsResourceManager.getOrCreateCryptoKey(KEYRING_ID, CRYPTO_KEY_NAME);
+
     String jobName = createJobName(testName);
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath)
-            .addParameter("connectionURL", jdbcResourceManager.getUri())
+            .addParameter("connectionURL", encrypt.apply(jdbcResourceManager.getUri()))
             .addParameter("driverClassName", driverClassName)
             .addParameter("query", query)
             .addParameter("outputTable", tableSpec)
             .addParameter("driverJars", driverJars)
             .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
-            .addParameter("username", jdbcResourceManager.getUsername())
-            .addParameter("password", jdbcResourceManager.getPassword())
+            .addParameter("username", encrypt.apply(jdbcResourceManager.getUsername()))
+            .addParameter("password", encrypt.apply(jdbcResourceManager.getPassword()))
+            .addParameter("KMSEncryptionKey", cryptoKey.getName())
             .addParameter("useColumnAlias", "true")
             .addParameter("connectionProperties", "characterEncoding=UTF-8")
             .addParameter("disabledAlgorithms", "SSLv3, GCM");

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,15 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.it.gcp.bigquery;
 
-/**
- * Custom exception for {@link com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager}
- * implementations.
- */
-public class BigQueryResourceManagerException extends RuntimeException {
-
-  public BigQueryResourceManagerException(String errorMessage, Throwable err) {
-    super(errorMessage, err);
-  }
-}
+/** Package for managing KMS resources within integration tests. */
+package com.google.cloud.teleport.it.gcp.kms;
