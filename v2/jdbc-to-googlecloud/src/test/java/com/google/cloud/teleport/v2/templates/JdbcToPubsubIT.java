@@ -120,8 +120,8 @@ public class JdbcToPubsubIT extends JDBCBaseIT {
             .build();
 
     // Poll checker, to avoid timing issues on DirectRunner
-    await()
-        .atMost(Duration.ofMinutes(1))
+    await("Check if messages got to Pub/Sub on time")
+        .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(5))
         .until(pubsubCheck::get);
 
