@@ -49,7 +49,7 @@
                     <!-- Skip container creation of common module -->
                     <execution>
                         <id>jib</id>
-                        <phase>deploy</phase>
+                        <phase>none</phase>
                     </execution>
                 </executions>
             </plugin>
