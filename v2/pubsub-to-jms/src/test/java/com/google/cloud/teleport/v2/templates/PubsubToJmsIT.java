@@ -32,8 +32,6 @@ import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import javax.jms.Connection;
 import javax.jms.Destination;
 import javax.jms.JMSException;
@@ -86,34 +84,23 @@ public final class PubsubToJmsIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPubsubToJms()
-      throws IOException, ExecutionException, InterruptedException, JMSException {
-    pubsubToJms(Function.identity()); // no extra parameters
-  }
-
-  public void pubsubToJms(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
-      throws IOException, JMSException {
+  public void testPubsubToJmsQueue() throws IOException, JMSException {
     // Arrange
     String outputName = testName;
     TopicName tc = pubsubResourceManager.createTopic(testName);
-    String outTopicName = tc.getTopic();
     SubscriptionName subscriptionName =
         pubsubResourceManager.createSubscription(tc, "sub-" + testName);
     String connectionUri =
         "tcp://" + TestProperties.hostIp() + ":" + activeMqContainer.getFirstMappedPort();
-    ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(connectionUri);
-    Connection connection = factory.createConnection();
-    connection.start();
 
     LaunchConfig.Builder optionsQueue =
-        paramsAdder.apply(
-            LaunchConfig.builder(testName, specPath)
-                .addParameter("inputSubscription", subscriptionName.toString())
-                .addParameter("jmsServer", connectionUri)
-                .addParameter("outputName", outputName)
-                .addParameter("outputType", "queue")
-                .addParameter("username", "")
-                .addParameter("password", ""));
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("inputSubscription", subscriptionName.toString())
+            .addParameter("jmsServer", connectionUri)
+            .addParameter("outputName", outputName)
+            .addParameter("outputType", "queue")
+            .addParameter("username", "")
+            .addParameter("password", "");
 
     // Act
     LaunchInfo infoQueue = launchTemplate(optionsQueue);
@@ -123,7 +110,7 @@ public final class PubsubToJmsIT extends TemplateTestBase {
 
     String inMessage = "firstMessage";
 
-    Session sessionQueue = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+    Session sessionQueue = createSession(connectionUri);
     Destination destQueue = new ActiveMQQueue(outputName);
     MessageConsumer consumerQueue = sessionQueue.createConsumer(destQueue);
 
@@ -139,34 +126,48 @@ public final class PubsubToJmsIT extends TemplateTestBase {
                   try {
                     Message message = consumerQueue.receive();
                     outMessage = ((TextMessage) message).getText();
-                    ;
-
                   } catch (Exception e) {
-                    System.out.println(e.getMessage());
+                    LOG.error("Error receiving message", e);
                   }
-                  System.out.println(outMessage);
                   return outMessage.equalsIgnoreCase(inMessage);
                 });
 
     assertThatResult(resultQueue).meetsConditions();
+  }
 
-    // Assert
+  private static Session createSession(String connectionUri) throws JMSException {
+    ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(connectionUri);
+    Connection connection = factory.createConnection();
+    connection.start();
+    return connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+  }
+
+  @Test
+  public void testPubsubToJmsTopic() throws IOException, JMSException {
+    // Arrange
+    String outputName = testName;
+    TopicName tc = pubsubResourceManager.createTopic(testName);
+    SubscriptionName subscriptionName =
+        pubsubResourceManager.createSubscription(tc, "sub-" + testName);
+    String connectionUri =
+        "tcp://" + TestProperties.hostIp() + ":" + activeMqContainer.getFirstMappedPort();
+    String inMessage = "firstMessage";
+    ByteString data = ByteString.copyFromUtf8(inMessage);
 
     LaunchConfig.Builder optionsTopic =
-        paramsAdder.apply(
-            LaunchConfig.builder(testName, specPath)
-                .addParameter("inputSubscription", subscriptionName.toString())
-                .addParameter("jmsServer", connectionUri)
-                .addParameter("outputName", outputName)
-                .addParameter("outputType", "topic")
-                .addParameter("username", "")
-                .addParameter("password", ""));
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("inputSubscription", subscriptionName.toString())
+            .addParameter("jmsServer", connectionUri)
+            .addParameter("outputName", outputName)
+            .addParameter("outputType", "topic")
+            .addParameter("username", "")
+            .addParameter("password", "");
     LaunchInfo infoTopic = launchTemplate(optionsTopic);
     LOG.info("Triggered template job for JMS Topic");
 
     assertThatPipeline(infoTopic).isRunning();
 
-    Session sessionTopic = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+    Session sessionQueue = createSession(connectionUri);
     Destination destTopic = new ActiveMQTopic(outputName);
     MessageConsumer consumerTopic = sessionQueue.createConsumer(destTopic);
     pubsubResourceManager.publish(tc, ImmutableMap.of(), data);
@@ -180,12 +181,9 @@ public final class PubsubToJmsIT extends TemplateTestBase {
                   try {
                     Message message = consumerTopic.receive();
                     outMessage = ((TextMessage) message).getText();
-                    ;
-
                   } catch (Exception e) {
-                    System.out.println(e.getMessage());
+                    LOG.error("Error receiving message", e);
                   }
-                  System.out.println(outMessage);
                   return outMessage.equalsIgnoreCase(inMessage);
                 });
 

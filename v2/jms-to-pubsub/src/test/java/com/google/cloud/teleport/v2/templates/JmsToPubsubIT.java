@@ -31,8 +31,6 @@ import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import javax.jms.Connection;
 import javax.jms.Destination;
 import javax.jms.JMSException;
@@ -84,14 +82,7 @@ public final class JmsToPubsubIT extends TemplateTestBase {
   }
 
   @Test
-  public void testJmsToPubsub()
-      throws IOException, ExecutionException, InterruptedException, JMSException {
-    jmsToPubsub(Function.identity()); // no extra parameters
-  }
-
-  public void jmsToPubsub(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
-      throws IOException, JMSException {
-    // Arrange
+  public void testJmsToPubsubQueue() throws IOException, JMSException {
     String inputName = testName;
     TopicName tc = pubsubResourceManager.createTopic(testName);
     String outTopicName = tc.getTopic();
@@ -104,14 +95,13 @@ public final class JmsToPubsubIT extends TemplateTestBase {
     connection.start();
 
     LaunchConfig.Builder optionsQueue =
-        paramsAdder.apply(
-            LaunchConfig.builder(testName, specPath)
-                .addParameter("jmsServer", connectionUri)
-                .addParameter("inputName", inputName)
-                .addParameter("inputType", "queue")
-                .addParameter("outputTopic", "projects/" + PROJECT + "/topics/" + outTopicName)
-                .addParameter("username", "")
-                .addParameter("password", ""));
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jmsServer", connectionUri)
+            .addParameter("inputName", inputName)
+            .addParameter("inputType", "queue")
+            .addParameter("outputTopic", "projects/" + PROJECT + "/topics/" + outTopicName)
+            .addParameter("username", "")
+            .addParameter("password", "");
 
     // Act
     LaunchInfo infoQueue = launchTemplate(optionsQueue);
@@ -131,28 +121,48 @@ public final class JmsToPubsubIT extends TemplateTestBase {
         pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(infoQueue),
-                () -> {
-                  return pubsubResourceManager
-                      .pull(subscriptionName, 1)
-                      .getReceivedMessages(0)
-                      .getMessage()
-                      .getData()
-                      .toString(StandardCharsets.UTF_8)
-                      .equalsIgnoreCase(inMessage);
-                });
+                () ->
+                    pubsubResourceManager
+                        .pull(subscriptionName, 1)
+                        .getReceivedMessages(0)
+                        .getMessage()
+                        .getData()
+                        .toString(StandardCharsets.UTF_8)
+                        .equalsIgnoreCase(inMessage));
 
     // Assert
     assertThatResult(resultQueue).meetsConditions();
+  }
+
+  @Test
+  public void testJmsToPubsubTopic() throws IOException, JMSException {
+    String inputName = testName;
+    TopicName tc = pubsubResourceManager.createTopic(testName);
+    String outTopicName = tc.getTopic();
+    SubscriptionName subscriptionName =
+        pubsubResourceManager.createSubscription(tc, "subscription");
+    String connectionUri =
+        "tcp://" + TestProperties.hostIp() + ":" + activeMqContainer.getFirstMappedPort();
+    ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(connectionUri);
+    Connection connection = factory.createConnection();
+    connection.start();
+
+    String inMessage = "firstMessage";
+
+    Session sessionQueue = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+    Destination destQueue = new ActiveMQQueue(inputName);
+    MessageProducer producerQueue = sessionQueue.createProducer(destQueue);
+    TextMessage messageQueue = sessionQueue.createTextMessage(inMessage);
+    producerQueue.send(messageQueue);
 
     LaunchConfig.Builder optionsTopic =
-        paramsAdder.apply(
-            LaunchConfig.builder(testName, specPath)
-                .addParameter("jmsServer", connectionUri)
-                .addParameter("inputName", inputName)
-                .addParameter("inputType", "topic")
-                .addParameter("outputTopic", "projects/" + PROJECT + "/topics/" + outTopicName)
-                .addParameter("username", "")
-                .addParameter("password", ""));
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jmsServer", connectionUri)
+            .addParameter("inputName", inputName)
+            .addParameter("inputType", "topic")
+            .addParameter("outputTopic", "projects/" + PROJECT + "/topics/" + outTopicName)
+            .addParameter("username", "")
+            .addParameter("password", "");
     LaunchInfo infoTopic = launchTemplate(optionsTopic);
     LOG.info("Triggered template job for JMS Topic");
 
@@ -162,7 +172,7 @@ public final class JmsToPubsubIT extends TemplateTestBase {
     Destination destTopic = new ActiveMQTopic(inputName);
     MessageProducer producerTopic = sessionTopic.createProducer(destTopic);
     TextMessage messageTopic = sessionTopic.createTextMessage(inMessage);
-    // producerTopic.send(messageTopic);
+
     Result resultTopic =
         pipelineOperator()
             .waitForConditionAndFinish(
