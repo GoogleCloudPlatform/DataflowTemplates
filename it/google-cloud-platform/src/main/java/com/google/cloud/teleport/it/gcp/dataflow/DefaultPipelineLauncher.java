@@ -379,6 +379,8 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
     // Wait until the job is active to get more information
     JobState state = waitUntilActive(project, region, jobId);
     Job job = getJob(project, region, jobId, "JOB_VIEW_DESCRIPTION");
+    LOG.info("Received Dataflow job {}: {}", job.getId(), formatForLogging(job));
+
     return getJobInfo(options, state, job);
   }
 
