@@ -21,9 +21,10 @@ import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertT
 import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.dataflow.cdc.connector.App;
+import com.google.cloud.dataflow.cdc.connector.DebeziumToPubSubDataSender;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
-import com.google.cloud.teleport.it.common.utils.IORedirectUtil;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
@@ -34,7 +35,6 @@ import com.google.cloud.teleport.it.jdbc.MySQLResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,6 +50,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -60,7 +61,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link CdcToBigQueryChangeApplierPipeline} flex template. */
 @Category(TemplateIntegrationTest.class)
@@ -73,7 +73,6 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
   private MySQLResourceManager mySQLResourceManager;
   private PubsubResourceManager pubsubResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
-  private Process exec;
 
   @Rule public TemporaryFolder tmpFolder = new TemporaryFolder();
 
@@ -105,7 +104,6 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(
         mySQLResourceManager, pubsubResourceManager, bigQueryResourceManager);
-    exec.destroy();
   }
 
   @Test
@@ -216,20 +214,21 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
 
     // Act
 
-    // Start up Debezium connector
-    String mavenCmd =
-        "mvn compile exec:java -pl cdc-embedded-connector -Dexec.args=\"" + path + "\"";
+    DebeziumToPubSubDataSender dataSender;
     try {
-      exec = Runtime.getRuntime().exec(mavenCmd, null, new File("../"));
-      IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
-      IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+      // Start up Debezium connector in a separate thread
+      dataSender = App.setup(new String[] {path.toString()});
+      Thread embeddedConnector = new Thread(dataSender);
+      embeddedConnector.start();
 
-      // If the timeout expires, it means that the connector is still running. This is good, as it
-      // has not hit any errors.
-      if (exec.waitFor(60, TimeUnit.SECONDS)) {
-        throw new RuntimeException("Error running Debezium connector, check Maven logs.");
+      for (int i = 0; i < 3; i++) {
+        LOG.info("Debezium process status: {}", embeddedConnector.isAlive());
+
+        if (!embeddedConnector.isAlive()) {
+          throw new IllegalStateException("Debezium hasn't started");
+        }
+        TimeUnit.SECONDS.sleep(5);
       }
-
       LOG.info("Debezium connector successfully started!");
 
     } catch (Exception e) {
@@ -254,7 +253,7 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(
+            .waitForConditionsAndFinish(
                 createConfig(info),
                 BigQueryRowsCheck.builder(
                         bigQueryResourceManager,
@@ -303,6 +302,13 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
     assertEquals(bigQueryResourceManager.getRowCount(PETS_CHANGELOG).intValue(), NUM_RECORDS * 2);
     assertThatBigQueryRecords(bigQueryResourceManager.readTable(PETS_CHANGELOG))
         .hasRecordsWithStrings(petsChangelogData);
+
+    try {
+      dataSender.stop();
+    } catch (Exception e) {
+      // just log stop exceptions
+      LOG.warn("Error stopping data sender", e);
+    }
   }
 
   private List<Map<String, Object>> getPeopleJdbcData() {

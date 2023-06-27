@@ -65,5 +65,11 @@
       <version>1.6.2</version>
       <scope>compile</scope>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud.dataflow.cdc</groupId>
+      <artifactId>cdc-embedded-connector</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>
