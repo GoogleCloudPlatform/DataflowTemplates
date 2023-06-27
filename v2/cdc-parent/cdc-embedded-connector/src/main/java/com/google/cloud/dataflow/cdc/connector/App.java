@@ -95,7 +95,11 @@ public class App {
 
   public static final String DEFAULT_RDBMS = "mysql";
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) throws ConfigurationException {
+    setup(args).run();
+  }
+
+  public static DebeziumToPubSubDataSender setup(String[] args) throws ConfigurationException {
     final Logger logger = LoggerFactory.getLogger(App.class);
 
     // Printing the information about the bindings for SLF4J:
@@ -117,7 +121,7 @@ public class App {
     // Properties to be passed directly to Debezium
     ImmutableConfiguration debeziumConfig = config.immutableSubset("debezium");
 
-    startSender(
+    return createSender(
         checkParsing(config.getString("databaseName"), "databaseName", logger),
         checkParsing(config.getString("databaseUsername"), "databaseUsername", logger),
         checkParsing(config.getString("databasePassword"), "databasePassword", logger),
@@ -207,7 +211,7 @@ public class App {
     return result;
   }
 
-  static void startSender(
+  static DebeziumToPubSubDataSender createSender(
       String databaseName,
       String databaseUserName,
       String databasePassword,
@@ -236,22 +240,20 @@ public class App {
         "Please provide a databaseManagementSystem parameter."
             + " This can be either mysql or postgres. Got %s",
         rdbms);
-    DebeziumToPubSubDataSender dataSender =
-        new DebeziumToPubSubDataSender(
-            databaseName,
-            databaseUserName,
-            databasePassword,
-            databaseAddress,
-            Integer.parseInt(databasePort),
-            gcpProject,
-            gcpPubsubTopic,
-            offsetStorageFile,
-            databaseHistoryFile,
-            inMemoryOffsetStorage,
-            singleTopicMode,
-            new HashSet<>(Arrays.asList(commaSeparatedWhiteListedTables.split(","))),
-            rdbms,
-            debeziumConfig);
-    dataSender.run();
+    return new DebeziumToPubSubDataSender(
+        databaseName,
+        databaseUserName,
+        databasePassword,
+        databaseAddress,
+        Integer.parseInt(databasePort),
+        gcpProject,
+        gcpPubsubTopic,
+        offsetStorageFile,
+        databaseHistoryFile,
+        inMemoryOffsetStorage,
+        singleTopicMode,
+        new HashSet<>(Arrays.asList(commaSeparatedWhiteListedTables.split(","))),
+        rdbms,
+        debeziumConfig);
   }
 }

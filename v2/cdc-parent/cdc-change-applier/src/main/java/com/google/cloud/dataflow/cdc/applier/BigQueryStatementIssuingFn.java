@@ -33,6 +33,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +55,11 @@ public class BigQueryStatementIssuingFn extends DoFn<KV<String, BigQueryAction>,
 
   @Setup
   public void setUp() {
-    bigQueryClient = BigQueryOptions.newBuilder().setProjectId(projectId).build().getService();
+    BigQueryOptions.Builder builder = BigQueryOptions.newBuilder();
+    if (StringUtils.isNotEmpty(projectId)) {
+      builder = builder.setProjectId(projectId);
+    }
+    bigQueryClient = builder.build().getService();
   }
 
   @ProcessElement
@@ -67,8 +72,13 @@ public class BigQueryStatementIssuingFn extends DoFn<KV<String, BigQueryAction>,
     } else {
       assert BigQueryAction.STATEMENT.equals(action.action);
       Job jobInfo = issueQueryToBQ(action.statement);
-      LOG.info("Job Info for triggered job: {}", jobInfo);
-      jobInfo = jobInfo.waitFor();
+
+      if (jobInfo == null) {
+        LOG.warn("The statement '{}' didn't create a BigQuery job to wait on", action.statement);
+      } else {
+        LOG.info("Job Info for triggered job: {}", jobInfo);
+        jobInfo.waitFor();
+      }
     }
   }
 
