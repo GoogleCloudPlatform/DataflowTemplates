@@ -74,6 +74,9 @@ public class DebeziumToPubSubDataSender implements Runnable {
 
   private final Set<String> whitelistedTables;
 
+  private EmbeddedEngine engine;
+  private ExecutorService executorService;
+
   public DebeziumToPubSubDataSender(
       String databaseName,
       String userName,
@@ -178,7 +181,7 @@ public class DebeziumToPubSubDataSender implements Runnable {
                 gcpProject, gcpPubsubTopicPrefix, singleTopicMode),
             PubSubChangeConsumer.DEFAULT_PUBLISHER_FACTORY);
 
-    final EmbeddedEngine engine =
+    engine =
         EmbeddedEngine.create()
             .using(config)
             .using(this.getClass().getClassLoader())
@@ -187,8 +190,8 @@ public class DebeziumToPubSubDataSender implements Runnable {
             .build();
 
     LOG.info("Initializing Debezium Embedded Engine");
-    ExecutorService executor = Executors.newSingleThreadExecutor();
-    Future<?> future = executor.submit(engine);
+    executorService = Executors.newSingleThreadExecutor();
+    Future<?> future = executorService.submit(engine);
 
     Runtime.getRuntime()
         .addShutdownHook(
@@ -198,10 +201,15 @@ public class DebeziumToPubSubDataSender implements Runnable {
                   engine.stop();
                 }));
 
-    awaitTermination(executor, future, engine);
+    awaitTermination(future);
   }
 
-  private void awaitTermination(ExecutorService executor, Future<?> future, EmbeddedEngine engine) {
+  public void stop() {
+    engine.stop();
+    executorService.shutdown();
+  }
+
+  private void awaitTermination(Future<?> future) {
 
     boolean finalized = false;
 
@@ -210,7 +218,7 @@ public class DebeziumToPubSubDataSender implements Runnable {
         future.get(30, TimeUnit.SECONDS);
         if (future.isDone() || future.isCancelled()) {
           engine.stop();
-          executor.shutdown();
+          executorService.shutdown();
           break;
         }
       } catch (TimeoutException e) {
