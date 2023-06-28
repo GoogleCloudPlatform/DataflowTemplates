@@ -137,11 +137,12 @@ public class SpannerTransactionWriter
   /**
    * Container class for the results of this transform.
    *
-   * <p>Use {@link #successfulSpannerWrite()} and {@link #failedSpannerWrite()} to get the two
-   * output streams.
+   * <p>Use {@link #successfulSpannerWrites()}, {@link #permanentErrors()} and {@link
+   * #retryableErrors()} to get the three output streams.
    */
   @AutoValue
   public abstract static class Result implements POutput {
+
     private static Result create(
         PCollection<Timestamp> successfulSpannerWrites,
         PCollection<FailsafeElement<String, String>> permanentErrors,

@@ -21,7 +21,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.DoFn;
 
 /**
- * The {@link PubsubToFailsafeElement} wraps an incoming {@link PubsubMessage} with the {@link
+ * The {@link PubSubToFailSafeElement} wraps an incoming {@link PubsubMessage} with the {@link
  * FailsafeElement} class so errors can be recovered from and the original message can be output to
  * a error records table.
  */

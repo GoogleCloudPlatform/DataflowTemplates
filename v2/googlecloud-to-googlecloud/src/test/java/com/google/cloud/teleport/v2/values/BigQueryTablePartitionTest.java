@@ -36,7 +36,7 @@ public class BigQueryTablePartitionTest {
             .setLastModificationTime(123L)
             .build();
 
-    BigQueryTablePartition actual = (BigQueryTablePartition) SerializationUtils.clone(expected);
+    BigQueryTablePartition actual = SerializationUtils.clone(expected);
 
     assertThat(actual).isEqualTo(expected);
   }

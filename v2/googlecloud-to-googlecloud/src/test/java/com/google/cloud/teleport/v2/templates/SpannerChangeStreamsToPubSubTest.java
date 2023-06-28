@@ -72,6 +72,7 @@ import org.slf4j.LoggerFactory;
 /** Test class for {@link SpannerChangeStreamsToPubSubTest}. */
 @RunWith(JUnit4.class)
 public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
+
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToPubSubTest.class);
 
@@ -127,6 +128,7 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
   private static class VerifyDataChangeRecordAvro
       implements SerializableFunction<
           Iterable<com.google.cloud.teleport.v2.DataChangeRecord>, Void> {
+
     @Override
     public Void apply(Iterable<com.google.cloud.teleport.v2.DataChangeRecord> actualIter) {
       // Make sure actual is the right length, and is a
@@ -155,6 +157,7 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
   @SuppressWarnings("DefaultAnnotationParam")
   private static class VerifyDataChangeRecordText
       implements SerializableFunction<Iterable<String>, Void> {
+
     @Override
     public Void apply(Iterable<String> actualIter) {
       // Make sure actual is the right length, and is a
@@ -179,8 +182,9 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
   }
 
   /**
-   * Test whether {@link FileFormatFactory} maps the output file format to the transform to be
-   * carried out. And throws illegal argument exception if invalid file format is passed.
+   * Test whether {@link FileFormatFactorySpannerChangeStreamsToPubSub} maps the output file format
+   * to the transform to be carried out. And throws illegal argument exception if invalid file
+   * format is passed.
    */
   @Test
   @Category(IntegrationTest.class)
@@ -680,6 +684,7 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
 
   private static class PubsubMessageToDataChangeRecordDoFn
       extends DoFn<PubsubMessage, com.google.cloud.teleport.v2.DataChangeRecord> {
+
     @ProcessElement
     public void processElement(ProcessContext context) {
       PubsubMessage message = context.element();
@@ -697,6 +702,7 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
 
   private static class PubsubMessageToString
       implements SerializableFunction<PubsubMessage, String> {
+
     @Override
     public String apply(PubsubMessage message) {
       return new String(message.getPayload());

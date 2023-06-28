@@ -84,7 +84,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
         .apply(Reshuffle.of())
         .apply(Values.create())
         .apply(ParDo.of(new BigQueryStatementIssuingFn(bigQueryClient, mergeConfiguration)))
-        .apply(MapElements.into(TypeDescriptors.voids()).via(whatever -> (Void) null));
+        .apply(MapElements.into(TypeDescriptors.voids()).via(whatever -> null));
   }
 
   /**

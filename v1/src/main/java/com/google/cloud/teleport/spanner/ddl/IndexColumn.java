@@ -117,8 +117,9 @@ public abstract class IndexColumn implements Serializable {
     abstract IndexColumn autoBuild();
   }
 
-  /** A builder for {@link IndexColumns}. */
+  /** A builder for {@link IndexColumn}. */
   public static class IndexColumnsBuilder<T> {
+
     private ImmutableList.Builder<IndexColumn> columns = ImmutableList.builder();
 
     private Builder indexColumnBuilder;

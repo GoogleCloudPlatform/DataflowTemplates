@@ -37,10 +37,9 @@ public abstract class FormatDatastreamRecord<InputT, OutputT> extends DoFn<Input
   static final String ROW_ID_CHARSET =
       "+/0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   static final Map<Character, Long> ROW_ID_CHARSET_MAP =
-      (Map<Character, Long>)
-          LongStream.range(0, ROW_ID_CHARSET.length())
-              .mapToObj(i -> i)
-              .collect(Collectors.toMap(i -> ROW_ID_CHARSET.charAt(i.intValue()), i -> i));
+      LongStream.range(0, ROW_ID_CHARSET.length())
+          .mapToObj(i -> i)
+          .collect(Collectors.toMap(i -> ROW_ID_CHARSET.charAt(i.intValue()), i -> i));
 
   /**
    * Set the map of columns values to rename/copy.

@@ -782,11 +782,10 @@ public class LocalSpannerIO {
     }
 
     SerializableFunction<Struct, Row> getFormatFn() {
-      return (SerializableFunction<Struct, Row>)
-          input ->
-              Row.withSchema(Schema.builder().addInt64Field("Key").build())
-                  .withFieldValue("Key", 3L)
-                  .build();
+      return input ->
+          Row.withSchema(Schema.builder().addInt64Field("Key").build())
+              .withFieldValue("Key", 3L)
+              .build();
     }
   }
 

@@ -63,7 +63,7 @@ public class GCSUtilsTest {
   }
 
   /**
-   * Test whether {@link SchemaUtils#getGcsFileAsString(String)} reads a file correctly as a String.
+   * Test whether {@link GCSUtils#getGcsFileAsString(String)} reads a file correctly as a String.
    */
   @Test
   public void testGetGcsFileAsString() {

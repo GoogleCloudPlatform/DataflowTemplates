@@ -104,6 +104,7 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
   private static class VerifyDataChangeRecordAvro
       implements SerializableFunction<
           Iterable<com.google.cloud.teleport.v2.DataChangeRecord>, Void> {
+
     @Override
     public Void apply(Iterable<com.google.cloud.teleport.v2.DataChangeRecord> actualIter) {
       // Make sure actual is the right length, and is a
@@ -132,6 +133,7 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
   @SuppressWarnings("DefaultAnnotationParam")
   private static class VerifyDataChangeRecordText
       implements SerializableFunction<Iterable<String>, Void> {
+
     @Override
     public Void apply(Iterable<String> actualIter) {
       // Make sure actual is the right length, and is a
@@ -156,8 +158,9 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
   }
 
   /**
-   * Test whether {@link FileFormatFactory} maps the output file format to the transform to be
-   * carried out. And throws illegal argument exception if invalid file format is passed.
+   * Test whether {@link FileFormatFactorySpannerChangeStreams} maps the output file format to the
+   * transform to be carried out. And throws illegal argument exception if invalid file format is
+   * passed.
    */
   @Test
   public void testFileFormatFactoryInvalid() {

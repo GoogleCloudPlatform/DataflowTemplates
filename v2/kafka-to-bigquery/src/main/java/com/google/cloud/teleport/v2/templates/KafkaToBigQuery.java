@@ -170,7 +170,7 @@ public class KafkaToBigQuery {
      * Get bootstrap server across releases.
      *
      * @deprecated This method is no longer acceptable to set bootstrap servers.
-     *     <p>Use {@link KafkaToBQOptions#setReadBootstrapServers()} instead.
+     *     <p>Use {@link KafkaToBQOptions#setReadBootstrapServers(String)} instead.
      */
     @Deprecated
     void setBootstrapServers(String bootstrapServers);

@@ -54,9 +54,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Test whether {@link DatastreamToPostgresDML#getValueSql(rowObj, columnName, tableSchema)}
-   * converts data into correct strings. String columnValue = getValueSql(rowObj, columnName,
-   * tableSchema);
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts data
+   * into correct strings. String columnValue = getValueSql(rowObj, columnName, tableSchema);
    */
   @Test
   public void testGetValueSql() {
@@ -84,8 +83,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Test whether {@link DatastreamToDML#getTargetSchemaName(row)} converts the Oracle schema into
-   * the correct Postgres schema.
+   * Test whether {@link DatastreamToDML#getTargetSchemaName} converts the Oracle schema into the
+   * correct Postgres schema.
    */
   @Test
   public void testGetPostgresSchemaName() {
@@ -99,8 +98,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Test whether {@link DatastreamToPostgresDML#getTargetTableName(row)} converts the Oracle table
-   * into the correct Postgres table.
+   * Test whether {@link DatastreamToPostgresDML#getTargetTableName} converts the Oracle table into
+   * the correct Postgres table.
    */
   @Test
   public void testGetPostgresTableName() {

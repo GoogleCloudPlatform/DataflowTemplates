@@ -117,7 +117,7 @@ public class BigQueryConverters {
   }
 
   /** Converts UTF8 encoded Json records to TableRow records. */
-  private static class JsonToTableRow
+  protected static class JsonToTableRow
       extends PTransform<PCollection<String>, PCollection<TableRow>> {
 
     @Override
