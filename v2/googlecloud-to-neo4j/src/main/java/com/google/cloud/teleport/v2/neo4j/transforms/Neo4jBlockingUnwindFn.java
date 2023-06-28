@@ -130,13 +130,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     //
     TransactionWork<Void> transactionWork =
         transaction -> {
-          Result result = transaction.run(cypher, parametersMap);
-          while (result.hasNext()) {
-            // This just consumes any output but the function basically has no output
-            // To be revisited based on requirements.
-            //
-            result.next();
-          }
+          transaction.run(cypher, parametersMap).consume();
           return null;
         };
 
