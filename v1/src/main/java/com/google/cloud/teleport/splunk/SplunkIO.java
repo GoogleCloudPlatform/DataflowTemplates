@@ -41,8 +41,7 @@ public class SplunkIO {
 
   private static final Logger LOG = LoggerFactory.getLogger(SplunkIO.class);
 
-  private SplunkIO() {
-  }
+  private SplunkIO() {}
 
   public static Write.Builder writeBuilder() {
     return new AutoValue_SplunkIO_Write.Builder();
@@ -106,9 +105,7 @@ public class SplunkIO {
           .setCoder(SplunkWriteErrorCoder.of());
     }
 
-    /**
-     * A builder for creating {@link Write} objects.
-     */
+    /** A builder for creating {@link Write} objects. */
     @AutoValue.Builder
     public abstract static class Builder {
 
@@ -268,8 +265,8 @@ public class SplunkIO {
       }
 
       /**
-       * Same as {@link Builder#withRootCaCertificatePath(ValueProvider)} but without a
-       * {@link ValueProvider}.
+       * Same as {@link Builder#withRootCaCertificatePath(ValueProvider)} but without a {@link
+       * ValueProvider}.
        *
        * @param rootCaCertificatePath Path to self-signed certificate
        * @return {@link Builder}
@@ -293,8 +290,8 @@ public class SplunkIO {
       }
 
       /**
-       * Same as {@link Builder#withEnableBatchLogs(ValueProvider)} but without a
-       * {@link ValueProvider}.
+       * Same as {@link Builder#withEnableBatchLogs(ValueProvider)} but without a {@link
+       * ValueProvider}.
        *
        * @param enableBatchLogs for enabling batch logs.
        * @return {@link Builder}
@@ -315,8 +312,8 @@ public class SplunkIO {
       }
 
       /**
-       * Same as {@link Builder#withEnableGzipHttpCompression(ValueProvider)} but without a
-       * {@link ValueProvider}.
+       * Same as {@link Builder#withEnableGzipHttpCompression(ValueProvider)} but without a {@link
+       * ValueProvider}.
        *
        * @param enableGzipHttpCompression whether to enable Gzip encoding.
        * @return {@link Builder}
