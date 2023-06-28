@@ -141,15 +141,7 @@ public final class SpannerResourceManager implements ResourceManager {
 
       // Retry creation if there's a quota error
       Instance instance =
-          Failsafe.with(
-                  RetryPolicy.builder()
-                      .handleIf(
-                          exception ->
-                              ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED"))
-                      .withMaxRetries(CREATE_MAX_RETRIES)
-                      .withBackoff(CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY)
-                      .withJitter(CREATE_BACKOFF_JITTER)
-                      .build())
+          Failsafe.with(retryOnQuotaException())
               .get(() -> instanceAdminClient.createInstance(instanceInfo).get());
 
       hasInstance = true;
@@ -169,15 +161,7 @@ public final class SpannerResourceManager implements ResourceManager {
 
     try {
       Database database =
-          Failsafe.with(
-                  RetryPolicy.builder()
-                      .handleIf(
-                          exception ->
-                              ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED"))
-                      .withMaxRetries(CREATE_MAX_RETRIES)
-                      .withBackoff(CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY)
-                      .withJitter(CREATE_BACKOFF_JITTER)
-                      .build())
+          Failsafe.with(retryOnQuotaException())
               .get(
                   () ->
                       databaseAdminClient
@@ -196,6 +180,15 @@ public final class SpannerResourceManager implements ResourceManager {
       cleanupAll();
       throw new SpannerResourceManagerException("Failed to create database.", e);
     }
+  }
+
+  private static <T> RetryPolicy<T> retryOnQuotaException() {
+    return RetryPolicy.<T>builder()
+        .handleIf(exception -> ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED"))
+        .withMaxRetries(CREATE_MAX_RETRIES)
+        .withBackoff(CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY)
+        .withJitter(CREATE_BACKOFF_JITTER)
+        .build();
   }
 
   private void checkIsUsable() throws IllegalStateException {
