@@ -79,17 +79,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       LOG.error("Unsupported authType: {}", this.authType);
       throw new RuntimeException("Unsupported authentication type: " + this.authType);
     }
-    if (this.serverUrl.contains("neo4j+s")) {
-      return GraphDatabase.driver(
-          new URI(this.serverUrl),
-          AuthTokens.basic(this.username, this.password),
-          Config.builder().build());
-    } else {
-      return GraphDatabase.routingDriver(
-          Arrays.asList(new URI(this.serverUrl)),
-          AuthTokens.basic(this.username, this.password),
-          Config.builder().build());
-    }
+    return GraphDatabase.driver(
+        new URI(this.serverUrl),
+        AuthTokens.basic(this.username, this.password),
+        Config.builder().build());
   }
 
   /** Helper method to get the Neo4j session. */
