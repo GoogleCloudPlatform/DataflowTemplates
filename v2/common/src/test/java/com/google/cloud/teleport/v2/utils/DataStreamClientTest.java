@@ -27,7 +27,7 @@ import org.junit.Test;
 /** Test cases for the {@link SchemaUtils} class. */
 public class DataStreamClientTest {
 
-  /** Test whether {@link DataStreamClient.getParentFromConnectionProfileName} regex. */
+  /** Test whether {@link DataStreamClient#getParentFromConnectionProfileName(String)}} regex. */
   @Test
   public void testDataStreamClientGetParent() throws IOException, GeneralSecurityException {
     String projectId = "my-project";
@@ -41,8 +41,8 @@ public class DataStreamClientTest {
   }
 
   /**
-   * Test whether {@link DataStreamClient#getSourceConnectionProfileName(String)} gets a Streams
-   * source connection profile name.
+   * Test whether {@link DataStreamClient#getSourceConnectionProfile(String)} gets a Streams source
+   * connection profile name.
    */
   @Ignore
   @Test
@@ -62,8 +62,8 @@ public class DataStreamClientTest {
   }
 
   /**
-   * Test whether {@link DataStreamClient#discoverTableSchema(...)} gets a Streams source connection
-   * profile name.
+   * Test whether {@link DataStreamClient#discoverOracleTableSchema(String, String, String,
+   * SourceConfig)} gets a Streams source connection profile name.
    */
   @Ignore
   @Test

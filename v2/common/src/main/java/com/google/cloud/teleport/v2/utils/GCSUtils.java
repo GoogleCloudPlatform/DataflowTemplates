@@ -88,8 +88,7 @@ public class GCSUtils {
   }
 
   /**
-   * The {@link SchemaUtils#getGcsFileAsString(String)} reads a file from GCS and returns it as a
-   * string.
+   * Reads a file from GCS and returns it as a string.
    *
    * @param filePath path to file in GCS
    * @return contents of the file as a string
@@ -106,8 +105,7 @@ public class GCSUtils {
   }
 
   /**
-   * The {@link GCSUtils#getGcsFileAsBytes(String)} reads a file from GCS and returns it as raw
-   * bytes.
+   * Reads a file from GCS and returns it as raw bytes.
    *
    * @param filePath path to file in GCS
    * @return raw contents of file

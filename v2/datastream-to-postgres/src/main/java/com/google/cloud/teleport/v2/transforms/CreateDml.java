@@ -46,7 +46,10 @@ public class CreateDml {
     return new CreateDmlFromRecord(dataSourceConfiguration);
   }
 
-  /** This class is used as the default return value of {@link CreateDml#createDmlObjects()}. */
+  /**
+   * This class is used as the default return value of {@link
+   * CreateDml#createDmlObjects(DataSourceConfiguration)}}.
+   */
   public static class CreateDmlFromRecord
       extends PTransform<
           PCollection<FailsafeElement<String, String>>, PCollection<KV<String, DmlInfo>>> {

@@ -231,9 +231,9 @@ public final class SplunkConverters {
    * PCollectionTuple} consisting of the following {@link PCollection}:
    *
    * <ul>
-   *   <li>{@link FailsafeStringToSplunkEvent#splunkEventOutputTag()} - Contains {@link SplunkEvent}
+   *   <li>{@link FailsafeStringToSplunkEvent#splunkEventOutputTag} - Contains {@link SplunkEvent}
    *       objects converted from input.
-   *   <li>{@link FailsafeStringToSplunkEvent#splunkEventErrorTag()} - Contains {@link
+   *   <li>{@link FailsafeStringToSplunkEvent#splunkEventErrorTag} - Contains {@link
    *       FailsafeElement} objects of conversion failures.
    * </ul>
    */

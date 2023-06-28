@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils;
 
+import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key;
@@ -22,6 +23,7 @@ import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
 import java.util.ArrayList;
@@ -40,6 +42,7 @@ import org.slf4j.LoggerFactory;
  * all the models returned in the methods of these class are tracked by the change stream.
  */
 public class SpannerUtils {
+
   private static final Logger LOG = LoggerFactory.getLogger(SpannerUtils.class);
 
   private static final String INFORMATION_SCHEMA_TABLE_NAME = "TABLE_NAME";
@@ -67,8 +70,8 @@ public class SpannerUtils {
 
   /**
    * @return a map where the key is the table name tracked by the change stream and the value is the
-   *     {@link SpannerTable} object of the table name. This function should be called once in the
-   *     initialization of the DoFn.
+   *     {@link TrackedSpannerTable} object of the table name. This function should be called once
+   *     in the initialization of the DoFn.
    */
   public Map<String, TrackedSpannerTable> getSpannerTableByName() {
     Set<String> spannerTableNames = getSpannerTableNamesTrackedByChangeStreams();
@@ -82,7 +85,7 @@ public class SpannerUtils {
 
   /**
    * @return a map where the key is the table name tracked by the change stream and the value is the
-   *     {@link SpannerTable} object of the table name.
+   *     {@link TrackedSpannerTable} object of the table name.
    */
   private Map<String, TrackedSpannerTable> getSpannerTableByName(
       Set<String> spannerTableNames,

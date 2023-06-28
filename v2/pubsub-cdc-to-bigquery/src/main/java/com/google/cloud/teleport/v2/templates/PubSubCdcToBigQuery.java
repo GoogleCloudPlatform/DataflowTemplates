@@ -62,6 +62,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
@@ -126,6 +127,7 @@ public class PubSubCdcToBigQuery {
    */
   public interface Options
       extends PipelineOptions, InputUDFOptions, BigQueryStorageApiStreamingOptions {
+
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
@@ -295,10 +297,10 @@ public class PubSubCdcToBigQuery {
 
     BigQueryTableConfigManager bqConfigManager =
         new BigQueryTableConfigManager(
-            (String) options.as(GcpOptions.class).getProject(),
-            (String) options.getOutputDatasetTemplate(),
-            (String) options.getOutputTableNameTemplate(),
-            (String) options.getOutputTableSpec());
+            options.as(GcpOptions.class).getProject(),
+            options.getOutputDatasetTemplate(),
+            options.getOutputTableNameTemplate(),
+            options.getOutputTableSpec());
 
     /*
      * Steps:
@@ -517,13 +519,12 @@ public class PubSubCdcToBigQuery {
   }
 
   /**
-   * The {@link PubsubMessageToTableRow} class is a {@link PTransform} which transforms incoming
-   * {@link PubsubMessage} objects into {@link TableRow} objects for insertion into BigQuery while
-   * applying an optional UDF to the input. The executions of the UDF and transformation to {@link
-   * TableRow} objects is done in a fail-safe way by wrapping the element with it's original payload
-   * inside the {@link FailsafeElement} class. The {@link PubsubMessageToTableRow} transform will
-   * output a {@link PCollectionTuple} which contains all output and dead-letter {@link
-   * PCollection}.
+   * The class is a {@link PTransform} which transforms incoming {@link PubsubMessage} objects into
+   * {@link TableRow} objects for insertion into BigQuery while applying an optional UDF to the
+   * input. The executions of the UDF and transformation to {@link TableRow} objects is done in a
+   * fail-safe way by wrapping the element with it's original payload inside the {@link
+   * FailsafeElement} class. The transform transform will output a {@link PCollectionTuple} which
+   * contains all output and dead-letter {@link PCollection}.
    *
    * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
    *

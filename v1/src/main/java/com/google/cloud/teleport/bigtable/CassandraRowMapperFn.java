@@ -277,11 +277,11 @@ class CassandraRowMapperFn implements Mapper<Row>, Serializable {
       case TIMESTAMP:
         return new DateTime(value);
       case UUID:
-        return ((UUID) value).toString();
+        return value.toString();
       case VARINT:
         return new BigDecimal((BigInteger) value);
       case TIMEUUID:
-        return ((UUID) value).toString();
+        return value.toString();
       case DATE:
         LocalDate ld = (LocalDate) value;
         return new DateTime(ld.getYear(), ld.getMonth(), ld.getDay(), 0, 0);
