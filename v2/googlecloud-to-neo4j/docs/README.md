@@ -131,7 +131,7 @@ gcloud config set project ${PROJECT}
 * Execute the following command from the directory containing the root pom.xml:
 
 ```sh
-mvn -DskipTests=true clean package \
+mvn -DskipTests=true clean install \
     -pl v2/${TEMPLATE_POM_MODULE} \
     -am \
     -Djib.container.mainClass=com.google.cloud.teleport.v2.neo4j.templates.GoogleCloudToNeo4j \
@@ -238,17 +238,3 @@ The template unit tests can be run using:
 ```sh
 mvn test
 ```
-
-## Maintainer
-
-    Anthony Krinsky 
-    Sr. Sales Engineer
-    anthony.krinsky@neo4j.com
-
-Note that test scripts point to my auraDb instance. AuraDb is free up to 50,000
-nodes/edges.  
-Great for testing but don't forget to manually "resume" it if inactive for 3
-days.
-
-    https://console.neo4j.io
-
