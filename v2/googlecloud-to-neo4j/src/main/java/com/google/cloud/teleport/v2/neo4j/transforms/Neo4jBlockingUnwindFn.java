@@ -16,20 +16,18 @@
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
+import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
-import org.neo4j.driver.Result;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
 import org.slf4j.Logger;
@@ -72,6 +70,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     elementsInput = 0;
     loggingDone = false;
   }
+
   @Setup
   public void setup() {
     this.neo4jConnection = new Neo4jConnection(this.connectionParams);

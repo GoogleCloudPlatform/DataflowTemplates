@@ -20,7 +20,6 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.AuthType;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Config;
