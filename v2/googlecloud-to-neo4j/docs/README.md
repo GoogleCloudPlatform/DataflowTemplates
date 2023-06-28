@@ -109,14 +109,13 @@ mvn clean test -pl v2/googlecloud-to-neo4j -am
 * Note that /template is the working directory inside the container image
 
 ```sh
-export PROJECT=neo4j-se-team-201905
-export GCS_WORKING_DIR=gs://neo4j-se-temp/dataflow-working
+export PROJECT= [YOUR_PROJECT_ID]
 export APP_NAME=googlecloud-to-neo4j
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
 export IMAGE_NAME=neo4j-dataflow
 export IMAGE_NAME_VERSION=b0.12
-export BUCKET_NAME=gs://neo4j-dataflow/flex-templates
+export BUCKET_NAME= [URI FOR CLOUD STORAGE BUCKET AND FOLDER (ex. gs://bucket-name/folder-name)] 
 export TARGET_GCR_IMAGE=us.gcr.io/${PROJECT}/${IMAGE_NAME}-${IMAGE_NAME_VERSION}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
