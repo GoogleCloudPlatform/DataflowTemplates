@@ -20,10 +20,12 @@ import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.gen
 import static com.google.cloud.teleport.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateDatabaseId;
 import static com.google.cloud.teleport.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateInstanceId;
 
+import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.Instance;
 import com.google.cloud.spanner.InstanceAdminClient;
 import com.google.cloud.spanner.InstanceConfigId;
 import com.google.cloud.spanner.InstanceId;
@@ -37,9 +39,13 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.it.common.ResourceManager;
+import com.google.cloud.teleport.it.common.utils.ExceptionUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
+import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,8 +64,15 @@ import org.slf4j.LoggerFactory;
  * <p>The class is thread-safe.
  */
 public final class SpannerResourceManager implements ResourceManager {
+
   private static final Logger LOG = LoggerFactory.getLogger(SpannerResourceManager.class);
   private static final int MAX_BASE_ID_LENGTH = 30;
+
+  // Retry settings for instance creation
+  private static final int CREATE_MAX_RETRIES = 5;
+  private static final Duration CREATE_BACKOFF_DELAY = Duration.ofSeconds(10);
+  private static final Duration CREATE_BACKOFF_MAX_DELAY = Duration.ofSeconds(60);
+  private static final double CREATE_BACKOFF_JITTER = 0.1;
 
   private boolean hasInstance = false;
   private boolean hasDatabase = false;
@@ -118,17 +131,22 @@ public final class SpannerResourceManager implements ResourceManager {
       return;
     }
     LOG.info("Creating instance {} in project {}.", instanceId, projectId);
-    InstanceInfo instanceInfo =
-        InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
-            .setInstanceConfigId(InstanceConfigId.of(projectId, "regional-" + region))
-            .setDisplayName(instanceId)
-            .setNodeCount(1)
-            .build();
     try {
-      instanceAdminClient.createInstance(instanceInfo).get();
+      InstanceInfo instanceInfo =
+          InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
+              .setInstanceConfigId(InstanceConfigId.of(projectId, "regional-" + region))
+              .setDisplayName(instanceId)
+              .setNodeCount(1)
+              .build();
+
+      // Retry creation if there's a quota error
+      Instance instance =
+          Failsafe.with(retryOnQuotaException())
+              .get(() -> instanceAdminClient.createInstance(instanceInfo).get());
+
       hasInstance = true;
-      LOG.info("Successfully created instance {}.", instanceId);
-    } catch (ExecutionException | InterruptedException | SpannerException e) {
+      LOG.info("Successfully created instance {}: {}.", instanceId, instance.getState());
+    } catch (Exception e) {
       cleanupAll();
       throw new SpannerResourceManagerException("Failed to create instance.", e);
     }
@@ -140,21 +158,37 @@ public final class SpannerResourceManager implements ResourceManager {
       return;
     }
     LOG.info("Creating database {} in instance {}.", databaseId, instanceId);
+
     try {
-      databaseAdminClient
-          .createDatabase(
-              databaseAdminClient
-                  .newDatabaseBuilder(DatabaseId.of(projectId, instanceId, databaseId))
-                  .setDialect(dialect)
-                  .build(),
-              ImmutableList.of())
-          .get();
+      Database database =
+          Failsafe.with(retryOnQuotaException())
+              .get(
+                  () ->
+                      databaseAdminClient
+                          .createDatabase(
+                              databaseAdminClient
+                                  .newDatabaseBuilder(
+                                      DatabaseId.of(projectId, instanceId, databaseId))
+                                  .setDialect(dialect)
+                                  .build(),
+                              ImmutableList.of())
+                          .get());
+
       hasDatabase = true;
-      LOG.info("Successfully created database {}.", databaseId);
-    } catch (ExecutionException | InterruptedException | SpannerException e) {
+      LOG.info("Successfully created database {}: {}.", databaseId, database.getState());
+    } catch (Exception e) {
       cleanupAll();
       throw new SpannerResourceManagerException("Failed to create database.", e);
     }
+  }
+
+  private static <T> RetryPolicy<T> retryOnQuotaException() {
+    return RetryPolicy.<T>builder()
+        .handleIf(exception -> ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED"))
+        .withMaxRetries(CREATE_MAX_RETRIES)
+        .withBackoff(CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY)
+        .withJitter(CREATE_BACKOFF_JITTER)
+        .build();
   }
 
   private void checkIsUsable() throws IllegalStateException {
