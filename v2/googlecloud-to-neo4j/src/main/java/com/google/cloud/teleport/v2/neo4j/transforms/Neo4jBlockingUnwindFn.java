@@ -21,6 +21,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -47,18 +49,19 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
   private long elementsInput;
   private boolean loggingDone;
   private List<Map<String, Object>> unwindList;
+  private ConnectionParams connectionParams;
   private Neo4jConnection neo4jConnection;
 
   private Neo4jBlockingUnwindFn() {}
 
   public Neo4jBlockingUnwindFn(
-      Neo4jConnection neo4jConnection,
+      ConnectionParams connectionParams,
       String cypher,
       long batchSize,
       boolean logCypher,
       String unwindMapName,
       SerializableFunction<Row, Map<String, Object>> parametersFunction) {
-    this.neo4jConnection = neo4jConnection;
+    this.connectionParams = connectionParams;
     this.cypher = cypher;
     this.parametersFunction = parametersFunction;
     this.logCypher = logCypher;
@@ -68,6 +71,10 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     unwindList = new ArrayList<>();
     elementsInput = 0;
     loggingDone = false;
+  }
+  @Setup
+  public void setup() {
+    this.neo4jConnection = new Neo4jConnection(this.connectionParams);
   }
 
   @ProcessElement
@@ -96,6 +103,11 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
   @FinishBundle
   public void finishBundle(FinishBundleContext context) {
     executeCypherUnwindStatement();
+  }
+
+  @Teardown
+  public void tearDown() {
+    this.neo4jConnection.close();
   }
 
   private void executeCypherUnwindStatement() {

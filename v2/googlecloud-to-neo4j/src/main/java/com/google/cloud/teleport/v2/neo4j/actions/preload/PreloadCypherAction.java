@@ -42,22 +42,19 @@ public class PreloadCypherAction implements PreloadAction {
   public List<String> execute() {
     List<String> msgs = new ArrayList<>();
 
-    Neo4jConnection directConnect = new Neo4jConnection(this.context.neo4jConnectionParams);
-    String cypher = action.options.get("cypher");
-    if (StringUtils.isEmpty(cypher)) {
-      throw new RuntimeException("Options 'cypher' not provided for preload cypher action.");
-    }
-    LOG.info("Executing cypher: {}", cypher);
-    try {
-      directConnect.executeCypher(cypher);
-      if (directConnect != null && directConnect.getSession().isOpen()) {
-        directConnect.getSession().close();
+    try (Neo4jConnection directConnect = new Neo4jConnection(this.context.neo4jConnectionParams)) {
+      String cypher = action.options.get("cypher");
+      if (StringUtils.isEmpty(cypher)) {
+        throw new RuntimeException("Options 'cypher' not provided for preload cypher action.");
       }
-    } catch (Exception e) {
-      throw new RuntimeException(
-          String.format("Exception running cypher, %s: %s", cypher, e.getMessage()), e);
+      LOG.info("Executing cypher: {}", cypher);
+      try {
+        directConnect.executeCypher(cypher);
+      } catch (Exception e) {
+        throw new RuntimeException(
+                String.format("Exception running cypher, %s: %s", cypher, e.getMessage()), e);
+      }
+      return msgs;
     }
-
-    return msgs;
   }
 }
