@@ -250,7 +250,7 @@ public class CypherGenerator {
         ModelUtils.getIndexedProperties(config.getIndexAllProperties(), FragmentType.node, target);
     List<String> uniqueProperties = ModelUtils.getUniqueProperties(FragmentType.node, target);
     List<String> mandatoryProperties = ModelUtils.getRequiredProperties(FragmentType.node, target);
-    List<String> nodeKeyProperties = ModelUtils.getNodeKeyProperties(FragmentType.node, target);
+    List<String> nodeKeyProperties = ModelUtils.getEntityKeyProperties(FragmentType.node, target);
 
     for (String uniqueProperty : uniqueProperties) {
       cyphers.add(
@@ -303,7 +303,7 @@ public class CypherGenerator {
         ModelUtils.getIndexedProperties(config.getIndexAllProperties(), FragmentType.rel, target);
     List<String> uniqueProperties = ModelUtils.getUniqueProperties(FragmentType.rel, target);
     List<String> mandatoryProperties = ModelUtils.getRequiredProperties(FragmentType.rel, target);
-    List<String> relKeyProperties = ModelUtils.getNodeKeyProperties(FragmentType.rel, target);
+    List<String> relKeyProperties = ModelUtils.getEntityKeyProperties(FragmentType.rel, target);
 
     String escapedType = ModelUtils.makeSpaceSafeValidNeo4jIdentifier(type);
     for (String uniqueProperty : uniqueProperties) {
@@ -334,7 +334,7 @@ public class CypherGenerator {
       cyphers.add(
           "CREATE INDEX IF NOT EXISTS FOR ()-[r:"
               + escapedType
-              + "]-() ON (t."
+              + "]-() ON (r."
               + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(indexedProperty)
               + ")");
     }
