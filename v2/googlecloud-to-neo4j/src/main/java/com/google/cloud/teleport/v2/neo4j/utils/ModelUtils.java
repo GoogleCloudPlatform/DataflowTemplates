@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 public class ModelUtils {
   public static final String DEFAULT_STAR_QUERY = "SELECT * FROM PCOLLECTION";
   private static final String neoIdentifierDisAllowedCharactersRegex = "[^a-zA-Z0-9_]";
-  private static final String neoIdentifierDisAllowedCharactersRegexIncSpace = "[^a-zA-Z0-9_ ]";
   private static final String nonAlphaCharsRegex = "[^a-zA-Z]";
   private static final Pattern variablePattern = Pattern.compile("(\\$([a-zA-Z0-9_]+))");
   private static final Logger LOG = LoggerFactory.getLogger(ModelUtils.class);
