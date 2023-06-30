@@ -57,7 +57,7 @@
     <commons-lang3.version>3.12.0</commons-lang3.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
-    <hadoop.version>3.3.5</hadoop.version>
+    <hadoop.version>3.3.6</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     <guava.version>31.0.1-jre</guava.version>
