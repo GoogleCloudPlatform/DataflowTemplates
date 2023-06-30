@@ -267,25 +267,43 @@ public class ModelUtils {
     return relationships;
   }
 
-  public static List<String> getStaticLabels(FragmentType entityType, Target target) {
+  public static List<String> getStaticLabels(Target target) {
     List<String> labels = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
-      if (m.getFragmentType() == entityType) {
-        if (m.getLabels().size() > 0) {
-          labels.addAll(m.getLabels());
-        } else if (m.getRole() == RoleType.label) {
-          if (StringUtils.isNotEmpty(m.getConstant())) {
-            labels.add(m.getConstant());
-          } else {
-            // we cannot index on dynamic labels.  These would need to happen with a pre-transform
-            // action
-            // dynamic labels not handled here
-            // labels.add(prefix+"."+m.field);
-          }
+      if (m.getFragmentType() != FragmentType.node) {
+        continue;
+      }
+      if (m.getLabels().size() > 0) {
+        labels.addAll(m.getLabels());
+      } else if (m.getRole() == RoleType.label) {
+        if (StringUtils.isNotEmpty(m.getConstant())) {
+          labels.add(m.getConstant());
         }
+        // we cannot index on dynamic labels.  These would need to happen with a pre-transform
+        // action
+        // dynamic labels not handled here
+        // labels.add(prefix+"."+m.field);
+
       }
     }
     return labels;
+  }
+
+  public static String getStaticType(Target target) {
+    for (Mapping m : target.getMappings()) {
+      if (m.getFragmentType() != FragmentType.rel) {
+        continue;
+      }
+      if (m.getRole() == RoleType.type) {
+        if (StringUtils.isNotEmpty(m.getConstant())) {
+          return m.getConstant();
+        }
+      }
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            "could not find rel-type definition in the mapping of the relationship target: %s",
+            target));
   }
 
   public static List<String> getStaticOrDynamicLabels(
