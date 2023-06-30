@@ -416,7 +416,7 @@ public class ModelUtils {
     return mandatoryProperties;
   }
 
-  public static List<String> getNodeKeyProperties(FragmentType entityType, Target target) {
+  public static List<String> getEntityKeyProperties(FragmentType entityType, Target target) {
     List<String> nodeKeyProperties = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
       if (m.getFragmentType() == entityType) {
