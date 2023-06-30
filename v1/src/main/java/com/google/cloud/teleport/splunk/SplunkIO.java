@@ -265,7 +265,8 @@ public class SplunkIO {
       }
 
       /**
-       * Same as {@link Builder#withRootCaPath(ValueProvider)} but without a {@link ValueProvider}.
+       * Same as {@link Builder#withRootCaCertificatePath(ValueProvider)} but without a {@link
+       * ValueProvider}.
        *
        * @param rootCaCertificatePath Path to self-signed certificate
        * @return {@link Builder}

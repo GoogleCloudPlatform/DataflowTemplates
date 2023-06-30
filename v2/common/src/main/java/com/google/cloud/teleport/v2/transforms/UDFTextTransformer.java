@@ -32,23 +32,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link UDFTextTransformer} class is a {@link PTransform} which transforms incoming {@link
- * InputT} objects into {@link TableRow} objects for insertion into BigQuery while applying an
- * optional UDF to the input. The executions of the UDF and transformation to {@link TableRow}
- * objects is done in a fail-safe way by wrapping the element with it's original payload inside the
- * {@link FailsafeElement} class. The {@link PubsubMessageToTableRow} transform will output a {@link
- * PCollectionTuple} which contains all output and dead-letter {@link PCollection}.
+ * The {@link UDFTextTransformer} class is a {@link PTransform} which transforms incoming objects
+ * into {@link TableRow} objects for insertion into BigQuery while applying an optional UDF to the
+ * input. The executions of the UDF and transformation to {@link TableRow} objects is done in a
+ * fail-safe way by wrapping the element with it's original payload inside the {@link
+ * FailsafeElement} class. The transform will output a {@link PCollectionTuple} which contains all
+ * output and dead-letter {@link PCollection}.
  *
  * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
  *
  * <ul>
- *   <li>{@link PubSubCdcToBigQuery#UDF_OUT} - Contains all {@link FailsafeElement} records
+ *   <li>{@link InputUDFToTableRow#udfTempOut} - Contains all {@link FailsafeElement} records
  *       successfully processed by the optional UDF.
- *   <li>{@link PubSubCdcToBigQuery#UDF_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
- *       records which failed processing during the UDF execution.
- *   <li>{@link PubSubCdcToBigQuery#TRANSFORM_OUT} - Contains all records successfully converted
- *       from JSON to {@link TableRow} objects.
- *   <li>{@link PubSubCdcToBigQuery#TRANSFORM_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
+ *   <li>{@link InputUDFToTableRow#udfDeadletterOut} - Contains all {@link FailsafeElement} records
+ *       which failed processing during the UDF execution.
+ *   <li>{@link InputUDFToTableRow#transformOut} - Contains all records successfully converted from
+ *       JSON to {@link TableRow} objects.
+ *   <li>{@link InputUDFToTableRow#transformDeadletterOut} - Contains all {@link FailsafeElement}
  *       records which couldn't be converted to table rows.
  * </ul>
  */

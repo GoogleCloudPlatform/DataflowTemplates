@@ -27,8 +27,8 @@ import org.apache.kafka.common.security.scram.internals.ScramMechanism;
 import org.junit.Assert;
 import org.junit.Test;
 
-/** Test class for {@link Utils}. */
-public class UtilsTest {
+/** Test class for {@link KafkaCommonUtils}. */
+public class KafkaCommonUtilsTest {
   /** Tests configureKafka() with a null input properties. */
   @Test
   public void testConfigureKafkaNullProps() {

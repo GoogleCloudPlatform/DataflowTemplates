@@ -42,11 +42,11 @@ public class JdbcIngestionWriteDisposition {
   }
 
   /**
-   * Thrown if {@link
-   * com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionWriteDisposition.WriteDispositionOptions
-   * WriteDispositionOptions} is set to {@code WRITE_EMPTY} and a target file exists.
+   * Thrown if {@link JdbcIngestionWriteDisposition.WriteDispositionOptions} is set to {@code
+   * WRITE_EMPTY} and a target file exists.
    */
   public static class WriteDispositionException extends RuntimeException {
+
     public WriteDispositionException(String message) {
       super(message);
     }
@@ -54,6 +54,7 @@ public class JdbcIngestionWriteDisposition {
 
   /** Maps WriteDispostionOptions to BigQueryIO.Write.WriteDisposition. */
   public static class MapWriteDisposition {
+
     private static final Map<WriteDispositionOptions, WriteDisposition> WRITE_DISPOSITION_MAP;
 
     static {

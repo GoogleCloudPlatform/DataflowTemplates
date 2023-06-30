@@ -21,7 +21,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
- * The {@link MongoDbToBigQueryOptions} class provides the custom execution options passed by the
+ * The {@link BigQueryToMongoDbOptions} class provides the custom execution options passed by the
  * executor at the command-line.
  */
 public class BigQueryToMongoDbOptions {

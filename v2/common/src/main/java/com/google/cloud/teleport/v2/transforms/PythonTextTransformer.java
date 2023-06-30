@@ -118,6 +118,7 @@ public abstract class PythonTextTransformer implements Serializable {
   /** Grabs code from a FileSystem, loads into ProcessBuilder. */
   @AutoValue
   public abstract static class PythonRuntime {
+
     @Nullable
     public abstract String fileSystemPath();
 
@@ -142,6 +143,7 @@ public abstract class PythonTextTransformer implements Serializable {
     /** Builder for {@link PythonTextTransformer}. */
     @AutoValue.Builder
     public abstract static class Builder {
+
       public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder setRuntimeVersion(@Nullable String runtimeVersion);
@@ -193,16 +195,12 @@ public abstract class PythonTextTransformer implements Serializable {
       return process;
     }
 
-    /**
-     * Factory method for making a new Invocable.
-     *
-     * @param scripts
-     */
+    /** Factory method for making a new Invocable. */
     @Nullable
     private static ProcessBuilder newProcess() {
       ProcessBuilder pb = new ProcessBuilder();
 
-      return (ProcessBuilder) pb;
+      return pb;
     }
 
     /**
@@ -360,6 +358,7 @@ public abstract class PythonTextTransformer implements Serializable {
   @AutoValue
   public abstract static class FailsafePythonUdf<T>
       extends PTransform<PCollection<FailsafeElement<T, String>>, PCollectionTuple> {
+
     public abstract @Nullable String fileSystemPath();
 
     public abstract @Nullable String runtimeVersion();
@@ -388,6 +387,7 @@ public abstract class PythonTextTransformer implements Serializable {
     /** Builder for {@link FailsafePythonUdf}. */
     @AutoValue.Builder
     public abstract static class Builder<T> {
+
       public abstract Builder<T> setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder<T> setRuntimeVersion(@Nullable String runtimeVersion);
