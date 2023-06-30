@@ -190,7 +190,7 @@ public class ModelUtils {
       return proposedIdString;
     }
     String finalIdString =
-        proposedIdString.trim().replaceAll(neoIdentifierDisAllowedCharactersRegexIncSpace, "_");
+        proposedIdString.trim().replaceAll(neoIdentifierDisAllowedCharactersRegex, "_");
     if (finalIdString.substring(0, 1).matches(nonAlphaCharsRegex)) {
       finalIdString = "_" + finalIdString;
     }

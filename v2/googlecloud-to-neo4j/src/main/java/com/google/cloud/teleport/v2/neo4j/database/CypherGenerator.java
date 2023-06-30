@@ -66,11 +66,16 @@ public class CypherGenerator {
                     "target", true, FragmentType.target, Arrays.asList(RoleType.key), target))
             .append(")");
         sb.append(" MERGE (source)");
-        sb.append(" -[")
-            .append(getRelationshipTypePropertiesListFragment("rel", false, target))
-            .append("]-> ");
+        sb.append("-[")
+            .append(getRelationshipTypePropertiesListFragment("rel", true, target))
+            .append("]->");
         sb.append("(target)");
-        // SET properties...
+        String relPropertyMap =
+            getPropertiesListCypherFragment(
+                FragmentType.rel, false, List.of(RoleType.property), target);
+        if (relPropertyMap.length() > 0) {
+          sb.append(" SET rel += ").append(relPropertyMap);
+        }
       } else if (target.getSaveMode() == SaveMode.append) { // Fast, blind create
         sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row CREATE ");
         sb.append("(")
@@ -94,6 +99,12 @@ public class CypherGenerator {
                     Arrays.asList(RoleType.key, RoleType.property),
                     target))
             .append(")");
+        String relPropertyMap =
+            getPropertiesListCypherFragment(
+                FragmentType.rel, false, List.of(RoleType.property), target);
+        if (relPropertyMap.length() > 0) {
+          sb.append(" SET rel += ").append(relPropertyMap);
+        }
       } else {
         LOG.error("Unhandled saveMode: " + target.getSaveMode());
       }
@@ -209,7 +220,7 @@ public class CypherGenerator {
     //  "UNWIND $rows AS row CREATE(c:Customer { id : row.id, name: row.name, firstName:
     // row.firstName })
     // derive labels
-    List<String> labels = ModelUtils.getStaticLabels(FragmentType.node, target);
+    List<String> labels = ModelUtils.getStaticLabels(target);
     List<String> indexedProperties =
         ModelUtils.getIndexedProperties(config.getIndexAllProperties(), FragmentType.node, target);
     List<String> uniqueProperties = ModelUtils.getUniqueProperties(FragmentType.node, target);
@@ -259,13 +270,12 @@ public class CypherGenerator {
     List<String> relType =
         ModelUtils.getStaticOrDynamicRelationshipType(CONST_ROW_VARIABLE_NAME, target);
     sb.append(prefix).append(":").append(StringUtils.join(relType, ":"));
-    sb.append(" ")
-        .append(
-            getPropertiesListCypherFragment(
-                FragmentType.rel,
-                onlyIndexedProperties,
-                Arrays.asList(RoleType.key, RoleType.property),
-                target));
+    String properties =
+        getPropertiesListCypherFragment(
+            FragmentType.rel, onlyIndexedProperties, List.of(RoleType.key), target);
+    if (!properties.isEmpty()) {
+      sb.append(" ").append(properties);
+    }
     return sb.toString();
   }
 }
