@@ -212,7 +212,19 @@ public class CypherGenerator {
     return "";
   }
 
-  public static List<String> getNodeIndexAndConstraintsCypherStatements(
+  public static List<String> getIndexAndConstraintsCypherStatements(
+      TargetType type, Config config, Target target) {
+    switch (type) {
+      case node:
+        return getNodeIndexAndConstraintsCypherStatements(config, target);
+      case edge:
+        return getRelationshipIndexAndConstraintsCypherStatements(config, target);
+      default:
+        throw new IllegalArgumentException(String.format("unexpected target type: %s", type));
+    }
+  }
+
+  private static List<String> getNodeIndexAndConstraintsCypherStatements(
       Config config, Target target) {
 
     List<String> cyphers = new ArrayList<>();
@@ -257,6 +269,59 @@ public class CypherGenerator {
           "CREATE INDEX IF NOT EXISTS FOR (t:"
               + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
               + ") ON (t."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(indexedProperty)
+              + ")");
+    }
+
+    return cyphers;
+  }
+
+  // TODO: no-op if < 5.7 || not EE for some or all
+  private static List<String> getRelationshipIndexAndConstraintsCypherStatements(
+      Config config, Target target) {
+
+    List<String> cyphers = new ArrayList<>();
+    // Model node creation statement
+    //  "UNWIND $rows AS row CREATE(c:Customer { id : row.id, name: row.name, firstName:
+    // row.firstName })
+    // derive labels
+    String type = ModelUtils.getStaticType(target);
+    List<String> indexedProperties =
+        ModelUtils.getIndexedProperties(config.getIndexAllProperties(), FragmentType.rel, target);
+    List<String> uniqueProperties = ModelUtils.getUniqueProperties(FragmentType.rel, target);
+    List<String> mandatoryProperties = ModelUtils.getRequiredProperties(FragmentType.rel, target);
+    List<String> relKeyProperties = ModelUtils.getNodeKeyProperties(FragmentType.rel, target);
+
+    String escapedType = ModelUtils.makeSpaceSafeValidNeo4jIdentifier(type);
+    for (String uniqueProperty : uniqueProperties) {
+      cyphers.add(
+          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() REQUIRE r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(uniqueProperty)
+              + " IS UNIQUE");
+    }
+    for (String mandatoryProperty : mandatoryProperties) {
+      cyphers.add(
+          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() REQUIRE r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(mandatoryProperty)
+              + " IS NOT NULL");
+    }
+    for (String relKeyProperty : relKeyProperties) {
+      cyphers.add(
+          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() REQUIRE r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(relKeyProperty)
+              + " IS RELATIONSHIP KEY");
+    }
+    for (String indexedProperty : indexedProperties) {
+      cyphers.add(
+          "CREATE INDEX IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() ON (t."
               + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(indexedProperty)
               + ")");
     }
