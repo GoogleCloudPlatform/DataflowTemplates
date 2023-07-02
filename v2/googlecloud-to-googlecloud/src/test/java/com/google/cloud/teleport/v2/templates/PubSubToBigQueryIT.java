@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -98,6 +99,11 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
             b.addParameter("useStorageWriteApi", "true")
                 .addParameter("numStorageWriteApiStreams", "1")
                 .addParameter("storageWriteApiTriggeringFrequencySec", "5"));
+  }
+
+  @Test
+  public void testPubsubToBigQueryWithReload() throws IOException, InterruptedException {
+    basePubsubToBigQueryWithReload(Function.identity());
   }
 
   private void basePubsubToBigQuery(
@@ -166,5 +172,111 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     TableResult dlqRecords = bigQueryResourceManager.readTable(dlqTable);
     assertThat(dlqRecords.getValues().iterator().next().toString())
         .contains("Expected json literal but found");
+  }
+
+  private void basePubsubToBigQueryWithReload(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException, InterruptedException {
+    // Arrange
+    List<Field> bqSchemaFields =
+        Arrays.asList(
+            Field.of("id", StandardSQLTypeName.INT64),
+            Field.of("job", StandardSQLTypeName.STRING),
+            Field.of("name", StandardSQLTypeName.STRING));
+    Schema bqSchema = Schema.of(bqSchemaFields);
+
+    TopicName topic = pubsubResourceManager.createTopic("input");
+    bigQueryResourceManager.createDataset(REGION);
+    SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "sub-1");
+    TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
+    TableId dlqTable =
+        TableId.of(
+            PROJECT,
+            table.getDataset(),
+            table.getTable() + PubSubToBigQuery.DEFAULT_DEADLETTER_TABLE_SUFFIX);
+
+    LaunchConfig.Builder options =
+        paramsAdder.apply(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputSubscription", subscription.toString())
+                .addParameter("outputTableSpec", toTableSpecLegacy(table))
+                .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                .addParameter("javascriptFunctionReload", "true")
+                .addParameter("javascriptReloadIntervalMinutes", "1")
+                .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    for (int i = 1; i <= MESSAGES_COUNT; i++) {
+      Map<String, Object> message = Map.of("id", i, "job", testName, "name", "upper: message");
+      ByteString messageData = ByteString.copyFromUtf8(new JSONObject(message).toString());
+      pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+    }
+
+    for (int i = 1; i <= BAD_MESSAGES_COUNT; i++) {
+      ByteString messageData = ByteString.copyFromUtf8("bad id " + i);
+      pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+    }
+
+    BigQueryRowsCheck bigQueryRowsCheck =
+        BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+            .setMinRows(MESSAGES_COUNT)
+            .build();
+    BigQueryRowsCheck bigQueryRowsCheckDLQ =
+        BigQueryRowsCheck.builder(bigQueryResourceManager, dlqTable)
+            .setMinRows(BAD_MESSAGES_COUNT)
+            .build();
+    Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(info), bigQueryRowsCheck, bigQueryRowsCheckDLQ);
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+
+    TableResult records = bigQueryResourceManager.readTable(table);
+
+    // Make sure record can be read and UDF changed name to uppercase
+    assertThatBigQueryRecords(records)
+        .hasRecordsUnordered(List.of(Map.of("id", 1, "job", testName, "name", "UPPER: MESSAGE")));
+
+    TableResult dlqRecords = bigQueryResourceManager.readTable(dlqTable);
+    assertThat(dlqRecords.getValues().iterator().next().toString())
+        .contains("Expected json literal but found");
+
+    // modify UDF to test reloading
+    gcsClient.createArtifact(
+        "udf.js",
+        "function uppercaseName(value) {\n"
+            + "  const data = JSON.parse(value);\n"
+            + "  data.name = data.name.toLowerCase();\n"
+            + "  return JSON.stringify(data);\n"
+            + "}");
+
+    // wait to ensure the reload will take effect.
+    TimeUnit.MINUTES.sleep(2);
+    for (int i = MESSAGES_COUNT + 1; i <= MESSAGES_COUNT * 2; i++) {
+      Map<String, Object> message = Map.of("id", i, "job", testName, "name", "LOWER: message");
+      ByteString messageData = ByteString.copyFromUtf8(new JSONObject(message).toString());
+      pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+    }
+
+    Result reloadedResult =
+        pipelineOperator()
+            .waitForConditionsAndFinish(
+                createConfig(info),
+                BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+                    .setMinRows(MESSAGES_COUNT * 2)
+                    .build());
+
+    // Assert
+    assertThatResult(reloadedResult).meetsConditions();
+
+    TableResult reloadedRecords = bigQueryResourceManager.readTable(table);
+
+    // Make sure record can be read and UDF changed name to uppercase
+    assertThatBigQueryRecords(reloadedRecords)
+        .hasRecordsUnordered(List.of(Map.of("id", 11, "job", testName, "name", "lower: message")));
   }
 }

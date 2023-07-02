@@ -49,7 +49,13 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
     displayName = "Firestore (Datastore mode) to BigQuery",
     description = "Batch pipeline. Reads Firestore entities and writes them to BigQuery.",
     optionsClass = FirestoreToBigQuery.FirestoreToBigQueryOptions.class,
-    skipOptions = {"datastoreReadNamespace", "datastoreReadGqlQuery", "datastoreReadProjectId"},
+    skipOptions = {
+      "datastoreReadNamespace",
+      "datastoreReadGqlQuery",
+      "datastoreReadProjectId",
+      "javascriptFunctionReload",
+      "javascriptReloadIntervalMinutes"
+    },
     flexContainerName = "firestore-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public class FirestoreToBigQuery {

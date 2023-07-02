@@ -406,6 +406,9 @@ public class KafkaToBigQuery {
                   FailsafeJavascriptUdf.<KV<String, String>>newBuilder()
                       .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                       .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                      .setFunctionReload(options.getJavascriptTextTransformFunctionReload())
+                      .setReloadIntervalMinutes(
+                          options.getJavascriptTextTransformReloadIntervalMinutes())
                       .setSuccessTag(UDF_OUT)
                       .setFailureTag(UDF_DEADLETTER_OUT)
                       .build());

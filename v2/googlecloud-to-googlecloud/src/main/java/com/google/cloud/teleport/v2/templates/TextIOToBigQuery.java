@@ -182,6 +182,8 @@ public class TextIOToBigQuery {
             TransformTextViaJavascript.newBuilder()
                 .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                 .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setReloadFunction(options.getJavascriptTextTransformFunctionReload())
+                .setReloadIntervalMinutes(options.getJavascriptTextTransformReloadIntervalMinutes())
                 .build())
         .apply(
             MapElements.via(
