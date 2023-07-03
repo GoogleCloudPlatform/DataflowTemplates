@@ -1,0 +1,141 @@
+/*
+ * Copyright (C) 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.neo4j.templates;
+
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
+
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.common.PipelineOperator.Result;
+import com.google.cloud.teleport.it.common.TestProperties;
+import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
+import com.google.cloud.teleport.it.gcp.TemplateTestBase;
+import com.google.cloud.teleport.it.neo4j.Neo4jResourceManager;
+import com.google.cloud.teleport.it.neo4j.conditions.Neo4jQueryCheck;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+@Category(TemplateIntegrationTest.class)
+@TemplateIntegrationTest(GoogleCloudToNeo4j.class)
+@RunWith(JUnit4.class)
+public class InlineDataToNeo4jIT extends TemplateTestBase {
+  private Neo4jResourceManager neo4jClient;
+
+  @Before
+  public void setup() {
+    neo4jClient =
+        Neo4jResourceManager.builder(testName)
+            .setAdminPassword("letmein!")
+            .setHost(TestProperties.hostIp())
+            .build();
+  }
+
+  @After
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(neo4jClient);
+  }
+
+  @Test
+  public void testInlineDataToNeo4j() throws IOException {
+    String spec = contentOf("/testing-specs/verbose-syntax/inline-json-bq-northwind-jobspec.json");
+    gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
+    gcsClient.createArtifact(
+        "neo4j-connection.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("optionsJson", "{}") // FIXME: this should not be required
+            .addParameter("jobSpecUri", getGcsPath("inline-data-to-neo4j.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j-connection.json"));
+    LaunchInfo info = launchTemplate(options);
+
+    assertThatPipeline(info).isRunning();
+    Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(info),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "CALL db.schema.nodeTypeProperties() YIELD nodeLabels, propertyName, mandatory RETURN nodeLabels, collect(propertyName) AS propertyNames ORDER BY nodeLabels ASC")
+                    .setExpectedResult(
+                        List.of(
+                            Map.of(
+                                "nodeLabels",
+                                List.of("Customer"),
+                                "propertyNames",
+                                List.of("customerId", "contactName", "companyName")),
+                            Map.of(
+                                "nodeLabels",
+                                List.of("Product"),
+                                "propertyNames",
+                                List.of("productId", "productName", "amount", "quantity"))))
+                    .build(),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "MATCH (n) RETURN labels(n) AS labels, count(n) AS count ORDER BY count ASC")
+                    .setExpectedResult(
+                        List.of(
+                            Map.of("labels", List.of("Customer"), "count", 7L),
+                            Map.of("labels", List.of("Product"), "count", 52L)))
+                    .build(),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "CALL db.schema.relTypeProperties() YIELD relType, propertyName RETURN relType, collect(propertyName) AS propertyNames ORDER BY relType ASC")
+                    .setExpectedResult(
+                        List.of(
+                            Map.of(
+                                "relType",
+                                ":`PURCHASES`",
+                                "propertyNames",
+                                List.of("orderId", "amount", "quantity"))))
+                    .build(),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count ORDER BY count ASC")
+                    .setExpectedResult(List.of(Map.of("type", "PURCHASES", "count", 97L)))
+                    .build());
+    assertThatResult(result).meetsConditions();
+  }
+
+  private String contentOf(String resourcePath) throws IOException {
+    try (BufferedReader bufferedReader =
+        new BufferedReader(
+            new InputStreamReader(this.getClass().getResourceAsStream(resourcePath)))) {
+      return bufferedReader.lines().collect(Collectors.joining("\n"));
+    }
+  }
+}
