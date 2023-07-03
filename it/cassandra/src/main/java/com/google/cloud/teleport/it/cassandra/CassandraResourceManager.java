@@ -26,8 +26,11 @@ import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -91,10 +94,19 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
             : cassandraClient;
 
     if (!usingStaticDatabase) {
-      this.cassandraClient.execute(
-          String.format(
-              "CREATE KEYSPACE IF NOT EXISTS %s WITH replication = {'class':'SimpleStrategy', 'replication_factor':1}",
-              this.keyspaceName));
+      // Keyspace request may timeout on a few environments, if Cassandra is warming up
+      Failsafe.with(
+              RetryPolicy.builder()
+                  .withMaxRetries(5)
+                  .withDelay(Duration.ofSeconds(1))
+                  .handle(DriverTimeoutException.class)
+                  .build())
+          .run(
+              () ->
+                  this.cassandraClient.execute(
+                      String.format(
+                          "CREATE KEYSPACE IF NOT EXISTS %s WITH replication = {'class':'SimpleStrategy', 'replication_factor':1}",
+                          this.keyspaceName)));
     }
   }
 
