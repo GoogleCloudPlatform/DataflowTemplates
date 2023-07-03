@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/parquet-to-bigtable",
     contactInformation = "https://cloud.google.com/support")
 public class ParquetToBigtable {
-  private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ParquetToBigtable.class);
 
   /** Maximum number of mutations allowed per row by Cloud bigtable. */
   private static final int MAX_MUTATIONS_PER_ROW = 100000;
