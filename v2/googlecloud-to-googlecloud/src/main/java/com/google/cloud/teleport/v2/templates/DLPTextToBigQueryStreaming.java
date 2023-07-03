@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.api.services.bigquery.model.TableCell;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
@@ -24,6 +28,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.DLPTextToBigQueryStreaming.TokenizePipelineOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.common.base.Charsets;
@@ -38,6 +43,8 @@ import com.google.privacy.dlp.v2.Table;
 import com.google.privacy.dlp.v2.Value;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.sql.SQLException;
@@ -51,6 +58,7 @@ import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.AtomicCoder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.Compression;
@@ -81,6 +89,7 @@ import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
@@ -167,6 +176,10 @@ public class DLPTextToBigQueryStreaming {
   public static PipelineResult run(TokenizePipelineOptions options) {
     // Create the pipeline
     Pipeline p = Pipeline.create(options);
+
+    // TableRow is not deterministic in general, but here it is, as it supports only string values
+    p.getCoderRegistry().registerCoderForClass(TableRow.class, DeterministicTableRowJsonCoder.of());
+
     /*
      * Steps:
      *   1) Read from the text source continuously based on default interval e.g. 30 seconds
@@ -261,7 +274,8 @@ public class DLPTextToBigQueryStreaming {
    * The {@link TokenizePipelineOptions} interface provides the custom execution options passed by
    * the executor at the command-line.
    */
-  public interface TokenizePipelineOptions extends DataflowPipelineOptions {
+  public interface TokenizePipelineOptions
+      extends BigQueryStorageApiStreamingOptions, DataflowPipelineOptions {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
@@ -429,8 +443,6 @@ public class DLPTextToBigQueryStreaming {
      * the complete work for a given element. For our case this would be the total number of rows
      * for each CSV file. We will calculate the number of split required based on total number of
      * rows and batch size provided.
-     *
-     * @throws IOException
      */
     @GetInitialRestriction
     public OffsetRange getInitialRestriction(@Element KV<String, ReadableFile> csvFile)
@@ -514,6 +526,7 @@ public class DLPTextToBigQueryStreaming {
    * received, this DoFn ouptputs KV of new table with table id as key.
    */
   static class DLPTokenizationDoFn extends DoFn<KV<String, Table>, KV<String, Table>> {
+
     private String dlpProjectId;
     private DlpServiceClient dlpServiceClient;
     private String deIdentifyTemplateName;
@@ -622,8 +635,9 @@ public class DLPTextToBigQueryStreaming {
               value -> {
                 String checkedHeaderName =
                     checkHeaderName(headers[headerIndex.getAndIncrement()].toString());
-                bqRow.set(checkedHeaderName, value.getStringValue());
-                cells.add(new TableCell().set(checkedHeaderName, value.getStringValue()));
+                String stringValue = value.getStringValue();
+                bqRow.set(checkedHeaderName, stringValue);
+                cells.add(new TableCell().set(checkedHeaderName, stringValue).setV(stringValue));
               });
       bqRow.setF(cells);
       return bqRow;
@@ -671,8 +685,9 @@ public class DLPTextToBigQueryStreaming {
       List<TableCell> cells = bqRow.getF();
       for (int i = 0; i < cells.size(); i++) {
         Map<String, Object> object = cells.get(i);
-        String header = object.keySet().iterator().next();
-        /** currently all BQ data types are set to String */
+        String header =
+            object.keySet().stream().filter(name -> !name.equals("v")).findFirst().get();
+        /* currently all BQ data types are set to String */
         fields.add(new TableFieldSchema().setName(checkHeaderName(header)).setType("STRING"));
       }
 
@@ -728,5 +743,67 @@ public class DLPTextToBigQueryStreaming {
       throw new IllegalArgumentException("Column name can't be matched to a valid format " + name);
     }
     return checkedHeader;
+  }
+
+  /**
+   * A Coder that encodes BigQuery {@link TableRow} objects in their native JSON format. It is
+   * deterministic because it doesn't encode arbitrary objects, just {@link String} instances.
+   */
+  static class DeterministicTableRowJsonCoder extends AtomicCoder<TableRow> {
+
+    public static DeterministicTableRowJsonCoder of() {
+      return INSTANCE;
+    }
+
+    @Override
+    public void encode(TableRow value, OutputStream outStream) throws IOException {
+      encode(value, outStream, Context.NESTED);
+    }
+
+    @Override
+    public void encode(TableRow value, OutputStream outStream, Context context) throws IOException {
+      String strValue = MAPPER.writeValueAsString(value);
+      StringUtf8Coder.of().encode(strValue, outStream, context);
+    }
+
+    @Override
+    public TableRow decode(InputStream inStream) throws IOException {
+      return decode(inStream, Context.NESTED);
+    }
+
+    @Override
+    public TableRow decode(InputStream inStream, Context context) throws IOException {
+      String strValue = StringUtf8Coder.of().decode(inStream, context);
+      return MAPPER.readValue(strValue, TableRow.class);
+    }
+
+    @Override
+    public long getEncodedElementByteSize(TableRow value) throws Exception {
+      String strValue = MAPPER.writeValueAsString(value);
+      return StringUtf8Coder.of().getEncodedElementByteSize(strValue);
+    }
+
+    @Override
+    public void verifyDeterministic() {}
+
+    /////////////////////////////////////////////////////////////////////////////
+
+    // FAIL_ON_EMPTY_BEANS is disabled in order to handle null values in
+    // TableRow.
+    private static final ObjectMapper MAPPER =
+        new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .registerModule(new JodaModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+
+    private static final DeterministicTableRowJsonCoder INSTANCE =
+        new DeterministicTableRowJsonCoder();
+    private static final TypeDescriptor<TableRow> TYPE_DESCRIPTOR = new TypeDescriptor<>() {};
+
+    @Override
+    public TypeDescriptor<TableRow> getEncodedTypeDescriptor() {
+      return TYPE_DESCRIPTOR;
+    }
   }
 }

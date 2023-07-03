@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
  * <p>The class is thread-safe.
  */
 public final class BigQueryResourceManager implements ResourceManager {
+
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryResourceManager.class);
   private static final String DEFAULT_DATASET_REGION = "us-central1";
 
@@ -169,9 +170,10 @@ public final class BigQueryResourceManager implements ResourceManager {
    * Create a BigQuery dataset in which all tables will exist.
    *
    * @param region the region to store the dataset in.
+   * @return Dataset id that was created
    * @throws BigQueryResourceManagerException if there is an error creating the dataset in BigQuery.
    */
-  public synchronized void createDataset(String region) {
+  public synchronized String createDataset(String region) {
 
     // Check to see if dataset already exists, and throw error if it does
     if (dataset != null) {
@@ -184,13 +186,12 @@ public final class BigQueryResourceManager implements ResourceManager {
     // Send the dataset request to Google Cloud
     try {
       DatasetInfo datasetInfo = DatasetInfo.newBuilder(datasetId).setLocation(region).build();
+      LOG.info("Dataset {} created successfully", datasetId);
       dataset = bigQuery.create(datasetInfo);
-
+      return datasetId;
     } catch (Exception e) {
       throw new BigQueryResourceManagerException("Failed to create dataset.", e);
     }
-
-    LOG.info("Dataset {} created successfully", datasetId);
   }
 
   /**
