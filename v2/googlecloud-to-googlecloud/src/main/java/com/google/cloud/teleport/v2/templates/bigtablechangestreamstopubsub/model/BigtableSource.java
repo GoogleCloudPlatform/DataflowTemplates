@@ -26,63 +26,63 @@ import org.joda.time.Instant;
 /** Descriptor of the Cloud Bigtable source table where changes are captured from. */
 public class BigtableSource implements Serializable {
 
-    private final String instanceId;
-    private final String tableId;
-    private final String charset;
-    private final Set<String> columnFamiliesToIgnore;
-    private final Set<String> columnsToIgnore;
+  private final String instanceId;
+  private final String tableId;
+  private final String charset;
+  private final Set<String> columnFamiliesToIgnore;
+  private final Set<String> columnsToIgnore;
 
-    private final Instant startTimestamp;
+  private final Instant startTimestamp;
 
-    public BigtableSource(
-            String instanceId,
-            String tableId,
-            String charset,
-            String ignoreColumnFamilies,
-            String ignoreColumns,
-            Instant startTimestamp) {
-        this.startTimestamp = startTimestamp;
-        this.instanceId = instanceId;
-        this.tableId = tableId;
-        this.charset = charset;
+  public BigtableSource(
+      String instanceId,
+      String tableId,
+      String charset,
+      String ignoreColumnFamilies,
+      String ignoreColumns,
+      Instant startTimestamp) {
+    this.startTimestamp = startTimestamp;
+    this.instanceId = instanceId;
+    this.tableId = tableId;
+    this.charset = charset;
 
-        if (StringUtils.isBlank(ignoreColumnFamilies)) {
-            this.columnFamiliesToIgnore = Collections.emptySet();
-        } else {
-            this.columnFamiliesToIgnore =
-                    Arrays.stream(ignoreColumnFamilies.trim().split("[\\s]*,[\\s]*"))
-                            .collect(Collectors.toSet());
-        }
-
-        if (StringUtils.isBlank(ignoreColumns)) {
-            this.columnsToIgnore = Collections.emptySet();
-        } else {
-            this.columnsToIgnore =
-                    Arrays.stream(ignoreColumns.trim().split("[\\s]*,[\\s]*")).collect(Collectors.toSet());
-        }
+    if (StringUtils.isBlank(ignoreColumnFamilies)) {
+      this.columnFamiliesToIgnore = Collections.emptySet();
+    } else {
+      this.columnFamiliesToIgnore =
+          Arrays.stream(ignoreColumnFamilies.trim().split("[\\s]*,[\\s]*"))
+              .collect(Collectors.toSet());
     }
 
-    public String getInstanceId() {
-        return instanceId;
+    if (StringUtils.isBlank(ignoreColumns)) {
+      this.columnsToIgnore = Collections.emptySet();
+    } else {
+      this.columnsToIgnore =
+          Arrays.stream(ignoreColumns.trim().split("[\\s]*,[\\s]*")).collect(Collectors.toSet());
     }
+  }
 
-    public String getTableId() {
-        return tableId;
-    }
+  public String getInstanceId() {
+    return instanceId;
+  }
 
-    public String getCharset() {
-        return charset;
-    }
+  public String getTableId() {
+    return tableId;
+  }
 
-    public Set<String> getColumnFamiliesToIgnore() {
-        return columnFamiliesToIgnore;
-    }
+  public String getCharset() {
+    return charset;
+  }
 
-    public Set<String> getColumnsToIgnore() {
-        return columnsToIgnore;
-    }
+  public Set<String> getColumnFamiliesToIgnore() {
+    return columnFamiliesToIgnore;
+  }
 
-    public Instant getStartTimestamp() {
-        return startTimestamp;
-    }
+  public Set<String> getColumnsToIgnore() {
+    return columnsToIgnore;
+  }
+
+  public Instant getStartTimestamp() {
+    return startTimestamp;
+  }
 }

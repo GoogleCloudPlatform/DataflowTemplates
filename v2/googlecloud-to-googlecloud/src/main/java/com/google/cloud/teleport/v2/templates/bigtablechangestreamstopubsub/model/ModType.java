@@ -17,18 +17,18 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.mod
 
 /** Type of Cloud Bigtable mutations. */
 public enum ModType {
-    SET_CELL("SET_CELL"),
-    DELETE_CELLS("DELETE_CELLS"),
-    DELETE_FAMILY("DELETE_FAMILY"),
-    UNKNOWN("UNKNOWN");
+  SET_CELL("SET_CELL"),
+  DELETE_CELLS("DELETE_CELLS"),
+  DELETE_FAMILY("DELETE_FAMILY"),
+  UNKNOWN("UNKNOWN");
 
-    private final String code;
+  private final String code;
 
-    ModType(String code) {
-        this.code = code;
-    }
+  ModType(String code) {
+    this.code = code;
+  }
 
-    public String getCode() {
-        return code;
-    }
+  public String getCode() {
+    return code;
+  }
 }
