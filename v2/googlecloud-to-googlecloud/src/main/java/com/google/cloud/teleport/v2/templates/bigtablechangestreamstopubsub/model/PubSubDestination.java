@@ -15,40 +15,36 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model;
 
-import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
 
 /** Descriptor of PubSub destination. */
 public class PubSubDestination implements Serializable {
-    private final String pubSubProject;
-    private final String pubSubTopic;
-    private final String messageFormat;
-    private final String messageEncoding;
+  private final String pubSubProject;
+  private final String pubSubTopic;
+  private final String messageFormat;
+  private final String messageEncoding;
 
-    public PubSubDestination(
-            String pubSubProject, String pubSubTopic, String messageFormat, String messageEncoding) {
-        this.pubSubProject = pubSubProject;
-        this.pubSubTopic = pubSubTopic;
-        this.messageFormat = messageFormat;
-        this.messageEncoding = messageEncoding;
-    }
+  public PubSubDestination(
+      String pubSubProject, String pubSubTopic, String messageFormat, String messageEncoding) {
+    this.pubSubProject = pubSubProject;
+    this.pubSubTopic = pubSubTopic;
+    this.messageFormat = messageFormat;
+    this.messageEncoding = messageEncoding;
+  }
 
-    public String getPubSubProject() { return pubSubProject; }
+  public String getPubSubProject() {
+    return pubSubProject;
+  }
 
-    public String getPubSubTopic() {
-        return pubSubTopic;
-    }
+  public String getPubSubTopic() {
+    return pubSubTopic;
+  }
 
-    public String getMessageFormat() { return messageFormat; }
+  public String getMessageFormat() {
+    return messageFormat;
+  }
 
-    public String getMessageEncoding() { return messageEncoding; }
+  public String getMessageEncoding() {
+    return messageEncoding;
+  }
 }
