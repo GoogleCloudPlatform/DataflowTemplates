@@ -73,7 +73,7 @@ public class ParquetConverters {
             "The maximum number of output shards produced when writing. A higher number of "
                 + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
                 + "data aggregation cost across shards when processing output Cloud Storage files. "
-                + "Default value is decided by the runner.")
+                + "Default value is decided by Dataflow.")
     @Default.Integer(0)
     Integer getNumShards();
 
