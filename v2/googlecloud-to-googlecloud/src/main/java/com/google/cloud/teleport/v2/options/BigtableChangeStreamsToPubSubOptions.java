@@ -43,7 +43,7 @@ public interface BigtableChangeStreamsToPubSubOptions
       description = "The encoding of the message written into PubSub",
       helpText =
           "The format of the message to be written into PubSub. "
-              + "Allowed formats are Binary and JSON Text.")
+              + "Allowed formats are Binary and JSON Text. Default value is JSON.")
   @Default.String("JSON")
   String getMessageEncoding();
 
@@ -55,17 +55,16 @@ public interface BigtableChangeStreamsToPubSubOptions
       description = "The format of the message written into PubSub",
       helpText =
           "The message format chosen for outputting data to PubSub. "
-              + "Allowed formats are AVRO, Protocol Buffer and JSON Text.")
+              + "Allowed formats are AVRO, Protocol Buffer and JSON Text. Default value is JSON.")
   @Default.String("JSON")
   String getMessageFormat();
 
   void setMessageFormat(String messageFormat);
-
   @TemplateParameter.Boolean(
       order = 4,
       optional = true,
       description = "Strip value for SetCell mutation",
-      helpText = " If true the SetCell mutation message won’t include the value written.")
+      helpText = "Strip value for SetCell mutation. If true the SetCell mutation message won’t include the value written.")
   @Default.Boolean(false)
   Boolean getStripValue();
 
@@ -74,7 +73,7 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.GcsWriteFolder(
       order = 5,
       optional = true,
-      description = "Dead letter queue directory",
+      description = "Dead letter queue directory to store any unpublished change record.",
       helpText =
           "The file path to store any unprocessed records with"
               + " the reason they failed to be processed. "
