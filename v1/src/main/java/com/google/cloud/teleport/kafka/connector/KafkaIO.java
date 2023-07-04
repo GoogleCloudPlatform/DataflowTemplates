@@ -419,11 +419,10 @@ public class KafkaIO {
 
     /**
      * Sets number of splits for the reader. Normally the number of splits is based on partitions
-     * for the input topics and number splits suggested by the runner. Bun in some cases, input
-     * topic names, number of workers, or the partitions may not be available during job
-     * construction time (e.g. while using Dataflow Templates). {@link UnboundedSource} API requires
-     * fixed number of splits during job construction time. This allows statically setting number of
-     * partitions.
+     * for the input topics and number splits suggested by Dataflow. Bun in some cases, input topic
+     * names, number of workers, or the partitions may not be available during job construction time
+     * (e.g. while using Dataflow Templates). {@link UnboundedSource} API requires fixed number of
+     * splits during job construction time. This allows statically setting number of partitions.
      */
     public Read<K, V> withNumSplits(int numSplits) {
       checkArgument(numSplits >= 1);
