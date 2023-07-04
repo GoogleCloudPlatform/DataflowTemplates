@@ -13,28 +13,28 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model;
+package com.google.cloud.teleport.v2.bigtable.utils;
 
 public class UnsupportedEntryException extends Exception {
 
-  public UnsupportedEntryException() {
-    super();
-  }
+    public UnsupportedEntryException() {
+        super();
+    }
 
-  public UnsupportedEntryException(String message) {
-    super(message);
-  }
+    public UnsupportedEntryException(String message) {
+        super(message);
+    }
 
-  public UnsupportedEntryException(String message, Throwable cause) {
-    super(message, cause);
-  }
+    public UnsupportedEntryException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-  public UnsupportedEntryException(Throwable cause) {
-    super(cause);
-  }
+    public UnsupportedEntryException(Throwable cause) {
+        super(cause);
+    }
 
-  protected UnsupportedEntryException(
-      String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-    super(message, cause, enableSuppression, writableStackTrace);
-  }
+    protected UnsupportedEntryException(
+            String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+        super(message, cause, enableSuppression, writableStackTrace);
+    }
 }

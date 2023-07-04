@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub;
 
-import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.Timestamp;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
 import com.google.cloud.bigtable.data.v2.models.DeleteCells;
@@ -30,7 +29,7 @@ import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToPubSubOptions;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.UnsupportedEntryException;
+import com.google.cloud.teleport.v2.bigtable.utils.UnsupportedEntryException;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.ModType;
@@ -74,8 +73,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This pipeline ingests {@link ChangeStreamMutation} from Bigtable change stream. The {@link
- * ChangeStreamMutation} is then broken into {@link Mod}, which converted into {@link TableRow} and
- * inserted into BigQuery table.
+ * ChangeStreamMutation} is then broken into {@link Mod}, which converted into PubsubMessage and
+ * inserted into Pub/Sub topic.
  */
 @Template(
     name = "Bigtable_Change_Streams_to_PubSub",
@@ -151,9 +150,15 @@ public final class BigtableChangeStreamsToPubSub {
    * @return The result of the pipeline execution.
    */
   public static PipelineResult run(BigtableChangeStreamsToPubSubOptions options) {
-    LOG.info("Requested Message Format is " + options.getMessageFormat());
+    LOG.info("Requested message format is " + options.getMessageFormat());
     setOptions(options);
     validateOptions(options);
+    try {
+      validateSchema(options);
+
+    } catch (Exception e) {
+
+    }
     if (!validateSchema(options)) {
       final String errorMessage = "Invalid schema format:";
       LOG.info(errorMessage);
@@ -194,9 +199,8 @@ public final class BigtableChangeStreamsToPubSub {
     /*
      * Stages: 1) Read {@link ChangeStreamMutation} from change stream. 2) Create {@link
      * FailsafeElement} of {@link Mod} JSON and merge from: - {@link ChangeStreamMutation}. - GCS Dead
-     * letter queue. 3) Convert {@link Mod} JSON into {@link TableRow}.
-     * 4) Append {@link TableRow} to PubSub. 5) Write Failures from 2), 3) and
-     * 4) to GCS dead letter queue.
+     * letter queue. 3) Convert {@link Mod} JSON into PubsubMessage and publish it to PubSub.
+     * 4) Write Failures from 2) and 3) to GCS dead letter queue.
      */
     /** Step 1 */
     Pipeline pipeline = Pipeline.create(options);
@@ -220,7 +224,7 @@ public final class BigtableChangeStreamsToPubSub {
           readChangeStream.withMetadataTableTableId(
               options.getBigtableChangeStreamMetadataTableTableId());
     }
-    /** Step 2: just return the output for sending to pubSub and dlq */
+    /** Step 2: just return the output for sending to pubSub and DLQ */
     PCollection<ChangeStreamMutation> dataChangeRecord =
         pipeline
             .apply("Read from Cloud Bigtable Change Streams", readChangeStream)
@@ -290,9 +294,9 @@ public final class BigtableChangeStreamsToPubSub {
     PCollection<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
         dlqModJson.get(DeadLetterQueueManager.PERMANENT_ERRORS).setCoder(FAILSAFE_ELEMENT_CODER);
     LOG.info(
-        "dlq manager servere dlq directory with date time: {}",
+        "DLQ manager severe DLQ directory with date time: {}",
         dlqManager.getSevereDlqDirectoryWithDateTime());
-    LOG.info("dlq manager servere dlq directory: {}", dlqManager.getSevereDlqDirectory() + "tmp/");
+    LOG.info("DLQ manager severe DLQ directory: {}", dlqManager.getSevereDlqDirectory() + "tmp/");
     nonRetryableDlqModJsonFailsafe
         .apply(
             "Write Mod JSON With Non-retryable Error To DLQ",
@@ -325,7 +329,7 @@ public final class BigtableChangeStreamsToPubSub {
     String dlqDirectory =
         options.getDlqDirectory().isEmpty() ? tempLocation + "dlq/" : options.getDlqDirectory();
 
-    LOG.info("Dead letter queue directory: {}", dlqDirectory);
+    LOG.info("DLQ directory: {}", dlqDirectory);
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetries());
   }
 
@@ -347,7 +351,7 @@ public final class BigtableChangeStreamsToPubSub {
         : options.getPubSubProjectId();
   }
 
-  private static Boolean validateSchema(BigtableChangeStreamsToPubSubOptions options) {
+  private static Boolean validateSchema(BigtableChangeStreamsToPubSubOptions options) throws Exception{
     try (TopicAdminClient topicAdminClient = TopicAdminClient.create()) {
       GetTopicRequest request =
           GetTopicRequest.newBuilder()
@@ -364,8 +368,6 @@ public final class BigtableChangeStreamsToPubSub {
         DatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
         DataFileReader<GenericRecord> dataFileReader =
             new DataFileReader<>(new File("changelogentry.avsc"), datumReader);
-        LOG.error("Schemaaaaa");
-        LOG.error("dataFileReader.toString().getBytes())");
         try (SchemaServiceClient schemaServiceClient = SchemaServiceClient.create()) {
           ProjectName parent = ProjectName.of(getPubSubProjectId(options));
           ValidateMessageRequest validMessageRequest =
@@ -379,7 +381,7 @@ public final class BigtableChangeStreamsToPubSub {
         }
       }
     } catch (Exception e) {
-      return false;
+      return e;
     }
     return true;
   }
@@ -418,7 +420,7 @@ public final class BigtableChangeStreamsToPubSub {
             throw new UnsupportedEntryException(
                 "Cloud Bigtable change stream entry of type "
                     + entry.getClass().getName()
-                    + " is not supported. The entry was put into a dead letter queue directory. "
+                    + " is not supported. The entry was put into a DLQ directory. "
                     + "Please update your Dataflow template with the latest template version");
         }
 
