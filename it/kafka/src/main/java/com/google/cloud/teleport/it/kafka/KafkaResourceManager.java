@@ -105,7 +105,7 @@ public class KafkaResourceManager extends TestContainerResourceManager<GenericCo
     return new KafkaResourceManager.Builder(testId);
   }
 
-  /** Returns the kafka boostrap server connection string. */
+  /** Returns the kafka bootstrap server connection string. */
   public synchronized String getBootstrapServers() {
     return connectionString;
   }

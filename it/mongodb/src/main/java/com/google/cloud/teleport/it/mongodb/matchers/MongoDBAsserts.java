@@ -26,7 +26,7 @@ import java.util.Map;
 import javax.annotation.Nullable;
 import org.bson.Document;
 
-/** Assert utilities for Splunk tests. */
+/** Assert utilities for MongoDB tests. */
 public class MongoDBAsserts {
 
   /**

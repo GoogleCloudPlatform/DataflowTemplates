@@ -58,7 +58,7 @@ public class DatastoreAsserts {
    *
    * @param results Records in Datastore {@link com.google.cloud.datastore.Entity} format to use in
    *     the comparison.
-   * @return Truth Subject to chain assertions.
+   * @return Truth subject to chain assertions.
    */
   public static RecordsSubject assertThatDatastoreRecords(Collection<Entity> results) {
     return assertThatRecords(datastoreResultsToRecords(results));

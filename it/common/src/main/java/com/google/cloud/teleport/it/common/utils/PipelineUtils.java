@@ -102,7 +102,7 @@ public class PipelineUtils {
   /*
    * Get runner class from name.
    *
-   * <p>This avoids to have all runner dependency (e.g. Dataflow, Flink, etc) explicitly in specific
+   * <p>This avoids having all runner dependencies (e.g. Dataflow, Flink, etc) explicitly in specific
    * test.
    *
    * @param runner The runner name string

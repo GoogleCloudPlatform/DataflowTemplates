@@ -32,7 +32,7 @@ public class JsonTestUtil {
   private static final TypeReference<Map<String, Object>> mapTypeRef = new TypeReference<>() {};
 
   /**
-   * Read Json records to a list of Maps.
+   * Read JSON records to a list of Maps.
    *
    * @param contents Byte array with contents to read.
    * @return A list with all records.
@@ -53,7 +53,7 @@ public class JsonTestUtil {
   }
 
   /**
-   * Read Json records to a list of Maps.
+   * Read JSON records to a list of Maps.
    *
    * @param contents String with contents to read.
    * @return A list with all records.
@@ -63,7 +63,7 @@ public class JsonTestUtil {
   }
 
   /**
-   * Read Json record to a Map.
+   * Read JSON record to a Map.
    *
    * @param contents Byte array with contents to read.
    * @return A map with the records.
@@ -74,7 +74,7 @@ public class JsonTestUtil {
   }
 
   /**
-   * Read Json record to a Map.
+   * Read JSON record to a Map.
    *
    * @param contents String with contents to read.
    * @return A map with the records.

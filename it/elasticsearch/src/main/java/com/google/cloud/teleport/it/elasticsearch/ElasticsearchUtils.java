@@ -30,7 +30,7 @@ final class ElasticsearchUtils {
 
   // Cannot include \, /, *, ?, ", <, >, |, ` ` (space character), ,, #
   private static final Pattern ILLEGAL_INDEX_NAME_CHARS = Pattern.compile("[/\\\\ \"?*<>|,#\0]");
-  private static final String REPLACE_DATABASE_NAME_CHAR = "-";
+  private static final String REPLACE_INDEX_NAME_CHAR = "-";
   private static final DateTimeFormatter TIME_FORMAT =
       DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSSSSS");
 
@@ -46,7 +46,7 @@ final class ElasticsearchUtils {
     return generateResourceId(
         baseString,
         ILLEGAL_INDEX_NAME_CHARS,
-        REPLACE_DATABASE_NAME_CHAR,
+        REPLACE_INDEX_NAME_CHAR,
         MAX_INDEX_NAME_LENGTH,
         TIME_FORMAT);
   }
@@ -55,7 +55,7 @@ final class ElasticsearchUtils {
    * Checks whether the given index name is valid according to Elasticsearch constraints.
    *
    * @param indexName the index name to check.
-   * @throws IllegalArgumentException if the collection name is invalid.
+   * @throws IllegalArgumentException if the index name is invalid.
    */
   static void checkValidIndexName(String indexName) {
     if (indexName.length() > MAX_INDEX_NAME_LENGTH) {

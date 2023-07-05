@@ -18,6 +18,6 @@ package com.google.cloud.teleport.it.common;
 /** Common interface across resource managers. */
 public interface ResourceManager {
 
-  /** Deletes all created resources created by this instance of ResourceManager. */
+  /** Deletes all resources created by this instance of ResourceManager. */
   void cleanupAll();
 }

@@ -37,7 +37,7 @@ public final class BigQueryTestUtil {
    * @param idColumn Column name containing the ID.
    * @param numRows Number of rows to generate.
    * @param numFields Number of fields in the schema.
-   * @param maxEntryLength Maximum length for each field. Please note that maxEntryLength cannot
+   * @param maxEntryLength Maximum length for each field. Please note that maxEntryLength can not
    *     exceed 300 characters.
    * @return Tuple containing the schema and the row values.
    */

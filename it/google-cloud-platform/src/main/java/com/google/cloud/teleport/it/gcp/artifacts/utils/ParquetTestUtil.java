@@ -42,7 +42,7 @@ public class ParquetTestUtil {
    * Create Parquet file for the given schema and records list.
    *
    * @param schema Schema to use.
-   * @param records Records to write on the sink.
+   * @param records Records to write to the sink.
    * @return Byte array that represents the content.
    */
   public static byte[] createParquetFile(Schema schema, List<GenericRecord> records)

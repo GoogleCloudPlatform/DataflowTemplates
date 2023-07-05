@@ -88,7 +88,7 @@ public class SplunkContainer extends GenericContainer<SplunkContainer> {
   }
 
   /**
-   * Define whether ssl will be used for connecting to the splunk server.
+   * Define whether SSL will be used for connecting to the Splunk server.
    *
    * @return this
    */
@@ -105,7 +105,7 @@ public class SplunkContainer extends GenericContainer<SplunkContainer> {
    * <p><a
    * href="https://splunk.github.io/docker-splunk/ADVANCED.html#runtime-configuration">https://splunk.github.io/docker-splunk/ADVANCED.html#runtime-configuration</a>
    *
-   * @param defaults A splunk defaults file to copy to container.
+   * @param defaults A Splunk defaults file to copy to container.
    * @return this
    */
   public SplunkContainer withDefaultsFile(Transferable defaults) {

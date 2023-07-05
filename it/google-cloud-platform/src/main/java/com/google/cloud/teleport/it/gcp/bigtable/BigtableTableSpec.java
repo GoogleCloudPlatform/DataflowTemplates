@@ -21,9 +21,9 @@ import java.util.Set;
 import org.threeten.bp.Duration;
 
 public class BigtableTableSpec {
-  Set<String> columnFamilies;
-  Duration maxAge;
-  boolean cdcEnabled;
+  private Set<String> columnFamilies;
+  private Duration maxAge;
+  private boolean cdcEnabled;
 
   public BigtableTableSpec() {
     this.maxAge = Duration.ofHours(1);

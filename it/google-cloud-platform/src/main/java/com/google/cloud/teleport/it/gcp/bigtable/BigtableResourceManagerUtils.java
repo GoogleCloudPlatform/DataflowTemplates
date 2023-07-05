@@ -83,7 +83,7 @@ public final class BigtableResourceManagerUtils {
   }
 
   /**
-   * Generates an table id from a given string.
+   * Generates a table id from a given string.
    *
    * @param baseString The string to generate the id from.
    * @return The instance id string.

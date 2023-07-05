@@ -61,7 +61,7 @@ public class BigtableAsserts {
    *
    * @param rows Records in Bigtable's {@link Row} format to use in the comparison.
    * @param family The column family to read records from.
-   * @return Truth Subject to chain assertions.
+   * @return Truth subject to chain assertions.
    */
   public static RecordsSubject assertThatBigtableRecords(
       @Nullable Iterable<Row> rows, String family) {

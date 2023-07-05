@@ -21,7 +21,7 @@ import com.google.cloud.teleport.it.conditions.ConditionCheck;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import javax.annotation.Nullable;
 
-/** ConditionCheck to validate if BigQuery has received a certain amount of rows. */
+/** ConditionCheck to validate if BigQuery has received a certain number of rows. */
 @AutoValue
 public abstract class BigQueryRowsCheck extends ConditionCheck {
 

@@ -15,10 +15,7 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
-/**
- * Custom exception for {@link com.google.cloud.teleport.it.jdbc.JDBCResourceManagerException}
- * implementations.
- */
+/** Custom exception for {@link JDBCResourceManager} implementations. */
 public class JDBCResourceManagerException extends RuntimeException {
   public JDBCResourceManagerException(String errorMessage, Throwable err) {
     super(errorMessage, err);

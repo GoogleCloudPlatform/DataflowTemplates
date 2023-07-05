@@ -121,8 +121,8 @@ public class DatastoreResourceManager implements ResourceManager {
   /**
    * Deletes all created entities and cleans up the Datastore client.
    *
-   * @throws DatastoreResourceManagerException if there is an error deleting the tables or dataset
-   *     in BigQuery.
+   * @throws DatastoreResourceManagerException if there is an error deleting the entities in
+   *     Datastore.
    */
   @Override
   public void cleanupAll() {

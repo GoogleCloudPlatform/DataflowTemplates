@@ -15,10 +15,7 @@
  */
 package com.google.cloud.teleport.it.gcp.kms;
 
-/**
- * Custom exception for {@link com.google.cloud.teleport.it.gcp.kms.KMSResourceManager}
- * implementations.
- */
+/** Custom exception for {@link KMSResourceManager} implementations. */
 public class KMSResourceManagerException extends RuntimeException {
 
   public KMSResourceManagerException(String errorMessage, Throwable err) {

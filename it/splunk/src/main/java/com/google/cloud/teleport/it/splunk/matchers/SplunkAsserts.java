@@ -55,7 +55,7 @@ public class SplunkAsserts {
    *
    * @param events List of SplunkEvents in Splunk {@link SplunkEvent} format to use in the
    *     comparison.
-   * @return Truth Subject to chain assertions.
+   * @return Truth subject to chain assertions.
    */
   public static RecordsSubject assertThatSplunkEvents(@Nullable Collection<SplunkEvent> events) {
     return assertThatRecords(splunkEventsToRecords(events));

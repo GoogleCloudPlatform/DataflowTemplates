@@ -31,7 +31,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Client for interacting with Dataflow Classic Templates using the Dataflow SDK. */
+/** Client for interacting with Dataflow classic templates using the Dataflow SDK. */
 public final class ClassicTemplateClient extends AbstractPipelineLauncher {
 
   private static final Logger LOG = LoggerFactory.getLogger(ClassicTemplateClient.class);

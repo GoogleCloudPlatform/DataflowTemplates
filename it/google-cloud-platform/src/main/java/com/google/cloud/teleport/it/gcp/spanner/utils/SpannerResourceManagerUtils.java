@@ -82,7 +82,7 @@ public final class SpannerResourceManagerUtils {
             TIME_FORMAT);
 
     // if first char is not a letter, replace with letter, so it doesn't
-    // violate spanner's database naming rules
+    // violate spanner's instance naming rules
     if (!Character.isLetter(instanceId.charAt(0))) {
       char padding = generatePadding();
       instanceId = padding + instanceId.substring(1);

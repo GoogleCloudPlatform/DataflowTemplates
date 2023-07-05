@@ -18,7 +18,7 @@ package com.google.cloud.teleport.it.gcp.artifacts;
 import com.google.cloud.storage.Blob;
 import com.google.common.annotations.VisibleForTesting;
 
-/** Represents a single blob in GCS. */
+/** Represents a single blob in Google Cloud Storage (GCS). */
 public final class GcsArtifact implements Artifact {
   @VisibleForTesting final Blob blob;
 
