@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-/** Exceptions thrown during Datastream Change Event conversions. */
+/** Exceptions thrown during Datastream Change Events conversions. */
 public class DroppedTableException extends Exception {
   public DroppedTableException(Exception e) {
     super(e);

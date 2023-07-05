@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-/** Encapsulates a spanner read operation. */
+/** Encapsulates a Spanner read operation. */
 @AutoValue
 @SuppressWarnings({
   "nullness" // TODO(https://issues.apache.org/jira/browse/BEAM-10402)

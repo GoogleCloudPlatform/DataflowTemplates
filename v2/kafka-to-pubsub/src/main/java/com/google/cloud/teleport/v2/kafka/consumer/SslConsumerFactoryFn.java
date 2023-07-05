@@ -41,7 +41,7 @@ public class SslConsumerFactoryFn
   private static final String TRUSTSTORE_LOCAL_PATH = "/tmp/kafka.truststore.jks";
   private static final String KEYSTORE_LOCAL_PATH = "/tmp/kafka.keystore.jks";
 
-  /* Logger for class.*/
+  /* Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(SslConsumerFactoryFn.class);
 
   public SslConsumerFactoryFn(Map<String, String> sslConfig) {

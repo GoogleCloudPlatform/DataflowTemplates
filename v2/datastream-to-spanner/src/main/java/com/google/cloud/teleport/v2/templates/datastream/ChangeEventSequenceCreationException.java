@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
-/** Exceptions during creation of ChangeEventSequence object. */
+/** Exception during creation of ChangeEventSequence object. */
 public class ChangeEventSequenceCreationException extends Exception {
   public ChangeEventSequenceCreationException(Exception e) {
     super(e);

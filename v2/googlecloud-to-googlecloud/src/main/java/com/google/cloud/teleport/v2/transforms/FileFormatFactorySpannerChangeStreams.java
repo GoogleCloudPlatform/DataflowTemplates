@@ -54,7 +54,7 @@ public abstract class FileFormatFactorySpannerChangeStreams
         "Invalid output format:" + outputFileFormat() + ". Supported output formats: TEXT, AVRO";
 
     /*
-     * Calls appropriate class Builder to performs PTransform based on user provided File Format.
+     * Calls appropriate class Builder to perform PTransform based on user provided File Format.
      */
     switch (outputFileFormat()) {
       case AVRO:

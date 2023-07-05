@@ -143,7 +143,7 @@ public class DatastreamConstants {
   public static final Map<Dialect, Map<String, Map<String, Pair<String, String>>>>
       DIALECT_TO_SORT_ORDER;
 
-  /* List of supported */
+  /* List of supported Datastream sources */
   public static final List<String> SUPPORTED_DATASTREAM_SOURCES;
 
   static {

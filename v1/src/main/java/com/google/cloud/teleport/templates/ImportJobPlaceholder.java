@@ -38,7 +38,7 @@ import org.apache.beam.sdk.options.ValueProvider;
     category = TemplateCategory.BATCH,
     displayName = "SequenceFile Files on Cloud Storage to Cloud Bigtable",
     description =
-        "A pipeline which reads data from SequenceFile in Cloud Storage and writes it to Cloud Bigtable table.",
+        "A pipeline which reads data from SequenceFile in Cloud Storage and writes it to a Cloud Bigtable table.",
     placeholderClass = ImportJob.class,
     optionsClass = ImportJobPlaceholderOptions.class,
     contactInformation = "https://cloud.google.com/support")

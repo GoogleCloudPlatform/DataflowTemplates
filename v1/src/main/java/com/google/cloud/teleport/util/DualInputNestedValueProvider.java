@@ -29,7 +29,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 public class DualInputNestedValueProvider<T, FirstT, SecondT>
     implements ValueProvider<T>, Serializable {
 
-  /** Pair like struct holding two values. */
+  /** Pair-like struct holding two values. */
   public static class TranslatorInput<FirstT, SecondT> {
     private final FirstT x;
     private final SecondT y;

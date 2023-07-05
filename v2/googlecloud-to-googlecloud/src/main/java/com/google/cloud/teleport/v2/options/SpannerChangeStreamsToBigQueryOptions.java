@@ -22,7 +22,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 /**
- * The {@link SpannerChangeStreamsToBigQueryOptions} class provides the custom execution options
+ * The {@link SpannerChangeStreamsToBigQueryOptions} interface provides the custom execution options
  * passed by the executor at the command-line.
  */
 public interface SpannerChangeStreamsToBigQueryOptions

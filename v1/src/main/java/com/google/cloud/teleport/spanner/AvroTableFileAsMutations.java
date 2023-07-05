@@ -72,7 +72,7 @@ class AvroTableFileAsMutations
         .apply(FileIO.matchAll().withEmptyMatchTreatment(EmptyMatchTreatment.DISALLOW))
         // PCollection<Match.Metadata>
         .apply(FileIO.readMatches())
-        // Pcollection<FileIO.ReadableFile>
+        // PCollection<FileIO.ReadableFile>
         .apply(
             "Split into ranges",
             ParDo.of(

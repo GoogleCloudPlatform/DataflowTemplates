@@ -57,7 +57,7 @@ public class UDFTextTransformer {
   /* Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(UDFTextTransformer.class);
 
-  /** Generic pipeline options for sundry text transformers. */
+  /** Generic pipeline options for various text transformers. */
   public interface InputUDFOptions
       extends PipelineOptions, JavascriptTextTransformerOptions, PythonTextTransformerOptions {}
 

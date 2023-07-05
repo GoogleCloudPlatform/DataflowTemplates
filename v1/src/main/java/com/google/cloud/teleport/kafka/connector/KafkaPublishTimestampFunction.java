@@ -19,11 +19,11 @@ import java.io.Serializable;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.joda.time.Instant;
 
-/** An interface for providing custom timestamp for elements written to Kafka. */
+/** An interface for providing a custom timestamp for elements written to Kafka. */
 public interface KafkaPublishTimestampFunction<T> extends Serializable {
 
   /**
-   * Returns timestamp for element being published to Kafka. See @{@link
+   * Returns a timestamp for the element being published to Kafka. See @{@link
    * org.apache.kafka.clients.producer.ProducerRecord}.
    *
    * @param element The element being published.
@@ -33,7 +33,8 @@ public interface KafkaPublishTimestampFunction<T> extends Serializable {
   Instant getTimestamp(T element, Instant elementTimestamp);
 
   /**
-   * Returns {@link KafkaPublishTimestampFunction} returns element timestamp from ProcessContext.
+   * Returns {@link KafkaPublishTimestampFunction} returns the element timestamp from
+   * ProcessContext.
    */
   static <T> KafkaPublishTimestampFunction<T> withElementTimestamp() {
     return (element, elementTimestamp) -> elementTimestamp;

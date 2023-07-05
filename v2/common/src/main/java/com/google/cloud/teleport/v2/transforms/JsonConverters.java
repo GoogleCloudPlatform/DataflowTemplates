@@ -45,7 +45,7 @@ public final class JsonConverters {
 
   /**
    * The {@link JsonConverters.ReadJson} class is a {@link PTransform} that reads JSON records from
-   * text files. The transform returns {@link PCollection} of json records.
+   * text files. The transform returns {@link PCollection} of JSON records.
    */
   @AutoValue
   public abstract static class ReadJson extends PTransform<PBegin, PCollection<String>> {

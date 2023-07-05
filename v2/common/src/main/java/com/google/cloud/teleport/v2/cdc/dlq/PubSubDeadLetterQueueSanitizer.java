@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The BigQueryDeadLetterQueueSanitizer cleans and prepares failed BigQuery inserts to be stored in
  * a GCS Dead Letter Queue. NOTE: The input to a Sanitizer is flexible but the output must be a
- * String unless your override formatMessage()
+ * String unless you override formatMessage()
  */
 public class PubSubDeadLetterQueueSanitizer
     extends DeadLetterQueueSanitizer<FailsafeElement<PubsubMessage, String>, String> {

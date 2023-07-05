@@ -41,7 +41,7 @@ public class WriteToGCSUtility {
   private WriteToGCSUtility() {}
 
   /**
-   * The isValidFileFormat() checks whether user specified file format is valid.
+   * The isValidFileFormat() checks whether the user specified file format is valid.
    *
    * @param fileFormat Format of the file given by the user
    * @return status Boolean value indicating valid/invalid status

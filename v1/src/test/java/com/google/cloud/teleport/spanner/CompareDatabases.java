@@ -43,7 +43,9 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 
-/** A transform compares databases and returns a PCollection with number of mismatched records. */
+/**
+ * A transform compares databases and returns a PCollection with the number of mismatched records.
+ */
 public class CompareDatabases extends PTransform<PBegin, PCollection<Long>> {
 
   private final SpannerConfig one;

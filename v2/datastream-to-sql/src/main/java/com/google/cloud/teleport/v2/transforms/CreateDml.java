@@ -32,8 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@code CreateDml} class batches data to ensure connection limits and builds the DmlInfo
- * objects.
+ * The {@code CreateDml} class batches data to ensure connection limits and builds the {@link
+ * DmlInfo} objects.
  */
 public class CreateDml
     extends PTransform<

@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.TransactionContext;
 
 /**
- * Factory classes for ChangeEventSequence classes which provides methods for 1) creating
+ * Factory class for ChangeEventSequence classes which provides methods for 1) creating
  * ChangeEventSequence objects for the current ChangeEvent. 2) creating ChangeEventSequence objects
  * for an earlier ChangeEvent by reading from shadow table.
  */

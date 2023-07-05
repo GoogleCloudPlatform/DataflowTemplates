@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
-/** Exceptions thrown during Datastream Change Event conversions. */
+/** Exceptions thrown during Datastream Change Event conversion. */
 public class ChangeEventConvertorException extends Exception {
   public ChangeEventConvertorException(Exception e) {
     super(e);

@@ -57,7 +57,7 @@ public class DatastoreToBigQuery {
 
   /**
    * Runs a pipeline which reads in Entities from Datastore, passes in the JSON encoded Entities to
-   * a Javascript UDF that returns JSON that conforms to the BigQuery TableRow spec and writes the
+   * a JavaScript UDF that returns JSON that conforms to the BigQuery TableRow spec and writes the
    * TableRows to BigQuery.
    *
    * @param args arguments to the pipeline

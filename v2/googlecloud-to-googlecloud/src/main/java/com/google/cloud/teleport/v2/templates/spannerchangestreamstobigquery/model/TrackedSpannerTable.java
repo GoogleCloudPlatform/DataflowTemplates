@@ -59,7 +59,7 @@ public final class TrackedSpannerTable implements Serializable {
       List<TrackedSpannerColumn> nonPkColumns) {
     this.pkColumns = new ArrayList<>(pkColumns);
     this.nonPkColumns = new ArrayList<>(nonPkColumns);
-    // Sort the primary key column by primary key oridinal position.
+    // Sort the primary key column by primary key ordinal position.
     Collections.sort(this.pkColumns, new SortByPkOrdinalPosition());
     Collections.sort(this.nonPkColumns, new SortByOrdinalPosition());
     this.tableName = tableName;

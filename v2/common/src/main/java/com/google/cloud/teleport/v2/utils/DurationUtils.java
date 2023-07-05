@@ -34,9 +34,13 @@ public class DurationUtils {
   /**
    * Parses a duration from a period formatted string. Values are accepted in the following formats:
    *
-   * <p>Formats Ns - Seconds. Example: 5s<br>
-   * Nm - Minutes. Example: 13m<br>
-   * Nh - Hours. Example: 2h
+   * <p>Formats:
+   *
+   * <ul>
+   *   <li>Ns - Seconds. Example: 5s
+   *   <li>Nm - Minutes. Example: 13m
+   *   <li>Nh - Hours. Example: 2h
+   * </ul>
    *
    * <pre>
    * parseDuration(null) = NullPointerException()

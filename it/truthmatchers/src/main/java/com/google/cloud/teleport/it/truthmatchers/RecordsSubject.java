@@ -214,7 +214,7 @@ public class RecordsSubject extends Subject {
   }
 
   /**
-   * Check if the records list match exactly another list.
+   * Check if the records list matches exactly another list.
    *
    * @param records Expected records
    */

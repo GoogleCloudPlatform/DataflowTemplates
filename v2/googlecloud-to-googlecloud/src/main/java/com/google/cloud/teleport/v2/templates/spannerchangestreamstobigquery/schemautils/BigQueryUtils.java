@@ -21,7 +21,7 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.mod
 import java.util.HashSet;
 import java.util.Set;
 
-/** {@link BigQueryUtils} providdes utils for processing BigQuery schema. */
+/** {@link BigQueryUtils} provides utils for processing BigQuery schema. */
 public class BigQueryUtils {
 
   public static final String BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON =

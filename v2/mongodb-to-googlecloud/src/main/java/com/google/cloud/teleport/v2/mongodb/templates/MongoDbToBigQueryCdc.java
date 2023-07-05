@@ -129,7 +129,7 @@ public class MongoDbToBigQueryCdc {
     pipeline
         .apply("Read PubSub Messages", PubsubIO.readStrings().fromTopic(inputOption))
         .apply(
-            "RTransform string to document",
+            "Transform string to document",
             ParDo.of(
                 new DoFn<String, Document>() {
                   @ProcessElement

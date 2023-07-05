@@ -26,7 +26,7 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 
-/** Infers and prints a Cloud Spanner schema based on a content of Avro files. */
+/** Infers and prints a Cloud Spanner schema based on the content of Avro files. */
 public class AvroToDdlTool {
 
   public static void main(String[] args) throws IOException {

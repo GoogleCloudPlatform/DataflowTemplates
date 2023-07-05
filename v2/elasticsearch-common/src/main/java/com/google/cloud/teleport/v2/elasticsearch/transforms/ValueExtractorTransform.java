@@ -31,7 +31,7 @@ import javax.script.ScriptException;
  * JsonNode}.
  *
  * <p>The transform takes in the path to the JS function via {@link
- * ValueExtractorFn#fileSystemPath()} and the name of JS function to be applied via {@link
+ * ValueExtractorFn#fileSystemPath()} and the name of the JS function to be applied via {@link
  * ValueExtractorFn#functionName()}. The transform will return a {@link String} that is the result
  * of the JS function.
  */
@@ -75,7 +75,7 @@ public class ValueExtractorTransform {
   }
 
   /**
-   * Class for routing functions that implements {@link FieldValueExtractFn}. {@link
+   * Class for routing functions that implement {@link FieldValueExtractFn}. {@link
    * ValueExtractorFn#apply(JsonNode)} will return null if {@link ValueExtractorFn#functionName()}
    * and {@link ValueExtractorFn#fileSystemPath()} are null meaning no function is applied to the
    * document.
@@ -113,7 +113,7 @@ public class ValueExtractorTransform {
   }
 
   /**
-   * Class for routing functions that implements {@link BooleanFieldValueExtractFn}. {@link
+   * Class for routing functions that implement {@link BooleanFieldValueExtractFn}. {@link
    * BooleanValueExtractorFn#apply(JsonNode)} will return null if {@link
    * BooleanValueExtractorFn#functionName()} and {@link BooleanValueExtractorFn#fileSystemPath()}
    * are null meaning no function is applied to the document.

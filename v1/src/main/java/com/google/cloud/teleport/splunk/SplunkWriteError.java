@@ -21,7 +21,7 @@ import com.google.auto.value.AutoValue;
 import javax.annotation.Nullable;
 
 /**
- * A class for capturing errors writing {@link SplunkEvent}s to Splunk's Http Event Collector (HEC)
+ * A class for capturing errors writing {@link SplunkEvent}s to Splunk's HTTP Event Collector (HEC)
  * end point.
  */
 @AutoValue

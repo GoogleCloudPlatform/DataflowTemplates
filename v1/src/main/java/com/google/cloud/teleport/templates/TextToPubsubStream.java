@@ -27,7 +27,7 @@ import org.apache.beam.sdk.transforms.Watch;
 import org.joda.time.Duration;
 
 /**
- * The {@code TextToPubsubStream} is a streaming version of {@code TextToPubsub} pipeline that
+ * The {@code TextToPubsubStream} is a streaming version of the {@code TextToPubsub} pipeline that
  * publishes records to Cloud Pub/Sub from a set of files. The pipeline continuously polls for new
  * files, reads them row-by-row and publishes each record as a string message. The polling interval
  * is fixed and equals to 10 seconds. At the moment, publishing messages with attributes is

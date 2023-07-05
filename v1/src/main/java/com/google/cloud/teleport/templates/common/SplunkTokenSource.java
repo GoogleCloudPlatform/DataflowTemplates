@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.templates.common;
 
-/** Supported sources for a Splunk Token. */
+/** Supported sources for a Splunk token. */
 public enum SplunkTokenSource {
   /** Token is passed as plaintext. */
   PLAINTEXT,

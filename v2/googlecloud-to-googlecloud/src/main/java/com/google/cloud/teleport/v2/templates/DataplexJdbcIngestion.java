@@ -296,7 +296,7 @@ public class DataplexJdbcIngestion {
                 // Mapping DataplexJdbcIngestionWriteDisposition.WriteDispositionOptions to
                 // BigqueryIO.Write.WriteDisposition
                 .withWriteDisposition(
-                    MapWriteDisposition.mapWriteDispostion(options.getWriteDisposition()))
+                    MapWriteDisposition.mapWriteDisposition(options.getWriteDisposition()))
                 .to(options.getOutputTable()));
   }
 

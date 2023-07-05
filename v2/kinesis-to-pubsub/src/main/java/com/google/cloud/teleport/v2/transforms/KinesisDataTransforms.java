@@ -22,7 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A {@link KinesisDataTransforms} extracts the string from KinesisRecords consumed by the pipeline.
+ * A {@link KinesisDataTransforms} extracts the string from Kinesis Records consumed by the
+ * pipeline.
  */
 public class KinesisDataTransforms {
 

@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.utils;
 
-/** ElasticsearchIndex builds index based on parameters dataset and namespace. * */
+/** ElasticsearchIndex builds an index based on parameters dataset and namespace. * */
 public class ElasticsearchIndex {
   private final Dataset dataset;
   private final String namespace;

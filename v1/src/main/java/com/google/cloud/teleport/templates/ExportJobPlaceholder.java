@@ -120,7 +120,7 @@ public class ExportJobPlaceholder {
     @TemplateParameter.Text(
         order = 10,
         description = "SequenceFile prefix",
-        helpText = "The prefix for each shard in destinationPath.",
+        helpText = "The prefix for each shard in the destination path.",
         example = "output-")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();

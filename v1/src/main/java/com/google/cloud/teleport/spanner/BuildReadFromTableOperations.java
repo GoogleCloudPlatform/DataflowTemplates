@@ -37,7 +37,7 @@ import org.apache.beam.sdk.values.PCollection;
 class BuildReadFromTableOperations
     extends PTransform<PCollection<Ddl>, PCollection<ReadOperation>> {
 
-  // The number of read partitions have to be capped so that in case the Partition token is large
+  // The number of read partitions has to be capped so that in case the Partition token is large
   // (which can happen with a table with a lot of columns), the PartitionResponse size is bounded.
   private static final int MAX_PARTITIONS = 1000;
 

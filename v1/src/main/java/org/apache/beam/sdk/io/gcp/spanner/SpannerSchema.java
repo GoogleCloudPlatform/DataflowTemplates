@@ -129,7 +129,7 @@ abstract class SpannerSchema implements Serializable {
     return cellsMutatedPerColumn().row(table.toLowerCase()).getOrDefault(column.toLowerCase(), 1L);
   }
 
-  /** Return the total number of cells affected with the given row is deleted. */
+  /** Return the total number of cells affected when the given row is deleted. */
   public long getCellsMutatedPerRow(String table) {
     return cellsMutatedPerRow().getOrDefault(table.toLowerCase(), 1L);
   }

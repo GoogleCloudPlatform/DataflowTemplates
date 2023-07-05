@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link PublishToPubSubDoFn} class is a {@link DoFn} that takes in {@link PubsubMessage} and
- * publish PubsubMessages to the Pub/Sub topic using the native Pub/Sub client library.
+ * publishes PubsubMessages to the Pub/Sub topic using the native Pub/Sub client library.
  */
 public class PublishToPubSubDoFn extends DoFn<byte[], String> {
   /** Logger for class. */

@@ -22,7 +22,7 @@ import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.DefaultCoder;
 
 /**
- * The {@link AvroPubsubMessageRecord} class is an Avro wrapper class for {@link
+ * The {@link AvroPubsubMessageRecord} class is an Avro wrapper class for the {@link
  * org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage} which captures the message's fields along with
  * the event timestamp for archival purposes.
  */

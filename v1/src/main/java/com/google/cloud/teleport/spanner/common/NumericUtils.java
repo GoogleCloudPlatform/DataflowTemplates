@@ -33,14 +33,14 @@ public final class NumericUtils {
   public static final int PG_MAX_PRECISION = 147455;
   public static final int PG_MAX_SCALE = 16383;
 
-  // Convert an Avro-encoded NUMERIC byte array to an readable NUMERIC string value.
+  // Convert an Avro-encoded NUMERIC byte array to a readable NUMERIC string value.
   public static String bytesToString(byte[] byteArray) {
     BigInteger unscaledNumeric = new BigInteger(byteArray);
     BigDecimal scaledNumeric = new BigDecimal(unscaledNumeric, SCALE);
     return scaledNumeric.toPlainString();
   }
 
-  // Convert an Avro-encoded PG_NUMERIC byte array to an readable PG_NUMERIC string value.
+  // Convert an Avro-encoded PG_NUMERIC byte array to a readable PG_NUMERIC string value.
   public static String pgBytesToString(byte[] byteArray) {
     try {
       DataInputStream dis = new DataInputStream(new ByteArrayInputStream(byteArray));

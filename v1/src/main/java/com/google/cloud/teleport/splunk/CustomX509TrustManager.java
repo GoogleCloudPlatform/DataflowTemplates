@@ -25,7 +25,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
-/** A Custom X509TrustManager that trusts a user provided CA and default CA's. */
+/** A Custom X509TrustManager that trusts a user provided CA and default CAs. */
 public class CustomX509TrustManager implements X509TrustManager {
 
   private final X509TrustManager defaultTrustManager;

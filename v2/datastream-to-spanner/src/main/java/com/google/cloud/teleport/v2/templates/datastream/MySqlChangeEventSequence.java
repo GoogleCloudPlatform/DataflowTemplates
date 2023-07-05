@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Implementation of ChangeEventSequence for MySql database which stores change event sequence
+ * Implementation of ChangeEventSequence for MySQL database which stores change event sequence
  * information and implements the comparison method.
  */
 class MySqlChangeEventSequence extends ChangeEventSequence {

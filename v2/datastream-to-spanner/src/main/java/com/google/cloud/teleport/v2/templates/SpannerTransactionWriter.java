@@ -56,11 +56,11 @@ public class SpannerTransactionWriter
   public static final TupleTag<FailsafeElement<String, String>> PERMANENT_ERROR_TAG =
       new TupleTag<FailsafeElement<String, String>>() {};
 
-  /* The Tag for retryable Failed mutations */
+  /* The Tag for retryable failed mutations */
   public static final TupleTag<FailsafeElement<String, String>> RETRYABLE_ERROR_TAG =
       new TupleTag<FailsafeElement<String, String>>() {};
 
-  /* The Tag for Successful mutations */
+  /* The Tag for successful mutations */
   public static final TupleTag<Timestamp> SUCCESSFUL_EVENT_TAG = new TupleTag<Timestamp>() {};
 
   /* The spanner config specifying the destination Cloud Spanner database to connect to */

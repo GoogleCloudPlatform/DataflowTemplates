@@ -48,7 +48,7 @@ import org.apache.beam.sdk.values.Row;
     name = "Cassandra_To_Cloud_Bigtable",
     category = TemplateCategory.BATCH,
     displayName = "Cassandra to Cloud Bigtable",
-    description = "A pipeline to import a Apache Cassandra table into Cloud Bigtable.",
+    description = "A pipeline to import an Apache Cassandra table into Cloud Bigtable.",
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cassandra-to-bigtable",

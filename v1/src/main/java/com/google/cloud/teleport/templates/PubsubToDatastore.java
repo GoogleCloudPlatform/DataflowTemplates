@@ -26,7 +26,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
 /**
- * Dataflow template which copies Pubsub Messages to Datastore. This expects Pubsub messages to
+ * Dataflow template which copies Pub/Sub messages to Datastore. This expects Pub/Sub messages to
  * contain JSON text in the v1/Entity rest format:
  * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
  */
@@ -38,8 +38,8 @@ public class PubsubToDatastore {
           DatastoreWriteOptions {}
 
   /**
-   * Runs a pipeline which reads in JSON from Pubsub, feeds the JSON to a Javascript UDF, and writes
-   * the JSON encoded Entities to Datastore.
+   * Runs a pipeline which reads in JSON from Pub/Sub, feeds the JSON to a Javascript UDF, and
+   * writes the JSON encoded Entities to Datastore.
    *
    * @param args arguments to the pipeline
    */

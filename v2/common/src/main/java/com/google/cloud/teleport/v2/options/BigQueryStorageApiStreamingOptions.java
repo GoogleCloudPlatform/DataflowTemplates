@@ -40,7 +40,7 @@ public interface BigQueryStorageApiStreamingOptions extends BigQueryOptions {
   @TemplateParameter.Boolean(
       order = 2,
       optional = true,
-      description = "Use at at-least-once semantics in BigQuery Storage Write API",
+      description = "Use at-least-once semantics in BigQuery Storage Write API",
       helpText =
           "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
               + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
@@ -54,8 +54,8 @@ public interface BigQueryStorageApiStreamingOptions extends BigQueryOptions {
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
       helpText =
-          "Number of streams defines the parallelism of the BigQueryIO’s Write transform and"
-              + " roughly corresponds to the number of Storage Write API’s streams which will be"
+          "Number of streams defines the parallelism of the BigQueryIO's Write transform and"
+              + " roughly corresponds to the number of Storage Write API's streams which will be"
               + " used by the pipeline. See"
               + " https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api"
               + " for the recommended values.")

@@ -37,7 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link SpannerChangeStreamsToGcs} pipeline streams change stream record(s) and stores to
+ * The {@link SpannerChangeStreamsToGcs} pipeline streams change stream record(s) and stores them to
  * Google Cloud Storage bucket in user specified format. The sink data can be stored in a Text or
  * Avro file format.
  *

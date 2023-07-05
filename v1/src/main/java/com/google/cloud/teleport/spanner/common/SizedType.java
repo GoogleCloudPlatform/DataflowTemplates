@@ -17,7 +17,7 @@ package com.google.cloud.teleport.spanner.common;
 
 import com.google.cloud.spanner.Dialect;
 
-/** Describes a type with size. */
+/** Describes a type with a size. */
 public final class SizedType {
   public final Type type;
   public final Integer size;

@@ -64,7 +64,7 @@ public class BigQueryUtils {
    * @param client BigQueryStorage client used to create ReadSession.
    * @param datasetId ID of the dataset to read from.
    * @param tableName Name of the table in the dataset {@code datasetId} to read from.
-   * @return session ReadSession object that contains the schema for the export.
+   * @return ReadSession object that contains the schema for the export.
    */
   public static ReadSession createReadSession(
       BigQueryStorageClient client,

@@ -107,7 +107,7 @@ public class TokenNestedValueProvider implements ValueProvider<String>, Serializ
   }
 
   /**
-   * Helper method that checks if the Secret ID for required for retrieving the token from Secret
+   * Helper method that checks if the Secret ID is required for retrieving the token from Secret
    * Manager exists.
    *
    * @return true if Secret ID exists or false otherwise

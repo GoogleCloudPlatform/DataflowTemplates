@@ -21,8 +21,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link DataStreamPkCache} stores an expiring cached list of PKs for each stream, schema, and
- * table combination.
+ * The {@link DataStreamPkCache} stores an expiring cached list of primary keys for each stream,
+ * schema, and table combination.
  */
 public class DataStreamPkCache extends MappedObjectCache<List<String>, List<String>> {
 

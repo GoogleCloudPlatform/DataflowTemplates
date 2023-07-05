@@ -114,7 +114,7 @@ public class ExportPipeline {
     void setSpannerHost(ValueProvider<String> value);
 
     @TemplateCreationParameter(value = "false")
-    @Description("If true, wait for job finish")
+    @Description("If true, wait for job to finish")
     @Default.Boolean(true)
     boolean getWaitUntilFinish();
 

@@ -20,7 +20,7 @@ import java.util.List;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.values.PCollection;
 
-/** Combines all elements in the {@link PCollection} as list. */
+/** Combines all elements in the {@link PCollection} as a list. */
 public class AsList {
 
   public static <T> Combine.CombineFn<T, List<T>, List<T>> fn() {

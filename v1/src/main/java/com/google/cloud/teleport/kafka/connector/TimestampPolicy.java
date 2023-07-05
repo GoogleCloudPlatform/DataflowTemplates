@@ -20,9 +20,8 @@ import org.joda.time.Instant;
 
 /**
  * A timestamp policy to assign event time for messages in a Kafka partition and watermark for it.
- * KafkaIO reader creates one policy using {@link TimestampPolicyFactory} for each each of the
- * partitions it reads from. See @{@link TimestampPolicyFactory.LogAppendTimePolicy} for example of
- * a policy.
+ * KafkaIO reader creates one policy using {@link TimestampPolicyFactory} for each of the partitions
+ * it reads from. See {@link TimestampPolicyFactory.LogAppendTimePolicy} for example of a policy.
  */
 public abstract class TimestampPolicy<K, V> {
 

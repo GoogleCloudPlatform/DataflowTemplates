@@ -89,7 +89,7 @@ public class ProcessDml {
         ProcessContext context, @StateId(PK_STATE_ID) ValueState<String> myState) {
       String stateKey = context.element().getKey();
       DmlInfo dmlInfo = context.element().getValue();
-      // Empty SQL suggests the table DNE and should be skipped
+      // Empty SQL suggests the table does not exist and should be skipped
       if (dmlInfo.getDmlSql().equals("")) {
         return;
       }

@@ -120,7 +120,7 @@ public final class FailsafeModJsonToChangelogTableRowTransformer {
           TableRow tableRow = modJsonStringToTableRow(failsafeModJsonString.getPayload());
           if (tableRow == null) {
             // TableRow was not generated because pipeline configuration requires ignoring some
-            // column / column families
+            // columns / column families
             return;
           }
 

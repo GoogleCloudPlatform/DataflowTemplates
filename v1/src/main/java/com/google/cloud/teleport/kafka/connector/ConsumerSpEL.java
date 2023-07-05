@@ -35,7 +35,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 /**
- * ConsumerSpEL to handle multiple of versions of Consumer API between Kafka 0.9 and 0.10. It auto
+ * ConsumerSpEL to handle multiple versions of Consumer API between Kafka 0.9 and 0.10. It auto
  * detects the input type List/Collection/Varargs, to eliminate the method definition differences.
  */
 class ConsumerSpEL {
@@ -131,7 +131,7 @@ class ConsumerSpEL {
 
     checkArgument(hasOffsetsForTimes, "This Kafka Client must support Consumer.OffsetsForTimes().");
 
-    // 'value' in the map returned by offsetFoTime() is null if there is no offset for the time.
+    // 'value' in the map returned by offsetsForTime() is null if there is no offset for the time.
     OffsetAndTimestamp offsetAndTimestamp =
         Iterables.getOnlyElement(
             consumer.offsetsForTimes(ImmutableMap.of(topicPartition, time.getMillis())).values());

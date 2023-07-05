@@ -131,7 +131,7 @@ class KafkaUnboundedSource<K, V> extends UnboundedSource<KafkaRecord<K, V>, Kafk
 
   @Override
   public boolean requiresDeduping() {
-    // Kafka records are ordered with in partitions. In addition checkpoint guarantees
+    // Kafka records are ordered within partitions. In addition checkpoint guarantees
     // records are not consumed twice.
     return false;
   }

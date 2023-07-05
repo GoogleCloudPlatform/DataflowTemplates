@@ -23,7 +23,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PCollection;
 
-/** Transforms used by {@link SpannerToBigQuery} template. */
+/** Transforms used by the {@link SpannerToBigQuery} template. */
 public final class SpannerToBigQueryTransform {
 
   /** Converts {@link Struct} records to JSON string records. */

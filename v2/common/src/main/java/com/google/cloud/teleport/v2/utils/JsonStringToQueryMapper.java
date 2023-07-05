@@ -24,10 +24,10 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** The {@link JdbcIO.PreparedStatementSetter} implementation for mapping json string to query. */
+/** The {@link JdbcIO.PreparedStatementSetter} implementation for mapping JSON string to query. */
 public class JsonStringToQueryMapper implements JdbcIO.PreparedStatementSetter<String> {
 
-  /* Logger for class.*/
+  /* Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(JsonStringToQueryMapper.class);
 
   List<String> keyOrder;

@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A helper class for loading BigQuery metadata for tables in a dataset, including schema,
- * partitioning information, and last modification time.
+ * partitioning information, and last modified time.
  *
  * <p>Note: {@link BigQueryMetadataLoader} won't automatically close the {@link
  * BigQueryStorageClient} provided in the constructor, it's the caller's responsibility to do that

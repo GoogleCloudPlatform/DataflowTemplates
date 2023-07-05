@@ -56,7 +56,7 @@ import org.slf4j.LoggerFactory;
 public class GenericRecordsToGcsPartitioned
     extends PTransform<PCollection<GenericRecord>, PCollection<DataplexPartitionMetadata>> {
 
-  /* Logger for class.*/
+  /* Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(GenericRecordsToGcsPartitioned.class);
 
   private final String gcsPath;

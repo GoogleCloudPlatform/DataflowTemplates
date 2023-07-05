@@ -21,7 +21,7 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 
 /**
- * MySql implementation of ChangeEventContext that provides implementation of the
+ * MySQL implementation of ChangeEventContext that provides implementation of the
  * generateShadowTableMutation method.
  */
 class MySqlChangeEventContext extends ChangeEventContext {
@@ -36,7 +36,7 @@ class MySqlChangeEventContext extends ChangeEventContext {
   }
 
   /*
-   * Creates shadow table mutation for MySql.
+   * Creates shadow table mutation for MySQL.
    */
   @Override
   Mutation generateShadowTableMutation(Ddl ddl)
@@ -54,7 +54,7 @@ class MySqlChangeEventContext extends ChangeEventContext {
         .set(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft())
         .to(Value.int64(changeEventTimestamp));
 
-    /* MySql backfill events "can" have log file and log file position as null.
+    /* MySQL backfill events "can" have log file and log file position as null.
      * Set their value to a value (lexicographically) smaller than any real value.
      */
     String logFile =

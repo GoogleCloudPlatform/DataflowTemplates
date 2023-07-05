@@ -25,7 +25,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
 /**
  * Dataflow template which pulls a list and count of unique schemas for a given Entity / GQL Query.
- * This information can be used to help migrate Datastore Data to Schemad systems such-as a RDBMS.
+ * This information can be used to help migrate Datastore Data to Schema systems such-as a RDBMS.
  */
 public class DatastoreSchemasCountToText {
 

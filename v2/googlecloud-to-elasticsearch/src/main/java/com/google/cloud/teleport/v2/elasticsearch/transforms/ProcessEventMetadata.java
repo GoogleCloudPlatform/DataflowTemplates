@@ -21,7 +21,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 
-/** ProcessEventMetadata is used to enrich input message from Pub/Sub with metadata. */
+/** ProcessEventMetadata is used to enrich input messages from Pub/Sub with metadata. */
 public class ProcessEventMetadata extends PTransform<PCollection<String>, PCollection<String>> {
 
   @Override

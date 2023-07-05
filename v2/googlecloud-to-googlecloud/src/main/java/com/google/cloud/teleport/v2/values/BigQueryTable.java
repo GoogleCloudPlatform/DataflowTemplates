@@ -99,12 +99,12 @@ public abstract class BigQueryTable implements Serializable {
     public abstract Builder setPartitions(List<BigQueryTablePartition> partitions);
 
     /**
-     * Returns the partition last modification time in <b>microseconds</b> since epoch (UNIX time).
+     * Returns the partition last modification time in <b>microseconds</b> since epoch (Unix time).
      */
     public abstract long getLastModificationTime();
 
     /**
-     * @param value timestamp in microseconds since epoch (UNIX time)
+     * @param value timestamp in microseconds since epoch (Unix time)
      */
     public abstract Builder setLastModificationTime(long value);
 

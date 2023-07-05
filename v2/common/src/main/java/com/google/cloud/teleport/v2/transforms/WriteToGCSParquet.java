@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link WriteToGCSParquet} class is a {@link PTransform} that takes in {@link PCollection} of
- * KV records.The transform converts and writes these records to GCS in parquet file format.
+ * KV records. The transform converts and writes these records to GCS in parquet file format.
  */
 @AutoValue
 public abstract class WriteToGCSParquet

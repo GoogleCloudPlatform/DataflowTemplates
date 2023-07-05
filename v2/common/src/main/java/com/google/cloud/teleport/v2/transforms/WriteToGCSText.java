@@ -37,8 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link WriteToGCSText} class is a {@link PTransform} that takes in {@link PCollection} of KV
- * records.The transform converts and writes these records to GCS in text file format.
+ * The {@link WriteToGCSText} class is a {@link PTransform} that takes in a {@link PCollection} of
+ * KV records. The transform converts and writes these records to GCS in text file format.
  */
 @AutoValue
 public abstract class WriteToGCSText extends PTransform<PCollection<KV<String, String>>, PDone> {

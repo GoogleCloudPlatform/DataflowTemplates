@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A helper object to parse a JSON on GCS. Usage is to provide A GCS URL and it will return a
+ * A helper object to parse a JSON on GCS. Usage is to provide a GCS URL and it will return a
  * JSONObject of the file
  */
 public class SchemaParser {

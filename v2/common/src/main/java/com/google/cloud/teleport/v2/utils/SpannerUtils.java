@@ -37,7 +37,7 @@ public class SpannerUtils {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerUtils.class);
 
   /**
-   * Helper method to read schema file and convert content to SpannerSchema object.
+   * Helper method to read schema file and convert content to a SpannerSchema object.
    *
    * @param schemaFilename GCS location of the schema file
    * @return parsed SpannerSchema object

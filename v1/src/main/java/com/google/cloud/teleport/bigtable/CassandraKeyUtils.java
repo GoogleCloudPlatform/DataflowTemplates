@@ -29,7 +29,7 @@ import java.util.TreeMap;
 /**
  * This helper class allows fetching a sorted map containing the columns that make up the (compound)
  * primary key in a @see <a href="http://cassandra.apache.org/">Apache Cassandra</a> table. See
- * method documentation for futher details.
+ * method documentation for further details.
  */
 class CassandraKeyUtils {
 
@@ -38,9 +38,8 @@ class CassandraKeyUtils {
   private static final String POSITION_COLUMN = "position";
 
   /**
-   * This method return a CQL statement to fetch the columns in the primary key with in the table
-   * and corresponding keyspace supplied as input. If position>-1 the column is part of the primary
-   * key.
+   * This method return a CQL statement to fetch the columns in the primary key within the table and
+   * corresponding keyspace supplied as input. If position>-1 the column is part of the primary key.
    *
    * <p>SELECT column_name, kind, position FROM system_schema.columns WHERE
    * keyspace_name='mykeyspace' AND table_name='mytable' AND position>-1 ALLOW FILTERING;
@@ -71,7 +70,7 @@ class CassandraKeyUtils {
    * <p>"key_part_one", 0 "key_part_two", 1
    *
    * @param session the session to the Cassandra cluster.
-   * @param keyspace they keyspace to query
+   * @param keyspace the keyspace to query
    * @param table the table to query
    * @return see method description.
    */

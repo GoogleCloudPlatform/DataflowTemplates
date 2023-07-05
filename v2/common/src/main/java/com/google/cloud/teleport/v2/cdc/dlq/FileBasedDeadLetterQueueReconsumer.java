@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
 /**
  * A DeadLetterQueueReconsumer that works by periodically fetching files from a DLQ directory.
  *
- * <p>This transforms assumes that the DLQ files are stored in JSON Lines format.
+ * <p>This transform assumes that the DLQ files are stored in JSON Lines format.
  */
 public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PCollection<String>> {
 

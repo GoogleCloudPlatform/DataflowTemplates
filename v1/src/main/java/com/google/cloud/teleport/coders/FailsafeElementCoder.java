@@ -34,7 +34,7 @@ import org.apache.beam.sdk.values.TypeParameter;
  *
  * <p>This coder is necessary until Avro supports parameterized types (<a
  * href="https://issues.apache.org/jira/browse/AVRO-1571">AVRO-1571</a>) without requiring to
- * explicitly specifying the schema for the type.
+ * explicitly specify the schema for the type.
  *
  * @param <OriginalT> The type of the original payload to be encoded.
  * @param <CurrentT> The type of the current payload to be encoded.

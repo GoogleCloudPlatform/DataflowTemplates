@@ -136,7 +136,7 @@ public class Utils {
       } catch (NullPointerException e) {
         LOG.warn(
             "There is no enough information to configure SSL."
-                + "Trying to initiate an unsecure connection.",
+                + "Trying to initiate an insecure connection.",
             e);
       }
     }

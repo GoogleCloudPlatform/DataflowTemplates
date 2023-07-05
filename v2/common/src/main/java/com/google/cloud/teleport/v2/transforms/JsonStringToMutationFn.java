@@ -31,7 +31,7 @@ import java.util.Objects;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.json.JSONObject;
 
-/** Cloud Spanner transformation helper that convert each row to Mutation object. */
+/** Cloud Spanner transformation helper that converts each row to Mutation object. */
 public class JsonStringToMutationFn extends DoFn<String, Mutation> {
 
   private final String projectId;

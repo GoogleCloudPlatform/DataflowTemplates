@@ -75,7 +75,7 @@ public class BigQueryToElasticsearch {
     Pipeline pipeline = Pipeline.create(options);
     /*
      * Steps: 1) Read records from BigQuery via BigQueryIO.
-     *        2) Create json string from Table Row.
+     *        2) Create JSON string from Table Row.
      *        3) Write records to Elasticsearch.
      *
      *

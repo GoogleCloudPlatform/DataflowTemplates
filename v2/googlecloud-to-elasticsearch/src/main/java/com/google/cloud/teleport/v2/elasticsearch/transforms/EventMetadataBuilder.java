@@ -28,7 +28,7 @@ import java.util.NoSuchElementException;
 
 /**
  * EventMetadataBuilder is used to insert metadata required by Elasticsearch. The metadata helps
- * Elasticsearch to visualize events on the dashboards, also uniform message format is needed for
+ * Elasticsearch to visualize events on the dashboards, also a uniform message format is needed for
  * data analytics.
  *
  * <p>Please refer to <b><a href=

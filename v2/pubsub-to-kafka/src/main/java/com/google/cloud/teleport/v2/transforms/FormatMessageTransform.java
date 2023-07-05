@@ -36,9 +36,9 @@ public class FormatMessageTransform {
   }
 
   /**
-   * The {@link MessageToFailsafeElementFn} wraps an Pubsub Message with the {@link FailsafeElement}
-   * class so errors can be recovered from and the original message can be output to a error records
-   * table.
+   * The {@link MessageToFailsafeElementFn} wraps a Pubsub Message with the {@link FailsafeElement}
+   * class so errors can be recovered from and the original message can be output to an error
+   * records table.
    */
   static class MessageToFailsafeElementFn extends DoFn<String, FailsafeElement<String, String>> {
 

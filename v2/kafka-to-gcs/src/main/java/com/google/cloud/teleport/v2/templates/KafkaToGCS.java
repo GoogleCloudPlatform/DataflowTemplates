@@ -44,7 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link KafkaToGCS} pipeline reads message from Kafka topic(s) and stores to Google Cloud
+ * The {@link KafkaToGCS} pipeline reads messages from Kafka topic(s) and stores to Google Cloud
  * Storage bucket in user specified format. The sink data can be stored in a Text, Avro or a Parquet
  * File Format.
  *

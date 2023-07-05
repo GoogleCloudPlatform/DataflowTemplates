@@ -84,7 +84,7 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
     private final String shadowTablePrefix;
     private final String sourceType;
 
-    // Timeout for Cloud Spanner schema update.
+    // Timeout for Cloud Spanner schema updates.
     private static final int SCHEMA_UPDATE_WAIT_MIN = 5;
 
     public ProcessInformationSchemaFn(

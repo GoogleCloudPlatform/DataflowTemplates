@@ -29,7 +29,7 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Common code for Jdbc templates. */
+/** Common code for JDBC templates. */
 public class JdbcConverters {
 
   private static final Logger LOG = LoggerFactory.getLogger(JdbcConverters.class);
@@ -40,7 +40,7 @@ public class JdbcConverters {
   }
 
   /**
-   * {@link JdbcIO.RowMapper} implementation to convert Jdbc ResultSet rows to UTF-8 encoded JSONs.
+   * {@link JdbcIO.RowMapper} implementation to convert JDBC ResultSet rows to UTF-8 encoded JSONs.
    */
   private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
 

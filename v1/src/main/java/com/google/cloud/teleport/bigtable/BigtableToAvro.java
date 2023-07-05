@@ -202,7 +202,7 @@ public class BigtableToAvro {
    * Extracts the byte array from the given {@link ByteString} without copy.
    *
    * @param byteString A {@link ByteString} from which to extract the array.
-   * @return an array of byte.
+   * @return an array of bytes.
    */
   protected static byte[] toByteArray(final ByteString byteString) {
     try {

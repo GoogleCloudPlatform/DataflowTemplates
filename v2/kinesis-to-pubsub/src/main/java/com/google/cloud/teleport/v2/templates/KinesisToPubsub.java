@@ -37,9 +37,9 @@ import org.slf4j.LoggerFactory;
  * The {@link KinesisToPubsub} is a streaming pipeline which reads data from AWS Kinesis Data stream
  * and publishes the same to a Pub/Sub Topic. The input Kinesis data stream and output Pub/Sub topic
  * are both provided by the user.<br>
- * The AWS client maybe connected using access key and aws secret key, and both are assumed to be
+ * The AWS client maybe connected using access key and AWS secret key, and both are assumed to be
  * stored and protected as secrets in GCP secret manager. This pipeline expects the user to provide
- * the secret key id and secret version of both the aws keys, assuming that the secrets have been
+ * the secret key id and secret version of both the AWS keys, assuming that the secrets have been
  * created in the project in which this pipeline will be executed. The service accounts running this
  * pipeline must also have the permissions needed to access and extract the secret values.<br>
  *

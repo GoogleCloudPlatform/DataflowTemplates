@@ -83,7 +83,7 @@ public class KafkaRecord<K, V> implements Serializable {
   public Headers getHeaders() {
     if (!ConsumerSpEL.hasHeaders) {
       throw new RuntimeException(
-          "The version kafka-clients does not support record headers, "
+          "The version of kafka-clients does not support record headers, "
               + "please use version 0.11.0.0 or newer");
     }
     return headers;

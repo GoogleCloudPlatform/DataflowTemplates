@@ -48,7 +48,7 @@ public abstract class MappedObjectCache<KeyT, ValueT> implements Serializable {
   /**
    * Set the cache life for the {@code MappedObjectCache} instance.
    *
-   * @param value The number of minutes before reseting a cached value.
+   * @param value The number of minutes before resetting a cached value.
    */
   public MappedObjectCache withCacheResetTimeUnitValue(Integer value) {
     this.cachedObjects =
@@ -58,7 +58,7 @@ public abstract class MappedObjectCache<KeyT, ValueT> implements Serializable {
   }
 
   /**
-   * Set the number of retries {@code MappedObjectCache} will use each time it attempt to reset the
+   * Set the number of retries {@code MappedObjectCache} will use each time it attempts to reset the
    * cache.
    *
    * @param numRetries The number of retries before resetting a cached value.

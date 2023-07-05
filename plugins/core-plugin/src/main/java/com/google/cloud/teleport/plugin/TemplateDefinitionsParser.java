@@ -38,7 +38,7 @@ public final class TemplateDefinitionsParser {
    * returns to the caller.
    *
    * @param classLoader ClassLoader that should be used to scan for the annotations.
-   * @return Listed with all definitions that could be found in the classpath.
+   * @return List with all definitions that could be found in the classpath.
    */
   public static List<TemplateDefinitions> scanDefinitions(ClassLoader classLoader) {
 

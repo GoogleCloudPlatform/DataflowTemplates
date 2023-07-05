@@ -48,7 +48,7 @@ class ApplyDDLTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
    *
    * @param spannerConfig the spanner config for database.
    * @param pendingDDLStatements the list of pending DDL statements to be applied.
-   * @param waitForApply wait till all the ddl statements are committed.
+   * @param waitForApply wait until all the ddl statements are committed.
    */
   public ApplyDDLTransform(
       SpannerConfig spannerConfig,

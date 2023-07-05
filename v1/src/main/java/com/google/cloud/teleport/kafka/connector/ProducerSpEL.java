@@ -27,8 +27,8 @@ import org.apache.kafka.common.errors.ApiException;
 import org.apache.kafka.common.errors.AuthorizationException;
 
 /**
- * ProducerSpEL to handle newer versions Producer API. The API is updated in Kafka 0.11 to support
- * exactly-once semantics.
+ * ProducerSpEL to handle newer versions of the Producer API. The API is updated in Kafka 0.11 to
+ * support exactly-once semantics.
  */
 class ProducerSpEL {
 
@@ -68,7 +68,7 @@ class ProducerSpEL {
 
   /**
    * Wraps an unrecoverable producer exceptions, including the ones related transactions introduced
-   * in 0.11 (as described in documentation for {@link Producer}). The calller should close the
+   * in 0.11 (as described in documentation for {@link Producer}). The caller should close the
    * producer when this exception is thrown.
    */
   static class UnrecoverableProducerException extends ApiException {

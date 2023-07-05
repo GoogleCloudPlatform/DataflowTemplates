@@ -39,7 +39,7 @@ import org.joda.time.Duration;
  *
  * <ul>
  *   <li>{@link ElasticsearchWriteOptions#getConnectionUrl()} - CloudId or URL.
- *   <li>{@link ElasticsearchWriteOptions#getIndex()} ()} ()} ()} - Elasticsearch write index.
+ *   <li>{@link ElasticsearchWriteOptions#getIndex()} - Elasticsearch write index.
  *   <li>{@link ElasticsearchWriteOptions#getBatchSize()} - batch size in number of documents
  *       (Default:1000).
  *   <li>{@link ElasticsearchWriteOptions#getBatchSizeBytes()} - batch size in number of bytes

@@ -21,7 +21,7 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 
 /**
- * Oracle implementation of ChangeEventContext that provides implementation of the
+ * Oracle implementation of ChangeEventContext that provides an implementation of the
  * generateShadowTableMutation method.
  */
 class OracleChangeEventContext extends ChangeEventContext {

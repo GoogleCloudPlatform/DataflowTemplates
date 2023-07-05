@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 
 /**
- * Given a {@link Ddl} Generates a stream of random Cloud Spanner mutations for the specified table.
+ * Given a {@link Ddl} generates a stream of random Cloud Spanner mutations for the specified table.
  */
 public class RandomInsertMutationGenerator {
 

@@ -70,7 +70,7 @@ public final class FailsafeElementTransforms {
      * Optional key to use for setting a Pub/Sub attribute that contains {@link
      * FailsafeElement#getErrorMessage()} as its value.
      *
-     * <p>If this is null or there is error message in the {@link FailsafeElement}, then no
+     * <p>If this is null or there is no error message in the {@link FailsafeElement}, then no
      * attribute will be created.
      */
     @Nullable

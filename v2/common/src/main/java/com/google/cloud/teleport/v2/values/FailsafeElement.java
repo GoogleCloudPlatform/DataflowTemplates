@@ -26,7 +26,7 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects
  * pipeline. This class allows pipelines to not lose valuable information about an incoming record
  * throughout the processing of that record. The use of this class allows for more robust
  * dead-letter strategies as the original record information is not lost throughout the pipeline and
- * can be output to a dead-letter in the event of a failure during one of the pipelines transforms.
+ * can be output to a dead-letter in the event of a failure during one of the pipeline's transforms.
  */
 @DefaultCoder(FailsafeElementCoder.class)
 public class FailsafeElement<OriginalT, CurrentT> {

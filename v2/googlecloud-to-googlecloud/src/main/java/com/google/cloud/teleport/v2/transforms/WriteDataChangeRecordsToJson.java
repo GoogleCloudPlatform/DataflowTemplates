@@ -25,7 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link WriteDataChangeRecordsToGcsText} class is a {@link PTransform} that takes in {@link
+ * The {@link WriteDataChangeRecordsToJson} class is a {@link PTransform} that takes in {@link
  * PCollection} of Spanner data change records. The transform converts and writes these records to
  * GCS in JSON text file format.
  */

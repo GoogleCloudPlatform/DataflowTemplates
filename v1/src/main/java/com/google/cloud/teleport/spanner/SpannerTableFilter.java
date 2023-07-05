@@ -26,8 +26,8 @@ import java.util.Queue;
 import java.util.Set;
 
 /**
- * Helper class that provides a static function for filter a Ddl based on a provided list of table
- * names.
+ * Helper class that provides a static function for filtering a Ddl based on a provided list of
+ * table names.
  */
 public class SpannerTableFilter {
   /**
@@ -45,7 +45,7 @@ public class SpannerTableFilter {
      * We first get a Queue for the initial unprocessed Tables. Then, we iteratively gather related
      * tables for each table in unprocessedTables. If a related table (either a parent or foreign
      * key table) has not been processed (i.e. added to the completedTables list) and it's not
-     * all already been checked into the unprocessedTables Queue, then it is added to the Queue.
+     * already been checked into the unprocessedTables Queue, then it is added to the Queue.
      * All completedTables are returned at the end to the caller. */
     Queue<Table> unprocessedTables = getTablesFromDdl(ddl, tables);
 

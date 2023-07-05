@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
  * This pipeline ingests DataStream data from GCS. The data is then transformed to BSON documents
  * they are automatically added to MongoDB.
  *
- * <p>Example Usage: TODO: FIX EXMAPLE USAGE
+ * <p>Example Usage: TODO: FIX EXAMPLE USAGE
  */
 public class DataStreamToMongoDB {
 

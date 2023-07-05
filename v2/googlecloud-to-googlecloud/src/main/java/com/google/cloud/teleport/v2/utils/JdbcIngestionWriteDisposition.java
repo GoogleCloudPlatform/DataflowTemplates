@@ -52,7 +52,7 @@ public class JdbcIngestionWriteDisposition {
     }
   }
 
-  /** Maps WriteDispostionOptions to BigQueryIO.Write.WriteDisposition. */
+  /** Maps WriteDispositionOptions to BigQueryIO.Write.WriteDisposition. */
   public static class MapWriteDisposition {
 
     private static final Map<WriteDispositionOptions, WriteDisposition> WRITE_DISPOSITION_MAP;
@@ -66,7 +66,7 @@ public class JdbcIngestionWriteDisposition {
       WRITE_DISPOSITION_MAP.put(WriteDispositionOptions.WRITE_EMPTY, WriteDisposition.WRITE_EMPTY);
     }
 
-    public static WriteDisposition mapWriteDispostion(WriteDispositionOptions option) {
+    public static WriteDisposition mapWriteDisposition(WriteDispositionOptions option) {
       if (option == WriteDispositionOptions.SKIP) {
         throw new UnsupportedOperationException(
             "SKIP WriteDisposition not implemented for writing to BigQuery.");

@@ -25,7 +25,7 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Returns a apiKey from a valid {@link DatadogApiKeySource}. */
+/** Returns an apiKey from a valid {@link DatadogApiKeySource}. */
 public class DatadogApiKeyNestedValueProvider implements ValueProvider<String>, Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(DatadogApiKeyNestedValueProvider.class);

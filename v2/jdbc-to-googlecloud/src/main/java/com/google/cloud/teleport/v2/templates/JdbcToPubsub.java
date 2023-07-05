@@ -125,7 +125,7 @@ public class JdbcToPubsub {
   }
 
   /**
-   * Runs a pipeline which reads message from JDBC and writes to Pub/Sub.
+   * Runs a pipeline which reads messages from JDBC and writes to Pub/Sub.
    *
    * @param options The execution options.
    * @return The pipeline result.

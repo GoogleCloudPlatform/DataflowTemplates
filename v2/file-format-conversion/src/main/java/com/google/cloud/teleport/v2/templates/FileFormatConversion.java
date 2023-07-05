@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
     name = "File_Format_Conversion",
     category = TemplateCategory.UTILITIES,
     displayName = "Convert file formats between Avro, Parquet & CSV",
-    description = "A pipeline to convert file formats between Avro, Parquet & csv.",
+    description = "A pipeline to convert file formats between Avro, Parquet & CSV.",
     optionsClass = FileFormatConversionOptions.class,
     optionalOptions = {"deadletterTable"},
     flexContainerName = "file-format-conversion",

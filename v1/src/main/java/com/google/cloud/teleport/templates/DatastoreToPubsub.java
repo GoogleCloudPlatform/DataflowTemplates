@@ -26,7 +26,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
 /**
- * Dataflow template which copies Datastore Entities to a Pubsub sink. uses Json encoded entity in
+ * Dataflow template which copies Datastore Entities to a Pubsub sink. Uses JSON encoded entity in
  * the v1/Entity rest format: https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
  */
 public class DatastoreToPubsub {

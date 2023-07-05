@@ -31,7 +31,7 @@ public interface PubsubToKafkaOptions
       order = 1,
       description = "Input Pub/Sub topic",
       helpText =
-          "The name of the topic from which data should published, in the format of "
+          "The name of the topic from which data should be published, in the format of "
               + "'projects/your-project-id/topics/your-topic-name'",
       example = "projects/your-project-id/topics/your-topic-name")
   @Validation.Required

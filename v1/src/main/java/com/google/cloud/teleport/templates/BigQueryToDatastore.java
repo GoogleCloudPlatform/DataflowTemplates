@@ -85,7 +85,7 @@ public class BigQueryToDatastore {
                 .setFailureTag(failureTag)
                 .build());
 
-    // Write on GCS data that could not be converted to valid Datastore entities
+    // Write to GCS data that could not be converted to valid Datastore entities
     entities.apply(
         LogErrors.newBuilder()
             .setErrorWritePath(options.getInvalidOutputPath())

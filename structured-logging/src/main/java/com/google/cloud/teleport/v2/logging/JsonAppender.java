@@ -22,7 +22,7 @@ import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import com.google.gson.Gson;
 
 /**
- * A simple logging Appender that output logs in Json format. Inspired by
+ * A simple logging Appender that outputs logs in Json format. Inspired by
  * com.google.cloud.logging.logback.LoggingAppender.
  */
 public class JsonAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {

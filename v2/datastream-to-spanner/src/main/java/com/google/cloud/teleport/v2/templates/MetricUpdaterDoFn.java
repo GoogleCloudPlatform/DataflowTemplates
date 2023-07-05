@@ -23,7 +23,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Updates the permanent error/ requeue for retry counter. */
+/** Updates the permanent error/requeue for retry counter. */
 public class MetricUpdaterDoFn
     extends DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>>
     implements Serializable {

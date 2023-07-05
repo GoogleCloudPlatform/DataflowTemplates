@@ -22,7 +22,7 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 
-/** A FileNaming that generates filenames using Write.defaultNaming. */
+/** A FileNaming that generates file names using Write.defaultNaming. */
 public class DataplexJdbcIngestionNaming implements FileNaming {
 
   private final FileNaming defaultNaming;

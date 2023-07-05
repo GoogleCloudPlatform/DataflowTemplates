@@ -140,7 +140,7 @@ public class MongoDbToBigQuery {
                   }
                 }))
         .apply(
-            "Write to Bigquery",
+            "Write to BigQuery",
             BigQueryIO.writeTableRows()
                 .to(options.getOutputTableSpec())
                 .withSchema(bigquerySchema)

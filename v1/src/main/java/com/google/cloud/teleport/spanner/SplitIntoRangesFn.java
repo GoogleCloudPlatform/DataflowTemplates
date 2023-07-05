@@ -35,7 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Splits a table File into a set of {@link FileShard} objects storing the file, tablename and the
+ * Splits a table File into a set of {@link FileShard} objects storing the file, table name and the
  * range offset/size.
  *
  * <p>Based on <code>SplitIntoRangesFn</code> in {@link

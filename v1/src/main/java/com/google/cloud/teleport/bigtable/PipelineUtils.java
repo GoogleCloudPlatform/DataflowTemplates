@@ -29,7 +29,7 @@ final class PipelineUtils {
      * objects: 1. Row key 2. Column qualifier 3. Timestamp 4. Value 5. A cell object that contains
      * the above 4 objects.
      *
-     * <p>So each cell has at least 5 objects. On top of that, each cell may represented by
+     * <p>So each cell has at least 5 objects. On top of that, each cell may be represented by
      * different kinds of objects. For example, Avro import job creates BigtableCell object and
      * Mutation objects for all the cells. Same is the case with Parquet and Cassandra pipelines.
      *

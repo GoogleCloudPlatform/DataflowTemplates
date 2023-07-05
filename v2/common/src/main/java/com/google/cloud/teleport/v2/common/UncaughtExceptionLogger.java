@@ -20,7 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Uncaught exception handler the uses {@link Logger} to record all uncaught exceptions.
+ * Uncaught exception handler that uses {@link Logger} to record all uncaught exceptions.
  *
  * <p>This ensures that if the structured logging is being used the exception will be logged with
  * correct severity.

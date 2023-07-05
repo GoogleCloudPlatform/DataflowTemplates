@@ -127,7 +127,7 @@ public class DataplexJdbcPartitionUtils {
    * org.apache.beam.sdk.schemas.utils.AvroUtils static initialization.
    *
    * <p>A usage of AvroUtils changes how Avro treats `timestamp-millis` "globally", and so if
-   * AvroUtils is used, even in a unrelated classes, the `timestamp-millis` is returned as Joda
+   * AvroUtils is used, even in unrelated classes, the `timestamp-millis` is returned as Joda
    * timestamps, and if AvroUtils is not used `timestamp-millis` is returned as long. This method
    * handles both cases and returns long millis.
    */

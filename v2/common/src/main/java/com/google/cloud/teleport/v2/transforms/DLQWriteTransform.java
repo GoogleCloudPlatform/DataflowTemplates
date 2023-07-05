@@ -31,7 +31,7 @@ import org.apache.beam.sdk.values.PDone;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 
-/** Transforms to write error messages in to DLQ. */
+/** Transforms to write error messages into DLQ. */
 public class DLQWriteTransform {
 
   /**

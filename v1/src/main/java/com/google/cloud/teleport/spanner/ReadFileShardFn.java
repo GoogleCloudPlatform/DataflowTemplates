@@ -39,8 +39,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Reads a {@link FileShard} object from the start to end offset, converting the text rows into a
- * CSVRecord object.
+ * Reads a {@link FileShard} object from the start to end offset, converting the text rows into
+ * CSVRecord objects.
  */
 @VisibleForTesting
 class ReadFileShardFn extends DoFn<FileShard, KV<String, CSVRecord>> {

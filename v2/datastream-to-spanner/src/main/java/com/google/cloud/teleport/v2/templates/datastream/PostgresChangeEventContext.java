@@ -21,7 +21,7 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 
 /**
- * Postgres implementation of ChangeEventContext that provides implementation of the
+ * Postgres implementation of ChangeEventContext that provides an implementation of the
  * generateShadowTableMutation method.
  */
 class PostgresChangeEventContext extends ChangeEventContext {

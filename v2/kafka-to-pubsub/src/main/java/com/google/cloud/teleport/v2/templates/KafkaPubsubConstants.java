@@ -26,7 +26,7 @@ public class KafkaPubsubConstants {
   public static final TupleTag<FailsafeElement<KV<String, String>, String>> UDF_OUT =
       new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
 
-  /** The tag for the dead-letter output of the udf. */
+  /** The tag for the dead-letter output of the UDF. */
   public static final TupleTag<FailsafeElement<KV<String, String>, String>> UDF_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
 

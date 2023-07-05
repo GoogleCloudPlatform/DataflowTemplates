@@ -42,7 +42,7 @@ public class BigQueryTableRowCleaner {
    * BigQuery Table column type.
    *
    * @param row a TableRow object to clean.
-   * @param tableFields a FieldList of Bigquery columns.
+   * @param tableFields a FieldList of BigQuery columns.
    * @param rowKey a String with the name of the field to clean.
    */
   public static void cleanTableRowField(TableRow row, FieldList tableFields, String rowKey) {
@@ -63,7 +63,7 @@ public class BigQueryTableRowCleaner {
    * column type.
    *
    * @param row a TableRow object to clean.
-   * @param tableFields a FieldList of Bigquery columns.
+   * @param tableFields a FieldList of BigQuery columns.
    * @param rowKey a String with the name of the field to clean.
    */
   public static void cleanTableRowFieldStrings(TableRow row, FieldList tableFields, String rowKey) {
@@ -86,7 +86,7 @@ public class BigQueryTableRowCleaner {
    * type.
    *
    * @param row a TableRow object to clean.
-   * @param tableFields a FieldList of Bigquery columns.
+   * @param tableFields a FieldList of BigQuery columns.
    * @param rowKey a String with the name of the field to clean.
    */
   public static void cleanTableRowFieldDates(TableRow row, FieldList tableFields, String rowKey) {
@@ -107,7 +107,7 @@ public class BigQueryTableRowCleaner {
    * column type.
    *
    * @param row a TableRow object to clean.
-   * @param tableFields a FieldList of Bigquery columns.
+   * @param tableFields a FieldList of BigQuery columns.
    * @param rowKey a String with the name of the field to clean.
    */
   public static void cleanTableRowFieldDateTime(

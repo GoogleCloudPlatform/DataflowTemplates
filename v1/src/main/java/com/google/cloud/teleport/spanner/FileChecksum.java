@@ -49,7 +49,7 @@ public class FileChecksum {
    *
    * @param gcsUtil - Used to retrieve the files.
    * @param gcsPaths - List of paths of the files.
-   * @return A List of String representing the MD5 hashes of the files.
+   * @return A List of Strings representing the MD5 hashes of the files.
    */
   public static List<String> getGcsFileChecksums(GcsUtil gcsUtil, List<GcsPath> gcsPaths) {
     List<String> checksums = new ArrayList<>();

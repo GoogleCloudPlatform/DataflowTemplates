@@ -148,7 +148,7 @@ public interface SpannerChangeStreamsToGcsOptions
   @TemplateParameter.Text(
       order = 11,
       optional = true,
-      description = "Cloud Spanner Endpoint to call",
+      description = "Cloud Spanner endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
       example = "https://spanner.googleapis.com")
   @Default.String("https://spanner.googleapis.com")

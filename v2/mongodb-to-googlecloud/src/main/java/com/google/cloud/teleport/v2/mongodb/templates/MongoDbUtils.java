@@ -54,7 +54,7 @@ import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Transforms & DoFns & Options for Teleport DatastoreIO. */
+/** Transforms & DoFns & Options for Teleport MongoDbIO. */
 public class MongoDbUtils implements Serializable {
 
   /**

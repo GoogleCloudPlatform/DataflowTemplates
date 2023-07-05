@@ -21,7 +21,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
-/** The {@link ElasticsearchWriteOptions} with the common write options for Elasticsearch. * */
+/** The {@link ElasticsearchWriteOptions} with the common write options for Elasticsearch. */
 public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   @TemplateParameter.Text(

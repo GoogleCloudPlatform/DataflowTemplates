@@ -55,7 +55,7 @@ public class CustomTimestampPolicyWithLimitedDelay<K, V> extends TimestampPolicy
     this.timestampFunction = timestampFunction;
 
     // 'previousWatermark' is not the same as maxEventTimestamp (e.g. it could have been in future).
-    // Initialize it such that watermark before reading any event same as previousWatermark.
+    // Initialize it such that watermark before reading any event is same as previousWatermark.
     maxEventTimestamp = previousWatermark.orElse(BoundedWindow.TIMESTAMP_MIN_VALUE).plus(maxDelay);
   }
 

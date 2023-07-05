@@ -31,7 +31,7 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
-/** Template to write data from Spanner table into BigQuery table. */
+/** Template to write data from Spanner table into a BigQuery table. */
 public final class SpannerToBigQuery {
 
   public static void main(String[] args) {

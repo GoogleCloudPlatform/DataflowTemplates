@@ -137,7 +137,7 @@ public class ImportPipeline {
     @TemplateParameter.Boolean(
         order = 8,
         optional = true,
-        description = "Create Indexes early",
+        description = "Create indexes early",
         helpText =
             "Flag to turn off early index creation if there are many indexes. Indexes and Foreign keys are created after dataload. If there are more than "
                 + "40 DDL statements to be executed after dataload, it is preferable to create the "

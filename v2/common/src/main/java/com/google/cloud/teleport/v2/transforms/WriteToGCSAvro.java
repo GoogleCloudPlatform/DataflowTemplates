@@ -38,8 +38,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link WriteToGCSAvro} class is a {@link PTransform} that takes in {@link PCollection} of KV
- * records. The transform converts and writes these records to GCS in avro file format.
+ * The {@link WriteToGCSAvro} class is a {@link PTransform} that takes in a {@link PCollection} of
+ * KV records. The transform converts and writes these records to GCS in avro file format.
  */
 @AutoValue
 public abstract class WriteToGCSAvro extends PTransform<PCollection<KV<String, String>>, PDone> {

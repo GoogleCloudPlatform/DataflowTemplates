@@ -89,7 +89,7 @@ public class PubsubToJdbc {
   }
 
   /**
-   * Runs a pipeline which reads message from Pub/Sub and writes to JDBC.
+   * Runs a pipeline which reads messages from Pub/Sub and writes to JDBC.
    *
    * @param options The execution options.
    * @return The pipeline result.

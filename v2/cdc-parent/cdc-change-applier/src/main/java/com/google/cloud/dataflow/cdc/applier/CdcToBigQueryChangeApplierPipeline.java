@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@link CdcToBigQueryChangeApplierPipeline} consumes change data corresponding to changes in a
  * database. This data is consumed from a group of Pubsub topics (one topic for each table in the
- * external database); then it is processed and inserted to BigQuery.
+ * external database); then it is processed and inserted into BigQuery.
  *
  * <p>For each table in the external database, the {@link CdcToBigQueryChangeApplierPipeline} will
  * produce two BigQuery tables:

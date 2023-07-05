@@ -167,7 +167,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
       description = "Pub/Sub API",
       helpText =
           "Pub/Sub API used to implement the pipeline. Allowed APIs are pubsubio and native_client."
-              + " Default is pubsubio. For a small QPS, native_client can achieve a smaller latency"
+              + " Default is pubsubio. For a small QPS, native_client can achieve a lower latency"
               + " than pubsubio. For a large QPS, pubsubio has better and more stable performance.")
   @Default.String("pubsubio")
   String getPubsubAPI();

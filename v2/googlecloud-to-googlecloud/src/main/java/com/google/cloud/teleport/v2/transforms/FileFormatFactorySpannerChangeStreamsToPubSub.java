@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@link FileFormatFactorySpannerChangeStreamsToPubSub} class is a {@link PTransform} that
  * takes in {@link PCollection} of DataChangeRecords. The transform writes each record to
- * PubsubMessage in user specified format.
+ * PubsubMessage in the user specified format.
  */
 @AutoValue
 public abstract class FileFormatFactorySpannerChangeStreamsToPubSub

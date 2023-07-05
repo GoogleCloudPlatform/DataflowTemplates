@@ -37,7 +37,7 @@ public abstract class TemplatesBaseMojo extends AbstractMojo {
   @Parameter(defaultValue = "${session}", required = true)
   protected MavenSession session;
 
-  /** Location of the file. */
+  /** Location of the output directory. */
   @Parameter(defaultValue = "${project.build.directory}", property = "outputDir", required = true)
   protected File outputDirectory;
 

@@ -28,7 +28,7 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 
 /**
- * The {@link FailedPubsubMessageToPubsubTopicFn} converts PubSub message which have failed
+ * The {@link FailedPubsubMessageToPubsubTopicFn} converts Pub/Sub messages which have failed
  * processing into {@link com.google.api.services.pubsub.model.PubsubMessage} objects which can be
  * output to a PubSub topic.
  */

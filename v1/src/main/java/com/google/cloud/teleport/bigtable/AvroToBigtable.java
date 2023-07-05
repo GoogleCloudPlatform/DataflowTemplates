@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
 public final class AvroToBigtable {
   private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);
 
-  /** Maximum number of mutations allowed per row by Cloud bigtable. */
+  /** Maximum number of mutations allowed per row by Cloud Bigtable. */
   private static final int MAX_MUTATIONS_PER_ROW = 100000;
 
   private static final Boolean DEFAULT_SPLIT_LARGE_ROWS = false;

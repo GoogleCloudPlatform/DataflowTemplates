@@ -27,7 +27,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
 
-/** Estimates the logical size of {@link com.google.cloud.spanner.Mutation}. */
+/** Estimates the logical size of {@link Mutation}. */
 class MutationSizeEstimator {
 
   // Prevent construction.

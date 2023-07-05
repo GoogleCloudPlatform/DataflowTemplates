@@ -23,7 +23,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 /**
  * The {@link PubSubToFailSafeElement} wraps an incoming {@link PubsubMessage} with the {@link
  * FailsafeElement} class so errors can be recovered from and the original message can be output to
- * a error records table.
+ * an error records table.
  */
 public class PubSubToFailSafeElement extends DoFn<PubsubMessage, FailsafeElement<String, String>> {
   @ProcessElement
