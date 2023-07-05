@@ -39,6 +39,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockserver.configuration.ConfigurationProperties;
 import org.mockserver.integration.ClientAndServer;
+import org.mockserver.matchers.Times;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.verify.VerificationTimes;
@@ -173,7 +174,7 @@ public class DatadogEventWriterTest {
   public void successfulDatadogWriteSingleBatchTest() {
 
     // Create server expectation for success.
-    mockServerListening(200);
+    addRequestExpectation(202);
 
     int testPort = mockServer.getPort();
 
@@ -231,7 +232,7 @@ public class DatadogEventWriterTest {
   public void successfulDatadogWriteMultiBatchTest() {
 
     // Create server expectation for success.
-    mockServerListening(200);
+    addRequestExpectation(202);
 
     int testPort = mockServer.getPort();
 
@@ -289,7 +290,7 @@ public class DatadogEventWriterTest {
   public void failedDatadogWriteSingleBatchTest() {
 
     // Create server expectation for FAILURE.
-    mockServerListening(404);
+    addRequestExpectation(404);
 
     int testPort = mockServer.getPort();
 
@@ -341,9 +342,65 @@ public class DatadogEventWriterTest {
     mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
   }
 
-  private void mockServerListening(int statusCode) {
+  /** Test retryable POST request. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void retryableDatadogWriteSingleBatchTest() {
+
+    // Create server expectations for 3 retryable failures, 1 success.
+    addRequestExpectation(408, Times.once());
+    addRequestExpectation(429, Times.once());
+    addRequestExpectation(502, Times.once());
+    addRequestExpectation(202, Times.once());
+
+    int testPort = mockServer.getPort();
+
+    List<KV<Integer, DatadogEvent>> testEvents =
+        ImmutableList.of(
+            KV.of(
+                123,
+                DatadogEvent.newBuilder()
+                    .withSource("test-source-1")
+                    .withTags("test-tags-1")
+                    .withHostname("test-hostname-1")
+                    .withService("test-service-1")
+                    .withMessage("test-message-1")
+                    .build()));
+
+    PCollection<DatadogWriteError> actual =
+        pipeline
+            .apply(
+                "Create Input data",
+                Create.of(testEvents)
+                    .withCoder(KvCoder.of(BigEndianIntegerCoder.of(), DatadogEventCoder.of())))
+            .apply(
+                "DatadogEventWriter",
+                ParDo.of(
+                    DatadogEventWriter.newBuilder()
+                        .withUrl(Joiner.on(':').join("http://localhost", testPort))
+                        .withInputBatchCount(
+                            StaticValueProvider.of(
+                                testEvents.size())) // all requests in a single batch.
+                        .withApiKey("test-api-key")
+                        .build()))
+            .setCoder(DatadogWriteErrorCoder.of());
+
+    PAssert.that(actual).empty();
+
+    // All successful responses, eventually.
+    pipeline.run();
+
+    // Server received exactly 4 POST requests (3 retryable failures, 1 success).
+    mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.exactly(4));
+  }
+
+  private void addRequestExpectation(int statusCode) {
+    addRequestExpectation(statusCode, Times.unlimited());
+  }
+
+  private void addRequestExpectation(int statusCode, Times times) {
     mockServer
-        .when(HttpRequest.request(EXPECTED_PATH))
+        .when(HttpRequest.request(EXPECTED_PATH), times)
         .respond(HttpResponse.response().withStatusCode(statusCode));
   }
 }
