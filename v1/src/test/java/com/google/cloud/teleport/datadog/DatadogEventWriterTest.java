@@ -134,6 +134,27 @@ public class DatadogEventWriterTest {
     assertThat(writer.inputBatchCount()).isNull();
   }
 
+  /**
+   * Test building {@link DatadogEventWriter} with a batchCount less than the configured minimum.
+   */
+  @Test
+  public void eventWriterBatchCountTooSmall() {
+
+    Exception thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                DatadogEventWriter.newBuilder(7)
+                    .withUrl("http://test-url")
+                    .withApiKey("test-api-key")
+                    .withInputBatchCount(StaticValueProvider.of(6))
+                    .build());
+
+    assertThat(thrown)
+        .hasMessageThat()
+        .contains("inputBatchCount must be greater than or equal to 7");
+  }
+
   /** Test building {@link DatadogEventWriter} with a batchCount greater than 1000. */
   @Test
   public void eventWriterBatchCountTooBig() {
@@ -153,7 +174,7 @@ public class DatadogEventWriterTest {
         .contains("inputBatchCount must be less than or equal to 1000");
   }
 
-  /** Test building {@link DatadogEventWriter} with custom batchcount . */
+  /** Test building {@link DatadogEventWriter} with custom batchCount . */
   @Test
   public void eventWriterCustomBatchCountAndValidation() {
 
@@ -208,7 +229,7 @@ public class DatadogEventWriterTest {
             .apply(
                 "DatadogEventWriter",
                 ParDo.of(
-                    DatadogEventWriter.newBuilder()
+                    DatadogEventWriter.newBuilder(1)
                         .withUrl(Joiner.on(':').join("http://localhost", testPort))
                         .withInputBatchCount(
                             StaticValueProvider.of(1)) // Test one request per DatadogEvent
@@ -266,7 +287,7 @@ public class DatadogEventWriterTest {
             .apply(
                 "DatadogEventWriter",
                 ParDo.of(
-                    DatadogEventWriter.newBuilder()
+                    DatadogEventWriter.newBuilder(1)
                         .withUrl(Joiner.on(':').join("http://localhost", testPort))
                         .withInputBatchCount(
                             StaticValueProvider.of(
@@ -315,7 +336,7 @@ public class DatadogEventWriterTest {
             .apply(
                 "DatadogEventWriter",
                 ParDo.of(
-                    DatadogEventWriter.newBuilder()
+                    DatadogEventWriter.newBuilder(1)
                         .withUrl(Joiner.on(':').join("http://localhost", testPort))
                         .withInputBatchCount(
                             StaticValueProvider.of(
