@@ -23,7 +23,12 @@ import org.slf4j.Logger;
 /** IO Redirect Utility class. */
 public final class IORedirectUtil {
 
-  /** Redirect an InputStream to a logger for testing debugging purposes. */
+  /**
+   * Redirect an InputStream to a logger for testing and debugging purposes.
+   *
+   * @param inputStream The InputStream to redirect.
+   * @param log The logger to redirect the InputStream to.
+   */
   public static void redirectLinesLog(InputStream inputStream, Logger log) {
     new Thread(
             () -> {

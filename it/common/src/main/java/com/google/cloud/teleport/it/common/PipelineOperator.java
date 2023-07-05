@@ -151,7 +151,7 @@ public final class PipelineOperator {
   }
 
   /**
-   * Drains the job and waits till its drained.
+   * Drains the job and waits till it's drained.
    *
    * @param config the configuration for performing operations
    * @return the result of waiting for the condition

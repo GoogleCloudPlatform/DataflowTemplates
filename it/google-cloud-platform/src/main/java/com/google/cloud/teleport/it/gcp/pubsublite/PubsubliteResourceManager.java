@@ -143,7 +143,7 @@ public class PubsubliteResourceManager implements ResourceManager {
   }
 
   /**
-   * Creates a new Pubsub lite subscription for a specified topic.
+   * Creates a new Pub/Sub Lite subscription for a specified topic.
    *
    * @param reservationPath the path of the reservation to add the subscription.
    * @param topicName the name of the topic to add the subscription to.

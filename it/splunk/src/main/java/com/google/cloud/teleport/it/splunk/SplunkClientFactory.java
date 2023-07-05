@@ -25,7 +25,7 @@ class SplunkClientFactory {
   SplunkClientFactory() {}
 
   /**
-   * Returns an HTTP client that is used to send HTTP messages to a Splunk Server instance with HEC.
+   * Returns an HTTP client that is used to send HTTP messages to a Splunk server instance with HEC.
    *
    * @return An HTTP client for sending HTTP messages to Splunk HEC.
    */
@@ -34,7 +34,7 @@ class SplunkClientFactory {
   }
 
   /**
-   * Returns a Splunk Service client for sending requests to a Splunk Server instance.
+   * Returns a Splunk Service client for sending requests to a Splunk server instance.
    *
    * @param serviceArgs the service arguments to connect to the server with.
    * @return A Splunk service client to retrieve messages from a Splunk server instance.

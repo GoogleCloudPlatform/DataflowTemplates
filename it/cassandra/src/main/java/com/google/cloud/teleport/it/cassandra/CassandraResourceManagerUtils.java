@@ -33,10 +33,10 @@ final class CassandraResourceManagerUtils {
   private CassandraResourceManagerUtils() {}
 
   /**
-   * Generates a Cassandra database name from a given string.
+   * Generates a Cassandra keyspace name from a given string.
    *
    * @param baseString The string to generate the name from.
-   * @return The database name string.
+   * @return The keyspace name string.
    */
   static String generateKeyspaceName(String baseString) {
     return generateResourceId(

@@ -28,7 +28,7 @@ import org.apache.avro.generic.GenericRecord;
 public class ArtifactAsserts {
 
   /**
-   * Creates a {@link ArtifactsSubject} to assert information within a list of artifacts obtained
+   * Creates an {@link ArtifactsSubject} to assert information within a list of artifacts obtained
    * from Cloud Storage.
    *
    * @param artifacts Artifacts in list format to use in the comparisons.
@@ -39,7 +39,7 @@ public class ArtifactAsserts {
   }
 
   /**
-   * Creates a {@link ArtifactsSubject} to assert information for an artifact obtained from Cloud
+   * Creates an {@link ArtifactsSubject} to assert information for an artifact obtained from Cloud
    * Storage.
    *
    * @param artifact Artifact to use in the comparisons.
@@ -50,7 +50,7 @@ public class ArtifactAsserts {
   }
 
   /**
-   * Creates a {@link RecordsSubject} to assert information within a list of records.
+   * Creates an {@link RecordsSubject} to assert information within a list of records.
    *
    * @param records Records in Avro/Parquet {@link GenericRecord} format to use in the comparison.
    * @return Truth Subject to chain assertions.

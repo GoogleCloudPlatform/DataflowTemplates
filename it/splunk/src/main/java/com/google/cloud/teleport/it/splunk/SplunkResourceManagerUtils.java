@@ -73,7 +73,7 @@ public final class SplunkResourceManagerUtils {
   /**
    * Generates a secure, valid Splunk HEC authentication token.
    *
-   * @return The generated password.
+   * @return The generated token.
    */
   static String generateHecToken() {
     return UUID.randomUUID().toString();

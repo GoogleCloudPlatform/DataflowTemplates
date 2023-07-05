@@ -64,7 +64,7 @@ public class CassandraAsserts {
    * Creates a {@link RecordsSubject} to assert information within a list of records.
    *
    * @param rows Records in Cassandra's {@link Row} format to use in the comparison.
-   * @return Truth Subject to chain assertions.
+   * @return Truth subject to chain assertions on.
    */
   public static RecordsSubject assertThatCassandraRecords(@Nullable Iterable<Row> rows) {
     return assertThatRecords(cassandraRowsToRecords(rows));

@@ -21,7 +21,7 @@ import com.google.cloud.bigtable.admin.v2.models.StorageType;
 /**
  * Class for storing the metadata of a Bigtable cluster object.
  *
- * <p>A cluster belongs to a single bigtable instance and represents the service in a given zone. A
+ * <p>A cluster belongs to a single Bigtable instance and represents the service in a given zone. A
  * cluster can have multiple nodes operating on the data. The cluster also has a storage type of
  * either SSD or HDD depending on the user's needs.
  */

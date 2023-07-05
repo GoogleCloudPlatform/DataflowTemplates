@@ -65,7 +65,7 @@ public final class ArtifactsSubject extends Subject {
   /**
    * Check if artifact list has a specific number of files.
    *
-   * @param expectedFiles Expected Rows
+   * @param expectedFiles Expected files
    */
   public void hasFiles(int expectedFiles) {
     check("there are %d files", expectedFiles).that(actual.size()).isEqualTo(expectedFiles);
