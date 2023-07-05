@@ -36,21 +36,6 @@ public abstract class StreamingHandler {
 
   public void process() {
 
-    String connectString =
-        "jdbc:mysql://"
-            + taskContext.getShard().getHost()
-            + ":"
-            + taskContext.getShard().getPort()
-            + "/"
-            + taskContext.getShard().getDbName();
-
-    MySqlDao dao =
-        new DaoFactory(
-                connectString,
-                taskContext.getShard().getUserName(),
-                taskContext.getShard().getPassword())
-            .getMySqlDao(taskContext.getShard().getLogicalShardId());
-
     InputBufferReader inputBufferReader = this.getBufferReader();
 
     try {
@@ -61,13 +46,30 @@ public abstract class StreamingHandler {
       LOG.info(
           "Number of records read from buffer: "
               + records.size()
-              + "for shard: "
+              + " for shard: "
               + taskContext.getShard().getLogicalShardId()
               + " time taken in miliseconds : "
               + ChronoUnit.MILLIS.between(readStartTime, readEndTime));
       if (records.isEmpty()) {
+        inputBufferReader.acknowledge();
         return;
       }
+
+      String connectString =
+          "jdbc:mysql://"
+              + taskContext.getShard().getHost()
+              + ":"
+              + taskContext.getShard().getPort()
+              + "/"
+              + taskContext.getShard().getDbName();
+
+      MySqlDao dao =
+          new DaoFactory(
+                  connectString,
+                  taskContext.getShard().getUserName(),
+                  taskContext.getShard().getPassword())
+              .getMySqlDao(taskContext.getShard().getLogicalShardId());
+
       InputRecordProcessor.processRecords(
           records,
           taskContext.getSchema(),
@@ -76,7 +78,7 @@ public abstract class StreamingHandler {
           taskContext.getSourceDbTimezoneOffset());
       inputBufferReader.acknowledge();
       dao.cleanup();
-      LOG.info(" Successfully processed ");
+      LOG.info(" Successfully processed shard:  " + taskContext.getShard().getLogicalShardId());
     } catch (Exception e) {
       // TODO: Error handling and retry
       /*

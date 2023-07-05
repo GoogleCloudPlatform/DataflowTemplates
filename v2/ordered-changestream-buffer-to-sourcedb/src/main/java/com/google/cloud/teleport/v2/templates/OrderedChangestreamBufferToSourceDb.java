@@ -184,7 +184,7 @@ public class OrderedChangestreamBufferToSourceDb {
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
-    options.setStreaming(false);
+    options.setStreaming(true);
 
     run(options);
   }
