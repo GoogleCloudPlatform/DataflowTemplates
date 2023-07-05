@@ -26,6 +26,7 @@ import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.ReceivedMessage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /** Reads from PubSub ordered subscriber. */
 public class PubSubConsumer implements InputBufferReader {
@@ -59,14 +60,22 @@ public class PubSubConsumer implements InputBufferReader {
 
   @Override
   public void acknowledge() {
-
-    AcknowledgeRequest acknowledgeRequest =
-        AcknowledgeRequest.newBuilder()
-            .setSubscription(this.subscriptionName)
-            .addAllAckIds(this.ackIds)
-            .build();
-    this.subscriber.acknowledgeCallable().call(acknowledgeRequest);
-    this.subscriber.close();
+    try {
+      if (ackIds.size() > 0) {
+        AcknowledgeRequest acknowledgeRequest =
+            AcknowledgeRequest.newBuilder()
+                .setSubscription(this.subscriptionName)
+                .addAllAckIds(this.ackIds)
+                .build();
+        this.subscriber.acknowledgeCallable().call(acknowledgeRequest);
+      }
+      this.subscriber.shutdownNow();
+      if (!this.subscriber.awaitTermination(1, TimeUnit.MINUTES)) {
+        throw new RuntimeException("Failure in shutdown of Pub/Sub consumer: ");
+      }
+    } catch (InterruptedException e) {
+      throw new RuntimeException("Failure in acknowledge pubSub consumer: ", e);
+    }
   }
 
   @Override
