@@ -26,13 +26,13 @@ import javax.annotation.Nullable;
 public abstract class MetricsConfiguration {
 
   /**
-   * input pcollection of the dataflow job to query additional metrics. If not provided, the metrics
+   * Input PCollection of the Dataflow job to query additional metrics. If not provided, the metrics
    * for inputPCollection will not be calculated.
    */
   public abstract @Nullable String inputPCollection();
 
   /**
-   * output pcollection of the dataflow job to query additional metrics. If not provided, the
+   * Output PCollection of the Dataflow job to query additional metrics. If not provided, the
    * metrics for outputPCollection will not be calculated.
    */
   public abstract @Nullable String outputPCollection();
@@ -60,7 +60,7 @@ public abstract class MetricsConfiguration {
    * Calculate the average from a series.
    *
    * @param values the input series.
-   * @param filterFn if non-null, a {@class Function} that filters the series.
+   * @param filterFn if non-null, a {@link Function} that filters the series.
    * @return the averaged result.
    */
   public static Double calculateAverage(

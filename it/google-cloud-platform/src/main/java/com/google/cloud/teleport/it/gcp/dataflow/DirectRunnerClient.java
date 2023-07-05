@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of the {@link PipelineLauncher} interface which invokes the template class using
- * DirectRunner, and manages the state in-memory.
+ * DirectRunner, and manages the state in memory.
  */
 public class DirectRunnerClient implements PipelineLauncher {
 

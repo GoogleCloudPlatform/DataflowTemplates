@@ -34,7 +34,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Helper class for starting a Streaming Data generator dataflow template job. */
+/** Helper class for starting a Streaming Data Generator Dataflow template job. */
 public class DataGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(DataGenerator.class);
   private static final String SPEC_PATH =

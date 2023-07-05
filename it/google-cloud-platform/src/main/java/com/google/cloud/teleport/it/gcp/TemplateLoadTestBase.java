@@ -23,7 +23,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import java.util.Collections;
 
-/** Base class for Templates Load Tests. */
+/** Base class for Template Load Tests. */
 public class TemplateLoadTestBase extends LoadTestBase {
 
   PipelineLauncher launcher() {

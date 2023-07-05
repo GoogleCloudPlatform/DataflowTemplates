@@ -39,7 +39,7 @@ public class MSSQLResourceManager
 
   private static final String DEFAULT_MSSQL_CONTAINER_NAME = "mcr.microsoft.com/azure-sql-edge";
 
-  // A list of available mySQL Docker image tags can be found at
+  // A list of available MSSQL Docker image tags can be found at
   // https://hub.docker.com/_/microsoft-azure-sql-edge
   private static final String DEFAULT_MSSQL_CONTAINER_TAG = "1.0.6";
 

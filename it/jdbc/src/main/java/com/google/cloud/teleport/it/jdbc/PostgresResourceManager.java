@@ -32,7 +32,7 @@ public class PostgresResourceManager extends AbstractJDBCResourceManager<Postgre
 
   private static final String DEFAULT_POSTGRES_CONTAINER_NAME = "postgres";
 
-  // A list of available postgres Docker image tags can be found at
+  // A list of available PostgreSQL Docker image tags can be found at
   // https://hub.docker.com/_/postgres/tags?tab=tags
   private static final String DEFAULT_POSTGRES_CONTAINER_TAG = "15.1";
 

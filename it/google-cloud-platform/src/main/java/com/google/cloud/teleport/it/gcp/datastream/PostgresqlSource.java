@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Client for Postgresql resource used by Datastream.
+ * Client for PostgreSQL resource used by Datastream.
  *
  * <p>Subclass of {@link JDBCSource}.
  */

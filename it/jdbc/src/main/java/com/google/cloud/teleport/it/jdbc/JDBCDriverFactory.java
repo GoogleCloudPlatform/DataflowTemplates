@@ -25,9 +25,9 @@ class JDBCDriverFactory {
   JDBCDriverFactory() {}
 
   /**
-   * Returns a Connection session to the given database uri.
+   * Returns a Connection session to the given database URI.
    *
-   * @param uri the jdbc connection string to connect to.
+   * @param uri the JDBC connection string to connect to.
    * @param username the username used to log in to the database.
    * @param password the password used to log in to the database.
    * @return the Connection session.

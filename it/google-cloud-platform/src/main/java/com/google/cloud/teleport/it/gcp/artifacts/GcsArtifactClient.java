@@ -38,7 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client for working with test artifacts stored in Google Cloud Storage.
+ * Client for working with test artifacts stored in Google Cloud Storage (GCS).
  *
  * <p>Tests should store this as a static value of the class and call {@link
  * ArtifactClient#cleanupAll()} in the {@code @AfterClass} method.

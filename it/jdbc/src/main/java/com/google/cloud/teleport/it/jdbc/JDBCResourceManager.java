@@ -53,9 +53,10 @@ public interface JDBCResourceManager extends ResourceManager {
    * Creates a table within the current database given a table name and JDBC schema.
    *
    * @param tableName The name of the table.
-   * @param schema A JDBCSchema object that defines the table.
+   * @param schema A {@link JDBCSchema} object that defines the table.
    * @return A boolean indicating whether the resource was created.
-   * @throws JDBCResourceManagerException if there is an error creating the table.
+   * @throws JDBCResourceManagerException if there is an error creating the table or if the table
+   *     already exists.
    */
   boolean createTable(String tableName, JDBCSchema schema);
 
@@ -116,8 +117,8 @@ public interface JDBCResourceManager extends ResourceManager {
     private final String idColumn;
 
     /**
-     * Creates a JDBCSchema object using the map given and assigns the unique id column to the given
-     * idColumn.
+     * Creates a {@link JDBCSchema} object using the map given and assigns the unique id column to
+     * the given idColumn.
      *
      * <p>The columns map should map column name to SQL type. For example, {{"example":
      * "VARCHAR(200)}, {"example2": "INTEGER"}, {"example3": "BOOLEAN"}}

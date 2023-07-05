@@ -185,7 +185,7 @@ public class KMSResourceManager implements ResourceManager {
 
   /**
    * Decrypt the given ciphertext using the crypto key specified. The given crypto key should exist
-   * withing the given keyring.
+   * within the given keyring.
    *
    * <p>The given ciphertext should be in Base64 String format.
    *

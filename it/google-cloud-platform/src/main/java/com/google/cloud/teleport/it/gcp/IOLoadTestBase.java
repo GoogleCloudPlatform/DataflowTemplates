@@ -61,7 +61,7 @@ public class IOLoadTestBase extends LoadTestBase {
     return DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
   }
 
-  /** a utility DoFn that count element passed through. */
+  /** A utility DoFn that counts elements passed through. */
   public static final class CountingFn<T> extends DoFn<T, T> {
 
     private final Counter elementCounter;
@@ -77,7 +77,7 @@ public class IOLoadTestBase extends LoadTestBase {
     }
   }
 
-  // To make PipelineLauncher.getMetric works in a unified way for both runner provided metrics and
+  // To make PipelineLauncher.getMetric work in a unified way for both runner provided metrics and
   // pipeline defined
   // metrics, here we wrap Beam provided metrics as a pre-defined metrics name
   // [name_space:metric_type:metric_name

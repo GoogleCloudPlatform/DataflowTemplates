@@ -30,7 +30,7 @@ public class RetryUtil {
   private RetryUtil() {}
 
   /**
-   * Create a policy to retry when client returns a "Server is not responding" or transient error.
+   * Create a policy to retry when client returns a "Server is not responding" or a transient error.
    * By default, it retries up to 3 times using a backoff strategy.
    *
    * @return Failsafe's RetryPolicy.

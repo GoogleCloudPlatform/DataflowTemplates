@@ -257,7 +257,7 @@ public class ElasticsearchResourceManager extends TestContainerResourceManager<G
                 RequestOptions.DEFAULT);
       } catch (Exception e) {
         LOG.error("Failed to delete Elasticsearch indices {}.", managedIndexNames, e);
-        throw new RuntimeException("Failing deleting Elasticsearch indices", e);
+        throw new RuntimeException("Failed deleting Elasticsearch indices", e);
       }
     }
 
