@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  *     The Cassandra Row Key </a>
  */
 public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutation>>> {
-  private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BeamRowToBigtableFn.class);
 
   public static final int MAX_MUTATION_PER_REQUEST = 100000;
   private static final boolean DEFAULT_SPLIT_LARGE_ROWS = false;
