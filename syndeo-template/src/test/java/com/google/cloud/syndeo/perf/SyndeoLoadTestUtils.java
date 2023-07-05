@@ -34,7 +34,6 @@ import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.FlatMapElements;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.PeriodicImpulse;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -110,8 +109,8 @@ public class SyndeoLoadTestUtils {
         .apply(
             new SyndeoStatsSchemaTransformProvider()
                 .from(
-                    SyndeoStatsSchemaTransformProvider.SyndeoStatsConfiguration.create("inputData"))
-                .buildTransform())
+                    SyndeoStatsSchemaTransformProvider.SyndeoStatsConfiguration.create(
+                        "inputData")))
         .get("output");
   }
 
@@ -284,27 +283,18 @@ public class SyndeoLoadTestUtils {
     public SchemaTransform from(GenerateDataSchemaTransformConfiguration configuration) {
       return new SchemaTransform() {
         @Override
-        public @UnknownKeyFor @NonNull @Initialized PTransform<
-                @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple,
-                @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple>
-            buildTransform() {
-          return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
-            @Override
-            public PCollectionRowTuple expand(PCollectionRowTuple input) {
-              Schema dataSchema = SIMPLE_TABLE_SCHEMA;
-              if (configuration.getUseNestedSchema() != null
-                  && configuration.getUseNestedSchema()) {
-                dataSchema = NESTED_TABLE_SCHEMA;
-              }
-              return PCollectionRowTuple.of(
-                  "output",
-                  inputData(
-                      input.getPipeline(),
-                      configuration.getNumRows(),
-                      configuration.getRuntimeSeconds(),
-                      dataSchema));
-            }
-          };
+        public PCollectionRowTuple expand(PCollectionRowTuple input) {
+          Schema dataSchema = SIMPLE_TABLE_SCHEMA;
+          if (configuration.getUseNestedSchema() != null && configuration.getUseNestedSchema()) {
+            dataSchema = NESTED_TABLE_SCHEMA;
+          }
+          return PCollectionRowTuple.of(
+              "output",
+              inputData(
+                  input.getPipeline(),
+                  configuration.getNumRows(),
+                  configuration.getRuntimeSeconds(),
+                  dataSchema));
         }
       };
     }

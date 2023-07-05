@@ -176,8 +176,7 @@ public class SyndeoPubsubLiteToBigTableLT {
                                     .setTopicName(topicName)
                                     .setLocation(LOCATION)
                                     .setProject(PROJECT)
-                                    .build())))
-                .buildTransform());
+                                    .build()))));
 
     // Build JSON configuration for the template:
     String jsonPayload =

@@ -113,9 +113,9 @@ public class SyndeoTemplate {
   static {
     SUPPORTED_URNS.putAll(
         Map.of(
-            "syndeo:schematransform:com.google.cloud:pubsub_read:v1",
+            "beam:schematransform:org.apache.beam:pubsub_read:v1",
             Set.of(),
-            "syndeo:schematransform:com.google.cloud:pubsub_write:v1",
+            "beam:schematransform:org.apache.beam:pubsub_write:v1",
             Set.of(),
             "syndeo:schematransform:com.google.cloud:pubsub_dlq_write:v1",
             Set.of(),

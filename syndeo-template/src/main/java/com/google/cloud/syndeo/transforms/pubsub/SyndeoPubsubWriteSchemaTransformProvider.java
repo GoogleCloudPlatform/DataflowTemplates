@@ -33,7 +33,6 @@ import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.schemas.utils.JsonUtils;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
@@ -95,38 +94,28 @@ public class SyndeoPubsubWriteSchemaTransformProvider
     }
     return new SchemaTransform() {
       @Override
-      public @UnknownKeyFor @NonNull @Initialized PTransform<
-              @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple,
-              @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple>
-          buildTransform() {
-        return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
-          @Override
-          public PCollectionRowTuple expand(PCollectionRowTuple input) {
-            final Schema ERROR_SCHEMA =
-                Schema.builder()
-                    .addStringField("error")
-                    .addNullableRowField("row", input.get("input").getSchema())
-                    .build();
-            SerializableFunction<Row, byte[]> fn =
-                configuration.getFormat().equals("AVRO")
-                    ? AvroUtils.getRowToAvroBytesFunction(input.get("input").getSchema())
-                    : JsonUtils.getRowToJsonBytesFunction(input.get("input").getSchema());
+      public PCollectionRowTuple expand(PCollectionRowTuple input) {
+        final Schema ERROR_SCHEMA =
+            Schema.builder()
+                .addStringField("error")
+                .addNullableRowField("row", input.get("input").getSchema())
+                .build();
+        SerializableFunction<Row, byte[]> fn =
+            configuration.getFormat().equals("AVRO")
+                ? AvroUtils.getRowToAvroBytesFunction(input.get("input").getSchema())
+                : JsonUtils.getRowToJsonBytesFunction(input.get("input").getSchema());
 
-            PCollectionTuple outputTuple =
-                input
-                    .get("input")
-                    .apply(
-                        ParDo.of(new ErrorFn(fn, ERROR_SCHEMA))
-                            .withOutputTags(OUTPUT_TAG, TupleTagList.of(ERROR_TAG)));
+        PCollectionTuple outputTuple =
+            input
+                .get("input")
+                .apply(
+                    ParDo.of(new ErrorFn(fn, ERROR_SCHEMA))
+                        .withOutputTags(OUTPUT_TAG, TupleTagList.of(ERROR_TAG)));
 
-            outputTuple
-                .get(OUTPUT_TAG)
-                .apply(PubsubIO.writeMessages().to(configuration.getTopic()));
+        outputTuple.get(OUTPUT_TAG).apply(PubsubIO.writeMessages().to(configuration.getTopic()));
 
-            return PCollectionRowTuple.of(
-                "errors", outputTuple.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA));
-          }
-        };
+        return PCollectionRowTuple.of(
+            "errors", outputTuple.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA));
       }
     };
   }

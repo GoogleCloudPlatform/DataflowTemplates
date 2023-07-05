@@ -79,7 +79,7 @@ public class SchemaIOTransformProviderWrapperTest {
     assertTrue(wrapper.outputCollectionNames().size() == 1);
     PCollection<Row> read =
         PCollectionRowTuple.empty(p)
-            .apply(wrapper.from(config).buildTransform())
+            .apply(wrapper.from(config))
             .get(wrapper.outputCollectionNames().get(0));
     // null3 as we have 3 elements, and location is null
     Row expected = Row.withSchema(schema).addValues("null3", "null3").build();
@@ -112,7 +112,7 @@ public class SchemaIOTransformProviderWrapperTest {
                 .withRowSchema(schema));
 
     PCollectionRowTuple.of(wrapper.inputCollectionNames().get(0), toWrite)
-        .apply(wrapper.from(config).buildTransform());
+        .apply(wrapper.from(config));
     p.run().waitUntilFinish();
   }
 

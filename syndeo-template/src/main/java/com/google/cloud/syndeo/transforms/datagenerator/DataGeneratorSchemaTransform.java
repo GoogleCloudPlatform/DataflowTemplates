@@ -24,7 +24,6 @@ import org.apache.avro.Schema.Parser;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.FlatMapElements;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.PeriodicImpulse;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SimpleFunction;
@@ -84,7 +83,7 @@ import org.joda.time.Instant;
  * will be generated. The default size of the string is 100, which can be specified using the
  * attribute <b>size</b>.
  */
-public class DataGeneratorSchemaTransform implements SchemaTransform, Serializable {
+public class DataGeneratorSchemaTransform extends SchemaTransform implements Serializable {
 
   private final long recordsPerSecond;
   private final long secondsToRun;
@@ -97,35 +96,30 @@ public class DataGeneratorSchemaTransform implements SchemaTransform, Serializab
   }
 
   @Override
-  public PTransform<PCollectionRowTuple, PCollectionRowTuple> buildTransform() {
-    return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
-      @Override
-      public PCollectionRowTuple expand(PCollectionRowTuple input) {
-        org.apache.beam.sdk.schemas.Schema beamSchema =
-            AvroUtils.toBeamSchema(new Parser().parse(schema));
-        final Instant startTime = Instant.now();
-        PCollection<Instant> instants =
-            input
-                .getPipeline()
-                .apply(
-                    PeriodicImpulse.create()
-                        // set start time as current time
-                        .startAt(startTime)
-                        // set stop time
-                        .stopAt(Instant.now().plus(Duration.standardSeconds(secondsToRun)))
-                        // set data generating interval to 1 second
-                        .withInterval(Duration.millis(1000))
-                        .applyWindowing());
-        instants = instants.apply(Reshuffle.viaRandomKey());
+  public PCollectionRowTuple expand(PCollectionRowTuple input) {
+    org.apache.beam.sdk.schemas.Schema beamSchema =
+        AvroUtils.toBeamSchema(new Parser().parse(schema));
+    final Instant startTime = Instant.now();
+    PCollection<Instant> instants =
+        input
+            .getPipeline()
+            .apply(
+                PeriodicImpulse.create()
+                    // set start time as current time
+                    .startAt(startTime)
+                    // set stop time
+                    .stopAt(Instant.now().plus(Duration.standardSeconds(secondsToRun)))
+                    // set data generating interval to 1 second
+                    .withInterval(Duration.millis(1000))
+                    .applyWindowing());
+    instants = instants.apply(Reshuffle.viaRandomKey());
 
-        // for each instant generated (every second), create data records.
-        PCollection rows =
-            instants
-                .apply(FlatMapElements.via(new InstantToRowFn(startTime, schema, beamSchema)))
-                .setRowSchema(beamSchema);
-        return PCollectionRowTuple.of("output", rows);
-      }
-    };
+    // for each instant generated (every second), create data records.
+    PCollection rows =
+        instants
+            .apply(FlatMapElements.via(new InstantToRowFn(startTime, schema, beamSchema)))
+            .setRowSchema(beamSchema);
+    return PCollectionRowTuple.of("output", rows);
   }
 
   private class InstantToRowFn extends SimpleFunction<Instant, List<Row>> {

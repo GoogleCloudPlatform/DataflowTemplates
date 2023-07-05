@@ -159,8 +159,7 @@ public class BigTableSchemaTransformTest {
                         .setTableId("anytable")
                         .setKeyColumns(Arrays.asList("name"))
                         .setEndpoint(bigTableContainer.getEmulatorEndpoint())
-                        .build())
-                .buildTransform());
+                        .build()));
 
     setupP.run().waitUntilFinish();
   }

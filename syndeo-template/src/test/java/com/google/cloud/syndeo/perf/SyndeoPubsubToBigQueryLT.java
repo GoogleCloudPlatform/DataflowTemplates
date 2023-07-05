@@ -164,8 +164,7 @@ public class SyndeoPubsubToBigQueryLT {
             new SyndeoPubsubWriteSchemaTransformProvider()
                 .from(
                     SyndeoPubsubWriteSchemaTransformProvider.SyndeoPubsubWriteConfiguration.create(
-                        "AVRO", topicPath.toString()))
-                .buildTransform());
+                        "AVRO", topicPath.toString())));
 
     // Build JSON configuration for the template:
     String jsonPayload =

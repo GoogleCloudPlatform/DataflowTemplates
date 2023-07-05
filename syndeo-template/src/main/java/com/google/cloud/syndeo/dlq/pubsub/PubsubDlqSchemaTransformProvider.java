@@ -31,7 +31,6 @@ import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
@@ -75,8 +74,7 @@ public class PubsubDlqSchemaTransformProvider
    * An implementation of {@link SchemaTransform} for Pub/Sub writes configured using {@link
    * PubsubDlqWriteConfiguration}.
    */
-  static class PubsubDlqSchemaTransform extends PTransform<PCollectionRowTuple, PCollectionRowTuple>
-      implements SchemaTransform {
+  static class PubsubDlqSchemaTransform extends SchemaTransform {
 
     public static final int PUBSUB_MESSAGE_SIZE = 10 * 1024 * 1024;
     private final PubsubDlqWriteConfiguration configuration;
@@ -89,12 +87,6 @@ public class PubsubDlqSchemaTransformProvider
 
     PubsubDlqSchemaTransform withPubsubClientFactory(PubsubClient.PubsubClientFactory factory) {
       this.pubsubClientFactory = factory;
-      return this;
-    }
-
-    /** Implements {@link SchemaTransform} buildTransform method. */
-    @Override
-    public PTransform<PCollectionRowTuple, PCollectionRowTuple> buildTransform() {
       return this;
     }
 
