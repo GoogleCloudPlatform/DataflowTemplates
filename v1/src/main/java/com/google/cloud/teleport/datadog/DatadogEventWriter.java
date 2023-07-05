@@ -60,7 +60,7 @@ public abstract class DatadogEventWriter
     extends DoFn<KV<Integer, DatadogEvent>, DatadogWriteError> {
 
   private static final Integer MIN_BATCH_COUNT = 10;
-  private static final Integer DEFAULT_BATCH_COUNT = 10;
+  private static final Integer DEFAULT_BATCH_COUNT = 100;
   private static final Integer MAX_BATCH_COUNT = 1000;
   private static final Logger LOG = LoggerFactory.getLogger(DatadogEventWriter.class);
   private static final long DEFAULT_FLUSH_DELAY = 2;
