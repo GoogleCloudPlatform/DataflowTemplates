@@ -19,7 +19,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableInstanceId** (Instance ID): The ID of the Cloud Bigtable instance that contains the table.
 * **bigtableTableId** (Table ID): The ID of the Cloud Bigtable table to export.
 * **outputDirectory** (Output file directory in Cloud Storage): The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).
-* **filenamePrefix** (Parquet file prefix): The prefix of the Parquet file name. For example, "table1-". Defaults to: output.
+* **filenamePrefix** (Parquet file prefix): The prefix of the Parquet file name. For example, "table1-". Defaults to: part.
 
 ### Optional Parameters
 
@@ -113,7 +113,7 @@ export BIGTABLE_PROJECT_ID=<bigtableProjectId>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export OUTPUT_DIRECTORY=<outputDirectory>
-export FILENAME_PREFIX="output"
+export FILENAME_PREFIX="part"
 
 ### Optional
 export NUM_SHARDS=0
@@ -150,7 +150,7 @@ export BIGTABLE_PROJECT_ID=<bigtableProjectId>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export OUTPUT_DIRECTORY=<outputDirectory>
-export FILENAME_PREFIX="output"
+export FILENAME_PREFIX="part"
 
 ### Optional
 export NUM_SHARDS=0

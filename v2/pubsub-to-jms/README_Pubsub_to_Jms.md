@@ -1,10 +1,10 @@
-BigQuery export to Parquet (via Storage API) Template
+Pubsub to JMS Template
 ---
-A pipeline to export a BigQuery table into Parquet files using the BigQuery Storage API.
+A streaming pipeline which inserts data from a Pubsub Subscription  and writes to JMS Broker Server(Topic/Queue).
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-parquet)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=BigQuery_to_Parquet).
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Pubsub_to_Jms).
 
 
 :bulb: This is a generated documentation based
@@ -15,14 +15,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **tableRef** (BigQuery table to export): BigQuery table location to export in the format <project>:<dataset>.<table>. (Example: your-project:your-dataset.your-table-name).
-* **bucket** (Output Cloud Storage file(s)): Path and filename prefix for writing output files. (Example: gs://your-bucket/export/).
+* **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
+* **outputName** (JMS Queue/Topic Name to write the input to): JMS Queue/Topic Name to write the input to. (Example: queue).
+* **outputType** (JMS Destination Type to Write the input to): JMS Destination Type to Write the input to. (Example: queue).
+* **username** (JMS Username): JMS username for authentication with JMS server (Example: sampleusername).
+* **password** (JMS Password): Password for username provided for authentication with JMS server (Example: samplepassword).
 
 ### Optional Parameters
 
-* **numShards** (Maximum output shards): The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 0.
-* **fields** (List of field names): Comma separated list of fields to select from the table.
-* **rowRestriction** (Row restrictions/filter.): Read only rows which match the specified filter, which must be a SQL expression compatible with Google standard SQL (https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is specified, then all rows are returned.
+* **jmsServer** (JMS Host IP): Server IP for JMS Host (Example: host:5672).
 
 
 
@@ -38,7 +39,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/bigquery-to-parquet/src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToParquet.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/pubsub-to-jms/src/main/java/com/google/cloud/teleport/v2/templates/PubsubToJms.java)
 
 ### Templates Plugin
 
@@ -73,8 +74,8 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
--DtemplateName="BigQuery_to_Parquet" \
--pl v2/bigquery-to-parquet \
+-DtemplateName="Pubsub_to_Jms" \
+-pl v2/pubsub-to-jms \
 -am
 ```
 
@@ -83,7 +84,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/BigQuery_to_Parquet
+Flex Template was staged! gs://<bucket-name>/templates/flex/Pubsub_to_Jms
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -103,26 +104,28 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/BigQuery_to_Parquet"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Pubsub_to_Jms"
 
 ### Required
-export TABLE_REF=<tableRef>
-export BUCKET=<bucket>
+export INPUT_SUBSCRIPTION=<inputSubscription>
+export OUTPUT_NAME=<outputName>
+export OUTPUT_TYPE=<outputType>
+export USERNAME=<username>
+export PASSWORD=<password>
 
 ### Optional
-export NUM_SHARDS=0
-export FIELDS=<fields>
-export ROW_RESTRICTION=<rowRestriction>
+export JMS_SERVER=<jmsServer>
 
-gcloud dataflow flex-template run "bigquery-to-parquet-job" \
+gcloud dataflow flex-template run "pubsub-to-jms-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "tableRef=$TABLE_REF" \
-  --parameters "bucket=$BUCKET" \
-  --parameters "numShards=$NUM_SHARDS" \
-  --parameters "fields=$FIELDS" \
-  --parameters "rowRestriction=$ROW_RESTRICTION"
+  --parameters "inputSubscription=$INPUT_SUBSCRIPTION" \
+  --parameters "jmsServer=$JMS_SERVER" \
+  --parameters "outputName=$OUTPUT_NAME" \
+  --parameters "outputType=$OUTPUT_TYPE" \
+  --parameters "username=$USERNAME" \
+  --parameters "password=$PASSWORD"
 ```
 
 For more information about the command, please check:
@@ -141,22 +144,23 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export TABLE_REF=<tableRef>
-export BUCKET=<bucket>
+export INPUT_SUBSCRIPTION=<inputSubscription>
+export OUTPUT_NAME=<outputName>
+export OUTPUT_TYPE=<outputType>
+export USERNAME=<username>
+export PASSWORD=<password>
 
 ### Optional
-export NUM_SHARDS=0
-export FIELDS=<fields>
-export ROW_RESTRICTION=<rowRestriction>
+export JMS_SERVER=<jmsServer>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="bigquery-to-parquet-job" \
--DtemplateName="BigQuery_to_Parquet" \
--Dparameters="tableRef=$TABLE_REF,bucket=$BUCKET,numShards=$NUM_SHARDS,fields=$FIELDS,rowRestriction=$ROW_RESTRICTION" \
--pl v2/bigquery-to-parquet \
+-DjobName="pubsub-to-jms-job" \
+-DtemplateName="Pubsub_to_Jms" \
+-Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,jmsServer=$JMS_SERVER,outputName=$OUTPUT_NAME,outputType=$OUTPUT_TYPE,username=$USERNAME,password=$PASSWORD" \
+-pl v2/pubsub-to-jms \
 -am
 ```

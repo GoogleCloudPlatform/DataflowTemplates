@@ -25,7 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputFilenamePrefix** (Output filename prefix of the files to write): The prefix to place on each windowed file. (Example: output-). Defaults to: output.
 * **outputFilenameSuffix** (Output filename suffix of the files to write): The suffix to place on each windowed file. Typically a file extension such as .txt or .csv. (Example: .txt). Defaults to empty.
 * **outputShardTemplate** (Shard template): Defines the unique/dynamic portion of each windowed file. Recommended: use the default (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are replaced with the shard number and number of shards respectively. The pipeline assumes a single file output and will produce the text of '00-of-01' by default.
-* **numShards** (Number of shards): The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 1.
+* **numShards** (Number of shards): The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 0.
 * **windowDuration** (Window duration): The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5m.
 * **yearPattern** (Custom Year Pattern to use for the output directory): Pattern for formatting the year. Must be one or more of 'y' or 'Y'. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory ('/') character. Defaults to 'YYYY'.
 * **monthPattern** (Custom Month Pattern to use for the output directory): Pattern for formatting the month. Must be one or more of the 'M' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'MM'.
@@ -87,6 +87,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -123,7 +124,7 @@ export USER_TEMP_LOCATION=<userTempLocation>
 export OUTPUT_FILENAME_PREFIX="output"
 export OUTPUT_FILENAME_SUFFIX=""
 export OUTPUT_SHARD_TEMPLATE="W-P-SS-of-NN"
-export NUM_SHARDS=1
+export NUM_SHARDS=0
 export WINDOW_DURATION="5m"
 export YEAR_PATTERN="YYYY"
 export MONTH_PATTERN="MM"
@@ -176,7 +177,7 @@ export USER_TEMP_LOCATION=<userTempLocation>
 export OUTPUT_FILENAME_PREFIX="output"
 export OUTPUT_FILENAME_SUFFIX=""
 export OUTPUT_SHARD_TEMPLATE="W-P-SS-of-NN"
-export NUM_SHARDS=1
+export NUM_SHARDS=0
 export WINDOW_DURATION="5m"
 export YEAR_PATTERN="YYYY"
 export MONTH_PATTERN="MM"
