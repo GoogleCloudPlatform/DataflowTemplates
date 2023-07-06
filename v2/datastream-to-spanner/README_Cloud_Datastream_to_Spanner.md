@@ -38,6 +38,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **datastreamSourceType** (Datastream source type (only required for testing)): This is the type of source database that Datastream connects to. Example - mysql/oracle. Need to be set when testing without an actual running Datastream.
 * **roundJsonDecimals** (If true, rounds the decimal values in json columns to a number that can be stored without loss of precision.): This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
 * **runMode** (Run mode - currently supported are : regular or retryDLQ): This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
+* **transformationContextFilePath** (Transformation context file path in cloud storage): Transformation context file path in cloud storage used to populate data used in transformations performed during migrations   Eg: The shard id to db name to identify the db from which a row was migrated.
 
 
 
@@ -143,6 +144,7 @@ export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
 export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ROUND_JSON_DECIMALS=false
 export RUN_MODE="regular"
+export TRANSFORMATION_CONTEXT_FILE_PATH=<transformationContextFilePath>
 
 gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --project "$PROJECT" \
@@ -167,7 +169,8 @@ gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --parameters "dataStreamRootUrl=$DATA_STREAM_ROOT_URL" \
   --parameters "datastreamSourceType=$DATASTREAM_SOURCE_TYPE" \
   --parameters "roundJsonDecimals=$ROUND_JSON_DECIMALS" \
-  --parameters "runMode=$RUN_MODE"
+  --parameters "runMode=$RUN_MODE" \
+  --parameters "transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH"
 ```
 
 For more information about the command, please check:
@@ -208,6 +211,7 @@ export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
 export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ROUND_JSON_DECIMALS=false
 export RUN_MODE="regular"
+export TRANSFORMATION_CONTEXT_FILE_PATH=<transformationContextFilePath>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -216,7 +220,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-spanner-job" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH" \
 -pl v2/datastream-to-spanner \
 -am
 ```

@@ -22,6 +22,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **metadataInstance** (Cloud Spanner Instance to store metadata when reading from changestreams): This is the instance to store the metadata used by the connector to control the consumption of the change stream API data.
 * **metadataDatabase** (Cloud Spanner Database to store metadata when reading from changestreams): This is the database to store the metadata used by the connector to control the consumption of the change stream API data.
 * **sinkType** (Type of sink to write the data to): The type of sink where the data will get written to.
+* **sessionFilePath** (Session File Path in Cloud Storage): Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 
 ### Optional Parameters
 
@@ -88,6 +89,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -122,6 +124,7 @@ export SPANNER_PROJECT_ID=<spannerProjectId>
 export METADATA_INSTANCE=<metadataInstance>
 export METADATA_DATABASE=<metadataDatabase>
 export SINK_TYPE=<sinkType>
+export SESSION_FILE_PATH=<sessionFilePath>
 
 ### Optional
 export START_TIMESTAMP=""
@@ -151,7 +154,8 @@ gcloud dataflow flex-template run "spanner-change-streams-to-sink-job" \
   --parameters "pubSubErrorTopicId=$PUB_SUB_ERROR_TOPIC_ID" \
   --parameters "pubSubEndpoint=$PUB_SUB_ENDPOINT" \
   --parameters "kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH" \
-  --parameters "sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH"
+  --parameters "sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" \
+  --parameters "sessionFilePath=$SESSION_FILE_PATH"
 ```
 
 For more information about the command, please check:
@@ -177,6 +181,7 @@ export SPANNER_PROJECT_ID=<spannerProjectId>
 export METADATA_INSTANCE=<metadataInstance>
 export METADATA_DATABASE=<metadataDatabase>
 export SINK_TYPE=<sinkType>
+export SESSION_FILE_PATH=<sessionFilePath>
 
 ### Optional
 export START_TIMESTAMP=""
@@ -195,7 +200,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-sink-job" \
 -DtemplateName="Spanner_Change_Streams_to_Sink" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,incrementInterval=$INCREMENT_INTERVAL,sinkType=$SINK_TYPE,pubSubDataTopicId=$PUB_SUB_DATA_TOPIC_ID,pubSubErrorTopicId=$PUB_SUB_ERROR_TOPIC_ID,pubSubEndpoint=$PUB_SUB_ENDPOINT,kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,incrementInterval=$INCREMENT_INTERVAL,sinkType=$SINK_TYPE,pubSubDataTopicId=$PUB_SUB_DATA_TOPIC_ID,pubSubErrorTopicId=$PUB_SUB_ERROR_TOPIC_ID,pubSubEndpoint=$PUB_SUB_ENDPOINT,kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH" \
 -pl v2/spanner-change-streams-to-sink \
 -am
 ```
