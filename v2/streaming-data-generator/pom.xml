@@ -30,8 +30,7 @@
   </parent>
 
   <properties>
-    <json-data-generator.version>1.10</json-data-generator.version>
-    <snakeyaml.version>1.33</snakeyaml.version>
+    <json-data-generator.version>1.16</json-data-generator.version>
    </properties>
 
   <dependencies>
@@ -55,6 +54,7 @@
        </exclusion>
       </exclusions>
     </dependency>
+
     <!-- Jdbc dependencies -->
     <dependency>
       <groupId>org.postgresql</groupId>
