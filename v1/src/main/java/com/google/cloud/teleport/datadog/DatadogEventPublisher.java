@@ -73,6 +73,9 @@ public abstract class DatadogEventPublisher {
 
   private static final String DD_API_KEY_HEADER = "dd-api-key";
 
+  private static final String DD_ORIGIN_HEADER = "dd-evp-origin";
+  private static final String DD_ORIGIN_DATAFLOW = "dataflow";
+
   private static final HttpMediaType MEDIA_TYPE =
       new HttpMediaType("application/json;charset=utf-8");
 
@@ -158,6 +161,7 @@ public abstract class DatadogEventPublisher {
    */
   private void setHeaders(HttpRequest request, String apiKey) {
     request.getHeaders().set(DD_API_KEY_HEADER, apiKey);
+    request.getHeaders().set(DD_ORIGIN_HEADER, DD_ORIGIN_DATAFLOW);
     request.getHeaders().setContentEncoding("gzip");
   }
 
