@@ -182,6 +182,11 @@ public abstract class DatadogEventPublisher {
     return GSON.toJson(events);
   }
 
+  /** Utility method to get payload string from a {@link DatadogEvent}. */
+  String getStringPayload(DatadogEvent event) {
+    return GSON.toJson(event);
+  }
+
   static class HttpSendLogsUnsuccessfulResponseHandler implements HttpUnsuccessfulResponseHandler {
     /*
       See: https://docs.datadoghq.com/api/latest/logs/#send-logs
