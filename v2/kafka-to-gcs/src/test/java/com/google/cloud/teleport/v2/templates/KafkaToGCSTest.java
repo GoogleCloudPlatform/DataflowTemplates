@@ -44,9 +44,6 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class KafkaToGCSTest {
 
-  /** Rule for pipeline testing. */
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
-
   /** Rule for exception testing. */
   @Rule public ExpectedException exception = ExpectedException.none();
 
@@ -109,6 +106,7 @@ public class KafkaToGCSTest {
 
     exception.expect(IllegalArgumentException.class);
 
+    TestPipeline pipeline = TestPipeline.create();
     PCollection<KV<String, String>> records =
         pipeline.apply(
             "CreateInput",
