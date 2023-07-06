@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.neo4j.transforms;
 import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
@@ -53,28 +54,10 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   @NonNull
   @Override
   public PCollection<Row> expand(@NonNull PCollection<Row> input) {
+    createIndicesAndConstraints();
 
-    List<String> cyphers =
-        CypherGenerator.getIndexAndConstraintsCypherStatements(
-            targetType, jobSpec.getConfig(), target);
-    if (!cyphers.isEmpty()) {
-      try (Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection)) {
-        LOG.info("Adding {} indices and constraints", cyphers.size());
-        for (String cypher : cyphers) {
-          LOG.info("Executing cypher: {}", cypher);
-          try {
-            neo4jDirectConnect.executeCypher(cypher);
-          } catch (Exception e) {
-            LOG.error("Error executing cypher: {}, {}", cypher, e.getMessage());
-          }
-        }
-      }
-    }
-
-    // set batch sizes
     int batchSize = jobSpec.getConfig().getNodeBatchSize();
     int parallelism = jobSpec.getConfig().getNodeParallelism();
-
     if (target.getType() == TargetType.edge) {
       batchSize = jobSpec.getConfig().getEdgeBatchSize();
       parallelism = jobSpec.getConfig().getEdgeParallelism();
@@ -92,6 +75,32 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
         .apply("Create KV pairs", CreateKvTransform.of(parallelism))
         .apply(target.getSequence() + ": Neo4j write " + target.getName(), ParDo.of(neo4jUnwindFn))
         .setRowSchema(input.getSchema());
+  }
+
+  private void createIndicesAndConstraints() {
+    List<String> cyphers = generateIndexAndConstraints();
+    if (cyphers.isEmpty()) {
+      return;
+    }
+    Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection);
+    LOG.info("Adding {} indices and constraints", cyphers.size());
+    for (String cypher : cyphers) {
+      LOG.info("Executing cypher: {}", cypher);
+      try {
+        neo4jDirectConnect.executeCypher(cypher);
+      } catch (Exception e) {
+        LOG.error("Error executing cypher: {}, {}", cypher, e.getMessage());
+      }
+    }
+  }
+
+  private List<String> generateIndexAndConstraints() {
+    if (target.getType() == TargetType.edge
+        && target.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge) {
+      return CypherGenerator.getEdgeNodeConstraintsCypherStatements(target);
+    }
+    return CypherGenerator.getIndexAndConstraintsCypherStatements(
+        targetType, jobSpec.getConfig(), target);
   }
 
   private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {

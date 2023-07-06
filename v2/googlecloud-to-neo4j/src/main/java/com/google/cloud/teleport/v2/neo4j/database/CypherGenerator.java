@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.database;
 
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
@@ -27,8 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Generates cypher based on model metadata.
@@ -36,8 +35,6 @@ import org.slf4j.LoggerFactory;
  * <p>TODO: Needs to be refactored to use DSL.
  */
 public class CypherGenerator {
-
-  private static final Logger LOG = LoggerFactory.getLogger(CypherGenerator.class);
   private static final String CONST_ROW_VARIABLE_NAME = "rows";
 
   public static String getUnwindCreateCypher(Target target) {
@@ -139,12 +136,12 @@ public class CypherGenerator {
     // MERGE (variable1:Label1 {nodeProperties1})-[:REL_TYPE]->
     // (variable2:Label2 {nodeProperties2})
     // MATCH before MERGE
-    sb.append(" MATCH (")
+    sb.append(String.format(" %s (", egdeNodeMatchMode(target.getEdgeNodesMatchMode())))
         .append(
             getLabelsPropertiesListCypherFragment(
                 "source", true, FragmentType.source, List.of(RoleType.key), target))
         .append(")");
-    sb.append(" MATCH (")
+    sb.append(String.format(" %s (", egdeNodeMatchMode(target.getEdgeNodesMatchMode())))
         .append(
             getLabelsPropertiesListCypherFragment(
                 "target", true, FragmentType.target, List.of(RoleType.key), target))
@@ -245,12 +242,11 @@ public class CypherGenerator {
     //  "UNWIND $rows AS row CREATE(c:Customer { id : row.id, name: row.name, firstName:
     // row.firstName })
     // derive labels
-    List<String> labels = ModelUtils.getStaticLabels(target);
+    List<String> labels = ModelUtils.getStaticLabels(FragmentType.node, target);
     List<String> indexedProperties =
         ModelUtils.getIndexedProperties(config.getIndexAllProperties(), FragmentType.node, target);
     List<String> uniqueProperties = ModelUtils.getUniqueProperties(FragmentType.node, target);
     List<String> mandatoryProperties = ModelUtils.getRequiredProperties(FragmentType.node, target);
-    List<String> nodeKeyProperties = ModelUtils.getEntityKeyProperties(FragmentType.node, target);
 
     for (String uniqueProperty : uniqueProperties) {
       cyphers.add(
@@ -268,14 +264,7 @@ public class CypherGenerator {
               + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(mandatoryProperty)
               + " IS NOT NULL");
     }
-    for (String nodeKeyProperty : nodeKeyProperties) {
-      cyphers.add(
-          "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
-              + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
-              + ") REQUIRE n."
-              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(nodeKeyProperty)
-              + " IS NODE KEY");
-    }
+    cyphers.addAll(generateNodeKeyConstraints(FragmentType.node, target));
     // constraints must be created last
     for (String indexedProperty : indexedProperties) {
       cyphers.add(
@@ -342,6 +331,16 @@ public class CypherGenerator {
     return cyphers;
   }
 
+  public static List<String> getEdgeNodeConstraintsCypherStatements(Target target) {
+    List<String> sourceNodeKeyConstraints = generateNodeKeyConstraints(FragmentType.source, target);
+    List<String> targetNodeKeyConstraints = generateNodeKeyConstraints(FragmentType.target, target);
+    List<String> statements =
+        new ArrayList<>(sourceNodeKeyConstraints.size() + targetNodeKeyConstraints.size());
+    statements.addAll(sourceNodeKeyConstraints);
+    statements.addAll(targetNodeKeyConstraints);
+    return statements;
+  }
+
   public static String getRelationshipTypePropertiesListFragment(
       String prefix, boolean onlyIndexedProperties, Target target) {
     StringBuilder sb = new StringBuilder();
@@ -355,5 +354,33 @@ public class CypherGenerator {
       sb.append(" ").append(properties);
     }
     return sb.toString();
+  }
+
+  private static String egdeNodeMatchMode(EdgeNodesMatchMode mode) {
+    switch (mode) {
+      case match:
+        return "MATCH";
+      case merge:
+        return "MERGE";
+      default:
+        throw new IllegalArgumentException(String.format("Unknown edge node match mode %s", mode));
+    }
+  }
+
+  private static List<String> generateNodeKeyConstraints(FragmentType fragmentType, Target target) {
+    List<String> labels = ModelUtils.getStaticLabels(fragmentType, target);
+    List<String> nodeKeyProperties = ModelUtils.getEntityKeyProperties(fragmentType, target);
+    List<String> results = new ArrayList<>(nodeKeyProperties.size());
+    for (String label : labels) {
+      String escapedLabel = ModelUtils.makeSpaceSafeValidNeo4jIdentifier(label);
+      for (String nodeKeyProperty : nodeKeyProperties) {
+        String escapedProperty = ModelUtils.makeSpaceSafeValidNeo4jIdentifier(nodeKeyProperty);
+        results.add(
+            String.format(
+                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:%s) REQUIRE n.%s IS NODE KEY",
+                escapedLabel, escapedProperty));
+      }
+    }
+    return results;
   }
 }
