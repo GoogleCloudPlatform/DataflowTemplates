@@ -94,12 +94,7 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
 
     if (!usingStaticDatabase) {
       // Keyspace request may timeout on a few environments, if Cassandra is warming up
-      Failsafe.with(
-              RetryPolicy.builder()
-                  .withMaxRetries(5)
-                  .withDelay(Duration.ofSeconds(1))
-                  .handle(DriverTimeoutException.class)
-                  .build())
+      Failsafe.with(buildRetryPolicy())
           .run(
               () ->
                   this.cassandraClient.execute(
@@ -137,8 +132,11 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
     LOG.info("Executing statement: {}", statement);
 
     try {
-      return cassandraClient.execute(
-          SimpleStatement.newInstance(statement).setKeyspace(this.keyspaceName));
+      return Failsafe.with(buildRetryPolicy())
+          .get(
+              () ->
+                  cassandraClient.execute(
+                      SimpleStatement.newInstance(statement).setKeyspace(this.keyspaceName)));
     } catch (Exception e) {
       throw new CassandraResourceManagerException("Error reading collection.", e);
     }
@@ -271,6 +269,14 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
     }
 
     return String.format("INSERT INTO %s (%s) VALUES (%s)", tableName, columns, values);
+  }
+
+  private static RetryPolicy<Object> buildRetryPolicy() {
+    return RetryPolicy.builder()
+        .withMaxRetries(5)
+        .withDelay(Duration.ofSeconds(1))
+        .handle(DriverTimeoutException.class)
+        .build();
   }
 
   /** Builder for {@link CassandraResourceManager}. */
