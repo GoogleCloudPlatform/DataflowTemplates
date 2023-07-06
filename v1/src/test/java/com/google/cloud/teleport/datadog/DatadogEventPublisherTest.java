@@ -17,10 +17,12 @@ package com.google.cloud.teleport.datadog;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpContent;
+import com.google.api.client.http.HttpResponse;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
@@ -31,9 +33,15 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import org.junit.Test;
+import org.mockserver.configuration.ConfigurationProperties;
+import org.mockserver.integration.ClientAndServer;
+import org.mockserver.model.MediaType;
+import org.mockserver.verify.VerificationTimes;
 
 /** Unit tests for {@link DatadogEventPublisher} class. */
 public class DatadogEventPublisherTest {
+
+  private static final String EXPECTED_PATH = "/" + DatadogEventPublisher.DD_URL_PATH;
 
   private static final DatadogEvent DATADOG_TEST_EVENT_1 =
       DatadogEvent.newBuilder()
@@ -152,5 +160,41 @@ public class DatadogEventPublisherTest {
     assertThat(
         publisherWithBackOff.getConfiguredBackOff().getMaxElapsedTimeMillis(),
         is(equalTo(timeoutInMillis)));
+  }
+
+  @Test
+  public void requestHeadersTest() throws Exception {
+    ConfigurationProperties.disableSystemOut(true);
+    try (ClientAndServer mockServer = startClientAndServer()) {
+      mockServer
+          .when(org.mockserver.model.HttpRequest.request(EXPECTED_PATH))
+          .respond(org.mockserver.model.HttpResponse.response().withStatusCode(202));
+
+      DatadogEventPublisher publisher =
+          DatadogEventPublisher.newBuilder()
+              .withUrl(Joiner.on(':').join("http://localhost", mockServer.getPort()))
+              .withApiKey("test-api-key")
+              .build();
+
+      DatadogEvent event =
+          DatadogEvent.newBuilder()
+              .withSource("test-source-1")
+              .withTags("test-tags-1")
+              .withHostname("test-hostname-1")
+              .withService("test-service-1")
+              .withMessage("test-message-1")
+              .build();
+
+      HttpResponse response = publisher.execute(List.of(event));
+      assertThat(response.getStatusCode(), is(equalTo(202)));
+
+      mockServer.verify(
+          org.mockserver.model.HttpRequest.request(EXPECTED_PATH)
+              .withContentType(MediaType.APPLICATION_JSON)
+              .withHeader("dd-api-key", "test-api-key")
+              .withHeader("dd-evp-origin", "dataflow")
+              .withHeader("content-encoding", "gzip"),
+          VerificationTimes.once());
+    }
   }
 }
