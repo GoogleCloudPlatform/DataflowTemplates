@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.MySQLToBigQuery",
+  "classPath": "/template/mysql-to-bigquery/mysql-to-bigquery-conscrypt.jar:/template/mysql-to-bigquery/*:/template/mysql-to-bigquery/libs/*:/template/mysql-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"mysql-to-bigquery\"}"
+  }
+}

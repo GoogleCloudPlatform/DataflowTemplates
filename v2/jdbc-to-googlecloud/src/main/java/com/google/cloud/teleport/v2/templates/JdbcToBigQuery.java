@@ -105,8 +105,11 @@ public class JdbcToBigQuery {
                 StaticValueProvider.of(options.getDriverClassName()),
                 maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
             .withUsername(maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
-            .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
-            .withDriverJars(options.getDriverJars());
+            .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()));
+
+    if (options.getDriverJars() != null) {
+      dataSourceConfiguration = dataSourceConfiguration.withDriverJars(options.getDriverJars());
+    }
 
     if (options.getConnectionProperties() != null) {
       dataSourceConfiguration =

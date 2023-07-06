@@ -342,7 +342,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                     + stagePrefix.toLowerCase()
                     + "/"
                     + containerName);
-    ;
     LOG.info("Stage image to GCR: {}", imagePath);
 
     File metadataFile =
