@@ -206,7 +206,7 @@ public class DirectRunnerClient implements PipelineLauncher {
 
       try {
         String[] args = commandLines.toArray(new String[0]);
-        Method mainMethod = mainClass.getDeclaredMethod("main", String[].class);
+        Method mainMethod = mainClass.getMethod("main", String[].class);
         currentJob.setCurrentState(JobState.RUNNING.toString());
 
         LOG.info("Starting job {}...", currentJob.getId());
