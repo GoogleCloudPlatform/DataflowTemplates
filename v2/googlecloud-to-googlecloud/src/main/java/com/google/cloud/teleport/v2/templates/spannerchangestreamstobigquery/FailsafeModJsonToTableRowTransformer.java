@@ -125,6 +125,7 @@ public final class FailsafeModJsonToTableRowTransformer {
       public TupleTag<TableRow> transformOut;
       public TupleTag<FailsafeElement<String, String>> transformDeadLetterOut;
       private transient CallContextConfigurator callContextConfigurator;
+      private transient boolean seenException;
 
       public FailsafeModJsonToTableRowFn(
           SpannerConfig spannerConfig,
@@ -164,6 +165,7 @@ public final class FailsafeModJsonToTableRowTransformer {
             new SpannerUtils(spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
                 .getSpannerTableByName();
         setUpCallContextConfigurator();
+        seenException = false;
       }
 
       @Teardown
@@ -184,6 +186,11 @@ public final class FailsafeModJsonToTableRowTransformer {
           }
           context.output(tableRow);
         } catch (Exception e) {
+          if (!seenException) {
+            LOG.error(
+                "Caught exception when processing element , storing into dead letter queue {}", e);
+            seenException = true;
+          }
           context.output(
               transformDeadLetterOut,
               FailsafeElement.of(failsafeModJsonString)
@@ -283,6 +290,7 @@ public final class FailsafeModJsonToTableRowTransformer {
           } catch (Exception e) {
             // Retry for maximum 3 times in case of transient error.
             if (retryCount > 3) {
+              LOG.error("Caught exception from Spanner snapshot read: {}, throwing", e);
               throw e;
             } else {
               LOG.error(
