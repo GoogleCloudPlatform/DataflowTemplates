@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
 import com.google.cloud.teleport.v2.spanner.SpannerTestHelper;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreamsToPubSub;
 import com.google.gson.Gson;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -705,7 +706,7 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
 
     @Override
     public String apply(PubsubMessage message) {
-      return new String(message.getPayload());
+      return new String(message.getPayload(), StandardCharsets.UTF_8);
     }
   }
 }
