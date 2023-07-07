@@ -72,5 +72,13 @@
       <version>1.0-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
+
+    <!--  Hbase test dependencies  -->
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-shaded-testing-util</artifactId>
+      <version>${hbase.client.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>
