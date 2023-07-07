@@ -33,6 +33,9 @@ public final class TemplateParameter {
     /** Name of the parameter. */
     String name() default "";
 
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -59,6 +62,9 @@ public final class TemplateParameter {
     /** Name of the parameter. */
     String name() default "";
 
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -82,6 +88,9 @@ public final class TemplateParameter {
     /** Name of the parameter. */
     String name() default "";
 
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -104,6 +113,9 @@ public final class TemplateParameter {
 
     /** Name of the parameter. */
     String name() default "";
+
+    /** Group Name of the parameter. */
+    String groupName() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -131,6 +143,9 @@ public final class TemplateParameter {
     /** Name of the parameter. */
     String name() default "";
 
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -153,6 +168,9 @@ public final class TemplateParameter {
 
     /** Name of the parameter. */
     String name() default "";
+
+    /** Group Name of the parameter. */
+    String groupName() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -177,6 +195,9 @@ public final class TemplateParameter {
     /** Name of the parameter. */
     String name() default "";
 
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -199,6 +220,9 @@ public final class TemplateParameter {
 
     /** Name of the parameter. */
     String name() default "";
+
+    /** Group Name of the parameter. */
+    String groupName() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -223,6 +247,9 @@ public final class TemplateParameter {
     /** Name of the parameter. */
     String name() default "";
 
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -245,6 +272,9 @@ public final class TemplateParameter {
 
     /** Name of the parameter. */
     String name() default "";
+
+    /** Group Name of the parameter. */
+    String groupName() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -269,6 +299,9 @@ public final class TemplateParameter {
     /** Name of the parameter. */
     String name() default "";
 
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -291,6 +324,9 @@ public final class TemplateParameter {
 
     /** Name of the parameter. */
     String name() default "";
+
+    /** Group Name of the parameter. */
+    String groupName() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -315,6 +351,9 @@ public final class TemplateParameter {
     /** Name of the parameter. */
     String name() default "";
 
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -337,6 +376,9 @@ public final class TemplateParameter {
 
     /** Name of the parameter. */
     String name() default "";
+
+    /** Group Name of the parameter. */
+    String groupName() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
@@ -361,6 +403,9 @@ public final class TemplateParameter {
     /** Name of the parameter. */
     String name() default "";
 
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -384,6 +429,9 @@ public final class TemplateParameter {
     /** Name of the parameter. */
     String name() default "";
 
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
     /** If parameter is optional. */
     boolean optional() default false;
 
@@ -406,6 +454,9 @@ public final class TemplateParameter {
 
     /** Name of the parameter. */
     String name() default "";
+
+    /** Group Name of the parameter. */
+    String groupName() default "";
 
     /** If parameter is optional. */
     boolean optional() default false;
