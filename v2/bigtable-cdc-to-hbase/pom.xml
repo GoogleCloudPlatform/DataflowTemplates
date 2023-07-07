@@ -45,20 +45,6 @@
       <version>${beam.version}</version>
     </dependency>
 
-    <!--Most Hbase dependencies -->
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase-shaded-client</artifactId>
-      <version>2.3.6</version>
-    </dependency>
-    <!--  Hbase test dependencies  -->
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase-shaded-testing-util</artifactId>
-      <version>2.3.6</version>
-      <scope>test</scope>
-    </dependency>
-
     <!-- Provide hadoop library  -->
     <dependency>
       <groupId>org.apache.hadoop</groupId>
