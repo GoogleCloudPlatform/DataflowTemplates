@@ -28,7 +28,6 @@ import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.pubsub.v1.SchemaServiceClient;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
-import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.Subscription;
@@ -37,6 +36,7 @@ import com.google.pubsub.v1.Topic;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.Map;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -64,8 +64,8 @@ public final class PubsubResourceManagerTest {
   @Mock private SubscriptionAdminClient subscriptionAdminClient;
 
   @Mock private SchemaServiceClient schemaServiceClient;
-  @Mock private Topic topic;
-  @Mock private Subscription subscription;
+  private Topic topic;
+  private Subscription subscription;
   @Mock private Publisher publisher;
   @Mock private PubsubPublisherFactory publisherFactory;
 
@@ -87,9 +87,11 @@ public final class PubsubResourceManagerTest {
             subscriptionAdminClient,
             schemaServiceClient);
 
-    when(topic.getName()).thenReturn("projects/" + PROJECT_ID + "/topics/" + TOPIC_NAME);
-    when(subscription.getName())
-        .thenReturn("projects/" + PROJECT_ID + "/subscriptions/" + SUBSCRIPTION_NAME);
+    topic = Topic.newBuilder().setName(TopicName.of(PROJECT_ID, TOPIC_NAME).toString()).build();
+    subscription =
+        Subscription.newBuilder()
+            .setName(SubscriptionName.of(PROJECT_ID, SUBSCRIPTION_NAME).toString())
+            .build();
     when(publisherFactory.createPublisher(any())).thenReturn(publisher);
   }
 
@@ -217,8 +219,9 @@ public final class PubsubResourceManagerTest {
   public void testCleanupTopicsShouldDeleteTopics() {
     TopicName topicName1 = testManager.getTopicName("topic1");
     TopicName topicName2 = testManager.getTopicName("topic2");
-    when(topic.getName()).thenReturn(topicName1.toString(), topicName2.toString());
-    when(topicAdminClient.createTopic(any(TopicName.class))).thenReturn(topic);
+    Topic topic1 = Topic.newBuilder().setName(topicName1.toString()).build();
+    Topic topic2 = Topic.newBuilder().setName(topicName2.toString()).build();
+    when(topicAdminClient.createTopic(any(TopicName.class))).thenReturn(topic1, topic2);
 
     testManager.createTopic("topic1");
     testManager.createTopic("topic2");
@@ -234,28 +237,26 @@ public final class PubsubResourceManagerTest {
     SubscriptionName subscriptionName1 = testManager.getSubscriptionName("topic1-sub0");
     SubscriptionName subscriptionName2 = testManager.getSubscriptionName("topic1-sub1");
     SubscriptionName subscriptionName3 = testManager.getSubscriptionName("topic2-sub0");
-    when(topicAdminClient.createTopic(any(TopicName.class))).thenReturn(topic);
-    when(subscription.getName())
-        .thenReturn(
-            subscriptionName1.toString(),
-            subscriptionName2.toString(),
-            subscriptionName3.toString());
+    Subscription subscription1 =
+        Subscription.newBuilder().setName(subscriptionName1.toString()).build();
+    Subscription subscription2 =
+        Subscription.newBuilder().setName(subscriptionName2.toString()).build();
+    Subscription subscription3 =
+        Subscription.newBuilder().setName(subscriptionName3.toString()).build();
     when(subscriptionAdminClient.createSubscription(
             any(SubscriptionName.class), any(TopicName.class), any(), anyInt()))
-        .thenReturn(subscription);
-    when(topic.getName())
-        .thenReturn(
-            TopicName.format(PROJECT_ID, "topic1"),
-            TopicName.format(PROJECT_ID, "topic2"),
-            TopicName.format(PROJECT_ID, "topic1"),
-            TopicName.format(PROJECT_ID, "topic1"),
-            TopicName.format(PROJECT_ID, "topic2"));
+        .thenReturn(subscription1, subscription2, subscription3);
+    Topic topic1 =
+        Topic.newBuilder().setName(testManager.getTopicName("topic1").toString()).build();
+    Topic topic2 =
+        Topic.newBuilder().setName(testManager.getTopicName("topic2").toString()).build();
+    when(topicAdminClient.createTopic(any(TopicName.class))).thenReturn(topic1, topic2);
 
-    TopicName topic1 = testManager.createTopic("topic1");
-    TopicName topic2 = testManager.createTopic("topic2");
-    testManager.createSubscription(topic1, "topic1-sub0");
-    testManager.createSubscription(topic1, "topic1-sub1");
-    testManager.createSubscription(topic2, "topic2-sub0");
+    TopicName createdTopic1 = testManager.createTopic("topic1");
+    TopicName createdTopic2 = testManager.createTopic("topic2");
+    testManager.createSubscription(createdTopic1, "topic1-sub0");
+    testManager.createSubscription(createdTopic1, "topic1-sub1");
+    testManager.createSubscription(createdTopic2, "topic2-sub0");
     testManager.cleanupAll();
 
     verify(subscriptionAdminClient, times(3)).deleteSubscription(subscriptionNameCaptor.capture());

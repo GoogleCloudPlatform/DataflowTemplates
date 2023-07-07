@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.it.common.ResourceManager;
 import java.sql.ResultSet;
@@ -58,7 +58,7 @@ public interface JDBCResourceManager extends ResourceManager {
    * @throws JDBCResourceManagerException if there is an error creating the table or if the table
    *     already exists.
    */
-  boolean createTable(String tableName, JDBCSchema schema);
+  boolean createTable(String tableName, JDBCSchema schema) throws JDBCResourceManagerException;
 
   /**
    * Writes the given mapped rows into the specified columns. This method requires {@link
@@ -74,7 +74,8 @@ public interface JDBCResourceManager extends ResourceManager {
    *     if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  boolean write(String tableName, List<Map<String, Object>> rows);
+  boolean write(String tableName, List<Map<String, Object>> rows)
+      throws JDBCResourceManagerException;
 
   /**
    * Reads all the rows in a table and returns in the format of a list of Maps, which contain all
@@ -110,8 +111,6 @@ public interface JDBCResourceManager extends ResourceManager {
 
   /** Object for managing JDBC table schemas in {@link JDBCResourceManager} instances. */
   class JDBCSchema {
-
-    private static final String DEFAULT_ID_COLUMN = "id";
 
     private final Map<String, String> columns;
     private final String idColumn;
@@ -153,12 +152,12 @@ public interface JDBCResourceManager extends ResourceManager {
       if (!columns.get(idColumn).toUpperCase().contains(" NOT NULL")) {
         sql.append(" NOT NULL");
       }
-      for (String colKey : columns.keySet()) {
-        if (colKey.contains(idColumn)) {
+      for (Map.Entry<String, String> entry : columns.entrySet()) {
+        if (entry.getKey().contains(idColumn)) {
           continue;
         }
         sql.append(", ");
-        sql.append(colKey).append(" ").append(columns.get(colKey).toUpperCase());
+        sql.append(entry.getKey()).append(" ").append(entry.getValue().toUpperCase());
       }
       sql.append(", PRIMARY KEY ( ").append(idColumn).append(" )");
       return sql.toString();

@@ -28,7 +28,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.List;
@@ -71,14 +70,14 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
   private CassandraResourceManager(Builder builder) {
     this(
         /* cassandraClient= */ null,
-        new CassandraContainer(
+        new CassandraContainer<>(
             DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
         builder);
   }
 
   @VisibleForTesting
   CassandraResourceManager(
-      CqlSession cassandraClient, CassandraContainer container, Builder builder) {
+      CqlSession cassandraClient, CassandraContainer<?> container, Builder builder) {
     super(container, builder);
 
     this.usingStaticDatabase = builder.keyspaceName != null;
@@ -110,7 +109,7 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
     }
   }
 
-  public static Builder builder(String testId) throws IOException {
+  public static Builder builder(String testId) {
     return new Builder(testId);
   }
 
@@ -168,8 +167,8 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
    * @return A boolean indicating whether the Documents were inserted successfully.
    * @throws CassandraResourceManagerException if there is an error inserting the documents.
    */
-  public synchronized boolean insertDocuments(
-      String tableName, List<Map<String, Object>> documents) {
+  public synchronized boolean insertDocuments(String tableName, List<Map<String, Object>> documents)
+      throws CassandraResourceManagerException {
     LOG.info(
         "Attempting to write {} documents to {}.{}.", documents.size(), keyspaceName, tableName);
 
@@ -193,7 +192,8 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
    * @return An iterable of all the Documents in the collection.
    * @throws CassandraResourceManagerException if there is an error reading the collection.
    */
-  public synchronized Iterable<Row> readTable(String tableName) {
+  public synchronized Iterable<Row> readTable(String tableName)
+      throws CassandraResourceManagerException {
     LOG.info("Reading all documents from {}.{}", keyspaceName, tableName);
 
     Iterable<Row> documents;
@@ -265,8 +265,10 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
     }
 
     // Remove trailing comma and space
-    columns.delete(columns.length() - 2, columns.length());
-    values.delete(values.length() - 2, values.length());
+    if (!map.isEmpty()) {
+      columns.delete(columns.length() - 2, columns.length());
+      values.delete(values.length() - 2, values.length());
+    }
 
     return String.format("INSERT INTO %s (%s) VALUES (%s)", tableName, columns, values);
   }
@@ -278,9 +280,7 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
     private String keyspaceName;
 
     private Builder(String testId) {
-      super(testId);
-      this.containerImageName = DEFAULT_CASSANDRA_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_CASSANDRA_CONTAINER_TAG;
+      super(testId, DEFAULT_CASSANDRA_CONTAINER_NAME, DEFAULT_CASSANDRA_CONTAINER_TAG);
     }
 
     /**

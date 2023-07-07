@@ -15,14 +15,12 @@
  */
 package com.google.cloud.teleport.bigtable;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManagerUtils.generateTableId;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
@@ -30,9 +28,9 @@ import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
+import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
@@ -72,9 +70,11 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    bigtableResourceManager = BigtableResourceManager.builder(testName, project).build();
-    Storage storageClient = createStorageClient(CREDENTIALS);
-    gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    bigtableResourceManager = BigtableResourceManager.builder(testName, PROJECT).build();
+    gcsClient =
+        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
+            .setCredentials(CREDENTIALS)
+            .build();
     // upload schema files and save path
     generatorSchemaPath =
         getFullGcsPath(
@@ -128,14 +128,14 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addParameter("bigtableProjectId", project)
+                    .addParameter("bigtableProjectId", PROJECT)
                     .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
                     .addParameter("bigtableTableId", tableId)
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*"))
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 

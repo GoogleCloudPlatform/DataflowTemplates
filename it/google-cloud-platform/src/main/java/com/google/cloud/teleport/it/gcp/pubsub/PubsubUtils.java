@@ -15,9 +15,8 @@
  */
 package com.google.cloud.teleport.it.gcp.pubsub;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
-import com.google.common.base.CaseFormat;
 import com.google.pubsub.v1.Subscription;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.Topic;
@@ -27,6 +26,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.CaseFormat;
 
 /** Utilities to make working with Pubsub easier. */
 final class PubsubUtils {

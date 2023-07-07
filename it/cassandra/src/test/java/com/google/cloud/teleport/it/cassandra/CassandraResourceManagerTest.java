@@ -21,7 +21,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
@@ -45,22 +44,17 @@ public class CassandraResourceManagerTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock private CqlSession cassandraClient;
-  @Mock private CassandraContainer container;
+  @Mock private CassandraContainer<?> container;
 
   private static final String TEST_ID = "test-id";
   private static final String COLLECTION_NAME = "collection-name";
   private static final String STATIC_KEYSPACE_NAME = "keyspace";
   private static final String HOST = "localhost";
-  private static final int CASSANDRA_PORT = 9042;
-  private static final int MAPPED_PORT = 10001;
 
   private CassandraResourceManager testManager;
 
   @Before
-  public void setUp() throws IOException, InterruptedException {
-    when(container.getHost()).thenReturn(HOST);
-    when(container.getMappedPort(CASSANDRA_PORT)).thenReturn(MAPPED_PORT);
-
+  public void setUp() {
     testManager =
         new CassandraResourceManager(
             cassandraClient, container, CassandraResourceManager.builder(TEST_ID));

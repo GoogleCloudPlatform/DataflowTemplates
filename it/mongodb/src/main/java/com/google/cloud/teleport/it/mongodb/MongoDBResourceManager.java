@@ -20,8 +20,6 @@ import static com.google.cloud.teleport.it.mongodb.MongoDBResourceManagerUtils.g
 
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -30,6 +28,8 @@ import com.mongodb.client.MongoDatabase;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,7 +139,8 @@ public class MongoDBResourceManager extends TestContainerResourceManager<MongoDB
    * @throws MongoDBResourceManagerException if there is an error creating the collection in
    *     MongoDB.
    */
-  public synchronized boolean createCollection(String collectionName) {
+  public synchronized boolean createCollection(String collectionName)
+      throws MongoDBResourceManagerException {
     LOG.info("Creating collection using collectionName '{}'.", collectionName);
 
     try {
@@ -199,7 +200,8 @@ public class MongoDBResourceManager extends TestContainerResourceManager<MongoDB
    * @return A boolean indicating whether the Documents were inserted successfully.
    * @throws MongoDBResourceManagerException if there is an error inserting the documents.
    */
-  public synchronized boolean insertDocuments(String collectionName, List<Document> documents) {
+  public synchronized boolean insertDocuments(String collectionName, List<Document> documents)
+      throws MongoDBResourceManagerException {
     LOG.info(
         "Attempting to write {} documents to {}.{}.",
         documents.size(),
@@ -225,7 +227,8 @@ public class MongoDBResourceManager extends TestContainerResourceManager<MongoDB
    * @return A List of all the Documents in the collection.
    * @throws MongoDBResourceManagerException if there is an error reading the collection.
    */
-  public synchronized List<Document> readCollection(String collectionName) {
+  public synchronized List<Document> readCollection(String collectionName)
+      throws MongoDBResourceManagerException {
     LOG.info("Reading all documents from {}.{}", databaseName, collectionName);
 
     FindIterable<Document> fetchRecords;
@@ -249,7 +252,8 @@ public class MongoDBResourceManager extends TestContainerResourceManager<MongoDB
    * @return The number of Documents in the collection.
    * @throws MongoDBResourceManagerException if there is an error reading the collection.
    */
-  public synchronized long countCollection(String collectionName) {
+  public synchronized long countCollection(String collectionName)
+      throws MongoDBResourceManagerException {
     LOG.info("Counting all documents from {}.{}", databaseName, collectionName);
 
     long numDocuments =
@@ -303,9 +307,7 @@ public class MongoDBResourceManager extends TestContainerResourceManager<MongoDB
     private String databaseName;
 
     private Builder(String testId) {
-      super(testId);
-      this.containerImageName = DEFAULT_MONGODB_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_MONGODB_CONTAINER_TAG;
+      super(testId, DEFAULT_MONGODB_CONTAINER_NAME, DEFAULT_MONGODB_CONTAINER_TAG);
     }
 
     /**

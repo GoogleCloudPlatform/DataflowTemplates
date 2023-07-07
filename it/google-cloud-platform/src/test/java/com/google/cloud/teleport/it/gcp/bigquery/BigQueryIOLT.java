@@ -26,11 +26,8 @@ import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
-import com.google.cloud.teleport.it.common.utils.MetricsConfiguration;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
@@ -59,6 +56,8 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -110,10 +109,10 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   @BeforeClass
   public static void beforeClass() throws IOException {
     resourceManager =
-        BigQueryResourceManager.builder("io-bigquery-lt", project)
+        BigQueryResourceManager.builder("io-bigquery-lt", PROJECT)
             .setCredentials(CREDENTIALS)
             .build();
-    resourceManager.createDataset(region);
+    resourceManager.createDataset(REGION);
   }
 
   @Before
@@ -125,7 +124,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
                 .withZone(ZoneId.of("UTC"))
                 .format(java.time.Instant.now())
             + UUID.randomUUID().toString().substring(0, 10);
-    tableQualifier = String.format("%s:%s.%s", project, resourceManager.getDatasetId(), tableName);
+    tableQualifier = String.format("%s:%s.%s", PROJECT, resourceManager.getDatasetId(), tableName);
 
     // parse configuration
     String testConfig =
@@ -275,7 +274,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.runner)
             .build();
 
-    PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(project, region, options);
+    PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(PROJECT, REGION, options);
     PipelineOperator.Result result =
         pipelineOperator.waitUntilDone(
             createConfig(launchInfo, Duration.ofMinutes(configuration.pipelineTimeout)));
@@ -285,10 +284,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
 
     // export metrics
     MetricsConfiguration metricsConfig =
-        MetricsConfiguration.builder()
-            .setInputPCollection(WRITE_PCOLLECTION)
-            .setSeriesFilterFn(MetricsConfiguration.filterBeginEndHalfAveFn())
-            .build();
+        MetricsConfiguration.builder().setInputPCollection(WRITE_PCOLLECTION).build();
     try {
       exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, metricsConfig));
     } catch (ParseException | InterruptedException e) {
@@ -311,7 +307,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.runner)
             .build();
 
-    PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(project, region, options);
+    PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(PROJECT, REGION, options);
     PipelineOperator.Result result =
         pipelineOperator.waitUntilDone(
             createConfig(launchInfo, Duration.ofMinutes(configuration.pipelineTimeout)));
@@ -322,18 +318,15 @@ public final class BigQueryIOLT extends IOLoadTestBase {
     // check metrics
     double numRecords =
         pipelineLauncher.getMetric(
-            project,
-            region,
+            PROJECT,
+            REGION,
             launchInfo.jobId(),
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
     assertEquals(configuration.numRecords, numRecords, 0.5);
 
     // export metrics
     MetricsConfiguration metricsConfig =
-        MetricsConfiguration.builder()
-            .setOutputPCollection(READ_PCOLLECTION)
-            .setSeriesFilterFn(MetricsConfiguration.filterBeginEndHalfAveFn())
-            .build();
+        MetricsConfiguration.builder().setOutputPCollection(READ_PCOLLECTION).build();
     try {
       exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, metricsConfig));
     } catch (ParseException | InterruptedException e) {

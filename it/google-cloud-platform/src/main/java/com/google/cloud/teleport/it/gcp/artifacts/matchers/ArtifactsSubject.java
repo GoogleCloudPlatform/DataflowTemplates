@@ -17,7 +17,7 @@ package com.google.cloud.teleport.it.gcp.artifacts.matchers;
 
 import static com.google.cloud.teleport.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatGenericRecords;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
-import static com.google.common.hash.Hashing.sha256;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.hash.Hashing.sha256;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +28,7 @@ import com.google.cloud.teleport.it.gcp.artifacts.utils.ParquetTestUtil;
 import com.google.cloud.teleport.it.truthmatchers.RecordsSubject;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +47,7 @@ public final class ArtifactsSubject extends Subject {
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private static final TypeReference<Map<String, Object>> recordTypeReference =
-      new TypeReference<>() {};
+      new TypeReference<Map<String, Object>>() {};
 
   private ArtifactsSubject(FailureMetadata metadata, @Nullable List<Artifact> actual) {
     super(metadata, actual);
@@ -77,7 +78,10 @@ public final class ArtifactsSubject extends Subject {
    * @param content Content to search for
    */
   public void hasContent(String content) {
-    if (!actual.stream().anyMatch(artifact -> new String(artifact.contents()).contains(content))) {
+    if (!actual.stream()
+        .anyMatch(
+            artifact ->
+                new String(artifact.contents(), StandardCharsets.UTF_8).contains(content))) {
       failWithActual("expected to contain", content);
     }
   }

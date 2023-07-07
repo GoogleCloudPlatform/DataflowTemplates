@@ -15,13 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates.pubsubtotext;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
@@ -29,9 +27,9 @@ import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
@@ -82,11 +80,13 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, project)
+        PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
-    Storage storageClient = createStorageClient(CREDENTIALS);
-    gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    gcsClient =
+        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
+            .setCredentials(CREDENTIALS)
+            .build();
   }
 
   @After
@@ -176,7 +176,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result =
         pipelineOperator.waitForConditionAndFinish(
@@ -218,7 +218,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     // ElementCount metric in dataflow is approximate, allow for 1% difference
     long expectedMessages = (long) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);

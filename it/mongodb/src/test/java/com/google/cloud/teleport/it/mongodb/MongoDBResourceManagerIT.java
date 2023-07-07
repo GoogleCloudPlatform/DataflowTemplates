@@ -21,7 +21,7 @@ import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.bson.Document;
 import org.junit.After;
 import org.junit.Before;
@@ -49,8 +49,8 @@ public class MongoDBResourceManagerIT {
     assertThat(createIndex).isTrue();
 
     List<Document> documents = new ArrayList<>();
-    documents.add(new Document(Map.of("id", 1, "company", "Google")));
-    documents.add(new Document(Map.of("id", 2, "company", "Alphabet")));
+    documents.add(new Document(ImmutableMap.of("id", 1, "company", "Google")));
+    documents.add(new Document(ImmutableMap.of("id", 2, "company", "Alphabet")));
 
     boolean insertDocuments = mongoResourceManager.insertDocuments(COLLECTION_NAME, documents);
     assertThat(insertDocuments).isTrue();

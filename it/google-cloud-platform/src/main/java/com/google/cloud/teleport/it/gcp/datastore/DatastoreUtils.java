@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.it.gcp.datastore;
 
-import com.google.common.base.CaseFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.CaseFormat;
 
 /** Utilities to make working with Datastore easier. */
 final class DatastoreUtils {

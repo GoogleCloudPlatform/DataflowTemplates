@@ -18,6 +18,7 @@ package com.google.cloud.teleport.it.testcontainers;
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.common.TestProperties;
 import java.util.concurrent.Callable;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -112,7 +113,8 @@ public abstract class TestContainerResourceManager<T extends GenericContainer<?>
    * @throws TestContainerResourceManagerException if there is an error deleting the TestContainers
    *     resources.
    */
-  public void cleanupAll() {
+  @Override
+  public void cleanupAll() throws TestContainerResourceManagerException {
     if (usingStaticContainer) {
       LOG.info("This manager was configured to use a static resource that will not be cleaned up.");
       return;
@@ -137,8 +139,16 @@ public abstract class TestContainerResourceManager<T extends GenericContainer<?>
     public int port;
     public boolean useStaticContainer;
 
-    public Builder(String testId) {
+    @VisibleForTesting
+    Builder(String testId) {
       this.testId = testId;
+      this.port = -1;
+    }
+
+    public Builder(String testId, String containerImageName, String containerImageTag) {
+      this.testId = testId;
+      this.containerImageName = containerImageName;
+      this.containerImageTag = containerImageTag;
       this.port = -1;
     }
 

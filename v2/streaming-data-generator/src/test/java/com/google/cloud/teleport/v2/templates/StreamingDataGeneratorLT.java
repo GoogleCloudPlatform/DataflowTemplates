@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManagerUtils.toTableSpec;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
@@ -26,7 +25,6 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
@@ -34,10 +32,10 @@ import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
+import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager.JDBCSchema;
 import com.google.cloud.teleport.it.jdbc.PostgresResourceManager;
@@ -93,7 +91,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGeneratePubsub10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, project)
+        PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     TopicName backlogTopic = pubsubResourceManager.createTopic("output");
@@ -112,7 +110,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
@@ -128,8 +126,10 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGenerateGcs10gb() throws IOException, ParseException, InterruptedException {
     String artifactBucket = TestProperties.artifactBucket();
     // Set up resource manager
-    Storage storageClient = createStorageClient(CREDENTIALS);
-    gcsClient = GcsArtifactClient.builder(storageClient, artifactBucket, TEST_ROOT_DIR).build();
+    gcsClient =
+        GcsResourceManager.builder(artifactBucket, TEST_ROOT_DIR)
+            .setCredentials(CREDENTIALS)
+            .build();
     String outputDirectory =
         getFullGcsPath(artifactBucket, TEST_ROOT_DIR, gcsClient.runId(), testName);
     // Arrange
@@ -148,7 +148,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
@@ -164,7 +164,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
     // Set up resource manager
     String name = testName;
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(name, project).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(name, PROJECT).setCredentials(CREDENTIALS).build();
     // schema should match schema supplied to generate fake records.
     Schema schema =
         Schema.of(
@@ -185,14 +185,14 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", NUM_MESSAGES)
             .addParameter("sinkType", "BIGQUERY")
-            .addParameter("outputTableSpec", toTableSpec(project, table))
+            .addParameter("outputTableSpec", toTableSpec(PROJECT, table))
             .addParameter("numWorkers", "50")
             .addParameter("maxNumWorkers", "100")
             .addParameter("autoscalingAlgorithm", "THROUGHPUT_BASED")
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
@@ -207,7 +207,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGenerateSpanner10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     String name = testName;
-    spannerResourceManager = SpannerResourceManager.builder(name, project, region).build();
+    spannerResourceManager = SpannerResourceManager.builder(name, PROJECT, REGION).build();
     String createTableStatement =
         String.format(
             "CREATE TABLE `%s` (\n"
@@ -241,7 +241,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", NUM_MESSAGES)
             .addParameter("sinkType", "SPANNER")
-            .addParameter("projectId", project)
+            .addParameter("projectId", PROJECT)
             .addParameter("spannerInstanceName", spannerResourceManager.getInstanceId())
             .addParameter("spannerDatabaseName", spannerResourceManager.getDatabaseId())
             .addParameter("spannerTableName", name)
@@ -251,7 +251,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
 
@@ -303,7 +303,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 

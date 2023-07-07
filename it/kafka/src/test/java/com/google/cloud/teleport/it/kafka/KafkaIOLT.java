@@ -24,8 +24,6 @@ import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -41,6 +39,8 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestPipelineOptions;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -133,26 +133,26 @@ public final class KafkaIOLT extends IOLoadTestBase {
       // streaming read pipeline does not end itself
       assertEquals(
           PipelineLauncher.JobState.RUNNING,
-          pipelineLauncher.getJobStatus(project, region, readInfo.jobId()));
+          pipelineLauncher.getJobStatus(PROJECT, REGION, readInfo.jobId()));
       // Fail the test if write pipeline (streaming) not in running state.
       // TODO: there is a limitation (or bug) that the cache in KafkaWriter can stay indefinitely if
       // there is no upcoming records. Currently set expected records = (records generated - 10).
       double numRecords =
           pipelineLauncher.getMetric(
-              project,
-              region,
+              PROJECT,
+              REGION,
               readInfo.jobId(),
               getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
       assertEquals(configuration.getNumRows(), numRecords, 10.0);
     } finally {
       // clean up pipelines
-      if (pipelineLauncher.getJobStatus(project, region, writeInfo.jobId())
+      if (pipelineLauncher.getJobStatus(PROJECT, REGION, writeInfo.jobId())
           == PipelineLauncher.JobState.RUNNING) {
-        pipelineLauncher.cancelJob(project, region, writeInfo.jobId());
+        pipelineLauncher.cancelJob(PROJECT, REGION, writeInfo.jobId());
       }
-      if (pipelineLauncher.getJobStatus(project, region, readInfo.jobId())
+      if (pipelineLauncher.getJobStatus(PROJECT, REGION, readInfo.jobId())
           == PipelineLauncher.JobState.RUNNING) {
-        pipelineLauncher.cancelJob(project, region, readInfo.jobId());
+        pipelineLauncher.cancelJob(PROJECT, REGION, readInfo.jobId());
       }
     }
   }
@@ -179,7 +179,7 @@ public final class KafkaIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.getRunner())
             .build();
 
-    return pipelineLauncher.launch(project, region, options);
+    return pipelineLauncher.launch(PROJECT, REGION, options);
   }
 
   private PipelineLauncher.LaunchInfo testRead() throws IOException {
@@ -199,7 +199,7 @@ public final class KafkaIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.getRunner())
             .build();
 
-    return pipelineLauncher.launch(project, region, options);
+    return pipelineLauncher.launch(PROJECT, REGION, options);
   }
 
   /** Options for Kafka IO load test. */

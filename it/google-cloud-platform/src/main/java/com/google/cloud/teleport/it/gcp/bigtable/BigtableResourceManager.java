@@ -173,7 +173,8 @@ public class BigtableResourceManager implements ResourceManager {
    * @throws BigtableResourceManagerException if there is an error creating the instance in
    *     Bigtable.
    */
-  public synchronized void createInstance(Iterable<BigtableResourceManagerCluster> clusters) {
+  public synchronized void createInstance(Iterable<BigtableResourceManagerCluster> clusters)
+      throws BigtableResourceManagerException {
 
     // Check to see if instance already exists, and throw error if it does
     if (hasInstance) {
@@ -246,7 +247,8 @@ public class BigtableResourceManager implements ResourceManager {
    * @param columnFamilies A collection of column family names for the table.
    * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
    */
-  public synchronized void createTable(String tableId, Iterable<String> columnFamilies) {
+  public synchronized void createTable(String tableId, Iterable<String> columnFamilies)
+      throws BigtableResourceManagerException {
     createTable(tableId, columnFamilies, Duration.ofHours(1));
   }
 
@@ -268,7 +270,8 @@ public class BigtableResourceManager implements ResourceManager {
    * @throws BigtableResourceManagerException if there is an error creating the table in Bigtable.
    */
   public synchronized void createTable(
-      String tableId, Iterable<String> columnFamilies, Duration maxAge) {
+      String tableId, Iterable<String> columnFamilies, Duration maxAge)
+      throws BigtableResourceManagerException {
     // Check table ID
     checkValidTableId(tableId);
 
@@ -327,7 +330,7 @@ public class BigtableResourceManager implements ResourceManager {
    *     up, if the manager object has no instance, if the table does not exist or if there is an
    *     IOException when attempting to retrieve the bigtable data client.
    */
-  public void write(RowMutation tableRow) {
+  public void write(RowMutation tableRow) throws BigtableResourceManagerException {
     write(ImmutableList.of(tableRow));
   }
 
@@ -341,7 +344,8 @@ public class BigtableResourceManager implements ResourceManager {
    *     up, if the manager object has no instance, if the table does not exist or if there is an
    *     IOException when attempting to retrieve the bigtable data client.
    */
-  public synchronized void write(Iterable<RowMutation> tableRows) {
+  public synchronized void write(Iterable<RowMutation> tableRows)
+      throws BigtableResourceManagerException {
     checkHasInstance();
 
     // Exit early if there are no mutations
@@ -375,7 +379,8 @@ public class BigtableResourceManager implements ResourceManager {
    *     up, if the manager object has no instance, if the table does not exist or if there is an
    *     IOException when attempting to retrieve the bigtable data client.
    */
-  public synchronized ImmutableList<Row> readTable(String tableId) {
+  public synchronized ImmutableList<Row> readTable(String tableId)
+      throws BigtableResourceManagerException {
     return readTable(tableId, null);
   }
 
@@ -391,7 +396,8 @@ public class BigtableResourceManager implements ResourceManager {
    *     up, if the manager object has no instance, if the table does not exist or if there is an
    *     IOException when attempting to retrieve the bigtable data client.
    */
-  public synchronized ImmutableList<Row> readTable(String tableId, Long limit) {
+  public synchronized ImmutableList<Row> readTable(String tableId, Long limit)
+      throws BigtableResourceManagerException {
     checkHasInstance();
     checkHasTable(tableId);
 
@@ -434,7 +440,7 @@ public class BigtableResourceManager implements ResourceManager {
    *     in Bigtable.
    */
   @Override
-  public synchronized void cleanupAll() {
+  public synchronized void cleanupAll() throws BigtableResourceManagerException {
     LOG.info("Attempting to cleanup manager.");
 
     if (usingStaticInstance) {
