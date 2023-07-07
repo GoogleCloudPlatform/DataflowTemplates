@@ -279,7 +279,7 @@ public class ErrorConverters {
       // Only set the payload if it's populated on the message.
       if (message.getPayload() != null) {
         failedRow
-            .set("payloadString", new String(message.getPayload()))
+            .set("payloadString", new String(message.getPayload(), StandardCharsets.UTF_8))
             .set("payloadBytes", message.getPayload());
       }
 
