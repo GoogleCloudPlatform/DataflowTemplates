@@ -17,12 +17,12 @@ package com.google.cloud.teleport.it.gcp.spanner.utils;
 
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generatePadding;
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generateResourceId;
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
-import com.google.common.base.CharMatcher;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Pattern;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.CharMatcher;
 
 /** Utilities for {@link SpannerResourceManager} implementations. */
 public final class SpannerResourceManagerUtils {

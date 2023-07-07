@@ -21,7 +21,6 @@ import static com.google.cloud.teleport.it.splunk.SplunkResourceManagerUtils.spl
 
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
-import com.google.common.annotations.VisibleForTesting;
 import com.splunk.Job;
 import com.splunk.ResultsReader;
 import com.splunk.ResultsReaderXml;
@@ -33,17 +32,19 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.awaitility.Awaitility;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.images.builder.Transferable;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.utility.DockerImageName;
 
 /**
@@ -153,11 +154,11 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
         .withDefaultsFile(
             Transferable.of(
                 String.format(
-                    "splunk:\n"
-                        + "  hec:\n"
-                        + "    enable: true\n"
-                        + "    ssl: %b\n"
-                        + "    port: %s\n"
+                    "splunk:%n"
+                        + "  hec:%n"
+                        + "    enable: true%n"
+                        + "    ssl: %b%n"
+                        + "    port: %s%n"
                         + "    token: %s",
                     false, builder.hecPort, builder.hecToken)))
         .withPassword(builder.password);
@@ -219,7 +220,7 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
    * @return True, if the request was successful.
    */
   public synchronized boolean sendHttpEvent(SplunkEvent event) {
-    return sendHttpEvents(List.of(event));
+    return sendHttpEvents(Collections.singletonList(event));
   }
 
   /**
@@ -346,9 +347,7 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
     private int splunkdPort;
 
     private Builder(String testId) {
-      super(testId);
-      this.containerImageName = DEFAULT_SPLUNK_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_SPLUNK_CONTAINER_TAG;
+      super(testId, DEFAULT_SPLUNK_CONTAINER_NAME, DEFAULT_SPLUNK_CONTAINER_TAG);
       this.hecPort = -1;
       this.splunkdPort = -1;
     }

@@ -27,7 +27,8 @@
     <artifactId>it-splunk</artifactId>
 
     <properties>
-      <splunk.version>1.9.4</splunk.version>
+        <awaitility.version>4.2.0</awaitility.version>
+        <splunk.version>1.9.4</splunk.version>
     </properties>
 
     <dependencies>
@@ -51,11 +52,16 @@
             <artifactId>beam-sdks-java-io-splunk</artifactId>
             <version>${beam.version}</version>
         </dependency>
-      <dependency>
-        <groupId>com.google.cloud.teleport</groupId>
-        <artifactId>conditions</artifactId>
-        <version>${project.version}</version>
-      </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>conditions</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>${awaitility.version}</version>
+        </dependency>
     </dependencies>
 
     <profiles>

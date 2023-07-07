@@ -24,12 +24,8 @@ import com.google.bigtable.v2.Mutation;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
-import com.google.cloud.teleport.it.common.utils.MetricsConfiguration;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.io.Serializable;
@@ -45,6 +41,9 @@ import org.apache.beam.sdk.testing.TestPipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -76,7 +75,7 @@ public class BigTableIOLT extends IOLoadTestBase {
 
   @Before
   public void setup() throws IOException {
-    resourceManager = BigtableResourceManager.builder(testName, project).build();
+    resourceManager = BigtableResourceManager.builder(testName, PROJECT).build();
 
     String testConfig =
         TestProperties.getProperty("configuration", "small", TestProperties.Type.PROPERTY);
@@ -135,11 +134,11 @@ public class BigTableIOLT extends IOLoadTestBase {
     assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
     assertEquals(
         PipelineLauncher.JobState.DONE,
-        pipelineLauncher.getJobStatus(project, region, readInfo.jobId()));
+        pipelineLauncher.getJobStatus(PROJECT, REGION, readInfo.jobId()));
     double numRecords =
         pipelineLauncher.getMetric(
-            project,
-            region,
+            PROJECT,
+            REGION,
             readInfo.jobId(),
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
     assertEquals(configuration.getNumRows(), numRecords, 0.5);
@@ -149,7 +148,6 @@ public class BigTableIOLT extends IOLoadTestBase {
         MetricsConfiguration.builder()
             .setInputPCollection(writePCollection)
             .setOutputPCollection(readPCollection)
-            .setSeriesFilterFn(MetricsConfiguration.filterBeginEndHalfAveFn())
             .build();
     try {
       exportMetricsToBigQuery(writeInfo, getMetrics(writeInfo, metricsConfig));
@@ -163,7 +161,7 @@ public class BigTableIOLT extends IOLoadTestBase {
 
     BigtableIO.Write writeIO =
         BigtableIO.write()
-            .withProjectId(project)
+            .withProjectId(PROJECT)
             .withInstanceId(resourceManager.getInstanceId())
             .withTableId(tableId);
 
@@ -179,14 +177,14 @@ public class BigTableIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.getRunner())
             .build();
 
-    return pipelineLauncher.launch(project, region, options);
+    return pipelineLauncher.launch(PROJECT, REGION, options);
   }
 
   private PipelineLauncher.LaunchInfo testRead() throws IOException {
     BigtableIO.Read readIO =
         BigtableIO.read()
             .withoutValidation()
-            .withProjectId(project)
+            .withProjectId(PROJECT)
             .withInstanceId(resourceManager.getInstanceId())
             .withTableId(tableId);
 
@@ -201,7 +199,7 @@ public class BigTableIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.getRunner())
             .build();
 
-    return pipelineLauncher.launch(project, region, options);
+    return pipelineLauncher.launch(PROJECT, REGION, options);
   }
 
   /** Options for Bigquery IO load test. */

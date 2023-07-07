@@ -50,7 +50,7 @@ public class TestContainerResourceManagerTest {
   @Before
   public void setUp() {
     testManagerBuilder =
-        new TestContainerResourceManager.Builder<>(TEST_ID) {
+        new TestContainerResourceManager.Builder<TestContainerResourceManagerImpl>(TEST_ID) {
           @Override
           public TestContainerResourceManagerImpl build() {
             return new TestContainerResourceManagerImpl(container, this);
@@ -166,7 +166,8 @@ public class TestContainerResourceManagerTest {
 
   private static class TestContainerResourceManagerImpl
       extends TestContainerResourceManager<GenericContainer<?>> {
-    protected TestContainerResourceManagerImpl(GenericContainer<?> container, Builder builder) {
+    protected TestContainerResourceManagerImpl(
+        GenericContainer<?> container, Builder<TestContainerResourceManagerImpl> builder) {
       super(container, builder);
     }
   }

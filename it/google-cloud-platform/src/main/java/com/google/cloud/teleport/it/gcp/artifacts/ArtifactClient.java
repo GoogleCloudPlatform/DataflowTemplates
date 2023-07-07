@@ -115,5 +115,6 @@ public interface ArtifactClient extends ResourceManager {
   List<Artifact> listArtifacts(String prefix, Pattern regex);
 
   /** Deletes all the files located under test-class-name/run-id. */
+  @Override
   void cleanupAll();
 }

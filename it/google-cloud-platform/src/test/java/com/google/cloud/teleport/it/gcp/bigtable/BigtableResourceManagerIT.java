@@ -23,11 +23,11 @@ import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.GCPBaseIT;
 import com.google.cloud.teleport.it.gcp.GoogleCloudIntegrationTest;
-import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,7 +66,10 @@ public class BigtableResourceManagerIT extends GCPBaseIT {
 
     assertThat(fetchRecords).hasSize(2);
     assertThatBigtableRecords(fetchRecords, COLUMN_FAMILY)
-        .hasRecordsUnordered(List.of(Map.of("company", "Google"), Map.of("company", "Alphabet")));
+        .hasRecordsUnordered(
+            ImmutableList.of(
+                Collections.singletonMap("company", "Google"),
+                Collections.singletonMap("company", "Alphabet")));
   }
 
   @After

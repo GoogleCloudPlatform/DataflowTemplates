@@ -20,21 +20,22 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.splunk.Job;
-import com.splunk.Service;
 import com.splunk.ServiceArgs;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,19 +46,15 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.testcontainers.images.builder.Transferable;
-import org.testcontainers.shaded.org.awaitility.core.ConditionTimeoutException;
 
-/** Unit tests for {@link com.google.cloud.teleport.it.splunk.SplunkResourceManager}. */
+/** Unit tests for {@link SplunkResourceManager}. */
 @RunWith(JUnit4.class)
 public class SplunkResourceManagerTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
-  @Mock private SplunkClientFactory clientFactory;
-  @Mock private CloseableHttpClient httpClient;
-
   @Mock(answer = Answers.RETURNS_DEEP_STUBS)
-  private Service serviceClient;
+  private SplunkClientFactory clientFactory;
 
   @Mock private SplunkContainer container;
 
@@ -78,8 +75,6 @@ public class SplunkResourceManagerTest {
   public void setUp() {
     when(container.withDefaultsFile(any(Transferable.class))).thenReturn(container);
     when(container.withPassword(anyString())).thenReturn(container);
-    when(container.getMappedPort(DEFAULT_SPLUNK_HEC_INTERNAL_PORT))
-        .thenReturn(MAPPED_SPLUNK_HEC_INTERNAL_PORT);
     when(container.getMappedPort(DEFAULT_SPLUNKD_INTERNAL_PORT))
         .thenReturn(MAPPED_SPLUNKD_INTERNAL_PORT);
 
@@ -88,7 +83,7 @@ public class SplunkResourceManagerTest {
   }
 
   @Test
-  public void testCreateResourceManagerBuilderReturnsDefaultSplunkResourceManager() {
+  public void testCreateResourceManagerBuilderReturnsSplunkResourceManager() {
     assertThat(
             SplunkResourceManager.builder(TEST_ID)
                 .setHecPort(DEFAULT_SPLUNK_HEC_INTERNAL_PORT)
@@ -115,13 +110,23 @@ public class SplunkResourceManagerTest {
 
   @Test
   public void testGetHttpEndpointReturnsCorrectValue() {
-    assertThat(testManager.getHttpEndpoint())
+    when(container.getMappedPort(DEFAULT_SPLUNK_HEC_INTERNAL_PORT))
+        .thenReturn(MAPPED_SPLUNK_HEC_INTERNAL_PORT);
+    assertThat(
+            new SplunkResourceManager(
+                    clientFactory, container, SplunkResourceManager.builder(TEST_ID))
+                .getHttpEndpoint())
         .isEqualTo(String.format("%s://%s:%d", HEC_SCHEMA, HOST, MAPPED_SPLUNK_HEC_INTERNAL_PORT));
   }
 
   @Test
   public void testGetHecEndpointReturnsCorrectValue() {
-    assertThat(testManager.getHecEndpoint())
+    when(container.getMappedPort(DEFAULT_SPLUNK_HEC_INTERNAL_PORT))
+        .thenReturn(MAPPED_SPLUNK_HEC_INTERNAL_PORT);
+    assertThat(
+            new SplunkResourceManager(
+                    clientFactory, container, SplunkResourceManager.builder(TEST_ID))
+                .getHecEndpoint())
         .isEqualTo(
             String.format(
                 "%s://%s:%d/services/collector/event",
@@ -144,8 +149,8 @@ public class SplunkResourceManagerTest {
       throws IOException {
     SplunkEvent event = SplunkEvent.newBuilder().withEvent(EVENT).create();
 
-    when(clientFactory.getHttpClient()).thenReturn(httpClient);
-    doThrow(IOException.class).when(httpClient).execute(any(HttpPost.class));
+    CloseableHttpClient mockHttpClient = clientFactory.getHttpClient();
+    doThrow(IOException.class).when(mockHttpClient).execute(any(HttpPost.class));
 
     assertThrows(SplunkResourceManagerException.class, () -> testManager.sendHttpEvent(event));
   }
@@ -156,9 +161,7 @@ public class SplunkResourceManagerTest {
     SplunkEvent event = SplunkEvent.newBuilder().withEvent(EVENT).create();
 
     try (CloseableHttpResponse mockResponse =
-        mock(CloseableHttpResponse.class, Answers.RETURNS_DEEP_STUBS)) {
-      when(clientFactory.getHttpClient()).thenReturn(httpClient);
-      when(httpClient.execute(any(HttpPost.class))).thenReturn(mockResponse);
+        clientFactory.getHttpClient().execute(any(HttpPost.class))) {
       when(mockResponse.getStatusLine().getStatusCode()).thenReturn(404);
     }
 
@@ -170,22 +173,18 @@ public class SplunkResourceManagerTest {
     SplunkEvent event = SplunkEvent.newBuilder().withEvent(EVENT).create();
 
     try (CloseableHttpResponse mockResponse =
-        mock(CloseableHttpResponse.class, Answers.RETURNS_DEEP_STUBS)) {
-      when(clientFactory.getHttpClient()).thenReturn(httpClient);
-      when(httpClient.execute(any(HttpPost.class))).thenReturn(mockResponse);
+        clientFactory.getHttpClient().execute(any(HttpPost.class))) {
       when(mockResponse.getStatusLine().getStatusCode()).thenReturn(200);
     }
 
-    assertThat(testManager.sendHttpEvents(List.of(event, event))).isTrue();
-    verify(httpClient).execute(any(HttpPost.class));
+    assertThat(testManager.sendHttpEvents(ImmutableList.of(event, event))).isTrue();
+    verify(clientFactory.getHttpClient()).execute(any(HttpPost.class));
   }
 
   @Test
   public void testGetEventsShouldThrowErrorWhenServiceClientFailsToExecuteRequest() {
-    Job mockJob = mock(Job.class);
-
-    when(clientFactory.getServiceClient(any(ServiceArgs.class))).thenReturn(serviceClient);
-    when(serviceClient.getJobs().create(anyString())).thenReturn(mockJob);
+    Job mockJob =
+        clientFactory.getServiceClient(any(ServiceArgs.class)).getJobs().create(anyString());
     doThrow(ConditionTimeoutException.class).when(mockJob).isDone();
 
     assertThrows(ConditionTimeoutException.class, () -> testManager.getEvents(QUERY));
@@ -193,10 +192,9 @@ public class SplunkResourceManagerTest {
 
   @Test
   public void testGetEventsShouldThrowErrorWhenXmlReaderFailsToParseResponse() {
-    Job mockJob = mock(Job.class);
+    Job mockJob =
+        clientFactory.getServiceClient(any(ServiceArgs.class)).getJobs().create(anyString());
 
-    when(clientFactory.getServiceClient(any(ServiceArgs.class))).thenReturn(serviceClient);
-    when(serviceClient.getJobs().create(anyString())).thenReturn(mockJob);
     when(mockJob.isDone()).thenReturn(true);
     when(mockJob.getEvents())
         .thenReturn(
@@ -212,7 +210,8 @@ public class SplunkResourceManagerTest {
 
   @Test
   public void testGetEventsShouldReturnTrueIfSplunkDoesNotThrowAnyError() {
-    Job mockJob = mock(Job.class);
+    Job mockJob =
+        clientFactory.getServiceClient(any(ServiceArgs.class)).getJobs().create(anyString());
     String rawEvent =
         "<results preview='0'>"
             + "<meta><fieldOrder>"
@@ -227,7 +226,7 @@ public class SplunkResourceManagerTest {
             + "<field k='index'><value><text>myIndex</text></value></field>"
             + "<field k='source'><value><text>mySource</text></value></field>"
             + "</result></results>";
-    InputStream inputStream = new ByteArrayInputStream(rawEvent.getBytes());
+    InputStream inputStream = new ByteArrayInputStream(rawEvent.getBytes(StandardCharsets.UTF_8));
     SplunkEvent splunkEvent =
         SplunkEvent.newBuilder()
             .withEvent("myEvent")
@@ -238,11 +237,10 @@ public class SplunkResourceManagerTest {
             .withTime(123L)
             .create();
 
-    when(clientFactory.getServiceClient(any(ServiceArgs.class))).thenReturn(serviceClient);
-    when(serviceClient.getJobs().create(anyString())).thenReturn(mockJob);
     when(mockJob.isDone()).thenReturn(true);
     when(mockJob.getEvents()).thenReturn(inputStream);
 
-    assertThat(testManager.getEvents()).containsExactlyElementsIn(List.of(splunkEvent));
+    assertThat(testManager.getEvents())
+        .containsExactlyElementsIn(Collections.singletonList(splunkEvent));
   }
 }

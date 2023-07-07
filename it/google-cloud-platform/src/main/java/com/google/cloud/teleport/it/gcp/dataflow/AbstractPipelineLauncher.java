@@ -205,6 +205,7 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
         result.put(metricName, ((Number) metricUpdate.getScalar()).doubleValue());
       } else if (metricUpdate.getDistribution() != null) {
         // currently, reporting distribution metrics as 4 separate scalar metrics
+        @SuppressWarnings("rawtypes")
         ArrayMap distributionMap = (ArrayMap) metricUpdate.getDistribution();
         result.put(metricName + "_COUNT", ((Number) distributionMap.get("count")).doubleValue());
         result.put(metricName + "_MIN", ((Number) distributionMap.get("min")).doubleValue());

@@ -21,7 +21,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit tests for {@link com.google.cloud.teleport.it.kafka.KafkaResourceManagerUtils}. */
+/** Unit tests for {@link KafkaResourceManagerUtils}. */
 @RunWith(JUnit4.class)
 public class KafkaResourceManagerUtilsTest {
   @Test

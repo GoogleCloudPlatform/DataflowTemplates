@@ -89,7 +89,9 @@ public class PubSubToAvroIT extends TemplateTestBase {
                 .addParameter("outputDirectory", getGcsPath(testName))
                 .addParameter("windowDuration", "10s")
                 .addParameter("avroTempDirectory", getGcsPath("avro_tmp"))
-                .addParameter("outputFilenamePrefix", "topic-output-"));
+                .addParameter("outputFilenamePrefix", "topic-output-")
+                .addParameter("numShards", "2"));
+
     assertThatPipeline(info).isRunning();
 
     ImmutableSet<String> messages =

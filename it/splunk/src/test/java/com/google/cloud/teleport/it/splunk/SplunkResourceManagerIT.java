@@ -17,7 +17,7 @@ package com.google.cloud.teleport.it.splunk;
 
 import static com.google.cloud.teleport.it.splunk.matchers.SplunkAsserts.assertThatSplunkEvents;
 import static com.google.cloud.teleport.it.splunk.matchers.SplunkAsserts.splunkEventsToRecords;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+import static org.awaitility.Awaitility.await;
 
 import com.google.cloud.teleport.it.splunk.conditions.SplunkEventsCheck;
 import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
@@ -25,12 +25,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration tests for Splunk Resource Managers. */
 @Category(TestContainersIntegrationTest.class)

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.it.common.utils;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 
 /** IO Redirect Utility class. */
@@ -32,7 +33,8 @@ public final class IORedirectUtil {
   public static void redirectLinesLog(InputStream inputStream, Logger log) {
     new Thread(
             () -> {
-              try (InputStreamReader isr = new InputStreamReader(inputStream);
+              try (InputStreamReader isr =
+                      new InputStreamReader(inputStream, StandardCharsets.UTF_8);
                   BufferedReader bis = new BufferedReader(isr)) {
 
                 String line;

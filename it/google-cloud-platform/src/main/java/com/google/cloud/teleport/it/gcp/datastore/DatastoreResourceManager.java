@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.gcp.datastore;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auth.Credentials;
 import com.google.cloud.datastore.Datastore;
@@ -27,13 +27,13 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.Query.ResultType;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Strings;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 
 /** Client for managing Datastore resources. */
 public class DatastoreResourceManager implements ResourceManager {
@@ -125,7 +125,7 @@ public class DatastoreResourceManager implements ResourceManager {
    *     Datastore.
    */
   @Override
-  public void cleanupAll() {
+  public void cleanupAll() throws DatastoreResourceManagerException {
     try {
       datastore.delete(keys.toArray(new Key[0]));
     } catch (Exception e) {

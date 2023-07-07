@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +30,8 @@ import java.util.Map;
  */
 public class JsonTestUtil {
 
-  private static final TypeReference<Map<String, Object>> mapTypeRef = new TypeReference<>() {};
+  private static final TypeReference<Map<String, Object>> mapTypeRef =
+      new TypeReference<Map<String, Object>>() {};
 
   /**
    * Read JSON records to a list of Maps.
@@ -59,7 +61,7 @@ public class JsonTestUtil {
    * @return A list with all records.
    */
   public static List<Map<String, Object>> readRecords(String contents) throws IOException {
-    return readRecords(contents.getBytes());
+    return readRecords(contents.getBytes(StandardCharsets.UTF_8));
   }
 
   /**
@@ -80,6 +82,6 @@ public class JsonTestUtil {
    * @return A map with the records.
    */
   public static Map<String, Object> readRecord(String contents) throws IOException {
-    return readRecord(contents.getBytes());
+    return readRecord(contents.getBytes(StandardCharsets.UTF_8));
   }
 }

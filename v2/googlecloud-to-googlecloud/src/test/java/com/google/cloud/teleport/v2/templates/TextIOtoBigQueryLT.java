@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManagerUtils.toTableSpec;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
@@ -26,7 +25,6 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
@@ -34,9 +32,9 @@ import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
+import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
@@ -87,10 +85,12 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    Storage gcsClient = createStorageClient(CREDENTIALS);
-    artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    artifactClient =
+        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
+            .setCredentials(CREDENTIALS)
+            .build();
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(CREDENTIALS).build();
   }
 
   @After
@@ -153,7 +153,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
                 LaunchConfig.builder(testName, SPEC_PATH)
                     .addParameter("JSONPath", jsonPath)
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*")
-                    .addParameter("outputTable", toTableSpec(project, table))
+                    .addParameter("outputTable", toTableSpec(PROJECT, table))
                     .addParameter("javascriptTextTransformGcsPath", udfPath)
                     .addParameter("javascriptTextTransformFunctionName", "identity")
                     .addParameter(
@@ -161,7 +161,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));

@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.it.elasticsearch.ElasticsearchUtils.gene
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -79,7 +80,8 @@ public class ElasticsearchUtilsTest {
 
   @Test
   public void testCheckValidIndexNameThrowsErrorWhenNameIsTooLong() {
-    assertThrows(IllegalArgumentException.class, () -> checkValidIndexName("a".repeat(300)));
+    assertThrows(
+        IllegalArgumentException.class, () -> checkValidIndexName(StringUtils.repeat("a", 300)));
   }
 
   @Test

@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,8 +48,8 @@ public class CassandraResourceManagerIT {
   public void testResourceManagerE2E() {
 
     List<Map<String, Object>> records = new ArrayList<>();
-    records.add(Map.of("id", 1, "company", "Google"));
-    records.add(Map.of("id", 2, "company", "Alphabet"));
+    records.add(ImmutableMap.of("id", 1, "company", "Google"));
+    records.add(ImmutableMap.of("id", 2, "company", "Alphabet"));
 
     cassandraResourceManager.executeStatement(
         "CREATE TABLE dummy_insert ( id int PRIMARY KEY, company text )");
@@ -58,9 +59,7 @@ public class CassandraResourceManagerIT {
 
     Iterable<Row> fetchRecords = cassandraResourceManager.readTable("dummy_insert");
     assertThatCassandraRecords(fetchRecords).hasRows(2);
-    assertThatCassandraRecords(fetchRecords)
-        .hasRecordsUnordered(
-            List.of(Map.of("id", 1, "company", "Google"), Map.of("id", 2, "company", "Alphabet")));
+    assertThatCassandraRecords(fetchRecords).hasRecordsUnordered(records);
   }
 
   @After
