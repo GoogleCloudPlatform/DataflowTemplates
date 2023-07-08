@@ -33,7 +33,7 @@ import com.google.cloud.teleport.v2.options.MySQLToBigQueryOptions;
     description =
         "A pipeline that reads from MySQL and writes to a BigQuery table. JDBC connection"
             + " string, user name and password can be passed in directly as plaintext or encrypted"
-            + " using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified,"
+            + " using the Google Cloud KMS API. If the parameter KMSEncryptionKey is specified,"
             + " connectionURL, username, and password should be all in encrypted format.",
     optionsClass = MySQLToBigQueryOptions.class,
     flexContainerName = "mysql-to-bigquery",
