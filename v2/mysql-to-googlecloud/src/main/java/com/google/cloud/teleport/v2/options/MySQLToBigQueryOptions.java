@@ -15,9 +15,12 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.metadata.TemplateIgnoreParameter;
+
 /** Interface used by the JdbcToBigQuery pipeline to accept user input. */
 public interface MySQLToBigQueryOptions extends JdbcToBigQueryOptions {
 
+  @TemplateIgnoreParameter
   default String getDriverClassName() {
     return "com.mysql.jdbc.Driver";
   }

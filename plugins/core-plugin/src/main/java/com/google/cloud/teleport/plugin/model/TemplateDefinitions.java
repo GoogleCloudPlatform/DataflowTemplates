@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameter
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateCreationParameters;
+import com.google.cloud.teleport.metadata.TemplateIgnoreParameter;
 import com.google.cloud.teleport.metadata.util.MetadataUtils;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -134,6 +135,11 @@ public class TemplateDefinitions {
     for (Method method : methods) {
       method.setAccessible(true);
 
+      // Ignore the method if it contains @TemplateIgnoreParameter
+      if (method.getAnnotation(TemplateIgnoreParameter.class) != null) {
+        continue;
+      }
+
       classOrder.putIfAbsent(method.getDeclaringClass(), order++);
 
       Annotation parameterAnnotation = MetadataUtils.getParameterAnnotation(method);
@@ -184,11 +190,6 @@ public class TemplateDefinitions {
           continue;
         }
 
-        LOG.warn(
-            "Method {} (declared at {}) does not have an annotation",
-            methodName,
-            method.getDeclaringClass().getName());
-
         if (validateFlag && method.getAnnotation(Deprecated.class) == null) {
           throw new IllegalArgumentException(
               "Method "
@@ -196,7 +197,13 @@ public class TemplateDefinitions {
                   + "."
                   + methodName
                   + "() does not have a @TemplateParameter annotation (and not deprecated).");
+        } else {
+          LOG.warn(
+              "Method {} (declared at {}) does not have an annotation",
+              methodName,
+              method.getDeclaringClass().getName());
         }
+
         continue;
       }
 

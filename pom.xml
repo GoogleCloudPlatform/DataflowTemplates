@@ -60,6 +60,7 @@
     <hadoop.version>3.3.5</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <guava.version>32.0.1-jre</guava.version>
+    <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
     <log4j-2.version>2.17.2</log4j-2.version>
     <jettison.version>1.5.4</jettison.version>

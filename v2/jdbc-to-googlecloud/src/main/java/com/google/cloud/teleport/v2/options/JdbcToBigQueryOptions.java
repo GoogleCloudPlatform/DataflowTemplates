@@ -26,6 +26,7 @@ public interface JdbcToBigQueryOptions
       order = 1,
       optional = false,
       regexes = {"^.+$"},
+      groupName = "Source Parameters",
       description = "Cloud Storage paths for JDBC drivers",
       helpText = "Comma separate Cloud Storage paths for JDBC drivers.",
       example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
@@ -37,6 +38,7 @@ public interface JdbcToBigQueryOptions
       order = 2,
       optional = false,
       regexes = {"^.+$"},
+      groupName = "Source Parameters",
       description = "JDBC driver class name.",
       helpText = "JDBC driver class name to use.",
       example = "com.mysql.jdbc.Driver")
@@ -50,6 +52,7 @@ public interface JdbcToBigQueryOptions
       regexes = {
         "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
       },
+      groupName = "Source Parameters",
       description = "JDBC connection URL string.",
       helpText =
           "Url connection string to connect to the JDBC source. Connection string can be passed in"
@@ -63,6 +66,7 @@ public interface JdbcToBigQueryOptions
       order = 4,
       optional = true,
       regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
+      groupName = "Source Parameters",
       description = "JDBC connection property string.",
       helpText =
           "Properties string to use for the JDBC connection. Format of the string must be"
@@ -76,6 +80,7 @@ public interface JdbcToBigQueryOptions
       order = 5,
       optional = true,
       regexes = {"^.+$"},
+      groupName = "Source Parameters",
       description = "JDBC connection username.",
       helpText =
           "User name to be used for the JDBC connection. User name can be passed in as plaintext "
@@ -87,6 +92,7 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Password(
       order = 6,
       optional = true,
+      groupName = "Source Parameters",
       description = "JDBC connection password.",
       helpText =
           "Password to be used for the JDBC connection. Password can be passed in as plaintext "
@@ -99,6 +105,7 @@ public interface JdbcToBigQueryOptions
       order = 7,
       optional = true,
       regexes = {"^.+$"},
+      groupName = "Source Parameters",
       description = "JDBC source SQL query.",
       helpText = "Query to be executed on the source to extract the data.",
       example = "select * from sampledb.sample_table")
@@ -106,19 +113,21 @@ public interface JdbcToBigQueryOptions
 
   void setQuery(String query);
 
+  void setOutputTable(String value);
+
   @TemplateParameter.BigQueryTable(
       order = 8,
+      groupName = "Target Parameters",
       description = "BigQuery output table",
       helpText =
           "BigQuery table location to write the output to. The name should be in the format"
               + " <project>:<dataset>.<table_name>. The table's schema must match input objects.")
   String getOutputTable();
 
-  void setOutputTable(String value);
-
   @TemplateParameter.GcsWriteFolder(
       order = 9,
       optional = false,
+      groupName = "Target Parameters",
       description = "Temporary directory for BigQuery loading process",
       helpText = "Temporary directory for BigQuery loading process",
       example = "gs://your-bucket/your-files/temp_dir")
@@ -129,6 +138,7 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.KmsEncryptionKey(
       order = 10,
       optional = true,
+      groupName = "Source Parameters",
       description = "Google Cloud KMS key",
       helpText =
           "If this parameter is provided, password, user name and connection string should all be"
@@ -142,6 +152,7 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Boolean(
       order = 11,
       optional = true,
+      groupName = "Source Parameters",
       description = "Whether to use column alias to map the rows.",
       helpText =
           "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the"
@@ -154,6 +165,7 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Boolean(
       order = 12,
       optional = true,
+      groupName = "Target Parameters",
       description = "Whether to truncate data before writing",
       helpText =
           "If enabled (set to true) the pipeline will truncate before loading data into BigQuery."
@@ -166,6 +178,7 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Text(
       order = 13,
       optional = true,
+      groupName = "Source Parameters",
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
           "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported.")
@@ -176,6 +189,7 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Text(
       order = 14,
       optional = true,
+      groupName = "Source Parameters",
       description = "Name of the table in the external database.",
       helpText =
           "Table to read from using partitions. This parameter also accepts a subquery in parentheses.",
@@ -187,6 +201,7 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Integer(
       order = 15,
       optional = true,
+      groupName = "Source Parameters",
       description = "The number of partitions.",
       helpText =
           "The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.")
@@ -197,6 +212,7 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Long(
       order = 16,
       optional = true,
+      groupName = "Source Parameters",
       description = "Lower bound of partition column.",
       helpText =
           "Lower bound used in the partition scheme. If not provided, it is automatically inferred by Beam (for the supported types)")
@@ -207,6 +223,7 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Long(
       order = 17,
       optional = true,
+      groupName = "Source Parameters",
       description = "Upper bound of partition column",
       helpText =
           "Upper bound used in partition scheme. If not provided, it is automatically inferred by Beam (for the supported types)")

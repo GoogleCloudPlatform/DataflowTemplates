@@ -27,7 +27,6 @@
 
     <properties>
         <bigtable.version>2.7.0</bigtable.version>
-        <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     </properties>
 
     <dependencies>
@@ -55,7 +54,18 @@
                     <groupId>log4j</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.apache.htrace</groupId>
+                    <artifactId>htrace-core4</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+        <!--  Hbase test dependencies  -->
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-shaded-testing-util</artifactId>
+            <version>${hbase.client.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.google.truth</groupId>
