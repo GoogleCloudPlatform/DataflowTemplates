@@ -517,5 +517,6 @@
     <module>v2</module>
     <module>structured-logging</module>
     <module>plaintext-logging</module>
+    <module>python</module>
   </modules>
 </project>
