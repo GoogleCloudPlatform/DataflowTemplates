@@ -51,6 +51,15 @@
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <resource>
+        <directory>src/main/python</directory>
+      </resource>
+    </resources>
+
     <plugins>
       <plugin>
         <groupId>com.google.cloud.tools</groupId>
