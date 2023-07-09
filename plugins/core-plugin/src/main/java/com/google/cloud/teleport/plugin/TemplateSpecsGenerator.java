@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.plugin;
 
 import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.ImageSpecMetadata;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
@@ -125,29 +126,47 @@ public class TemplateSpecsGenerator {
     LOG.info("Saving command spec " + file.getAbsolutePath());
 
     try (FileWriter writer = new FileWriter(file)) {
-      writer.write(
-          "{\n"
-              + "  \"mainClass\": \""
-              + definition.getTemplateClass().getName()
-              + "\",\n"
-              + "  \"classPath\": \"/template/"
-              + templateAnnotation.flexContainerName()
-              + "/*:/template/"
-              + templateAnnotation.flexContainerName()
-              + "/libs/conscrypt-openjdk-uber-*.jar:/template/"
-              + templateAnnotation.flexContainerName()
-              + "/libs/*:/template/"
-              + templateAnnotation.flexContainerName()
-              + "/classes:/template/"
-              + templateAnnotation.flexContainerName()
-              + "/resources\",\n"
-              + "  \"defaultParameterValues\": {\n"
-              + "    \"labels\": \"{\\\"goog-dataflow-provided-template-type\\\":\\\"flex\\\","
-              + " \\\"goog-dataflow-provided-template-name\\\":\\\""
-              + templateAnnotation.flexContainerName().toLowerCase()
-              + "\\\"}\"\n"
-              + "  }\n"
-              + "}\n");
+
+      String containerName = templateAnnotation.flexContainerName();
+
+      if (definition.getTemplateAnnotation().type() == TemplateType.JAVA) {
+        writer.write(
+            "{\n"
+                + "  \"mainClass\": \""
+                + definition.getTemplateClass().getName()
+                + "\",\n"
+                + "  \"classPath\": \"/template/"
+                + containerName
+                + "/*:/template/"
+                + containerName
+                + "/libs/conscrypt-openjdk-uber-*.jar:/template/"
+                + containerName
+                + "/libs/*:/template/"
+                + containerName
+                + "/classes:/template/"
+                + containerName
+                + "/resources\",\n"
+                + "  \"defaultParameterValues\": {\n"
+                + "    \"labels\": \"{\\\"goog-dataflow-provided-template-type\\\":\\\"flex\\\","
+                + " \\\"goog-dataflow-provided-template-name\\\":\\\""
+                + containerName.toLowerCase()
+                + "\\\"}\"\n"
+                + "  }\n"
+                + "}\n");
+      } else {
+        writer.write(
+            "{\n"
+                + "  \"pyFile\": \"/template/"
+                + containerName
+                + "/main.py\",\n"
+                + "  \"defaultParameterValues\": {\n"
+                + "    \"labels\": \"{\\\"goog-dataflow-provided-template-type\\\":\\\"flex\\\","
+                + " \\\"goog-dataflow-provided-template-name\\\":\\\""
+                + containerName.toLowerCase()
+                + "\\\"}\"\n"
+                + "  }\n"
+                + "}\n");
+      }
     } catch (IOException e) {
       throw new RuntimeException("Error writing command spec", e);
     }

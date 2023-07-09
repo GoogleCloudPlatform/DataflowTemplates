@@ -23,6 +23,7 @@ import static org.twdata.maven.mojoexecutor.MojoExecutor.executionEnvironment;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.goal;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.plugin;
 
+import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
@@ -99,6 +100,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       required = false)
   protected String baseContainerImage;
 
+  @Parameter(
+      name = "basePythonContainerImage",
+      defaultValue = "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest",
+      required = false)
+  protected String basePythonContainerImage;
+
   public TemplatesStageMojo() {}
 
   public TemplatesStageMojo(
@@ -116,7 +123,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String region,
       String artifactRegion,
       String gcpTempLocation,
-      String baseContainerImage) {
+      String baseContainerImage,
+      String basePythonContainerImage) {
     this.project = project;
     this.session = session;
     this.outputDirectory = outputDirectory;
@@ -132,6 +140,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     this.artifactRegion = artifactRegion;
     this.gcpTempLocation = gcpTempLocation;
     this.baseContainerImage = baseContainerImage;
+    this.basePythonContainerImage = basePythonContainerImage;
   }
 
   public void execute() throws MojoExecutionException {
@@ -171,10 +180,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
         LOG.info("Staging template {}...", currentTemplateName);
 
-        if (definition.isClassic()) {
-          stageClassicTemplate(definition, imageSpec, pluginManager);
-        } else {
+        if (definition.isFlex()) {
           stageFlexTemplate(definition, imageSpec, pluginManager);
+        } else {
+          stageClassicTemplate(definition, imageSpec, pluginManager);
         }
       }
 
@@ -351,22 +360,41 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String appRoot = "/template/" + containerName;
     String commandSpec = appRoot + "/resources/" + commandSpecFile.getName();
 
-    executeMojo(
-        plugin("com.google.cloud.tools", "jib-maven-plugin"),
-        goal("build"),
-        configuration(
-            // Base image to use
-            element("from", element("image", baseContainerImage)),
-            // Target image to stage
-            element("to", element("image", imagePath)),
-            element(
-                "container",
-                element("appRoot", appRoot),
-                // Keep the original entrypoint
-                element("entrypoint", "INHERIT"),
-                // Point to the command spec
-                element("environment", element("DATAFLOW_JAVA_COMMAND_SPEC", commandSpec)))),
-        executionEnvironment(project, session, pluginManager));
+    if (definition.getTemplateAnnotation().type() == TemplateType.JAVA) {
+      executeMojo(
+          plugin("com.google.cloud.tools", "jib-maven-plugin"),
+          goal("build"),
+          configuration(
+              // Base image to use
+              element("from", element("image", baseContainerImage)),
+              // Target image to stage
+              element("to", element("image", imagePath)),
+              element(
+                  "container",
+                  element("appRoot", appRoot),
+                  // Keep the original entrypoint
+                  element("entrypoint", "INHERIT"),
+                  // Point to the command spec
+                  element("environment", element("DATAFLOW_JAVA_COMMAND_SPEC", commandSpec)))),
+          executionEnvironment(project, session, pluginManager));
+    } else {
+      executeMojo(
+          plugin("com.google.cloud.tools", "jib-maven-plugin", "2.6.0"),
+          goal("build"),
+          configuration(
+              // Base image to use
+              element("from", element("image", basePythonContainerImage)),
+              // Target image to stage
+              element("to", element("image", imagePath)),
+              element(
+                  "container",
+                  element("appRoot", appRoot),
+                  // Keep the original entrypoint
+                  element("entrypoint", "INHERIT"),
+                  // Point to the command spec
+                  element("environment", element("DATAFLOW_PYTHON_COMMAND_SPEC", commandSpec)))),
+          executionEnvironment(project, session, pluginManager));
+    }
 
     String templatePath =
         "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/flex/" + currentTemplateName;
@@ -381,7 +409,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           imagePath,
           "--project",
           projectId,
-          "--sdk-language=JAVA",
+          "--sdk-language",
+          definition.getTemplateAnnotation().type().name(),
           "--metadata-file",
           outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
           "--additional-user-labels",
