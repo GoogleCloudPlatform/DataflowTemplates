@@ -61,7 +61,7 @@ public @interface Template {
   Class<?> placeholderClass() default void.class;
 
   /** The interface that holds options/parameters to be passed. */
-  Class<?> optionsClass();
+  Class<?> optionsClass() default void.class;
 
   /** An array that specifies the orders. */
   Class<?>[] optionsOrder() default void.class;
@@ -71,4 +71,13 @@ public @interface Template {
 
   /** Contact information for the Template. */
   String contactInformation() default "";
+
+  /** Language in which the template is defined. */
+  TemplateType type() default TemplateType.JAVA;
+
+  /** Languages that are supported by templates. */
+  enum TemplateType {
+    JAVA,
+    PYTHON
+  }
 }
