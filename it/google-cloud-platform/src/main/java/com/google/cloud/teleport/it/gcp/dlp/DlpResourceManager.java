@@ -46,7 +46,7 @@ public class DlpResourceManager implements ResourceManager {
     this.credentialsProvider = credentialsProvider;
   }
 
-  private static final List<String> MANAGED_TEMPLATES = new ArrayList<>();
+  private final List<String> createdTemplates = new ArrayList<>();
 
   /**
    * Retrieves a DlpServiceClient with the configured settings.
@@ -75,7 +75,7 @@ public class DlpResourceManager implements ResourceManager {
       DeidentifyTemplate deidentifyTemplate =
           client.createDeidentifyTemplate(ProjectName.of(this.project), template);
 
-      MANAGED_TEMPLATES.add(deidentifyTemplate.getName());
+      createdTemplates.add(deidentifyTemplate.getName());
 
       return deidentifyTemplate;
     }
@@ -95,14 +95,14 @@ public class DlpResourceManager implements ResourceManager {
 
   @Override
   public void cleanupAll() {
-    for (String templateName : MANAGED_TEMPLATES) {
+    for (String templateName : createdTemplates) {
       try {
         removeDeidentifyTemplate(templateName);
       } catch (Exception e) {
         LOG.error("Error deleting managed template: {}", templateName, e);
       }
     }
-    MANAGED_TEMPLATES.clear();
+    createdTemplates.clear();
   }
 
   /**
@@ -118,7 +118,7 @@ public class DlpResourceManager implements ResourceManager {
   /** A builder class for creating instances of {@link DlpResourceManager}. */
   public static class Builder {
 
-    private String project;
+    private final String project;
     private CredentialsProvider credentialsProvider;
 
     /**
