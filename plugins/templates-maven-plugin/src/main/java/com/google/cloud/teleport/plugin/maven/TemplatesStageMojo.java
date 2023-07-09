@@ -55,8 +55,8 @@ import org.twdata.maven.mojoexecutor.MojoExecutor.Element;
  * Goal which stages the Templates into Cloud Storage / Artifact Registry.
  *
  * <p>The process is different for Classic Templates and Flex Templates, please check {@link
- * #stageClassicTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)} and
- * {@link #stageFlexTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)}, respectively.
+ * #stageClassicTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)} and {@link
+ * #stageFlexTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)}, respectively.
  */
 @Mojo(
     name = "stage",
@@ -106,8 +106,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       required = false)
   protected String basePythonContainerImage;
 
-  public TemplatesStageMojo() {
-  }
+  public TemplatesStageMojo() {}
 
   public TemplatesStageMojo(
       MavenProject project,
@@ -198,10 +197,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   }
 
   /**
-   * Stages a template based on its specific type. See
-   * {@link #stageClassicTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)} and
-   * {@link #stageFlexTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)} for more
-   * details.
+   * Stages a template based on its specific type. See {@link
+   * #stageClassicTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)} and {@link
+   * #stageFlexTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)} for more details.
    */
   public String stageTemplate(
       TemplateDefinitions definition, ImageSpec imageSpec, BuildPluginManager pluginManager)
@@ -274,8 +272,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             + imageSpec.getMetadata().getMainClass()
             + " with parameters: "
             + arguments.stream()
-            .map(element -> element.toDom().getValue())
-            .collect(Collectors.toList()));
+                .map(element -> element.toDom().getValue())
+                .collect(Collectors.toList()));
 
     executeMojo(
         plugin("org.codehaus.mojo", "exec-maven-plugin"),
@@ -288,8 +286,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         executionEnvironment(project, session, pluginManager));
 
     String[] copyCmd =
-        new String[]{
-            "gcloud", "storage", "cp", metadataFile.getAbsolutePath(), templateMetadataPath
+        new String[] {
+          "gcloud", "storage", "cp", metadataFile.getAbsolutePath(), templateMetadataPath
         };
     LOG.info("Running: {}", String.join(" ", copyCmd));
 
@@ -377,12 +375,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           templatePath);
     } else if (definition.getTemplateAnnotation().type() == TemplateType.PYTHON) {
       stageFlexPythonTemplate(
-          definition,
-          currentTemplateName,
-          imagePath,
-          metadataFile,
-          containerName,
-          templatePath);
+          definition, currentTemplateName, imagePath, metadataFile, containerName, templatePath);
     } else {
       throw new IllegalArgumentException(
           "Type not known: " + definition.getTemplateAnnotation().type());
@@ -420,26 +413,26 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         executionEnvironment(project, session, pluginManager));
 
     String[] flexTemplateBuildCmd =
-        new String[]{
-            "gcloud",
-            "dataflow",
-            "flex-template",
-            "build",
-            templatePath,
-            "--image",
-            imagePath,
-            "--project",
-            projectId,
-            "--sdk-language",
-            definition.getTemplateAnnotation().type().name(),
-            "--metadata-file",
-            outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
-            "--additional-user-labels",
-            "goog-dataflow-provided-template-name="
-                + currentTemplateName.toLowerCase()
-                + ",goog-dataflow-provided-template-version="
-                + TemplateDefinitionsParser.parseVersion(stagePrefix)
-                + ",goog-dataflow-provided-template-type=flex"
+        new String[] {
+          "gcloud",
+          "dataflow",
+          "flex-template",
+          "build",
+          templatePath,
+          "--image",
+          imagePath,
+          "--project",
+          projectId,
+          "--sdk-language",
+          definition.getTemplateAnnotation().type().name(),
+          "--metadata-file",
+          outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
+          "--additional-user-labels",
+          "goog-dataflow-provided-template-name="
+              + currentTemplateName.toLowerCase()
+              + ",goog-dataflow-provided-template-version="
+              + TemplateDefinitionsParser.parseVersion(stagePrefix)
+              + ",goog-dataflow-provided-template-type=flex"
         };
     LOG.info("Running: {}", String.join(" ", flexTemplateBuildCmd));
 
@@ -464,34 +457,34 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       throws IOException, InterruptedException {
 
     String[] flexTemplateBuildCmd =
-        new String[]{
-            "gcloud",
-            "dataflow",
-            "flex-template",
-            "build",
-            templatePath,
-            "--image-gcr-path",
-            imagePath,
-            "--project",
-            projectId,
-            "--flex-template-base-image",
-            basePythonContainerImage,
-            "--sdk-language",
-            definition.getTemplateAnnotation().type().name(),
-            "--metadata-file",
-            outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
-            "--py-path",
-            outputClassesDirectory.getAbsolutePath(),
-            "--env",
-            "FLEX_TEMPLATE_PYTHON_PY_FILE=" + containerName + "/main.py",
-            "--env",
-            "FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=" + containerName + "/requirements.txt",
-            "--additional-user-labels",
-            "goog-dataflow-provided-template-name="
-                + currentTemplateName.toLowerCase()
-                + ",goog-dataflow-provided-template-version="
-                + TemplateDefinitionsParser.parseVersion(stagePrefix)
-                + ",goog-dataflow-provided-template-type=flex"
+        new String[] {
+          "gcloud",
+          "dataflow",
+          "flex-template",
+          "build",
+          templatePath,
+          "--image-gcr-path",
+          imagePath,
+          "--project",
+          projectId,
+          "--flex-template-base-image",
+          basePythonContainerImage,
+          "--sdk-language",
+          definition.getTemplateAnnotation().type().name(),
+          "--metadata-file",
+          outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
+          "--py-path",
+          outputClassesDirectory.getAbsolutePath(),
+          "--env",
+          "FLEX_TEMPLATE_PYTHON_PY_FILE=" + containerName + "/main.py",
+          "--env",
+          "FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=" + containerName + "/requirements.txt",
+          "--additional-user-labels",
+          "goog-dataflow-provided-template-name="
+              + currentTemplateName.toLowerCase()
+              + ",goog-dataflow-provided-template-version="
+              + TemplateDefinitionsParser.parseVersion(stagePrefix)
+              + ",goog-dataflow-provided-template-type=flex"
         };
     LOG.info("Running: {}", String.join(" ", flexTemplateBuildCmd));
 
