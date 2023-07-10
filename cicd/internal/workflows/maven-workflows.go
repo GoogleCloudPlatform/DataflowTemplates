@@ -247,7 +247,7 @@ func RunForChangedModules(cmd string, args ...string) error {
 	if has_it && !has_common {
 		modules = append(modules, "v2/common")
 	}
-	if has_v2 && !has_it {
+	if (has_v2 || has_common) && !has_it {
 		modules = append(modules, "it")
 	}
 
