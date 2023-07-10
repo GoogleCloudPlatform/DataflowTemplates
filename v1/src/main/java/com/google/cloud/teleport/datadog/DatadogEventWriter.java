@@ -521,8 +521,6 @@ public abstract class DatadogEventWriter
      * @return {@link Builder}
      */
     public Builder withMaxBufferSize(Long maxBufferSize) {
-      checkArgument(
-          maxBufferSize != null, "withMaxBufferSize(maxBufferSize) called with null input.");
       return setMaxBufferSize(maxBufferSize);
     }
 
