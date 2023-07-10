@@ -155,14 +155,8 @@ public final class BigtableChangeStreamsToPubSub {
     validateOptions(options);
     try {
       validateSchema(options);
-
     } catch (Exception e) {
-
-    }
-    if (!validateSchema(options)) {
-      final String errorMessage = "Invalid schema format:";
-      LOG.info(errorMessage);
-      throw new IllegalArgumentException(errorMessage);
+      throw new IllegalArgumentException(e);
     }
 
     String bigtableProject = getBigtableProjectId(options);
@@ -364,7 +358,7 @@ public final class BigtableChangeStreamsToPubSub {
       if (topic.getSchemaSettings().getSchema().isEmpty()) {
         return true;
       } else {
-        LOG.error("There is Schema associated with the topic");
+        LOG.info("There is Schema associated with the topic");
         DatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
         DataFileReader<GenericRecord> dataFileReader =
             new DataFileReader<>(new File("changelogentry.avsc"), datumReader);
@@ -381,7 +375,7 @@ public final class BigtableChangeStreamsToPubSub {
         }
       }
     } catch (Exception e) {
-      return e;
+      throw  e;
     }
     return true;
   }
