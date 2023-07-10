@@ -83,6 +83,14 @@ def run(argv=None, save_main_session=True):
   """Main entry point; defines and runs the wordcount pipeline."""
   parser = argparse.ArgumentParser()
   parser.add_argument(
+      '--input_subscription',
+      dest='input_subscription',
+      help='Subscription to read input.')
+  parser.add_argument(
+      '--output_topic',
+      dest='output_topic',
+      help='Topic to read output tokens.')
+  parser.add_argument(
       '--max_response_tokens',
       dest='max_response_tokens',
       default=256,
@@ -92,14 +100,6 @@ def run(argv=None, save_main_session=True):
       dest='model_name',
       default='google/flan-t5-large',
       help='Model name to use.')
-  parser.add_argument(
-      '--input_subscription',
-      dest='input_subscription',
-      help='Subscription to read input.')
-  parser.add_argument(
-      '--output_topic',
-      dest='output_topic',
-      help='Topic to read output tokens.')
   parser.add_argument(
       '--temp_location',
       dest='temp_location',
