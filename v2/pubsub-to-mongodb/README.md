@@ -60,7 +60,7 @@ mvn clean package -PtemplatesStage  \
 * Create spec file in Cloud Storage under the path ${TEMPLATE_IMAGE_SPEC} describing container image location and metadata.
 ```json
 {
-	"image": "gcr.io/gcp-pov/pubsub-to-mongodb",
+	"image": "gcr.io/project-id/pubsub-to-mongodb",
 	"metadata": {
 		"name": "PubSub To MongoDB",
 		"description": "A pipeline reads from pubsub and writes to mongodb.",
