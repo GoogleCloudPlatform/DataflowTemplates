@@ -99,7 +99,7 @@ public class JdbcToBigQueryLT extends TemplateLoadTestBase {
   public void setup() {
     jdbcResourceManager = PostgresResourceManager.builder(testName).build();
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(CREDENTIALS).build();
   }
 
   @After
@@ -158,12 +158,12 @@ public class JdbcToBigQueryLT extends TemplateLoadTestBase {
                     .addParameter("username", jdbcResourceManager.getUsername())
                     .addParameter("password", jdbcResourceManager.getPassword())
                     .addParameter("connectionURL", jdbcResourceManager.getUri())
-                    .addParameter("outputTable", toTableSpec(project, table))
+                    .addParameter("outputTable", toTableSpec(PROJECT, table))
                     .addParameter("bigQueryLoadingTemporaryDirectory", getTempDirectory()))
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
 

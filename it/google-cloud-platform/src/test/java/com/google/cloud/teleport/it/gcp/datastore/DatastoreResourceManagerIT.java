@@ -20,7 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.teleport.it.common.TestProperties;
 import java.util.List;
-import java.util.Map;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 
 /** Integration tests for {@link DatastoreResourceManager}. */
@@ -36,7 +36,7 @@ public class DatastoreResourceManagerIT {
     List<Entity> entities =
         resourceManager.insert(
             "person",
-            Map.of(
+            ImmutableMap.of(
                 1L,
                 Entity.newBuilder().set("name", "John Doe").build(),
                 2L,
@@ -56,7 +56,7 @@ public class DatastoreResourceManagerIT {
 
     List<Entity> entities =
         resourceManager.insert(
-            "person", Map.of(1L, Entity.newBuilder().set("name", "John Doe").build()));
+            "person", ImmutableMap.of(1L, Entity.newBuilder().set("name", "John Doe").build()));
 
     assertThat(entities).hasSize(1);
     List<Entity> queryResults = resourceManager.query("SELECT * from person");
@@ -77,7 +77,7 @@ public class DatastoreResourceManagerIT {
             .credentials(TestProperties.buildCredentialsFromEnv())
             .build();
     resourceManager.insert(
-        "person", Map.of(1L, Entity.newBuilder().set("name", "John Doe").build()));
+        "person", ImmutableMap.of(1L, Entity.newBuilder().set("name", "John Doe").build()));
 
     resourceManager.cleanupAll();
 

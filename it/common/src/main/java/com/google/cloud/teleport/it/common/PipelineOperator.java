@@ -15,16 +15,16 @@
  */
 package com.google.cloud.teleport.it.common;
 
-import static com.google.common.base.Preconditions.checkState;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.it.common.PipelineLauncher.JobState;
-import com.google.common.base.Strings;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.function.Supplier;
 import org.apache.beam.sdk.function.ThrowingConsumer;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +57,7 @@ public final class PipelineOperator {
    * @return the result, which will be {@link Result#LAUNCH_FINISHED}, {@link Result#LAUNCH_FAILED}
    *     or {@link Result#TIMEOUT}
    */
+  @SuppressWarnings("rawtypes")
   public Result waitUntilDone(Config config) {
     return finishOrTimeout(
         config,

@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package for managing MongoDB resources within integration tests. */
+/** Package for Splunk Truth matchers / subjects to have reusable assertions. */
 package com.google.cloud.teleport.it.splunk.matchers;

@@ -24,6 +24,7 @@ import com.google.cloud.teleport.it.truthmatchers.RecordsSubject;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 
 public class ArtifactAsserts {
 
@@ -46,7 +47,7 @@ public class ArtifactAsserts {
    * @return Truth Subject to chain assertions.
    */
   public static ArtifactsSubject assertThatArtifact(@Nullable Artifact artifact) {
-    return assertAbout(ArtifactsSubject.records()).that(List.of(artifact));
+    return assertAbout(ArtifactsSubject.records()).that(ImmutableList.of(artifact));
   }
 
   /**

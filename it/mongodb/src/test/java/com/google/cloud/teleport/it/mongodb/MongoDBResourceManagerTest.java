@@ -27,9 +27,8 @@ import static org.mockito.Mockito.when;
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.MongoIterable;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.bson.Document;
 import org.junit.Before;
 import org.junit.Rule;
@@ -41,7 +40,6 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 /** Unit tests for {@link MongoDBResourceManager}. */
 @RunWith(JUnit4.class)
@@ -50,15 +48,8 @@ public class MongoDBResourceManagerTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock(answer = Answers.RETURNS_DEEP_STUBS)
-  private MongoIterable<String> collectionIterable;
+  private MongoClient mongoClient;
 
-  @Mock private MongoClient mongoClient;
-  @Mock private MongoDatabase database;
-
-  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
-  private MongoCollection<Document> collection;
-
-  @Mock private MongoCursor<String> collectionNames;
   @Mock private MongoDBContainer container;
 
   private static final String TEST_ID = "test-id";
@@ -72,15 +63,12 @@ public class MongoDBResourceManagerTest {
 
   @Before
   public void setUp() {
-    when(container.getHost()).thenReturn(HOST);
-    when(container.getMappedPort(MONGO_DB_PORT)).thenReturn(MAPPED_PORT);
-
     testManager =
         new MongoDBResourceManager(mongoClient, container, MongoDBResourceManager.builder(TEST_ID));
   }
 
   @Test
-  public void testCreateResourceManagerBuilderReturnsDefaultMongoDBResourceManager() {
+  public void testCreateResourceManagerBuilderReturnsMongoDBResourceManager() {
     assertThat(
             MongoDBResourceManager.builder(TEST_ID)
                 .useStaticContainer()
@@ -92,12 +80,21 @@ public class MongoDBResourceManagerTest {
 
   @Test
   public void testGetUriShouldReturnCorrectValue() {
-    assertThat(testManager.getUri()).matches("mongodb://" + HOST + ":" + MAPPED_PORT);
+    when(container.getMappedPort(MONGO_DB_PORT)).thenReturn(MAPPED_PORT);
+    assertThat(
+            new MongoDBResourceManager(
+                    mongoClient, container, MongoDBResourceManager.builder(TEST_ID))
+                .getUri())
+        .matches("mongodb://" + HOST + ":" + MAPPED_PORT);
   }
 
   @Test
   public void testGetDatabaseNameShouldReturnCorrectValue() {
-    assertThat(testManager.getDatabaseName()).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
+    assertThat(
+            new MongoDBResourceManager(
+                    mongoClient, container, MongoDBResourceManager.builder(TEST_ID))
+                .getDatabaseName())
+        .matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
@@ -116,8 +113,7 @@ public class MongoDBResourceManagerTest {
 
   @Test
   public void testCreateCollectionShouldThrowErrorIfDatabaseFailsToListCollectionNames() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(null);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames()).thenReturn(null);
 
     assertThrows(
         MongoDBResourceManagerException.class, () -> testManager.createCollection(COLLECTION_NAME));
@@ -125,9 +121,8 @@ public class MongoDBResourceManagerTest {
 
   @Test
   public void testCreateCollectionShouldThrowErrorWhenMongoDBFailsToCreateCollection() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(collectionIterable);
-    doThrow(IllegalArgumentException.class).when(database).createCollection(anyString());
+    MongoDatabase mockDatabase = mongoClient.getDatabase(anyString());
+    doThrow(IllegalArgumentException.class).when(mockDatabase).createCollection(anyString());
 
     assertThrows(
         MongoDBResourceManagerException.class, () -> testManager.createCollection(COLLECTION_NAME));
@@ -135,64 +130,50 @@ public class MongoDBResourceManagerTest {
 
   @Test
   public void testCreateCollectionShouldReturnTrueIfMongoDBDoesNotThrowAnyError() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(collectionIterable);
-
     assertThat(testManager.createCollection(COLLECTION_NAME)).isEqualTo(true);
-    verify(database).createCollection(anyString());
+    verify(mongoClient.getDatabase(anyString())).createCollection(anyString());
   }
 
   @Test
   public void testCreateCollectionShouldReturnFalseIfCollectionAlreadyExists() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(collectionIterable);
-    when(collectionIterable.iterator()).thenReturn(collectionNames);
-    when(collectionNames.hasNext()).thenReturn(true, false);
-    when(collectionNames.next()).thenReturn(COLLECTION_NAME);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().hasNext())
+        .thenReturn(true, false);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().next())
+        .thenReturn(COLLECTION_NAME);
 
     assertThat(testManager.createCollection(COLLECTION_NAME)).isEqualTo(false);
-    verify(database, never()).getCollection(anyString());
+    verify(mongoClient.getDatabase(anyString()), never()).getCollection(anyString());
   }
 
   @Test
   public void testInsertDocumentsShouldCreateCollectionIfOneDoesNotExist() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(collectionIterable);
-    when(database.getCollection(anyString())).thenReturn(collection);
-
     assertThat(testManager.insertDocument(COLLECTION_NAME, new Document())).isEqualTo(true);
 
-    verify(database).getCollection(anyString());
-    verify(database).listCollectionNames();
-    verify(collection).insertMany(any());
+    verify(mongoClient.getDatabase(anyString())).getCollection(anyString());
+    verify(mongoClient.getDatabase(anyString())).listCollectionNames();
+    verify(mongoClient.getDatabase(anyString()).getCollection(anyString())).insertMany(any());
   }
 
   @Test
   public void
       testInsertDocumentsShouldCreateCollectionIfUsingStaticDatabaseAndCollectionDoesNotExist() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(collectionIterable);
-    when(database.getCollection(anyString())).thenReturn(collection);
-
     MongoDBResourceManager.Builder builder =
         MongoDBResourceManager.builder(TEST_ID).setDatabaseName(STATIC_DATABASE_NAME);
     MongoDBResourceManager tm = new MongoDBResourceManager(mongoClient, container, builder);
 
     assertThat(tm.insertDocument(COLLECTION_NAME, new Document())).isEqualTo(true);
 
-    verify(database).getCollection(anyString());
-    verify(database).listCollectionNames();
-    verify(collection).insertMany(any());
+    verify(mongoClient.getDatabase(anyString())).getCollection(anyString());
+    verify(mongoClient.getDatabase(anyString())).listCollectionNames();
+    verify(mongoClient.getDatabase(anyString()).getCollection(anyString())).insertMany(any());
   }
 
   @Test
   public void testInsertDocumentsShouldReturnTrueIfUsingStaticDatabaseAndCollectionDoesExist() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(collectionIterable);
-    when(collectionIterable.iterator()).thenReturn(collectionNames);
-    when(collectionNames.hasNext()).thenReturn(true, false);
-    when(collectionNames.next()).thenReturn(COLLECTION_NAME);
-    when(database.getCollection(anyString())).thenReturn(collection);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().hasNext())
+        .thenReturn(true, false);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().next())
+        .thenReturn(COLLECTION_NAME);
 
     MongoDBResourceManager.Builder builder =
         MongoDBResourceManager.builder(TEST_ID).setDatabaseName(STATIC_DATABASE_NAME);
@@ -200,22 +181,21 @@ public class MongoDBResourceManagerTest {
 
     assertThat(tm.insertDocument(COLLECTION_NAME, new Document())).isEqualTo(true);
 
-    verify(database).getCollection(anyString());
-    verify(database).listCollectionNames();
-    verify(collection).insertMany(any());
+    verify(mongoClient.getDatabase(anyString())).getCollection(anyString());
+    verify(mongoClient.getDatabase(anyString()).getCollection(anyString())).insertMany(any());
   }
 
   @Test
   public void testInsertDocumentsShouldThrowErrorWhenMongoDBThrowsException() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(collectionIterable);
-    when(collectionIterable.iterator()).thenReturn(collectionNames);
-    when(collectionNames.hasNext()).thenReturn(true, false);
-    when(collectionNames.next()).thenReturn(COLLECTION_NAME);
-    when(database.getCollection(anyString())).thenReturn(collection);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().hasNext())
+        .thenReturn(true, false);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().next())
+        .thenReturn(COLLECTION_NAME);
+    MongoCollection<Document> mockCollection =
+        mongoClient.getDatabase(anyString()).getCollection(anyString());
 
     doThrow(MongoBulkWriteException.class)
-        .when(collection)
+        .when(mockCollection)
         .insertMany(ImmutableList.of(new Document()));
 
     assertThrows(
@@ -225,11 +205,10 @@ public class MongoDBResourceManagerTest {
 
   @Test
   public void testReadCollectionShouldThrowErrorWhenCollectionDoesNotExist() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(collectionIterable);
-    when(collectionIterable.iterator()).thenReturn(collectionNames);
-    when(collectionNames.hasNext()).thenReturn(true, false);
-    when(collectionNames.next()).thenReturn("fake-collection-name");
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().hasNext())
+        .thenReturn(true, false);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().next())
+        .thenReturn("fake-collection-name");
 
     assertThrows(
         MongoDBResourceManagerException.class, () -> testManager.readCollection(COLLECTION_NAME));
@@ -237,13 +216,13 @@ public class MongoDBResourceManagerTest {
 
   @Test
   public void testReadCollectionShouldThrowErrorWhenMongoDBFailsToFindDocuments() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(collectionIterable);
-    when(collectionIterable.iterator()).thenReturn(collectionNames);
-    when(collectionNames.hasNext()).thenReturn(true, false);
-    when(collectionNames.next()).thenReturn(COLLECTION_NAME);
-    when(database.getCollection(anyString())).thenReturn(collection);
-    doThrow(RuntimeException.class).when(collection).find();
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().hasNext())
+        .thenReturn(true, false);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().next())
+        .thenReturn(COLLECTION_NAME);
+    MongoCollection<Document> mockCollection =
+        mongoClient.getDatabase(anyString()).getCollection(anyString());
+    doThrow(RuntimeException.class).when(mockCollection).find();
 
     assertThrows(
         MongoDBResourceManagerException.class, () -> testManager.readCollection(COLLECTION_NAME));
@@ -251,16 +230,14 @@ public class MongoDBResourceManagerTest {
 
   @Test
   public void testReadCollectionShouldWorkWhenMongoDBDoesNotThrowAnyError() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    when(database.listCollectionNames()).thenReturn(collectionIterable);
-    when(collectionIterable.iterator()).thenReturn(collectionNames);
-    when(collectionNames.hasNext()).thenReturn(true, false);
-    when(collectionNames.next()).thenReturn(COLLECTION_NAME);
-    when(database.getCollection(anyString())).thenReturn(collection);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().hasNext())
+        .thenReturn(true, false);
+    when(mongoClient.getDatabase(anyString()).listCollectionNames().iterator().next())
+        .thenReturn(COLLECTION_NAME);
 
     testManager.readCollection(COLLECTION_NAME);
 
-    verify(collection).find();
+    verify(mongoClient.getDatabase(anyString()).getCollection(anyString())).find();
   }
 
   @Test
@@ -272,24 +249,22 @@ public class MongoDBResourceManagerTest {
     tm.cleanupAll();
 
     verify(mongoClient, never()).getDatabase(anyString());
-    verify(database, never()).drop();
+    verify(mongoClient.getDatabase(anyString()), never()).drop();
     verify(mongoClient).close();
   }
 
   @Test
   public void testCleanupShouldDropNonStaticDatabase() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-
     testManager.cleanupAll();
 
-    verify(database).drop();
+    verify(mongoClient.getDatabase(anyString())).drop();
     verify(mongoClient).close();
   }
 
   @Test
   public void testCleanupAllShouldThrowErrorWhenMongoClientFailsToDropDatabase() {
-    when(mongoClient.getDatabase(anyString())).thenReturn(database);
-    doThrow(RuntimeException.class).when(database).drop();
+    MongoDatabase mockDatabase = mongoClient.getDatabase(anyString());
+    doThrow(RuntimeException.class).when(mockDatabase).drop();
 
     assertThrows(MongoDBResourceManagerException.class, () -> testManager.cleanupAll());
   }

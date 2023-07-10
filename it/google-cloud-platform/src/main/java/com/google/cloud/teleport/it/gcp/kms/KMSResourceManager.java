@@ -27,11 +27,12 @@ import com.google.cloud.kms.v1.KeyRing;
 import com.google.cloud.kms.v1.KeyRingName;
 import com.google.cloud.kms.v1.LocationName;
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +91,7 @@ public class KMSResourceManager implements ResourceManager {
               .findFirst();
 
       // Create the keyring if it does not exist, otherwise, return the found keyring.
-      if (existingKeyRing.isEmpty()) {
+      if (!existingKeyRing.isPresent()) {
         LOG.info("Keyring {} does not exist. Creating the keyring in KMS.", keyRingId);
         this.keyRing = client.createKeyRing(locationName, keyRingId, keyRingToCreate);
         LOG.info("Created keyring {}.", keyRing.getName());
@@ -142,7 +143,7 @@ public class KMSResourceManager implements ResourceManager {
 
       // Create the symmetric key if it does not exist, otherwise, return the found key.
       CryptoKey cryptoKey;
-      if (existingKey.isEmpty()) {
+      if (!existingKey.isPresent()) {
         LOG.info("Symmetric key {} does not exist. Creating the key in KMS.", keyName);
         cryptoKey = client.createCryptoKey(keyRing.getName(), keyName, keyToCreate);
         LOG.info("Created symmetric key {}.", cryptoKey.getName());
@@ -179,7 +180,9 @@ public class KMSResourceManager implements ResourceManager {
       EncryptResponse response = client.encrypt(keyName, ByteString.copyFromUtf8(message));
 
       LOG.info("Successfully encrypted message.");
-      return new String(Base64.getEncoder().encode(response.getCiphertext().toByteArray()));
+      return new String(
+          Base64.getEncoder().encode(response.getCiphertext().toByteArray()),
+          StandardCharsets.UTF_8);
     }
   }
 
@@ -205,7 +208,9 @@ public class KMSResourceManager implements ResourceManager {
 
       DecryptResponse response =
           client.decrypt(
-              keyName, ByteString.copyFrom(Base64.getDecoder().decode(ciphertext.getBytes())));
+              keyName,
+              ByteString.copyFrom(
+                  Base64.getDecoder().decode(ciphertext.getBytes(StandardCharsets.UTF_8))));
 
       LOG.info("Successfully decrypted ciphertext.");
       return response.getPlaintext().toStringUtf8();

@@ -28,7 +28,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit tests for {@link com.google.cloud.teleport.it.splunk.SplunkResourceManager}. */
+/** Unit tests for {@link SplunkResourceManagerUtils}. */
 @RunWith(JUnit4.class)
 public class SplunkResourceManagerUtilsTest {
 
@@ -77,7 +77,8 @@ public class SplunkResourceManagerUtilsTest {
       int lower = 0;
       int upper = 0;
 
-      for (char c : password.toCharArray()) {
+      for (int j = 0; j < password.length(); j++) {
+        char c = password.charAt(j);
         String s = String.valueOf(c);
         lower += s.toLowerCase().equals(s) ? 1 : 0;
         upper += s.toUpperCase().equals(s) ? 1 : 0;
@@ -95,7 +96,8 @@ public class SplunkResourceManagerUtilsTest {
       int lower = 0;
       int upper = 0;
 
-      for (char c : password.toCharArray()) {
+      for (int j = 0; j < password.length(); j++) {
+        char c = password.charAt(j);
         String s = String.valueOf(c);
         lower += s.toLowerCase().equals(s) ? 1 : 0;
         upper += s.toUpperCase().equals(s) ? 1 : 0;

@@ -18,12 +18,12 @@ package com.google.cloud.teleport.it.jdbc;
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generatePassword;
 import static com.google.cloud.teleport.it.common.utils.ResourceManagerUtils.generateResourceId;
 
-import com.google.common.primitives.Chars;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.primitives.Chars;
 
-/** Utilities for {@link com.google.cloud.teleport.it.jdbc.JDBCResourceManager} implementations. */
+/** Utilities for {@link JDBCResourceManager} implementations. */
 final class JDBCResourceManagerUtils {
 
   // Naming restrictions can be found at:

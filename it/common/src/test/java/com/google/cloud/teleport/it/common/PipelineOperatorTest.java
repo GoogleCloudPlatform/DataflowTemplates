@@ -19,7 +19,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -55,7 +54,7 @@ public final class PipelineOperatorTest {
   private static final String REGION = "us-east1";
   private static final String JOB_ID = "test-job-id";
   private static final Duration CHECK_AFTER = Duration.ofMillis(100);
-  private static final Duration TIMEOUT_AFTER = Duration.ofMillis(1000);
+  private static final Duration TIMEOUT_AFTER = Duration.ofSeconds(1);
 
   private static final Config DEFAULT_CONFIG =
       Config.builder()
@@ -156,7 +155,6 @@ public final class PipelineOperatorTest {
         .thenReturn(JobState.RUNNING)
         .thenReturn(JobState.CANCELLING)
         .thenReturn(JobState.CANCELLED);
-    doAnswer(invocation -> null).when(client).cancelJob(any(), any(), any());
 
     // Act
     Result result = new PipelineOperator(client).waitForConditionAndFinish(DEFAULT_CONFIG, checker);
@@ -181,7 +179,6 @@ public final class PipelineOperatorTest {
     when(client.getJobStatus(any(), any(), any()))
         .thenReturn(JobState.RUNNING)
         .thenReturn(JobState.CANCELLED);
-    doAnswer(invocation -> null).when(client).cancelJob(any(), any(), any());
 
     Result result =
         new PipelineOperator(client).waitForConditionAndFinish(DEFAULT_CONFIG, () -> false);
@@ -193,7 +190,6 @@ public final class PipelineOperatorTest {
   @Test
   public void testFinishAfterConditionTimeout() throws IOException {
     when(client.getJobStatus(any(), any(), any())).thenReturn(JobState.RUNNING);
-    doAnswer(invocation -> null).when(client).cancelJob(any(), any(), any());
 
     Result result =
         new PipelineOperator(client).waitForConditionAndFinish(DEFAULT_CONFIG, () -> false);

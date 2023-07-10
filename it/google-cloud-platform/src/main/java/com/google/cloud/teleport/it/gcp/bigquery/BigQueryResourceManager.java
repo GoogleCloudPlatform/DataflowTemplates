@@ -35,12 +35,12 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -173,7 +173,7 @@ public final class BigQueryResourceManager implements ResourceManager {
    * @return Dataset id that was created
    * @throws BigQueryResourceManagerException if there is an error creating the dataset in BigQuery.
    */
-  public synchronized String createDataset(String region) {
+  public synchronized String createDataset(String region) throws BigQueryResourceManagerException {
 
     // Check to see if dataset already exists, and throw error if it does
     if (dataset != null) {
@@ -207,7 +207,8 @@ public final class BigQueryResourceManager implements ResourceManager {
    * @return The TableId (reference) to the table
    * @throws BigQueryResourceManagerException if there is an error creating the table in BigQuery.
    */
-  public synchronized TableId createTable(String tableName, Schema schema) {
+  public synchronized TableId createTable(String tableName, Schema schema)
+      throws BigQueryResourceManagerException {
     return createTable(tableName, schema, System.currentTimeMillis() + 3600000); // 1h
   }
 
@@ -227,7 +228,8 @@ public final class BigQueryResourceManager implements ResourceManager {
    * @throws BigQueryResourceManagerException if there is an error creating the table in BigQuery.
    */
   public synchronized TableId createTable(
-      String tableName, Schema schema, Long expirationTimeMillis) {
+      String tableName, Schema schema, Long expirationTimeMillis)
+      throws BigQueryResourceManagerException {
     // Check table ID
     checkValidTableId(tableName);
 
@@ -276,7 +278,8 @@ public final class BigQueryResourceManager implements ResourceManager {
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  public synchronized void write(String tableName, RowToInsert row) {
+  public synchronized void write(String tableName, RowToInsert row)
+      throws BigQueryResourceManagerException {
     write(tableName, ImmutableList.of(row));
   }
 
@@ -291,7 +294,8 @@ public final class BigQueryResourceManager implements ResourceManager {
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  public synchronized void write(String tableName, List<RowToInsert> rows) {
+  public synchronized void write(String tableName, List<RowToInsert> rows)
+      throws BigQueryResourceManagerException {
     // Exit early if there are no mutations
     if (!rows.iterator().hasNext()) {
       return;
@@ -367,7 +371,7 @@ public final class BigQueryResourceManager implements ResourceManager {
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  public synchronized TableResult readTable(TableId table) {
+  public synchronized TableResult readTable(TableId table) throws BigQueryResourceManagerException {
     return readTable(table.getTable());
   }
 
@@ -382,7 +386,8 @@ public final class BigQueryResourceManager implements ResourceManager {
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  public synchronized TableResult readTable(String tableName) {
+  public synchronized TableResult readTable(String tableName)
+      throws BigQueryResourceManagerException {
     return readTable(tableName, -1);
   }
 
@@ -397,7 +402,8 @@ public final class BigQueryResourceManager implements ResourceManager {
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  public synchronized TableResult readTable(TableId table, int numRows) {
+  public synchronized TableResult readTable(TableId table, int numRows)
+      throws BigQueryResourceManagerException {
     return readTable(table.getTable(), numRows);
   }
 
@@ -413,7 +419,8 @@ public final class BigQueryResourceManager implements ResourceManager {
    *     up, if the manager object has no dataset, if the table does not exist or if there is an
    *     Exception when attempting to insert the rows.
    */
-  public synchronized TableResult readTable(String tableName, int numRows) {
+  public synchronized TableResult readTable(String tableName, int numRows)
+      throws BigQueryResourceManagerException {
     getTableIfExists(tableName);
 
     LOG.info(
@@ -439,7 +446,7 @@ public final class BigQueryResourceManager implements ResourceManager {
    *     BigQuery.
    */
   @Override
-  public synchronized void cleanupAll() {
+  public synchronized void cleanupAll() throws BigQueryResourceManagerException {
     LOG.info("Attempting to cleanup manager.");
     try {
       if (dataset != null) {

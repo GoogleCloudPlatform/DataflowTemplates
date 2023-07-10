@@ -17,9 +17,9 @@ package com.google.cloud.teleport.it.common.logging;
 
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.dataflow.model.Job;
-import com.google.common.collect.ImmutableMap;
 import com.google.gson.GsonBuilder;
 import java.util.Map;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 
 /** Utility for formatting different objects for easier readability in logs. */
 public final class LogStrings {

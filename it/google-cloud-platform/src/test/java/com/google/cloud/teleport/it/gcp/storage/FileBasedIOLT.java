@@ -22,10 +22,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
-import com.google.cloud.teleport.it.common.utils.MetricsConfiguration;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
-import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
@@ -44,13 +42,12 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * FileBasedIO performance tests.
@@ -78,7 +75,6 @@ import org.slf4j.LoggerFactory;
  * </pre>
  */
 public class FileBasedIOLT extends IOLoadTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(FileBasedIOLT.class);
 
   private static final String READ_ELEMENT_METRIC_NAME = "read_count";
 
@@ -121,9 +117,8 @@ public class FileBasedIOLT extends IOLoadTestBase {
   @BeforeClass
   public static void beforeClass() {
     resourceManager =
-        GcsResourceManager.builder()
-            .setBucket(TestProperties.artifactBucket())
-            .setProject(project)
+        GcsResourceManager.builder(TestProperties.artifactBucket(), "textiolt")
+            .setCredentials(CREDENTIALS)
             .build();
   }
 
@@ -191,7 +186,7 @@ public class FileBasedIOLT extends IOLoadTestBase {
             .setPipeline(writePipeline)
             .addParameter("runner", configuration.runner)
             .build();
-    PipelineLauncher.LaunchInfo writeInfo = pipelineLauncher.launch(project, region, writeOptions);
+    PipelineLauncher.LaunchInfo writeInfo = pipelineLauncher.launch(PROJECT, REGION, writeOptions);
     PipelineOperator.Result writeResult =
         pipelineOperator.waitUntilDone(
             createConfig(writeInfo, Duration.ofMinutes(configuration.pipelineTimeout)));
@@ -205,7 +200,7 @@ public class FileBasedIOLT extends IOLoadTestBase {
             .setPipeline(readPipeline)
             .addParameter("runner", configuration.runner)
             .build();
-    PipelineLauncher.LaunchInfo readInfo = pipelineLauncher.launch(project, region, readOptions);
+    PipelineLauncher.LaunchInfo readInfo = pipelineLauncher.launch(PROJECT, REGION, readOptions);
     PipelineOperator.Result readResult =
         pipelineOperator.waitUntilDone(
             createConfig(readInfo, Duration.ofMinutes(configuration.pipelineTimeout)));
@@ -216,8 +211,8 @@ public class FileBasedIOLT extends IOLoadTestBase {
     // check metrics
     double numRecords =
         pipelineLauncher.getMetric(
-            project,
-            region,
+            PROJECT,
+            REGION,
             readInfo.jobId(),
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
 
@@ -228,7 +223,6 @@ public class FileBasedIOLT extends IOLoadTestBase {
         MetricsConfiguration.builder()
             .setInputPCollection(writePCollection)
             .setOutputPCollection(readPCollection)
-            .setSeriesFilterFn(MetricsConfiguration.filterBeginEndHalfAveFn())
             .build();
     try {
       exportMetricsToBigQuery(writeInfo, getMetrics(writeInfo, metricsConfig));

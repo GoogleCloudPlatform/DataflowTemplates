@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.it.gcp;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 
 import com.google.api.gax.core.CredentialsProvider;
@@ -23,7 +22,6 @@ import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.services.dataflow.model.Job;
 import com.google.auth.Credentials;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineLauncher.JobState;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
@@ -33,10 +31,10 @@ import com.google.cloud.teleport.it.common.PipelineOperator.Config;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.IORedirectUtil;
 import com.google.cloud.teleport.it.common.utils.PipelineUtils;
-import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.dataflow.ClassicTemplateClient;
 import com.google.cloud.teleport.it.gcp.dataflow.DirectRunnerClient;
 import com.google.cloud.teleport.it.gcp.dataflow.FlexTemplateClient;
+import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
@@ -112,14 +110,9 @@ public abstract class TemplateTestBase {
   private Class<?> templateClass;
 
   /** Client to interact with GCS. */
-  protected GcsArtifactClient gcsClient;
+  protected GcsResourceManager gcsClient;
 
-  /**
-   * Client to interact with GCS.
-   *
-   * @deprecated Will be removed in favor of {@link #gcsClient}.
-   */
-  @Deprecated protected GcsArtifactClient artifactClient;
+  protected GcsResourceManager artifactClient;
 
   private boolean usingDirectRunner;
   protected PipelineLauncher pipelineLauncher;
@@ -172,9 +165,9 @@ public abstract class TemplateTestBase {
       artifactBucketName = TestProperties.stageBucket();
     }
     if (artifactBucketName != null) {
-      Storage storageClient = createStorageClient(credentials);
       gcsClient =
-          GcsArtifactClient.builder(storageClient, artifactBucketName, getClass().getSimpleName())
+          GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName())
+              .setCredentials(credentials)
               .build();
 
       // Keep name compatibility, for now

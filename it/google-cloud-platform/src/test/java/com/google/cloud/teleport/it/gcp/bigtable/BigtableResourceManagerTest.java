@@ -20,12 +20,12 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.rpc.NotFoundException;
 import com.google.api.gax.rpc.ServerStream;
 import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminClient;
@@ -34,10 +34,9 @@ import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
-import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -57,19 +56,7 @@ public class BigtableResourceManagerTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock(answer = Answers.RETURNS_DEEP_STUBS)
-  private ServerStream<Row> readRows;
-
-  @Mock private Iterator<Row> rows;
-  @Mock private Row row;
-
-  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   private BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory;
-
-  @Mock private BigtableInstanceAdminClient bigtableInstanceAdminClient;
-  @Mock private BigtableTableAdminClient bigtableTableAdminClient;
-  @Mock private BigtableDataClient bigtableDataClient;
-
-  @Mock private CredentialsProvider credentialsProvider;
 
   private static final String TEST_ID = "test-id";
   private static final String TABLE_ID = "table-id";
@@ -96,17 +83,18 @@ public class BigtableResourceManagerTest {
   }
 
   @Test
-  public void testCreateResourceManagerCreatesCorrectIdValues() {
-    assertThat(testManager.getInstanceId()).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
-    assertThat(testManager.getProjectId()).matches(PROJECT_ID);
+  public void testCreateResourceManagerCreatesCorrectIdValues() throws IOException {
+    BigtableResourceManager rm =
+        new BigtableResourceManager(
+            BigtableResourceManager.builder(TEST_ID, PROJECT_ID),
+            bigtableResourceManagerClientFactory);
+
+    assertThat(rm.getInstanceId()).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
+    assertThat(rm.getProjectId()).matches(PROJECT_ID);
   }
 
   @Test
   public void testCreateInstanceShouldThrowExceptionWhenInstanceAlreadyExists() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-
     testManager.createInstance(cluster);
 
     assertThrows(IllegalStateException.class, () -> testManager.createInstance(cluster));
@@ -114,22 +102,17 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testCreateInstanceShouldThrowExceptionWhenClientFailsToCreateInstance() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-
-    when(bigtableInstanceAdminClient.createInstance(any())).thenThrow(IllegalStateException.class);
+    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient().createInstance(any()))
+        .thenThrow(IllegalStateException.class);
 
     assertThrows(BigtableResourceManagerException.class, () -> testManager.createInstance(cluster));
   }
 
   @Test
   public void testCreateInstanceShouldThrowErrorWhenInstanceAdminClientFailsToClose() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-
-    doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).close();
+    BigtableInstanceAdminClient mockClient =
+        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient();
+    doThrow(RuntimeException.class).when(mockClient).close();
 
     assertThrows(BigtableResourceManagerException.class, () -> testManager.createInstance(cluster));
   }
@@ -150,43 +133,31 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testCreateInstanceShouldWorkWhenBigtableDoesNotThrowAnyError() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-
     testManager.createInstance(cluster);
 
-    verify(bigtableInstanceAdminClient).createInstance(any());
+    verify(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
+        .createInstance(any());
   }
 
   @Test
   public void testCreateTableShouldNotCreateInstanceWhenInstanceAlreadyExists() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-
     testManager.createInstance(cluster);
     Mockito.lenient()
-        .when(bigtableInstanceAdminClient.createInstance(any()))
+        .when(
+            bigtableResourceManagerClientFactory
+                .bigtableInstanceAdminClient()
+                .createInstance(any()))
         .thenThrow(IllegalStateException.class);
 
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(false);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(false);
     testManager.createTable(TABLE_ID, ImmutableList.of("cf1"));
   }
 
   @Test
   public void testCreateTableShouldCreateInstanceWhenInstanceDoesNotExist() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-
-    when(bigtableInstanceAdminClient.createInstance(any())).thenThrow(IllegalStateException.class);
+    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient().createInstance(any()))
+        .thenThrow(IllegalStateException.class);
 
     assertThrows(
         BigtableResourceManagerException.class,
@@ -195,27 +166,14 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testCreateTableShouldThrowErrorWhenNoColumnFamilyGiven() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-
     assertThrows(
         IllegalArgumentException.class, () -> testManager.createTable(TABLE_ID, new ArrayList<>()));
   }
 
   @Test
   public void testCreateTableShouldNotCreateTableWhenTableAlreadyExists() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(true);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(true);
     assertThrows(
         BigtableResourceManagerException.class,
         () -> testManager.createTable(TABLE_ID, ImmutableList.of("cf1")));
@@ -223,15 +181,10 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testCreateTableShouldThrowErrorWhenTableAdminClientFailsToCreateTable() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(false);
-    when(bigtableTableAdminClient.createTable(any())).thenThrow(RuntimeException.class);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(false);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().createTable(any()))
+        .thenThrow(RuntimeException.class);
 
     assertThrows(
         BigtableResourceManagerException.class,
@@ -240,11 +193,9 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testCreateTableShouldThrowErrorWhenTableAdminClientFailsToClose() {
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-
-    doThrow(RuntimeException.class).when(bigtableTableAdminClient).close();
+    BigtableTableAdminClient mockClient =
+        bigtableResourceManagerClientFactory.bigtableTableAdminClient();
+    doThrow(RuntimeException.class).when(mockClient).close();
 
     assertThrows(
         BigtableResourceManagerException.class,
@@ -253,26 +204,16 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testCreateTableShouldWorkWhenBigtableDoesNotThrowAnyError() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(false);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(false);
 
     testManager.createTable(TABLE_ID, ImmutableList.of("cf1"));
 
-    verify(bigtableTableAdminClient).createTable(any());
+    verify(bigtableResourceManagerClientFactory.bigtableTableAdminClient()).createTable(any());
   }
 
   @Test
   public void testWriteShouldThrowErrorWhenInstanceDoesNotExist() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-
     assertThrows(
         IllegalStateException.class,
         () -> testManager.write(RowMutation.create(TABLE_ID, "sample-key")));
@@ -283,10 +224,6 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testWriteShouldExitEarlyWhenNoRowMutationsGiven() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-
     testManager.createInstance(cluster);
 
     Mockito.lenient()
@@ -298,10 +235,6 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testWriteShouldThrowErrorWhenDataClientFailsToInstantiate() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-
     testManager.createInstance(cluster);
 
     when(bigtableResourceManagerClientFactory.bigtableDataClient())
@@ -317,15 +250,9 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testWriteShouldThrowErrorWhenDataClientFailsToSendMutations() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked data client object
-    when(bigtableResourceManagerClientFactory.bigtableDataClient()).thenReturn(bigtableDataClient);
-
     testManager.createInstance(cluster);
-
-    doThrow(RuntimeException.class).when(bigtableDataClient).mutateRow(any());
+    BigtableDataClient mockClient = bigtableResourceManagerClientFactory.bigtableDataClient();
+    doThrow(RuntimeException.class).when(mockClient).mutateRow(any());
 
     assertThrows(
         BigtableResourceManagerException.class,
@@ -337,15 +264,9 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testWriteShouldThrowErrorWhenDataClientFailsToClose() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked data client object
-    when(bigtableResourceManagerClientFactory.bigtableDataClient()).thenReturn(bigtableDataClient);
-
     testManager.createInstance(cluster);
-
-    doThrow(RuntimeException.class).when(bigtableDataClient).close();
+    BigtableDataClient mockClient = bigtableResourceManagerClientFactory.bigtableDataClient();
+    doThrow(RuntimeException.class).when(mockClient).close();
 
     assertThrows(
         BigtableResourceManagerException.class,
@@ -354,35 +275,21 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testWriteShouldWorkWhenBigtableDoesNotThrowAnyError() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked data client object
-    when(bigtableResourceManagerClientFactory.bigtableDataClient()).thenReturn(bigtableDataClient);
-
     testManager.createInstance(cluster);
 
     testManager.write(RowMutation.create(TABLE_ID, "sample-key"));
     testManager.write(ImmutableList.of(RowMutation.create(TABLE_ID, "sample-key")));
 
-    verify(bigtableDataClient, times(2)).mutateRow(any());
+    verify(bigtableResourceManagerClientFactory.bigtableDataClient(), times(2)).mutateRow(any());
   }
 
   @Test
   public void testReadTableShouldThrowErrorWhenInstanceDoesNotExist() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-
     assertThrows(IllegalStateException.class, () -> testManager.readTable(TABLE_ID));
   }
 
   @Test
   public void testReadTableShouldThrowErrorWhenTableDoesNotExist() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-
     testManager.createInstance(cluster);
 
     assertThrows(IllegalStateException.class, () -> testManager.readTable(TABLE_ID));
@@ -390,16 +297,10 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testReadTableShouldThrowErrorWhenDataClientFailsToInstantiate() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-
     testManager.createInstance(cluster);
 
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(true);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(true);
     when(bigtableResourceManagerClientFactory.bigtableDataClient())
         .thenThrow(BigtableResourceManagerException.class);
 
@@ -408,144 +309,105 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testReadTableShouldThrowErrorWhenDataClientFailsToReadRows() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-    // use mocked data client object
-    when(bigtableResourceManagerClientFactory.bigtableDataClient()).thenReturn(bigtableDataClient);
-
     testManager.createInstance(cluster);
 
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(true);
-    when(bigtableDataClient.readRows(any())).thenThrow(NotFoundException.class);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(true);
+    when(bigtableResourceManagerClientFactory.bigtableDataClient().readRows(any()))
+        .thenThrow(NotFoundException.class);
 
     assertThrows(BigtableResourceManagerException.class, () -> testManager.readTable(TABLE_ID));
   }
 
   @Test
   public void testReadTableShouldThrowErrorWhenReadRowsReturnsNull() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-    // use mocked data client object
-    when(bigtableResourceManagerClientFactory.bigtableDataClient()).thenReturn(bigtableDataClient);
-
     testManager.createInstance(cluster);
 
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(true);
-    when(bigtableDataClient.readRows(any())).thenReturn(null);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(true);
+    when(bigtableResourceManagerClientFactory.bigtableDataClient().readRows(any()))
+        .thenReturn(null);
 
     assertThrows(BigtableResourceManagerException.class, () -> testManager.readTable(TABLE_ID));
   }
 
   @Test
   public void testReadTableShouldThrowErrorWhenDataClientFailsToClose() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-    // use mocked data client object
-    when(bigtableResourceManagerClientFactory.bigtableDataClient()).thenReturn(bigtableDataClient);
-
     testManager.createInstance(cluster);
 
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(true);
-    doThrow(RuntimeException.class).when(bigtableDataClient).close();
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(true);
+    BigtableDataClient mockClient = bigtableResourceManagerClientFactory.bigtableDataClient();
+    doThrow(RuntimeException.class).when(mockClient).close();
 
     assertThrows(BigtableResourceManagerException.class, () -> testManager.readTable(TABLE_ID));
   }
 
   @Test
   public void testReadTableShouldWorkWhenBigtableDoesNotThrowAnyError() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-    // use mocked data client object
-    when(bigtableResourceManagerClientFactory.bigtableDataClient()).thenReturn(bigtableDataClient);
     testManager.createInstance(cluster);
 
-    when(bigtableDataClient.readRows(any())).thenReturn(readRows);
-    when(readRows.iterator()).thenReturn(rows);
-    when(rows.hasNext()).thenReturn(true, false);
-    when(rows.next()).thenReturn(row);
+    ServerStream<Row> mockReadRows = mock(ServerStream.class, Answers.RETURNS_DEEP_STUBS);
+    Row mockRow = mock(Row.class);
+    when(bigtableResourceManagerClientFactory.bigtableDataClient().readRows(any()))
+        .thenReturn(mockReadRows);
+    when(mockReadRows.iterator().hasNext()).thenReturn(true, false);
+    when(mockReadRows.iterator().next()).thenReturn(mockRow);
 
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(true);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(true);
 
     testManager.readTable(TABLE_ID);
 
-    verify(bigtableDataClient).readRows(any());
+    verify(bigtableResourceManagerClientFactory.bigtableDataClient()).readRows(any());
   }
 
   @Test
   public void testCleanupAllCallsDeleteInstance() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
     testManager.createInstance(cluster);
-
-    doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).deleteInstance(anyString());
+    BigtableInstanceAdminClient mockClient =
+        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient();
+    doThrow(RuntimeException.class).when(mockClient).deleteInstance(anyString());
 
     assertThrows(RuntimeException.class, () -> testManager.cleanupAll());
   }
 
   @Test
   public void testCleanupAllClosesInstanceAdminClient() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
     testManager.createInstance(cluster);
-
-    doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).close();
+    BigtableInstanceAdminClient mockClient =
+        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient();
+    doThrow(RuntimeException.class).when(mockClient).close();
 
     assertThrows(RuntimeException.class, () -> testManager.cleanupAll());
   }
 
   @Test
   public void testCleanupAllClosesTableAdminClient() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
     testManager.createInstance(cluster);
-
-    doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).deleteInstance(any());
+    BigtableInstanceAdminClient mockClient =
+        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient();
+    doThrow(RuntimeException.class).when(mockClient).deleteInstance(any());
 
     assertThrows(RuntimeException.class, () -> testManager.cleanupAll());
   }
 
   @Test
   public void testCleanupAllShouldThrowErrorWhenInstanceFailsToDelete() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
     testManager.createInstance(cluster);
-
-    doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).deleteInstance(anyString());
+    BigtableInstanceAdminClient mockClient =
+        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient();
+    doThrow(RuntimeException.class).when(mockClient).deleteInstance(anyString());
 
     assertThrows(BigtableResourceManagerException.class, () -> testManager.cleanupAll());
   }
 
   @Test
   public void testCleanupAllShouldThrowErrorWhenInstanceAdminClientFailsToClose() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
     testManager.createInstance(cluster);
-
-    doThrow(RuntimeException.class).when(bigtableInstanceAdminClient).close();
+    BigtableInstanceAdminClient mockClient =
+        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient();
+    doThrow(RuntimeException.class).when(mockClient).close();
 
     assertThrows(BigtableResourceManagerException.class, () -> testManager.cleanupAll());
   }
@@ -560,42 +422,31 @@ public class BigtableResourceManagerTest {
                 .useStaticInstance(),
             bigtableResourceManagerClientFactory);
 
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(false);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(false);
 
     testManager.createTable(TABLE_ID, ImmutableList.of("cf1"));
 
     testManager.cleanupAll();
-    verify(bigtableTableAdminClient).deleteTable(TABLE_ID);
-    verify(bigtableTableAdminClient, new Times(1)).deleteTable(anyString());
+    verify(bigtableResourceManagerClientFactory.bigtableTableAdminClient()).deleteTable(TABLE_ID);
+    verify(bigtableResourceManagerClientFactory.bigtableTableAdminClient(), new Times(1))
+        .deleteTable(anyString());
     verify(bigtableResourceManagerClientFactory, never()).bigtableInstanceAdminClient();
   }
 
   @Test
   public void testCleanupAllShouldWorkWhenBigtableDoesNotThrowAnyError() {
-    // use mocked instance admin client object
-    when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
-        .thenReturn(bigtableInstanceAdminClient);
-    // use mocked table admin client object
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient())
-        .thenReturn(bigtableTableAdminClient);
-    // use mocked data client object
-    when(bigtableResourceManagerClientFactory.bigtableDataClient()).thenReturn(bigtableDataClient);
-
     testManager.createTable(TABLE_ID, ImmutableList.of("cf1"));
-    when(bigtableDataClient.readRows(any())).thenReturn(readRows);
-    when(bigtableTableAdminClient.exists(anyString())).thenReturn(true);
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
+        .thenReturn(true);
     testManager.readTable(TABLE_ID);
 
     testManager.cleanupAll();
 
-    verify(bigtableDataClient).close();
-    verify(bigtableTableAdminClient, never()).deleteTable(TABLE_ID);
-    verify(bigtableInstanceAdminClient).deleteInstance(anyString());
+    verify(bigtableResourceManagerClientFactory.bigtableDataClient()).close();
+    verify(bigtableResourceManagerClientFactory.bigtableTableAdminClient(), never())
+        .deleteTable(TABLE_ID);
+    verify(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient())
+        .deleteInstance(anyString());
   }
 }

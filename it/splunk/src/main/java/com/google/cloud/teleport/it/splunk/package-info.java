@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package for managing MongoDB resources within integration tests. */
+/** Package for managing Splunk resources within integration tests. */
 package com.google.cloud.teleport.it.splunk;

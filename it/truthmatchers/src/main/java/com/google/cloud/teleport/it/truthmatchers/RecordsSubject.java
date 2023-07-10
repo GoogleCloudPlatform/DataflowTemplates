@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.it.truthmatchers;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.truth.Fact;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
@@ -35,11 +33,6 @@ import javax.annotation.Nullable;
 public class RecordsSubject extends Subject {
 
   @Nullable private final List<Map<String, Object>> actual;
-
-  private static final ObjectMapper objectMapper = new ObjectMapper();
-
-  private static final TypeReference<Map<String, Object>> recordTypeReference =
-      new TypeReference<>() {};
 
   protected RecordsSubject(FailureMetadata metadata, @Nullable List<Map<String, Object>> actual) {
     super(metadata, actual);
@@ -210,7 +203,7 @@ public class RecordsSubject extends Subject {
    * @param record Expected row to search
    */
   public void hasRecordUnordered(Map<String, Object> record) {
-    this.hasRecordsUnordered(List.of(record));
+    this.hasRecordsUnordered(Collections.singletonList(record));
   }
 
   /**

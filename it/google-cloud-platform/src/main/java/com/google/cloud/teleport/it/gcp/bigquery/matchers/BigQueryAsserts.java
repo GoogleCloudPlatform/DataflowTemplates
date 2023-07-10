@@ -35,7 +35,7 @@ public class BigQueryAsserts {
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private static final TypeReference<Map<String, Object>> recordTypeReference =
-      new TypeReference<>() {};
+      new TypeReference<Map<String, Object>>() {};
 
   /**
    * Convert BigQuery {@link TableResult} to a list of maps.

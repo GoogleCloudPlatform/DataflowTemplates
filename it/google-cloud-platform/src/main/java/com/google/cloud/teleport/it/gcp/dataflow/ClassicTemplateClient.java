@@ -17,7 +17,7 @@ package com.google.cloud.teleport.it.gcp.dataflow;
 
 import static com.google.cloud.teleport.it.common.logging.LogStrings.formatForLogging;
 import static com.google.cloud.teleport.it.common.utils.RetryUtil.clientRetryPolicy;
-import static com.google.common.base.Preconditions.checkState;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
 
 import com.google.api.client.googleapis.util.Utils;
 import com.google.api.services.dataflow.Dataflow;

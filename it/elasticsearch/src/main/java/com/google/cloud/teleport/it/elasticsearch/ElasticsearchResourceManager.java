@@ -19,13 +19,13 @@ import static com.google.cloud.teleport.it.elasticsearch.ElasticsearchUtils.chec
 
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
-import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.http.HttpHost;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
@@ -132,7 +132,8 @@ public class ElasticsearchResourceManager extends TestContainerResourceManager<G
    * @throws ElasticsearchResourceManagerException if there is an error creating the collection in
    *     Elasticsearch.
    */
-  public synchronized boolean createIndex(String indexName) {
+  public synchronized boolean createIndex(String indexName)
+      throws ElasticsearchResourceManagerException {
     LOG.info("Creating index using name '{}'.", indexName);
 
     try {
@@ -163,7 +164,8 @@ public class ElasticsearchResourceManager extends TestContainerResourceManager<G
    * @throws ElasticsearchResourceManagerException if there is an error inserting the documents.
    */
   public synchronized boolean insertDocuments(
-      String indexName, Map<String, Map<String, Object>> documents) {
+      String indexName, Map<String, Map<String, Object>> documents)
+      throws ElasticsearchResourceManagerException {
     LOG.info("Attempting to write {} documents to {}.", documents.size(), indexName);
 
     try {
@@ -195,7 +197,8 @@ public class ElasticsearchResourceManager extends TestContainerResourceManager<G
    * @return An iterable of all the Documents in the collection.
    * @throws ElasticsearchResourceManagerException if there is an error reading the data.
    */
-  public synchronized List<Map<String, Object>> fetchAll(String indexName) {
+  public synchronized List<Map<String, Object>> fetchAll(String indexName)
+      throws ElasticsearchResourceManagerException {
     LOG.info("Reading all documents from {}.", indexName);
 
     try {
@@ -220,7 +223,7 @@ public class ElasticsearchResourceManager extends TestContainerResourceManager<G
    * @return The number of documents for the given index
    * @throws ElasticsearchResourceManagerException if there is an error reading the data.
    */
-  public long count(String indexName) {
+  public long count(String indexName) throws ElasticsearchResourceManagerException {
     LOG.info("Fetching count from {}.", indexName);
 
     try {
@@ -243,7 +246,8 @@ public class ElasticsearchResourceManager extends TestContainerResourceManager<G
    * @throws ElasticsearchResourceManagerException if there is an error deleting the Elasticsearch
    *     resources.
    */
-  public synchronized void cleanupAll() {
+  @Override
+  public synchronized void cleanupAll() throws ElasticsearchResourceManagerException {
     LOG.info("Attempting to cleanup Elasticsearch manager.");
 
     // First, delete the database if it was not given as a static argument
@@ -271,9 +275,7 @@ public class ElasticsearchResourceManager extends TestContainerResourceManager<G
       extends TestContainerResourceManager.Builder<ElasticsearchResourceManager> {
 
     private Builder(String testId) {
-      super(testId);
-      this.containerImageName = DEFAULT_ELASTICSEARCH_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_ELASTICSEARCH_CONTAINER_TAG;
+      super(testId, DEFAULT_ELASTICSEARCH_CONTAINER_NAME, DEFAULT_ELASTICSEARCH_CONTAINER_TAG);
     }
 
     @Override

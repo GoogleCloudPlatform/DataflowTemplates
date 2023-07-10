@@ -13,4 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
+/** Package for managing Datastream resources within integration tests. */
 package com.google.cloud.teleport.it.gcp.datastream;

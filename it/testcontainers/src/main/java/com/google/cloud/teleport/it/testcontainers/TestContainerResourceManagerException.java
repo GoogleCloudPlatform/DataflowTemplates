@@ -15,10 +15,7 @@
  */
 package com.google.cloud.teleport.it.testcontainers;
 
-/**
- * Custom exception for {@link
- * com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager} implementations.
- */
+/** Custom exception for {@link TestContainerResourceManager} implementations. */
 public class TestContainerResourceManagerException extends RuntimeException {
 
   public TestContainerResourceManagerException(String errorMessage) {

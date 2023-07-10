@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2022 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,43 +15,170 @@
  */
 package com.google.cloud.teleport.it.gcp.storage;
 
+import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createRunId;
+import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+
 import com.google.api.gax.paging.Page;
+import com.google.auth.Credentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Notification;
 import com.google.cloud.storage.NotificationInfo;
 import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageBatch;
+import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.StorageException;
-import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.it.common.ResourceManager;
+import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
+import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
+import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifact;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.regex.Pattern;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Client for managing Google Cloud Storage resources. */
-public class GcsResourceManager implements ResourceManager {
+/**
+ * Client for working with test artifacts stored in Google Cloud Storage (GCS).
+ *
+ * <p>Tests should store this as a static value of the class and call {@link
+ * ArtifactClient#cleanupAll()} in the {@code @AfterClass} method.
+ */
+public final class GcsResourceManager implements ArtifactClient, ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(GcsResourceManager.class);
+  private static final List<String> MANAGED_TEMP_DIRS = new ArrayList<>();
+  private static final List<Notification> NOTIFICATION_LIST = new ArrayList<>();
 
-  private final String project;
+  private final Storage client;
   private final String bucket;
+  private final String testClassName;
+  private final String runId;
 
-  GcsResourceManager(String project, String bucket) {
-    this.project = project;
-    this.bucket = bucket;
+  public GcsResourceManager(Builder builder) {
+    this.client = createStorageClient(builder.credentials);
+    this.bucket = builder.bucket;
+    this.testClassName = builder.testClassName;
+    this.runId = createRunId();
+
+    MANAGED_TEMP_DIRS.add(joinPathParts(testClassName, runId));
   }
 
-  private static final List<Notification> NOTIFICATION_LIST = new ArrayList<>();
-  private static final List<BlobId> GCS_BLOBS = new ArrayList<>();
-  private static final List<String> MANAGED_TEMP_DIRS = new ArrayList<>();
+  @VisibleForTesting
+  GcsResourceManager(Storage client, String bucket, String testClassName) {
+    this.client = client;
+    this.bucket = bucket;
+    this.testClassName = testClassName;
+    this.runId = createRunId();
 
-  Storage getStorageClient() {
-    return StorageOptions.newBuilder().setProjectId(project).build().getService();
+    MANAGED_TEMP_DIRS.add(joinPathParts(testClassName, runId));
+  }
+
+  /** Returns a new {@link Builder} for configuring a client. */
+  public static Builder builder(String bucket, String testClassName) {
+    checkArgument(!bucket.equals(""));
+    checkArgument(!testClassName.equals(""));
+
+    return new Builder(bucket, testClassName);
+  }
+
+  @Override
+  public String runId() {
+    return runId;
+  }
+
+  @Override
+  public Artifact createArtifact(String artifactName, String contents) {
+    return this.createArtifact(artifactName, contents.getBytes(StandardCharsets.UTF_8));
+  }
+
+  @Override
+  public Artifact createArtifact(String artifactName, byte[] contents) {
+    String path = joinPathParts(testClassName, runId, artifactName);
+    return handleCreate(path, contents);
+  }
+
+  @Override
+  public Artifact uploadArtifact(String artifactName, String localPath) throws IOException {
+    return uploadArtifact(artifactName, Paths.get(localPath));
+  }
+
+  @Override
+  public Artifact uploadArtifact(String artifactName, Path localPath) throws IOException {
+    LOG.info(
+        "Uploading '{}' to file '{}' under '{}'",
+        localPath,
+        artifactName,
+        joinPathParts(testClassName, runId));
+    return createArtifact(artifactName, Files.readAllBytes(localPath));
+  }
+
+  /**
+   * Copies a file from a local path to a specified object name in Google Cloud Storage.
+   *
+   * @param localPath the path of the file to be copied.
+   * @param objectName the name of the object to be created in Google Cloud Storage.
+   * @return the URI of the copied object in Google Cloud Storage.
+   * @throws IOException if there is an error reading the file at the specified local path.
+   */
+  public Artifact copyFileToGcs(Path localPath, String objectName) throws IOException {
+    return createArtifact(objectName, Files.readAllBytes(localPath));
+  }
+
+  /**
+   * Helper for creating an artifact.
+   *
+   * @param path the full path under the bucket
+   * @param contents the contents of the artifact
+   * @return a representation of the artifact
+   */
+  private Artifact handleCreate(String path, byte[] contents) {
+    LOG.info("Uploading {} bytes to '{}' under bucket '{}'", contents.length, path, bucket);
+
+    BlobId id = BlobId.of(bucket, path);
+    BlobInfo info = BlobInfo.newBuilder(id).build();
+    Blob blob = client.create(info, contents);
+    LOG.info(
+        "Successfully uploaded {} bytes to '{}' under bucket '{}'", contents.length, path, bucket);
+
+    return new GcsArtifact(blob);
+  }
+
+  @Override
+  public List<Artifact> listArtifacts(TestName testName, Pattern regex) {
+    return listArtifacts(testName.getMethodName(), regex);
+  }
+
+  @Override
+  public List<Artifact> listArtifacts(String prefix, Pattern regex) {
+    String listFrom = joinPathParts(testClassName, runId, prefix);
+    LOG.info(
+        "Listing everything under 'gs://{}/{}' that matches '{}'",
+        bucket,
+        listFrom,
+        regex.pattern());
+
+    List<Artifact> matched = new ArrayList<>();
+    Page<Blob> firstPage = getFirstPage(listFrom);
+    consumePages(
+        firstPage,
+        blobs -> {
+          for (Blob blob : blobs) {
+            if (regex.matcher(blob.getName()).matches()) {
+              matched.add(new GcsArtifact(blob));
+            }
+          }
+        });
+
+    return matched;
   }
 
   /**
@@ -62,7 +189,6 @@ public class GcsResourceManager implements ResourceManager {
    * @return the created notification.
    */
   public Notification createNotification(String topicName, String gcsPrefix) {
-    Storage storage = getStorageClient();
     NotificationInfo notificationInfo =
         NotificationInfo.newBuilder(topicName)
             .setEventTypes(NotificationInfo.EventType.OBJECT_FINALIZE)
@@ -70,7 +196,7 @@ public class GcsResourceManager implements ResourceManager {
             .setPayloadFormat(NotificationInfo.PayloadFormat.JSON_API_V1)
             .build();
     try {
-      Notification notification = storage.createNotification(bucket, notificationInfo);
+      Notification notification = client.createNotification(bucket, notificationInfo);
       LOG.info("Successfully created notification {}", notification);
       NOTIFICATION_LIST.add(notification);
       return notification;
@@ -84,25 +210,6 @@ public class GcsResourceManager implements ResourceManager {
   }
 
   /**
-   * Copies a file from a local path to a specified object name in Google Cloud Storage.
-   *
-   * @param localPath the path of the file to be copied.
-   * @param objectName the name of the object to be created in Google Cloud Storage.
-   * @return the URI of the copied object in Google Cloud Storage.
-   * @throws IOException if there is an error reading the file at the specified local path.
-   */
-  public String copyFileToGcs(Path localPath, String objectName) throws IOException {
-    Storage storage = getStorageClient();
-
-    BlobId blobId = BlobId.of(bucket, objectName);
-    LOG.info("Copying file {} into {}", localPath, blobId);
-    Blob resultBlob =
-        storage.create(BlobInfo.newBuilder(blobId).build(), Files.readAllBytes(localPath));
-    GCS_BLOBS.add(resultBlob.getBlobId());
-    return resultBlob.getBlobId().toGsUtilUri();
-  }
-
-  /**
    * Register a temporary directory that will be cleaned up after test.
    *
    * @param dirName name of the temporary directory
@@ -111,88 +218,86 @@ public class GcsResourceManager implements ResourceManager {
     MANAGED_TEMP_DIRS.add(dirName);
   }
 
-  /**
-   * Cleans up all resources created by the manager instance, including notifications and objects in
-   * Google Cloud Storage.
-   */
   @Override
   public void cleanupAll() {
-    if (GCS_BLOBS.size() > 0) {
-      Storage storage = getStorageClient();
-      storage.delete(GCS_BLOBS);
+    if (NOTIFICATION_LIST.size() > 0) {
+      for (Notification notification : NOTIFICATION_LIST) {
+        client.deleteNotification(bucket, notification.getNotificationId());
+      }
     }
 
     if (MANAGED_TEMP_DIRS.size() > 0) {
-      Storage storage = getStorageClient();
-      StorageBatch batch = storage.batch();
-      boolean needCleanup = false;
+      LOG.info("managed temp dir size : {}", MANAGED_TEMP_DIRS.size());
       for (String tempDir : MANAGED_TEMP_DIRS) {
-        Page<Blob> blobs = storage.list(bucket, Storage.BlobListOption.prefix(tempDir));
-        for (Blob blob : blobs.iterateAll()) {
-          batch.delete(blob.getBlobId());
-          needCleanup = true;
-        }
-      }
-      if (needCleanup) {
-        batch.submit();
+        LOG.info("Cleaning up everything under '{}' under bucket '{}'", tempDir, bucket);
+        Page<Blob> firstPage = getFirstPage(tempDir);
+        consumePages(
+            firstPage,
+            blobs -> {
+              // For testability, use the Iterable<BlobId> overload
+              List<BlobId> blobIds = new ArrayList<>();
+              for (Blob blob : blobs) {
+                blobIds.add(blob.getBlobId());
+              }
+              if (blobIds.isEmpty()) {
+                return;
+              }
+
+              List<Boolean> deleted = client.delete(blobIds);
+              for (int i = 0; i < deleted.size(); ++i) {
+                if (deleted.get(i)) {
+                  LOG.info("Blob '{}' was deleted", blobIds.get(i).getName());
+                } else {
+                  LOG.warn("Blob '{}' not deleted", blobIds.get(i).getName());
+                }
+              }
+            });
       }
     }
+    MANAGED_TEMP_DIRS.clear();
+    NOTIFICATION_LIST.clear();
+  }
 
-    if (NOTIFICATION_LIST.size() > 0) {
-      Storage storage = getStorageClient();
-      for (Notification notification : NOTIFICATION_LIST) {
-        storage.deleteNotification(bucket, notification.getNotificationId());
+  private void consumePages(Page<Blob> firstPage, Consumer<Iterable<Blob>> consumeBlobs) {
+    Page<Blob> currentPage = firstPage;
+    while (true) {
+      consumeBlobs.accept(currentPage.getValues());
+      if (currentPage.hasNextPage()) {
+        currentPage = currentPage.getNextPage();
+      } else {
+        break;
       }
     }
   }
 
-  public static Builder builder() {
-    return new Builder();
+  private Page<Blob> getFirstPage(String prefix) {
+    return client.list(bucket, BlobListOption.prefix(prefix));
   }
 
-  /** A builder class for creating instances of {@link GcsResourceManager}. */
-  public static class Builder {
-    private String project;
-    private String bucket;
+  private static String joinPathParts(String... parts) {
+    return String.join("/", parts);
+  }
 
-    /**
-     * Sets the GCP project for the builder.
-     *
-     * @param project the GCP project ID.
-     * @return the builder instance.
-     */
-    public Builder setProject(String project) {
-      this.project = project;
-      return this;
-    }
+  /** Builder for {@link GcsResourceManager}. */
+  public static final class Builder {
+    private final String bucket;
+    private final String testClassName;
+    private Credentials credentials;
 
-    /**
-     * Sets the GCS bucket for the builder.
-     *
-     * @param bucket the name of the GCS bucket.
-     * @return the builder instance.
-     */
-    public Builder setBucket(String bucket) {
+    private Builder(String bucket, String testClassName) {
       this.bucket = bucket;
+      this.testClassName = testClassName;
+    }
+
+    public Builder setCredentials(Credentials credentials) {
+      this.credentials = credentials;
       return this;
     }
 
-    /**
-     * Builds a new instance of {@link GcsResourceManager} with the specified project and bucket.
-     *
-     * @return a new instance of {@link GcsResourceManager}.
-     * @throws IllegalArgumentException if either project or bucket is not set.
-     */
+    // TODO(zhoufek): Let users control the page size and other configurations
+
     public GcsResourceManager build() {
-      if (project == null) {
-        throw new IllegalArgumentException(
-            "A GCP project must be provided to build a GCS resource manager.");
-      }
-      if (bucket == null) {
-        throw new IllegalArgumentException(
-            "A GCS bucket must be provided to build a GCS resource manager.");
-      }
-      return new GcsResourceManager(project, bucket);
+      return new GcsResourceManager(this);
     }
   }
 }

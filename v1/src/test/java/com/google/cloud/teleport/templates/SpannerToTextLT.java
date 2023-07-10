@@ -15,22 +15,20 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
-import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
 import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
+import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import java.io.IOException;
@@ -62,14 +60,16 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
   private static final String OUTPUT_PCOLLECTION =
       "Write to storage/WriteFiles/RewindowIntoGlobal/Window.Assign.out0";
   private static SpannerResourceManager spannerResourceManager;
-  private static GcsArtifactClient gcsClient;
+  private static GcsResourceManager gcsClient;
 
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    spannerResourceManager = SpannerResourceManager.builder(testName, project, region).build();
-    Storage storageClient = createStorageClient(CREDENTIALS);
-    gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    gcsClient =
+        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
+            .setCredentials(CREDENTIALS)
+            .build();
   }
 
   @After
@@ -107,7 +107,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
             .setQPS("1000000")
             .setMessagesLimit(NUM_MESSAGES)
             .setSinkType("SPANNER")
-            .setProjectId(project)
+            .setProjectId(PROJECT)
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
             .setSpannerTableName(name)
@@ -119,7 +119,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addParameter("spannerProjectId", project)
+                    .addParameter("spannerProjectId", PROJECT)
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabaseId", spannerResourceManager.getDatabaseId())
                     .addParameter("spannerTable", name)
@@ -127,7 +127,7 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 

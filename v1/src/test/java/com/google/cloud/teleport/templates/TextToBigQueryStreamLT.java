@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManagerUtils.toTableSpec;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
@@ -25,17 +24,16 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
 import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
+import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
@@ -62,9 +60,9 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
   private static final String TEST_ROOT_DIR =
       TextToBigQueryStreamLT.class.getSimpleName().toLowerCase();
   private static final String INPUT_PCOLLECTION =
-      "Read Text Data/Via ReadFiles/Read all via FileBasedSource/Read ranges.out0";
+      "ReadFromSource/Via ReadFiles/Read all via FileBasedSource/Read ranges.out0";
   private static final String OUTPUT_PCOLLECTION =
-      "InsertIntoBigQuery/StreamingInserts/StreamingWriteTables/StreamingWrite/BatchedStreamingWrite.ViaBundleFinalization/ParMultiDo(BatchAndInsertElements).out1";
+      "InsertIntoBigQuery/StreamingInserts/StreamingWriteTables/StripShardId/Map.out0";
   // schema should match schema supplied to generate fake records.
   private static final Schema SCHEMA =
       Schema.of(
@@ -91,11 +89,12 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(CREDENTIALS).build();
 
-    Storage storageClient = createStorageClient(CREDENTIALS);
-
-    gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    gcsClient =
+        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
+            .setCredentials(CREDENTIALS)
+            .build();
     // upload schema files and save path
     jsonPath =
         getFullGcsPath(
@@ -159,7 +158,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
             .apply(
                 PipelineLauncher.LaunchConfig.builder(testName, SPEC_PATH)
                     .addEnvironment("maxWorkers", 100)
-                    .addParameter("outputTable", toTableSpec(project, table))
+                    .addParameter("outputTable", toTableSpec(PROJECT, table))
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*")
                     .addParameter("JSONPath", jsonPath)
                     .addParameter(
@@ -169,7 +168,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     PipelineOperator.Result result =
         // The method waitForConditionAndCancel was used because the streaming pipeline template
@@ -218,7 +217,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
             .apply(
                 PipelineLauncher.LaunchConfig.builder(testName, SPEC_PATH)
                     .addEnvironment("maxWorkers", 100)
-                    .addParameter("outputTable", toTableSpec(project, table))
+                    .addParameter("outputTable", toTableSpec(PROJECT, table))
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*")
                     .addParameter("JSONPath", jsonPath)
                     .addParameter(
@@ -228,7 +227,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
 
     // Executes the data generator and return approximate number of messages

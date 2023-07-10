@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
-import com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -65,9 +65,7 @@ public class MySQLResourceManager extends AbstractJDBCResourceManager<MySQLConta
   public static final class Builder extends AbstractJDBCResourceManager.Builder<MySQLContainer<?>> {
 
     public Builder(String testId) {
-      super(testId);
-      this.containerImageName = DEFAULT_MYSQL_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_MYSQL_CONTAINER_TAG;
+      super(testId, DEFAULT_MYSQL_CONTAINER_NAME, DEFAULT_MYSQL_CONTAINER_TAG);
     }
 
     @Override

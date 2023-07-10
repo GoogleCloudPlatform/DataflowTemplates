@@ -22,15 +22,14 @@ import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.dataflow.model.JobMessage;
 import com.google.auth.Credentials;
+import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
-import com.google.cloud.teleport.it.common.utils.MetricsConfiguration;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.monitoring.MonitoringClient;
-import com.google.common.base.MoreObjects;
 import com.google.monitoring.v3.TimeInterval;
 import com.google.protobuf.util.Timestamps;
 import java.io.IOException;
@@ -41,12 +40,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.Map.Entry;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
@@ -78,29 +77,24 @@ public abstract class LoadTestBase {
   protected static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   protected static final CredentialsProvider CREDENTIALS_PROVIDER =
       FixedCredentialsProvider.create(CREDENTIALS);
-  protected static String project;
-  protected static String region;
-  protected static MonitoringClient monitoringClient;
-  protected static PipelineLauncher pipelineLauncher;
-  protected static PipelineOperator pipelineOperator;
+  protected static final String PROJECT = TestProperties.project();
+  protected static final String REGION = TestProperties.region();
+  protected MonitoringClient monitoringClient;
+  protected PipelineLauncher pipelineLauncher;
+  protected PipelineOperator pipelineOperator;
 
   protected String testName;
 
   @Rule
   public TestRule watcher =
       new TestWatcher() {
+        @Override
         protected void starting(Description description) {
           LOG.info(
               "Starting load test {}.{}", description.getClassName(), description.getMethodName());
           testName = description.getMethodName();
         }
       };
-
-  @BeforeClass
-  public static void setUpLoadTestBase() {
-    project = TestProperties.project();
-    region = TestProperties.region();
-  }
 
   @Before
   public void setUp() throws IOException {
@@ -128,7 +122,7 @@ public abstract class LoadTestBase {
     LOG.info("Exporting metrics:\n{}", formatForLogging(metrics));
     try {
       // either use the user specified project for exporting, or the same project
-      String exportProject = MoreObjects.firstNonNull(TestProperties.exportProject(), project);
+      String exportProject = MoreObjects.firstNonNull(TestProperties.exportProject(), PROJECT);
       BigQueryResourceManager bigQueryResourceManager =
           BigQueryResourceManager.builder(testName, exportProject)
               .setDatasetId(TestProperties.exportDataset())
@@ -147,18 +141,15 @@ public abstract class LoadTestBase {
       rowContent.put("test_name", testName);
       // Convert parameters map to list of table row since it's a repeated record
       List<TableRow> parameterRows = new ArrayList<>();
-      for (String parameter : launchInfo.parameters().keySet()) {
-        TableRow row =
-            new TableRow()
-                .set("name", parameter)
-                .set("value", launchInfo.parameters().get(parameter));
+      for (Entry<String, String> entry : launchInfo.parameters().entrySet()) {
+        TableRow row = new TableRow().set("name", entry.getKey()).set("value", entry.getValue());
         parameterRows.add(row);
       }
       rowContent.put("parameters", parameterRows);
       // Convert metrics map to list of table row since it's a repeated record
       List<TableRow> metricRows = new ArrayList<>();
-      for (String metric : metrics.keySet()) {
-        TableRow row = new TableRow().set("name", metric).set("value", metrics.get(metric));
+      for (Entry<String, Double> entry : metrics.entrySet()) {
+        TableRow row = new TableRow().set("name", entry.getKey()).set("value", entry.getValue());
         metricRows.add(row);
       }
       rowContent.put("metrics", metricRows);
@@ -181,7 +172,7 @@ public abstract class LoadTestBase {
     try {
       // the element count metric always follows the pattern <pcollection name>-ElementCount
       String metricName = pcollection.replace(".", "-") + "-ElementCount";
-      Double metric = pipelineLauncher.getMetric(project, region, jobId, metricName);
+      Double metric = pipelineLauncher.getMetric(PROJECT, REGION, jobId, metricName);
       if ((metric != null) && (metric >= (double) expectedElements)) {
         return true;
       }
@@ -205,7 +196,7 @@ public abstract class LoadTestBase {
       Map<String, Double> metrics, LaunchInfo launchInfo, MetricsConfiguration config)
       throws ParseException {
     // cost info
-    LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), project);
+    LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), PROJECT);
     TimeInterval workerTimeInterval = getWorkerTimeInterval(launchInfo);
     metrics.put(
         "RunTime",
@@ -228,10 +219,10 @@ public abstract class LoadTestBase {
     cost += metrics.get("TotalPdUsage") / 3600 * PD_PER_GB_HR;
     cost += metrics.get("TotalSsdUsage") / 3600 * PD_SSD_PER_GB_HR;
     metrics.put("EstimatedCost", cost);
-    metrics.put("ElapsedTime", monitoringClient.getElapsedTime(project, launchInfo));
+    metrics.put("ElapsedTime", monitoringClient.getElapsedTime(PROJECT, launchInfo));
 
     Double dataProcessed =
-        monitoringClient.getDataProcessed(project, launchInfo, config.inputPCollection());
+        monitoringClient.getDataProcessed(PROJECT, launchInfo, config.inputPCollection());
     if (dataProcessed != null) {
       metrics.put("EstimatedDataProcessedGB", dataProcessed / 1e9d);
     }
@@ -244,10 +235,8 @@ public abstract class LoadTestBase {
    *
    * @param metrics a map of raw metrics. The results are also appened in the map.
    * @param launchInfo Job info of the job
-   * @param config the {@class MetricsConfiguration}, currently unused.
    */
-  private void computeDirectMetrics(
-      Map<String, Double> metrics, LaunchInfo launchInfo, MetricsConfiguration config)
+  private void computeDirectMetrics(Map<String, Double> metrics, LaunchInfo launchInfo)
       throws ParseException {
     // TODO: determine elapsed time more accurately if Direct runner supports do so.
     metrics.put(
@@ -313,7 +302,7 @@ public abstract class LoadTestBase {
 
   protected Map<String, Double> getMetrics(LaunchInfo launchInfo, MetricsConfiguration config)
       throws IOException, InterruptedException, ParseException {
-    Map<String, Double> metrics = pipelineLauncher.getMetrics(project, region, launchInfo.jobId());
+    Map<String, Double> metrics = pipelineLauncher.getMetrics(PROJECT, REGION, launchInfo.jobId());
     if (launchInfo.runner().contains("Dataflow")) {
       // monitoring metrics take up to 3 minutes to show up
       // TODO(pranavbhandari): We should use a library like http://awaitility.org/ to poll for
@@ -322,7 +311,7 @@ public abstract class LoadTestBase {
       Thread.sleep(Duration.ofMinutes(4).toMillis());
       computeDataflowMetrics(metrics, launchInfo, config);
     } else if ("DirectRunner".equalsIgnoreCase(launchInfo.runner())) {
-      computeDirectMetrics(metrics, launchInfo, config);
+      computeDirectMetrics(metrics, launchInfo);
     }
     return metrics;
   }
@@ -335,13 +324,12 @@ public abstract class LoadTestBase {
    * @return CPU Utilization metrics of the job
    */
   protected Map<String, Double> getCpuUtilizationMetrics(String jobId, TimeInterval timeInterval) {
-    List<Double> cpuUtilization = monitoringClient.getCpuUtilization(project, jobId, timeInterval);
+    List<Double> cpuUtilization = monitoringClient.getCpuUtilization(PROJECT, jobId, timeInterval);
     Map<String, Double> cpuUtilizationMetrics = new HashMap<>();
     if (cpuUtilization == null) {
       return cpuUtilizationMetrics;
     }
-    cpuUtilizationMetrics.put(
-        "AvgCpuUtilization", MetricsConfiguration.calculateAverage(cpuUtilization));
+    cpuUtilizationMetrics.put("AvgCpuUtilization", calculateAverage(cpuUtilization));
     cpuUtilizationMetrics.put("MaxCpuUtilization", Collections.max(cpuUtilization));
     return cpuUtilizationMetrics;
   }
@@ -358,22 +346,21 @@ public abstract class LoadTestBase {
       String jobId, MetricsConfiguration config, TimeInterval timeInterval) {
     List<Double> inputThroughputBytesPerSec =
         monitoringClient.getThroughputBytesPerSecond(
-            project, jobId, config.inputPCollection(), timeInterval);
+            PROJECT, jobId, config.inputPCollection(), timeInterval);
     List<Double> inputThroughputElementsPerSec =
         monitoringClient.getThroughputElementsPerSecond(
-            project, jobId, config.inputPCollection(), timeInterval);
+            PROJECT, jobId, config.inputPCollection(), timeInterval);
     List<Double> outputThroughputBytesPerSec =
         monitoringClient.getThroughputBytesPerSecond(
-            project, jobId, config.outputPCollection(), timeInterval);
+            PROJECT, jobId, config.outputPCollection(), timeInterval);
     List<Double> outputThroughputElementsPerSec =
         monitoringClient.getThroughputElementsPerSecond(
-            project, jobId, config.outputPCollection(), timeInterval);
+            PROJECT, jobId, config.outputPCollection(), timeInterval);
     return getThroughputMetrics(
         inputThroughputBytesPerSec,
         inputThroughputElementsPerSec,
         outputThroughputBytesPerSec,
-        outputThroughputElementsPerSec,
-        config.seriesFilterFn());
+        outputThroughputElementsPerSec);
   }
 
   /**
@@ -384,13 +371,12 @@ public abstract class LoadTestBase {
    * @return Data freshness metrics of the job
    */
   protected Map<String, Double> getDataFreshnessMetrics(String jobId, TimeInterval timeInterval) {
-    List<Double> dataFreshness = monitoringClient.getDataFreshness(project, jobId, timeInterval);
+    List<Double> dataFreshness = monitoringClient.getDataFreshness(PROJECT, jobId, timeInterval);
     Map<String, Double> dataFreshnessMetrics = new HashMap<>();
     if (dataFreshness == null) {
       return dataFreshnessMetrics;
     }
-    dataFreshnessMetrics.put(
-        "AvgDataFreshness", MetricsConfiguration.calculateAverage(dataFreshness));
+    dataFreshnessMetrics.put("AvgDataFreshness", calculateAverage(dataFreshness));
     dataFreshnessMetrics.put("MaxDataFreshness", Collections.max(dataFreshness));
     return dataFreshnessMetrics;
   }
@@ -403,13 +389,12 @@ public abstract class LoadTestBase {
    * @return System latency metrics of the job
    */
   protected Map<String, Double> getSystemLatencyMetrics(String jobId, TimeInterval timeInterval) {
-    List<Double> systemLatency = monitoringClient.getSystemLatency(project, jobId, timeInterval);
+    List<Double> systemLatency = monitoringClient.getSystemLatency(PROJECT, jobId, timeInterval);
     Map<String, Double> systemLatencyMetrics = new HashMap<>();
     if (systemLatency == null) {
       return systemLatencyMetrics;
     }
-    systemLatencyMetrics.put(
-        "AvgSystemLatency", MetricsConfiguration.calculateAverage(systemLatency));
+    systemLatencyMetrics.put("AvgSystemLatency", calculateAverage(systemLatency));
     systemLatencyMetrics.put("MaxSystemLatency", Collections.max(systemLatency));
     return systemLatencyMetrics;
   }
@@ -418,7 +403,7 @@ public abstract class LoadTestBase {
   protected TimeInterval getWorkerTimeInterval(LaunchInfo info) throws ParseException {
     TimeInterval.Builder builder = TimeInterval.newBuilder();
     List<JobMessage> messages =
-        pipelineLauncher.listMessages(project, region, info.jobId(), "JOB_MESSAGE_DETAILED");
+        pipelineLauncher.listMessages(PROJECT, REGION, info.jobId(), "JOB_MESSAGE_DETAILED");
     for (JobMessage jobMessage : messages) {
       if (jobMessage.getMessageText() != null && !jobMessage.getMessageText().isEmpty()) {
         if (WORKER_START_PATTERN.matcher(jobMessage.getMessageText()).find()) {
@@ -438,36 +423,39 @@ public abstract class LoadTestBase {
       List<Double> inputThroughput,
       List<Double> inputThroughputElementsPerSec,
       List<Double> outputThroughput,
-      List<Double> outputThroughputElementsPerSec,
-      Function<List<Double>, List<Double>> filterFn) {
+      List<Double> outputThroughputElementsPerSec) {
     Map<String, Double> throughputMetrics = new HashMap<>();
     if (inputThroughput != null) {
-      throughputMetrics.put(
-          "AvgInputThroughputBytesPerSec",
-          MetricsConfiguration.calculateAverage(inputThroughput, filterFn));
+      throughputMetrics.put("AvgInputThroughputBytesPerSec", calculateAverage(inputThroughput));
       throughputMetrics.put("MaxInputThroughputBytesPerSec", Collections.max(inputThroughput));
     }
     if (inputThroughputElementsPerSec != null) {
       throughputMetrics.put(
-          "AvgInputThroughputElementsPerSec",
-          MetricsConfiguration.calculateAverage(inputThroughputElementsPerSec, filterFn));
+          "AvgInputThroughputElementsPerSec", calculateAverage(inputThroughputElementsPerSec));
       throughputMetrics.put(
           "MaxInputThroughputElementsPerSec", Collections.max(inputThroughputElementsPerSec));
     }
     if (outputThroughput != null) {
-      throughputMetrics.put(
-          "AvgOutputThroughputBytesPerSec",
-          MetricsConfiguration.calculateAverage(outputThroughput, filterFn));
+      throughputMetrics.put("AvgOutputThroughputBytesPerSec", calculateAverage(outputThroughput));
       throughputMetrics.put("MaxOutputThroughputBytesPerSec", Collections.max(outputThroughput));
     }
     if (outputThroughputElementsPerSec != null) {
       throughputMetrics.put(
-          "AvgOutputThroughputElementsPerSec",
-          MetricsConfiguration.calculateAverage(outputThroughputElementsPerSec, filterFn));
+          "AvgOutputThroughputElementsPerSec", calculateAverage(outputThroughputElementsPerSec));
       throughputMetrics.put(
           "MaxOutputThroughputElementsPerSec", Collections.max(outputThroughputElementsPerSec));
     }
     return throughputMetrics;
+  }
+
+  /**
+   * Calculate the average from a series.
+   *
+   * @param values the input series.
+   * @return the averaged result.
+   */
+  public static Double calculateAverage(List<Double> values) {
+    return values.stream().mapToDouble(d -> d).average().orElse(0.0);
   }
 
   private static void putOptional(Map<String, Object> map, String key, @Nullable Object value) {
@@ -479,9 +467,40 @@ public abstract class LoadTestBase {
   public static PipelineOperator.Config createConfig(LaunchInfo info, Duration timeout) {
     return PipelineOperator.Config.builder()
         .setJobId(info.jobId())
-        .setProject(project)
-        .setRegion(region)
+        .setProject(PROJECT)
+        .setRegion(REGION)
         .setTimeoutAfter(timeout)
         .build();
+  }
+
+  /** Utils for the metrics. */
+  @AutoValue
+  public abstract static class MetricsConfiguration {
+
+    /**
+     * Input PCollection of the Dataflow job to query additional metrics. If not provided, the
+     * metrics for inputPCollection will not be calculated.
+     */
+    public abstract @Nullable String inputPCollection();
+
+    /**
+     * Input PCollection of the Dataflow job to query additional metrics. If not provided, the
+     * metrics for inputPCollection will not be calculated.
+     */
+    public abstract @Nullable String outputPCollection();
+
+    public static MetricsConfiguration.Builder builder() {
+      return new AutoValue_LoadTestBase_MetricsConfiguration.Builder();
+    }
+
+    @AutoValue.Builder
+    public abstract static class Builder {
+
+      public abstract MetricsConfiguration.Builder setInputPCollection(@Nullable String value);
+
+      public abstract MetricsConfiguration.Builder setOutputPCollection(@Nullable String value);
+
+      public abstract MetricsConfiguration build();
+    }
   }
 }
