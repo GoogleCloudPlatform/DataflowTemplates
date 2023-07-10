@@ -339,12 +339,7 @@ public class PubSubToMongoDB {
                 .withBatchSize(options.getBatchSize())
                 .withUri(prefixMongoDb(options.getMongoDBUri()))
                 .withDatabase(options.getDatabase())
-                .withCollection(options.getCollection())
-                .withIgnoreSSLCertificate(options.getIgnoreSSLCertificate())
-                .withMaxConnectionIdleTime(options.getMaxConnectionIdleTime())
-                .withOrdered(options.getWithOrdered())
-                .withSSLEnabled(options.getSslEnabled())
-                .withSSLInvalidHostNameAllowed(options.getWithSSLInvalidHostNameAllowed()));
+                .withCollection(options.getCollection()));
 
     /*
      * Step 3b: Write elements that failed processing to deadletter table via {@link BigQueryIO}.

@@ -38,12 +38,21 @@ export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
 
 * Build and push image to Google Container Repository
 ```sh
-mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
-                  -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
-                  -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
-                  -Dapp-root=${APP_ROOT} \
-                  -Dcommand-spec=${COMMAND_SPEC} \
-                  -am -pl ${TEMPLATE_MODULE}
+mvn clean package -PtemplatesStage  \                 
+  -DskipTests \
+  -DprojectId=${PROJECT} \
+  -DbucketName=${BUCKET_NAME} \
+  -DstagePrefix="images" \
+  -DtemplateName="Cloud_PubSub_to_MongoDB" \
+  -pl pubsub-to-mongodb -am
+
+
+#mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
+#                  -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
+#                  -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
+#                  -Dapp-root=${APP_ROOT} \
+#                  -Dcommand-spec=${COMMAND_SPEC} \
+#                  -am -pl ${TEMPLATE_MODULE}
 ```
 
 #### Creating Image Spec
@@ -51,7 +60,7 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
 * Create spec file in Cloud Storage under the path ${TEMPLATE_IMAGE_SPEC} describing container image location and metadata.
 ```json
 {
-	"image": "gcr.io/project-id/image-name",
+	"image": "gcr.io/gcp-pov/pubsub-to-mongodb",
 	"metadata": {
 		"name": "PubSub To MongoDB",
 		"description": "A pipeline reads from pubsub and writes to mongodb.",
@@ -67,9 +76,8 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
 		       {
 		        "name": "mongoDBUri",
 		        "label": "MongoDB Connection URI",
-		        "helpText": "List of Mongo DB nodes separated by comma. ex: 192.285.234.12:27017,192.287.123.11:27017",
+		        "helpText": "MongoDB Host name in format mongodb+srv://<username>:<password>@hostname",
 		        "is_optional": false,
-		        "regexes": ["[a-zA-Z0-9._\\-:]+"],
 		        "paramType": "TEXT"
 		      },
 		       {
