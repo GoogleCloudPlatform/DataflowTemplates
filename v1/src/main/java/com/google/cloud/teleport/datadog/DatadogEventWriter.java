@@ -27,7 +27,6 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import com.google.common.net.InternetDomainName;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
@@ -188,8 +187,8 @@ public abstract class DatadogEventWriter
     DatadogEvent event = input.getValue();
     INPUT_COUNTER.inc();
 
-    String eventPayload = publisher.getStringPayload(event);
-    long eventPayloadSize = eventPayload.getBytes(StandardCharsets.UTF_8).length;
+    String eventPayload = DatadogEventSerializer.getPayloadString(event);
+    long eventPayloadSize = DatadogEventSerializer.getPayloadSize(eventPayload);
     if (eventPayloadSize > maxBufferSize) {
       LOG.error(
           "Error processing event of size {} due to exceeding max buffer size", eventPayloadSize);
@@ -391,7 +390,7 @@ public abstract class DatadogEventWriter
     }
 
     for (DatadogEvent event : events) {
-      String payload = publisher.getStringPayload(event);
+      String payload = DatadogEventSerializer.getPayloadString(event);
       DatadogWriteError error = builder.withPayload(payload).build();
       receiver.output(error);
     }

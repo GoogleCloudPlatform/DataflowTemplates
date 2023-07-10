@@ -22,7 +22,6 @@ import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -348,7 +347,7 @@ public class DatadogEventWriterTest {
     int testPort = mockServer.getPort();
 
     String payloadFormat = "{\"message\":\"%s\"}";
-    long jsonSize = calculateByteSize(String.format(payloadFormat, ""));
+    long jsonSize = DatadogEventSerializer.getPayloadSize(String.format(payloadFormat, ""));
 
     long maxBufferSize = 100;
     long msgSize = 50;
@@ -462,12 +461,16 @@ public class DatadogEventWriterTest {
 
     long maxBufferSize = 100;
     char[] bunchOfAs =
-        new char[(int) (maxBufferSize + 1L - calculateByteSize(String.format(payloadFormat, "")))];
+        new char
+            [(int)
+                (maxBufferSize
+                    + 1L
+                    - DatadogEventSerializer.getPayloadSize(String.format(payloadFormat, "")))];
     Arrays.fill(bunchOfAs, 'a');
     String messageTooBig = new String(bunchOfAs);
 
     String expectedPayload = String.format(payloadFormat, messageTooBig);
-    long expectedPayloadSize = calculateByteSize(expectedPayload);
+    long expectedPayloadSize = DatadogEventSerializer.getPayloadSize(expectedPayload);
     assertThat(expectedPayloadSize).isEqualTo(maxBufferSize + 1L);
 
     List<KV<Integer, DatadogEvent>> testEvents =
@@ -560,9 +563,5 @@ public class DatadogEventWriterTest {
     mockServer
         .when(HttpRequest.request(EXPECTED_PATH), times)
         .respond(HttpResponse.response().withStatusCode(statusCode));
-  }
-
-  private static long calculateByteSize(String payload) {
-    return payload.getBytes(StandardCharsets.UTF_8).length;
   }
 }

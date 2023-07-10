@@ -64,32 +64,6 @@ public class DatadogEventPublisherTest {
   private static final List<DatadogEvent> DATADOG_EVENTS =
       ImmutableList.of(DATADOG_TEST_EVENT_1, DATADOG_TEST_EVENT_2);
 
-  /** Test whether payload is stringified as expected. */
-  @Test
-  public void stringPayloadTest()
-      throws NoSuchAlgorithmException, KeyManagementException, IOException {
-
-    DatadogEventPublisher publisher =
-        DatadogEventPublisher.newBuilder()
-            .withUrl("http://example.com")
-            .withApiKey("test-api-key")
-            .build();
-
-    String actual = publisher.getStringPayload(DATADOG_EVENTS);
-
-    String expected =
-        "["
-            + "{\"ddsource\":\"test-source-1\",\"ddtags\":\"test-tags-1\","
-            + "\"hostname\":\"test-hostname-1\",\"service\":\"test-service-1\","
-            + "\"message\":\"test-message-1\"},"
-            + "{\"ddsource\":\"test-source-2\",\"ddtags\":\"test-tags-2\","
-            + "\"hostname\":\"test-hostname-2\",\"service\":\"test-service-2\","
-            + "\"message\":\"test-message-2\"}"
-            + "]";
-
-    assertThat(expected, is(equalTo(actual)));
-  }
-
   /** Test whether {@link HttpContent} is created from the list of {@link DatadogEvent}s. */
   @Test
   public void contentTest() throws NoSuchAlgorithmException, KeyManagementException, IOException {
