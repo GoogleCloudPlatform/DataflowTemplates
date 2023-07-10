@@ -302,7 +302,7 @@
                           <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                          <outputDirectory>${basedir}/target/extra_libs</outputDirectory>
+                          <outputDirectory>${project.build.directory}/extra_libs</outputDirectory>
                           <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
                           <stripVersion>true</stripVersion>
                         </configuration>
@@ -524,7 +524,7 @@
                                 <configuration>
                                     <extraDirectories>
                                         <paths>
-                                            <path>${basedir}/target/extra_libs</path>
+                                            <path>${project.build.directory}/extra_libs</path>
                                         </paths>
                                     </extraDirectories>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
