@@ -204,7 +204,9 @@ public abstract class DatadogEventPublisher {
         return false;
       }
 
-      if (res.getStatusCode() / 100 == 5 || RETRYABLE_4XX_CODES.contains(res.getStatusCode())) {
+      boolean is5xxStatusCode = res.getStatusCode() / 100 == 5;
+      boolean isRetryable4xxStatusCode = RETRYABLE_4XX_CODES.contains(res.getStatusCode());
+      if (is5xxStatusCode || isRetryable4xxStatusCode) {
         try {
           return BackOffUtils.next(sleeper, backOff);
         } catch (InterruptedException exception) {
