@@ -23,13 +23,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Job specification request object. */
 public class JobSpec implements Serializable {
-
-  private static final Logger LOG = LoggerFactory.getLogger(JobSpec.class);
 
   // initialize defaults;
   private final Map<String, Source> sources = new HashMap<>();
@@ -37,16 +33,6 @@ public class JobSpec implements Serializable {
   private Config config = new Config();
   private final Map<String, String> options = new HashMap<>();
   private final List<Action> actions = new ArrayList<>();
-
-  public List<Target> getActiveTargetsBySource(String sourceName) {
-    List<Target> targets = new ArrayList<>();
-    for (Target target : this.targets) {
-      if (target.isActive() && target.getSource().equals(sourceName)) {
-        targets.add(target);
-      }
-    }
-    return targets;
-  }
 
   public List<Target> getActiveNodeTargetsBySource(String sourceName) {
     List<Target> targets = new ArrayList<>();

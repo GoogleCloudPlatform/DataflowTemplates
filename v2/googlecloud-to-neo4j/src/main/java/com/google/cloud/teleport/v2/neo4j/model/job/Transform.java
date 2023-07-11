@@ -33,10 +33,6 @@ public class Transform implements Serializable {
     return sql;
   }
 
-  public void setSql(String sql) {
-    this.sql = sql;
-  }
-
   public List<Aggregation> getAggregations() {
     return aggregations;
   }

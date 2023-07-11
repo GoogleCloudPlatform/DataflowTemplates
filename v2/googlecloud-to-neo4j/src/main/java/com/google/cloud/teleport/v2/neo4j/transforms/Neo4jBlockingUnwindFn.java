@@ -53,7 +53,6 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
 
   public Neo4jBlockingUnwindFn(
       Neo4jConnection neo4jConnection,
-      Row returnEmpty,
       String cypher,
       long batchSize,
       boolean logCypher,

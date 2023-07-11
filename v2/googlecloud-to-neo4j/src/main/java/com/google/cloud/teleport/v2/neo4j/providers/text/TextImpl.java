@@ -27,14 +27,10 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Provider implementation for reading and writing Text files. */
 public class TextImpl implements Provider {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TextImpl.class);
-  private JobSpec jobSpec;
   private OptionsParams optionsParams;
 
   public TextImpl() {}
@@ -42,7 +38,6 @@ public class TextImpl implements Provider {
   @Override
   public void configure(OptionsParams optionsParams, JobSpec jobSpecRequest) {
     this.optionsParams = optionsParams;
-    this.jobSpec = jobSpecRequest;
   }
 
   @Override
@@ -59,7 +54,7 @@ public class TextImpl implements Provider {
 
   @Override
   public PTransform<PBegin, PCollection<Row>> querySourceBeamRows(SourceQuerySpec sourceQuerySpec) {
-    return new TextSourceFileToRow(optionsParams, sourceQuerySpec);
+    return new TextSourceFileToRow(sourceQuerySpec);
   }
 
   @Override
@@ -69,6 +64,6 @@ public class TextImpl implements Provider {
 
   @Override
   public PTransform<PBegin, PCollection<Row>> queryMetadata(Source source) {
-    return new TextSourceFileMetadataToRow(optionsParams, source);
+    return new TextSourceFileMetadataToRow(source);
   }
 }

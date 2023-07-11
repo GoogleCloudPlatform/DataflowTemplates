@@ -85,13 +85,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
 
     Neo4jBlockingUnwindFn neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
-            neo4jConnection,
-            emptyRow,
-            unwindCypher,
-            batchSize,
-            false,
-            "rows",
-            getRowCastingFunction());
+            neo4jConnection, unwindCypher, batchSize, false, "rows", getRowCastingFunction());
 
     return input
         .apply("Create KV pairs", CreateKvTransform.of(parallelism))
