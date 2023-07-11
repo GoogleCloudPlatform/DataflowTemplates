@@ -55,8 +55,8 @@ import org.slf4j.LoggerFactory;
  */
 public final class GcsResourceManager implements ArtifactClient, ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(GcsResourceManager.class);
-  private static final List<String> MANAGED_TEMP_DIRS = new ArrayList<>();
-  private static final List<Notification> NOTIFICATION_LIST = new ArrayList<>();
+  private final List<String> managedTempDirs = new ArrayList<>();
+  private final List<Notification> notificationList = new ArrayList<>();
 
   private final Storage client;
   private final String bucket;
@@ -69,7 +69,7 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     this.testClassName = builder.testClassName;
     this.runId = createRunId();
 
-    MANAGED_TEMP_DIRS.add(joinPathParts(testClassName, runId));
+    managedTempDirs.add(joinPathParts(testClassName, runId));
   }
 
   @VisibleForTesting
@@ -79,7 +79,7 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     this.testClassName = testClassName;
     this.runId = createRunId();
 
-    MANAGED_TEMP_DIRS.add(joinPathParts(testClassName, runId));
+    managedTempDirs.add(joinPathParts(testClassName, runId));
   }
 
   /** Returns a new {@link Builder} for configuring a client. */
@@ -198,7 +198,7 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     try {
       Notification notification = client.createNotification(bucket, notificationInfo);
       LOG.info("Successfully created notification {}", notification);
-      NOTIFICATION_LIST.add(notification);
+      notificationList.add(notification);
       return notification;
     } catch (StorageException e) {
       throw new RuntimeException(
@@ -215,20 +215,20 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
    * @param dirName name of the temporary directory
    */
   public void registerTempDir(String dirName) {
-    MANAGED_TEMP_DIRS.add(dirName);
+    managedTempDirs.add(dirName);
   }
 
   @Override
-  public void cleanupAll() {
-    if (NOTIFICATION_LIST.size() > 0) {
-      for (Notification notification : NOTIFICATION_LIST) {
+  public synchronized void cleanupAll() {
+    if (notificationList.size() > 0) {
+      for (Notification notification : notificationList) {
         client.deleteNotification(bucket, notification.getNotificationId());
       }
     }
 
-    if (MANAGED_TEMP_DIRS.size() > 0) {
-      LOG.info("managed temp dir size : {}", MANAGED_TEMP_DIRS.size());
-      for (String tempDir : MANAGED_TEMP_DIRS) {
+    if (managedTempDirs.size() > 0) {
+      LOG.info("managed temp dir size : {}", managedTempDirs.size());
+      for (String tempDir : managedTempDirs) {
         LOG.info("Cleaning up everything under '{}' under bucket '{}'", tempDir, bucket);
         Page<Blob> firstPage = getFirstPage(tempDir);
         consumePages(
@@ -254,8 +254,8 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
             });
       }
     }
-    MANAGED_TEMP_DIRS.clear();
-    NOTIFICATION_LIST.clear();
+    managedTempDirs.clear();
+    notificationList.clear();
   }
 
   private void consumePages(Page<Blob> firstPage, Consumer<Iterable<Blob>> consumeBlobs) {

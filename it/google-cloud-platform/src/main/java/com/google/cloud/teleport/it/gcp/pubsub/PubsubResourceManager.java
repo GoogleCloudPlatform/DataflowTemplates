@@ -289,7 +289,7 @@ public final class PubsubResourceManager implements ResourceManager {
       return;
     }
 
-    LOG.info("Attempting to cleanup manager.");
+    LOG.info("Attempting to cleanup Pub/Sub resource manager.");
 
     try {
       for (SubscriptionName subscription : createdSubscriptions) {

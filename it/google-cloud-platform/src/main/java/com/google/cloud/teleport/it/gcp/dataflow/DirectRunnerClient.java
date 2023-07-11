@@ -142,7 +142,7 @@ public class DirectRunnerClient implements PipelineLauncher {
   }
 
   @Override
-  public void cleanupAll() throws IOException {
+  public synchronized void cleanupAll() throws IOException {
     // Cancel / terminate all threads for DirectRunnerClient
     for (DirectRunnerJobThread jobs : managedJobs.values()) {
       jobs.cancel();
