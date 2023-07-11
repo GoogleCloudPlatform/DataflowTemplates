@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.schemas.Schema;
@@ -35,10 +34,8 @@ public class TextSourceFileToRow extends PTransform<PBegin, PCollection<Row>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextSourceFileToRow.class);
   SourceQuerySpec sourceQuerySpec;
-  OptionsParams optionsParams;
 
-  public TextSourceFileToRow(OptionsParams optionsParams, SourceQuerySpec sourceQuerySpec) {
-    this.optionsParams = optionsParams;
+  public TextSourceFileToRow(SourceQuerySpec sourceQuerySpec) {
     this.sourceQuerySpec = sourceQuerySpec;
   }
 

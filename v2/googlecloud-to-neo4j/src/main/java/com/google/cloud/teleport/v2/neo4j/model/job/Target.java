@@ -18,21 +18,15 @@ package com.google.cloud.teleport.v2.neo4j.model.job;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Target (node/edge) metadata. */
 public class Target implements Serializable, Comparable {
 
-  private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-  private static final Logger LOG = LoggerFactory.getLogger(Target.class);
   private String source = "";
   private String name = "";
   private boolean active = true;
@@ -48,10 +42,6 @@ public class Target implements Serializable, Comparable {
   private String executeAfterName = "";
 
   public Target() {}
-
-  public Mapping getMappingByFieldName(String fieldName) {
-    return this.mappingByFieldMap.get(fieldName);
-  }
 
   @Override
   public int compareTo(Object o) {
@@ -96,20 +86,12 @@ public class Target implements Serializable, Comparable {
     this.type = type;
   }
 
-  public boolean isAutoMap() {
-    return autoMap;
-  }
-
   public void setAutoMap(boolean autoMap) {
     this.autoMap = autoMap;
   }
 
   public Transform getTransform() {
     return transform;
-  }
-
-  public void setTransform(Transform transform) {
-    this.transform = transform;
   }
 
   public List<Mapping> getMappings() {
@@ -130,10 +112,6 @@ public class Target implements Serializable, Comparable {
 
   public Map<String, Mapping> getMappingByFieldMap() {
     return mappingByFieldMap;
-  }
-
-  public void setMappingByFieldMap(Map<String, Mapping> mappingByFieldMap) {
-    this.mappingByFieldMap = mappingByFieldMap;
   }
 
   public List<String> getFieldNames() {

@@ -27,12 +27,7 @@ import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
 import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.util.List;
-import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.Row;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -45,10 +40,7 @@ import org.slf4j.LoggerFactory;
 public class GoogleToNeo4jTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(GoogleToNeo4jTest.class);
-  private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
-  public transient TestPipeline pipeline = TestPipeline.create();
-  private transient PCollection<Row> textRows;
   private static Provider providerImpl;
   private static ConnectionParams neo4jConnection;
   private static JobSpec jobSpec;

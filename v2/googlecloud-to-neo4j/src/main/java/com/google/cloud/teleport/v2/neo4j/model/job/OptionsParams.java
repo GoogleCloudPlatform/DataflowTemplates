@@ -76,8 +76,4 @@ public class OptionsParams implements Serializable {
   public HashMap<String, String> getTokenMap() {
     return tokenMap;
   }
-
-  public void setTokenMap(HashMap<String, String> tokenMap) {
-    this.tokenMap = tokenMap;
-  }
 }

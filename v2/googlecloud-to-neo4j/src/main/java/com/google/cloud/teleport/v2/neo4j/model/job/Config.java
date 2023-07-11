@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.AvroType;
 import java.io.Serializable;
 import org.json.JSONObject;
 
@@ -24,8 +23,6 @@ public class Config implements Serializable {
 
   private Boolean resetDb = false;
   private Boolean indexAllProperties = false;
-
-  private AvroType avroType = AvroType.parquet;
 
   private Integer nodeParallelism = 5;
   private Integer edgeParallelism = 1;
@@ -62,55 +59,23 @@ public class Config implements Serializable {
     return resetDb;
   }
 
-  public void setResetDb(Boolean resetDb) {
-    this.resetDb = resetDb;
-  }
-
   public Boolean getIndexAllProperties() {
     return indexAllProperties;
-  }
-
-  public void setIndexAllProperties(Boolean indexAllProperties) {
-    this.indexAllProperties = indexAllProperties;
-  }
-
-  public AvroType getAvroType() {
-    return avroType;
-  }
-
-  public void setAvroType(AvroType avroType) {
-    this.avroType = avroType;
   }
 
   public Integer getNodeParallelism() {
     return nodeParallelism;
   }
 
-  public void setNodeParallelism(Integer nodeParallelism) {
-    this.nodeParallelism = nodeParallelism;
-  }
-
   public Integer getEdgeParallelism() {
     return edgeParallelism;
-  }
-
-  public void setEdgeParallelism(Integer edgeParallelism) {
-    this.edgeParallelism = edgeParallelism;
   }
 
   public Integer getNodeBatchSize() {
     return nodeBatchSize;
   }
 
-  public void setNodeBatchSize(Integer nodeBatchSize) {
-    this.nodeBatchSize = nodeBatchSize;
-  }
-
   public Integer getEdgeBatchSize() {
     return edgeBatchSize;
-  }
-
-  public void setEdgeBatchSize(Integer edgeBatchSize) {
-    this.edgeBatchSize = edgeBatchSize;
   }
 }
