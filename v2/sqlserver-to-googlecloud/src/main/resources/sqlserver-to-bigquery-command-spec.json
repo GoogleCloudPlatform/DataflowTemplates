@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.SQLServerToBigQuery",
+  "classPath": "/template/sqlserver-to-bigquery/sqlserver-to-bigquery-conscrypt.jar:/template/sqlserver-to-bigquery/*:/template/sqlserver-to-bigquery/libs/*:/template/sqlserver-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"sqlserver-to-bigquery\"}"
+  }
+}

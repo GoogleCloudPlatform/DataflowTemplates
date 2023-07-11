@@ -714,6 +714,7 @@
         <module>pubsub-to-mongodb</module>
         <module>spanner-change-streams-to-sink</module>
         <module>spanner-common</module>
+        <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
  </modules>
 
