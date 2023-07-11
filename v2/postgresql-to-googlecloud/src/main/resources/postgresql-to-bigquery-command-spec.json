@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.PostgreSQLToBigQuery",
+  "classPath": "/template/postgresql-to-bigquery/postgresql-to-bigquery-conscrypt.jar:/template/postgresql-to-bigquery/*:/template/postgresql-to-bigquery/libs/*:/template/postgresql-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"postgresql-to-bigquery\"}"
+  }
+}
