@@ -108,7 +108,7 @@ public final class Mod implements Serializable {
         ChangelogColumn.IS_GC.name(), mutation.getType() == MutationType.GARBAGE_COLLECTION);
     propertiesMap.put(
         ChangelogColumn.COMMIT_TIMESTAMP.name(),
-        cbtTimestampToBigQuery(mutation.getCommitTimestamp()));
+        cbtTimestampToPubSub(mutation.getCommitTimestamp()));
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, SetCell setCell) {
@@ -116,10 +116,10 @@ public final class Mod implements Serializable {
     propertiesMap.put(ChangelogColumn.COLUMN_FAMILY.name(), setCell.getFamilyName());
     propertiesMap.put(ChangelogColumn.COLUMN.name(), encodeBytes(setCell.getQualifier()));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP.name(), cbtTimestampMicrosToBigQuery(setCell.getTimestamp()));
+        ChangelogColumn.TIMESTAMP.name(), cbtTimestampMicrosToPubSub(setCell.getTimestamp()));
     propertiesMap.put(
         ChangelogColumn.TIMESTAMP_NUM.name(),
-        cbtTimestampMicrosToBigQueryInt(setCell.getTimestamp()));
+        cbtTimestampMicrosToPubSubInt(setCell.getTimestamp()));
     propertiesMap.put(ChangelogColumn.VALUE_BYTES.name(), encodeBytes(setCell.getValue()));
   }
 
@@ -137,13 +137,13 @@ public final class Mod implements Serializable {
     propertiesMap.put(ChangelogColumn.COLUMN_FAMILY.name(), deleteCells.getFamilyName());
     propertiesMap.put(ChangelogColumn.COLUMN.name(), encodeBytes(deleteCells.getQualifier()));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP_FROM.name(), cbtTimestampMicrosToBigQuery(startTimestamp));
+        ChangelogColumn.TIMESTAMP_FROM.name(), cbtTimestampMicrosToPubSub(startTimestamp));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP_FROM_NUM.name(), cbtTimestampMicrosToBigQueryInt(startTimestamp));
+        ChangelogColumn.TIMESTAMP_FROM_NUM.name(), cbtTimestampMicrosToPubSubInt(startTimestamp));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP_TO.name(), cbtTimestampMicrosToBigQuery(endTimestamp));
+        ChangelogColumn.TIMESTAMP_TO.name(), cbtTimestampMicrosToPubSub(endTimestamp));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP_TO_NUM.name(), cbtTimestampMicrosToBigQueryInt(endTimestamp));
+        ChangelogColumn.TIMESTAMP_TO_NUM.name(), cbtTimestampMicrosToPubSubInt(endTimestamp));
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, DeleteFamily deleteFamily) {
@@ -230,7 +230,7 @@ public final class Mod implements Serializable {
     }
   }
 
-  private String cbtTimestampToBigQuery(Instant timestamp) {
+  private String cbtTimestampToPubSub(Instant timestamp) {
     if (timestamp == null) {
       return null;
     }
@@ -243,14 +243,14 @@ public final class Mod implements Serializable {
     }
   }
 
-  private String cbtTimestampMicrosToBigQueryInt(Long timestampMicros) {
+  private String cbtTimestampMicrosToPubSubInt(Long timestampMicros) {
     if (timestampMicros == null) {
       return null;
     }
     return Long.toString(timestampMicros);
   }
 
-  private String cbtTimestampMicrosToBigQuery(Long timestampMicros) {
+  private String cbtTimestampMicrosToPubSub(Long timestampMicros) {
     if (timestampMicros == null) {
       return null;
     }
