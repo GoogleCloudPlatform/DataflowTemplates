@@ -302,7 +302,7 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   }
 
   @Override
-  public void cleanupAll() throws IOException {
+  public synchronized void cleanupAll() throws IOException {
     for (String jobId : launchedJobs) {
       try {
         JobState state = getJobStatus(TestProperties.project(), TestProperties.region(), jobId);
