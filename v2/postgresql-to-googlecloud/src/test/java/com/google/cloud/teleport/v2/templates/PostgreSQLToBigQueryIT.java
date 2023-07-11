@@ -77,7 +77,7 @@ public class PostgreSQLToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPostgreSqlToBigQueryDedicated() throws IOException {
+  public void testPostgresToBigQueryBrand() throws IOException {
     // Create postgres Resource manager
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
 
