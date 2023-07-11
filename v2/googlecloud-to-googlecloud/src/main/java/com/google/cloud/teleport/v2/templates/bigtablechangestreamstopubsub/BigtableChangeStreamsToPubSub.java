@@ -21,10 +21,13 @@ import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
+import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.pubsub.v1.SchemaServiceClient;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
+import com.google.cloud.teleport.bigtable.ChangelogEntry;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.ChangeLogEntryProto;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -36,22 +39,17 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.mode
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubDestination;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.protobuf.Descriptors.Descriptor;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.GetTopicRequest;
-import com.google.pubsub.v1.ProjectName;
-import com.google.pubsub.v1.Topic;
-import com.google.pubsub.v1.TopicName;
-import com.google.pubsub.v1.ValidateMessageRequest;
-import com.google.pubsub.v1.ValidateMessageResponse;
+import com.google.pubsub.v1.*;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.avro.file.DataFileReader;
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.DatumReader;
+
+import org.apache.avro.Schema;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -189,6 +187,31 @@ public final class BigtableChangeStreamsToPubSub {
             options.getMessageEncoding());
 
     PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo, options.getPubSubAPI());
+
+    String topicMessageFormat = pubSub.getDestination().getMessageFormat();
+    String topicMessageEncoding = pubSub.getDestination().getMessageEncoding();
+    Encoding encoding = null;
+    try (TopicAdminClient topicAdminClient = TopicAdminClient.create()) {
+      GetTopicRequest request =
+              GetTopicRequest.newBuilder()
+                      .setTopic(
+                              TopicName.ofProjectTopicName(
+                                              pubSub.getDestination().getPubSubProject(),
+                                              pubSub.getDestination().getPubSubTopicName())
+                                      .toString())
+                      .build();
+      Topic topic = topicAdminClient.getTopic(request);
+      if (!topic.getSchemaSettings().getSchema().isEmpty()) {
+        topicMessageFormat = topic.getSchemaSettings().getSchema();
+        topicMessageEncoding = topic.getSchemaSettings().getEncoding().toString();
+      }
+      pubSub.getDestination().setPubSubTopic(topic);
+      pubSub.getDestination().setTopicMessageEncoding(topicMessageEncoding);
+      pubSub.getDestination().setTopicMessageFormat(topicMessageFormat);
+
+    } catch (Exception e){
+      throw new RuntimeException(e);
+    }
 
     /*
      * Stages: 1) Read {@link ChangeStreamMutation} from change stream. 2) Create {@link
@@ -355,19 +378,25 @@ public final class BigtableChangeStreamsToPubSub {
                       .toString())
               .build();
       Topic topic = topicAdminClient.getTopic(request);
+      String messageFormat = topic.getSchemaSettings().getSchema();
       if (topic.getSchemaSettings().getSchema().isEmpty()) {
         return true;
       } else {
-        LOG.info("There is Schema associated with the topic");
-        DatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
-        DataFileReader<GenericRecord> dataFileReader =
-            new DataFileReader<>(new File("changelogentry.avsc"), datumReader);
+        String testMessage = "{ \"name\": \"John Doe\", \"age\": 30 }";
+        switch(messageFormat){
+          case "AVRO":
+            Schema schema = ChangelogEntry.getClassSchema();
+
+          case "PROTO":
+            Descriptor descriptor = ChangeLogEntryProto.getDescriptor();
+          default:
+        }
         try (SchemaServiceClient schemaServiceClient = SchemaServiceClient.create()) {
           ProjectName parent = ProjectName.of(getPubSubProjectId(options));
           ValidateMessageRequest validMessageRequest =
-              ValidateMessageRequest.newBuilder()
+              ValidateMessageRequest.newBuilder().setSchema(schema)
                   .setParent(parent.toString())
-                  .setMessage(ByteString.copyFrom(dataFileReader.toString().getBytes()))
+                      .setData(testMessage.getBytes())
                   .build();
           ValidateMessageResponse response =
               schemaServiceClient.validateMessage(validMessageRequest);
