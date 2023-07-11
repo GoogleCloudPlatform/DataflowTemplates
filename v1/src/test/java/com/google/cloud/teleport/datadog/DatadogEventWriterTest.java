@@ -22,7 +22,6 @@ import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
-import java.net.ServerSocket;
 import java.util.List;
 import org.apache.beam.sdk.coders.BigEndianIntegerCoder;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -57,10 +56,7 @@ public class DatadogEventWriterTest {
   @Before
   public void setup() throws IOException {
     ConfigurationProperties.disableSystemOut(true);
-    ServerSocket socket = new ServerSocket(0);
-    int port = socket.getLocalPort();
-    socket.close();
-    mockServer = startClientAndServer(port);
+    mockServer = startClientAndServer();
   }
 
   /** Test building {@link DatadogEventWriter} with missing URL. */

@@ -20,7 +20,6 @@ import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
-import java.net.ServerSocket;
 import java.util.List;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
@@ -72,10 +71,7 @@ public class DatadogIOTest {
   @Before
   public void setup() throws IOException {
     ConfigurationProperties.disableSystemOut(true);
-    ServerSocket socket = new ServerSocket(0);
-    int port = socket.getLocalPort();
-    socket.close();
-    mockServer = startClientAndServer(port);
+    mockServer = startClientAndServer();
   }
 
   /** Test successful multi-event POST request for DatadogIO without parallelism. */
