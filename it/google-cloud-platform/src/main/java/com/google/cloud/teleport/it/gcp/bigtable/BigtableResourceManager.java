@@ -438,7 +438,7 @@ public class BigtableResourceManager implements ResourceManager {
    *     up, if the manager object has no instance, if the table does not exist or if there is an
    *     IOException when attempting to retrieve the bigtable data client.
    */
-  public synchronized void write(Iterable<RowMutation> tableRows) 
+  public synchronized void write(Iterable<RowMutation> tableRows)
       throws BigtableResourceManagerException {
     checkHasInstance();
 
