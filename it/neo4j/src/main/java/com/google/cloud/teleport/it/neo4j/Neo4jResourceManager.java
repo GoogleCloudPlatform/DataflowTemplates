@@ -63,7 +63,7 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
 
   private Neo4jResourceManager(Neo4jResourceManager.Builder builder) {
     this(
-        /* neo4jDriver= */ null,
+        builder.driver,
         new Neo4jContainer<>(
                 DockerImageName.parse(builder.containerImageName)
                     .withTag(builder.containerImageTag))
@@ -192,6 +192,8 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
 
     private String adminPassword;
 
+    private Driver driver;
+
     private Builder(String testId) {
       super(testId, DEFAULT_NEO4J_CONTAINER_NAME, DEFAULT_NEO4J_CONTAINER_TAG);
     }
@@ -215,6 +217,13 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
 
     public Builder setAdminPassword(String password) {
       this.adminPassword = password;
+      return this;
+    }
+
+
+    @VisibleForTesting
+    Builder setDriver(Driver driver) {
+      this.driver = driver;
       return this;
     }
 
