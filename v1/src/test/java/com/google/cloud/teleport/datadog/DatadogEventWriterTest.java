@@ -367,7 +367,7 @@ public class DatadogEventWriterTest {
   /** Test retryable POST request. */
   @Test
   @Category(NeedsRunner.class)
-  @Ignore("Check failure: inputBatchCount must be greater than or equal to 10\n")
+  @Ignore("Check failure: inputBatchCount must be greater than or equal to 10")
   public void retryableDatadogWriteSingleBatchTest() {
 
     // Create server expectations for 3 retryable failures, 1 success.
