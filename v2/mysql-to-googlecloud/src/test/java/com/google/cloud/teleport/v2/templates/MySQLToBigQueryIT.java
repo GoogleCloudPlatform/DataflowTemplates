@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.common.utils.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -23,6 +22,7 @@ import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertT
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineOperator;
@@ -110,14 +110,12 @@ public class MySQLToBigQueryIT extends TemplateTestBase {
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryResourceManager.createDataset(REGION);
-    bigQueryResourceManager.createTable(testName, bqSchema);
-    String tableSpec = PROJECT + ":" + bigQueryResourceManager.getDatasetId() + "." + testName;
+    TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
 
-    String jobName = createJobName(testName);
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter("connectionURL", mySQLResourceManager.getUri())
-            .addParameter("outputTable", tableSpec)
+            .addParameter("outputTable", toTableSpecLegacy(table))
             .addParameter(
                 "query",
                 "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
