@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.BigtableChangeStreamsToGcs",
+  "classPath": "/template/bigtable-changestreams-to-gcs/*:/template/bigtable-changestreams-to-gcs/libs/*:/template/bigtable-changestreams-to-gcs/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"bigtable-changestreams-to-gcs\"}"
+  }
+}

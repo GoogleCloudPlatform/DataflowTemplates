@@ -52,6 +52,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
+import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO.ExistingPipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
@@ -196,6 +197,10 @@ public final class BigtableChangeStreamsToBigQuery {
     BigtableIO.ReadChangeStream readChangeStream =
         BigtableIO.readChangeStream()
             .withChangeStreamName(options.getBigtableChangeStreamName())
+            .withExistingPipelineOptions(
+                options.getBigtableChangeStreamResume()
+                    ? ExistingPipelineOptions.RESUME_OR_FAIL
+                    : ExistingPipelineOptions.FAIL_IF_EXISTS)
             .withProjectId(bigtableProject)
             .withMetadataTableInstanceId(options.getBigtableChangeStreamMetadataInstanceId())
             .withInstanceId(options.getBigtableReadInstanceId())
