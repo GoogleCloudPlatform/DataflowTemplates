@@ -76,6 +76,7 @@ public class Neo4jResourceManagerTest {
     assertThat(
             Neo4jResourceManager.builder(TEST_ID)
                 .setAdminPassword("letmein!")
+                .setDriver(neo4jDriver)
                 .useStaticContainer()
                 .setHost(HOST)
                 .setPort(NEO4J_BOLT_PORT)
