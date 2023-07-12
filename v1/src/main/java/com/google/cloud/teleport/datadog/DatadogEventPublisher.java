@@ -21,18 +21,20 @@ import com.google.api.client.http.ByteArrayContent;
 import com.google.api.client.http.GZipEncoding;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpBackOffIOExceptionHandler;
-import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
-import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler.BackOffRequired;
 import com.google.api.client.http.HttpContent;
-import com.google.api.client.http.HttpIOExceptionHandler;
 import com.google.api.client.http.HttpMediaType;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestFactory;
 import com.google.api.client.http.HttpResponse;
+import com.google.api.client.http.HttpUnsuccessfulResponseHandler;
 import com.google.api.client.http.apache.v2.ApacheHttpTransport;
+import com.google.api.client.util.BackOff;
+import com.google.api.client.util.BackOffUtils;
 import com.google.api.client.util.ExponentialBackOff;
+import com.google.api.client.util.Sleeper;
 import com.google.auto.value.AutoValue;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.io.IOException;
@@ -40,6 +42,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.Set;
 import javax.annotation.Nullable;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -111,15 +114,9 @@ public abstract class DatadogEventPublisher {
     HttpRequest request = requestFactory().buildPostRequest(genericUrl(), content);
 
     request.setEncoding(new GZipEncoding());
-
-    HttpBackOffUnsuccessfulResponseHandler responseHandler =
-        new HttpBackOffUnsuccessfulResponseHandler(getConfiguredBackOff());
-    responseHandler.setBackOffRequired(BackOffRequired.ON_SERVER_ERROR);
-    request.setUnsuccessfulResponseHandler(responseHandler);
-
-    HttpIOExceptionHandler ioExceptionHandler =
-        new HttpBackOffIOExceptionHandler(getConfiguredBackOff());
-    request.setIOExceptionHandler(ioExceptionHandler);
+    request.setUnsuccessfulResponseHandler(
+        new HttpSendLogsUnsuccessfulResponseHandler(getConfiguredBackOff()));
+    request.setIOExceptionHandler(new HttpBackOffIOExceptionHandler(getConfiguredBackOff()));
 
     setHeaders(request, apiKey());
 
@@ -183,6 +180,42 @@ public abstract class DatadogEventPublisher {
   @VisibleForTesting
   String getStringPayload(List<DatadogEvent> events) {
     return GSON.toJson(events);
+  }
+
+  static class HttpSendLogsUnsuccessfulResponseHandler implements HttpUnsuccessfulResponseHandler {
+    /*
+      See: https://docs.datadoghq.com/api/latest/logs/#send-logs
+      408: Request Timeout, request should be retried after some time
+      429: Too Many Requests, request should be retried after some time
+    */
+    private static final Set<Integer> RETRYABLE_4XX_CODES = Set.of(408, 429);
+
+    private final Sleeper sleeper = Sleeper.DEFAULT;
+    private final BackOff backOff;
+
+    HttpSendLogsUnsuccessfulResponseHandler(BackOff backOff) {
+      this.backOff = Preconditions.checkNotNull(backOff);
+    }
+
+    @Override
+    public boolean handleResponse(HttpRequest req, HttpResponse res, boolean supportsRetry)
+        throws IOException {
+      if (!supportsRetry) {
+        return false;
+      }
+
+      boolean is5xxStatusCode = res.getStatusCode() / 100 == 5;
+      boolean isRetryable4xxStatusCode = RETRYABLE_4XX_CODES.contains(res.getStatusCode());
+      if (is5xxStatusCode || isRetryable4xxStatusCode) {
+        try {
+          return BackOffUtils.next(sleeper, backOff);
+        } catch (InterruptedException exception) {
+          // Mark thread as interrupted since we cannot throw InterruptedException here.
+          Thread.currentThread().interrupt();
+        }
+      }
+      return false;
+    }
   }
 
   @AutoValue.Builder
