@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.it.gcp.artifacts;
+package com.google.cloud.teleport.it.gcp.storage;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -33,8 +33,8 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.Storage.BucketListOption;
-import com.google.common.collect.ImmutableList;
-import com.google.common.io.Resources;
+import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
+import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifact;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -43,25 +43,31 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.Resources;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-/** Unit tests for {@link GcsArtifactClient}. */
+/** Unit tests for {@link GcsResourceManager}. */
 @RunWith(JUnit4.class)
-public final class GcsArtifactClientTest {
+public final class GcsResourceManagerTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
-  @Mock private Storage client;
+  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+  private Storage client;
+
   @Mock private Blob blob;
-  private GcsArtifactClient gcsClient;
+  private GcsResourceManager gcsClient;
 
   private static final String ARTIFACT_NAME = "test-artifact.txt";
   private static final Path LOCAL_PATH;
@@ -88,21 +94,24 @@ public final class GcsArtifactClientTest {
 
   @Before
   public void setUp() {
-    gcsClient = GcsArtifactClient.builder(client, BUCKET, TEST_CLASS).build();
+    gcsClient = new GcsResourceManager(client, BUCKET, TEST_CLASS);
+  }
+
+  @After
+  public void tearDown() {
+    gcsClient.cleanupAll();
   }
 
   @Test
   public void testBuilderWithEmptyBucket() {
     assertThrows(
-        IllegalArgumentException.class,
-        () -> GcsArtifactClient.builder(client, "", TEST_CLASS).build());
+        IllegalArgumentException.class, () -> GcsResourceManager.builder("", TEST_CLASS).build());
   }
 
   @Test
   public void testBuilderWithEmptyTestClassName() {
     assertThrows(
-        IllegalArgumentException.class,
-        () -> GcsArtifactClient.builder(client, BUCKET, "").build());
+        IllegalArgumentException.class, () -> GcsResourceManager.builder(BUCKET, "").build());
   }
 
   @Test

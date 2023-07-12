@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.Statement;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.MSSQLServerContainer;
@@ -68,7 +68,7 @@ public class MSSQLResourceManager
     return new MSSQLResourceManager.Builder(testId);
   }
 
-  private void createDatabase(String databaseName) {
+  private synchronized void createDatabase(String databaseName) {
     LOG.info("Creating database using databaseName '{}'.", databaseName);
 
     StringBuilder sql = new StringBuilder();
@@ -76,7 +76,7 @@ public class MSSQLResourceManager
       Statement stmt = con.createStatement();
       sql.append("CREATE DATABASE ").append(databaseName);
       stmt.executeUpdate(sql.toString());
-
+      stmt.close();
     } catch (Exception e) {
       throw new JDBCResourceManagerException(
           "Error creating database with SQL statement: " + sql, e);
@@ -117,9 +117,7 @@ public class MSSQLResourceManager
       extends AbstractJDBCResourceManager.Builder<DefaultMSSQLServerContainer<?>> {
 
     public Builder(String testId) {
-      super(testId);
-      this.containerImageName = DEFAULT_MSSQL_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_MSSQL_CONTAINER_TAG;
+      super(testId, DEFAULT_MSSQL_CONTAINER_NAME, DEFAULT_MSSQL_CONTAINER_TAG);
     }
 
     @Override
@@ -162,6 +160,16 @@ public class MSSQLResourceManager
     @Override
     public String getDatabaseName() {
       return databaseName;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+      return super.hashCode();
     }
   }
 }

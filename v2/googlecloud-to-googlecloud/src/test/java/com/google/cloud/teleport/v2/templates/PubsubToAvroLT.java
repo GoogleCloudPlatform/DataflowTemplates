@@ -15,22 +15,19 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.createStorageClient;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
-import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.gcp.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
@@ -71,23 +68,25 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
       Pattern.compile(".*" + AVRO_OUTPUT_FILENAME_PREFIX + ".*");
 
   private static PubsubResourceManager pubsubResourceManager;
-  private static ArtifactClient gcsClient;
+  private static GcsResourceManager gcsResourceManager;
 
   @Before
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, project)
+        PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
 
-    Storage storageClient = createStorageClient(CREDENTIALS);
-    gcsClient = GcsArtifactClient.builder(storageClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    gcsResourceManager =
+        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
+            .setCredentials(CREDENTIALS)
+            .build();
   }
 
   @After
   public void teardown() {
-    ResourceManagerUtils.cleanResources(pubsubResourceManager, gcsClient);
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, gcsResourceManager);
   }
 
   @Test
@@ -122,10 +121,10 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
 
     String outputDirectoryPath =
         ArtifactUtils.getFullGcsPath(
-            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsClient.runId(), testName);
+            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsResourceManager.runId(), testName);
     String tempDirectoryPath =
         ArtifactUtils.getFullGcsPath(
-            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsClient.runId(), AVRO_TEMP_DIR);
+            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsResourceManager.runId(), AVRO_TEMP_DIR);
 
     PipelineLauncher.LaunchConfig options =
         paramsAdder
@@ -140,7 +139,7 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
 
     // Act
     dataGenerator.execute(Duration.ofMinutes(timeoutMin));
-    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
 
     PipelineOperator.Result result =
@@ -150,7 +149,7 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThat(gcsClient.listArtifacts(testName + "/", EXPECTED_PATTERN)).isNotEmpty();
+    assertThat(gcsResourceManager.listArtifacts(testName + "/", EXPECTED_PATTERN)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
@@ -175,10 +174,10 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
 
     String outputDirectoryPath =
         ArtifactUtils.getFullGcsPath(
-            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsClient.runId(), testName);
+            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsResourceManager.runId(), testName);
     String tempDirectoryPath =
         ArtifactUtils.getFullGcsPath(
-            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsClient.runId(), AVRO_TEMP_DIR);
+            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsResourceManager.runId(), AVRO_TEMP_DIR);
 
     PipelineLauncher.LaunchConfig options =
         paramsAdder
@@ -193,7 +192,7 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
 
     // Executes the data generator and return approximate number of messages
@@ -208,7 +207,7 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThat(gcsClient.listArtifacts(testName + "/", EXPECTED_PATTERN)).isNotEmpty();
+    assertThat(gcsResourceManager.listArtifacts(testName + "/", EXPECTED_PATTERN)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));

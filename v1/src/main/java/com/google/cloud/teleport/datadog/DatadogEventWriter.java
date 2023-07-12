@@ -59,7 +59,8 @@ import org.slf4j.LoggerFactory;
 public abstract class DatadogEventWriter
     extends DoFn<KV<Integer, DatadogEvent>, DatadogWriteError> {
 
-  private static final Integer DEFAULT_BATCH_COUNT = 10;
+  private static final Integer MIN_BATCH_COUNT = 10;
+  private static final Integer DEFAULT_BATCH_COUNT = 100;
   private static final Integer MAX_BATCH_COUNT = 1000;
   private static final Logger LOG = LoggerFactory.getLogger(DatadogEventWriter.class);
   private static final long DEFAULT_FLUSH_DELAY = 2;
@@ -107,7 +108,12 @@ public abstract class DatadogEventWriter
       new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
 
   public static Builder newBuilder() {
-    return new AutoValue_DatadogEventWriter.Builder();
+    return newBuilder(null);
+  }
+
+  public static Builder newBuilder(Integer minBatchCount) {
+    return new AutoValue_DatadogEventWriter.Builder()
+        .setMinBatchCount(MoreObjects.firstNonNull(minBatchCount, MIN_BATCH_COUNT));
   }
 
   @Nullable
@@ -115,6 +121,9 @@ public abstract class DatadogEventWriter
 
   @Nullable
   abstract ValueProvider<String> apiKey();
+
+  @Nullable
+  abstract Integer minBatchCount();
 
   @Nullable
   abstract ValueProvider<Integer> inputBatchCount();
@@ -136,6 +145,10 @@ public abstract class DatadogEventWriter
       batchCount = MoreObjects.firstNonNull(batchCount, DEFAULT_BATCH_COUNT);
       LOG.info("Batch count set to: {}", batchCount);
     }
+    checkArgument(
+        batchCount >= minBatchCount(),
+        "batchCount must be greater than or equal to %s",
+        minBatchCount());
     checkArgument(
         batchCount <= MAX_BATCH_COUNT,
         "batchCount must be less than or equal to %s",
@@ -381,6 +394,10 @@ public abstract class DatadogEventWriter
 
     abstract ValueProvider<String> apiKey();
 
+    abstract Builder setMinBatchCount(Integer minBatchCount);
+
+    abstract Integer minBatchCount();
+
     abstract Builder setInputBatchCount(ValueProvider<Integer> inputBatchCount);
 
     abstract DatadogEventWriter autoBuild();
@@ -443,6 +460,10 @@ public abstract class DatadogEventWriter
       if (inputBatchCount != null && inputBatchCount.isAccessible()) {
         Integer batchCount = inputBatchCount.get();
         if (batchCount != null) {
+          checkArgument(
+              batchCount >= minBatchCount(),
+              "inputBatchCount must be greater than or equal to %s",
+              minBatchCount());
           checkArgument(
               batchCount <= MAX_BATCH_COUNT,
               "inputBatchCount must be less than or equal to %s",

@@ -20,16 +20,17 @@ import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generat
 import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generateJdbcPassword;
 
 import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
-import com.google.common.annotations.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.math.NumberUtils;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.JdbcDatabaseContainer;
@@ -135,7 +136,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
           .append(")");
 
       stmt.executeUpdate(sql.toString());
-
+      stmt.close();
     } catch (Exception e) {
       throw new JDBCResourceManagerException(
           "Error creating table with SQL statement: "
@@ -167,22 +168,26 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
    *     Exception when attempting to insert the rows.
    */
   @Override
-  public boolean write(String tableName, List<Map<String, Object>> rows) {
+  public boolean write(String tableName, List<Map<String, Object>> rows)
+      throws JDBCResourceManagerException {
     if (rows.size() == 0) {
       return false;
     }
 
     LOG.info("Attempting to write {} rows to {}.{}.", rows.size(), databaseName, tableName);
 
-    String insertStatement = "";
     try (Connection con = driver.getConnection(getUri(), username, password)) {
       Statement stmt = con.createStatement();
 
       for (Map<String, Object> row : rows) {
         List<String> columns = new ArrayList<>(row.keySet());
-        String sql = "INSERT INTO " + tableName + "(" + String.join(",", columns) + ") VALUES ";
+        StringBuilder sql =
+            new StringBuilder("INSERT INTO ")
+                .append(tableName)
+                .append("(")
+                .append(String.join(",", columns))
+                .append(") VALUES (");
 
-        StringBuilder rowToInsert = new StringBuilder("(");
         List<String> valueList = new ArrayList<>();
         for (String colName : columns) {
           Object value = row.get(colName);
@@ -194,20 +199,23 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
             valueList.add("'" + value + "'");
           }
         }
+        sql.append(String.join(",", valueList)).append(")");
 
-        rowToInsert.append(String.join(",", valueList)).append(")");
-        insertStatement = sql + rowToInsert;
-        LOG.info("Running SQL statement: " + insertStatement);
-        stmt.executeUpdate(insertStatement);
+        try {
+          LOG.info("Running SQL statement: " + sql);
+          stmt.executeUpdate(sql.toString());
+        } catch (SQLException e) {
+          throw new JDBCResourceManagerException(
+              "Failed to insert values into table with SQL statement: " + sql, e);
+        }
       }
-
-    } catch (Exception e) {
+      stmt.close();
+    } catch (SQLException e) {
       throw new JDBCResourceManagerException(
-          "Failed to insert values into table with SQL statement: " + insertStatement, e);
+          String.format("Exception occurred when trying to write records to %s.", tableName), e);
     }
 
     LOG.info("Successfully wrote {} rows to {}.{}.", rows.size(), databaseName, tableName);
-
     return true;
   }
 
@@ -233,7 +241,8 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
         }
         resultSet.add(row);
       }
-
+      result.close();
+      stmt.close();
     } catch (Exception e) {
       throw new JDBCResourceManagerException(
           "Failed to fetch rows from table. SQL statement: " + sql, e);
@@ -257,7 +266,8 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
       for (int i = 1; i <= metadata.getColumnCount(); i++) {
         columnNames.add(metadata.getColumnName(i));
       }
-
+      result.close();
+      stmt.close();
       return columnNames;
     } catch (Exception e) {
       throw new JDBCResourceManagerException(
@@ -277,8 +287,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
 
   @Override
   public synchronized ResultSet runSQLQuery(String sql) {
-    try (Connection con = driver.getConnection(getUri(), username, password)) {
-      Statement stmt = con.createStatement();
+    try (Statement stmt = driver.getConnection(getUri(), username, password).createStatement()) {
       return stmt.executeQuery(sql);
     } catch (Exception e) {
       throw new JDBCResourceManagerException("Failed to execute SQL statement: " + sql, e);
@@ -287,8 +296,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
 
   @Override
   public synchronized void runSQLUpdate(String sql) {
-    try (Connection con = driver.getConnection(getUri(), username, password)) {
-      Statement stmt = con.createStatement();
+    try (Statement stmt = driver.getConnection(getUri(), username, password).createStatement()) {
       stmt.executeUpdate(sql);
     } catch (Exception e) {
       throw new JDBCResourceManagerException("Failed to execute SQL statement: " + sql, e);
@@ -308,8 +316,8 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
     protected String username;
     protected String password;
 
-    public Builder(String testId) {
-      super(testId);
+    public Builder(String testId, String containerImageName, String containerImageTag) {
+      super(testId, containerImageName, containerImageTag);
 
       this.username = DEFAULT_JDBC_USERNAME;
       this.password = generateJdbcPassword();

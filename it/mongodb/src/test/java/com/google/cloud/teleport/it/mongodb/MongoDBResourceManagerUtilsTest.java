@@ -20,11 +20,12 @@ import static com.google.cloud.teleport.it.mongodb.MongoDBResourceManagerUtils.g
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit tests for {@link com.google.cloud.teleport.it.mongodb.MongoDBResourceManagerUtils}. */
+/** Unit tests for {@link MongoDBResourceManagerUtils}. */
 @RunWith(JUnit4.class)
 public class MongoDBResourceManagerUtilsTest {
 
@@ -87,13 +88,13 @@ public class MongoDBResourceManagerUtilsTest {
   public void testCheckValidCollectionNameThrowsErrorWhenNameIsTooLong() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> checkValidCollectionName("a".repeat(1), "b".repeat(100)));
+        () -> checkValidCollectionName(StringUtils.repeat("a", 1), StringUtils.repeat("b", 100)));
     assertThrows(
         IllegalArgumentException.class,
-        () -> checkValidCollectionName("a".repeat(50), "b".repeat(50)));
+        () -> checkValidCollectionName(StringUtils.repeat("a", 50), StringUtils.repeat("b", 50)));
     assertThrows(
         IllegalArgumentException.class,
-        () -> checkValidCollectionName("a".repeat(100), "b".repeat(1)));
+        () -> checkValidCollectionName(StringUtils.repeat("a", 100), StringUtils.repeat("b", 1)));
   }
 
   @Test

@@ -24,33 +24,31 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.testcontainers.containers.JdbcDatabaseContainer;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
-/** Unit tests for {@link com.google.cloud.teleport.it.jdbc.AbstractJDBCResourceManager}. */
+/** Unit tests for {@link AbstractJDBCResourceManager}. */
 @RunWith(JUnit4.class)
 public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>> {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
-  @Mock private JDBCDriverFactory driver;
+  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+  private JDBCDriverFactory driver;
 
-  @Mock private T container;
-  @Mock private Connection connection;
-  @Mock private Statement statement;
-  @Mock private ResultSet result;
+  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+  private T container;
 
   private static final String TEST_ID = "test_id";
   private static final String DATABASE_NAME = "database";
@@ -72,10 +70,10 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
     testManager =
         new AbstractJDBCResourceManager<T>(
             container,
-            new AbstractJDBCResourceManager.Builder<>(TEST_ID) {
+            new AbstractJDBCResourceManager.Builder<T>(TEST_ID, "", "") {
               @Override
               public AbstractJDBCResourceManager<T> build() {
-                return new AbstractJDBCResourceManager<>(container, this) {
+                return new AbstractJDBCResourceManager<T>(container, this) {
                   @Override
                   protected int getJDBCPort() {
                     return JDBC_PORT;
@@ -128,8 +126,6 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
   public void testCreateTableShouldThrowErrorWhenTableAlreadyExists() throws SQLException {
     when(container.getHost()).thenReturn(HOST);
     when(container.getMappedPort(JDBC_PORT)).thenReturn(MAPPED_PORT);
-    when(driver.getConnection(any(), any(), any())).thenReturn(connection);
-    when(connection.createStatement()).thenReturn(statement);
 
     testManager.createTable(
         TABLE_NAME, new JDBCResourceManager.JDBCSchema(ImmutableMap.of("id", "INTEGER"), "id"));
@@ -161,8 +157,7 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
   public void testCreateTableShouldThrowErrorWhenJDBCFailsToExecuteSQL() throws SQLException {
     when(container.getHost()).thenReturn(HOST);
     when(container.getMappedPort(JDBC_PORT)).thenReturn(MAPPED_PORT);
-    when(driver.getConnection(any(), any(), any())).thenReturn(connection);
-    when(connection.createStatement()).thenReturn(statement);
+    Statement statement = driver.getConnection(any(), any(), any()).createStatement();
     doThrow(SQLException.class).when(statement).executeUpdate(anyString());
 
     assertThrows(
@@ -177,15 +172,13 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
   public void testCreateTableShouldReturnTrueIfJDBCDoesNotThrowAnyError() throws SQLException {
     when(container.getHost()).thenReturn(HOST);
     when(container.getMappedPort(JDBC_PORT)).thenReturn(MAPPED_PORT);
-    when(driver.getConnection(any(), any(), any())).thenReturn(connection);
-    when(connection.createStatement()).thenReturn(statement);
 
     assertTrue(
         testManager.createTable(
             TABLE_NAME,
             new JDBCResourceManager.JDBCSchema(ImmutableMap.of("id", "INTEGER"), "id")));
 
-    verify(statement).executeUpdate(anyString());
+    verify(driver.getConnection(any(), any(), any()).createStatement()).executeUpdate(anyString());
   }
 
   @Test
@@ -203,8 +196,7 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
   public void testWriteShouldThrowErrorWhenJDBCFailsToExecuteSQL() throws SQLException {
     when(container.getHost()).thenReturn(HOST);
     when(container.getMappedPort(JDBC_PORT)).thenReturn(MAPPED_PORT);
-    when(driver.getConnection(any(), any(), any())).thenReturn(connection);
-    when(connection.createStatement()).thenReturn(statement);
+    Statement statement = driver.getConnection(any(), any(), any()).createStatement();
     doThrow(SQLException.class).when(statement).executeUpdate(anyString());
 
     assertThrows(
@@ -216,12 +208,10 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
   public void testWriteShouldReturnTrueIfJDBCDoesNotThrowAnyError() throws SQLException {
     when(container.getHost()).thenReturn(HOST);
     when(container.getMappedPort(JDBC_PORT)).thenReturn(MAPPED_PORT);
-    when(driver.getConnection(any(), any(), any())).thenReturn(connection);
-    when(connection.createStatement()).thenReturn(statement);
 
     assertTrue(testManager.write(TABLE_NAME, ImmutableList.of(ImmutableMap.of("key", "test"))));
 
-    verify(statement).executeUpdate(anyString());
+    verify(driver.getConnection(any(), any(), any()).createStatement()).executeUpdate(anyString());
   }
 
   @Test
@@ -238,8 +228,7 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
   public void testReadTableShouldThrowErrorWhenJDBCFailsToExecuteSQL() throws SQLException {
     when(container.getHost()).thenReturn(HOST);
     when(container.getMappedPort(JDBC_PORT)).thenReturn(MAPPED_PORT);
-    when(driver.getConnection(any(), any(), any())).thenReturn(connection);
-    when(connection.createStatement()).thenReturn(statement);
+    Statement statement = driver.getConnection(any(), any(), any()).createStatement();
     doThrow(SQLException.class).when(statement).executeQuery(anyString());
 
     assertThrows(JDBCResourceManagerException.class, () -> testManager.readTable(TABLE_NAME));
@@ -249,13 +238,10 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
   public void testReadTableShouldNotThrowErrorIfJDBCDoesNotThrowAnyError() throws SQLException {
     when(container.getHost()).thenReturn(HOST);
     when(container.getMappedPort(JDBC_PORT)).thenReturn(MAPPED_PORT);
-    when(driver.getConnection(any(), any(), any())).thenReturn(connection);
-    when(connection.createStatement()).thenReturn(statement);
-    when(statement.executeQuery(anyString())).thenReturn(result);
 
     testManager.readTable(TABLE_NAME);
 
-    verify(statement).executeQuery(anyString());
+    verify(driver.getConnection(any(), any(), any()).createStatement()).executeQuery(anyString());
   }
 
   @Test
@@ -273,8 +259,7 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
   public void testRunSQLStatementShouldThrowErrorWhenJDBCFailsToExecuteSQL() throws SQLException {
     when(container.getHost()).thenReturn(HOST);
     when(container.getMappedPort(JDBC_PORT)).thenReturn(MAPPED_PORT);
-    when(driver.getConnection(any(), any(), any())).thenReturn(connection);
-    when(connection.createStatement()).thenReturn(statement);
+    Statement statement = driver.getConnection(any(), any(), any()).createStatement();
     doThrow(SQLException.class).when(statement).executeQuery(anyString());
 
     assertThrows(
@@ -286,13 +271,10 @@ public class AbstractJDBCResourceManagerTest<T extends JdbcDatabaseContainer<T>>
       throws SQLException {
     when(container.getHost()).thenReturn(HOST);
     when(container.getMappedPort(JDBC_PORT)).thenReturn(MAPPED_PORT);
-    when(driver.getConnection(any(), any(), any())).thenReturn(connection);
-    when(connection.createStatement()).thenReturn(statement);
-    when(statement.executeQuery(anyString())).thenReturn(result);
 
     testManager.runSQLQuery("SQL statement");
 
-    verify(statement).executeQuery(anyString());
+    verify(driver.getConnection(any(), any(), any()).createStatement()).executeQuery(anyString());
   }
 
   @Test

@@ -20,7 +20,6 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,8 +33,9 @@ import com.google.cloud.kms.v1.KeyRing;
 import com.google.cloud.kms.v1.KeyRingName;
 import com.google.cloud.kms.v1.LocationName;
 import com.google.protobuf.ByteString;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.List;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -83,7 +83,8 @@ public class KMSResourceManagerTest {
   @Test
   public void testGetOrCreateCryptoKeyShouldCreateKeyRingWhenItDoesNotExist() {
     when(kmsClientFactory.getKMSClient()).thenReturn(serviceClient);
-    when(serviceClient.listKeyRings(any(LocationName.class)).iterateAll()).thenReturn(List.of());
+    when(serviceClient.listKeyRings(any(LocationName.class)).iterateAll())
+        .thenReturn(ImmutableList.of());
 
     testManager.getOrCreateCryptoKey(KEYRING_ID, KEY_ID);
     verify(serviceClient).createKeyRing(any(LocationName.class), anyString(), any(KeyRing.class));
@@ -91,13 +92,13 @@ public class KMSResourceManagerTest {
 
   @Test
   public void testGetOrCreateCryptoKeyShouldNotCreateKeyRingWhenItAlreadyExists() {
-    KeyRing keyRingMock = mock(KeyRing.class);
-
+    KeyRing keyRing =
+        KeyRing.newBuilder()
+            .setName(KeyRingName.of(PROJECT_ID, REGION, KEYRING_ID).toString())
+            .build();
     when(kmsClientFactory.getKMSClient()).thenReturn(serviceClient);
     when(serviceClient.listKeyRings(any(LocationName.class)).iterateAll())
-        .thenReturn(List.of(keyRingMock));
-    when(keyRingMock.getName())
-        .thenReturn(KeyRingName.of(PROJECT_ID, REGION, KEYRING_ID).toString());
+        .thenReturn(ImmutableList.of(keyRing));
 
     testManager.getOrCreateCryptoKey(KEYRING_ID, KEY_ID);
     verify(serviceClient, never())
@@ -106,14 +107,14 @@ public class KMSResourceManagerTest {
 
   @Test
   public void testGetOrCreateCryptoKeyShouldCreateCryptoKeyWhenItDoesNotExist() {
-    KeyRing keyRingMock = mock(KeyRing.class);
-
+    KeyRing keyRing =
+        KeyRing.newBuilder()
+            .setName(KeyRingName.of(PROJECT_ID, REGION, KEYRING_ID).toString())
+            .build();
     when(kmsClientFactory.getKMSClient()).thenReturn(serviceClient);
     when(serviceClient.createKeyRing(any(LocationName.class), anyString(), any(KeyRing.class)))
-        .thenReturn(keyRingMock);
-    when(keyRingMock.getName())
-        .thenReturn(KeyRingName.of(PROJECT_ID, REGION, KEYRING_ID).toString());
-    when(serviceClient.listCryptoKeys(KEYRING_ID).iterateAll()).thenReturn(List.of());
+        .thenReturn(keyRing);
+    when(serviceClient.listCryptoKeys(KEYRING_ID).iterateAll()).thenReturn(ImmutableList.of());
 
     testManager.getOrCreateCryptoKey(KEYRING_ID, KEY_ID);
     verify(serviceClient).createCryptoKey(anyString(), anyString(), any(CryptoKey.class));
@@ -121,17 +122,18 @@ public class KMSResourceManagerTest {
 
   @Test
   public void testGetOrCreateCryptoKeyShouldNotCreateCryptoKeyWhenItAlreadyExists() {
-    KeyRing keyRingMock = mock(KeyRing.class);
-    CryptoKey keyMock = mock(CryptoKey.class);
     String keyRingName = KeyRingName.of(PROJECT_ID, REGION, KEYRING_ID).toString();
+    KeyRing keyRing = KeyRing.newBuilder().setName(keyRingName).build();
+    CryptoKey cryptoKey =
+        CryptoKey.newBuilder()
+            .setName(CryptoKeyName.of(PROJECT_ID, REGION, KEYRING_ID, KEY_ID).toString())
+            .build();
 
     when(kmsClientFactory.getKMSClient()).thenReturn(serviceClient);
     when(serviceClient.createKeyRing(any(LocationName.class), anyString(), any(KeyRing.class)))
-        .thenReturn(keyRingMock);
-    when(keyRingMock.getName()).thenReturn(keyRingName);
-    when(serviceClient.listCryptoKeys(keyRingName).iterateAll()).thenReturn(List.of(keyMock));
-    when(keyMock.getName())
-        .thenReturn(CryptoKeyName.of(PROJECT_ID, REGION, KEYRING_ID, KEY_ID).toString());
+        .thenReturn(keyRing);
+    when(serviceClient.listCryptoKeys(keyRingName).iterateAll())
+        .thenReturn(ImmutableList.of(cryptoKey));
 
     testManager.getOrCreateCryptoKey(KEYRING_ID, KEY_ID);
     verify(serviceClient, never()).createCryptoKey(anyString(), anyString(), any(CryptoKey.class));
@@ -148,16 +150,19 @@ public class KMSResourceManagerTest {
 
   @Test
   public void testEncryptShouldEncodeEncryptedMessageWithBase64() {
-    EncryptResponse encryptedResponse = mock(EncryptResponse.class, Answers.RETURNS_DEEP_STUBS);
     String ciphertext = "ciphertext";
+    EncryptResponse encryptedResponse =
+        EncryptResponse.newBuilder().setCiphertext(ByteString.copyFromUtf8(ciphertext)).build();
 
     when(kmsClientFactory.getKMSClient()).thenReturn(serviceClient);
     when(serviceClient.encrypt(any(CryptoKeyName.class), any(ByteString.class)))
         .thenReturn(encryptedResponse);
-    when(encryptedResponse.getCiphertext().toByteArray()).thenReturn(ciphertext.getBytes());
 
     String encryptedMessage = testManager.encrypt(KEYRING_ID, KEY_ID, "test message");
-    String actual = new String(Base64.getDecoder().decode(encryptedMessage.getBytes()));
+    String actual =
+        new String(
+            Base64.getDecoder().decode(encryptedMessage.getBytes(StandardCharsets.UTF_8)),
+            StandardCharsets.UTF_8);
 
     assertThat(actual).isEqualTo(ciphertext);
   }
@@ -173,19 +178,22 @@ public class KMSResourceManagerTest {
 
   @Test
   public void testDecryptShouldEncodeEncryptedMessageWithUTF8() {
-    DecryptResponse decryptedResponse = mock(DecryptResponse.class, Answers.RETURNS_DEEP_STUBS);
     String ciphertext = "ciphertext";
-    String base64EncodedCiphertext = new String(Base64.getEncoder().encode(ciphertext.getBytes()));
+    DecryptResponse decryptedResponse =
+        DecryptResponse.newBuilder().setPlaintext(ByteString.copyFromUtf8(ciphertext)).build();
+    String base64EncodedCiphertext =
+        new String(
+            Base64.getEncoder().encode(ciphertext.getBytes(StandardCharsets.UTF_8)),
+            StandardCharsets.UTF_8);
 
     when(kmsClientFactory.getKMSClient()).thenReturn(serviceClient);
     when(serviceClient.decrypt(any(CryptoKeyName.class), any(ByteString.class)))
         .thenReturn(decryptedResponse);
-    when(decryptedResponse.getPlaintext().toStringUtf8()).thenReturn(ciphertext);
 
     String actual = testManager.decrypt(KEYRING_ID, KEY_ID, base64EncodedCiphertext);
 
     verify(serviceClient)
-        .decrypt(any(CryptoKeyName.class), eq(ByteString.copyFrom(ciphertext.getBytes())));
+        .decrypt(any(CryptoKeyName.class), eq(ByteString.copyFromUtf8(ciphertext)));
     assertThat(actual).isEqualTo(ciphertext);
   }
 }

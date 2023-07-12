@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.gcp.pubsub;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.cloud.pubsub.v1.Publisher;
@@ -26,8 +26,6 @@ import com.google.cloud.pubsub.v1.SubscriptionAdminSettings;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminSettings;
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Strings;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.Encoding;
 import com.google.pubsub.v1.ProjectName;
@@ -47,6 +45,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -289,7 +289,7 @@ public final class PubsubResourceManager implements ResourceManager {
       return;
     }
 
-    LOG.info("Attempting to cleanup manager.");
+    LOG.info("Attempting to cleanup Pub/Sub resource manager.");
 
     try {
       for (SubscriptionName subscription : createdSubscriptions) {

@@ -19,21 +19,17 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
-import java.util.Map;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.client.IndicesClient;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.core.CountRequest;
-import org.elasticsearch.client.core.CountResponse;
 import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.junit.Before;
 import org.junit.Rule;
@@ -55,10 +51,7 @@ public class ElasticsearchResourceManagerTest {
   @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   private RestHighLevelClient elasticsearchClient;
 
-  @Mock private IndicesClient elasticsearchIndicesClient;
   @Mock private ElasticsearchContainer container;
-  @Mock private CreateIndexResponse createIndexResponse;
-  @Mock private CountResponse countResponse;
 
   private static final String TEST_ID = "test-id";
   private static final String INDEX_NAME = "index-name";
@@ -70,11 +63,7 @@ public class ElasticsearchResourceManagerTest {
 
   @Before
   public void setUp() {
-    when(container.getHost()).thenReturn(HOST);
-    when(container.getMappedPort(ELASTICSEARCH_PORT)).thenReturn(MAPPED_PORT);
     when(container.getHttpHostAddress()).thenReturn(HOST + ":" + MAPPED_PORT);
-    when(elasticsearchClient.indices()).thenReturn(elasticsearchIndicesClient);
-
     testManager =
         new ElasticsearchResourceManager(
             elasticsearchClient, container, ElasticsearchResourceManager.builder(TEST_ID));
@@ -82,7 +71,14 @@ public class ElasticsearchResourceManagerTest {
 
   @Test
   public void testGetUriShouldReturnCorrectValue() {
-    assertThat(testManager.getUri()).matches("http://" + HOST + ":" + MAPPED_PORT);
+    when(container.getHost()).thenReturn(HOST);
+    when(container.getMappedPort(ELASTICSEARCH_PORT)).thenReturn(MAPPED_PORT);
+
+    assertThat(
+            new ElasticsearchResourceManager(
+                    elasticsearchClient, container, ElasticsearchResourceManager.builder(TEST_ID))
+                .getUri())
+        .matches("http://" + HOST + ":" + MAPPED_PORT);
   }
 
   @Test
@@ -94,9 +90,10 @@ public class ElasticsearchResourceManagerTest {
   @Test
   public void testCreateCollectionShouldThrowErrorWhenElasticsearchFailsToGetDB()
       throws IOException {
-    doThrow(IllegalArgumentException.class)
-        .when(elasticsearchIndicesClient)
-        .exists(any(GetIndexRequest.class), eq(RequestOptions.DEFAULT));
+    when(elasticsearchClient
+            .indices()
+            .exists(any(GetIndexRequest.class), eq(RequestOptions.DEFAULT)))
+        .thenThrow(IllegalArgumentException.class);
 
     assertThrows(
         ElasticsearchResourceManagerException.class, () -> testManager.createIndex(INDEX_NAME));
@@ -105,12 +102,15 @@ public class ElasticsearchResourceManagerTest {
   @Test
   public void testCreateCollectionShouldReturnTrueIfElasticsearchDoesNotThrowAnyError()
       throws IOException {
-    when(elasticsearchIndicesClient.exists(any(GetIndexRequest.class), eq(RequestOptions.DEFAULT)))
+    when(elasticsearchClient
+            .indices()
+            .exists(any(GetIndexRequest.class), eq(RequestOptions.DEFAULT)))
         .thenReturn(false);
-    when(createIndexResponse.isAcknowledged()).thenReturn(true);
-    when(elasticsearchIndicesClient.create(
-            any(CreateIndexRequest.class), eq(RequestOptions.DEFAULT)))
-        .thenReturn(createIndexResponse);
+    when(elasticsearchClient
+            .indices()
+            .create(any(CreateIndexRequest.class), eq(RequestOptions.DEFAULT))
+            .isAcknowledged())
+        .thenReturn(true);
 
     assertThat(testManager.createIndex(INDEX_NAME)).isEqualTo(true);
     verify(elasticsearchClient.indices())
@@ -120,7 +120,8 @@ public class ElasticsearchResourceManagerTest {
   @Test
   public void testInsertDocumentsShouldInsert() throws IOException {
     assertThat(
-            testManager.insertDocuments(INDEX_NAME, Map.of("1", Map.of("company", "Google LLC"))))
+            testManager.insertDocuments(
+                INDEX_NAME, ImmutableMap.of("1", ImmutableMap.of("company", "Google LLC"))))
         .isEqualTo(true);
 
     verify(elasticsearchClient).bulk(any(BulkRequest.class), eq(RequestOptions.DEFAULT));
@@ -128,27 +129,29 @@ public class ElasticsearchResourceManagerTest {
 
   @Test
   public void testCountDocumentsShouldReturnInt() throws IOException {
-    when(elasticsearchClient.count(any(CountRequest.class), eq(RequestOptions.DEFAULT)))
-        .thenReturn(countResponse);
-    when(countResponse.getCount()).thenReturn(100L);
+    when(elasticsearchClient.count(any(CountRequest.class), eq(RequestOptions.DEFAULT)).getCount())
+        .thenReturn(100L);
 
     assertThat(testManager.count(INDEX_NAME)).isEqualTo(100L);
   }
 
   @Test
   public void testCleanupShouldDropNonStaticIndex() throws IOException {
-    when(elasticsearchIndicesClient.create(
-            any(CreateIndexRequest.class), eq(RequestOptions.DEFAULT)))
-        .thenReturn(createIndexResponse);
-    when(elasticsearchIndicesClient.exists(any(GetIndexRequest.class), eq(RequestOptions.DEFAULT)))
+    when(elasticsearchClient
+            .indices()
+            .exists(any(GetIndexRequest.class), eq(RequestOptions.DEFAULT)))
         .thenReturn(false);
-    when(createIndexResponse.isAcknowledged()).thenReturn(true);
+    when(elasticsearchClient
+            .indices()
+            .create(any(CreateIndexRequest.class), eq(RequestOptions.DEFAULT))
+            .isAcknowledged())
+        .thenReturn(true);
 
     boolean index = testManager.createIndex("dummy-index");
     assertThat(index).isTrue();
     testManager.cleanupAll();
 
-    verify(elasticsearchIndicesClient)
+    verify(elasticsearchClient.indices())
         .delete(any(DeleteIndexRequest.class), eq(RequestOptions.DEFAULT));
   }
 
@@ -160,18 +163,21 @@ public class ElasticsearchResourceManagerTest {
     ElasticsearchResourceManager tm =
         new ElasticsearchResourceManager(elasticsearchClient, container, builder);
 
-    when(elasticsearchIndicesClient.create(
-            any(CreateIndexRequest.class), eq(RequestOptions.DEFAULT)))
-        .thenReturn(createIndexResponse);
-    when(elasticsearchIndicesClient.exists(any(GetIndexRequest.class), eq(RequestOptions.DEFAULT)))
+    when(elasticsearchClient
+            .indices()
+            .exists(any(GetIndexRequest.class), eq(RequestOptions.DEFAULT)))
         .thenReturn(false);
-    when(createIndexResponse.isAcknowledged()).thenReturn(true);
+    when(elasticsearchClient
+            .indices()
+            .create(any(CreateIndexRequest.class), eq(RequestOptions.DEFAULT))
+            .isAcknowledged())
+        .thenReturn(true);
 
     boolean index = tm.createIndex("dummy-index");
     assertThat(index).isTrue();
     tm.cleanupAll();
 
-    verify(elasticsearchIndicesClient)
+    verify(elasticsearchClient.indices())
         .delete(any(DeleteIndexRequest.class), eq(RequestOptions.DEFAULT));
   }
 }

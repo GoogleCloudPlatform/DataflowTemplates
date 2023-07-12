@@ -18,13 +18,13 @@ package com.google.cloud.teleport.it.gcp.pubsub.conditions;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.it.conditions.ConditionCheck;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
-import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.ReceivedMessage;
 import com.google.pubsub.v1.SubscriptionName;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
 
 /** ConditionCheck to validate if Pub/Sub has received a certain amount of messages. */
 @AutoValue

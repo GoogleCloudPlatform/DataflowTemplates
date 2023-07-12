@@ -19,17 +19,17 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableSet;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.junit.Before;
 import org.junit.Rule;
@@ -63,18 +63,12 @@ public final class KafkaResourceManagerTest {
 
   @Before
   public void setUp() throws IOException {
-    when(container.getHost()).thenReturn(HOST);
-    when(container.getMappedPort(KAFKA_PORT)).thenReturn(MAPPED_PORT);
-    when(container.getBootstrapServers())
-        .thenReturn(String.format("PLAINTEXT://%s:%d", HOST, MAPPED_PORT));
-
     testManager =
         new KafkaResourceManager(kafkaClient, container, KafkaResourceManager.builder(TEST_ID));
   }
 
   @Test
-  public void testCreateResourceManagerBuilderReturnsDefaultKafkaResourceManager()
-      throws IOException {
+  public void testCreateResourceManagerBuilderReturnsKafkaResourceManager() throws IOException {
     assertThat(
             KafkaResourceManager.builder(TEST_ID)
                 .useStaticContainer()
@@ -85,8 +79,12 @@ public final class KafkaResourceManagerTest {
   }
 
   @Test
-  public void testGetBootstrapServersShouldReturnCorrectValue() {
-    assertThat(testManager.getBootstrapServers())
+  public void testGetBootstrapServersShouldReturnCorrectValue() throws IOException {
+    when(container.getHost()).thenReturn(HOST);
+    when(container.getMappedPort(KAFKA_PORT)).thenReturn(MAPPED_PORT);
+    assertThat(
+            new KafkaResourceManager(kafkaClient, container, KafkaResourceManager.builder(TEST_ID))
+                .getBootstrapServers())
         .matches("PLAINTEXT://" + HOST + ":" + MAPPED_PORT);
   }
 
@@ -124,7 +122,6 @@ public final class KafkaResourceManagerTest {
   @Test
   public void testCreateTopicShouldThrowErrorWhenKafkaFailsToCreateTopic()
       throws ExecutionException, InterruptedException {
-    when(kafkaClient.listTopics().names().get()).thenReturn(new HashSet<>());
     when(kafkaClient.createTopics(any(Collection.class)).all().get())
         .thenThrow(new ExecutionException(new RuntimeException("create topic future fails")));
 
@@ -141,8 +138,7 @@ public final class KafkaResourceManagerTest {
 
   @Test
   public void testCreateTopicShouldWork() throws ExecutionException, InterruptedException {
-    when(kafkaClient.listTopics().names().get()).thenReturn(new HashSet<>());
-    when(kafkaClient.createTopics(any(Collection.class)).all().get()).thenReturn(null);
+    when(kafkaClient.createTopics(anyCollection()).all().get()).thenReturn(null);
 
     assertNotNull(testManager.createTopic(TOPIC_NAME, 1));
   }
@@ -155,7 +151,7 @@ public final class KafkaResourceManagerTest {
 
     tm.cleanupAll();
 
-    verify(kafkaClient, never()).deleteTopics(any(Collection.class));
+    verify(kafkaClient, never()).deleteTopics(anyCollection());
   }
 
   @Test
@@ -172,7 +168,7 @@ public final class KafkaResourceManagerTest {
   @Test
   public void testCleanupAllShouldThrowErrorWhenKafkaClientFailsToDeleteTopic()
       throws ExecutionException, InterruptedException {
-    when(kafkaClient.deleteTopics(any(Collection.class)).all().get())
+    when(kafkaClient.deleteTopics(anyCollection()).all().get())
         .thenThrow(new ExecutionException(new RuntimeException("delete topic future fails")));
 
     assertThrows(KafkaResourceManagerException.class, () -> testManager.cleanupAll());

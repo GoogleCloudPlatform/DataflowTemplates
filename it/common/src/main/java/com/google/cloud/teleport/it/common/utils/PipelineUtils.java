@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.it.common.utils;
 
-import com.google.common.base.CaseFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -25,6 +24,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.PipelineRunner;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.CaseFormat;
 
 /** Utilities to make working with Dataflow easier. */
 public class PipelineUtils {

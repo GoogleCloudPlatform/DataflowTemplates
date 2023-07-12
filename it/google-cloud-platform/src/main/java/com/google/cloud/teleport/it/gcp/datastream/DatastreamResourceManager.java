@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.gcp.datastream;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.cloud.datastream.v1.AvroFileFormat;
@@ -46,7 +46,6 @@ import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.datastream.v1.StreamName;
 import com.google.cloud.datastream.v1.UpdateStreamRequest;
 import com.google.cloud.teleport.it.common.ResourceManager;
-import com.google.common.base.Strings;
 import com.google.protobuf.Duration;
 import com.google.protobuf.FieldMask;
 import java.io.IOException;
@@ -54,7 +53,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import org.apache.arrow.util.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -430,6 +430,7 @@ public final class DatastreamResourceManager implements ResourceManager {
     return updateStreamState(streamId, Stream.State.PAUSED);
   }
 
+  @Override
   public synchronized void cleanupAll() {
     LOG.info("Cleaning up Datastream resource manager.");
     boolean producedError = false;

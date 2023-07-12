@@ -15,18 +15,17 @@
  */
 package com.google.cloud.teleport.it.kafka;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.it.common.ResourceManager;
 import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -129,7 +128,8 @@ public class KafkaResourceManager extends TestContainerResourceManager<GenericCo
    * @return The name of the topic that was created.
    * @throws KafkaResourceManagerException if there is an error creating the kafka topic.
    */
-  public synchronized String createTopic(String topicName, int partitions) {
+  public synchronized String createTopic(String topicName, int partitions)
+      throws KafkaResourceManagerException {
     checkArgument(partitions > 0, "partitions must be positive.");
 
     String uniqueName = KafkaResourceManagerUtils.generateTopicName(topicName);
@@ -166,7 +166,7 @@ public class KafkaResourceManager extends TestContainerResourceManager<GenericCo
       Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
 
     return new KafkaConsumer<>(
-        Map.of(
+        ImmutableMap.of(
             ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
             getBootstrapServers().replace("PLAINTEXT://", ""),
             ConsumerConfig.GROUP_ID_CONFIG,
@@ -183,7 +183,8 @@ public class KafkaResourceManager extends TestContainerResourceManager<GenericCo
    *
    * @throws KafkaResourceManagerException if there is an error deleting the Kafka resources.
    */
-  public synchronized void cleanupAll() {
+  @Override
+  public synchronized void cleanupAll() throws KafkaResourceManagerException {
     LOG.info("Attempting to cleanup Kafka manager.");
 
     boolean producedError = false;
@@ -217,9 +218,7 @@ public class KafkaResourceManager extends TestContainerResourceManager<GenericCo
     int numTopics;
 
     private Builder(String testId) {
-      super(testId);
-      this.containerImageName = DEFAULT_KAFKA_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_KAFKA_CONTAINER_TAG;
+      super(testId, DEFAULT_KAFKA_CONTAINER_NAME, DEFAULT_KAFKA_CONTAINER_TAG);
       this.topicNames = new HashSet<>();
       this.numTopics = 0;
     }
@@ -283,6 +282,16 @@ public class KafkaResourceManager extends TestContainerResourceManager<GenericCo
         return super.getHost();
       }
       return this.host;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+      return super.hashCode();
     }
   }
 }

@@ -44,7 +44,7 @@ import org.mockito.MockitoAnnotations;
 public class DatastoreResourceManagerTest {
 
   @Mock private Datastore datastoreMock;
-  @Mock private DatastoreResourceManager resourceManager;
+  private DatastoreResourceManager resourceManager;
   @Mock private KeyFactory keyFactory;
   @Mock private Key key;
 

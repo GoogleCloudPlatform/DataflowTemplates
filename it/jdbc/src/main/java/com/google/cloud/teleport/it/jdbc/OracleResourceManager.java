@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
-import com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.containers.OracleContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -85,9 +85,7 @@ public class OracleResourceManager extends AbstractJDBCResourceManager<OracleCon
   public static final class Builder extends AbstractJDBCResourceManager.Builder<OracleContainer> {
 
     public Builder(String testId) {
-      super(testId);
-      this.containerImageName = DEFAULT_ORACLE_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_ORACLE_CONTAINER_TAG;
+      super(testId, DEFAULT_ORACLE_CONTAINER_NAME, DEFAULT_ORACLE_CONTAINER_TAG);
       this.username = DEFAULT_ORACLE_USERNAME;
       this.password = DEFAULT_ORACLE_PASSWORD;
     }

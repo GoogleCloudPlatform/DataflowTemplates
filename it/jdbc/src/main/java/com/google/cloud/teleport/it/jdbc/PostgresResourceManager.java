@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.it.jdbc;
 
-import com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -73,9 +73,7 @@ public class PostgresResourceManager extends AbstractJDBCResourceManager<Postgre
       extends AbstractJDBCResourceManager.Builder<PostgreSQLContainer<?>> {
 
     public Builder(String testId) {
-      super(testId);
-      this.containerImageName = DEFAULT_POSTGRES_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_POSTGRES_CONTAINER_TAG;
+      super(testId, DEFAULT_POSTGRES_CONTAINER_NAME, DEFAULT_POSTGRES_CONTAINER_TAG);
     }
 
     @Override

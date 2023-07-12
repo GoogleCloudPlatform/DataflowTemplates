@@ -63,7 +63,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, project)
+        PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
   }
@@ -126,7 +126,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     Result result =
         pipelineOperator.waitForConditionAndFinish(
@@ -134,7 +134,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
             () -> {
               Long currentMessages =
                   monitoringClient.getNumMessagesInSubscription(
-                      project, outputSubscription.getSubscription());
+                      PROJECT, outputSubscription.getSubscription());
               LOG.info(
                   "Found {} messages in output subscription, expected {} messages.",
                   currentMessages,
@@ -175,7 +175,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
     // ElementCount metric in dataflow is approximate, allow for 1% difference
     Integer expectedMessages = (int) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
@@ -185,7 +185,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
             () -> {
               Long currentMessages =
                   monitoringClient.getNumMessagesInSubscription(
-                      project, outputSubscription.getSubscription());
+                      PROJECT, outputSubscription.getSubscription());
               LOG.info(
                   "Found {} messages in output subscription, expected {} messages.",
                   currentMessages,

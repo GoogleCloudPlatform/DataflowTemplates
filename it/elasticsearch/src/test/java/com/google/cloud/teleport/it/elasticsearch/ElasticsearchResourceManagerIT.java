@@ -19,9 +19,11 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.testcontainers.TestContainersIntegrationTest;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,8 +49,8 @@ public class ElasticsearchResourceManagerIT {
     assertThat(createIndex).isTrue();
 
     Map<String, Map<String, Object>> records = new HashMap<>();
-    records.put("1", Map.of("company", "Google"));
-    records.put("2", Map.of("company", "Alphabet"));
+    records.put("1", ImmutableMap.of("company", "Google"));
+    records.put("2", ImmutableMap.of("company", "Alphabet"));
 
     boolean insertDocuments = elasticsearchResourceManager.insertDocuments("dummy-insert", records);
     assertThat(insertDocuments).isTrue();
@@ -58,9 +60,7 @@ public class ElasticsearchResourceManagerIT {
 
     List<Map<String, Object>> fetchRecords = elasticsearchResourceManager.fetchAll("dummy-insert");
     assertThat(fetchRecords).hasSize(2);
-    assertThat(fetchRecords)
-        .containsExactlyElementsIn(
-            List.of(Map.of("company", "Google"), Map.of("company", "Alphabet")));
+    assertThat(fetchRecords).containsExactlyElementsIn(new ArrayList<>(records.values()));
   }
 
   @After

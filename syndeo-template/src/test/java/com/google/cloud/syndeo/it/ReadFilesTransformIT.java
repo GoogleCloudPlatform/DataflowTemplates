@@ -81,15 +81,18 @@ public class ReadFilesTransformIT {
 
   @Rule public final TestPipeline mainPipeline = TestPipeline.create();
 
-  private SubscriptionName pubsubSubscription = null;
-  private TopicName pubsubTopic = null;
-  private GcsResourceManager gcsResourceManager = null;
-  private PubsubResourceManager pubsubResourceManager = null;
-  private String gcsPrefix = null;
+  private SubscriptionName pubsubSubscription;
+  private TopicName pubsubTopic;
+  private GcsResourceManager gcsResourceManager;
+  private PubsubResourceManager pubsubResourceManager;
+  private String gcsPrefix;
 
   @Before
   public void setUpPubSubNotifications() throws IOException {
-    gcsResourceManager = GcsResourceManager.builder().setBucket(BUCKET).setProject(PROJECT).build();
+    gcsResourceManager =
+        GcsResourceManager.builder(BUCKET, testName.getMethodName())
+            .setCredentials(CREDENTIALS)
+            .build();
     RESOURCE_MANAGERS.add(gcsResourceManager);
 
     pubsubResourceManager =

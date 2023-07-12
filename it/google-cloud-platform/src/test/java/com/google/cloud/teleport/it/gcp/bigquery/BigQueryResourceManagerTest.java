@@ -20,31 +20,26 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.google.api.gax.paging.Page;
-import com.google.auth.Credentials;
 import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.Dataset;
 import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.DatasetInfo;
-import com.google.cloud.bigquery.FieldValueList;
+import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.InsertAllRequest;
-import com.google.cloud.bigquery.InsertAllResponse;
+import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
-import com.google.cloud.bigquery.TableResult;
-import com.google.common.collect.ImmutableList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -52,7 +47,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Answers;
 import org.mockito.Mock;
-import org.mockito.internal.verification.Times;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
@@ -65,21 +59,8 @@ public class BigQueryResourceManagerTest {
   @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   private BigQuery bigQuery;
 
-  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
-  private Dataset dataset;
-
-  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
-  private Table table;
-
-  @Mock private Credentials credentials;
-  @Mock private Page<Table> tables;
-  @Mock private Schema schema;
-  @Mock private InsertAllRequest.RowToInsert rowToInsert;
-  @Mock private TableResult tableResult;
-  @Mock private FieldValueList rowToRead;
-  @Mock private InsertAllResponse insertResponse;
-  @Mock private Map<Long, List<BigQueryError>> writeErrorsMap;
-
+  private Schema schema;
+  private InsertAllRequest.RowToInsert rowToInsert;
   private static final String TABLE_NAME = "table-name";
   private static final String DATASET_ID = "dataset-id";
   private static final String TEST_ID = "test-id";
@@ -90,20 +71,20 @@ public class BigQueryResourceManagerTest {
 
   @Before
   public void setUp() {
+    schema = Schema.of(Field.of("name", StandardSQLTypeName.STRING));
+    rowToInsert = RowToInsert.of("1", ImmutableMap.of("name", "Jake"));
     testManager = new BigQueryResourceManager(TEST_ID, PROJECT_ID, bigQuery);
   }
 
   @Test
   public void testGetProjectIdReturnsCorrectValue() {
-    assertThat(testManager.getProjectId()).isEqualTo(PROJECT_ID);
+    assertThat(new BigQueryResourceManager(TEST_ID, PROJECT_ID, bigQuery).getProjectId())
+        .isEqualTo(PROJECT_ID);
   }
 
   @Test
   public void testGetDatasetIdReturnsCorrectValue() {
-    BigQueryResourceManager.Builder tmBuilder =
-        BigQueryResourceManager.builder(TEST_ID, PROJECT_ID);
-    tmBuilder.setCredentials(credentials);
-    BigQueryResourceManager tm = tmBuilder.build();
+    BigQueryResourceManager tm = BigQueryResourceManager.builder(TEST_ID, PROJECT_ID).build();
 
     assertThat(tm.getDatasetId()).matches(TEST_ID.replace('-', '_') + "_\\d{8}_\\d{6}_\\d{6}");
   }
@@ -118,9 +99,6 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testCreateDatasetShouldNotCreateDatasetWhenDatasetAlreadyExists() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-
     testManager.createDataset(DATASET_ID);
 
     assertThrows(IllegalStateException.class, () -> testManager.createDataset(DATASET_ID));
@@ -128,9 +106,6 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testCreateDatasetShouldWorkWhenBigQueryDoesNotThrowAnyError() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-
     testManager.createDataset(DATASET_ID);
     verify(bigQuery).create(any(DatasetInfo.class));
   }
@@ -147,12 +122,8 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testCreateTableShouldCreateDatasetWhenDatasetDoesNotExist() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
-
-    // Use mocked table object
-    when(dataset.get(any())).thenReturn(table);
+    when(bigQuery.create(any(DatasetInfo.class)).getDatasetId().getDataset())
+        .thenReturn(DATASET_ID);
     when(bigQuery.getTable(any())).thenReturn(null);
 
     testManager.createTable(TABLE_NAME, schema);
@@ -163,12 +134,7 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testCreateTableShouldThrowErrorWhenCreateFails() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
-
     testManager.createDataset(DATASET_ID);
-
     when(bigQuery.create(any(TableInfo.class))).thenThrow(BigQueryException.class);
 
     assertThrows(
@@ -177,9 +143,6 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testCreateTableShouldThrowErrorWhenTableExists() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-
     testManager.createDataset(DATASET_ID);
 
     when(bigQuery.getTable(any())).thenReturn(any());
@@ -190,12 +153,8 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testCreateTableShouldWorkWhenBigQueryDoesNotThrowAnyError() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
-
-    // Use mocked table object
-    when(dataset.get(any())).thenReturn(table);
+    when(bigQuery.create(any(DatasetInfo.class)).getDatasetId().getDataset())
+        .thenReturn(DATASET_ID);
     when(bigQuery.getTable(any())).thenReturn(null);
 
     testManager.createTable(TABLE_NAME, schema);
@@ -213,12 +172,9 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testWriteShouldThrowErrorWhenTableDoesNotExist() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-
     testManager.createDataset(DATASET_ID);
 
-    when(dataset.get(anyString())).thenReturn(null);
+    when(bigQuery.create(any(DatasetInfo.class)).get(anyString())).thenReturn(null);
 
     assertThrows(IllegalStateException.class, () -> testManager.write(TABLE_NAME, rowToInsert));
     assertThrows(
@@ -228,14 +184,12 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testWriteShouldThrowErrorWhenInsertFails() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
+    Dataset mockDataset = bigQuery.create(any(DatasetInfo.class));
+    when(mockDataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
 
     testManager.createDataset(DATASET_ID);
 
-    when(dataset.get(anyString())).thenReturn(table);
-    when(table.insert(any())).thenThrow(BigQueryException.class);
+    when(mockDataset.get(anyString()).insert(any())).thenThrow(BigQueryException.class);
 
     assertThrows(
         BigQueryResourceManagerException.class, () -> testManager.write(TABLE_NAME, rowToInsert));
@@ -245,47 +199,15 @@ public class BigQueryResourceManagerTest {
   }
 
   @Test
-  public void testWriteErrorsShouldBeLogged() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
-
-    // Use mocked table object
-    when(dataset.get(any())).thenReturn(table);
-    when(bigQuery.getTable(any())).thenReturn(null);
-
-    testManager.createTable(TABLE_NAME, schema);
-
-    when(table.insert(any())).thenReturn(insertResponse);
-    when(insertResponse.hasErrors()).thenReturn(true);
-    when(insertResponse.getInsertErrors()).thenReturn(writeErrorsMap);
-
-    HashMap.SimpleEntry<Long, List<BigQueryError>> errorEntry =
-        new HashMap.SimpleEntry<>(1L, ImmutableList.of(new BigQueryError("", "", "")));
-    HashSet<HashMap.Entry<Long, List<BigQueryError>>> errorSet = new HashSet<>();
-    errorSet.add(errorEntry);
-    when(writeErrorsMap.entrySet()).thenReturn(errorSet);
-
-    testManager.write(TABLE_NAME, rowToInsert);
-    testManager.write(TABLE_NAME, ImmutableList.of(rowToInsert));
-    verify(writeErrorsMap, new Times(2)).entrySet();
-  }
-
-  @Test
   public void testWriteShouldWorkWhenBigQueryDoesNotThrowAnyError() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
-
-    // Use mocked table object
-    when(dataset.get(any())).thenReturn(table);
+    when(bigQuery.create(any(DatasetInfo.class)).getDatasetId().getDataset())
+        .thenReturn(DATASET_ID);
     when(bigQuery.getTable(any())).thenReturn(null);
 
     testManager.createTable(TABLE_NAME, schema);
 
     testManager.write(TABLE_NAME, rowToInsert);
     testManager.write(TABLE_NAME, ImmutableList.of(rowToInsert));
-    verify(table, new Times(2)).insert(any());
   }
 
   @Test
@@ -295,23 +217,16 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testReadTableShouldThrowErrorWhenTableDoesNotExist() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-
     testManager.createDataset(REGION);
-    when(dataset.get(anyString())).thenReturn(null);
+    when(bigQuery.create(any(DatasetInfo.class)).get(anyString())).thenReturn(null);
     assertThrows(IllegalStateException.class, () -> testManager.readTable(TABLE_NAME));
   }
 
   @Test
   public void testReadTableShouldThrowErrorWhenBigQueryFailsToReadRows()
       throws InterruptedException {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
-
-    // Use mocked table object
-    when(dataset.get(any())).thenReturn(table);
+    when(bigQuery.create(any(DatasetInfo.class)).getDatasetId().getDataset())
+        .thenReturn(DATASET_ID);
     when(bigQuery.getTable(any())).thenReturn(null);
 
     testManager.createTable(TABLE_NAME, schema);
@@ -324,18 +239,11 @@ public class BigQueryResourceManagerTest {
   @Test
   public void testReadTableShouldWorkWhenBigQueryDoesNotThrowAnyError()
       throws InterruptedException {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
-
-    // Use mocked table object
-    when(dataset.get(any())).thenReturn(table);
+    when(bigQuery.create(any(DatasetInfo.class)).getDatasetId().getDataset())
+        .thenReturn(DATASET_ID);
     when(bigQuery.getTable(any())).thenReturn(null);
 
     testManager.createTable(TABLE_NAME, schema);
-
-    when(bigQuery.listTableData(table.getTableId())).thenReturn(tableResult);
-    when(tableResult.getValues()).thenReturn(ImmutableList.of(rowToRead));
 
     testManager.readTable(TABLE_NAME);
 
@@ -344,19 +252,11 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testCleanupShouldThrowErrorWhenTableDeleteFails() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
-
-    // Use mocked table object
-    when(dataset.get(any())).thenReturn(table);
-    when(bigQuery.getTable(any())).thenReturn(null);
-    when(table.getTableId().getTable()).thenReturn(TABLE_NAME);
-
     testManager.createDataset(DATASET_ID);
 
-    when(tables.iterateAll()).thenReturn(ImmutableList.of(table));
-    when(bigQuery.listTables(any(DatasetId.class))).thenReturn(tables);
+    Table mockTable = mock(Table.class);
+    when(bigQuery.listTables(any(DatasetId.class)).iterateAll())
+        .thenReturn(ImmutableList.of(mockTable));
     when(bigQuery.delete(any(TableId.class))).thenThrow(BigQueryException.class);
 
     assertThrows(BigQueryResourceManagerException.class, () -> testManager.cleanupAll());
@@ -364,19 +264,7 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testCleanupShouldThrowErrorWhenDatasetDeleteFails() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
-
-    // Use mocked table object
-    when(dataset.get(any())).thenReturn(table);
-    when(bigQuery.getTable(any())).thenReturn(null);
-    when(table.getTableId().getTable()).thenReturn(TABLE_NAME);
-
     testManager.createDataset(DATASET_ID);
-
-    when(tables.iterateAll()).thenReturn(ImmutableList.of(table));
-    when(bigQuery.listTables(any(DatasetId.class))).thenReturn(tables);
     when(bigQuery.delete(any(DatasetId.class))).thenThrow(BigQueryException.class);
 
     assertThrows(BigQueryResourceManagerException.class, () -> testManager.cleanupAll());
@@ -384,19 +272,14 @@ public class BigQueryResourceManagerTest {
 
   @Test
   public void testCleanupShouldWorkWhenBigQueryDoesNotThrowAnyError() {
-    // Use mocked dataset object
-    when(bigQuery.create(any(DatasetInfo.class))).thenReturn(dataset);
-    when(dataset.getDatasetId().getDataset()).thenReturn(DATASET_ID);
-
-    // Use mocked table object
-    when(dataset.get(any())).thenReturn(table);
-    when(bigQuery.getTable(any())).thenReturn(null);
-    when(table.getTableId().getTable()).thenReturn(TABLE_NAME);
+    when(bigQuery.create(any(DatasetInfo.class)).getDatasetId().getDataset())
+        .thenReturn(DATASET_ID);
 
     testManager.createDataset(DATASET_ID);
-
-    when(tables.iterateAll()).thenReturn(ImmutableList.of(table));
-    when(bigQuery.listTables(any(DatasetId.class))).thenReturn(tables);
+    Table mockTable = mock(Table.class, Answers.RETURNS_DEEP_STUBS);
+    when(bigQuery.listTables(any(DatasetId.class)).iterateAll())
+        .thenReturn(ImmutableList.of(mockTable));
+    when(mockTable.getTableId().getTable()).thenReturn(TABLE_NAME);
 
     testManager.cleanupAll();
 

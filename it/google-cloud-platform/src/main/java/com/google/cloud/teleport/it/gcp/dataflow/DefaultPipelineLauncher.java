@@ -16,8 +16,8 @@
 package com.google.cloud.teleport.it.gcp.dataflow;
 
 import static com.google.cloud.teleport.it.common.logging.LogStrings.formatForLogging;
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.beam.sdk.testing.TestPipeline.PROPERTY_BEAM_TEST_PIPELINE_OPTIONS;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.googleapis.util.Utils;
@@ -28,8 +28,6 @@ import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.utils.PipelineUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.util.Timestamps;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -53,8 +51,11 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.util.common.ReflectHelpers;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Iterables;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.ByteStreams;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -386,6 +387,7 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
     return getJobInfo(options, state, job);
   }
 
+  @Override
   protected LaunchInfo.Builder getJobInfoBuilder(LaunchConfig options, JobState state, Job job) {
     // get intermediate builder from base class method
     LaunchInfo.Builder builder = super.getJobInfoBuilder(options, state, job);
@@ -436,7 +438,8 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
   /** Executes the specified command and parses the response to get the Job ID. */
   private String executeCommandAndParseResponse(List<String> cmd) throws IOException {
     Process process = new ProcessBuilder().command(cmd).redirectErrorStream(true).start();
-    String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+    String output =
+        new String(ByteStreams.toByteArray(process.getInputStream()), StandardCharsets.UTF_8);
     Matcher m = JOB_ID_PATTERN.matcher(output);
     if (!m.find()) {
       throw new RuntimeException(

@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package for managing MongoDB resources within integration tests. */
+/** Package that contains reusable Splunk conditions. */
 package com.google.cloud.teleport.it.splunk.conditions;

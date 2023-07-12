@@ -22,11 +22,12 @@ import static com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils.generat
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit tests for {@link com.google.cloud.teleport.it.jdbc.JDBCResourceManagerUtils}. */
+/** Unit tests for {@link JDBCResourceManagerUtils}. */
 @RunWith(JUnit4.class)
 public class JDBCResourceManagerUtilsTest {
 
@@ -52,7 +53,8 @@ public class JDBCResourceManagerUtilsTest {
       int upper = 0;
       int special = 0;
 
-      for (char c : password.toCharArray()) {
+      for (int j = 0; j < password.length(); j++) {
+        char c = password.charAt(j);
         String s = String.valueOf(c);
         lower += s.toLowerCase().equals(s) ? 1 : 0;
         upper += s.toUpperCase().equals(s) ? 1 : 0;
@@ -72,7 +74,8 @@ public class JDBCResourceManagerUtilsTest {
 
   @Test
   public void testCheckValidTableNameThrowsErrorWhenNameIsTooLong() {
-    assertThrows(IllegalArgumentException.class, () -> checkValidTableName("a".repeat(31)));
+    assertThrows(
+        IllegalArgumentException.class, () -> checkValidTableName(StringUtils.repeat("a", 31)));
   }
 
   @Test

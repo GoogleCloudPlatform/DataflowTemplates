@@ -16,10 +16,8 @@
 package com.google.cloud.teleport.it.splunk;
 
 import java.time.Duration;
-import java.util.Map;
+import java.util.Collections;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
@@ -35,7 +33,6 @@ import org.testcontainers.utility.DockerImageName;
  * <p><a href="https://splunk.github.io/docker-splunk/">https://splunk.github.io/docker-splunk/</a>
  */
 public class SplunkContainer extends GenericContainer<SplunkContainer> {
-  private static final Logger log = LoggerFactory.getLogger(SplunkContainer.class);
 
   /** Splunk Default HTTP port. */
   private static final int SPLUNK_INTERNAL_PORT = 8000;
@@ -59,7 +56,7 @@ public class SplunkContainer extends GenericContainer<SplunkContainer> {
     dockerImageName.assertCompatibleWith(DEFAULT_IMAGE_NAME);
 
     this.withExposedPorts(SPLUNK_INTERNAL_PORT, SPLUNK_HEC_INTERNAL_PORT, SPLUNKD_INTERNAL_PORT);
-    this.withEnv(Map.of("SPLUNK_START_ARGS", "--accept-license"));
+    this.withEnv(Collections.singletonMap("SPLUNK_START_ARGS", "--accept-license"));
     this.waitingFor(
         Wait.forLogMessage("(?i).*Ansible playbook complete.*", 1)
             .withStartupTimeout(Duration.ofMinutes(3)));
