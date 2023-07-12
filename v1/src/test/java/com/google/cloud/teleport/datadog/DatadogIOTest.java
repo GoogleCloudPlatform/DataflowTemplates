@@ -86,7 +86,7 @@ public class DatadogIOTest {
             .apply("Create Input data", Create.of(DATADOG_EVENTS).withCoder(DatadogEventCoder.of()))
             .apply(
                 "DatadogIO",
-                DatadogIO.writeBuilder()
+                DatadogIO.writeBuilder(1)
                     .withParallelism(1)
                     .withBatchCount(DATADOG_EVENTS.size())
                     .withApiKey("test-api-key")
@@ -115,7 +115,7 @@ public class DatadogIOTest {
             .apply("Create Input data", Create.of(DATADOG_EVENTS).withCoder(DatadogEventCoder.of()))
             .apply(
                 "DatadogIO",
-                DatadogIO.writeBuilder()
+                DatadogIO.writeBuilder(1)
                     .withParallelism(TEST_PARALLELISM)
                     .withBatchCount(DATADOG_EVENTS.size())
                     .withApiKey("test-api-key")
@@ -144,7 +144,7 @@ public class DatadogIOTest {
             .apply("Create Input data", Create.of(DATADOG_EVENTS).withCoder(DatadogEventCoder.of()))
             .apply(
                 "DatadogIO",
-                DatadogIO.writeBuilder()
+                DatadogIO.writeBuilder(1)
                     .withParallelism(TEST_PARALLELISM)
                     .withBatchCount(1)
                     .withApiKey("test-api-key")

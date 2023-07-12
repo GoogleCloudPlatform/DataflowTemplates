@@ -44,7 +44,11 @@ public class DatadogIO {
   private DatadogIO() {}
 
   public static Write.Builder writeBuilder() {
-    return new AutoValue_DatadogIO_Write.Builder();
+    return writeBuilder(null);
+  }
+
+  public static Write.Builder writeBuilder(Integer minBatchCount) {
+    return new AutoValue_DatadogIO_Write.Builder().setMinBatchCount(minBatchCount);
   }
 
   /**
@@ -64,6 +68,9 @@ public class DatadogIO {
     abstract ValueProvider<String> apiKey();
 
     @Nullable
+    abstract Integer minBatchCount();
+
+    @Nullable
     abstract ValueProvider<Integer> batchCount();
 
     @Nullable
@@ -74,7 +81,7 @@ public class DatadogIO {
 
       LOG.info("Configuring DatadogEventWriter.");
       DatadogEventWriter.Builder builder =
-          DatadogEventWriter.newBuilder()
+          DatadogEventWriter.newBuilder(minBatchCount())
               .withUrl(url())
               .withInputBatchCount(batchCount())
               .withApiKey(apiKey());
@@ -100,6 +107,8 @@ public class DatadogIO {
       abstract Builder setApiKey(ValueProvider<String> apiKey);
 
       abstract ValueProvider<String> apiKey();
+
+      abstract Builder setMinBatchCount(Integer minBatchCount);
 
       abstract Builder setBatchCount(ValueProvider<Integer> batchCount);
 
