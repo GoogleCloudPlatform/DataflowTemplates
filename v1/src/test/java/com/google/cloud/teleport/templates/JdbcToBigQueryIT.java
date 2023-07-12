@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.common.utils.PipelineUtils.createJobName;
 import static com.google.cloud.teleport.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -23,6 +22,7 @@ import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertT
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.kms.v1.CryptoKey;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.PipelineOperator;
@@ -252,20 +252,18 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryResourceManager.createDataset(REGION);
-    bigQueryResourceManager.createTable(testName, bqSchema);
-    String tableSpec = PROJECT + ":" + bigQueryResourceManager.getDatasetId() + "." + testName;
+    TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
 
     Function<String, String> encrypt =
         message -> kmsResourceManager.encrypt(KEYRING_ID, CRYPTO_KEY_NAME, message);
     CryptoKey cryptoKey = kmsResourceManager.getOrCreateCryptoKey(KEYRING_ID, CRYPTO_KEY_NAME);
 
-    String jobName = createJobName(testName);
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(jobName, specPath)
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("connectionURL", encrypt.apply(jdbcResourceManager.getUri()))
             .addParameter("driverClassName", driverClassName)
             .addParameter("query", query)
-            .addParameter("outputTable", tableSpec)
+            .addParameter("outputTable", toTableSpecLegacy(table))
             .addParameter("driverJars", driverJars)
             .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
             .addParameter("username", encrypt.apply(jdbcResourceManager.getUsername()))

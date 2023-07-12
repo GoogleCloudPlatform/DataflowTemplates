@@ -30,7 +30,7 @@ import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
-import com.google.cloud.teleport.it.jdbc.MySQLResourceManager;
+import com.google.cloud.teleport.it.jdbc.MSSQLResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.time.Instant;
@@ -50,13 +50,13 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link MySQLToBigQuery} Flex template MySQL_to_BigQuery. */
+/** Integration test for {@link SQLServerToBigQuery} Flex template SQLServer_to_BigQuery. */
 @Category(TemplateIntegrationTest.class)
-@TemplateIntegrationTest(MySQLToBigQuery.class)
+@TemplateIntegrationTest(SQLServerToBigQuery.class)
 @RunWith(JUnit4.class)
-public class MySQLToBigQueryIT extends TemplateTestBase {
+public class SQLServerToBigQueryIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLToBigQueryIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SQLServerToBigQueryIT.class);
 
   private static final String ROW_ID = "row_id";
   private static final String NAME = "name";
@@ -66,7 +66,7 @@ public class MySQLToBigQueryIT extends TemplateTestBase {
   private static final String IS_MEMBER = "is_member";
   private static final String ENTRY_ADDED = "entry_added";
 
-  private MySQLResourceManager mySQLResourceManager;
+  private MSSQLResourceManager msSqlResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
 
   @Before
@@ -77,15 +77,15 @@ public class MySQLToBigQueryIT extends TemplateTestBase {
 
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(mySQLResourceManager, bigQueryResourceManager);
+    ResourceManagerUtils.cleanResources(msSqlResourceManager, bigQueryResourceManager);
   }
 
   @Test
-  public void testMySqlToBigQueryDedicated() throws IOException {
-    // Create MySQL Resource manager
-    mySQLResourceManager = MySQLResourceManager.builder(testName).build();
+  public void testSQLServerToBigQueryBrand() throws IOException {
+    // Create msSql Resource manager
+    msSqlResourceManager = MSSQLResourceManager.builder(testName).build();
 
-    // Arrange MySQL-compatible schema
+    // Arrange msSql-compatible schema
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "NUMERIC NOT NULL");
     columns.put(NAME, "VARCHAR(200)");
@@ -97,8 +97,8 @@ public class MySQLToBigQueryIT extends TemplateTestBase {
     // Arrange
     List<Map<String, Object>> jdbcData =
         getJdbcData(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED));
-    mySQLResourceManager.createTable(testName, schema);
-    mySQLResourceManager.write(testName, jdbcData);
+    msSqlResourceManager.createTable(testName, schema);
+    msSqlResourceManager.write(testName, jdbcData);
 
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -114,15 +114,15 @@ public class MySQLToBigQueryIT extends TemplateTestBase {
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("connectionURL", mySQLResourceManager.getUri())
+            .addParameter("connectionURL", msSqlResourceManager.getUri())
             .addParameter("outputTable", toTableSpecLegacy(table))
             .addParameter(
                 "query",
                 "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
                     + testName)
             .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
-            .addParameter("username", mySQLResourceManager.getUsername())
-            .addParameter("password", mySQLResourceManager.getPassword())
+            .addParameter("username", msSqlResourceManager.getUsername())
+            .addParameter("password", msSqlResourceManager.getPassword())
             .addParameter("useColumnAlias", "true")
             .addParameter("connectionProperties", "characterEncoding=UTF-8")
             .addParameter("disabledAlgorithms", "SSLv3, GCM");
