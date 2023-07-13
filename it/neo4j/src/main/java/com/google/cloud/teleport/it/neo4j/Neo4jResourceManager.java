@@ -220,7 +220,6 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
       return this;
     }
 
-
     @VisibleForTesting
     Builder setDriver(Driver driver) {
       this.driver = driver;
