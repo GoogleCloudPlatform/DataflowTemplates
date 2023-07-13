@@ -30,7 +30,7 @@
   </parent>
 
   <properties>
-    <json-data-generator.version>1.16</json-data-generator.version>
+    <json-data-generator.version>1.10</json-data-generator.version>
    </properties>
 
   <dependencies>
