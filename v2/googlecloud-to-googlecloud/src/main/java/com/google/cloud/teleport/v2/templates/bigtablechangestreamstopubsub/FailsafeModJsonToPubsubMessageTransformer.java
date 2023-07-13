@@ -19,7 +19,6 @@ import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.pubsub.v1.Publisher;
-import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.cloud.teleport.bigtable.ChangelogEntry;
 import com.google.cloud.teleport.v2.ChangeLogEntryProto.ChangelogEntryProto;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -27,20 +26,14 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.sche
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.util.JsonFormat;
-import com.google.pubsub.v1.Encoding;
-import com.google.pubsub.v1.GetTopicRequest;
 import com.google.pubsub.v1.PubsubMessage;
-import com.google.pubsub.v1.Topic;
 import com.google.pubsub.v1.TopicName;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
@@ -59,14 +52,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Class {@link FailsafeModJsonToPubsubMessageTransformer} provides methods that convert a
- * JSON string wrapped in {@link FailsafeElement} to a {@link PubsubMessage}.
+ * Class {@link FailsafeModJsonToPubsubMessageTransformer} provides methods that convert a JSON
+ * string wrapped in {@link FailsafeElement} to a {@link PubsubMessage}.
  */
 public final class FailsafeModJsonToPubsubMessageTransformer {
 
   /**
-   * Primary class for taking a {@link FailsafeElement} JSON input and converting to a
-   * {@link PubsubMessage}.
+   * Primary class for taking a {@link FailsafeElement} JSON input and converting to a {@link
+   * PubsubMessage}.
    */
   public static class FailsafeModJsonToPubsubMessage
       extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
@@ -105,8 +98,8 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
     }
 
     /**
-     * The {@link FailsafeModJsonToPubsubMessageFn} converts a JSON string wrapped in
-     * {@link FailsafeElement} to a {@link PubsubMessage}.
+     * The {@link FailsafeModJsonToPubsubMessageFn} converts a JSON string wrapped in {@link
+     * FailsafeElement} to a {@link PubsubMessage}.
      */
     public static class FailsafeModJsonToPubsubMessageFn
         extends DoFn<FailsafeElement<String, String>, PubsubMessage> {
@@ -176,8 +169,6 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
         LOG.info("Reading a failsafeModJsonString");
         FailsafeElement<String, String> failsafeModJsonString = context.element();
 
-        LOG.info("");
-
         try {
           com.google.pubsub.v1.PubsubMessage pubSubMessage =
               publishModJsonStringToPubsubMessage(failsafeModJsonString.getPayload());
@@ -201,9 +192,6 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
         Publisher publisher = null;
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
 
-
-        block:
-
         switch (messageFormat) {
           case "AVRO":
             ChangelogEntry changelogEntry = mapJsonToChangelogEntry(modJsonString);
@@ -217,7 +205,7 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
                     EncoderFactory.get().jsonEncoder(ChangelogEntry.getClassSchema(), byteStream);
                 break;
               default:
-                break block;
+                break;
             }
             changelogEntry.customEncode(encoder);
             encoder.flush();
@@ -245,10 +233,10 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
                 protoMessage.setData(ByteString.copyFromUtf8(jsonString));
                 break;
               default:
-                break block;
+                break;
             }
-              future = publisher.publish(protoMessage.build());
-              break;
+            future = publisher.publish(protoMessage.build());
+            break;
 
           case "JSON":
             byte[] encodedRecords = modJsonString.getBytes();
@@ -264,9 +252,7 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
             break;
           default:
             final String errorMessage =
-                "Invalid output format:"
-                    + messageFormat
-                    + ". Supported output formats: JSON, AVRO";
+                "Invalid output format:" + messageFormat + ". Supported output formats: JSON, AVRO";
             LOG.info(errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }

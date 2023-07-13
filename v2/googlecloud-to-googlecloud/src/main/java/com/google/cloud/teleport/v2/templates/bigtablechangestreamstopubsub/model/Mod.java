@@ -107,8 +107,7 @@ public final class Mod implements Serializable {
     propertiesMap.put(
         PubSubMessage.IS_GC.name(), mutation.getType() == MutationType.GARBAGE_COLLECTION);
     propertiesMap.put(
-        PubSubMessage.COMMIT_TIMESTAMP.name(),
-        cbtTimestampToPubSub(mutation.getCommitTimestamp()));
+        PubSubMessage.COMMIT_TIMESTAMP.name(), cbtTimestampToPubSub(mutation.getCommitTimestamp()));
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, SetCell setCell) {
@@ -118,8 +117,7 @@ public final class Mod implements Serializable {
     propertiesMap.put(
         PubSubMessage.TIMESTAMP.name(), cbtTimestampMicrosToPubSub(setCell.getTimestamp()));
     propertiesMap.put(
-        PubSubMessage.TIMESTAMP_NUM.name(),
-        cbtTimestampMicrosToPubSubInt(setCell.getTimestamp()));
+        PubSubMessage.TIMESTAMP_NUM.name(), cbtTimestampMicrosToPubSubInt(setCell.getTimestamp()));
     propertiesMap.put(PubSubMessage.VALUE_BYTES.name(), encodeBytes(setCell.getValue()));
   }
 
@@ -140,8 +138,7 @@ public final class Mod implements Serializable {
         PubSubMessage.TIMESTAMP_FROM.name(), cbtTimestampMicrosToPubSub(startTimestamp));
     propertiesMap.put(
         PubSubMessage.TIMESTAMP_FROM_NUM.name(), cbtTimestampMicrosToPubSubInt(startTimestamp));
-    propertiesMap.put(
-        PubSubMessage.TIMESTAMP_TO.name(), cbtTimestampMicrosToPubSub(endTimestamp));
+    propertiesMap.put(PubSubMessage.TIMESTAMP_TO.name(), cbtTimestampMicrosToPubSub(endTimestamp));
     propertiesMap.put(
         PubSubMessage.TIMESTAMP_TO_NUM.name(), cbtTimestampMicrosToPubSubInt(endTimestamp));
   }

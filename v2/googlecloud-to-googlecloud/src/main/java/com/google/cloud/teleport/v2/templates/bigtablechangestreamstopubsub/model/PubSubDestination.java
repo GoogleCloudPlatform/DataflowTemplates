@@ -15,9 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model;
 
-import java.io.Serializable;
 import com.google.pubsub.v1.Topic;
-
+import java.io.Serializable;
 
 /** Descriptor of PubSub destination. */
 public class PubSubDestination implements Serializable {
@@ -28,8 +27,6 @@ public class PubSubDestination implements Serializable {
   private final String messageEncoding;
   private String topicMessageFormat;
   private String topicMessageEncoding;
-
-
 
   public PubSubDestination(
       String pubSubProject, String pubSubTopicName, String messageFormat, String messageEncoding) {
@@ -57,11 +54,18 @@ public class PubSubDestination implements Serializable {
     return messageEncoding;
   }
 
-  public Topic getPubSubTopic() { return pubSubTopic; }
+  public Topic getPubSubTopic() {
+    return pubSubTopic;
+  }
 
-  public String getTopicMessageFormat() { return topicMessageFormat; }
+  public String getTopicMessageFormat() {
+    return topicMessageFormat;
+  }
 
-  public String getTopicMessageEncoding() { return topicMessageEncoding; }
+  public String getTopicMessageEncoding() {
+    return topicMessageEncoding;
+  }
+
   public void setPubSubTopic(Topic topic) {
     this.pubSubTopic = topic;
   }

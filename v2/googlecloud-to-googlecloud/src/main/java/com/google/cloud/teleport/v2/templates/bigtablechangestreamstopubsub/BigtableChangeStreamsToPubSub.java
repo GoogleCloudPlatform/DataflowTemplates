@@ -21,34 +21,26 @@ import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
-import com.google.cloud.pubsub.v1.Publisher;
-import com.google.cloud.pubsub.v1.SchemaServiceClient;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.cloud.teleport.bigtable.ChangelogEntry;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
-import com.google.cloud.teleport.v2.ChangeLogEntryProto;
+import com.google.cloud.teleport.v2.bigtable.utils.UnsupportedEntryException;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToPubSubOptions;
-import com.google.cloud.teleport.v2.bigtable.utils.UnsupportedEntryException;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.ModType;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubDestination;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
-import com.google.protobuf.Descriptors.Descriptor;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.*;
-
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.avro.Schema;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -193,13 +185,13 @@ public final class BigtableChangeStreamsToPubSub {
     Encoding encoding = null;
     try (TopicAdminClient topicAdminClient = TopicAdminClient.create()) {
       GetTopicRequest request =
-              GetTopicRequest.newBuilder()
-                      .setTopic(
-                              TopicName.ofProjectTopicName(
-                                              pubSub.getDestination().getPubSubProject(),
-                                              pubSub.getDestination().getPubSubTopicName())
-                                      .toString())
-                      .build();
+          GetTopicRequest.newBuilder()
+              .setTopic(
+                  TopicName.ofProjectTopicName(
+                          pubSub.getDestination().getPubSubProject(),
+                          pubSub.getDestination().getPubSubTopicName())
+                      .toString())
+              .build();
       Topic topic = topicAdminClient.getTopic(request);
       if (!topic.getSchemaSettings().getSchema().isEmpty()) {
         topicMessageFormat = topic.getSchemaSettings().getSchema();
@@ -209,7 +201,7 @@ public final class BigtableChangeStreamsToPubSub {
       pubSub.getDestination().setTopicMessageEncoding(topicMessageEncoding);
       pubSub.getDestination().setTopicMessageFormat(topicMessageFormat);
 
-    } catch (Exception e){
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
 
@@ -368,7 +360,8 @@ public final class BigtableChangeStreamsToPubSub {
         : options.getPubSubProjectId();
   }
 
-  private static Boolean validateSchema(BigtableChangeStreamsToPubSubOptions options) throws Exception{
+  private static Boolean validateSchema(BigtableChangeStreamsToPubSubOptions options)
+      throws Exception {
     try (TopicAdminClient topicAdminClient = TopicAdminClient.create()) {
       GetTopicRequest request =
           GetTopicRequest.newBuilder()
@@ -383,7 +376,7 @@ public final class BigtableChangeStreamsToPubSub {
         return true;
       } else {
         String testMessage = "{ \"name\": \"John Doe\", \"age\": 30 }";
-        switch(messageFormat){
+        switch (messageFormat) {
           case "AVRO":
             Schema schema = ChangelogEntry.getClassSchema();
 
@@ -392,7 +385,7 @@ public final class BigtableChangeStreamsToPubSub {
         }
       }
     } catch (Exception e) {
-      throw  e;
+      throw e;
     }
     return true;
   }
