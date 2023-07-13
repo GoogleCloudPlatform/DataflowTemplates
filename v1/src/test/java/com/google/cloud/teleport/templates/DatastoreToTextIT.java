@@ -137,13 +137,13 @@ public final class DatastoreToTextIT extends TemplateTestBase {
         .asJsonRecords()
         .hasRecordsWithStrings(
             List.of(
-                "path=[{kind=animal, id=1}]}, properties={name={stringValue=DOG}}",
-                "path=[{kind=animal, id=2}]}, properties={name={stringValue=CAT}}",
-                "path=[{kind=animal, id=3}]}, properties={name={stringValue=FOX}}",
-                "path=[{kind=animal, id=4}]}, properties={name={stringValue=TURTLE}}",
-                "path=[{kind=animal, id=5}]}, properties={name={stringValue=SHARK}}",
-                "path=[{kind=animal, id=6}]}, properties={name={stringValue=HAWK}}",
-                "path=[{kind=animal, id=7}]}, properties={name={stringValue=CROCODILE}}"));
+                "path=[{kind=animal, id=1}]}, properties={name={stringValue=DOG}",
+                "path=[{kind=animal, id=2}]}, properties={name={stringValue=CAT}",
+                "path=[{kind=animal, id=3}]}, properties={name={stringValue=FOX}",
+                "path=[{kind=animal, id=4}]}, properties={name={stringValue=TURTLE}",
+                "path=[{kind=animal, id=5}]}, properties={name={stringValue=SHARK}",
+                "path=[{kind=animal, id=6}]}, properties={name={stringValue=HAWK}",
+                "path=[{kind=animal, id=7}]}, properties={name={stringValue=CROCODILE}"));
   }
 
   private FullEntity<IncompleteKey> createEntity(String name) {
