@@ -468,7 +468,9 @@ public class PubSubToMongoDB {
 
       try {
         if (pubsubMessage.getPayload().length > 0) {
-          messageObject = gson.fromJson(new String(pubsubMessage.getPayload()), JsonObject.class);
+          messageObject =
+              gson.fromJson(
+                  new String(pubsubMessage.getPayload(), StandardCharsets.UTF_8), JsonObject.class);
         }
 
         // If message attributes are present they will be serialized along with the message payload

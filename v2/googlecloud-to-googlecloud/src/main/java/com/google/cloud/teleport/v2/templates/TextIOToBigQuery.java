@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.common.annotations.VisibleForTesting;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -270,7 +271,8 @@ public class TextIOToBigQuery {
           FileSystems.open(FileSystems.matchNewResource(pathToJson, false));
       String json =
           new String(
-              StreamUtils.getBytesWithoutClosing(Channels.newInputStream(readableByteChannel)));
+              StreamUtils.getBytesWithoutClosing(Channels.newInputStream(readableByteChannel)),
+              StandardCharsets.UTF_8);
       return new JSONObject(json);
     } catch (Exception e) {
       throw new RuntimeException(e);
