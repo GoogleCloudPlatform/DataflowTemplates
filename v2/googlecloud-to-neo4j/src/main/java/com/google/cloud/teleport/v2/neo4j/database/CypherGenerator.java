@@ -26,7 +26,6 @@ import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +45,6 @@ public class CypherGenerator {
     // Model node creation statement
     //  "UNWIND $rows AS row CREATE(c:Customer { id : row.id, name: row.name, firstName:
     // row.firstName })
-    String nodeAlias = "N_" + RandomStringUtils.randomAlphanumeric(8);
 
     /// RELATIONSHIP TYPE
     if (target.getType() == TargetType.edge) {

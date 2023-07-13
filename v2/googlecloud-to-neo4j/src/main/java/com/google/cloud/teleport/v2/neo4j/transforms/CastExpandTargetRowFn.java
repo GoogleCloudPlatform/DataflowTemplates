@@ -17,8 +17,6 @@ package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.util.List;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -29,7 +27,6 @@ import org.slf4j.LoggerFactory;
 /** Create typed Rows from String rows (from text files). */
 public class CastExpandTargetRowFn extends DoFn<Row, Row> {
 
-  private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
   private static final Logger LOG = LoggerFactory.getLogger(CastExpandTargetRowFn.class);
   private final Target target;
   private final Schema targetSchema;

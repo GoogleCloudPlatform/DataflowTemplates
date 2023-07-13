@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.BeamUtils;
 import java.io.Serializable;
@@ -26,13 +25,10 @@ import java.util.Map;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.commons.csv.CSVFormat;
 import org.json.JSONArray;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Source query metadata. */
 public class Source implements Serializable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(Source.class);
   private SourceType sourceType = SourceType.text;
   private String name = "";
   private String uri = "";
@@ -45,9 +41,6 @@ public class Source implements Serializable {
   private String[] fieldNames = new String[0];
   private Map<String, Integer> fieldPosByName = new HashMap<>();
   private List<List<Object>> inline = new ArrayList<>();
-
-  private ActionExecuteAfter executeAfter = ActionExecuteAfter.preloads;
-  private String executeAfterName = "";
 
   public static List<List<Object>> jsonToListOfListsArray(JSONArray lines) {
     if (lines == null) {
@@ -158,31 +151,11 @@ public class Source implements Serializable {
     return fieldPosByName;
   }
 
-  public void setFieldPosByName(Map<String, Integer> fieldPosByName) {
-    this.fieldPosByName = fieldPosByName;
-  }
-
   public List<List<Object>> getInline() {
     return inline;
   }
 
   public void setInline(List<List<Object>> inline) {
     this.inline = inline;
-  }
-
-  public ActionExecuteAfter getExecuteAfter() {
-    return executeAfter;
-  }
-
-  public void setExecuteAfter(ActionExecuteAfter executeAfter) {
-    this.executeAfter = executeAfter;
-  }
-
-  public String getExecuteAfterName() {
-    return executeAfterName;
-  }
-
-  public void setExecuteAfterName(String executeAfterName) {
-    this.executeAfterName = executeAfterName;
   }
 }

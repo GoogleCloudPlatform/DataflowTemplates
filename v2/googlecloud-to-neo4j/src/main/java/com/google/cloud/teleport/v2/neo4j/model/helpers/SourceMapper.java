@@ -39,7 +39,6 @@ public class SourceMapper {
     source.setSourceType(
         sourceObj.has("type") ? SourceType.valueOf(sourceObj.getString("type")) : SourceType.text);
 
-    boolean isJson = false;
     String formatStr =
         sourceObj.has("format") ? sourceObj.getString("format").toUpperCase() : "DEFAULT";
     if ("EXCEL".equals(formatStr)) {

@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.neo4j.providers.bigquery;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SqlQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.schemas.Schema;
@@ -36,10 +35,8 @@ public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BqQueryToRow.class);
   private final SqlQuerySpec bqQuerySpec;
-  private final OptionsParams optionsParams;
 
-  public BqQueryToRow(OptionsParams optionsParams, SqlQuerySpec bqQuerySpec) {
-    this.optionsParams = optionsParams;
+  public BqQueryToRow(SqlQuerySpec bqQuerySpec) {
     this.bqQuerySpec = bqQuerySpec;
   }
 

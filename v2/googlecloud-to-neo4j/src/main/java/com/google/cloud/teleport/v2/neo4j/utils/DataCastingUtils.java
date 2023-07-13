@@ -15,12 +15,8 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -74,7 +70,6 @@ public class DataCastingUtils {
   private static final DateTimeFormatter jsDateTimeFormatter =
       DateTimeFormat.forPattern("YYYY-MM-DD HH:mm:ssZ");
   private static final DateTimeFormatter jsDateFormatter = DateTimeFormat.forPattern("YYYY-MM-DD");
-  private static final SimpleDateFormat jsTimeFormatter = new SimpleDateFormat("HH:mm:ss");
 
   public static List<Object> sourceTextToTargetObjects(Row row, Target target) {
     Schema targetSchema = BeamUtils.toBeamSchema(target);
@@ -212,8 +207,6 @@ public class DataCastingUtils {
       if (listFullOfNulls(row.getValues())) {
         continue;
       }
-      String fieldName = m.getField();
-      PropertyType targetMappingType = m.getType();
       // lookup data type
       if (StringUtils.isNotEmpty(m.getConstant())) {
         if (StringUtils.isNotEmpty(m.getName())) {
@@ -262,15 +255,6 @@ public class DataCastingUtils {
     return map.entrySet().stream()
         .map(entry -> entry.getKey() + "=" + entry.getValue())
         .collect(Collectors.joining(", ", "{", "}"));
-  }
-
-  static byte[] asBytes(Object obj) throws IOException {
-    try (ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(bytesOut)) {
-      oos.writeObject(obj);
-      oos.flush();
-      return bytesOut.toByteArray();
-    }
   }
 
   static DateTime asDateTime(Object o) {

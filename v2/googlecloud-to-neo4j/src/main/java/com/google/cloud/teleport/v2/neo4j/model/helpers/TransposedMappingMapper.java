@@ -31,14 +31,11 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Helper object for parsing transposed field mappings (ie. strings, indexed, longs, etc.). */
 public class TransposedMappingMapper {
 
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-  private static final Logger LOG = LoggerFactory.getLogger(TransposedMappingMapper.class);
 
   public static List<Mapping> parseMappings(Target target, JSONObject mappingsObject) {
     if (target.getType() == TargetType.node) {
@@ -101,8 +98,6 @@ public class TransposedMappingMapper {
       JSONObject sourceObj = edgeMappingsObject.getJSONObject("source");
       FieldNameTuple keyTuple = getFieldAndNameTuple(sourceObj.get("key"));
       Mapping keyMapping = new Mapping(FragmentType.source, RoleType.key, keyTuple);
-      // List<String> labels = getLabels(sourceObj.getString("label").trim());
-      // keyMapping.setLabels(labels);
       mappings.add(keyMapping);
 
       // support dynamic labels on source
@@ -119,8 +114,6 @@ public class TransposedMappingMapper {
       FieldNameTuple keyTuple = getFieldAndNameTuple(sourceObj.get("key"));
       Mapping keyMapping = new Mapping(FragmentType.target, RoleType.key, keyTuple);
 
-      // List<String> labels = getLabels(sourceObj.getString("label").trim());
-      // keyMapping.setLabels(labels);
       mappings.add(keyMapping);
 
       List<FieldNameTuple> labels = getFieldAndNameTuples(sourceObj.get("label"));
@@ -234,35 +227,6 @@ public class TransposedMappingMapper {
         addMapping(mappings, mapping);
       }
     }
-  }
-
-  private static List<String> getLabels(Object tuplesObj) {
-    List<String> labels = new ArrayList<>();
-    if (tuplesObj instanceof JSONArray) {
-      JSONArray tuplesArray = (JSONArray) tuplesObj;
-      for (int i = 0; i < tuplesArray.length(); i++) {
-        if (tuplesArray.get(i) instanceof JSONObject) {
-          // {field:name} or {field1:name,field2:name} tuples
-          Iterator<String> it = tuplesArray.getJSONObject(i).keys();
-          while (it.hasNext()) {
-            String key = it.next();
-            labels.add(key);
-          }
-        } else {
-          labels.add(tuplesArray.getString(i));
-        }
-      }
-    } else if (tuplesObj instanceof JSONObject) {
-      JSONObject jsonObject = (JSONObject) tuplesObj;
-      // {field:name} or {field1:name,field2:name} tuples
-      Iterator<String> it = jsonObject.keys();
-      while (it.hasNext()) {
-        labels.add(it.next());
-      }
-    } else {
-      labels.add(String.valueOf(tuplesObj));
-    }
-    return labels;
   }
 
   private static List<FieldNameTuple> getFieldAndNameTuples(Object tuplesObj) {

@@ -16,20 +16,15 @@
 package com.google.cloud.teleport.v2.neo4j.utils;
 
 import com.google.common.io.ByteStreams;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.io.FileSystems;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Utilities for reading local and remote file resources. */
 public class FileSystemUtils {
-
-  private static final Logger LOG = LoggerFactory.getLogger(FileSystemUtils.class);
 
   public static String getPathContents(String gsPath) throws IOException {
 
@@ -39,11 +34,5 @@ public class FileSystemUtils {
 
       return new String(ByteStreams.toByteArray(inputStream), StandardCharsets.UTF_8);
     }
-  }
-
-  public static String getAbsoluteResourcePath(String resourceName) {
-    ClassLoader classLoader = FileSystemUtils.class.getClass().getClassLoader();
-    File file = new File(classLoader.getResource(resourceName).getFile());
-    return file.getAbsolutePath();
   }
 }

@@ -24,8 +24,6 @@ import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -42,16 +40,12 @@ public class BigQueryImpl implements Provider {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryImpl.class);
 
-  private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
-  private JobSpec jobSpec;
   private OptionsParams optionsParams;
 
   public BigQueryImpl() {}
 
   @Override
   public void configure(OptionsParams optionsParams, JobSpec jobSpecRequest) {
-    this.jobSpec = jobSpecRequest;
     this.optionsParams = optionsParams;
   }
 
@@ -69,17 +63,17 @@ public class BigQueryImpl implements Provider {
 
   @Override
   public PTransform<PBegin, PCollection<Row>> querySourceBeamRows(SourceQuerySpec sourceQuerySpec) {
-    return new BqQueryToRow(optionsParams, getSourceQueryBeamSpec(sourceQuerySpec));
+    return new BqQueryToRow(getSourceQueryBeamSpec(sourceQuerySpec));
   }
 
   @Override
   public PTransform<PBegin, PCollection<Row>> queryTargetBeamRows(TargetQuerySpec targetQuerySpec) {
-    return new BqQueryToRow(optionsParams, getTargetQueryBeamSpec(targetQuerySpec));
+    return new BqQueryToRow(getTargetQueryBeamSpec(targetQuerySpec));
   }
 
   @Override
   public PTransform<PBegin, PCollection<Row>> queryMetadata(Source source) {
-    return new BqQueryToRow(optionsParams, getMetadataQueryBeamSpec(source));
+    return new BqQueryToRow(getMetadataQueryBeamSpec(source));
   }
 
   /**

@@ -22,7 +22,6 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
-import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
@@ -96,8 +95,6 @@ public class InputValidator {
 
   public static List<String> validateJobSpec(JobSpec jobSpec) {
 
-    Config config = jobSpec.getConfig();
-
     List<String> validationMessages = new ArrayList<>();
 
     Set<String> sourceNames = new HashSet<>();
@@ -164,7 +161,6 @@ public class InputValidator {
                     + " for node mapping: "
                     + mapping.getName());
           }
-          boolean missingLabel = false;
           if (mapping.getFragmentType() == FragmentType.target
               || mapping.getFragmentType() == FragmentType.source) {
             if (mapping.getRole() != RoleType.key && mapping.getRole() != RoleType.label) {

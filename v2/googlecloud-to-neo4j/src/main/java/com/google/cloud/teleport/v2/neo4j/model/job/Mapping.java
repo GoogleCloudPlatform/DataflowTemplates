@@ -21,13 +21,10 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Field to Neo4j property mapping. */
 public class Mapping implements Serializable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(Mapping.class);
   private String constant;
   private RoleType role = RoleType.property;
   private PropertyType type;
@@ -108,10 +105,6 @@ public class Mapping implements Serializable {
 
   public void setDescription(String description) {
     this.description = description;
-  }
-
-  public String getDefaultValue() {
-    return defaultValue;
   }
 
   public void setDefaultValue(String defaultValue) {
