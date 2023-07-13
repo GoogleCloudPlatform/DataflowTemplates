@@ -13,12 +13,11 @@
       },
       { "name": "isGc", "type": "boolean" },
       { "name": "tieBreaker", "type": "int"},
-      { "name": "commitTimestamp", "type" : "long", "logicalType" : "timestamp-micros"},
       { "name": "columnFamily", "type": "string"},
       { "name": "column", "type" : ["bytes", "null"]},
-      { "name": "timestamp", "type" : ["long", "null"], "logicalType" : "timestamp-micros"},
-      { "name": "timestampFrom", "type" : ["long", "null"], "logicalType" : "timestamp-micros"},
-      { "name": "timestampTo", "type" : ["long", "null"], "logicalType" : "timestamp-micros"},
+      { "name": "timestamp", "type" : ["long", "null"]},
+      { "name": "timestampFrom", "type" : ["long", "null"]},
+      { "name": "timestampTo", "type" : ["long", "null"]},
       { "name" : "value", "type" : ["bytes", "null"]}
    ]
 }
