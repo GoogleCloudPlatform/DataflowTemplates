@@ -61,9 +61,9 @@ public class CypherActionFn extends DoFn<Integer, Row> {
   }
 
   @Teardown
-  public void tearDown() throws Exception {
-    if (directConnect != null && directConnect.getSession().isOpen()) {
-      directConnect.getSession().close();
+  public void tearDown() {
+    if (directConnect != null) {
+      directConnect.close();
     }
   }
 }

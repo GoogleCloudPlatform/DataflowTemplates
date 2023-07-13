@@ -55,14 +55,15 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     List<String> cyphers =
         CypherGenerator.getNodeIndexAndConstraintsCypherStatements(config, target);
     if (!cyphers.isEmpty()) {
-      Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection);
-      LOG.info("Adding {} indices and constraints", cyphers.size());
-      for (String cypher : cyphers) {
-        LOG.info("Executing cypher: {}", cypher);
-        try {
-          neo4jDirectConnect.executeCypher(cypher);
-        } catch (Exception e) {
-          LOG.error("Error executing cypher: {}, {}", cypher, e.getMessage());
+      try (Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection)) {
+        LOG.info("Adding {} indices and constraints", cyphers.size());
+        for (String cypher : cyphers) {
+          LOG.info("Executing cypher: {}", cypher);
+          try {
+            neo4jDirectConnect.executeCypher(cypher);
+          } catch (Exception e) {
+            LOG.error("Error executing cypher: {}, {}", cypher, e.getMessage());
+          }
         }
       }
     }
@@ -80,12 +81,9 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     String unwindCypher = CypherGenerator.getUnwindCreateCypher(target);
     LOG.info("Unwind cypher: {}", unwindCypher);
 
-    Neo4jConnection neo4jConnection = new Neo4jConnection(neoConnection);
-    Row emptyRow = Row.nullRow(input.getSchema());
-
     Neo4jBlockingUnwindFn neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
-            neo4jConnection, unwindCypher, batchSize, false, "rows", getRowCastingFunction());
+            neoConnection, unwindCypher, batchSize, false, "rows", getRowCastingFunction());
 
     return input
         .apply("Create KV pairs", CreateKvTransform.of(parallelism))

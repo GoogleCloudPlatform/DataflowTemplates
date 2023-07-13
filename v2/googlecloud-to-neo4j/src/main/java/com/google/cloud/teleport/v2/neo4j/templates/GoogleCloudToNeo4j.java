@@ -190,8 +190,9 @@ public class GoogleCloudToNeo4j {
     ////////////////////////////
     // Reset db
     if (jobSpec.getConfig().getResetDb()) {
-      Neo4jConnection directConnect = new Neo4jConnection(this.neo4jConnection);
-      directConnect.resetDatabase();
+      try (Neo4jConnection directConnect = new Neo4jConnection(this.neo4jConnection)) {
+        directConnect.resetDatabase();
+      }
     }
     ////////////////////////////
     // Run preload actions

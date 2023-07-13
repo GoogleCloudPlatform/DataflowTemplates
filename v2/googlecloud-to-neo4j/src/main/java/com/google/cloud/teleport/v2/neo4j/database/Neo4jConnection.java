@@ -20,7 +20,6 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.AuthType;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Config;
@@ -34,7 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Neo4j connection helper object wraps Neo4j java APIs. */
-public class Neo4jConnection implements Serializable {
+public class Neo4jConnection implements AutoCloseable, Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jConnection.class);
   private final String username;
@@ -43,6 +42,7 @@ public class Neo4jConnection implements Serializable {
   private final String database;
   private final AuthType authType = AuthType.BASIC;
   private Driver driver;
+  private Session session;
 
   /** Constructor. */
   public Neo4jConnection(ConnectionParams connectionParams) {
@@ -78,17 +78,10 @@ public class Neo4jConnection implements Serializable {
       LOG.error("Unsupported authType: {}", this.authType);
       throw new RuntimeException("Unsupported authentication type: " + this.authType);
     }
-    if (this.serverUrl.contains("neo4j+s")) {
-      return GraphDatabase.driver(
-          new URI(this.serverUrl),
-          AuthTokens.basic(this.username, this.password),
-          Config.builder().build());
-    } else {
-      return GraphDatabase.routingDriver(
-          Arrays.asList(new URI(this.serverUrl)),
-          AuthTokens.basic(this.username, this.password),
-          Config.builder().build());
-    }
+    return GraphDatabase.driver(
+        new URI(this.serverUrl),
+        AuthTokens.basic(this.username, this.password),
+        Config.builder().build());
   }
 
   /** Helper method to get the Neo4j session. */
@@ -96,11 +89,14 @@ public class Neo4jConnection implements Serializable {
     if (driver == null) {
       this.driver = getDriver();
     }
-    SessionConfig.Builder builder = SessionConfig.builder();
-    if (StringUtils.isNotEmpty(this.database)) {
-      builder = builder.withDatabase(this.database);
+    if (session == null || !session.isOpen()) {
+      SessionConfig.Builder builder = SessionConfig.builder();
+      if (StringUtils.isNotEmpty(this.database)) {
+        builder = builder.withDatabase(this.database);
+      }
+      this.session = driver.session(builder.build());
     }
-    return driver.session(builder.build());
+    return this.session;
   }
 
   /**
@@ -150,6 +146,18 @@ public class Neo4jConnection implements Serializable {
       } catch (Exception dde) {
         LOG.error("Error executing detach delete", dde);
       }
+    }
+  }
+
+  @Override
+  public void close() {
+    if (this.session != null && this.session.isOpen()) {
+      this.session.close();
+      this.session = null;
+    }
+    if (this.driver != null) {
+      this.driver.close();
+      this.driver = null;
     }
   }
 }
