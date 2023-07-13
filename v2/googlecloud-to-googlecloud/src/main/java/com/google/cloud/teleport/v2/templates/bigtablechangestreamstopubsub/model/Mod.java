@@ -99,28 +99,28 @@ public final class Mod implements Serializable {
 
   private void setCommonProperties(
       Map<String, Object> propertiesMap, BigtableSource source, ChangeStreamMutation mutation) {
-    propertiesMap.put(ChangelogColumn.ROW_KEY_BYTES.name(), encodeBytes(mutation.getRowKey()));
-    propertiesMap.put(ChangelogColumn.SOURCE_INSTANCE.name(), source.getInstanceId());
-    propertiesMap.put(ChangelogColumn.SOURCE_CLUSTER.name(), mutation.getSourceClusterId());
-    propertiesMap.put(ChangelogColumn.SOURCE_TABLE.name(), source.getTableId());
-    propertiesMap.put(ChangelogColumn.TIEBREAKER.name(), mutation.getTieBreaker());
+    propertiesMap.put(PubSubMessage.ROW_KEY_BYTES.name(), encodeBytes(mutation.getRowKey()));
+    propertiesMap.put(PubSubMessage.SOURCE_INSTANCE.name(), source.getInstanceId());
+    propertiesMap.put(PubSubMessage.SOURCE_CLUSTER.name(), mutation.getSourceClusterId());
+    propertiesMap.put(PubSubMessage.SOURCE_TABLE.name(), source.getTableId());
+    propertiesMap.put(PubSubMessage.TIEBREAKER.name(), mutation.getTieBreaker());
     propertiesMap.put(
-        ChangelogColumn.IS_GC.name(), mutation.getType() == MutationType.GARBAGE_COLLECTION);
+        PubSubMessage.IS_GC.name(), mutation.getType() == MutationType.GARBAGE_COLLECTION);
     propertiesMap.put(
-        ChangelogColumn.COMMIT_TIMESTAMP.name(),
+        PubSubMessage.COMMIT_TIMESTAMP.name(),
         cbtTimestampToPubSub(mutation.getCommitTimestamp()));
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, SetCell setCell) {
-    propertiesMap.put(ChangelogColumn.MOD_TYPE.name(), ModType.SET_CELL.getCode());
-    propertiesMap.put(ChangelogColumn.COLUMN_FAMILY.name(), setCell.getFamilyName());
-    propertiesMap.put(ChangelogColumn.COLUMN.name(), encodeBytes(setCell.getQualifier()));
+    propertiesMap.put(PubSubMessage.MOD_TYPE.name(), ModType.SET_CELL.getCode());
+    propertiesMap.put(PubSubMessage.COLUMN_FAMILY.name(), setCell.getFamilyName());
+    propertiesMap.put(PubSubMessage.COLUMN.name(), encodeBytes(setCell.getQualifier()));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP.name(), cbtTimestampMicrosToPubSub(setCell.getTimestamp()));
+        PubSubMessage.TIMESTAMP.name(), cbtTimestampMicrosToPubSub(setCell.getTimestamp()));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP_NUM.name(),
+        PubSubMessage.TIMESTAMP_NUM.name(),
         cbtTimestampMicrosToPubSubInt(setCell.getTimestamp()));
-    propertiesMap.put(ChangelogColumn.VALUE_BYTES.name(), encodeBytes(setCell.getValue()));
+    propertiesMap.put(PubSubMessage.VALUE_BYTES.name(), encodeBytes(setCell.getValue()));
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, DeleteCells deleteCells) {
@@ -133,22 +133,22 @@ public final class Mod implements Serializable {
       endTimestamp = null;
     }
 
-    propertiesMap.put(ChangelogColumn.MOD_TYPE.name(), ModType.DELETE_CELLS.getCode());
-    propertiesMap.put(ChangelogColumn.COLUMN_FAMILY.name(), deleteCells.getFamilyName());
-    propertiesMap.put(ChangelogColumn.COLUMN.name(), encodeBytes(deleteCells.getQualifier()));
+    propertiesMap.put(PubSubMessage.MOD_TYPE.name(), ModType.DELETE_CELLS.getCode());
+    propertiesMap.put(PubSubMessage.COLUMN_FAMILY.name(), deleteCells.getFamilyName());
+    propertiesMap.put(PubSubMessage.COLUMN.name(), encodeBytes(deleteCells.getQualifier()));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP_FROM.name(), cbtTimestampMicrosToPubSub(startTimestamp));
+        PubSubMessage.TIMESTAMP_FROM.name(), cbtTimestampMicrosToPubSub(startTimestamp));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP_FROM_NUM.name(), cbtTimestampMicrosToPubSubInt(startTimestamp));
+        PubSubMessage.TIMESTAMP_FROM_NUM.name(), cbtTimestampMicrosToPubSubInt(startTimestamp));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP_TO.name(), cbtTimestampMicrosToPubSub(endTimestamp));
+        PubSubMessage.TIMESTAMP_TO.name(), cbtTimestampMicrosToPubSub(endTimestamp));
     propertiesMap.put(
-        ChangelogColumn.TIMESTAMP_TO_NUM.name(), cbtTimestampMicrosToPubSubInt(endTimestamp));
+        PubSubMessage.TIMESTAMP_TO_NUM.name(), cbtTimestampMicrosToPubSubInt(endTimestamp));
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, DeleteFamily deleteFamily) {
-    propertiesMap.put(ChangelogColumn.MOD_TYPE.name(), ModType.DELETE_FAMILY.getCode());
-    propertiesMap.put(ChangelogColumn.COLUMN_FAMILY.name(), deleteFamily.getFamilyName());
+    propertiesMap.put(PubSubMessage.MOD_TYPE.name(), ModType.DELETE_FAMILY.getCode());
+    propertiesMap.put(PubSubMessage.COLUMN_FAMILY.name(), deleteFamily.getFamilyName());
   }
 
   public static Mod fromJson(String json) throws IOException {
