@@ -388,19 +388,7 @@ public final class BigtableChangeStreamsToPubSub {
             Schema schema = ChangelogEntry.getClassSchema();
 
           case "PROTO":
-            Descriptor descriptor = ChangeLogEntryProto.getDescriptor();
           default:
-        }
-        try (SchemaServiceClient schemaServiceClient = SchemaServiceClient.create()) {
-          ProjectName parent = ProjectName.of(getPubSubProjectId(options));
-          ValidateMessageRequest validMessageRequest =
-              ValidateMessageRequest.newBuilder().setSchema(schema)
-                  .setParent(parent.toString())
-                      .setData(testMessage.getBytes())
-                  .build();
-          ValidateMessageResponse response =
-              schemaServiceClient.validateMessage(validMessageRequest);
-          LOG.error(response.toString());
         }
       }
     } catch (Exception e) {

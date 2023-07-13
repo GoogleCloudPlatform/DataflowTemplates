@@ -126,4 +126,40 @@ public interface BigtableChangeStreamsToPubSubOptions
   String getPubSubProjectId();
 
   void setPubSubProjectId(String value);
+
+  @TemplateParameter.Boolean(
+          order = 8,
+          optional = true,
+          description = "Write Base64-encoded rowkeys",
+          helpText =
+                  "Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeys"
+                          + "Defaults to false.")
+  @Default.Boolean(false)
+  Boolean getUseBase64Rowkey();
+
+  void setUseBase64Rowkey(Boolean useBase64Rowkey);
+
+  @TemplateParameter.Boolean(
+          order = 9,
+          optional = true,
+          description = "Write Base64-encoded column qualifiers",
+          helpText =
+                  "Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiers"
+                          + "Defaults to false.")
+  @Default.Boolean(false)
+  Boolean getUseBase64ColumnQualifier();
+
+  void setUseBase64ColumnQualifier(Boolean useBase64ColumnQualifier);
+
+  @TemplateParameter.Boolean(
+          order = 10,
+          optional = true,
+          description = "Write Base64-encoded value",
+          helpText =
+                  "Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String values"
+                          + "Defaults to false.")
+  @Default.Boolean(false)
+  Boolean getUseBase64Value();
+
+  void setUseBase64Value(Boolean useBase64Value);
 }
