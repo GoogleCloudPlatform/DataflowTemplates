@@ -20,7 +20,7 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.mode
 import java.io.Serializable;
 
 /**
- * {@link PubSubUtils} provides utils for processing BigQuery schema and generating BigQuery rows.
+ * {@link PubSubUtils} provides utils for processing PubSub schema and generating PubSub messages.
  */
 public class PubSubUtils implements Serializable {
 

@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model;
 
-
 /** Static metadata class for all changelog columns. */
 public enum PubSubMessage {
   ROW_KEY_STRING("row_key"),

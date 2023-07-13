@@ -60,11 +60,13 @@ public interface BigtableChangeStreamsToPubSubOptions
   String getMessageFormat();
 
   void setMessageFormat(String messageFormat);
+
   @TemplateParameter.Boolean(
       order = 4,
       optional = true,
       description = "Strip value for SetCell mutation",
-      helpText = "Strip value for SetCell mutation. If true the SetCell mutation message won’t include the value written.")
+      helpText =
+          "Strip value for SetCell mutation. If true the SetCell mutation message won’t include the value written.")
   @Default.Boolean(false)
   Boolean getStripValue();
 
@@ -128,36 +130,36 @@ public interface BigtableChangeStreamsToPubSubOptions
   void setPubSubProjectId(String value);
 
   @TemplateParameter.Boolean(
-          order = 8,
-          optional = true,
-          description = "Write Base64-encoded rowkeys",
-          helpText =
-                  "Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeys"
-                          + "Defaults to false.")
+      order = 8,
+      optional = true,
+      description = "Write Base64-encoded rowkeys",
+      helpText =
+          "Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeys"
+              + "Defaults to false.")
   @Default.Boolean(false)
   Boolean getUseBase64Rowkey();
 
   void setUseBase64Rowkey(Boolean useBase64Rowkey);
 
   @TemplateParameter.Boolean(
-          order = 9,
-          optional = true,
-          description = "Write Base64-encoded column qualifiers",
-          helpText =
-                  "Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiers"
-                          + "Defaults to false.")
+      order = 9,
+      optional = true,
+      description = "Write Base64-encoded column qualifiers",
+      helpText =
+          "Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiers"
+              + "Defaults to false.")
   @Default.Boolean(false)
   Boolean getUseBase64ColumnQualifier();
 
   void setUseBase64ColumnQualifier(Boolean useBase64ColumnQualifier);
 
   @TemplateParameter.Boolean(
-          order = 10,
-          optional = true,
-          description = "Write Base64-encoded value",
-          helpText =
-                  "Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String values"
-                          + "Defaults to false.")
+      order = 10,
+      optional = true,
+      description = "Write Base64-encoded value",
+      helpText =
+          "Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String values"
+              + "Defaults to false.")
   @Default.Boolean(false)
   Boolean getUseBase64Value();
 
