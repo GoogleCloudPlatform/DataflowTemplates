@@ -38,7 +38,10 @@ public class Neo4jResourceManagerIT {
   @Before
   public void setUp() {
     neo4jResourceManager =
-        Neo4jResourceManager.builder("placeholder").setDatabaseName("neo4j").build();
+        Neo4jResourceManager.builder("placeholder")
+            .setDatabaseName("neo4j")
+            .setAdminPassword("password")
+            .build();
   }
 
   @Test
