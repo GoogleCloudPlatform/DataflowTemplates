@@ -129,8 +129,8 @@ func (*mvnFlags) IntegrationTestParallelism(count int) string {
 	return "-DitParallelism=" + strconv.Itoa(count)
 }
 
-func (*mvnFlags) StaticBigtableInstance(instanceId string) string {
-	return "-DbigtableInstanceId=" + instanceId
+func (*mvnFlags) StaticBigtableInstance(instanceID string) string {
+	return "-DbigtableInstanceId=" + instanceID
 }
 
 func NewMavenFlags() MavenFlags {
