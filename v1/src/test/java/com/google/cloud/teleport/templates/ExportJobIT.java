@@ -52,6 +52,7 @@ public class ExportJobIT extends TemplateTestBase {
     bigtableResourceManager =
         BigtableResourceManager.builder(testName, PROJECT)
             .setCredentialsProvider(credentialsProvider)
+            .maybeUseStaticInstance()
             .build();
   }
 

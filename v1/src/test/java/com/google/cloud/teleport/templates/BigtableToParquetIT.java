@@ -57,6 +57,7 @@ public class BigtableToParquetIT extends TemplateTestBase {
     bigtableResourceManager =
         BigtableResourceManager.builder(testName, PROJECT)
             .setCredentialsProvider(credentialsProvider)
+            .maybeUseStaticInstance()
             .build();
   }
 
