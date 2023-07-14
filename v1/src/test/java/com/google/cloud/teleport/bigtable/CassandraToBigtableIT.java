@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -67,7 +68,7 @@ public class CassandraToBigtableIT extends TemplateTestBase {
   @Test
   public void testCassandraToBigtable() throws IOException {
     // Arrange
-    String tableName = "test_table";
+    String tableName = "test_table_" + RandomStringUtils.randomAlphanumeric(8);
     List<Map<String, Object>> records = new ArrayList<>();
     records.add(Map.of("id", 1, "company", "Google"));
     records.add(Map.of("id", 2, "company", "Alphabet"));
