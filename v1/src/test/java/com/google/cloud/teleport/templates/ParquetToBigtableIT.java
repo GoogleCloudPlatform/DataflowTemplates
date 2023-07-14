@@ -53,6 +53,7 @@ public class ParquetToBigtableIT extends TemplateTestBase {
     bigtableResourceManager =
         BigtableResourceManager.builder(testName, PROJECT)
             .setCredentialsProvider(credentialsProvider)
+            .maybeUseStaticInstance()
             .build();
     gcsClient.uploadArtifact(
         "input/bigtable-to-parquet-file_test.parquet",

@@ -611,6 +611,20 @@ public class BigtableResourceManager implements ResourceManager {
       return this;
     }
 
+    /**
+     * Looks at the system properties if there's an instance id, and reuses it if configured.
+     *
+     * @return this builder object with the useStaticInstance option enabled and instance set if
+     *     configured, the same builder otherwise.
+     */
+    public Builder maybeUseStaticInstance() {
+      if (System.getProperty("bigtableInstanceId") != null) {
+        this.useStaticInstance = true;
+        this.instanceId = System.getProperty("bigtableInstanceId");
+      }
+      return this;
+    }
+
     public BigtableResourceManager build() throws IOException {
       return new BigtableResourceManager(this);
     }

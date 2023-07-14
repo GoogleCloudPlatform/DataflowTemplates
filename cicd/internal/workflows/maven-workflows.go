@@ -64,6 +64,7 @@ type MavenFlags interface {
 	RunLoadTests() string
 	ThreadCount(int) string
 	IntegrationTestParallelism(int) string
+	StaticBigtableInstance(string) string
 }
 
 type mvnFlags struct{}
@@ -126,6 +127,10 @@ func (*mvnFlags) ThreadCount(count int) string {
 
 func (*mvnFlags) IntegrationTestParallelism(count int) string {
 	return "-DitParallelism=" + strconv.Itoa(count)
+}
+
+func (*mvnFlags) StaticBigtableInstance(instanceId string) string {
+	return "-DbigtableInstanceId=" + instanceId
 }
 
 func NewMavenFlags() MavenFlags {
