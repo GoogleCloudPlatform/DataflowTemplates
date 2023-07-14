@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.it.common.utils;
 
 import static com.google.cloud.teleport.it.common.utils.ExceptionUtils.containsMessage;
+import static com.google.cloud.teleport.it.common.utils.ExceptionUtils.containsType;
 import static com.google.common.truth.Truth.assertThat;
 
 import org.junit.Test;
@@ -59,6 +60,46 @@ public class ExceptionUtilsTest {
                     "There is a bad state in the client",
                     new IllegalArgumentException("RESOURCE_EXHAUSTED: Quota issues")),
                 "401 Unauthorized"))
+        .isFalse();
+  }
+
+  @Test
+  public void testContainsType() {
+    assertThat(
+            containsType(
+                new IllegalStateException("RESOURCE_EXHAUSTED: Quota issues"),
+                IllegalStateException.class))
+        .isTrue();
+  }
+
+  @Test
+  public void testContainsTypeNegative() {
+    assertThat(
+            containsType(
+                new IllegalStateException("RESOURCE_EXHAUSTED: Quota issues"),
+                IllegalArgumentException.class))
+        .isFalse();
+  }
+
+  @Test
+  public void testContainsTypePositiveNested() {
+    assertThat(
+            containsType(
+                new IllegalStateException(
+                    "There is a bad state in the client",
+                    new IllegalArgumentException("RESOURCE_EXHAUSTED: Quota issues")),
+                IllegalArgumentException.class))
+        .isTrue();
+  }
+
+  @Test
+  public void testContainsTypeNegativeWithNested() {
+    assertThat(
+            containsType(
+                new IllegalStateException(
+                    "There is a bad state in the client",
+                    new IllegalArgumentException("RESOURCE_EXHAUSTED: Quota issues")),
+                NoSuchFieldException.class))
         .isFalse();
   }
 }
