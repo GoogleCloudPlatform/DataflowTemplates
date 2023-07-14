@@ -53,6 +53,7 @@ public class ImportJobIT extends TemplateTestBase {
     bigtableResourceManager =
         BigtableResourceManager.builder(testName, PROJECT)
             .setCredentialsProvider(credentialsProvider)
+            .maybeUseStaticInstance()
             .build();
     gcsClient.uploadArtifact(
         "input/sequence-file-to-bigtable-file_test",

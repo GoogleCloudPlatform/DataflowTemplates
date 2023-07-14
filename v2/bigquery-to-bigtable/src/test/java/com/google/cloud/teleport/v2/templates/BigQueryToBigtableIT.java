@@ -81,6 +81,7 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
     bigtableClient =
         BigtableResourceManager.builder(testName, PROJECT)
             .setCredentialsProvider(credentialsProvider)
+            .maybeUseStaticInstance()
             .build();
   }
 
