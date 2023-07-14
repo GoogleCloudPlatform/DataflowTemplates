@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+        uses: actions/checkout@v2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -54,7 +54,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+        uses: actions/checkout@v2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -69,7 +69,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+        uses: actions/checkout@v2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -92,7 +92,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2.6.0
+        uses: actions/checkout@v2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -120,7 +120,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2.6.0
+        uses: actions/checkout@v2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -149,7 +149,7 @@ jobs:
     runs-on: [self-hosted, perf]
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v2.6.0
+      uses: actions/checkout@v2
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
