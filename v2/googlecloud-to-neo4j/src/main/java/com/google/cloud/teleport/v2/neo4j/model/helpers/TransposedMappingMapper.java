@@ -123,6 +123,15 @@ public class TransposedMappingMapper {
         addMapping(mappings, mapping);
       }
     }
+
+    if (edgeMappingsObject.has("keys")) {
+      List<FieldNameTuple> keys = getFieldAndNameTuples(edgeMappingsObject.get("keys"));
+      for (FieldNameTuple f : keys) {
+        Mapping mapping = new Mapping(FragmentType.rel, RoleType.key, f);
+        addMapping(mappings, mapping);
+      }
+    }
+
     if (edgeMappingsObject.has("properties")) {
       parseProperties(edgeMappingsObject.getJSONObject("properties"), mappings, FragmentType.rel);
     }

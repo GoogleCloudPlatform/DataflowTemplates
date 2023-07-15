@@ -41,100 +41,124 @@ public class CypherGenerator {
   private static final String CONST_ROW_VARIABLE_NAME = "rows";
 
   public static String getUnwindCreateCypher(Target target) {
+    TargetType targetType = target.getType();
+    if (targetType != TargetType.edge && targetType != TargetType.node) {
+      throw new RuntimeException("Unhandled target type: " + targetType);
+    }
+
+    SaveMode saveMode = target.getSaveMode();
+    if (saveMode != SaveMode.merge && saveMode != SaveMode.append) {
+      throw new RuntimeException("Unhandled save mode: " + saveMode);
+    }
+
+    if (targetType == TargetType.edge) {
+      if (saveMode == SaveMode.merge) {
+        return unwindMergeRelationships(target);
+      }
+      return unwindCreateRelationships(target);
+    }
+
+    if (saveMode == SaveMode.merge) {
+      return unwindMergeNodes(target);
+    }
+    return unwindCreateNodes(target);
+  }
+
+  private static String unwindCreateNodes(Target target) {
     StringBuilder sb = new StringBuilder();
-    // Model node creation statement
-    //  "UNWIND $rows AS row CREATE(c:Customer { id : row.id, name: row.name, firstName:
-    // row.firstName })
+    sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
+    sb.append("CREATE (")
+        .append(
+            getLabelsPropertiesListCypherFragment(
+                "n",
+                false,
+                FragmentType.node,
+                Arrays.asList(RoleType.key, RoleType.property),
+                target))
+        .append(")");
+    return sb.toString();
+  }
 
-    /// RELATIONSHIP TYPE
-    if (target.getType() == TargetType.edge) {
+  private static String unwindMergeNodes(Target target) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
+    // MERGE clause represents matching properties
+    // MERGE (charlie {name: 'Charlie Sheen', age: 10})  A new node with the name 'Charlie
+    // Sheen' will be created since not all properties matched the existing 'Charlie Sheen'
+    // node.
+    sb.append("MERGE (")
+        .append(
+            getLabelsPropertiesListCypherFragment(
+                "n", false, FragmentType.node, List.of(RoleType.key), target))
+        .append(")");
+    String nodePropertyMapStr =
+        getPropertiesListCypherFragment(
+            FragmentType.node, false, List.of(RoleType.property), target);
+    if (nodePropertyMapStr.length() > 0) {
+      sb.append(" SET n+=").append(nodePropertyMapStr);
+    }
+    return sb.toString();
+  }
 
-      // Verb
-      if (target.getSaveMode() == SaveMode.merge) { // merge
-        sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
-        // MERGE (variable1:Label1 {nodeProperties1})-[:REL_TYPE]->
-        // (variable2:Label2 {nodeProperties2})
-        // MATCH before MERGE
-        sb.append(" MATCH (")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "source", true, FragmentType.source, Arrays.asList(RoleType.key), target))
-            .append(")");
-        sb.append(" MATCH (")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "target", true, FragmentType.target, Arrays.asList(RoleType.key), target))
-            .append(")");
-        sb.append(" MERGE (source)");
-        sb.append(" -[")
-            .append(getRelationshipTypePropertiesListFragment("rel", false, target))
-            .append("]-> ");
-        sb.append("(target)");
-        // SET properties...
-      } else if (target.getSaveMode() == SaveMode.append) { // Fast, blind create
-        sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row CREATE ");
-        sb.append("(")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "source",
-                    false,
-                    FragmentType.source,
-                    Arrays.asList(RoleType.key, RoleType.property),
-                    target))
-            .append(")");
-        sb.append(" -[")
-            .append(getRelationshipTypePropertiesListFragment("rel", false, target))
-            .append("]-> ");
-        sb.append("(")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "target",
-                    false,
-                    FragmentType.target,
-                    Arrays.asList(RoleType.key, RoleType.property),
-                    target))
-            .append(")");
-      } else {
-        LOG.error("Unhandled saveMode: " + target.getSaveMode());
-      }
+  private static String unwindCreateRelationships(Target target) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row CREATE ");
+    sb.append("(")
+        .append(
+            getLabelsPropertiesListCypherFragment(
+                "source",
+                false,
+                FragmentType.source,
+                Arrays.asList(RoleType.key, RoleType.property),
+                target))
+        .append(")");
+    sb.append(" -[")
+        .append(getRelationshipTypePropertiesListFragment("rel", false, target))
+        .append("]-> ");
+    sb.append("(")
+        .append(
+            getLabelsPropertiesListCypherFragment(
+                "target",
+                false,
+                FragmentType.target,
+                Arrays.asList(RoleType.key, RoleType.property),
+                target))
+        .append(")");
+    String relPropertyMap =
+        getPropertiesListCypherFragment(
+            FragmentType.rel, false, List.of(RoleType.property), target);
+    if (relPropertyMap.length() > 0) {
+      sb.append(" SET rel += ").append(relPropertyMap);
+    }
+    return sb.toString();
+  }
 
-      // NODE TYPE
-    } else if (target.getType() == TargetType.node) {
-
-      // Verb
-      if (target.getSaveMode() == SaveMode.merge) { // merge
-        sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
-        // MERGE clause represents matching properties
-        // MERGE (charlie {name: 'Charlie Sheen', age: 10})  A new node with the name 'Charlie
-        // Sheen' will be created since not all properties matched the existing 'Charlie Sheen'
-        // node.
-        sb.append("MERGE (")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "n", false, FragmentType.node, Arrays.asList(RoleType.key), target))
-            .append(")");
-        String nodePropertyMapStr =
-            getPropertiesListCypherFragment(
-                FragmentType.node, false, Arrays.asList(RoleType.property), target);
-        if (nodePropertyMapStr.length() > 0) {
-          sb.append(" SET n+=").append(nodePropertyMapStr);
-        }
-      } else if (target.getSaveMode() == SaveMode.append) { // fast create
-        sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
-        sb.append("CREATE (")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "n",
-                    false,
-                    FragmentType.node,
-                    Arrays.asList(RoleType.key, RoleType.property),
-                    target))
-            .append(")");
-      } else {
-        LOG.error("Unhandled saveMode: " + target.getSaveMode());
-      }
-    } else {
-      throw new RuntimeException("Unhandled target type: " + target.getType());
+  private static String unwindMergeRelationships(Target target) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
+    // MERGE (variable1:Label1 {nodeProperties1})-[:REL_TYPE]->
+    // (variable2:Label2 {nodeProperties2})
+    // MATCH before MERGE
+    sb.append(" MATCH (")
+        .append(
+            getLabelsPropertiesListCypherFragment(
+                "source", true, FragmentType.source, List.of(RoleType.key), target))
+        .append(")");
+    sb.append(" MATCH (")
+        .append(
+            getLabelsPropertiesListCypherFragment(
+                "target", true, FragmentType.target, List.of(RoleType.key), target))
+        .append(")");
+    sb.append(" MERGE (source)");
+    sb.append("-[")
+        .append(getRelationshipTypePropertiesListFragment("rel", true, target))
+        .append("]->");
+    sb.append("(target)");
+    String relPropertyMap =
+        getPropertiesListCypherFragment(
+            FragmentType.rel, false, List.of(RoleType.property), target);
+    if (relPropertyMap.length() > 0) {
+      sb.append(" SET rel += ").append(relPropertyMap);
     }
     return sb.toString();
   }
@@ -201,7 +225,19 @@ public class CypherGenerator {
     return "";
   }
 
-  public static List<String> getNodeIndexAndConstraintsCypherStatements(
+  public static List<String> getIndexAndConstraintsCypherStatements(
+      TargetType type, Config config, Target target) {
+    switch (type) {
+      case node:
+        return getNodeIndexAndConstraintsCypherStatements(config, target);
+      case edge:
+        return getRelationshipIndexAndConstraintsCypherStatements(config, target);
+      default:
+        throw new IllegalArgumentException(String.format("unexpected target type: %s", type));
+    }
+  }
+
+  private static List<String> getNodeIndexAndConstraintsCypherStatements(
       Config config, Target target) {
 
     List<String> cyphers = new ArrayList<>();
@@ -209,12 +245,12 @@ public class CypherGenerator {
     //  "UNWIND $rows AS row CREATE(c:Customer { id : row.id, name: row.name, firstName:
     // row.firstName })
     // derive labels
-    List<String> labels = ModelUtils.getStaticLabels(FragmentType.node, target);
+    List<String> labels = ModelUtils.getStaticLabels(target);
     List<String> indexedProperties =
         ModelUtils.getIndexedProperties(config.getIndexAllProperties(), FragmentType.node, target);
     List<String> uniqueProperties = ModelUtils.getUniqueProperties(FragmentType.node, target);
     List<String> mandatoryProperties = ModelUtils.getRequiredProperties(FragmentType.node, target);
-    List<String> nodeKeyProperties = ModelUtils.getNodeKeyProperties(FragmentType.node, target);
+    List<String> nodeKeyProperties = ModelUtils.getEntityKeyProperties(FragmentType.node, target);
 
     for (String uniqueProperty : uniqueProperties) {
       cyphers.add(
@@ -253,19 +289,71 @@ public class CypherGenerator {
     return cyphers;
   }
 
+  // TODO: no-op if < 5.7 || not EE for some or all
+  private static List<String> getRelationshipIndexAndConstraintsCypherStatements(
+      Config config, Target target) {
+
+    List<String> cyphers = new ArrayList<>();
+    // Model node creation statement
+    //  "UNWIND $rows AS row CREATE(c:Customer { id : row.id, name: row.name, firstName:
+    // row.firstName })
+    // derive labels
+    String type = ModelUtils.getStaticType(target);
+    List<String> indexedProperties =
+        ModelUtils.getIndexedProperties(config.getIndexAllProperties(), FragmentType.rel, target);
+    List<String> uniqueProperties = ModelUtils.getUniqueProperties(FragmentType.rel, target);
+    List<String> mandatoryProperties = ModelUtils.getRequiredProperties(FragmentType.rel, target);
+    List<String> relKeyProperties = ModelUtils.getEntityKeyProperties(FragmentType.rel, target);
+
+    String escapedType = ModelUtils.makeSpaceSafeValidNeo4jIdentifier(type);
+    for (String uniqueProperty : uniqueProperties) {
+      cyphers.add(
+          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() REQUIRE r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(uniqueProperty)
+              + " IS UNIQUE");
+    }
+    for (String mandatoryProperty : mandatoryProperties) {
+      cyphers.add(
+          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() REQUIRE r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(mandatoryProperty)
+              + " IS NOT NULL");
+    }
+    for (String relKeyProperty : relKeyProperties) {
+      cyphers.add(
+          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() REQUIRE r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(relKeyProperty)
+              + " IS RELATIONSHIP KEY");
+    }
+    for (String indexedProperty : indexedProperties) {
+      cyphers.add(
+          "CREATE INDEX IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() ON (r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(indexedProperty)
+              + ")");
+    }
+
+    return cyphers;
+  }
+
   public static String getRelationshipTypePropertiesListFragment(
       String prefix, boolean onlyIndexedProperties, Target target) {
     StringBuilder sb = new StringBuilder();
     List<String> relType =
         ModelUtils.getStaticOrDynamicRelationshipType(CONST_ROW_VARIABLE_NAME, target);
     sb.append(prefix).append(":").append(StringUtils.join(relType, ":"));
-    sb.append(" ")
-        .append(
-            getPropertiesListCypherFragment(
-                FragmentType.rel,
-                onlyIndexedProperties,
-                Arrays.asList(RoleType.key, RoleType.property),
-                target));
+    String properties =
+        getPropertiesListCypherFragment(
+            FragmentType.rel, onlyIndexedProperties, List.of(RoleType.key), target);
+    if (!properties.isEmpty()) {
+      sb.append(" ").append(properties);
+    }
     return sb.toString();
   }
 }
