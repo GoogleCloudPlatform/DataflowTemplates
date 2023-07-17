@@ -35,21 +35,21 @@ public abstract class StreamingHandler {
   }
 
   public void process() {
-
+    String shardId = taskContext.getShard().getLogicalShardId();
     InputBufferReader inputBufferReader = this.getBufferReader();
 
     try {
-
       Instant readStartTime = Instant.now();
       List<String> records = inputBufferReader.getRecords();
       Instant readEndTime = Instant.now();
       LOG.info(
-          "Number of records read from buffer: "
+          "Shard "
+              + shardId
+              + ": read "
               + records.size()
-              + " for shard: "
-              + taskContext.getShard().getLogicalShardId()
-              + " time taken in miliseconds : "
-              + ChronoUnit.MILLIS.between(readStartTime, readEndTime));
+              + " records from the buffer in "
+              + ChronoUnit.MILLIS.between(readStartTime, readEndTime)
+              + " milliseconds");
       if (records.isEmpty()) {
         inputBufferReader.acknowledge();
         return;
@@ -68,17 +68,14 @@ public abstract class StreamingHandler {
                   connectString,
                   taskContext.getShard().getUserName(),
                   taskContext.getShard().getPassword())
-              .getMySqlDao(taskContext.getShard().getLogicalShardId());
+              .getMySqlDao(shardId);
 
       InputRecordProcessor.processRecords(
-          records,
-          taskContext.getSchema(),
-          dao,
-          taskContext.getShard().getLogicalShardId(),
-          taskContext.getSourceDbTimezoneOffset());
+          records, taskContext.getSchema(), dao, shardId, taskContext.getSourceDbTimezoneOffset());
       inputBufferReader.acknowledge();
       dao.cleanup();
-      LOG.info(" Successfully processed shard:  " + taskContext.getShard().getLogicalShardId());
+      LOG.info(
+          "Shard " + shardId + ": Successfully processed batch of " + records.size() + " records.");
     } catch (Exception e) {
       // TODO: Error handling and retry
       /*

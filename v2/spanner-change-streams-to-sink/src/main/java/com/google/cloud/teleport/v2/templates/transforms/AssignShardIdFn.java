@@ -36,9 +36,7 @@ public class AssignShardIdFn
   private final Schema schema;
 
   public AssignShardIdFn(Schema schema) {
-    LOG.info("Found schema in constructor: " + schema);
     this.schema = schema;
-    LOG.info("Found schema in constructor2: " + this.schema);
   }
 
   @ProcessElement

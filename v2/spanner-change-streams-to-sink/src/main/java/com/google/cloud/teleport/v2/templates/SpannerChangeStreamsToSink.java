@@ -320,7 +320,6 @@ public class SpannerChangeStreamsToSink {
     }
 
     Schema schema = SessionFileReader.read(options.getSessionFilePath());
-    LOG.info("Found schema in main: " + schema);
 
     pipeline
         .apply(getReadChangeStreamDoFn(options))
