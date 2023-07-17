@@ -266,10 +266,10 @@ public class ModelUtils {
     return relationships;
   }
 
-  public static List<String> getStaticLabels(Target target) {
+  public static List<String> getStaticLabels(FragmentType fragmentType, Target target) {
     List<String> labels = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
-      if (m.getFragmentType() != FragmentType.node) {
+      if (m.getFragmentType() != fragmentType) {
         continue;
       }
       if (m.getLabels().size() > 0) {

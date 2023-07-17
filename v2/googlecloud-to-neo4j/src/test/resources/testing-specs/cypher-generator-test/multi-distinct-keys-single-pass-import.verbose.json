@@ -1,0 +1,87 @@
+{
+  "config": {
+    "reset_db": false,
+    "index_all_properties": false,
+    "node_write_batch_size": 5000,
+    "edge_write_batch_size": 1000
+  },
+  "sources": [
+    {
+      "type": "text",
+      "format": "EXCEL",
+      "name": "source_csv",
+      "uri": "gs://some/rels.csv",
+      "delimiter": ",",
+      "ordered_field_names": "source1,source2,target1,target2,timestamp"
+    }
+  ],
+  "targets": [
+    {
+      "source": "source_csv",
+      "type": "edge",
+      "name": "Source CSV rel file",
+      "mode": "merge",
+      "edgeNodesMatchMode": "merge",
+      "transform": {
+        "group": true
+      },
+      "mappings": [
+        {
+          "constant": "LINKS",
+          "role": "type",
+          "fragment": "rel"
+        },
+        {
+          "constant": "Source",
+          "role": "label",
+          "fragment": "source"
+        },
+        {
+          "constant": "Target",
+          "role": "label",
+          "fragment": "target"
+        },
+        {
+          "field": "source1",
+          "name": "src_id1",
+          "role": "key",
+          "fragment": "source",
+          "description": "",
+          "type": "Integer"
+        },
+        {
+          "field": "source2",
+          "name": "src_id2",
+          "role": "key",
+          "fragment": "source",
+          "description": "",
+          "type": "Integer"
+        },
+        {
+          "field": "target1",
+          "name": "tgt_id1",
+          "role": "key",
+          "fragment": "target",
+          "description": "",
+          "type": "Integer"
+        },
+        {
+          "field": "target2",
+          "name": "tgt_id2",
+          "role": "key",
+          "fragment": "target",
+          "description": "",
+          "type": "Integer"
+        },
+        {
+          "field": "timestamp",
+          "name": "ts",
+          "fragment": "rel",
+          "role": "property",
+          "description": "",
+          "type": "Integer"
+        }
+      ]
+    }
+  ]
+}
