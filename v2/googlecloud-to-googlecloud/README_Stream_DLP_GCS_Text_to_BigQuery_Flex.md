@@ -24,6 +24,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **inspectTemplateName** (Cloud DLP inspect template name): Cloud DLP template to inspect contents. (Example: projects/your-project-id/locations/global/inspectTemplates/generated_template_id).
 * **batchSize** (Batch size): Batch size contents (number of rows) to optimize DLP API call. Total size of the rows must not exceed 512 KB and total cell count must not exceed 50,000. Default batch size is set to 100. Ex. 1000.
+* **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). If this is enabled and at-least-once semantics (useStorageWriteApiAtLeastOnce) option is off then "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API" must be provided. Defaults to: false.
+* **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+* **numStorageWriteApiStreams** (Number of streams for BigQuery Storage Write API): Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
+* **storageWriteApiTriggeringFrequencySec** (Triggering frequency in seconds for BigQuery Storage Write API): Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values.
 
 
 
@@ -79,6 +83,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -114,6 +119,10 @@ export DLP_PROJECT_ID=<dlpProjectId>
 ### Optional
 export INSPECT_TEMPLATE_NAME=<inspectTemplateName>
 export BATCH_SIZE=100
+export USE_STORAGE_WRITE_API=false
+export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
+export NUM_STORAGE_WRITE_API_STREAMS=0
+export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
 
 gcloud dataflow flex-template run "stream-dlp-gcs-text-to-bigquery-flex-job" \
   --project "$PROJECT" \
@@ -124,7 +133,11 @@ gcloud dataflow flex-template run "stream-dlp-gcs-text-to-bigquery-flex-job" \
   --parameters "inspectTemplateName=$INSPECT_TEMPLATE_NAME" \
   --parameters "batchSize=$BATCH_SIZE" \
   --parameters "datasetName=$DATASET_NAME" \
-  --parameters "dlpProjectId=$DLP_PROJECT_ID"
+  --parameters "dlpProjectId=$DLP_PROJECT_ID" \
+  --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
+  --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
+  --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
+  --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC"
 ```
 
 For more information about the command, please check:
@@ -151,6 +164,10 @@ export DLP_PROJECT_ID=<dlpProjectId>
 ### Optional
 export INSPECT_TEMPLATE_NAME=<inspectTemplateName>
 export BATCH_SIZE=100
+export USE_STORAGE_WRITE_API=false
+export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
+export NUM_STORAGE_WRITE_API_STREAMS=0
+export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -159,7 +176,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="stream-dlp-gcs-text-to-bigquery-flex-job" \
 -DtemplateName="Stream_DLP_GCS_Text_to_BigQuery_Flex" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,deidentifyTemplateName=$DEIDENTIFY_TEMPLATE_NAME,inspectTemplateName=$INSPECT_TEMPLATE_NAME,batchSize=$BATCH_SIZE,datasetName=$DATASET_NAME,dlpProjectId=$DLP_PROJECT_ID" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,deidentifyTemplateName=$DEIDENTIFY_TEMPLATE_NAME,inspectTemplateName=$INSPECT_TEMPLATE_NAME,batchSize=$BATCH_SIZE,datasetName=$DATASET_NAME,dlpProjectId=$DLP_PROJECT_ID,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
