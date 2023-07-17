@@ -76,6 +76,12 @@ import org.slf4j.LoggerFactory;
     name = "Bigtable_Change_Streams_to_BigQuery",
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Bigtable change streams to BigQuery",
+    skipOptions = {
+      "bigtableReadAppProfile",
+      "bigtableRpcAttemptTimeoutMs",
+      "bigtableRpcTimeoutMs",
+      "bigtableAdditionalRetryCodes"
+    },
     description =
         "Streaming pipeline. Streams Bigtable data change records and writes them into BigQuery using Dataflow Runner V2.",
     optionsClass = BigtableChangeStreamToBigQueryOptions.class,
