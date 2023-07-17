@@ -25,6 +25,7 @@ import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -36,6 +37,7 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.mo
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.TransientColumn;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.UnsupportedEntryException;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.BigQueryUtils;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
@@ -81,6 +83,11 @@ import org.slf4j.LoggerFactory;
       "bigtableRpcAttemptTimeoutMs",
       "bigtableRpcTimeoutMs",
       "bigtableAdditionalRetryCodes"
+    },
+    optionsOrder = {
+        BigtableCommonOptions.ReadChangeStreamOptions.class,
+        BigtableChangeStreamToBigQueryOptions.class,
+        BigtableCommonOptions.ReadOptions.class
     },
     description =
         "Streaming pipeline. Streams Bigtable data change records and writes them into BigQuery using Dataflow Runner V2.",
