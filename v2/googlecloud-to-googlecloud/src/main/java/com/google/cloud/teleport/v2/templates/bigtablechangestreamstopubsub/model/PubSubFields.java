@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model;
 
 /** Static metadata class for all changelog columns. */
-public enum PubSubMessage {
+public enum PubSubFields {
   ROW_KEY_STRING("row_key"),
   ROW_KEY_BYTES("row_key"),
   MOD_TYPE("mod_type"),
@@ -39,7 +39,7 @@ public enum PubSubMessage {
 
   private final String fieldName;
 
-  PubSubMessage(String fieldName) {
+  PubSubFields(String fieldName) {
     this.fieldName = fieldName;
   }
 

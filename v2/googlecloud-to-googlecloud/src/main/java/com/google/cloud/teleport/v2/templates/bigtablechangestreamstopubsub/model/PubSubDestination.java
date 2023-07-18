@@ -28,14 +28,27 @@ public class PubSubDestination implements Serializable {
   private String topicMessageFormat;
   private String topicMessageEncoding;
 
+  private final boolean useBase64Rowkey;
+  private final boolean useBase64ColumnQualifier;
+  private final boolean useBase64Value;
+
   public PubSubDestination(
-      String pubSubProject, String pubSubTopicName, String messageFormat, String messageEncoding) {
+      String pubSubProject,
+      String pubSubTopicName,
+      String messageFormat,
+      String messageEncoding,
+      Boolean useBase64Rowkey,
+      Boolean useBase64ColumnQualifier,
+      Boolean useBase64Value) {
     this.pubSubProject = pubSubProject;
     this.pubSubTopicName = pubSubTopicName;
     this.messageFormat = messageFormat;
     this.topicMessageFormat = messageFormat;
     this.messageEncoding = messageEncoding;
     this.topicMessageEncoding = messageEncoding;
+    this.useBase64Rowkey = useBase64Rowkey;
+    this.useBase64ColumnQualifier = useBase64ColumnQualifier;
+    this.useBase64Value = useBase64Value;
   }
 
   public String getPubSubProject() {
@@ -76,5 +89,17 @@ public class PubSubDestination implements Serializable {
 
   public void setTopicMessageEncoding(String topicMessageEncoding) {
     this.topicMessageEncoding = topicMessageEncoding;
+  }
+
+  public Boolean getUseBase64Rowkey() {
+    return useBase64Rowkey;
+  }
+
+  public Boolean getUseBase64ColumnQualifier() {
+    return useBase64ColumnQualifier;
+  }
+
+  public Boolean getUseBase64Value() {
+    return useBase64Value;
   }
 }

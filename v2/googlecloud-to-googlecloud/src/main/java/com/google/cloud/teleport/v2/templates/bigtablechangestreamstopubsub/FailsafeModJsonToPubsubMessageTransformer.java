@@ -15,17 +15,17 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.pubsub.v1.Publisher;
-import com.google.cloud.teleport.bigtable.ChangelogEntry;
-import com.google.cloud.teleport.v2.ChangeLogEntryProto.ChangelogEntryProto;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.protobuf.ByteString;
-import com.google.protobuf.util.JsonFormat;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.TopicName;
 import java.io.ByteArrayOutputStream;
@@ -33,13 +33,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import org.apache.avro.Schema;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.io.Decoder;
-import org.apache.avro.io.DecoderFactory;
-import org.apache.avro.io.Encoder;
-import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -142,28 +135,6 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
         }
       }
 
-      public static ChangelogEntry mapJsonToChangelogEntry(String jsonString) throws Exception {
-        Schema schema = ChangelogEntry.getClassSchema();
-
-        // Create a Decoder for JSON data
-        Decoder decoder = DecoderFactory.get().jsonDecoder(schema, jsonString);
-
-        DatumReader<ChangelogEntry> reader = new SpecificDatumReader<>(schema);
-
-        ChangelogEntry changelogEntry = reader.read(null, decoder);
-        return changelogEntry;
-      }
-
-      public static ChangelogEntryProto mapJsonToChangelogEntryProto(String jsonString)
-          throws Exception {
-        ChangelogEntryProto.Builder builder = ChangelogEntryProto.newBuilder();
-        JsonFormat.parser().ignoringUnknownFields().merge(jsonString, builder);
-
-        // Build the protobuf message
-        ChangelogEntryProto changelogEntryProto = builder.build();
-        return changelogEntryProto;
-      }
-
       @ProcessElement
       public void processElement(ProcessContext context) {
         LOG.info("Reading a failsafeModJsonString");
@@ -187,69 +158,26 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
       /* Schema Details:  */
       private PubsubMessage publishModJsonStringToPubsubMessage(String modJsonString)
           throws Exception {
+        ObjectNode modObjectNode = (ObjectNode) new ObjectMapper().readTree(modJsonString);
+        String changeJsonString = Mod.fromJson(modObjectNode.toString()).getChangeJson();
         String messageFormat = pubSubUtils.getDestination().getTopicMessageFormat();
-        String messageEncoding = pubSubUtils.getDestination().getTopicMessageEncoding();
         Publisher publisher = null;
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        PubsubMessage pubsubMessage;
 
         switch (messageFormat) {
-          case "AVRO":
-            ChangelogEntry changelogEntry = mapJsonToChangelogEntry(modJsonString);
-            Encoder encoder = null;
-            switch (messageEncoding) {
-              case "BINARY":
-                encoder = EncoderFactory.get().directBinaryEncoder(byteStream, /* reuse= */ null);
-                break;
-              case "JSON":
-                encoder =
-                    EncoderFactory.get().jsonEncoder(ChangelogEntry.getClassSchema(), byteStream);
-                break;
-              default:
-                break;
-            }
-            changelogEntry.customEncode(encoder);
-            encoder.flush();
-
-            // Publish the encoded object as a Pub/Sub message.
-            ByteString data = ByteString.copyFrom(byteStream.toByteArray());
-            PubsubMessage message = PubsubMessage.newBuilder().setData(data).build();
-
-            ApiFuture<String> future = publisher.publish(message);
+          case "Avro":
+            pubsubMessage = pubSubUtils.mapChangeJsonStringToPubSubMessageAsAvro(changeJsonString);
             break;
 
           case "Protocol Buffer":
-            ChangelogEntryProto changelogEntryProto = mapJsonToChangelogEntryProto(modJsonString);
-            data = ByteString.copyFrom(byteStream.toByteArray());
-            PubsubMessage.Builder protoMessage = PubsubMessage.newBuilder();
-            switch (messageEncoding) {
-              case "BINARY":
-                protoMessage.setData(changelogEntryProto.toByteString());
-                break;
-              case "JSON":
-                String jsonString =
-                    JsonFormat.printer()
-                        .omittingInsignificantWhitespace()
-                        .print(changelogEntryProto);
-                protoMessage.setData(ByteString.copyFromUtf8(jsonString));
-                break;
-              default:
-                break;
-            }
-            future = publisher.publish(protoMessage.build());
+            pubsubMessage = pubSubUtils.mapChangeJsonStringToPubSubMessageAsProto(changeJsonString);
             break;
 
           case "JSON":
-            byte[] encodedRecords = modJsonString.getBytes();
-
-            com.google.pubsub.v1.PubsubMessage v1PubsubMessage =
-                com.google.pubsub.v1.PubsubMessage.newBuilder()
-                    .setData(ByteString.copyFrom(encodedRecords))
-                    .build();
-            ApiFuture<String> messageIdFuture = publisher.publish(v1PubsubMessage);
-            List<ApiFuture<String>> futures = new ArrayList();
-            futures.add(messageIdFuture);
-            ApiFutures.allAsList(futures).get();
+            pubsubMessage = pubSubUtils.mapChangeJsonStringToPubSubMessageAsJson(changeJsonString);
             break;
+
           default:
             final String errorMessage =
                 "Invalid output format:" + messageFormat + ". Supported output formats: JSON, AVRO";

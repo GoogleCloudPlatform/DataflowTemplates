@@ -15,4 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils;
 
-public class PublishPubSubMessageAsJson {}
+import org.json.JSONObject;
+
+/**
+ * Interface which allows extracting data from raw JSON object and preparing it for BigQuery
+ * consumption.
+ */
+public interface PubSubValueFormatter {
+  Object format(PubSubUtils pubSub, JSONObject chg) throws Exception;
+}

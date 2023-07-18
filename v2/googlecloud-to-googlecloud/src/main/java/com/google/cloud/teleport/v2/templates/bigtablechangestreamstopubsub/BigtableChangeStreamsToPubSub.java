@@ -22,7 +22,7 @@ import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
-import com.google.cloud.teleport.bigtable.ChangelogEntry;
+import com.google.cloud.teleport.bigtable.ChangeLogEntry;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.bigtable.utils.UnsupportedEntryException;
@@ -176,7 +176,10 @@ public final class BigtableChangeStreamsToPubSub {
             getPubSubProjectId(options),
             options.getPubSubTopic(),
             options.getMessageFormat(),
-            options.getMessageEncoding());
+            options.getMessageEncoding(),
+            options.getUseBase64Rowkey(),
+            options.getUseBase64ColumnQualifier(),
+            options.getUseBase64Value());
 
     PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo, options.getPubSubAPI());
 
@@ -378,7 +381,7 @@ public final class BigtableChangeStreamsToPubSub {
         String testMessage = "{ \"name\": \"John Doe\", \"age\": 30 }";
         switch (messageFormat) {
           case "AVRO":
-            Schema schema = ChangelogEntry.getClassSchema();
+            Schema schema = ChangeLogEntry.getClassSchema();
 
           case "PROTO":
           default:

@@ -1,5 +1,5 @@
 {
-  "name" : "ChangelogEntryJson",
+  "name" : "ChangeLogEntryJson",
   "type" : "record",
   "namespace" : "com.google.cloud.teleport.bigtable",
   "fields" : [
@@ -14,6 +14,7 @@
     { "name": "isGc", "type": "boolean" },
     { "name": "tieBreaker", "type": "int"},
     { "name": "columnFamily", "type": "string"},
+    { "name": "commitTimestamp", "type" : "long"},
     { "name": "column", "type" : ["string", "null"]},
     { "name": "timestamp", "type" : ["long", "null"]},
     { "name": "timestampFrom", "type" : ["long", "null"]},
