@@ -28,26 +28,30 @@ public class TargetMapperTest {
 
   @Test
   public void setsSpecifiedMatchModeForEdgeTargets() {
-    JSONObject object = targetObject("edge", "merge");
+    JSONObject object = targetOfType("edge");
+    object.put("mode", "merge");
+    object.put("edgeNodesMatchMode", "merge");
 
     Target target = TargetMapper.fromJson(object);
 
     assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesMatchMode.merge);
   }
 
-  @Test // TODO: discuss this - set value and reject when validation kicks in on the job spec?
-  public void ignoresSpecifiedMatchModeForEdgeTargetsInAppendMode() {
-    JSONObject object = targetObject("node", "match");
+  @Test
+  public void setsSpecifiedMatchModeForEdgeTargetsInAppendMode() {
+    JSONObject object = targetOfType("edge");
     object.put("mode", "append");
+    object.put("edgeNodesMatchMode", "merge");
 
     Target target = TargetMapper.fromJson(object);
 
-    assertThat(target.getEdgeNodesMatchMode()).isNull();
+    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesMatchMode.merge);
   }
 
-  @Test // TODO: discuss this - set value and reject when validation kicks in on the job spec?
+  @Test
   public void ignoresSpecifiedMatchModeForNodeTargets() {
-    JSONObject object = targetObject("node", "match");
+    JSONObject object = targetOfType("node");
+    object.put("edgeNodesMatchMode", "match");
 
     Target target = TargetMapper.fromJson(object);
 
@@ -56,7 +60,7 @@ public class TargetMapperTest {
 
   @Test
   public void setsDefaultMatchModeForEdgeTargets() {
-    JSONObject object = targetObject("edge");
+    JSONObject object = targetOfType("edge");
 
     Target target = TargetMapper.fromJson(object);
 
@@ -65,20 +69,14 @@ public class TargetMapperTest {
 
   @Test
   public void doesNotSetDefaultMatchModeForNodeTargets() {
-    JSONObject object = targetObject("node");
+    JSONObject object = targetOfType("node");
 
     Target target = TargetMapper.fromJson(object);
 
     assertThat(target.getEdgeNodesMatchMode()).isNull();
   }
 
-  private static JSONObject targetObject(String type, String edgeNodesMatchMode) {
-    JSONObject object = targetObject(type);
-    object.put("edgeNodesMatchMode", edgeNodesMatchMode);
-    return object;
-  }
-
-  private static JSONObject targetObject(String type) {
+  private static JSONObject targetOfType(String type) {
     JSONObject object = new JSONObject();
     object.put("name", UUID.randomUUID().toString());
     object.put("mode", "merge");

@@ -70,7 +70,8 @@ public class CypherGeneratorTest {
 
   @Test
   public void mergesEdgesAsWellAsTheirStartAndEndNodes() {
-    JobSpec jobSpec = JobSpecMapper.fromUri(SPEC_PATH + "/single-pass-import.json");
+    JobSpec jobSpec =
+        JobSpecMapper.fromUri(SPEC_PATH + "/single-target-relation-import-merge-all.json");
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     String statement = CypherGenerator.getUnwindCreateCypher(relationshipTarget);
@@ -84,8 +85,43 @@ public class CypherGeneratorTest {
   }
 
   @Test
-  public void generatesNodeKeyConstraintsWhenMergingEdgeNodes() {
-    JobSpec jobSpec = JobSpecMapper.fromUri(SPEC_PATH + "/single-pass-import.json");
+  public void createsEdgesAndMergesTheirStartAndEndNodes() {
+    JobSpec jobSpec =
+        JobSpecMapper.fromUri(
+            SPEC_PATH + "/single-target-relation-import-create-rels-merge-nodes.json");
+    Target relationshipTarget = jobSpec.getTargets().iterator().next();
+
+    String statement = CypherGenerator.getUnwindCreateCypher(relationshipTarget);
+
+    assertThat(statement)
+        .isEqualTo(
+            "UNWIND $rows AS row  "
+                + "MERGE (source:Source {src_id: row.source}) "
+                + "MERGE (target:Target {tgt_id: row.target}) "
+                + "CREATE (source)-[rel:LINKS]->(target) SET rel += {ts: row.timestamp}");
+  }
+
+  @Test
+  public void generatesNodeKeyConstraintsWhenMergingEdgeAndItsNodes() {
+    JobSpec jobSpec =
+        JobSpecMapper.fromUri(SPEC_PATH + "/single-target-relation-import-merge-all.json");
+    Target relationshipTarget = jobSpec.getTargets().iterator().next();
+
+    List<String> statements =
+        CypherGenerator.getEdgeNodeConstraintsCypherStatements(relationshipTarget);
+
+    assertThat(statements)
+        .isEqualTo(
+            List.of(
+                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Source) REQUIRE n.src_id IS NODE KEY",
+                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Target) REQUIRE n.tgt_id IS NODE KEY"));
+  }
+
+  @Test
+  public void generatesNodeKeyConstraintsWhenCreatingEdgeAndMergingItsNodes() {
+    JobSpec jobSpec =
+        JobSpecMapper.fromUri(
+            SPEC_PATH + "/single-target-relation-import-create-rels-merge-nodes.json");
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     List<String> statements =

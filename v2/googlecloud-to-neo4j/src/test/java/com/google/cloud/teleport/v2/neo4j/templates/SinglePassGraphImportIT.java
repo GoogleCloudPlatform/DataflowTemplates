@@ -61,10 +61,10 @@ public class SinglePassGraphImportIT extends TemplateTestBase {
   }
 
   @Test
-  public void importsGraphInSinglePassByMergingEdgeNodes() throws IOException {
+  public void importsGraphInSinglePassByMergingEdgeAndItsNodes() throws IOException {
     String spec =
         contentOf(
-            "/testing-specs/verbose-syntax/inline-json-bq-northwind-single-pass-jobspec.json");
+            "/testing-specs/verbose-syntax/inline-json-bq-northwind-single-pass-merge-all-jobspec.json");
     gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
     gcsClient.createArtifact(
         "neo4j-connection.json",
@@ -125,6 +125,102 @@ public class SinglePassGraphImportIT extends TemplateTestBase {
                     .setQuery(
                         "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count ORDER BY count ASC")
                     .setExpectedResult(List.of(Map.of("type", "PURCHASES", "count", 97L)))
+                    .build(),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "SHOW CONSTRAINTS YIELD type, entityType, labelsOrTypes, properties RETURN *")
+                    .setExpectedResult(
+                        List.of(
+                            Map.of(
+                                "type",
+                                "NODE_KEY",
+                                "entityType",
+                                "NODE",
+                                "labelsOrTypes",
+                                List.of("Customer"),
+                                "properties",
+                                List.of("customerId")),
+                            Map.of(
+                                "type",
+                                "NODE_KEY",
+                                "entityType",
+                                "NODE",
+                                "labelsOrTypes",
+                                List.of("Product"),
+                                "properties",
+                                List.of("productId"))))
+                    .build());
+    assertThatResult(result).meetsConditions();
+  }
+
+  @Test
+  public void importsGraphInSinglePassByCreatingEdgeAndMergingItsNodes() throws IOException {
+    String spec =
+        contentOf(
+            // this contains the same order twice
+            // append mode for rels, means the rels will be created twice
+            // merge mode for rel nodes, means the nodes will be created only once
+            "/testing-specs/verbose-syntax/inline-json-northwind-subset-single-pass-create-edge-merge-nodes-jobspec.json");
+    gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
+    gcsClient.createArtifact(
+        "neo4j-connection.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("optionsJson", "{}") // FIXME: this should not be required
+            .addParameter("jobSpecUri", getGcsPath("inline-data-to-neo4j.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j-connection.json"));
+    LaunchInfo info = launchTemplate(options);
+
+    assertThatPipeline(info).isRunning();
+    Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(info),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "CALL db.schema.nodeTypeProperties() YIELD nodeLabels, propertyName, mandatory RETURN nodeLabels, collect(propertyName) AS propertyNames ORDER BY nodeLabels ASC")
+                    .setExpectedResult(
+                        List.of(
+                            Map.of(
+                                "nodeLabels",
+                                List.of("Customer"),
+                                "propertyNames",
+                                List.of("customerId")),
+                            Map.of(
+                                "nodeLabels",
+                                List.of("Product"),
+                                "propertyNames",
+                                List.of("productId"))))
+                    .build(),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "MATCH (n) RETURN labels(n) AS labels, count(n) AS count ORDER BY count ASC")
+                    .setExpectedResult(
+                        List.of(
+                            Map.of("labels", List.of("Customer"), "count", 1L),
+                            Map.of("labels", List.of("Product"), "count", 1L)))
+                    .build(),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "CALL db.schema.relTypeProperties() YIELD relType, propertyName RETURN relType, collect(propertyName) AS propertyNames ORDER BY relType ASC")
+                    .setExpectedResult(
+                        List.of(
+                            Map.of("relType", ":`PURCHASES`", "propertyNames", List.of("orderId"))))
+                    .build(),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count ORDER BY count ASC")
+                    .setExpectedResult(List.of(Map.of("type", "PURCHASES", "count", 2L)))
                     .build(),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(

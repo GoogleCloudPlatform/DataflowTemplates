@@ -49,10 +49,7 @@ public class CypherGenerator {
     }
 
     if (targetType == TargetType.edge) {
-      if (saveMode == SaveMode.merge) {
-        return unwindMergeRelationships(target);
-      }
-      return unwindCreateRelationships(target);
+      return unwindRelationships(target);
     }
 
     if (saveMode == SaveMode.merge) {
@@ -97,67 +94,43 @@ public class CypherGenerator {
     return sb.toString();
   }
 
-  private static String unwindCreateRelationships(Target target) {
-    StringBuilder sb = new StringBuilder();
-    sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row CREATE ");
-    sb.append("(")
-        .append(
-            getLabelsPropertiesListCypherFragment(
-                "source",
-                false,
-                FragmentType.source,
-                Arrays.asList(RoleType.key, RoleType.property),
-                target))
-        .append(")");
-    sb.append(" -[")
-        .append(getRelationshipTypePropertiesListFragment("rel", false, target))
-        .append("]-> ");
-    sb.append("(")
-        .append(
-            getLabelsPropertiesListCypherFragment(
-                "target",
-                false,
-                FragmentType.target,
-                Arrays.asList(RoleType.key, RoleType.property),
-                target))
-        .append(")");
-    String relPropertyMap =
-        getPropertiesListCypherFragment(
-            FragmentType.rel, false, List.of(RoleType.property), target);
-    if (relPropertyMap.length() > 0) {
-      sb.append(" SET rel += ").append(relPropertyMap);
+  private static String unwindRelationships(Target edge) {
+    String edgeClause;
+    String nodeClause;
+    if (edge.getSaveMode() == SaveMode.merge) {
+      edgeClause = "MERGE";
+      nodeClause = edge.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge ? "MERGE" : "MATCH";
+    } else {
+      edgeClause = "CREATE";
+      nodeClause = edge.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge ? "MERGE" : "CREATE";
     }
-    return sb.toString();
-  }
 
-  private static String unwindMergeRelationships(Target target) {
-    StringBuilder sb = new StringBuilder();
-    sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
-    // MERGE (variable1:Label1 {nodeProperties1})-[:REL_TYPE]->
-    // (variable2:Label2 {nodeProperties2})
-    // MATCH before MERGE
-    sb.append(String.format(" %s (", egdeNodeMatchMode(target.getEdgeNodesMatchMode())))
+    StringBuilder query = new StringBuilder();
+    query.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
+    query
+        .append(String.format(" %s (", nodeClause))
         .append(
             getLabelsPropertiesListCypherFragment(
-                "source", true, FragmentType.source, List.of(RoleType.key), target))
+                "source", true, FragmentType.source, List.of(RoleType.key), edge))
         .append(")");
-    sb.append(String.format(" %s (", egdeNodeMatchMode(target.getEdgeNodesMatchMode())))
+    query
+        .append(String.format(" %s (", nodeClause))
         .append(
             getLabelsPropertiesListCypherFragment(
-                "target", true, FragmentType.target, List.of(RoleType.key), target))
+                "target", true, FragmentType.target, List.of(RoleType.key), edge))
         .append(")");
-    sb.append(" MERGE (source)");
-    sb.append("-[")
-        .append(getRelationshipTypePropertiesListFragment("rel", true, target))
+    query.append(String.format(" %s (source)", edgeClause));
+    query
+        .append("-[")
+        .append(getRelationshipTypePropertiesListFragment("rel", true, edge))
         .append("]->");
-    sb.append("(target)");
+    query.append("(target)");
     String relPropertyMap =
-        getPropertiesListCypherFragment(
-            FragmentType.rel, false, List.of(RoleType.property), target);
-    if (relPropertyMap.length() > 0) {
-      sb.append(" SET rel += ").append(relPropertyMap);
+        getPropertiesListCypherFragment(FragmentType.rel, false, List.of(RoleType.property), edge);
+    if (!relPropertyMap.isEmpty()) {
+      query.append(" SET rel += ").append(relPropertyMap);
     }
-    return sb.toString();
+    return query.toString();
   }
 
   public static String getLabelsPropertiesListCypherFragment(
@@ -354,17 +327,6 @@ public class CypherGenerator {
       sb.append(" ").append(properties);
     }
     return sb.toString();
-  }
-
-  private static String egdeNodeMatchMode(EdgeNodesMatchMode mode) {
-    switch (mode) {
-      case match:
-        return "MATCH";
-      case merge:
-        return "MERGE";
-      default:
-        throw new IllegalArgumentException(String.format("Unknown edge node match mode %s", mode));
-    }
   }
 
   private static List<String> generateNodeKeyConstraints(FragmentType fragmentType, Target target) {

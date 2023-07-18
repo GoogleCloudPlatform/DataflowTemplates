@@ -76,7 +76,7 @@ public class TargetMapper {
     target.setName(targetObj.getString("name"));
     target.setActive(!targetObj.has("active") || targetObj.getBoolean("active"));
     target.setSaveMode(SaveMode.valueOf(targetObj.getString("mode")));
-    if (target.getType() == TargetType.edge && target.getSaveMode() == SaveMode.merge) {
+    if (target.getType() == TargetType.edge) {
       target.setEdgeNodesMatchMode(
           !targetObj.has("edgeNodesMatchMode")
               ? EdgeNodesMatchMode.match
