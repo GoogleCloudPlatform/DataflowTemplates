@@ -24,6 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -177,6 +178,7 @@ public class DatadogResourceManagerTest {
             .withSource("ddsource")
             .build();
 
-    assertThat(testManager.getEntries()).containsExactlyElementsIn(List.of(datadogEvent));
+    assertThat(testManager.getEntries())
+        .containsExactlyElementsIn(Collections.singletonList(datadogEvent));
   }
 }

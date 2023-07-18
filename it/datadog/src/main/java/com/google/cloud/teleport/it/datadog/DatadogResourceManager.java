@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import org.apache.http.client.entity.GzipCompressingEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -180,7 +181,7 @@ public class DatadogResourceManager extends TestContainerResourceManager<MockSer
    * @return True, if the request was successful.
    */
   public synchronized boolean sendHttpEvent(DatadogLogEntry event) {
-    return sendHttpEvents(List.of(event));
+    return sendHttpEvents(Collections.singletonList(event));
   }
 
   /**
@@ -282,9 +283,7 @@ public class DatadogResourceManager extends TestContainerResourceManager<MockSer
     private String apiKey;
 
     private Builder(String testId) {
-      super(testId);
-      this.containerImageName = DEFAULT_MOCKSERVER_CONTAINER_NAME;
-      this.containerImageTag = DEFAULT_MOCKSERVER_CONTAINER_TAG;
+      super(testId, DEFAULT_MOCKSERVER_CONTAINER_NAME, DEFAULT_MOCKSERVER_CONTAINER_TAG);
     }
 
     /**
