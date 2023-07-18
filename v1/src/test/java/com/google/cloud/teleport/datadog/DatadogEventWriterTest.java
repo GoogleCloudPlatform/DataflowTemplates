@@ -370,7 +370,7 @@ public class DatadogEventWriterTest {
             .apply(
                 "DatadogEventWriter",
                 ParDo.of(
-                    DatadogEventWriter.newBuilder()
+                    DatadogEventWriter.newBuilder(1)
                         .withUrl(Joiner.on(':').join("http://localhost", testPort))
                         .withInputBatchCount(StaticValueProvider.of(testEvents.size()))
                         .withMaxBufferSize(maxBufferSize)
