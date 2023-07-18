@@ -56,7 +56,7 @@ public class SchemaUtil {
       inputTuple =
           inputTuple.and(entry.getKey(), p.apply(Create.empty(RowCoder.of(entry.getValue()))));
     }
-    PCollectionRowTuple outputTuple = inputTuple.apply(transform.buildTransform());
+    PCollectionRowTuple outputTuple = inputTuple.apply(transform);
     Map<String, Schema> outputSchemas = new HashMap<>();
     for (Entry<String, PCollection<Row>> entry : outputTuple.getAll().entrySet()) {
       outputSchemas.put(entry.getKey(), entry.getValue().getSchema());

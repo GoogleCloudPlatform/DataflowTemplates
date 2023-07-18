@@ -45,8 +45,7 @@ public class DataGeneratorSchemaTransformTest {
                     .setSecondsToRun(5L)
                     .setRecordsPerSecond(100L)
                     .build());
-    PTransform<PCollectionRowTuple, PCollectionRowTuple> transform =
-        schemaTransform.buildTransform();
+    PTransform<PCollectionRowTuple, PCollectionRowTuple> transform = schemaTransform;
     Pipeline p = Pipeline.create();
     PCollectionRowTuple input = PCollectionRowTuple.empty(p);
     transform.expand(input);

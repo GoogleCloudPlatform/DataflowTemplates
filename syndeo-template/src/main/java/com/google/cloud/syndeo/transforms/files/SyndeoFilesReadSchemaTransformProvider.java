@@ -109,50 +109,37 @@ public class SyndeoFilesReadSchemaTransformProvider
     }
     return new SchemaTransform() {
       @Override
-      public @UnknownKeyFor @NonNull @Initialized PTransform<
-              @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple,
-              @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple>
-          buildTransform() {
-        PTransform<PCollection<FileIO.ReadableFile>, PCollectionTuple> deserializerTransform =
-            fileDeserializer(configuration.getFormat(), configuration.getSchema());
-        return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
-          @Override
-          public PCollectionRowTuple expand(PCollectionRowTuple input) {
-            PCollectionTuple firstResult =
-                input
-                    .getPipeline()
-                    .apply(
-                        PubsubIO.readStrings()
-                            .fromSubscription(configuration.getPubsubSubscription()))
-                    .apply(
-                        ParDo.of(new ParseNotifications())
-                            .withOutputTags(
-                                FILE_GENERATION_OUTPUT_TAG, TupleTagList.of(ERROR_TAG)));
+      public PCollectionRowTuple expand(PCollectionRowTuple input) {
+        PCollectionTuple firstResult =
+            input
+                .getPipeline()
+                .apply(
+                    PubsubIO.readStrings().fromSubscription(configuration.getPubsubSubscription()))
+                .apply(
+                    ParDo.of(new ParseNotifications())
+                        .withOutputTags(FILE_GENERATION_OUTPUT_TAG, TupleTagList.of(ERROR_TAG)));
 
-            PCollectionTuple result =
-                firstResult
-                    .get(FILE_GENERATION_OUTPUT_TAG)
-                    .apply(
-                        Deduplicate.<KV<String, Long>>values()
-                            .withDuration(Duration.standardMinutes(5L)))
-                    .apply(Keys.create())
-                    .apply(FileIO.matchAll().withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW))
-                    .apply(FileIO.readMatches())
-                    .apply(fileDeserializer(configuration.getFormat(), configuration.getSchema()));
+        PCollectionTuple result =
+            firstResult
+                .get(FILE_GENERATION_OUTPUT_TAG)
+                .apply(
+                    Deduplicate.<KV<String, Long>>values()
+                        .withDuration(Duration.standardMinutes(5L)))
+                .apply(Keys.create())
+                .apply(FileIO.matchAll().withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW))
+                .apply(FileIO.readMatches())
+                .apply(fileDeserializer(configuration.getFormat(), configuration.getSchema()));
 
-            PCollection<Row> errors;
-            if (result.has(ERROR_TAG)) {
-              errors =
-                  PCollectionList.of(firstResult.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA))
-                      .and(result.get(ERROR_TAG))
-                      .apply(Flatten.pCollections());
-            } else {
-              errors = firstResult.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA);
-            }
-            return PCollectionRowTuple.of(
-                "output", result.get(JSON_ROW_OUTPUT_TAG), "errors", errors);
-          }
-        };
+        PCollection<Row> errors;
+        if (result.has(ERROR_TAG)) {
+          errors =
+              PCollectionList.of(firstResult.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA))
+                  .and(result.get(ERROR_TAG))
+                  .apply(Flatten.pCollections());
+        } else {
+          errors = firstResult.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA);
+        }
+        return PCollectionRowTuple.of("output", result.get(JSON_ROW_OUTPUT_TAG), "errors", errors);
       }
     };
   }

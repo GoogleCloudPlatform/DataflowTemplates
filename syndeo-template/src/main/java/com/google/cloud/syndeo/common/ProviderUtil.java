@@ -146,7 +146,7 @@ public class ProviderUtil {
         tuple = PCollectionRowTuple.of(input, tuple.get(priorOutput));
       }
 
-      tuple = tuple.apply(spec.inputId, transform.buildTransform());
+      tuple = tuple.apply(spec.inputId, transform);
 
       if (tuple.getAll().containsKey(ERRORS_TAG)) {
         PCollectionRowTuple.of("input", tuple.get(ERRORS_TAG))
@@ -154,13 +154,12 @@ public class ProviderUtil {
                 new SyndeoStatsSchemaTransformProvider()
                     .from(
                         SyndeoStatsSchemaTransformProvider.SyndeoStatsConfiguration.create(
-                            "errors"))
-                    .buildTransform());
+                            "errors")));
         if (dlqTransformSpec != null) {
           PCollectionRowTuple.of("errors", tuple.get(ERRORS_TAG))
               .apply(
                   dlqTransformSpec.inputId,
-                  dlqTransformSpec.provider.from(dlqTransformSpec.configuration).buildTransform());
+                  dlqTransformSpec.provider.from(dlqTransformSpec.configuration));
         }
       }
     }

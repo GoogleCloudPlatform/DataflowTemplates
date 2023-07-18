@@ -47,8 +47,7 @@ import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BigTableIOWriteSchemaBasedTransform
-    extends PTransform<PCollectionRowTuple, PCollectionRowTuple> implements SchemaTransform {
+public class BigTableIOWriteSchemaBasedTransform extends SchemaTransform {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(BigTableIOWriteSchemaBasedTransform.class);
@@ -78,7 +77,6 @@ public class BigTableIOWriteSchemaBasedTransform
     this.appProfileId = appProfileId;
   }
 
-  @Override
   public PTransform<PCollectionRowTuple, PCollectionRowTuple> buildTransform() {
     return this;
   }

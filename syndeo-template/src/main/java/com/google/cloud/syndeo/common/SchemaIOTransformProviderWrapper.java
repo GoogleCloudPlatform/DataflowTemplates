@@ -121,7 +121,7 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
   }
 
   /** A class that exposes {@link SchemaIO} as a read {@link SchemaTransform}. */
-  private static class SchemaIOToReadTransform implements SchemaTransform, Serializable {
+  private static class SchemaIOToReadTransform extends SchemaTransform implements Serializable {
     SchemaIO schemaIO;
 
     private SchemaIOToReadTransform(SchemaIO schemaIO) {
@@ -129,31 +129,25 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
     }
 
     @Override
-    public PTransform<PCollectionRowTuple, PCollectionRowTuple> buildTransform() {
-      return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
-        @Override
-        public PCollectionRowTuple expand(PCollectionRowTuple input) {
-          if (!input.getAll().isEmpty()) {
-            throw new InvalidConfigurationException(
-                "Unexpected input transform: SchemaIO read's should not have an input.");
-          }
-          // If the transform does not have a schema as part of its configuration, then
-          // the transform itself will infer the schema and automatically return it.
-          if (schemaIO.schema() == null) {
-            return PCollectionRowTuple.of(
-                "output", input.getPipeline().apply(schemaIO.buildReader()));
-          } else {
-            return PCollectionRowTuple.of(
-                "output",
-                input.getPipeline().apply(schemaIO.buildReader()).setRowSchema(schemaIO.schema()));
-          }
-        }
-      };
+    public PCollectionRowTuple expand(PCollectionRowTuple input) {
+      if (!input.getAll().isEmpty()) {
+        throw new InvalidConfigurationException(
+            "Unexpected input transform: SchemaIO read's should not have an input.");
+      }
+      // If the transform does not have a schema as part of its configuration, then
+      // the transform itself will infer the schema and automatically return it.
+      if (schemaIO.schema() == null) {
+        return PCollectionRowTuple.of("output", input.getPipeline().apply(schemaIO.buildReader()));
+      } else {
+        return PCollectionRowTuple.of(
+            "output",
+            input.getPipeline().apply(schemaIO.buildReader()).setRowSchema(schemaIO.schema()));
+      }
     }
   }
 
   /** A class that exposes {@link SchemaIO} as a write {@link SchemaTransform}. */
-  private static class SchemaIOToWriteTransform implements SchemaTransform, Serializable {
+  private static class SchemaIOToWriteTransform extends SchemaTransform implements Serializable {
     SchemaIO schemaIO;
 
     private SchemaIOToWriteTransform(SchemaIO schemaIO) {
@@ -161,6 +155,24 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
     }
 
     @Override
+    public PCollectionRowTuple expand(PCollectionRowTuple inputs) {
+      PCollection<Row> input = inputs.get("input");
+      // Verify that the input schema matches what we expect.
+      // And error a proper error otherwise.
+      Preconditions.checkArgument(
+          schemaIO.schema() == null || input.getSchema().equals(schemaIO.schema()),
+          "Input collection schema does not match expected schema (input: %s fields, expected: %s fields)",
+          input.getSchema().getFields().stream().map(f -> f.getName()).collect(Collectors.toList()),
+          schemaIO.schema() == null
+              ? "null"
+              : schemaIO.schema().getFields().stream()
+                  .map(f -> f.getName())
+                  .collect(Collectors.toList()));
+      input.apply(schemaIO.buildWriter());
+      return PCollectionRowTuple.empty(input.getPipeline());
+    }
+
+    // @Override
     public PTransform<PCollectionRowTuple, PCollectionRowTuple> buildTransform() {
       return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
         @Override

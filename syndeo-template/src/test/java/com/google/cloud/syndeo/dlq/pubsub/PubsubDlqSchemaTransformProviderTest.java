@@ -95,8 +95,7 @@ public class PubsubDlqSchemaTransformProviderTest {
               pipeline.apply(Create.of(generateRow())).setRowSchema(LOCAL_TEST_INPUT_SCHEMA))
           .apply(
               transform(PubsubDlqWriteConfiguration.create(TOPIC))
-                  .withPubsubClientFactory(pubsubFactory)
-                  .buildTransform());
+                  .withPubsubClientFactory(pubsubFactory));
 
       pipeline.run(OPTIONS);
     } catch (Exception e) {

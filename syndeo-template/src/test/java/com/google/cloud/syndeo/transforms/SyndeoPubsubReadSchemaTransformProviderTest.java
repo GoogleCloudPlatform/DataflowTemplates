@@ -111,8 +111,7 @@ public class SyndeoPubsubReadSchemaTransformProviderTest {
                         SyndeoPubsubReadSchemaTransformConfiguration.builder()
                             .setSchema(SCHEMA)
                             .setFormat("AVRO")
-                            .build())
-                    .buildTransform()));
+                            .build())));
     p.run().waitUntilFinish();
   }
 
@@ -130,8 +129,7 @@ public class SyndeoPubsubReadSchemaTransformProviderTest {
                             .setFormat("AVRO")
                             .setTopic(TOPIC)
                             .setSubscription(SUBSCRIPTION)
-                            .build())
-                    .buildTransform()));
+                            .build())));
     p.run().waitUntilFinish();
   }
 
@@ -148,8 +146,7 @@ public class SyndeoPubsubReadSchemaTransformProviderTest {
                             .setSchema(SCHEMA)
                             .setFormat("BadFormat")
                             .setSubscription(SUBSCRIPTION)
-                            .build())
-                    .buildTransform()));
+                            .build())));
     p.run().waitUntilFinish();
   }
 
@@ -165,8 +162,7 @@ public class SyndeoPubsubReadSchemaTransformProviderTest {
                         SyndeoPubsubReadSchemaTransformConfiguration.builder()
                             .setSubscription(SUBSCRIPTION)
                             .setFormat("AVRO")
-                            .build())
-                    .buildTransform()));
+                            .build())));
     p.run().waitUntilFinish();
   }
 
@@ -184,7 +180,7 @@ public class SyndeoPubsubReadSchemaTransformProviderTest {
               .setClock(CLOCK)
               .build();
       SchemaTransform transform = new SyndeoPubsubReadSchemaTransformProvider().from(config);
-      PCollectionRowTuple reads = begin.apply(transform.buildTransform());
+      PCollectionRowTuple reads = begin.apply(transform);
 
       PAssert.that(reads.get("output")).containsInAnyOrder(ROWS);
 
@@ -208,7 +204,7 @@ public class SyndeoPubsubReadSchemaTransformProviderTest {
               .setClock(CLOCK)
               .build();
       SchemaTransform transform = new SyndeoPubsubReadSchemaTransformProvider().from(config);
-      PCollectionRowTuple reads = begin.apply(transform.buildTransform());
+      PCollectionRowTuple reads = begin.apply(transform);
 
       PAssert.that(reads.get("output")).empty();
 

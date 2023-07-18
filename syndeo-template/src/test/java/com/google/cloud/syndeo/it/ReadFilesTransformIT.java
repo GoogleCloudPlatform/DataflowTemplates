@@ -138,8 +138,7 @@ public class ReadFilesTransformIT {
                             AvroUtils.toAvroSchema(SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA)
                                 .toString())
                         .setPubsubSubscription(pubsubSubscription.toString())
-                        .build())
-                .buildTransform())
+                        .build()))
         .get("output")
         .apply(
             MapElements.into(TypeDescriptors.voids())
@@ -188,8 +187,7 @@ public class ReadFilesTransformIT {
                                 AvroUtils.toAvroSchema(SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA)
                                     .toString())
                             .setPubsubSubscription(pubsubSubscription.toString())
-                            .build())
-                    .buildTransform());
+                            .build()));
 
     Pipeline.PipelineExecutionException e =
         assertThrows(
@@ -223,8 +221,7 @@ public class ReadFilesTransformIT {
                                 AvroUtils.toAvroSchema(SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA)
                                     .toString())
                             .setPubsubSubscription(pubsubSubscription.toString())
-                            .build())
-                    .buildTransform());
+                            .build()));
 
     Pipeline.PipelineExecutionException e =
         assertThrows(
@@ -266,8 +263,7 @@ public class ReadFilesTransformIT {
                                 AvroUtils.toAvroSchema(SyndeoLoadTestUtils.NESTED_TABLE_SCHEMA)
                                     .toString())
                             .setPubsubSubscription(pubsubSubscription.toString())
-                            .build())
-                    .buildTransform());
+                            .build()));
 
     result
         .get("errors")

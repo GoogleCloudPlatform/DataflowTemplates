@@ -30,7 +30,6 @@ import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
@@ -53,23 +52,15 @@ public class SyndeoStatsSchemaTransformProvider
   public SchemaTransform from(SyndeoStatsConfiguration configuration) {
     return new SchemaTransform() {
       @Override
-      public @UnknownKeyFor @NonNull @Initialized PTransform<
-              @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple,
-              @UnknownKeyFor @NonNull @Initialized PCollectionRowTuple>
-          buildTransform() {
-        return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
-          @Override
-          public PCollectionRowTuple expand(PCollectionRowTuple input) {
-            PCollection<Row> inputPcoll = input.get("input");
-            return PCollectionRowTuple.of(
-                "output",
-                inputPcoll
-                    .apply(
-                        String.format("%s_%s", configuration.getParent(), identifier()),
-                        ParDo.of(new StatsDoFn(configuration.getParent())))
-                    .setRowSchema(inputPcoll.getSchema()));
-          }
-        };
+      public PCollectionRowTuple expand(PCollectionRowTuple input) {
+        PCollection<Row> inputPcoll = input.get("input");
+        return PCollectionRowTuple.of(
+            "output",
+            inputPcoll
+                .apply(
+                    String.format("%s_%s", configuration.getParent(), identifier()),
+                    ParDo.of(new StatsDoFn(configuration.getParent())))
+                .setRowSchema(inputPcoll.getSchema()));
       }
     };
   }

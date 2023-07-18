@@ -41,7 +41,6 @@ import org.apache.beam.sdk.schemas.utils.JsonUtils;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.FinishBundle;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
@@ -146,7 +145,7 @@ public class SyndeoPubsubReadSchemaTransformProvider
     return transform;
   }
 
-  private static class PubsubReadSchemaTransform implements SchemaTransform, Serializable {
+  private static class PubsubReadSchemaTransform extends SchemaTransform implements Serializable {
     final Schema beamSchema;
     final SerializableFunction<byte[], Row> valueMapper;
     final @Nullable String topic;
@@ -226,27 +225,22 @@ public class SyndeoPubsubReadSchemaTransformProvider
     }
 
     @Override
-    public PTransform<PCollectionRowTuple, PCollectionRowTuple> buildTransform() {
-      return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
-        @Override
-        public PCollectionRowTuple expand(PCollectionRowTuple input) {
-          PubsubIO.Read<PubsubMessage> pubsubRead = buildPubsubRead();
+    public PCollectionRowTuple expand(PCollectionRowTuple input) {
+      PubsubIO.Read<PubsubMessage> pubsubRead = buildPubsubRead();
 
-          PCollectionTuple outputTuple =
-              input
-                  .getPipeline()
-                  .apply(pubsubRead)
-                  .apply(
-                      ParDo.of(new ErrorCounterFn("PubSub-read-error-counter", valueMapper))
-                          .withOutputTags(OUTPUT_TAG, TupleTagList.of(ERROR_TAG)));
+      PCollectionTuple outputTuple =
+          input
+              .getPipeline()
+              .apply(pubsubRead)
+              .apply(
+                  ParDo.of(new ErrorCounterFn("PubSub-read-error-counter", valueMapper))
+                      .withOutputTags(OUTPUT_TAG, TupleTagList.of(ERROR_TAG)));
 
-          return PCollectionRowTuple.of(
-              "output",
-              outputTuple.get(OUTPUT_TAG).setRowSchema(beamSchema),
-              "errors",
-              outputTuple.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA));
-        }
-      };
+      return PCollectionRowTuple.of(
+          "output",
+          outputTuple.get(OUTPUT_TAG).setRowSchema(beamSchema),
+          "errors",
+          outputTuple.get(ERROR_TAG).setRowSchema(ERROR_SCHEMA));
     }
   }
 
