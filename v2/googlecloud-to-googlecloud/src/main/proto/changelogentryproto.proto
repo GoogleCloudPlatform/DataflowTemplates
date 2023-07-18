@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package com.google.cloud.teleport.v2;
+package com.google.cloud.teleport.bigtable;
 
 option java_outer_classname = "ChangeLogEntryProto";
 
