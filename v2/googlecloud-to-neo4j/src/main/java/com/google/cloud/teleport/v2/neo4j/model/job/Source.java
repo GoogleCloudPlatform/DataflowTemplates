@@ -41,6 +41,7 @@ public class Source implements Serializable {
   private String[] fieldNames = new String[0];
   private Map<String, Integer> fieldPosByName = new HashMap<>();
   private List<List<Object>> inline = new ArrayList<>();
+  private boolean allowsDuplicateRows;
 
   public static List<List<Object>> jsonToListOfListsArray(JSONArray lines) {
     if (lines == null) {
@@ -157,5 +158,13 @@ public class Source implements Serializable {
 
   public void setInline(List<List<Object>> inline) {
     this.inline = inline;
+  }
+
+  public boolean isAllowsDuplicateRows() {
+    return allowsDuplicateRows;
+  }
+
+  public void setAllowsDuplicateRows(boolean allowsDuplicates) {
+    this.allowsDuplicateRows = allowsDuplicates;
   }
 }

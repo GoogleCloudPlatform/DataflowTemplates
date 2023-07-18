@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.neo4j.utils;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
@@ -99,14 +100,18 @@ public class ModelUtils {
   }
 
   public static String getTargetSql(
-      Set<String> fieldNameMap, Target target, boolean generateSqlSort) {
-    return getTargetSql(fieldNameMap, target, generateSqlSort, null);
+      Set<String> fieldNameMap, TargetQuerySpec targetQuerySpec, boolean generateSqlSort) {
+    return getTargetSql(fieldNameMap, targetQuerySpec, generateSqlSort, null);
   }
 
   public static String getTargetSql(
-      Set<String> fieldNameMap, Target target, boolean generateSqlSort, String baseSql) {
-    StringBuilder sb = new StringBuilder();
+      Set<String> fieldNameMap,
+      TargetQuerySpec targetQuerySpec,
+      boolean generateSqlSort,
+      String baseSql) {
 
+    StringBuilder sb = new StringBuilder();
+    Target target = targetQuerySpec.getTarget();
     String orderByClause = "";
     if (target.getType() == TargetType.edge) {
       String sortField = getRelationshipKeyField(target, FragmentType.target);
@@ -151,7 +156,10 @@ public class ModelUtils {
         if (StringUtils.isNotBlank(query.getWhere())) {
           sb.append(" WHERE ").append(query.getWhere());
         }
-        sb.append(" GROUP BY ").append(StringUtils.join(fieldList, ","));
+        boolean allowsDuplicateRows = targetQuerySpec.getSource().isAllowsDuplicateRows();
+        if (!allowsDuplicateRows) {
+          sb.append(" GROUP BY ").append(StringUtils.join(fieldList, ","));
+        }
 
         if (StringUtils.isNotEmpty(orderByClause) && generateSqlSort) {
           LOG.info("Order by clause: " + orderByClause);

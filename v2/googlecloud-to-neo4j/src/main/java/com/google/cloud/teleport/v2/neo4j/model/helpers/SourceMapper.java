@@ -67,6 +67,11 @@ public class SourceMapper {
         sourceObj.has("delimiter") ? sourceObj.getString("delimiter") : source.getDelimiter());
     source.setSeparator(
         sourceObj.has("separator") ? sourceObj.getString("separator") : source.getSeparator());
+
+    if (sourceObj.has("allow_duplicate_rows")) {
+      source.setAllowsDuplicateRows(sourceObj.getBoolean("allow_duplicate_rows"));
+    }
+
     // handle inline data
     if (sourceObj.has("data")) {
       if (sourceObj.get("data") instanceof JSONArray) {

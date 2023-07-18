@@ -120,7 +120,7 @@ public class BigQueryImpl implements Provider {
     Set<String> sourceFieldSet = ModelUtils.getBeamFieldSet(targetQuerySpec.getSourceBeamSchema());
     String baseSql = getBaseQuery(targetQuerySpec.getSource());
     String targetSpecificSql =
-        ModelUtils.getTargetSql(sourceFieldSet, targetQuerySpec.getTarget(), true, baseSql);
+        ModelUtils.getTargetSql(sourceFieldSet, targetQuerySpec, true, baseSql);
     return new SqlQuerySpecBuilder()
         .readDescription(
             targetQuerySpec.getTarget().getSequence()
