@@ -53,7 +53,7 @@ public class BigtableUtils implements Serializable {
   private final BigtableSource source;
   private transient Charset charsetObj;
   private final Map<String, Set<String>> ignoredColumnsMap;
-  private final Long DEFAULT_TIMESTAMP = 0L;
+  private static final Long DEFAULT_TIMESTAMP = 0L;
 
   public BigtableUtils(BigtableSource sourceInfo) {
     this.source = sourceInfo;

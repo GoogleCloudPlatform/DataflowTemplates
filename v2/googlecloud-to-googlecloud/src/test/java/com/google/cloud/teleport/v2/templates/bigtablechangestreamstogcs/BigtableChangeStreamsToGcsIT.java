@@ -132,7 +132,7 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
     String column = UUID.randomUUID().toString();
 
     // https://en.wikipedia.org/wiki/KOI8-R
-    byte[] value_russian_letter_b_in_koi8_r = new byte[] {(byte) 0xc2};
+    byte[] valueRussianLetterBinKoi8R = new byte[] {(byte) 0xc2};
 
     long nowMillis = System.currentTimeMillis();
     long timestampMicros = nowMillis * 1000;
@@ -143,7 +143,7 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
                 SOURCE_COLUMN_FAMILY,
                 ByteString.copyFrom(column, Charset.defaultCharset()),
                 timestampMicros,
-                ByteString.copyFrom(value_russian_letter_b_in_koi8_r));
+                ByteString.copyFrom(valueRussianLetterBinKoi8R));
 
     ChangelogEntryJson expected = new ChangelogEntryJson();
     expected.setRowKey(rowkey);
@@ -151,7 +151,7 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
     expected.setCommitTimestamp(nowMillis - 10000); // clock skew tolerance
     expected.setLowWatermark(0);
     expected.setColumn(column);
-    expected.setValue(new String(value_russian_letter_b_in_koi8_r, Charset.forName("KOI8-R")));
+    expected.setValue(new String(valueRussianLetterBinKoi8R, Charset.forName("KOI8-R")));
     expected.setColumnFamily(SOURCE_COLUMN_FAMILY);
     expected.setModType(ModType.SET_CELL);
     expected.setIsGc(false);

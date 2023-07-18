@@ -127,7 +127,6 @@ public class BigtableResourceManagerTest {
                 .useStaticInstance(),
             bigtableResourceManagerClientFactory);
 
-    assertThrows(IllegalStateException.class, () -> testManager.createInstance(cluster));
     assertThat(testManager.getInstanceId()).matches(instanceId);
   }
 

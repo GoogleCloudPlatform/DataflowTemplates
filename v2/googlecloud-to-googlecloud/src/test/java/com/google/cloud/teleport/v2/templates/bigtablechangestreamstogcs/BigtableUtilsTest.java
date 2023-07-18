@@ -20,7 +20,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
-import com.google.cloud.bigtable.data.v2.models.Entry;
+import com.google.cloud.bigtable.data.v2.models.SetCell;
 import com.google.cloud.teleport.bigtable.BigtableCell;
 import com.google.cloud.teleport.bigtable.BigtableRow;
 import com.google.cloud.teleport.bigtable.ChangelogEntry;
@@ -28,6 +28,7 @@ import com.google.cloud.teleport.bigtable.ModType;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstogcs.model.ChangelogColumns;
 import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.common.collect.ImmutableList;
+import com.google.protobuf.ByteString;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -41,36 +42,36 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
-/** Test class for {@link BigtableUtils} */
+/** Test class for {@link BigtableUtils}. */
 @RunWith(JUnit4.class)
 public class BigtableUtilsTest {
 
   /**
    * {@link com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation} fields to be used
-   * throughout the tests
+   * throughout the tests.
    */
-  final int TIE_BREAKER = 1000;
+  static final int TIE_BREAKER = 1000;
 
-  final boolean IS_GC = true;
-  final String COLUMN_FAMILY = "CF";
-  final Timestamp COMMIT_TIMESTAMP = Timestamp.now();
-  final Timestamp LOW_WATERMARK = Timestamp.MIN_VALUE;
-  final Charset CHARSET = StandardCharsets.UTF_8;
-  final ByteBuffer COLUMN = getByteBufferFromString("COLUMN", CHARSET);
-  final Timestamp TIMESTAMP = Timestamp.now();
-  final Timestamp TIMESTAMP_FROM = Timestamp.MIN_VALUE;
-  final Timestamp TIMESTAMP_TO = Timestamp.MAX_VALUE;
-  final ByteBuffer VALUE = getByteBufferFromString("VALUE", CHARSET);
-  final ByteBuffer ROW_KEY = getByteBufferFromString("ROW_KEY", CHARSET);
+  static final boolean IS_GC = true;
+  static final String COLUMN_FAMILY = "CF";
+  static final Timestamp COMMIT_TIMESTAMP = Timestamp.now();
+  static final Timestamp LOW_WATERMARK = Timestamp.MIN_VALUE;
+  static final Charset CHARSET = StandardCharsets.UTF_8;
+  static final ByteBuffer COLUMN = getByteBufferFromString("COLUMN", CHARSET);
+  static final Timestamp TIMESTAMP = Timestamp.now();
+  static final Timestamp TIMESTAMP_FROM = Timestamp.MIN_VALUE;
+  static final Timestamp TIMESTAMP_TO = Timestamp.MAX_VALUE;
+  static final ByteBuffer VALUE = getByteBufferFromString("VALUE", CHARSET);
+  static final ByteBuffer ROW_KEY = getByteBufferFromString("ROW_KEY", CHARSET);
 
-  /** Pipeline specific variables to be used throughout testing of {@link BigtableUtils} */
-  final String FAKE_INSTANCE_ID = "fakeinstance";
+  // Pipeline specific variables to be used throughout testing of BigtableUtils
+  static final String FAKE_INSTANCE_ID = "fakeinstance";
 
-  final String FAKE_TABLE_ID = "faketableid";
-  final String IGNORE_COLUMN_FAMILIES = "cf1, cf2, cf3";
-  final String IGNORE_COLUMNS = "cf1:c1, cf2:c2";
-  final String WORKER_ID = "workerid";
-  final Long COUNTER = 1000L;
+  static final String FAKE_TABLE_ID = "faketableid";
+  static final String IGNORE_COLUMN_FAMILIES = "cf1, cf2, cf3";
+  static final String IGNORE_COLUMNS = "cf1:c1, cf2:c2";
+  static final String WORKER_ID = "workerid";
+  static final Long COUNTER = 1000L;
 
   /**
    * Test whether {@link BigtableUtils} can create {@link
@@ -175,29 +176,135 @@ public class BigtableUtilsTest {
 
   @Test
   public void testGetValidEntriesAllEntriesAreValid() {
-    // IGNORE_COLUMN_FAMILIES = "cf1, cf2, cf3";
-    // IGNORE_COLUMNS = "cf1:c1, cf2:c2";
-    BigtableUtils utils = initBigtableUtils("", "");
+    BigtableUtils utils = initBigtableUtils("cf1,cf2", "cf1:c1,cf2:c2");
 
-    Entry entry1 = Mockito.mock(Entry.class);
+    SetCell entry1 = Mockito.mock(SetCell.class);
     // mock a few entries, one of each instance of Entry
+    Mockito.when(entry1.getValue())
+        .thenReturn(ByteString.copyFrom("value1", Charset.defaultCharset()));
+    Mockito.when(entry1.getQualifier())
+        .thenReturn(ByteString.copyFrom("column1", Charset.defaultCharset()));
+    Mockito.when(entry1.getFamilyName()).thenReturn("family1");
+    Mockito.when(entry1.getTimestamp()).thenReturn(10000000L);
+
+    SetCell entry2 = Mockito.mock(SetCell.class);
+    // mock a few entries, one of each instance of Entry
+    Mockito.when(entry2.getValue())
+        .thenReturn(ByteString.copyFrom("value2", Charset.defaultCharset()));
+    Mockito.when(entry2.getQualifier())
+        .thenReturn(ByteString.copyFrom("column2", Charset.defaultCharset()));
+    Mockito.when(entry2.getFamilyName()).thenReturn("family2");
+    Mockito.when(entry2.getTimestamp()).thenReturn(10000000L);
 
     ChangeStreamMutation mutation = Mockito.mock(ChangeStreamMutation.class);
-    Mockito.when(mutation.getEntries()).thenReturn(ImmutableList.of(entry1));
-
+    Mockito.when(mutation.getRowKey())
+        .thenReturn(ByteString.copyFrom("rowkey", Charset.defaultCharset()));
+    Mockito.when(mutation.getEntries()).thenReturn(ImmutableList.of(entry1, entry2));
     Mockito.when(mutation.getType()).thenReturn(ChangeStreamMutation.MutationType.USER);
+    Mockito.when(mutation.getCommitTimestamp()).thenReturn(org.threeten.bp.Instant.now());
 
     List<ChangelogEntry> actualEntries = utils.getValidEntries(mutation);
 
-    // validate that they are all there
-    throw new IllegalArgumentException("Hmm");
+    Assert.assertEquals(2, actualEntries.size());
+
+    ChangelogEntry logEntry1 = actualEntries.get(0);
+    ChangelogEntry logEntry2 = actualEntries.get(1);
+    Assert.assertEquals(
+        "rowkey", Charset.defaultCharset().decode(logEntry1.getRowKey()).toString());
+    Assert.assertEquals("family1", logEntry1.getColumnFamily());
+    Assert.assertEquals(
+        "column1", Charset.defaultCharset().decode(logEntry1.getColumn()).toString());
+
+    Assert.assertEquals(
+        "rowkey", Charset.defaultCharset().decode(logEntry2.getRowKey()).toString());
+    Assert.assertEquals("family2", logEntry2.getColumnFamily());
+    Assert.assertEquals(
+        "column2", Charset.defaultCharset().decode(logEntry2.getColumn()).toString());
   }
 
   @Test
-  public void testGetValidEntriesWithIgnoredColumns() {}
+  public void testGetValidEntriesWithIgnoredColumnFamilies() {
+    BigtableUtils utils = initBigtableUtils("cf1,cf2", "cf1:c1,cf2:c2");
+
+    SetCell entry1 = Mockito.mock(SetCell.class);
+    // mock a few entries, one of each instance of Entry
+    Mockito.when(entry1.getValue())
+        .thenReturn(ByteString.copyFrom("value1", Charset.defaultCharset()));
+    Mockito.when(entry1.getQualifier())
+        .thenReturn(ByteString.copyFrom("column1", Charset.defaultCharset()));
+    Mockito.when(entry1.getFamilyName()).thenReturn("cf1");
+    Mockito.when(entry1.getTimestamp()).thenReturn(10000000L);
+
+    SetCell entry2 = Mockito.mock(SetCell.class);
+    // mock a few entries, one of each instance of Entry
+    Mockito.when(entry2.getValue())
+        .thenReturn(ByteString.copyFrom("value2", Charset.defaultCharset()));
+    Mockito.when(entry2.getQualifier())
+        .thenReturn(ByteString.copyFrom("column2", Charset.defaultCharset()));
+    Mockito.when(entry2.getFamilyName()).thenReturn("family2");
+    Mockito.when(entry2.getTimestamp()).thenReturn(10000000L);
+
+    ChangeStreamMutation mutation = Mockito.mock(ChangeStreamMutation.class);
+    Mockito.when(mutation.getRowKey())
+        .thenReturn(ByteString.copyFrom("rowkey", Charset.defaultCharset()));
+    Mockito.when(mutation.getEntries()).thenReturn(ImmutableList.of(entry1, entry2));
+    Mockito.when(mutation.getType()).thenReturn(ChangeStreamMutation.MutationType.USER);
+    Mockito.when(mutation.getCommitTimestamp()).thenReturn(org.threeten.bp.Instant.now());
+
+    List<ChangelogEntry> actualEntries = utils.getValidEntries(mutation);
+
+    Assert.assertEquals(1, actualEntries.size());
+
+    ChangelogEntry logEntry = actualEntries.get(0);
+
+    Assert.assertEquals(
+        "rowkey", Charset.defaultCharset().decode(logEntry.getRowKey()).toString());
+    Assert.assertEquals("family2", logEntry.getColumnFamily());
+    Assert.assertEquals(
+        "column2", Charset.defaultCharset().decode(logEntry.getColumn()).toString());
+  }
 
   @Test
-  public void testGetValidEntriesWithIgnoredColumnFamilies() {}
+  public void testGetValidEntriesWithIgnoredColumns() {
+    BigtableUtils utils = initBigtableUtils("cf1,cf2", "cf1:c1,cf2:c2");
+
+    SetCell entry1 = Mockito.mock(SetCell.class);
+    // mock a few entries, one of each instance of Entry
+    Mockito.when(entry1.getValue())
+        .thenReturn(ByteString.copyFrom("value1", Charset.defaultCharset()));
+    Mockito.when(entry1.getQualifier())
+        .thenReturn(ByteString.copyFrom("column1", Charset.defaultCharset()));
+    Mockito.when(entry1.getFamilyName()).thenReturn("family1");
+    Mockito.when(entry1.getTimestamp()).thenReturn(10000000L);
+
+    SetCell entry2 = Mockito.mock(SetCell.class);
+    // mock a few entries, one of each instance of Entry
+    Mockito.when(entry2.getValue())
+        .thenReturn(ByteString.copyFrom("value2", Charset.defaultCharset()));
+    Mockito.when(entry2.getQualifier())
+        .thenReturn(ByteString.copyFrom("c2", Charset.defaultCharset()));
+    Mockito.when(entry2.getFamilyName()).thenReturn("cf2");
+    Mockito.when(entry2.getTimestamp()).thenReturn(10000000L);
+
+    ChangeStreamMutation mutation = Mockito.mock(ChangeStreamMutation.class);
+    Mockito.when(mutation.getRowKey())
+        .thenReturn(ByteString.copyFrom("rowkey", Charset.defaultCharset()));
+    Mockito.when(mutation.getEntries()).thenReturn(ImmutableList.of(entry1, entry2));
+    Mockito.when(mutation.getType()).thenReturn(ChangeStreamMutation.MutationType.USER);
+    Mockito.when(mutation.getCommitTimestamp()).thenReturn(org.threeten.bp.Instant.now());
+
+    List<ChangelogEntry> actualEntries = utils.getValidEntries(mutation);
+
+    Assert.assertEquals(1, actualEntries.size());
+
+    ChangelogEntry logEntry = actualEntries.get(0);
+
+    Assert.assertEquals(
+        "rowkey", Charset.defaultCharset().decode(logEntry.getRowKey()).toString());
+    Assert.assertEquals("family1", logEntry.getColumnFamily());
+    Assert.assertEquals(
+        "column1", Charset.defaultCharset().decode(logEntry.getColumn()).toString());
+  }
 
   private ByteBuffer createChangelogRowKey(
       BigtableUtils utils, Long commitTimestamp, String workerId, Long counter, Charset charset) {
@@ -298,7 +405,7 @@ public class BigtableUtilsTest {
     entryMap.put(ChangelogColumns.TIMESTAMP_FROM.getColumnNameAsByteBuffer(charset), null);
   }
 
-  private ByteBuffer getByteBufferFromString(String s, Charset charset) {
+  private static ByteBuffer getByteBufferFromString(String s, Charset charset) {
     return BigtableUtils.copyByteBuffer(ByteBuffer.wrap(s.getBytes(charset)));
   }
 
