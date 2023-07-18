@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstogcs;
 
+import com.google.cloud.teleport.bigtable.BigtableRow;
+import com.google.cloud.teleport.bigtable.ChangelogEntry;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.beam.sdk.transforms.SimpleFunction;
-import com.google.cloud.teleport.bigtable.ChangelogEntry;
-import com.google.cloud.teleport.bigtable.BigtableRow;
 
 /**
  * A {@link org.apache.beam.sdk.transforms.PTransform} which converts items in a {@link

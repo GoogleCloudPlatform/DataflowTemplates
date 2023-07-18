@@ -257,8 +257,7 @@ public class BigtableUtilsTest {
 
     ChangelogEntry logEntry = actualEntries.get(0);
 
-    Assert.assertEquals(
-        "rowkey", Charset.defaultCharset().decode(logEntry.getRowKey()).toString());
+    Assert.assertEquals("rowkey", Charset.defaultCharset().decode(logEntry.getRowKey()).toString());
     Assert.assertEquals("family2", logEntry.getColumnFamily());
     Assert.assertEquals(
         "column2", Charset.defaultCharset().decode(logEntry.getColumn()).toString());
@@ -299,8 +298,7 @@ public class BigtableUtilsTest {
 
     ChangelogEntry logEntry = actualEntries.get(0);
 
-    Assert.assertEquals(
-        "rowkey", Charset.defaultCharset().decode(logEntry.getRowKey()).toString());
+    Assert.assertEquals("rowkey", Charset.defaultCharset().decode(logEntry.getRowKey()).toString());
     Assert.assertEquals("family1", logEntry.getColumnFamily());
     Assert.assertEquals(
         "column1", Charset.defaultCharset().decode(logEntry.getColumn()).toString());
