@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstogcs;
 
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.beam.sdk.transforms.SimpleFunction;
+import com.google.cloud.teleport.bigtable.ChangelogEntry;
+import com.google.cloud.teleport.bigtable.BigtableRow;
 
 /**
  * A {@link org.apache.beam.sdk.transforms.PTransform} which converts items in a {@link
@@ -25,9 +27,7 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
  * com.google.cloud.teleport.bigtable.BigtableRow}.
  */
 public class BigtableChangelogEntryToBigtableRowFn
-    extends SimpleFunction<
-        com.google.cloud.teleport.bigtable.ChangelogEntry,
-        com.google.cloud.teleport.bigtable.BigtableRow> {
+    extends SimpleFunction<ChangelogEntry, BigtableRow> {
 
   private final String workerId;
   private final AtomicLong counter;
@@ -41,8 +41,7 @@ public class BigtableChangelogEntryToBigtableRowFn
   }
 
   @Override
-  public com.google.cloud.teleport.bigtable.BigtableRow apply(
-      com.google.cloud.teleport.bigtable.ChangelogEntry entry) {
+  public BigtableRow apply(ChangelogEntry entry) {
     return this.bigtableUtils.createBigtableRow(entry, workerId, counter.incrementAndGet());
   }
 }
