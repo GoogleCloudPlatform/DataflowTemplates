@@ -25,13 +25,10 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.TopicName;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -43,6 +40,9 @@ import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.google.api.core.ApiFuture;
+import com.google.api.core.ApiFutureCallback;
+import com.google.api.gax.rpc.ApiException;
 
 /**
  * Class {@link FailsafeModJsonToPubsubMessageTransformer} provides methods that convert a JSON
@@ -160,17 +160,17 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
           throws Exception {
         ObjectNode modObjectNode = (ObjectNode) new ObjectMapper().readTree(modJsonString);
         String changeJsonString = Mod.fromJson(modObjectNode.toString()).getChangeJson();
-        String messageFormat = pubSubUtils.getDestination().getTopicMessageFormat();
+        String messageFormat = pubSubUtils.getDestination().getMessageFormat();
         Publisher publisher = null;
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
         PubsubMessage pubsubMessage;
 
         switch (messageFormat) {
-          case "Avro":
+          case "AVRO":
             pubsubMessage = pubSubUtils.mapChangeJsonStringToPubSubMessageAsAvro(changeJsonString);
             break;
 
-          case "Protocol Buffer":
+          case "PROTOCOL_BUFFER":
             pubsubMessage = pubSubUtils.mapChangeJsonStringToPubSubMessageAsProto(changeJsonString);
             break;
 
@@ -180,22 +180,13 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
 
           default:
             final String errorMessage =
-                "Invalid output format:" + messageFormat + ". Supported output formats: JSON, AVRO";
+                "Invalid message format:" + messageFormat + ". Supported output formats: JSON, AVRO";
             LOG.info(errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
 
-        byte[] encodedRecords = modJsonString.getBytes();
-
-        com.google.pubsub.v1.PubsubMessage v1PubsubMessage =
-            com.google.pubsub.v1.PubsubMessage.newBuilder()
-                .setData(ByteString.copyFrom(encodedRecords))
-                .build();
-        ApiFuture<String> messageIdFuture = publisher.publish(v1PubsubMessage);
-        List<ApiFuture<String>> futures = new ArrayList();
-        futures.add(messageIdFuture);
-        ApiFutures.allAsList(futures).get();
-        return v1PubsubMessage;
+        ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
+        return pubsubMessage;
       }
     }
   }

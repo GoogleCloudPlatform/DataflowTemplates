@@ -43,7 +43,7 @@ public interface BigtableChangeStreamsToPubSubOptions
       description = "The encoding of the message written into PubSub",
       helpText =
           "The format of the message to be written into PubSub. "
-              + "Allowed formats are Binary and JSON Text. Default value is JSON.")
+              + "Allowed formats are BINARY and JSON Text. Default value is JSON.")
   @Default.String("JSON")
   String getMessageEncoding();
 
@@ -55,7 +55,7 @@ public interface BigtableChangeStreamsToPubSubOptions
       description = "The format of the message written into PubSub",
       helpText =
           "The message format chosen for outputting data to PubSub. "
-              + "Allowed formats are AVRO, Protocol Buffer and JSON Text. Default value is JSON.")
+              + "Allowed formats are AVRO, PROTOCOL_BUFFER and JSON Text. Default value is JSON.")
   @Default.String("JSON")
   String getMessageFormat();
 

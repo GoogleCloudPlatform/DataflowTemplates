@@ -22,7 +22,7 @@ import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
-import com.google.cloud.teleport.bigtable.ChangeLogEntry;
+import com.google.cloud.pubsub.v1.SchemaServiceClient;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.bigtable.utils.UnsupportedEntryException;
@@ -37,11 +37,12 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.mode
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.*;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import org.apache.avro.Schema;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -60,6 +61,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * This pipeline ingests {@link ChangeStreamMutation} from Bigtable change stream. The {@link
@@ -108,6 +110,16 @@ public final class BigtableChangeStreamsToPubSub {
     if (options.getDlqMaxRetries() < 0) {
       throw new IllegalArgumentException("dlqMaxRetries cannot be negative.");
     }
+
+    List <String> acceptableMessageFormats = Arrays.asList("AVRO", "PROTOCOL_BUFFER", "JSON");
+    if (!acceptableMessageFormats.contains(options.getMessageFormat())) {
+      throw new IllegalArgumentException("Allowed formats are AVRO, PROTOCOL_BUFFER and JSON Text. Default value is JSON.");
+    }
+
+    List <String> acceptableMessageEncodings = Arrays.asList("BINARY", "JSON");
+    if (!acceptableMessageEncodings.contains(options.getMessageFormat())) {
+      throw new IllegalArgumentException("Allowed formats are BINARY and JSON Text. Default value is JSON.");
+    }
   }
 
   private static void setOptions(BigtableChangeStreamsToPubSubOptions options) {
@@ -143,11 +155,6 @@ public final class BigtableChangeStreamsToPubSub {
     LOG.info("Requested message format is " + options.getMessageFormat());
     setOptions(options);
     validateOptions(options);
-    try {
-      validateSchema(options);
-    } catch (Exception e) {
-      throw new IllegalArgumentException(e);
-    }
 
     String bigtableProject = getBigtableProjectId(options);
 
@@ -156,11 +163,6 @@ public final class BigtableChangeStreamsToPubSub {
         options.getBigtableChangeStreamStartTimestamp().isEmpty()
             ? Instant.now()
             : toInstant(Timestamp.parseTimestamp(options.getBigtableChangeStreamStartTimestamp()));
-
-    // end timestamp might be supported later
-    Timestamp endTimestamp = Timestamp.MAX_VALUE;
-    String pubSubTopicName = options.getPubSubTopic();
-    String pubSubAPI = options.getPubSubAPI();
 
     BigtableSource sourceInfo =
         new BigtableSource(
@@ -183,9 +185,6 @@ public final class BigtableChangeStreamsToPubSub {
 
     PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo, options.getPubSubAPI());
 
-    String topicMessageFormat = pubSub.getDestination().getMessageFormat();
-    String topicMessageEncoding = pubSub.getDestination().getMessageEncoding();
-    Encoding encoding = null;
     try (TopicAdminClient topicAdminClient = TopicAdminClient.create()) {
       GetTopicRequest request =
           GetTopicRequest.newBuilder()
@@ -196,16 +195,22 @@ public final class BigtableChangeStreamsToPubSub {
                       .toString())
               .build();
       Topic topic = topicAdminClient.getTopic(request);
-      if (!topic.getSchemaSettings().getSchema().isEmpty()) {
-        topicMessageFormat = topic.getSchemaSettings().getSchema();
-        topicMessageEncoding = topic.getSchemaSettings().getEncoding().toString();
-      }
+
       pubSub.getDestination().setPubSubTopic(topic);
-      pubSub.getDestination().setTopicMessageEncoding(topicMessageEncoding);
-      pubSub.getDestination().setTopicMessageFormat(topicMessageFormat);
 
     } catch (Exception e) {
       throw new RuntimeException(e);
+    }
+
+    try {
+      if (!validateSchema(options, pubSub)) {
+        final String errorMessage =
+                "Invalid message format or encoding associated with the topic.";
+        throw new IllegalArgumentException(errorMessage);
+      }
+
+    } catch (Exception e) {
+      throw new IllegalArgumentException(e);
     }
 
     /*
@@ -363,34 +368,38 @@ public final class BigtableChangeStreamsToPubSub {
         : options.getPubSubProjectId();
   }
 
-  private static Boolean validateSchema(BigtableChangeStreamsToPubSubOptions options)
+  private static Boolean validateSchema(BigtableChangeStreamsToPubSubOptions options, PubSubUtils pubSub)
       throws Exception {
-    try (TopicAdminClient topicAdminClient = TopicAdminClient.create()) {
-      GetTopicRequest request =
-          GetTopicRequest.newBuilder()
-              .setTopic(
-                  TopicName.ofProjectTopicName(
-                          getPubSubProjectId(options), options.getPubSubTopic())
-                      .toString())
-              .build();
-      Topic topic = topicAdminClient.getTopic(request);
-      String messageFormat = topic.getSchemaSettings().getSchema();
+      Topic topic = pubSub.getDestination().getPubSubTopic();
+      if (options.getMessageEncoding() != topic.getSchemaSettings().getEncoding().toString()) {
+        return false;
+      }
+      String messageFormatPath = topic.getSchemaSettings().getSchema();
+      String messageFormat = pubSub.getDestination().getMessageFormat();
       if (topic.getSchemaSettings().getSchema().isEmpty()) {
         return true;
       } else {
-        String testMessage = "{ \"name\": \"John Doe\", \"age\": 30 }";
-        switch (messageFormat) {
-          case "AVRO":
-            Schema schema = ChangeLogEntry.getClassSchema();
+        ByteString testChangeJsonMessage = ByteString.copyFromUtf8(readTestChangeJsonMessageInBytes());
+          try (SchemaServiceClient schemaServiceClient = SchemaServiceClient.create()){
+          ValidateMessageRequest request =
+                  ValidateMessageRequest.newBuilder()
+                          .setParent(pubSub.getDestination().getPubSubProject())
+                          .setMessage(testChangeJsonMessage)
+                          .setName(messageFormatPath)
+                          .build();
+            ValidateMessageResponse response = schemaServiceClient.validateMessage(request);
 
-          case "PROTO":
-          default:
+
+        } catch (Exception e) {
+          throw new RuntimeException(e);
         }
       }
-    } catch (Exception e) {
-      throw e;
-    }
-    return true;
+      return true;
+  }
+
+  private static String readTestChangeJsonMessageInBytes() {
+    String changeJson = "";
+    return changeJson;
   }
 
   /**

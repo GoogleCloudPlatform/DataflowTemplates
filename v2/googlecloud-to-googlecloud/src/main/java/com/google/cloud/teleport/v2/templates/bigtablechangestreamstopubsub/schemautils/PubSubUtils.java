@@ -193,7 +193,7 @@ public class PubSubUtils implements Serializable {
 
   public PubsubMessage mapChangeJsonStringToPubSubMessageAsAvro(String changeJsonSting)
       throws Exception {
-    String messageEncoding = this.getDestination().getTopicMessageEncoding();
+    String messageEncoding = this.getDestination().getMessageEncoding();
     ChangeLogEntry changelogEntry = new ChangeLogEntry();
     try {
       JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
@@ -240,7 +240,9 @@ public class PubSubUtils implements Serializable {
         encoder = EncoderFactory.get().jsonEncoder(ChangeLogEntry.getClassSchema(), byteStream);
         break;
       default:
-        break;
+          final String errorMessage =
+                  "Invalid message encoding:" + messageEncoding + ". Supported output formats: JSON, BINARY";
+          throw new IllegalArgumentException(errorMessage);
     }
     changelogEntry.customEncode(encoder);
     encoder.flush();
@@ -265,7 +267,7 @@ public class PubSubUtils implements Serializable {
 
   public PubsubMessage mapChangeJsonStringToPubSubMessageAsJson(String changeJsonSting)
       throws Exception {
-    String messageEncoding = this.getDestination().getTopicMessageEncoding();
+    String messageEncoding = this.getDestination().getMessageEncoding();
     ChangeLogEntryJson changeLogEntryJson = new ChangeLogEntryJson();
     try {
       JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
@@ -323,7 +325,9 @@ public class PubSubUtils implements Serializable {
         encoder = EncoderFactory.get().jsonEncoder(ChangeLogEntryJson.getClassSchema(), byteStream);
         break;
       default:
-        break;
+          final String errorMessage =
+                  "Invalid message encoding:" + messageEncoding + ". Supported output formats: JSON, BINARY";
+          throw new IllegalArgumentException(errorMessage);
     }
     changeLogEntryJson.customEncode(encoder);
     encoder.flush();
@@ -336,7 +340,7 @@ public class PubSubUtils implements Serializable {
 
   public PubsubMessage mapChangeJsonStringToPubSubMessageAsProto(String changeJsonSting)
       throws Exception {
-    String messageEncoding = this.getDestination().getTopicMessageEncoding();
+    String messageEncoding = this.getDestination().getMessageEncoding();
     ChangeLogEntryProto.ChangelogEntryProto changeLogEntryProto;
 
     try {
@@ -398,7 +402,9 @@ public class PubSubUtils implements Serializable {
         message.setData(ByteString.copyFromUtf8(jsonString));
         break;
       default:
-        break;
+          final String errorMessage =
+                  "Invalid message encoding:" + messageEncoding + ". Supported output formats: JSON, BINARY";
+          throw new IllegalArgumentException(errorMessage);
     }
     return message.build();
   }
