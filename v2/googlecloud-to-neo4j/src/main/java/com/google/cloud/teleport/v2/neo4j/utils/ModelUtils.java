@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 public class ModelUtils {
   public static final String DEFAULT_STAR_QUERY = "SELECT * FROM PCOLLECTION";
   private static final String neoIdentifierDisAllowedCharactersRegex = "[^a-zA-Z0-9_]";
-  private static final String neoIdentifierDisAllowedCharactersRegexIncSpace = "[^a-zA-Z0-9_ ]";
   private static final String nonAlphaCharsRegex = "[^a-zA-Z]";
   private static final Pattern variablePattern = Pattern.compile("(\\$([a-zA-Z0-9_]+))");
   private static final Logger LOG = LoggerFactory.getLogger(ModelUtils.class);
@@ -190,7 +189,7 @@ public class ModelUtils {
       return proposedIdString;
     }
     String finalIdString =
-        proposedIdString.trim().replaceAll(neoIdentifierDisAllowedCharactersRegexIncSpace, "_");
+        proposedIdString.trim().replaceAll(neoIdentifierDisAllowedCharactersRegex, "_");
     if (finalIdString.substring(0, 1).matches(nonAlphaCharsRegex)) {
       finalIdString = "_" + finalIdString;
     }
@@ -267,25 +266,43 @@ public class ModelUtils {
     return relationships;
   }
 
-  public static List<String> getStaticLabels(FragmentType entityType, Target target) {
+  public static List<String> getStaticLabels(FragmentType fragmentType, Target target) {
     List<String> labels = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
-      if (m.getFragmentType() == entityType) {
-        if (m.getLabels().size() > 0) {
-          labels.addAll(m.getLabels());
-        } else if (m.getRole() == RoleType.label) {
-          if (StringUtils.isNotEmpty(m.getConstant())) {
-            labels.add(m.getConstant());
-          } else {
-            // we cannot index on dynamic labels.  These would need to happen with a pre-transform
-            // action
-            // dynamic labels not handled here
-            // labels.add(prefix+"."+m.field);
-          }
+      if (m.getFragmentType() != fragmentType) {
+        continue;
+      }
+      if (m.getLabels().size() > 0) {
+        labels.addAll(m.getLabels());
+      } else if (m.getRole() == RoleType.label) {
+        if (StringUtils.isNotEmpty(m.getConstant())) {
+          labels.add(m.getConstant());
         }
+        // we cannot index on dynamic labels.  These would need to happen with a pre-transform
+        // action
+        // dynamic labels not handled here
+        // labels.add(prefix+"."+m.field);
+
       }
     }
     return labels;
+  }
+
+  public static String getStaticType(Target target) {
+    for (Mapping m : target.getMappings()) {
+      if (m.getFragmentType() != FragmentType.rel) {
+        continue;
+      }
+      if (m.getRole() == RoleType.type) {
+        if (StringUtils.isNotEmpty(m.getConstant())) {
+          return m.getConstant();
+        }
+      }
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            "could not find rel-type definition in the mapping of the relationship target: %s",
+            target));
   }
 
   public static List<String> getStaticOrDynamicLabels(
@@ -399,7 +416,7 @@ public class ModelUtils {
     return mandatoryProperties;
   }
 
-  public static List<String> getNodeKeyProperties(FragmentType entityType, Target target) {
+  public static List<String> getEntityKeyProperties(FragmentType entityType, Target target) {
     List<String> nodeKeyProperties = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
       if (m.getFragmentType() == entityType) {

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
@@ -74,6 +75,13 @@ public class TargetMapper {
   private static void parseHeader(Target target, JSONObject targetObj) {
     target.setName(targetObj.getString("name"));
     target.setActive(!targetObj.has("active") || targetObj.getBoolean("active"));
+    target.setSaveMode(SaveMode.valueOf(targetObj.getString("mode")));
+    if (target.getType() == TargetType.edge && target.getSaveMode() == SaveMode.merge) {
+      target.setEdgeNodesMatchMode(
+          !targetObj.has("edgeNodesMatchMode")
+              ? EdgeNodesMatchMode.match
+              : EdgeNodesMatchMode.valueOf(targetObj.getString("edgeNodesMatchMode")));
+    }
     target.setSaveMode(SaveMode.valueOf(targetObj.getString("mode")));
     target.setSource(targetObj.has("source") ? targetObj.getString("source") : "");
     target.setAutoMap(!targetObj.has("automap") || targetObj.getBoolean("automap"));

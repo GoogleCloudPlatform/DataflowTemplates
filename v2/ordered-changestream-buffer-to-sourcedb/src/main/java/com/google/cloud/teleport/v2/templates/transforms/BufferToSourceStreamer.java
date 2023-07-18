@@ -110,7 +110,7 @@ public class BufferToSourceStreamer extends DoFn<KV<String, ProcessingContext>, 
         timer.set(nextTimer);
 
       } catch (Exception e) {
-        LOG.error("The exception while processing shardId: " + shardId + " is: " + e);
+        LOG.error("Shard " + shardId + ": error while processing: " + e);
         stopProcessing.write(true);
       }
     }

@@ -83,9 +83,9 @@ public class InputRecordProcessor {
       dao.batchWrite(dmlBatch);
       Instant daoEndTime = Instant.now();
       LOG.info(
-          "Shard: "
+          "Shard "
               + shardId
-              + " : Write to mysql for "
+              + ": Write to mysql for "
               + recordList.size()
               + " took : "
               + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)
@@ -96,7 +96,7 @@ public class InputRecordProcessor {
       lagMetric.update(replicationLag); // update the lag metric
 
     } catch (Exception e) {
-      throw new RuntimeException("Failure when processing records: " + e.getMessage());
+      throw new RuntimeException("Failed to process records: " + e.getMessage());
     }
   }
 

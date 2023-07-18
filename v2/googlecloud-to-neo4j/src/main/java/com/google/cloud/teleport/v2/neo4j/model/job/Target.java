@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import java.io.Serializable;
@@ -35,6 +36,8 @@ public class Target implements Serializable, Comparable {
   private Transform transform = new Transform();
   private List<Mapping> mappings = new ArrayList<>();
   private SaveMode saveMode = SaveMode.append;
+
+  private EdgeNodesMatchMode edgeNodesMatchMode;
   private Map<String, Mapping> mappingByFieldMap = new HashMap<>();
   private List<String> fieldNames = new ArrayList<>();
   private int sequence = 0;
@@ -108,6 +111,14 @@ public class Target implements Serializable, Comparable {
 
   public void setSaveMode(SaveMode saveMode) {
     this.saveMode = saveMode;
+  }
+
+  public EdgeNodesMatchMode getEdgeNodesMatchMode() {
+    return edgeNodesMatchMode;
+  }
+
+  public void setEdgeNodesMatchMode(EdgeNodesMatchMode edgeNodesMatchMode) {
+    this.edgeNodesMatchMode = edgeNodesMatchMode;
   }
 
   public Map<String, Mapping> getMappingByFieldMap() {

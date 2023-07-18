@@ -40,6 +40,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.truth.Truth;
 import java.io.IOException;
 import java.util.List;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -123,7 +124,7 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
 
   @Test
   public void testBigQueryToBigtableWithQuery() throws IOException {
-    String tableName = "test_table";
+    String tableName = "test_table_with_query_" + RandomStringUtils.randomAlphanumeric(8);
     String colFamily = "names";
 
     PipelineLauncher.LaunchConfig.Builder options =
@@ -144,7 +145,7 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
 
   @Test
   public void testBigQueryToBigtableWithLegacyQuery() throws IOException {
-    String tableName = "test_table";
+    String tableName = "test_table_legacy_" + RandomStringUtils.randomAlphanumeric(8);
     String colFamily = "names";
 
     PipelineLauncher.LaunchConfig.Builder options =
@@ -167,7 +168,7 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
 
   @Test
   public void testBigQueryToBigtableWithTableSpec() throws IOException {
-    String tableName = "test_table";
+    String tableName = "test_table_table_spec_" + RandomStringUtils.randomAlphanumeric(8);
     String colFamily = "names";
 
     PipelineLauncher.LaunchConfig.Builder options =
