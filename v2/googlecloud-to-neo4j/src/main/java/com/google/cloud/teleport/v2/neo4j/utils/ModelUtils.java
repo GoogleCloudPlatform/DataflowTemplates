@@ -156,10 +156,7 @@ public class ModelUtils {
         if (StringUtils.isNotBlank(query.getWhere())) {
           sb.append(" WHERE ").append(query.getWhere());
         }
-        boolean allowsDuplicateRows = targetQuerySpec.getSource().isAllowsDuplicateRows();
-        if (!allowsDuplicateRows) {
-          sb.append(" GROUP BY ").append(StringUtils.join(fieldList, ","));
-        }
+        sb.append(" GROUP BY ").append(StringUtils.join(fieldList, ","));
 
         if (StringUtils.isNotEmpty(orderByClause) && generateSqlSort) {
           LOG.info("Order by clause: " + orderByClause);

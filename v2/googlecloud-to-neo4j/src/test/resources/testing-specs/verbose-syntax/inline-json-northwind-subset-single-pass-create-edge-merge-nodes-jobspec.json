@@ -10,7 +10,6 @@
     "type": "text",
     "format": "EXCEL",
     "name": "1k orders inline",
-    "allow_duplicate_rows": true,
     "data": [
       [
         "ALFKI",
@@ -67,7 +66,7 @@
       "edgeNodesMatchMode": "merge",
       "source": "1k orders inline",
       "transform": {
-        "group": true,
+        "group": false,
         "order_by": "product_name ASC",
         "limit": -1
       },
