@@ -67,7 +67,6 @@ public class SourceMapper {
         sourceObj.has("delimiter") ? sourceObj.getString("delimiter") : source.getDelimiter());
     source.setSeparator(
         sourceObj.has("separator") ? sourceObj.getString("separator") : source.getSeparator());
-
     // handle inline data
     if (sourceObj.has("data")) {
       if (sourceObj.get("data") instanceof JSONArray) {
