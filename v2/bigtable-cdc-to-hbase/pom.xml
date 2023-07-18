@@ -27,10 +27,6 @@
 
   <artifactId>bigtable-cdc-to-hbase</artifactId>
 
-  <properties>
-    <hadoop.version>3.3.4</hadoop.version>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
