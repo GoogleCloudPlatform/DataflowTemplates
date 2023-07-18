@@ -30,10 +30,7 @@ import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToPubSubOptions;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.ModType;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubDestination;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.*;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -43,6 +40,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -61,6 +59,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.json.JSONObject;
 
 
 /**
@@ -398,7 +397,26 @@ public final class BigtableChangeStreamsToPubSub {
   }
 
   private static String readTestChangeJsonMessageInBytes() {
-    String changeJson = "";
+    JSONObject object = new JSONObject();
+    object.put("row_key", "test_row_key");
+    object.put("mod_type", com.google.cloud.teleport.bigtable.ModType.valueOf("UNKNOWN"));
+    object.put("is_gc", false);
+    object.put("column_family", "test_column_family");
+    object.put("tiebreaker", 0);
+    object.put("column", "test_column");
+    object.put("value", "test_value");
+
+    long offset = Timestamp.parseTimestamp("2012-01-01 00:00:00").getSeconds();
+    long end = Timestamp.parseTimestamp("2013-01-01 00:00:00").getSeconds();
+    long diff = end - offset + 1;
+    object.put("commit_timestamp", offset + (long) (Math.random() * diff));
+    object.put("timestamp", offset + (long) (Math.random() * diff));
+    object.put("timestamp_from", offset + (long) (Math.random() * diff));
+    object.put("timestamp_to", offset + (long) (Math.random() * diff));
+
+
+    String changeJson = object.toString();
+
     return changeJson;
   }
 
