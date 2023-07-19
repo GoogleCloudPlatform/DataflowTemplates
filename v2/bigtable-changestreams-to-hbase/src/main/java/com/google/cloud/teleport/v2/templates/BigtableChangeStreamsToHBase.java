@@ -56,12 +56,12 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Bigtable Change Streams to HBase Replicator",
     description = "A streaming pipeline that replicates Bigtable change stream mutations to HBase",
-    optionsClass = BigtableCdcToHbase.BigtableToHbasePipelineOptions.class,
-    flexContainerName = "Bigtable_Change_Streams_to_HBase",
+    optionsClass = BigtableChangeStreamsToHBase.BigtableToHbasePipelineOptions.class,
+    flexContainerName = "bigtable-changestreams-to-hbase",
     contactInformation = "https://cloud.google.com/support")
-public class BigtableCdcToHbase {
+public class BigtableChangeStreamsToHBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BigtableCdcToHbase.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToHBase.class);
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
 
   /** Options to run pipeline with. */
@@ -148,7 +148,7 @@ public class BigtableCdcToHbase {
             ? Instant.now()
             : Instant.parse(pipelineOptions.getBigtableChangeStreamStartTimestamp());
 
-    LOG.info("BigtableCdcToHbase pipeline starting from", startTime.toString());
+    LOG.info("BigtableChangeStreamsToHBase pipeline starting from", startTime.toString());
 
     PCollection<KV<byte[], RowMutations>> convertedMutations =
         pipeline
