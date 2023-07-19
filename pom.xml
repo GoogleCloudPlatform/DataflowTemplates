@@ -207,6 +207,7 @@
           They can be run manually using 'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
           <excludedGroups>${integration.tests}</excludedGroups>
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
+          <trimStackTrace>false</trimStackTrace>
           <systemPropertyVariables>
             <!-- Allow this project to be tested with JDK 21 -->
             <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
@@ -325,6 +326,7 @@
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>
+              <trimStackTrace>false</trimStackTrace>
             </configuration>
           </plugin>
         </plugins>
@@ -355,6 +357,7 @@
               <groups>
                 com.google.cloud.teleport.metadata.TemplateLoadTest
               </groups>
+              <trimStackTrace>false</trimStackTrace>
             </configuration>
           </plugin>
         </plugins>
@@ -397,6 +400,7 @@
                   <value>true</value>
                 </property>
               </systemProperties>
+              <trimStackTrace>false</trimStackTrace>
             </configuration>
           </plugin>
         </plugins>
@@ -434,6 +438,7 @@
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>
+              <trimStackTrace>false</trimStackTrace>
             </configuration>
           </plugin>
         </plugins>
