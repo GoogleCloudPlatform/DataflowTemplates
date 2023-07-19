@@ -51,9 +51,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.cache.Cache;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.cache.CacheBuilder;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -104,7 +105,7 @@ public abstract class TemplateTestBase {
   protected String testId;
 
   /** Cache to avoid staging the same template multiple times on the same execution. */
-  private static final Map<String, String> stagedTemplates = new HashMap<>();
+  private static final Cache<String, String> stagedTemplates = CacheBuilder.newBuilder().build();
 
   protected Template template;
   private Class<?> templateClass;
@@ -118,7 +119,7 @@ public abstract class TemplateTestBase {
   protected PipelineLauncher pipelineLauncher;
 
   @Before
-  public void setUpBase() {
+  public void setUpBase() throws ExecutionException {
 
     testId = PipelineUtils.createJobName("test");
 
@@ -180,66 +181,71 @@ public abstract class TemplateTestBase {
     }
 
     credentialsProvider = FixedCredentialsProvider.create(credentials);
+    pipelineLauncher = buildLauncher();
+
+    if (usingDirectRunner) {
+      // Using direct runner, not needed to stage.
+      return;
+    }
 
     if (TestProperties.specPath() != null && !TestProperties.specPath().isEmpty()) {
       LOG.info("A spec path was given, not staging template {}", template.name());
       specPath = TestProperties.specPath();
-    } else if (stagedTemplates.containsKey(template.name())) {
-      specPath = stagedTemplates.get(template.name());
-    } else if (!usingDirectRunner) {
-      LOG.info("Preparing test for {} ({})", template.name(), templateClass);
+    } else {
+      specPath =
+          stagedTemplates.get(
+              template.name(),
+              () -> {
+                LOG.info("Preparing test for {} ({})", template.name(), templateClass);
 
-      String prefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_IT";
+                String prefix =
+                    new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_IT";
 
-      File pom = new File("pom.xml").getAbsoluteFile();
-      if (!pom.exists()) {
-        throw new IllegalArgumentException(
-            "To use tests staging templates, please run in the Maven module directory containing"
-                + " the template.");
-      }
+                File pom = new File("pom.xml").getAbsoluteFile();
+                if (!pom.exists()) {
+                  throw new IllegalArgumentException(
+                      "To use tests staging templates, please run in the Maven module directory containing"
+                          + " the template.");
+                }
 
-      // Use bucketName unless only artifactBucket is provided
-      String bucketName;
-      if (TestProperties.hasStageBucket()) {
-        bucketName = TestProperties.stageBucket();
-      } else if (TestProperties.hasArtifactBucket()) {
-        bucketName = TestProperties.artifactBucket();
-        LOG.warn(
-            "-DstageBucket was not specified, using -DartifactBucket ({}) for stage step",
-            bucketName);
-      } else {
-        throw new IllegalArgumentException(
-            "-DstageBucket was not specified, so Template can not be staged. Either give a"
-                + " -DspecPath or provide a proper -DstageBucket for automatic staging.");
-      }
+                // Use bucketName unless only artifactBucket is provided
+                String bucketName;
+                if (TestProperties.hasStageBucket()) {
+                  bucketName = TestProperties.stageBucket();
+                } else if (TestProperties.hasArtifactBucket()) {
+                  bucketName = TestProperties.artifactBucket();
+                  LOG.warn(
+                      "-DstageBucket was not specified, using -DartifactBucket ({}) for stage step",
+                      bucketName);
+                } else {
+                  throw new IllegalArgumentException(
+                      "-DstageBucket was not specified, so Template can not be staged. Either give a"
+                          + " -DspecPath or provide a proper -DstageBucket for automatic staging.");
+                }
 
-      String[] mavenCmd = buildMavenStageCommand(prefix, pom, bucketName);
-      LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
+                String[] mavenCmd = buildMavenStageCommand(prefix, pom, bucketName);
+                LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
 
-      try {
-        Process exec = Runtime.getRuntime().exec(mavenCmd);
-        IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
-        IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+                try {
+                  Process exec = Runtime.getRuntime().exec(mavenCmd);
+                  IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+                  IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
 
-        if (exec.waitFor() != 0) {
-          throw new RuntimeException("Error staging template, check Maven logs.");
-        }
+                  if (exec.waitFor() != 0) {
+                    throw new RuntimeException("Error staging template, check Maven logs.");
+                  }
 
-        boolean flex =
-            template.flexContainerName() != null && !template.flexContainerName().isEmpty();
-        specPath =
-            String.format(
-                "gs://%s/%s/%s%s", bucketName, prefix, flex ? "flex/" : "", template.name());
-        LOG.info("Template staged successfully! Path: {}", specPath);
+                  boolean flex =
+                      template.flexContainerName() != null
+                          && !template.flexContainerName().isEmpty();
+                  return String.format(
+                      "gs://%s/%s/%s%s", bucketName, prefix, flex ? "flex/" : "", template.name());
 
-        stagedTemplates.put(template.name(), specPath);
-
-      } catch (Exception e) {
-        throw new IllegalArgumentException("Error staging template", e);
-      }
+                } catch (Exception e) {
+                  throw new IllegalArgumentException("Error staging template", e);
+                }
+              });
     }
-
-    pipelineLauncher = buildLauncher();
   }
 
   private Template getTemplateAnnotation(
