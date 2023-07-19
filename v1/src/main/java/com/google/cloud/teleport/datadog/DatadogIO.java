@@ -74,6 +74,9 @@ public class DatadogIO {
     abstract ValueProvider<Integer> batchCount();
 
     @Nullable
+    abstract Long maxBufferSize();
+
+    @Nullable
     abstract ValueProvider<Integer> parallelism();
 
     @Override
@@ -82,6 +85,7 @@ public class DatadogIO {
       LOG.info("Configuring DatadogEventWriter.");
       DatadogEventWriter.Builder builder =
           DatadogEventWriter.newBuilder(minBatchCount())
+              .withMaxBufferSize(maxBufferSize())
               .withUrl(url())
               .withInputBatchCount(batchCount())
               .withApiKey(apiKey());
@@ -111,6 +115,8 @@ public class DatadogIO {
       abstract Builder setMinBatchCount(Integer minBatchCount);
 
       abstract Builder setBatchCount(ValueProvider<Integer> batchCount);
+
+      abstract Builder setMaxBufferSize(Long maxBufferSize);
 
       abstract Builder setParallelism(ValueProvider<Integer> parallelism);
 
@@ -180,6 +186,18 @@ public class DatadogIO {
       public Builder withBatchCount(Integer batchCount) {
         checkArgument(batchCount != null, "withBatchCount(batchCount) called with null input.");
         return setBatchCount(ValueProvider.StaticValueProvider.of(batchCount));
+      }
+
+      /**
+       * Method to set the Max Buffer Size.
+       *
+       * @param maxBufferSize for batching post requests.
+       * @return {@link Builder}
+       */
+      public Builder withMaxBufferSize(Long maxBufferSize) {
+        checkArgument(
+            maxBufferSize != null, "withMaxBufferSize(maxBufferSize) called with null input.");
+        return setMaxBufferSize(maxBufferSize);
       }
 
       /**

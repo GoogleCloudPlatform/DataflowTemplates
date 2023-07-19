@@ -35,8 +35,6 @@ import com.google.api.client.util.Sleeper;
 import com.google.auto.value.AutoValue;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.KeyManagementException;
@@ -68,9 +66,6 @@ public abstract class DatadogEventPublisher {
   private static final Logger LOG = LoggerFactory.getLogger(DatadogEventPublisher.class);
 
   private static final int DEFAULT_MAX_CONNECTIONS = 1;
-
-  private static final Gson GSON =
-      new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
 
   @VisibleForTesting protected static final String DD_URL_PATH = "api/v2/logs";
 
@@ -171,15 +166,9 @@ public abstract class DatadogEventPublisher {
    */
   @VisibleForTesting
   protected HttpContent getContent(List<DatadogEvent> events) {
-    String payload = getStringPayload(events);
+    String payload = DatadogEventSerializer.getPayloadString(events);
     LOG.debug("Payload content: {}", payload);
     return ByteArrayContent.fromString(CONTENT_TYPE, payload);
-  }
-
-  /** Utility method to get payload string from a list of {@link DatadogEvent}s. */
-  @VisibleForTesting
-  String getStringPayload(List<DatadogEvent> events) {
-    return GSON.toJson(events);
   }
 
   static class HttpSendLogsUnsuccessfulResponseHandler implements HttpUnsuccessfulResponseHandler {

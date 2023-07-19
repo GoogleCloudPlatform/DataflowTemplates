@@ -26,8 +26,6 @@ import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import com.google.common.net.InternetDomainName;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -64,6 +62,7 @@ public abstract class DatadogEventWriter
   private static final Integer MAX_BATCH_COUNT = 1000;
   private static final Logger LOG = LoggerFactory.getLogger(DatadogEventWriter.class);
   private static final long DEFAULT_FLUSH_DELAY = 2;
+  private static final Long MAX_BUFFER_SIZE = 5L * 1000 * 1000; // 5MB
   private static final Counter INPUT_COUNTER =
       Metrics.counter(DatadogEventWriter.class, "inbound-events");
   private static final Counter SUCCESS_WRITES =
@@ -82,8 +81,11 @@ public abstract class DatadogEventWriter
       Metrics.distribution(DatadogEventWriter.class, "unsuccessful_write_to_datadog_latency_ms");
   private static final Distribution SUCCESSFUL_WRITE_BATCH_SIZE =
       Metrics.distribution(DatadogEventWriter.class, "write_to_datadog_batch");
+  private static final Distribution SUCCESSFUL_WRITE_PAYLOAD_SIZE =
+      Metrics.distribution(DatadogEventWriter.class, "write_to_datadog_bytes");
   private static final String BUFFER_STATE_NAME = "buffer";
   private static final String COUNT_STATE_NAME = "count";
+  private static final String BUFFER_SIZE_STATE_NAME = "buffer_size";
   private static final String TIME_ID_NAME = "expiry";
   private static final Pattern URL_PATTERN = Pattern.compile("^http(s?)://([^:]+)(:[0-9]+)?$");
 
@@ -98,14 +100,15 @@ public abstract class DatadogEventWriter
   @StateId(COUNT_STATE_NAME)
   private final StateSpec<ValueState<Long>> count = StateSpecs.value();
 
+  @StateId(BUFFER_SIZE_STATE_NAME)
+  private final StateSpec<ValueState<Long>> bufferSize = StateSpecs.value();
+
   @TimerId(TIME_ID_NAME)
   private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
   private Integer batchCount;
+  private Long maxBufferSize;
   private DatadogEventPublisher publisher;
-
-  private static final Gson GSON =
-      new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
 
   public static Builder newBuilder() {
     return newBuilder(null);
@@ -128,6 +131,9 @@ public abstract class DatadogEventWriter
   @Nullable
   abstract ValueProvider<Integer> inputBatchCount();
 
+  @Nullable
+  abstract Long maxBufferSize();
+
   @Setup
   public void setup() {
 
@@ -135,16 +141,16 @@ public abstract class DatadogEventWriter
     checkArgument(isValidUrlFormat(url().get()), INVALID_URL_FORMAT_MESSAGE);
     checkArgument(apiKey().isAccessible(), "API Key is required for writing events.");
 
-    // Either user supplied or default batchCount.
-    if (batchCount == null) {
-
-      if (inputBatchCount() != null) {
-        batchCount = inputBatchCount().get();
-      }
-
-      batchCount = MoreObjects.firstNonNull(batchCount, DEFAULT_BATCH_COUNT);
-      LOG.info("Batch count set to: {}", batchCount);
+    if (inputBatchCount() != null) {
+      batchCount = inputBatchCount().get();
     }
+    batchCount = MoreObjects.firstNonNull(batchCount, DEFAULT_BATCH_COUNT);
+    LOG.info("Batch count set to: {}", batchCount);
+
+    maxBufferSize = maxBufferSize();
+    maxBufferSize = MoreObjects.firstNonNull(maxBufferSize, MAX_BUFFER_SIZE);
+    LOG.info("Max buffer size set to: {}", maxBufferSize);
+
     checkArgument(
         batchCount >= minBatchCount(),
         "batchCount must be greater than or equal to %s",
@@ -174,20 +180,46 @@ public abstract class DatadogEventWriter
       BoundedWindow window,
       @StateId(BUFFER_STATE_NAME) BagState<DatadogEvent> bufferState,
       @StateId(COUNT_STATE_NAME) ValueState<Long> countState,
+      @StateId(BUFFER_SIZE_STATE_NAME) ValueState<Long> bufferSizeState,
       @TimerId(TIME_ID_NAME) Timer timer)
       throws IOException {
 
-    Long count = MoreObjects.<Long>firstNonNull(countState.read(), 0L);
     DatadogEvent event = input.getValue();
     INPUT_COUNTER.inc();
-    bufferState.add(event);
-    count += 1;
-    countState.write(count);
+
+    String eventPayload = DatadogEventSerializer.getPayloadString(event);
+    long eventPayloadSize = DatadogEventSerializer.getPayloadSize(eventPayload);
+    if (eventPayloadSize > maxBufferSize) {
+      LOG.error(
+          "Error processing event of size {} due to exceeding max buffer size", eventPayloadSize);
+      DatadogWriteError error = DatadogWriteError.newBuilder().withPayload(eventPayload).build();
+      receiver.output(error);
+      return;
+    }
+
     timer.offset(Duration.standardSeconds(DEFAULT_FLUSH_DELAY)).setRelative();
 
+    long count = MoreObjects.<Long>firstNonNull(countState.read(), 0L);
+    long bufferSize = MoreObjects.<Long>firstNonNull(bufferSizeState.read(), 0L);
+    if (bufferSize + eventPayloadSize > maxBufferSize) {
+      LOG.debug("Flushing batch of {} events of size {} due to max buffer size", count, bufferSize);
+      flush(receiver, bufferState, countState, bufferSizeState);
+
+      count = 0L;
+      bufferSize = 0L;
+    }
+
+    bufferState.add(event);
+
+    count = count + 1L;
+    countState.write(count);
+
+    bufferSize = bufferSize + eventPayloadSize;
+    bufferSizeState.write(bufferSize);
+
     if (count >= batchCount) {
-      LOG.debug("Flushing batch of {} events", count);
-      flush(receiver, bufferState, countState);
+      LOG.debug("Flushing batch of {} events of size {} due to batch count", count, bufferSize);
+      flush(receiver, bufferState, countState, bufferSizeState);
     }
   }
 
@@ -195,12 +227,16 @@ public abstract class DatadogEventWriter
   public void onExpiry(
       OutputReceiver<DatadogWriteError> receiver,
       @StateId(BUFFER_STATE_NAME) BagState<DatadogEvent> bufferState,
-      @StateId(COUNT_STATE_NAME) ValueState<Long> countState)
+      @StateId(COUNT_STATE_NAME) ValueState<Long> countState,
+      @StateId(BUFFER_SIZE_STATE_NAME) ValueState<Long> bufferSizeState)
       throws IOException {
 
-    if (MoreObjects.<Long>firstNonNull(countState.read(), 0L) > 0) {
-      LOG.debug("Flushing window with {} events", countState.read());
-      flush(receiver, bufferState, countState);
+    long count = MoreObjects.<Long>firstNonNull(countState.read(), 0L);
+    long bufferSize = MoreObjects.<Long>firstNonNull(bufferSizeState.read(), 0L);
+
+    if (count > 0) {
+      LOG.debug("Flushing batch of {} events of size {} due to timer", count, bufferSize);
+      flush(receiver, bufferState, countState, bufferSizeState);
     }
   }
 
@@ -225,7 +261,8 @@ public abstract class DatadogEventWriter
   private void flush(
       OutputReceiver<DatadogWriteError> receiver,
       @StateId(BUFFER_STATE_NAME) BagState<DatadogEvent> bufferState,
-      @StateId(COUNT_STATE_NAME) ValueState<Long> countState)
+      @StateId(COUNT_STATE_NAME) ValueState<Long> countState,
+      @StateId(BUFFER_SIZE_STATE_NAME) ValueState<Long> bufferSizeState)
       throws IOException {
 
     if (!bufferState.isEmpty().read()) {
@@ -259,6 +296,7 @@ public abstract class DatadogEventWriter
           SUCCESS_WRITES.inc(countState.read());
           VALID_REQUESTS.inc();
           SUCCESSFUL_WRITE_BATCH_SIZE.update(countState.read());
+          SUCCESSFUL_WRITE_PAYLOAD_SIZE.update(bufferSizeState.read());
 
           LOG.debug("Successfully wrote {} events", countState.read());
         }
@@ -289,6 +327,7 @@ public abstract class DatadogEventWriter
         // write failed events to an output PCollection.
         bufferState.clear();
         countState.clear();
+        bufferSizeState.clear();
 
         // We've observed cases where errors at this point can cause the pipeline to keep retrying
         // the same events over and over (e.g. from Dataflow Runner's Pub/Sub implementation). Since
@@ -332,7 +371,7 @@ public abstract class DatadogEventWriter
    * @param statusCode Status code to be added to {@link DatadogWriteError}
    * @param receiver Receiver to write {@link DatadogWriteError}s to
    */
-  private static void flushWriteFailures(
+  private void flushWriteFailures(
       List<DatadogEvent> events,
       String statusMessage,
       Integer statusCode,
@@ -351,9 +390,8 @@ public abstract class DatadogEventWriter
     }
 
     for (DatadogEvent event : events) {
-      String payload = GSON.toJson(event);
+      String payload = DatadogEventSerializer.getPayloadString(event);
       DatadogWriteError error = builder.withPayload(payload).build();
-
       receiver.output(error);
     }
   }
@@ -399,6 +437,8 @@ public abstract class DatadogEventWriter
     abstract Integer minBatchCount();
 
     abstract Builder setInputBatchCount(ValueProvider<Integer> inputBatchCount);
+
+    abstract Builder setMaxBufferSize(Long maxBufferSize);
 
     abstract DatadogEventWriter autoBuild();
 
@@ -471,6 +511,16 @@ public abstract class DatadogEventWriter
         }
       }
       return setInputBatchCount(inputBatchCount);
+    }
+
+    /**
+     * Method to set the maxBufferSize.
+     *
+     * @param maxBufferSize for batching post requests.
+     * @return {@link Builder}
+     */
+    public Builder withMaxBufferSize(Long maxBufferSize) {
+      return setMaxBufferSize(maxBufferSize);
     }
 
     /** Build a new {@link DatadogEventWriter} objects based on the configuration. */

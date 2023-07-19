@@ -22,6 +22,8 @@ import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.coders.BigEndianIntegerCoder;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -189,6 +191,34 @@ public class DatadogEventWriterTest {
     assertThat(writer.inputBatchCount().get()).isEqualTo(batchCount);
   }
 
+  /** Test building {@link DatadogEventWriter} with default maxBufferSize . */
+  @Test
+  public void eventWriterDefaultMaxBufferSize() {
+
+    DatadogEventWriter writer =
+        DatadogEventWriter.newBuilder()
+            .withUrl("http://test-url")
+            .withApiKey("test-api-key")
+            .build();
+
+    assertThat(writer.maxBufferSize()).isNull();
+  }
+
+  /** Test building {@link DatadogEventWriter} with custom maxBufferSize . */
+  @Test
+  public void eventWriterCustomMaxBufferSizeAndValidation() {
+
+    Long maxBufferSize = 1_427_841L;
+    DatadogEventWriter writer =
+        DatadogEventWriter.newBuilder()
+            .withUrl("http://test-url")
+            .withMaxBufferSize(maxBufferSize)
+            .withApiKey("test-api-key")
+            .build();
+
+    assertThat(writer.maxBufferSize()).isEqualTo(maxBufferSize);
+  }
+
   /** Test successful POST request for single batch. */
   @Test
   @Category(NeedsRunner.class)
@@ -305,6 +335,59 @@ public class DatadogEventWriterTest {
     mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
   }
 
+  /** Test successful POST requests for batch exceeding max buffer size. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void successfulDatadogWriteExceedingMaxBufferSize() {
+
+    // Create server expectation for success.
+    addRequestExpectation(202);
+
+    int testPort = mockServer.getPort();
+
+    String payloadFormat = "{\"message\":\"%s\"}";
+    long jsonSize = DatadogEventSerializer.getPayloadSize(String.format(payloadFormat, ""));
+
+    long maxBufferSize = 100;
+    long msgSize = 50;
+
+    char[] bunchOfAs = new char[(int) (msgSize - jsonSize)];
+    Arrays.fill(bunchOfAs, 'a');
+
+    List<KV<Integer, DatadogEvent>> testEvents = new ArrayList<>();
+    for (int i = 1; i <= 3; i++) {
+      testEvents.add(
+          KV.of(123, DatadogEvent.newBuilder().withMessage(new String(bunchOfAs)).build()));
+    }
+
+    PCollection<DatadogWriteError> actual =
+        pipeline
+            .apply(
+                "Create Input data",
+                Create.of(testEvents)
+                    .withCoder(KvCoder.of(BigEndianIntegerCoder.of(), DatadogEventCoder.of())))
+            .apply(
+                "DatadogEventWriter",
+                ParDo.of(
+                    DatadogEventWriter.newBuilder(1)
+                        .withUrl(Joiner.on(':').join("http://localhost", testPort))
+                        .withInputBatchCount(StaticValueProvider.of(testEvents.size()))
+                        .withMaxBufferSize(maxBufferSize)
+                        .withApiKey("test-api-key")
+                        .build()))
+            .setCoder(DatadogWriteErrorCoder.of());
+
+    // All successful responses.
+    PAssert.that(actual).empty();
+
+    pipeline.run();
+
+    // Server received exactly two POST requests:
+    // 1st batch of size=2 due to next msg exceeding max buffer size
+    // 2nd batch of size=1 due to timer
+    mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.exactly(2));
+  }
+
   /** Test failed POST request. */
   @Test
   @Category(NeedsRunner.class)
@@ -361,6 +444,61 @@ public class DatadogEventWriterTest {
 
     // Server received exactly one POST request.
     mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
+  }
+
+  /** Test failed due to single event exceeding max buffer size. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void failedDatadogEventTooBig() {
+
+    // Create server expectation for FAILURE.
+    addRequestExpectation(404);
+
+    int testPort = mockServer.getPort();
+
+    String payloadFormat = "{\"message\":\"%s\"}";
+
+    long maxBufferSize = 100;
+    char[] bunchOfAs =
+        new char
+            [(int)
+                (maxBufferSize
+                    + 1L
+                    - DatadogEventSerializer.getPayloadSize(String.format(payloadFormat, "")))];
+    Arrays.fill(bunchOfAs, 'a');
+    String messageTooBig = new String(bunchOfAs);
+
+    String expectedPayload = String.format(payloadFormat, messageTooBig);
+    long expectedPayloadSize = DatadogEventSerializer.getPayloadSize(expectedPayload);
+    assertThat(expectedPayloadSize).isEqualTo(maxBufferSize + 1L);
+
+    List<KV<Integer, DatadogEvent>> testEvents =
+        ImmutableList.of(KV.of(123, DatadogEvent.newBuilder().withMessage(messageTooBig).build()));
+
+    PCollection<DatadogWriteError> actual =
+        pipeline
+            .apply(
+                "Create Input data",
+                Create.of(testEvents)
+                    .withCoder(KvCoder.of(BigEndianIntegerCoder.of(), DatadogEventCoder.of())))
+            .apply(
+                "DatadogEventWriter",
+                ParDo.of(
+                    DatadogEventWriter.newBuilder()
+                        .withUrl(Joiner.on(':').join("http://localhost", testPort))
+                        .withMaxBufferSize(maxBufferSize)
+                        .withApiKey("test-api-key")
+                        .build()))
+            .setCoder(DatadogWriteErrorCoder.of());
+
+    // Expect a single DatadogWriteError due to exceeding max buffer size
+    PAssert.that(actual)
+        .containsInAnyOrder(DatadogWriteError.newBuilder().withPayload(expectedPayload).build());
+
+    pipeline.run();
+
+    // Server did not receive any requests.
+    mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.never());
   }
 
   /** Test retryable POST request. */
