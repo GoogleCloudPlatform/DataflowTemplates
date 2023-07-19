@@ -33,13 +33,13 @@ public enum ChangelogColumn {
   TIMESTAMP_FROM_NUM("timestamp_from", StandardSQLTypeName.INT64.name(), false, false),
   TIMESTAMP_TO("timestamp_to", StandardSQLTypeName.TIMESTAMP.name(), false, false),
   TIMESTAMP_TO_NUM("timestamp_to", StandardSQLTypeName.INT64.name(), false, false),
-  IS_GC("is_gc", "BOOL", false, true),
-  SOURCE_INSTANCE("source_instance", StandardSQLTypeName.STRING.name(), false, true),
-  SOURCE_CLUSTER("source_cluster", StandardSQLTypeName.STRING.name(), false, true),
-  SOURCE_TABLE("source_table", StandardSQLTypeName.STRING.name(), false, true),
-  TIEBREAKER("tiebreaker", StandardSQLTypeName.INT64.name(), false, true),
+  IS_GC("is_gc", "BOOL", true, true),
+  SOURCE_INSTANCE("source_instance", StandardSQLTypeName.STRING.name(), true, true),
+  SOURCE_CLUSTER("source_cluster", StandardSQLTypeName.STRING.name(), true, true),
+  SOURCE_TABLE("source_table", StandardSQLTypeName.STRING.name(), true, true),
+  TIEBREAKER("tiebreaker", StandardSQLTypeName.INT64.name(), true, true),
   BQ_COMMIT_TIMESTAMP(
-      "big_query_commit_timestamp", StandardSQLTypeName.TIMESTAMP.name(), false, true);
+      "big_query_commit_timestamp", StandardSQLTypeName.TIMESTAMP.name(), true, true);
 
   private final String bqColumnName;
   private final String bqType;

@@ -280,5 +280,22 @@ public interface BigtableCommonOptions extends GcpOptions {
     String getBigtableChangeStreamName();
 
     void setBigtableChangeStreamName(String value);
+
+    @TemplateParameter.Boolean(
+        order = 9,
+        optional = true,
+        description = "Resume streaming with the same change stream name",
+        helpText =
+            "When set to true< a new pipeline will resume processing from the point at which "
+                + "a previously running pipeline with the same bigtableChangeStreamName stopped. "
+                + "If pipeline with the given bigtableChangeStreamName never ran in the past, a "
+                + "new pipeline will fail to start. When set to false a new pipeline will be "
+                + "started. If pipeline with the same bigtableChangeStreamName already ran in "
+                + "the past for the given source, a new pipeline will fail to start. "
+                + "Defaults to false")
+    @Default.Boolean(false)
+    Boolean getBigtableChangeStreamResume();
+
+    void setBigtableChangeStreamResume(Boolean useBase64Value);
   }
 }
