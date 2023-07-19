@@ -98,9 +98,9 @@ public abstract class FileFormatFactoryBigtableChangeStreams
   private DestinationInfo newDestinationInfo(BigtableChangeStreamsToGcsOptions options) {
     return new DestinationInfo(
         options.getBigtableChangeStreamCharset(),
-        options.getUseBase64Rowkey(),
-        options.getUseBase64ColumnQualifier(),
-        options.getUseBase64Value());
+        options.getUseBase64Rowkeys(),
+        options.getUseBase64ColumnQualifiers(),
+        options.getUseBase64Values());
   }
 
   /** Builder for {@link FileFormatFactoryBigtableChangeStreams}. */

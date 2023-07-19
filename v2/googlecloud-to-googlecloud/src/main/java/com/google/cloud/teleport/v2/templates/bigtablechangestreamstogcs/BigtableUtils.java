@@ -47,7 +47,6 @@ public class BigtableUtils implements Serializable {
   public static final String ANY_COLUMN_FAMILY = "*";
   private static final Logger LOG = LoggerFactory.getLogger(BigtableUtils.class);
 
-  private final long serialVersionUID = 6360056103639788953L;
   public String bigtableRowColumnFamilyName = "changelog";
   public String bigtableRowKeyDelimiter = "#";
   private final BigtableSource source;

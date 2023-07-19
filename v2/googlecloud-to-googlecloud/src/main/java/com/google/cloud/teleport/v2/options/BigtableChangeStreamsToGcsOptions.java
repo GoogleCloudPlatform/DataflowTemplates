@@ -131,9 +131,9 @@ public interface BigtableChangeStreamsToGcsOptions
           "Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeys"
               + "Defaults to false.")
   @Default.Boolean(false)
-  Boolean getUseBase64Rowkey();
+  Boolean getUseBase64Rowkeys();
 
-  void setUseBase64Rowkey(Boolean useBase64Rowkey);
+  void setUseBase64Rowkeys(Boolean useBase64Rowkey);
 
   @TemplateParameter.Boolean(
       order = 9,
@@ -143,9 +143,9 @@ public interface BigtableChangeStreamsToGcsOptions
           "Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiers"
               + "Defaults to false.")
   @Default.Boolean(false)
-  Boolean getUseBase64ColumnQualifier();
+  Boolean getUseBase64ColumnQualifiers();
 
-  void setUseBase64ColumnQualifier(Boolean useBase64ColumnQualifier);
+  void setUseBase64ColumnQualifiers(Boolean useBase64ColumnQualifier);
 
   @TemplateParameter.Boolean(
       order = 10,
@@ -155,7 +155,7 @@ public interface BigtableChangeStreamsToGcsOptions
           "Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String values"
               + "Defaults to false.")
   @Default.Boolean(false)
-  Boolean getUseBase64Value();
+  Boolean getUseBase64Values();
 
-  void setUseBase64Value(Boolean useBase64Value);
+  void setUseBase64Values(Boolean useBase64Value);
 }
