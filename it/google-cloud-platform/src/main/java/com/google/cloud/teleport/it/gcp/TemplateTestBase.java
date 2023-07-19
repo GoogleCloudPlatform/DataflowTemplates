@@ -105,10 +105,7 @@ public abstract class TemplateTestBase {
   protected String testId;
 
   /** Cache to avoid staging the same template multiple times on the same execution. */
-  private static final Cache<String, String> stagedTemplates =
-      CacheBuilder.newBuilder()
-          .concurrencyLevel(1) // Blocking
-          .build();
+  private static final Cache<String, String> stagedTemplates = CacheBuilder.newBuilder().build();
 
   protected Template template;
   private Class<?> templateClass;
