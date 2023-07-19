@@ -176,7 +176,7 @@ public class PubSubToDatadogIT extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("apiKey", datadogResourceManager.getApiKey())
-            .addParameter("batchCount ", "20");
+            .addParameter("batchCount", "20");
     testPubSubToDatadogMain(parameters, false);
   }
 
