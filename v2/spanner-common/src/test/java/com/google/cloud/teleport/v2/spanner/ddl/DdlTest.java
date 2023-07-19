@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.spanner.ddl;
+package com.google.cloud.teleport.v2.spanner.ddl;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.empty;
@@ -25,7 +25,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.v2.templates.spanner.common.Type;
+import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import java.util.Collection;

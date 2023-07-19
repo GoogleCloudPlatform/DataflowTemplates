@@ -16,11 +16,11 @@
 package com.google.cloud.teleport.v2.templates.spanner;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Column;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.IndexColumn;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Table;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

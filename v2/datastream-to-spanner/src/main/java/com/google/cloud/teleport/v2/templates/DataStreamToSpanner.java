@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
@@ -31,7 +32,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationConte
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.values.FailsafeElement;

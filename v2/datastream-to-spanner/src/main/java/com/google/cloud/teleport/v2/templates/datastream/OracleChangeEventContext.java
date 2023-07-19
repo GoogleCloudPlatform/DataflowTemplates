@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates.datastream;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 
 /**
  * Oracle implementation of ChangeEventContext that provides implementation of the

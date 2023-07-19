@@ -25,7 +25,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import java.io.IOException;
 import java.util.Map;
 import org.json.JSONObject;

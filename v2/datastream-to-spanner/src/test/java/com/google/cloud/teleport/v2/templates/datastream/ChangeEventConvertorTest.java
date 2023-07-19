@@ -28,7 +28,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.spanner.ddl;
+package com.google.cloud.teleport.v2.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;

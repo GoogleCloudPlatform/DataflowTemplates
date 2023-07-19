@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates.datastream;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 
 /** Factory classes that provides creation methods for ChangeEventContext. */
 public class ChangeEventContextFactory {

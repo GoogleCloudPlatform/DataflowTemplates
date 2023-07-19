@@ -17,9 +17,9 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;

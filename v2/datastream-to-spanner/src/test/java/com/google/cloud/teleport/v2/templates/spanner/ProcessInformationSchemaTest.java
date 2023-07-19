@@ -20,7 +20,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
