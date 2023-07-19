@@ -166,7 +166,7 @@ public class PubSubToDatadogIT extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("apiKey", datadogResourceManager.getApiKey())
-            .addParameter("batchCount", "1");
+            .addParameter("batchCount", "10");
     testPubSubToDatadogMain(parameters, false);
   }
 
@@ -176,7 +176,7 @@ public class PubSubToDatadogIT extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("apiKey", datadogResourceManager.getApiKey())
-            .addParameter("batchCount", "20");
+            .addParameter("batchCount ", "20");
     testPubSubToDatadogMain(parameters, false);
   }
 
@@ -186,7 +186,7 @@ public class PubSubToDatadogIT extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("apiKey", "invalid-api-key")
-            .addParameter("batchCount", "5");
+            .addParameter("batchCount", "10");
     testPubSubToDatadogMain(parameters, true);
   }
 
@@ -196,7 +196,7 @@ public class PubSubToDatadogIT extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder parameters =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("apiKey", datadogResourceManager.getApiKey())
-            .addParameter("batchCount", "1")
+            .addParameter("batchCount", "10")
             .addParameter("includePubsubMessage", "true");
     testPubSubToDatadogMain(parameters, false);
   }
