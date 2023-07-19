@@ -23,6 +23,7 @@ import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.google.cloud.teleport.it.common.ResourceManager;
+import com.google.cloud.teleport.it.common.utils.ExceptionUtils;
 import com.google.cloud.teleport.it.testcontainers.TestContainerResourceManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -220,8 +221,9 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
       } catch (Exception e) {
         LOG.error("Failed to drop Cassandra keyspace {}.", keyspaceName, e);
 
-        // Only bubble exception if the cause is not timeout, as it will be dropped with container.
-        if (e.getCause() == null || !(e.getCause() instanceof DriverTimeoutException)) {
+        // Only bubble exception if the cause is not timeout or does not exist
+        if (!ExceptionUtils.containsType(e, DriverTimeoutException.class)
+            && !ExceptionUtils.containsMessage(e, "does not exist")) {
           producedError = true;
         }
       }

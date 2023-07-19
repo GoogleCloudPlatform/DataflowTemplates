@@ -351,7 +351,11 @@ public final class SpannerResourceManager implements ResourceManager {
   public synchronized void cleanupAll() {
     try {
       LOG.info("Deleting instance {}...", instanceId);
-      instanceAdminClient.deleteInstance(instanceId);
+
+      if (instanceAdminClient != null) {
+        instanceAdminClient.deleteInstance(instanceId);
+      }
+
       hasInstance = false;
       hasDatabase = false;
     } catch (SpannerException e) {
