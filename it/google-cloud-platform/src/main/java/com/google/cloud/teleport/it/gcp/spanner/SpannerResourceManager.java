@@ -353,7 +353,8 @@ public final class SpannerResourceManager implements ResourceManager {
       LOG.info("Deleting instance {}...", instanceId);
 
       if (instanceAdminClient != null) {
-        instanceAdminClient.deleteInstance(instanceId);
+        Failsafe.with(retryOnQuotaException())
+            .run(() -> instanceAdminClient.deleteInstance(instanceId));
       }
 
       hasInstance = false;
