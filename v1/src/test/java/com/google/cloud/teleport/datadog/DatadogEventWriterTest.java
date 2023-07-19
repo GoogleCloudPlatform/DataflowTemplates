@@ -34,7 +34,6 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -367,7 +366,6 @@ public class DatadogEventWriterTest {
   /** Test retryable POST request. */
   @Test
   @Category(NeedsRunner.class)
-  @Ignore("Check failure: inputBatchCount must be greater than or equal to 10")
   public void retryableDatadogWriteSingleBatchTest() {
 
     // Create server expectations for 3 retryable failures, 1 success.
@@ -399,7 +397,7 @@ public class DatadogEventWriterTest {
             .apply(
                 "DatadogEventWriter",
                 ParDo.of(
-                    DatadogEventWriter.newBuilder()
+                    DatadogEventWriter.newBuilder(1)
                         .withUrl(Joiner.on(':').join("http://localhost", testPort))
                         .withInputBatchCount(
                             StaticValueProvider.of(
