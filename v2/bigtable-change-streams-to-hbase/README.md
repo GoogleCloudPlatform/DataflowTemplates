@@ -64,14 +64,14 @@ mvn clean package -am -PtemplatesRun \
   -DprojectId=$PROJECT \
   -DbucketName=$GCS_BUCKET_NAME \
   -Dregion=$REGION \
-  -DtemplateName="bigtable-cdc-to-hbase" \
+  -DtemplateName="Bigtable_Change_Streams_to_HBase" \
   -Dparameters="bigtableReadProjectId=$PROJECT,bigtableReadInstanceId=$INSTANCE,bigtableReadTableId=$TABLE,bigtableChangeStreamAppProfile=$APP_PROFILE,hbaseZookeeperQuorumHost=$ZOOKEEPER_QUORUM_HOST,hbaseZookeeperQuorumPort=$ZOOKEEPER_QUORUM_PORT,hbaseRootDir=$HBASE_ROOT_DIR,bidirectionalReplicationEnabled=$BIDIRECTIONAL_REPLICATION,cbtQualifier=$CBT_QUALIFIER,hbaseQualifier=$HBASE_QUALIFIER,dryRunEnabled=$DRY_RUN_ENABLED" \
-  -pl v2/bigtable-cdc-to-hbase
+  -pl v2/bigtable-change-streams-to-hbase
 ```
 ### Testing Template
 
 To run unit tests:
 
 ```shell
-mvn clean compile test -am -pl v2/bigtable-cdc-to-hbase
+mvn clean compile test -am -pl v2/bigtable-change-streams-to-hbase
 ```

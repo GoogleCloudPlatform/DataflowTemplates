@@ -52,12 +52,12 @@ import org.slf4j.LoggerFactory;
  * records with the row key as the record key.
  */
 @Template(
-    name = "bigtable-cdc-to-hbase",
+    name = "Bigtable_Change_Streams_to_HBase",
     category = TemplateCategory.STREAMING,
-    displayName = "Bigtable CDC to HBase Replicator",
-    description = "A streaming pipeline that replicates Bigtable change stream data to HBase",
+    displayName = "Bigtable Change Streams to HBase Replicator",
+    description = "A streaming pipeline that replicates Bigtable change stream mutations to HBase",
     optionsClass = BigtableCdcToHbase.BigtableToHbasePipelineOptions.class,
-    flexContainerName = "bigtable-cdc-to-hbase",
+    flexContainerName = "Bigtable_Change_Streams_to_HBase",
     contactInformation = "https://cloud.google.com/support")
 public class BigtableCdcToHbase {
 
