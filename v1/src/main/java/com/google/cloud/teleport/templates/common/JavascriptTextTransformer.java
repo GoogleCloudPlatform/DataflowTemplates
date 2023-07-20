@@ -194,7 +194,6 @@ public abstract class JavascriptTextTransformer {
 
         // List of all scripts read from the filesystem
         Collection<String> scripts = getScripts(fileSystemPath());
-        invocable = newInvocable(scripts);
 
         // We compare the entire code, and reload invocable if changed
         Set<String> uniqueCode = new TreeSet<>(scripts);

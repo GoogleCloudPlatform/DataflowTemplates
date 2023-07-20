@@ -106,6 +106,8 @@ public class DatastoreToText {
             TransformTextViaJavascript.newBuilder()
                 .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                 .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setReloadFunction(options.getJavascriptFunctionReload())
+                .setReloadIntervalMinutes(options.getJavascriptReloadIntervalMinutes())
                 .build())
         .apply(TextIO.write().to(options.getTextWritePrefix()).withSuffix(".json"));
 

@@ -383,7 +383,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
                             createConfig(info),
                             pubSubReloadedMessageSender,
                             BigQueryRowsCheck.builder(bigQueryResourceManager, table)
-                                    .setMinRows(bigQueryRowsCheck.getRowCount().intValue() + MESSAGES_COUNT)
+                                    .setMinRows(bigQueryRowsCheck.getRowCount().intValue() + (MESSAGES_COUNT * 2))
                                     .build());
     // Assert
     assertThatResult(reloadedResult).meetsConditions();

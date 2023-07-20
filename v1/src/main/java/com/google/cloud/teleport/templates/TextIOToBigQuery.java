@@ -144,6 +144,8 @@ public class TextIOToBigQuery {
             TransformTextViaJavascript.newBuilder()
                 .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                 .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setReloadFunction(options.getJavascriptFunctionReload())
+                .setReloadIntervalMinutes(options.getJavascriptReloadIntervalMinutes())
                 .build())
         .apply(BigQueryConverters.jsonToTableRow())
         .apply(
