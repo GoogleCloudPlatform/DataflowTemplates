@@ -57,7 +57,7 @@ func main() {
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunIntegrationTests(),
 		mvnFlags.ThreadCount(4),
-		mvnFlags.IntegrationTestParallelism(4),
+		mvnFlags.IntegrationTestParallelism(3),
 		mvnFlags.StaticBigtableInstance("teleport"),
 		flags.Region(),
 		flags.Project(),
