@@ -32,7 +32,6 @@ public class Target implements Serializable, Comparable {
   private String name = "";
   private boolean active = true;
   private TargetType type;
-  private boolean autoMap = false;
   private Transform transform = new Transform();
   private List<Mapping> mappings = new ArrayList<>();
   private SaveMode saveMode = SaveMode.append;
@@ -87,10 +86,6 @@ public class Target implements Serializable, Comparable {
 
   public void setType(TargetType type) {
     this.type = type;
-  }
-
-  public void setAutoMap(boolean autoMap) {
-    this.autoMap = autoMap;
   }
 
   public Transform getTransform() {

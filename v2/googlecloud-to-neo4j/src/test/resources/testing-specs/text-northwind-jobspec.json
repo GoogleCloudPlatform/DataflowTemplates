@@ -26,7 +26,6 @@
         "transform": {
           "group": true
         },
-        "automap": false,
         "mappings": {
           "labels": [
             "\"Customer\""
@@ -122,7 +121,6 @@
           "order_by": "product_name ASC",
           "limit": -1
         },
-        "automap": false,
         "mappings": {
           "type": "\"Purchases\"",
           "source": {

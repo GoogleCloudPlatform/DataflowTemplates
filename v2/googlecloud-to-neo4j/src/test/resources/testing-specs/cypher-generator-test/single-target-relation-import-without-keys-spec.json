@@ -25,7 +25,6 @@
           "group": true
         },
         "active": true,
-        "automap": false,
         "mappings": {
           "type": "\"LINKS\"",
           "source": {
