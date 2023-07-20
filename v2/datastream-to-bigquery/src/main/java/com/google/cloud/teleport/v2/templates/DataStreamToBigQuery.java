@@ -256,7 +256,7 @@ public class DataStreamToBigQuery {
         helpText = "Fields to ignore in BigQuery (comma separator).",
         example = "_metadata_stream,_metadata_schema")
     @Default.String(
-        "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,"
+        "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,"
             + "_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,"
             + "_metadata_error,_metadata_retry_count")
     String getIgnoreFields();

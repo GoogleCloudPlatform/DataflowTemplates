@@ -38,6 +38,7 @@ import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.data.TimeConversions.DateConversion;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.slf4j.Logger;
@@ -280,7 +281,15 @@ public class FormatDatastreamRecordToJson
   }
 
   private Long getOracleSsn(GenericRecord record) {
+    // oracle sort keys are a list of four values that are provided in this order:
+    // [timestamp, scn, rs_id, ssn]
+    if (record.hasField("sort_keys")) {
+      return (Long) ((GenericData.Array<?>) record.get("sort_keys")).get(3);
+    }
+
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
+    // oracle sort keys are a list of four values that are provided in this order:
+    // [timestamp, scn, rs_id, ssn]
     if (sourceMetadata.hasField("ssn") && sourceMetadata.get("ssn") != null) {
       return (Long) sourceMetadata.get("ssn");
     }
@@ -289,6 +298,10 @@ public class FormatDatastreamRecordToJson
   }
 
   private String getOracleRsId(GenericRecord record) {
+    if (record.hasField("sort_keys")) {
+      return ((GenericData.Array<?>) record.get("sort_keys")).get(2).toString();
+    }
+
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
     if (sourceMetadata.hasField("rs_id") && sourceMetadata.get("rs_id") != null) {
       return sourceMetadata.get("rs_id").toString();

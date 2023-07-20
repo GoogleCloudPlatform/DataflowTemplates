@@ -167,7 +167,8 @@ public class DatastreamRow {
       return Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position");
     } else {
       // Current default is oracle.
-      return Arrays.asList("_metadata_timestamp", "_metadata_scn", "_metadata_rs_id");
+      return Arrays.asList(
+          "_metadata_timestamp", "_metadata_scn", "_metadata_rs_id", "_metadata_ssn");
     }
   }
 
