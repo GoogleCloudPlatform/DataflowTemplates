@@ -32,7 +32,6 @@ public class Mapping implements Serializable {
   private List<String> labels = new ArrayList<>();
   private String field = "";
   private String description = "";
-  private String defaultValue = "";
   private boolean mandatory = false;
   private boolean unique = false;
   private boolean indexed = true;
@@ -105,10 +104,6 @@ public class Mapping implements Serializable {
 
   public void setDescription(String description) {
     this.description = description;
-  }
-
-  public void setDefaultValue(String defaultValue) {
-    this.defaultValue = defaultValue;
   }
 
   public boolean isMandatory() {
