@@ -160,14 +160,12 @@ public class PubSubUtils implements Serializable {
 
   private final BigtableSource source;
   private final PubSubDestination destination;
-  private final String pubSubAPI;
   private transient Charset charsetObj;
 
   public PubSubUtils(
-      BigtableSource sourceInfo, PubSubDestination destinationInfo, String pubSubAPI) {
+      BigtableSource sourceInfo, PubSubDestination destinationInfo) {
     this.source = sourceInfo;
     this.destination = destinationInfo;
-    this.pubSubAPI = pubSubAPI;
     this.charsetObj = Charset.forName(sourceInfo.getCharset());
   }
 
@@ -177,10 +175,6 @@ public class PubSubUtils implements Serializable {
 
   public PubSubDestination getDestination() {
     return destination;
-  }
-
-  public String getPubSubAPI() {
-    return pubSubAPI;
   }
 
   private String convertBase64ToString(String base64String) {

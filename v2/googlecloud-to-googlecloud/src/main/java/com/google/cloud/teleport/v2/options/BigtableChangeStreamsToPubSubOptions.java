@@ -31,7 +31,7 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Text(
       order = 1,
       description = "The output Pub/Sub topic",
-      helpText = "The Pub/Sub topic to publish PubSubMessage.")
+      helpText = "The Pub/Sub topic to publish changelog entry messages.")
   @Validation.Required
   String getPubSubTopic();
 
@@ -55,7 +55,7 @@ public interface BigtableChangeStreamsToPubSubOptions
       description = "The format of the message written into PubSub",
       helpText =
           "The message format chosen for outputting data to PubSub. "
-              + "Allowed formats are AVRO, PROTOCOL_BUFFER and JSON Text. Default value is JSON.")
+              + "Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON Text. Default value is JSON.")
   @Default.String("JSON")
   String getMessageFormat();
 
@@ -64,13 +64,13 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Boolean(
       order = 4,
       optional = true,
-      description = "Strip value for SetCell mutation",
+      description = "Strip values for SetCell mutation",
       helpText =
-          "Strip value for SetCell mutation. If true the SetCell mutation message won’t include the value written.")
+          "Strip values for SetCell mutation. If true the SetCell mutation message won’t include the values written.")
   @Default.Boolean(false)
-  Boolean getStripValue();
+  Boolean getStripValues();
 
-  void setStripValue(Boolean stripValue);
+  void setStripValues(Boolean stripValues);
 
   @TemplateParameter.GcsWriteFolder(
       order = 5,
@@ -84,7 +84,7 @@ public interface BigtableChangeStreamsToPubSubOptions
   @Default.String("")
   String getDlqDirectory();
 
-  void setDlqDirectory(String value);
+  void setDlqDirectory(String dlqDirectory);
 
   @TemplateParameter.Integer(
       order = 6,
@@ -94,7 +94,7 @@ public interface BigtableChangeStreamsToPubSubOptions
   @Default.Integer(10)
   Integer getDlqRetryMinutes();
 
-  void setDlqRetryMinutes(Integer value);
+  void setDlqRetryMinutes(Integer dlqRetryMinutes);
 
   @TemplateParameter.Integer(
       order = 7,
@@ -104,18 +104,7 @@ public interface BigtableChangeStreamsToPubSubOptions
   @Default.Integer(5)
   Integer getDlqMaxRetries();
 
-  void setDlqMaxRetries(Integer value);
-
-  @TemplateParameter.Text(
-      order = 8,
-      optional = true,
-      description = "Pub/Sub API",
-      helpText =
-          "Pub/Sub API used to implement the pipeline. Allowed APIs are pubsubio and native_client."
-              + " Default is pubsubio. For a small QPS, native_client can achieve a smaller latency"
-              + " than pubsubio. For a large QPS, pubsubio has better and more stable performance.")
-  @Default.String("pubsubio")
-  String getPubSubAPI();
+  void setDlqMaxRetries(Integer dlqMaxRetries);
 
   void setPubSubAPI(String pubSubAPI);
 
@@ -127,7 +116,7 @@ public interface BigtableChangeStreamsToPubSubOptions
   @Default.String("")
   String getPubSubProjectId();
 
-  void setPubSubProjectId(String value);
+  void setPubSubProjectId(String pubSubProjectId);
 
   @TemplateParameter.Boolean(
       order = 8,
@@ -156,12 +145,12 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Boolean(
       order = 10,
       optional = true,
-      description = "Write Base64-encoded value",
+      description = "Write Base64-encoded values",
       helpText =
           "Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String values"
               + "Defaults to false.")
   @Default.Boolean(false)
-  Boolean getUseBase64Value();
+  Boolean getUseBase64Values();
 
-  void setUseBase64Value(Boolean useBase64Value);
+  void setUseBase64Values(Boolean useBase64Values);
 }

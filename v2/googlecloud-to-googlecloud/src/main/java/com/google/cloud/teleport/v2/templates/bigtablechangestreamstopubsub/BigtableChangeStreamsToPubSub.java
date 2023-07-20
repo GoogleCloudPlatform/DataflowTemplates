@@ -110,9 +110,9 @@ public final class BigtableChangeStreamsToPubSub {
       throw new IllegalArgumentException("dlqMaxRetries cannot be negative.");
     }
 
-    List <String> acceptableMessageFormats = Arrays.asList("AVRO", "PROTOCOL_BUFFER", "JSON");
+    List <String> acceptableMessageFormats = Arrays.asList("AVRO", "PROTOCOL_BUFFERS", "JSON");
     if (!acceptableMessageFormats.contains(options.getMessageFormat())) {
-      throw new IllegalArgumentException("Allowed formats are AVRO, PROTOCOL_BUFFER and JSON Text. Default value is JSON.");
+      throw new IllegalArgumentException("Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON Text. Default value is JSON.");
     }
 
     List <String> acceptableMessageEncodings = Arrays.asList("BINARY", "JSON");
@@ -180,9 +180,9 @@ public final class BigtableChangeStreamsToPubSub {
             options.getMessageEncoding(),
             options.getUseBase64Rowkey(),
             options.getUseBase64ColumnQualifier(),
-            options.getUseBase64Value());
+            options.getUseBase64Values());
 
-    PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo, options.getPubSubAPI());
+    PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo);
 
     try (TopicAdminClient topicAdminClient = TopicAdminClient.create()) {
       GetTopicRequest request =
@@ -228,6 +228,10 @@ public final class BigtableChangeStreamsToPubSub {
     BigtableIO.ReadChangeStream readChangeStream =
         BigtableIO.readChangeStream()
             .withChangeStreamName(options.getBigtableChangeStreamName())
+                .withExistingPipelineOptions(
+                        options.getBigtableChangeStreamResume()
+                        ? BigtableIO.ExistingPipelineOptions.RESUME_OR_FAIL
+                                : BigtableIO.ExistingPipelineOptions.FAIL_IF_EXISTS)
             .withProjectId(bigtableProject)
             .withMetadataTableInstanceId(options.getBigtableChangeStreamMetadataInstanceId())
             .withInstanceId(options.getBigtableReadInstanceId())

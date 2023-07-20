@@ -170,7 +170,7 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
             pubsubMessage = pubSubUtils.mapChangeJsonStringToPubSubMessageAsAvro(changeJsonString);
             break;
 
-          case "PROTOCOL_BUFFER":
+          case "PROTOCOL_BUFFERS":
             pubsubMessage = pubSubUtils.mapChangeJsonStringToPubSubMessageAsProto(changeJsonString);
             break;
 
