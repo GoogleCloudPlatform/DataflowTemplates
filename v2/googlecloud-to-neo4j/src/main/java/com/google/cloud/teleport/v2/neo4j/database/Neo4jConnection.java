@@ -19,6 +19,8 @@ import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.Serializable;
 import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.AuthTokens;
@@ -56,7 +58,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   }
 
   /** Helper method to get the Neo4j session. */
-  public Session getSession() throws URISyntaxException {
+  public Session getSession() {
     if (driver == null) {
       this.driver = getDriver();
     }
@@ -68,17 +70,6 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       this.session = driver.session(builder.build());
     }
     return this.session;
-  }
-
-  /**
-   * Execute cypher.
-   *
-   * @param cypher statement
-   */
-  public void executeCypher(String cypher) throws URISyntaxException {
-    try (Session session = getSession()) {
-      session.run(cypher).consume();
-    }
   }
 
   /** Write transaction. */
@@ -96,12 +87,32 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     LOG.info("Resetting database");
     try {
       String database = !StringUtils.isEmpty(this.database) ? this.database : "neo4j";
-      String cypher = String.format("CREATE OR REPLACE DATABASE `%s`", database);
-      LOG.info("Executing delete DB cypher: {}", cypher);
-      executeCypher(cypher);
+      String cypher = "CREATE OR REPLACE DATABASE $db";
+      LOG.info("Executing delete DB cypher: {} against database {}", cypher, database);
+      executeCypher(cypher, Map.of("db", database));
     } catch (Exception ex) {
       LOG.error("Error executing reset database using CREATE OR REPLACE", ex);
       fallbackResetDatabase();
+    }
+  }
+
+  /**
+   * Execute cypher.
+   *
+   * @param cypher statement
+   */
+  public void executeCypher(String cypher) {
+    executeCypher(cypher, Collections.emptyMap());
+  }
+
+  /**
+   * Execute a parameterized cypher statement.
+   *
+   * @param cypher statement
+   */
+  public void executeCypher(String cypher, Map<String, Object> parameters) {
+    try (Session session = getSession()) {
+      session.run(cypher, parameters).consume();
     }
   }
 
