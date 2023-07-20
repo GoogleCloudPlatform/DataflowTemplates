@@ -96,9 +96,11 @@ public class TransposedMappingMapper {
 
     if (edgeMappingsObject.has("source")) {
       JSONObject sourceObj = edgeMappingsObject.getJSONObject("source");
-      FieldNameTuple keyTuple = getFieldAndNameTuple(sourceObj.get("key"));
-      Mapping keyMapping = new Mapping(FragmentType.source, RoleType.key, keyTuple);
-      mappings.add(keyMapping);
+      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(sourceObj.get("key"));
+      for (FieldNameTuple keyTuple : keyTuples) {
+        Mapping keyMapping = new Mapping(FragmentType.source, RoleType.key, keyTuple);
+        mappings.add(keyMapping);
+      }
 
       // support dynamic labels on source
       List<FieldNameTuple> labels = getFieldAndNameTuples(sourceObj.get("label"));
@@ -110,13 +112,14 @@ public class TransposedMappingMapper {
     }
 
     if (edgeMappingsObject.has("target")) {
-      JSONObject sourceObj = edgeMappingsObject.getJSONObject("target");
-      FieldNameTuple keyTuple = getFieldAndNameTuple(sourceObj.get("key"));
-      Mapping keyMapping = new Mapping(FragmentType.target, RoleType.key, keyTuple);
+      JSONObject targetObj = edgeMappingsObject.getJSONObject("target");
+      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(targetObj.get("key"));
+      for (FieldNameTuple keyTuple : keyTuples) {
+        Mapping keyMapping = new Mapping(FragmentType.target, RoleType.key, keyTuple);
+        mappings.add(keyMapping);
+      }
 
-      mappings.add(keyMapping);
-
-      List<FieldNameTuple> labels = getFieldAndNameTuples(sourceObj.get("label"));
+      List<FieldNameTuple> labels = getFieldAndNameTuples(targetObj.get("label"));
       for (FieldNameTuple f : labels) {
         Mapping mapping = new Mapping(FragmentType.target, RoleType.label, f);
         mapping.setIndexed(true);
@@ -266,22 +269,6 @@ public class TransposedMappingMapper {
       tuples.add(createFieldNameTuple(String.valueOf(tuplesObj), String.valueOf(tuplesObj)));
     }
     return tuples;
-  }
-
-  private static FieldNameTuple getFieldAndNameTuple(Object tuplesObj) {
-    FieldNameTuple tuple = new FieldNameTuple();
-    if (tuplesObj instanceof JSONObject) {
-      JSONObject jsonObject = (JSONObject) tuplesObj;
-      // {field:name} or {field1:name,field2:name} tuples
-      Iterator<String> it = jsonObject.keys();
-      while (it.hasNext()) {
-        String key = it.next();
-        tuple = createFieldNameTuple(key, jsonObject.getString(key));
-      }
-    } else {
-      tuple = createFieldNameTuple(String.valueOf(tuplesObj), String.valueOf(tuplesObj));
-    }
-    return tuple;
   }
 
   private static FieldNameTuple createFieldNameTuple(String field) {
