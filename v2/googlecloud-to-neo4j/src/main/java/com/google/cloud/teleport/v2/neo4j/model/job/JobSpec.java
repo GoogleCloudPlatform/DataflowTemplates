@@ -31,7 +31,6 @@ public class JobSpec implements Serializable {
   private final Map<String, Source> sources = new HashMap<>();
   private final List<Target> targets = new ArrayList<>();
   private Config config = new Config();
-  private final Map<String, String> options = new HashMap<>();
   private final List<Action> actions = new ArrayList<>();
 
   public List<Target> getActiveNodeTargetsBySource(String sourceName) {
@@ -113,10 +112,6 @@ public class JobSpec implements Serializable {
 
   public void setConfig(Config config) {
     this.config = config;
-  }
-
-  public Map<String, String> getOptions() {
-    return options;
   }
 
   public List<Action> getActions() {

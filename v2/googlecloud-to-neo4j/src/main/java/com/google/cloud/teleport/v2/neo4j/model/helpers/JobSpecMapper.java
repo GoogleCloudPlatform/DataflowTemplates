@@ -21,7 +21,6 @@ import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.FileSystemUtils;
-import java.util.Iterator;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -81,20 +80,6 @@ public class JobSpecMapper {
         for (int i = 0; i < targetObjArray.length(); i++) {
           Target target = TargetMapper.fromJson(targetObjArray.getJSONObject(i));
           jobSpecRequest.getTargets().add(target);
-        }
-      }
-
-      // Note: this options array was created to allow mimicking Spark syntax.
-      // It is currently unused.
-      if (jobSpecObj.has("options")) {
-        JSONArray optionsArray = jobSpecObj.getJSONArray("options");
-        for (int i = 0; i < optionsArray.length(); i++) {
-          JSONObject jsonObject = optionsArray.getJSONObject(i);
-          Iterator<String> keys = jsonObject.keys();
-          while (keys.hasNext()) {
-            String key = keys.next();
-            jobSpecRequest.getOptions().put(key, jsonObject.getString(key));
-          }
         }
       }
 
