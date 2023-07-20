@@ -28,13 +28,11 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
-import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -45,19 +43,6 @@ import org.slf4j.LoggerFactory;
 
 /** A helper class to validate DataFlow run-time inputs. */
 public class InputValidator {
-
-  // Note: options are future functionality
-  private static final Set<String> validOptions =
-      Sets.newHashSet(
-          "relationship",
-          "relationship.save.strategy",
-          "relationship.source.labels",
-          "relationship.source.save.mode",
-          "relationship.source.node.keys",
-          "relationship.target.labels",
-          "relationship.target.node.keys",
-          "relationship.target.node.properties",
-          "relationship.target.save.mode");
 
   private static final Pattern ORDER_BY_PATTERN = Pattern.compile(".*ORDER\\sBY.*");
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -220,17 +205,6 @@ public class InputValidator {
             validationMessages.add(
                 "Aggregation for field " + aggregation.getField() + " is unmapped.");
           }
-        }
-      }
-    }
-
-    if (jobSpec.getOptions().size() > 0) {
-      // check valid options
-      Iterator<String> optionIt = jobSpec.getOptions().keySet().iterator();
-      while (optionIt.hasNext()) {
-        String option = optionIt.next();
-        if (!validOptions.contains(option)) {
-          validationMessages.add("Invalid option specified: " + option);
         }
       }
     }
