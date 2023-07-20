@@ -16,13 +16,12 @@
 package com.google.cloud.teleport.v2.neo4j.database;
 
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
-import com.google.cloud.teleport.v2.neo4j.model.enums.AuthType;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.Serializable;
-import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.AuthTokens;
-import org.neo4j.driver.Config;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
 import org.neo4j.driver.Session;
@@ -36,52 +35,24 @@ import org.slf4j.LoggerFactory;
 public class Neo4jConnection implements AutoCloseable, Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jConnection.class);
-  private final String username;
-  private final String password;
-  private final String serverUrl;
+  private final Supplier<Driver> driverSupplier;
   private final String database;
-  private final AuthType authType = AuthType.BASIC;
   private Driver driver;
   private Session session;
 
   /** Constructor. */
-  public Neo4jConnection(ConnectionParams connectionParams) {
-    this.username = connectionParams.username;
-    this.password = connectionParams.password;
-    this.database = connectionParams.database;
-    this.serverUrl = connectionParams.serverUrl;
+  public Neo4jConnection(ConnectionParams settings) {
+    this(
+        settings.database,
+        () ->
+            GraphDatabase.driver(
+                settings.serverUrl, AuthTokens.basic(settings.username, settings.password)));
   }
 
-  public Neo4jConnection(
-      String hostName, int port, String database, String username, String password) {
-    this.username = username;
-    this.password = password;
+  @VisibleForTesting
+  Neo4jConnection(String database, Supplier<Driver> driverSupplier) {
     this.database = database;
-    this.serverUrl = getUrl(hostName, port);
-  }
-
-  /** Constructor. */
-  public Neo4jConnection(String serverUrl, String database, String username, String password) {
-    this.username = username;
-    this.password = password;
-    this.database = database;
-    this.serverUrl = serverUrl;
-  }
-
-  private String getUrl(String hostName, int port) {
-    return "neo4j+s://" + hostName + ":" + port;
-  }
-
-  /** Helper method to get the Neo4j driver. */
-  public Driver getDriver() throws URISyntaxException {
-    if (this.authType != AuthType.BASIC) {
-      LOG.error("Unsupported authType: {}", this.authType);
-      throw new RuntimeException("Unsupported authentication type: " + this.authType);
-    }
-    return GraphDatabase.driver(
-        new URI(this.serverUrl),
-        AuthTokens.basic(this.username, this.password),
-        Config.builder().build());
+    this.driverSupplier = driverSupplier;
   }
 
   /** Helper method to get the Neo4j session. */
@@ -106,7 +77,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
    */
   public void executeCypher(String cypher) throws URISyntaxException {
     try (Session session = getSession()) {
-      session.run(cypher);
+      session.run(cypher).consume();
     }
   }
 
@@ -124,28 +95,13 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     // Direct connect utility...
     LOG.info("Resetting database");
     try {
-      String crdeCypher = "CREATE OR REPLACE DATABASE `neo4j`";
-      if (!StringUtils.isEmpty(database)) {
-        StringUtils.replace(crdeCypher, "neo4j", database);
-      }
-      LOG.info("Executing delete DB cypher: {}", crdeCypher);
-      executeCypher(crdeCypher);
-    } catch (Exception crde) {
-      LOG.error(
-          "Error executing reset database using CREATE OR REPLACE: {}, {}",
-          crde,
-          crde.getMessage());
-      // Trying DELETE /DETACH approach
-      try {
-        String ddeCypher = "MATCH (n) DETACH DELETE n";
-        LOG.info("Executing alternate delete cypher: {}", ddeCypher);
-        executeCypher(ddeCypher);
-        String constraintsDeleteCypher =
-            "CALL apoc.schema.assert({},{},true) YIELD label, key RETURN *";
-        executeCypher(constraintsDeleteCypher);
-      } catch (Exception dde) {
-        LOG.error("Error executing detach delete", dde);
-      }
+      String database = !StringUtils.isEmpty(this.database) ? this.database : "neo4j";
+      String cypher = String.format("CREATE OR REPLACE DATABASE `%s`", database);
+      LOG.info("Executing delete DB cypher: {}", cypher);
+      executeCypher(cypher);
+    } catch (Exception ex) {
+      LOG.error("Error executing reset database using CREATE OR REPLACE", ex);
+      fallbackResetDatabase();
     }
   }
 
@@ -158,6 +114,24 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     if (this.driver != null) {
       this.driver.close();
       this.driver = null;
+    }
+  }
+
+  /** Helper method to get the Neo4j driver. */
+  private Driver getDriver() {
+    return driverSupplier.get();
+  }
+
+  private void fallbackResetDatabase() {
+    try {
+      String ddeCypher = "MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS";
+      LOG.info("Executing alternate delete cypher: {}", ddeCypher);
+      executeCypher(ddeCypher);
+      String constraintsDeleteCypher = "CALL apoc.schema.assert({}, {}, true)";
+      LOG.info("Dropping indices & constraints with query: {}", constraintsDeleteCypher);
+      executeCypher(constraintsDeleteCypher);
+    } catch (Exception dde) {
+      LOG.error("Error executing detach delete", dde);
     }
   }
 }
