@@ -1,0 +1,23 @@
+{
+    "name" : "BigtableRow",
+    "type" : "record",
+    "namespace" : "com.google.cloud.teleport.bigtable",
+    "fields" : [
+      { "name" : "key", "type" : "bytes"},
+      { "name" : "cells",
+        "type" : {
+          "type" : "array",
+          "items": {
+            "name": "BigtableCell",
+            "type": "record",
+            "fields": [
+              { "name" : "family", "type" : "string"},
+              { "name" : "qualifier", "type" : "bytes"},
+              { "name" : "timestamp", "type" : "long"},
+              { "name" : "value", "type" : "bytes"}
+            ]
+          }
+        }
+      }
+   ]
+}
