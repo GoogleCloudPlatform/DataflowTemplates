@@ -106,8 +106,6 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   void setDlqMaxRetries(Integer dlqMaxRetries);
 
-  void setPubSubAPI(String pubSubAPI);
-
   @TemplateParameter.ProjectId(
       order = 9,
       optional = true,

@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package com.google.cloud.teleport.bigtable;
 
-option java_outer_classname = "ChangeLogEntryProto";
+option java_outer_classname = "ChangelogEntryMessageProto";
 
 message ChangelogEntryProto{
   required bytes rowKey = 1;

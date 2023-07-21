@@ -16,9 +16,9 @@
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils;
 
 import com.google.cloud.pubsub.v1.Publisher;
-import com.google.cloud.teleport.bigtable.ChangeLogEntry;
-import com.google.cloud.teleport.bigtable.ChangeLogEntryJson;
-import com.google.cloud.teleport.bigtable.ChangeLogEntryProto;
+import com.google.cloud.teleport.bigtable.ChangelogEntryMessage;
+import com.google.cloud.teleport.bigtable.ChangelogEntryMessageJson;
+import com.google.cloud.teleport.bigtable.ChangelogEntryMessageProto;
 import com.google.cloud.teleport.bigtable.ModType;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubDestination;
@@ -187,34 +187,34 @@ public class PubSubUtils implements Serializable {
   public PubsubMessage mapChangeJsonStringToPubSubMessageAsAvro(String changeJsonSting)
       throws Exception {
     String messageEncoding = this.getDestination().getMessageEncoding();
-    ChangeLogEntry changelogEntry = new ChangeLogEntry();
+    ChangelogEntryMessage changelogEntryMessage = new ChangelogEntryMessage();
     try {
       JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
 
-      changelogEntry.setRowKey(
+      changelogEntryMessage.setRowKey(
           ByteBuffer.wrap(
               (byte[]) FORMATTERS.get(PubSubFields.ROW_KEY_BYTES).format(this, changeJsonParsed)));
-      changelogEntry.setModType(
+      changelogEntryMessage.setModType(
           ModType.valueOf(
               (String) FORMATTERS.get(PubSubFields.MOD_TYPE).format(this, changeJsonParsed)));
-      changelogEntry.setIsGc(
+      changelogEntryMessage.setIsGC(
           (Boolean) FORMATTERS.get(PubSubFields.IS_GC).format(this, changeJsonParsed));
-      changelogEntry.setTieBreaker(
+      changelogEntryMessage.setTieBreaker(
           (Integer) FORMATTERS.get(PubSubFields.TIEBREAKER).format(this, changeJsonParsed));
-      changelogEntry.setColumnFamily(
+      changelogEntryMessage.setColumnFamily(
           (String) FORMATTERS.get(PubSubFields.COLUMN_FAMILY).format(this, changeJsonParsed));
-      changelogEntry.setCommitTimestamp(
+      changelogEntryMessage.setCommitTimestamp(
           (Long) FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed));
-      changelogEntry.setColumn(
+      changelogEntryMessage.setColumn(
           ByteBuffer.wrap(
               (byte[]) FORMATTERS.get(PubSubFields.COLUMN).format(this, changeJsonParsed)));
-      changelogEntry.setTimestamp(
+      changelogEntryMessage.setTimestamp(
           (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed));
-      changelogEntry.setTimestampFrom(
+      changelogEntryMessage.setTimestampFrom(
           (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM_NUM).format(this, changeJsonParsed));
-      changelogEntry.setTimestampTo(
+      changelogEntryMessage.setTimestampTo(
           (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed));
-      changelogEntry.setValue(
+      changelogEntryMessage.setValue(
           ByteBuffer.wrap(
               (byte[]) FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)));
 
@@ -230,7 +230,8 @@ public class PubSubUtils implements Serializable {
         encoder = EncoderFactory.get().directBinaryEncoder(byteStream, /* reuse= */ null);
         break;
       case "JSON":
-        encoder = EncoderFactory.get().jsonEncoder(ChangeLogEntry.getClassSchema(), byteStream);
+        encoder =
+            EncoderFactory.get().jsonEncoder(ChangelogEntryMessage.getClassSchema(), byteStream);
         break;
       default:
         final String errorMessage =
@@ -239,7 +240,7 @@ public class PubSubUtils implements Serializable {
                 + ". Supported output formats: JSON, BINARY";
         throw new IllegalArgumentException(errorMessage);
     }
-    changelogEntry.customEncode(encoder);
+    changelogEntryMessage.customEncode(encoder);
     encoder.flush();
 
     // Publish the encoded object as a Pub/Sub message.
@@ -263,41 +264,41 @@ public class PubSubUtils implements Serializable {
   public PubsubMessage mapChangeJsonStringToPubSubMessageAsJson(String changeJsonSting)
       throws Exception {
     String messageEncoding = this.getDestination().getMessageEncoding();
-    ChangeLogEntryJson changeLogEntryJson = new ChangeLogEntryJson();
+    ChangelogEntryMessageJson changelogEntryMessageJson = new ChangelogEntryMessageJson();
     try {
       JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
 
-      changeLogEntryJson.setRowKey(
+      changelogEntryMessageJson.setRowKey(
           bytesToString(
               ByteBuffer.wrap(
                   (byte[])
                       FORMATTERS.get(PubSubFields.ROW_KEY_STRING).format(this, changeJsonParsed)),
               this.destination.getUseBase64Rowkey(),
               this.charsetObj));
-      changeLogEntryJson.setModType(
+      changelogEntryMessageJson.setModType(
           ModType.valueOf(
               (String) FORMATTERS.get(PubSubFields.MOD_TYPE).format(this, changeJsonParsed)));
-      changeLogEntryJson.setIsGc(
+      changelogEntryMessageJson.setIsGC(
           (Boolean) FORMATTERS.get(PubSubFields.IS_GC).format(this, changeJsonParsed));
-      changeLogEntryJson.setTieBreaker(
+      changelogEntryMessageJson.setTieBreaker(
           (Integer) FORMATTERS.get(PubSubFields.TIEBREAKER).format(this, changeJsonParsed));
-      changeLogEntryJson.setColumnFamily(
+      changelogEntryMessageJson.setColumnFamily(
           (String) FORMATTERS.get(PubSubFields.COLUMN_FAMILY).format(this, changeJsonParsed));
-      changeLogEntryJson.setCommitTimestamp(
+      changelogEntryMessageJson.setCommitTimestamp(
           (Long) FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed));
-      changeLogEntryJson.setColumn(
+      changelogEntryMessageJson.setColumn(
           bytesToString(
               ByteBuffer.wrap(
                   (byte[]) FORMATTERS.get(PubSubFields.COLUMN).format(this, changeJsonParsed)),
               this.destination.getUseBase64ColumnQualifier(),
               this.charsetObj));
-      changeLogEntryJson.setTimestamp(
+      changelogEntryMessageJson.setTimestamp(
           (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed));
-      changeLogEntryJson.setTimestampFrom(
+      changelogEntryMessageJson.setTimestampFrom(
           (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM_NUM).format(this, changeJsonParsed));
-      changeLogEntryJson.setTimestampTo(
+      changelogEntryMessageJson.setTimestampTo(
           (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed));
-      changeLogEntryJson.setValue(
+      changelogEntryMessageJson.setValue(
           bytesToString(
               ByteBuffer.wrap(
                   (byte[]) FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)),
@@ -317,7 +318,9 @@ public class PubSubUtils implements Serializable {
         encoder = EncoderFactory.get().directBinaryEncoder(byteStream, /* reuse= */ null);
         break;
       case "JSON":
-        encoder = EncoderFactory.get().jsonEncoder(ChangeLogEntryJson.getClassSchema(), byteStream);
+        encoder =
+            EncoderFactory.get()
+                .jsonEncoder(ChangelogEntryMessageJson.getClassSchema(), byteStream);
         break;
       default:
         final String errorMessage =
@@ -326,7 +329,7 @@ public class PubSubUtils implements Serializable {
                 + ". Supported output formats: JSON, BINARY";
         throw new IllegalArgumentException(errorMessage);
     }
-    changeLogEntryJson.customEncode(encoder);
+    changelogEntryMessageJson.customEncode(encoder);
     encoder.flush();
 
     // Publish the encoded object as a Pub/Sub message.
@@ -338,12 +341,12 @@ public class PubSubUtils implements Serializable {
   public PubsubMessage mapChangeJsonStringToPubSubMessageAsProto(String changeJsonSting)
       throws Exception {
     String messageEncoding = this.getDestination().getMessageEncoding();
-    ChangeLogEntryProto.ChangelogEntryProto changeLogEntryProto;
+    ChangelogEntryMessageProto.ChangelogEntryProto changelogEntryMessageProto;
 
     try {
       JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
-      changeLogEntryProto =
-          ChangeLogEntryProto.ChangelogEntryProto.newBuilder()
+      changelogEntryMessageProto =
+          ChangelogEntryMessageProto.ChangelogEntryProto.newBuilder()
               .setRowKey(
                   ByteString.copyFrom(
                       (byte[])
@@ -351,7 +354,7 @@ public class PubSubUtils implements Serializable {
                               .get(PubSubFields.ROW_KEY_BYTES)
                               .format(this, changeJsonParsed)))
               .setModType(
-                  ChangeLogEntryProto.ChangelogEntryProto.ModType.valueOf(
+                  ChangelogEntryMessageProto.ChangelogEntryProto.ModType.valueOf(
                       (String)
                           FORMATTERS.get(PubSubFields.MOD_TYPE).format(this, changeJsonParsed)))
               .setIsGC((Boolean) FORMATTERS.get(PubSubFields.IS_GC).format(this, changeJsonParsed))
@@ -391,11 +394,13 @@ public class PubSubUtils implements Serializable {
 
     switch (messageEncoding) {
       case "BINARY":
-        message.setData(changeLogEntryProto.toByteString());
+        message.setData(changelogEntryMessageProto.toByteString());
         break;
       case "JSON":
         String jsonString =
-            JsonFormat.printer().omittingInsignificantWhitespace().print(changeLogEntryProto);
+            JsonFormat.printer()
+                .omittingInsignificantWhitespace()
+                .print(changelogEntryMessageProto);
         message.setData(ByteString.copyFromUtf8(jsonString));
         break;
       default:

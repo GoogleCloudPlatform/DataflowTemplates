@@ -1,5 +1,5 @@
 {
-  "name" : "ChangeLogEntryJson",
+  "name" : "ChangelogEntryMessageJson",
   "type" : "record",
   "namespace" : "com.google.cloud.teleport.bigtable",
   "fields" : [
@@ -11,7 +11,7 @@
         "type": "enum",
         "symbols": ["SET_CELL", "DELETE_FAMILY", "DELETE_CELLS", "UNKNOWN"]}
     },
-    { "name": "isGc", "type": "boolean" },
+    { "name": "isGC", "type": "boolean" },
     { "name": "tieBreaker", "type": "int"},
     { "name": "columnFamily", "type": "string"},
     { "name": "commitTimestamp", "type" : "long"},
