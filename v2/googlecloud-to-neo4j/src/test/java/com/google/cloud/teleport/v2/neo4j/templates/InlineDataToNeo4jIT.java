@@ -78,7 +78,6 @@ public class InlineDataToNeo4jIT extends TemplateTestBase {
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("optionsJson", "{}") // FIXME: this should not be required
             .addParameter("jobSpecUri", getGcsPath("inline-data-to-neo4j.json"))
             .addParameter("neo4jConnectionUri", getGcsPath("neo4j-connection.json"));
     LaunchInfo info = launchTemplate(options);

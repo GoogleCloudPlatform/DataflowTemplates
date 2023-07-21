@@ -19,7 +19,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Iterator;
-import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,20 +39,18 @@ public class OptionsParams implements Serializable {
 
   @JsonIgnore
   public void overlayTokens(String optionsJsonStr) {
-    if (!StringUtils.isEmpty(optionsJsonStr)) {
-      LOG.info("Pipeline options: {}", optionsJsonStr);
-      JSONObject optionsJson = new JSONObject(optionsJsonStr);
-      Iterator<String> optionsKeys = optionsJson.keys();
-      while (optionsKeys.hasNext()) {
-        String optionsKey = optionsKeys.next();
-        this.tokenMap.put(optionsKey, String.valueOf(optionsJson.opt(optionsKey)));
-        if ("readQuery".equals(optionsKey)) {
-          this.readQuery = optionsJson.getString("readQuery");
-        } else if ("inputFilePattern".equals(optionsKey)) {
-          this.inputFilePattern = optionsJson.getString("inputFilePattern");
-        }
-        LOG.info("{}: {}", optionsKey, optionsJson.opt(optionsKey));
+    LOG.info("Pipeline options: {}", optionsJsonStr);
+    JSONObject optionsJson = new JSONObject(optionsJsonStr);
+    Iterator<String> optionsKeys = optionsJson.keys();
+    while (optionsKeys.hasNext()) {
+      String optionsKey = optionsKeys.next();
+      this.tokenMap.put(optionsKey, String.valueOf(optionsJson.opt(optionsKey)));
+      if ("readQuery".equals(optionsKey)) {
+        this.readQuery = optionsJson.getString("readQuery");
+      } else if ("inputFilePattern".equals(optionsKey)) {
+        this.inputFilePattern = optionsJson.getString("inputFilePattern");
       }
+      LOG.info("{}: {}", optionsKey, optionsJson.opt(optionsKey));
     }
   }
 
