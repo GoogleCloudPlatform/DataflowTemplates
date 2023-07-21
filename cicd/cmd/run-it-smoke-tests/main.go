@@ -41,7 +41,7 @@ func main() {
 		mvnFlags.SkipTests(),
 		mvnFlags.SkipJacoco(),
 		mvnFlags.SkipShade(),
-		mvnFlags.ThreadCount(4))
+		mvnFlags.ThreadCount(8))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
@@ -56,8 +56,8 @@ func main() {
 		mvnFlags.SkipJib(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunIntegrationSmokeTests(),
-		mvnFlags.ThreadCount(4),
-		mvnFlags.IntegrationTestParallelism(2),
+		mvnFlags.ThreadCount(8),
+		mvnFlags.IntegrationTestParallelism(4),
 		mvnFlags.StaticBigtableInstance("teleport"),
 		flags.Region(),
 		flags.Project(),
