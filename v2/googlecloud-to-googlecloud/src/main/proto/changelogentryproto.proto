@@ -1,22 +1,22 @@
-syntax = "proto3";
+syntax = "proto2";
 
 package com.google.cloud.teleport.bigtable;
 
 option java_outer_classname = "ChangeLogEntryProto";
 
 message ChangelogEntryProto{
-  bytes rowKey = 1;
+  required bytes rowKey = 1;
   enum ModType {
     SET_CELL = 0;
     DELETE_FAMILY = 1;
     DELETE_CELLS = 2;
     UNKNOWN = 3;
   }
-  ModType modType = 2;
-  bool isGC = 3;
-  int32 tieBreaker = 4;
-  int64 commitTimestamp = 5;
-  string columnFamily = 6;
+  required ModType modType = 2;
+  required bool isGC = 3;
+  required int32 tieBreaker = 4;
+  required int64 commitTimestamp = 5;
+  required string columnFamily = 6;
   optional bytes column = 7;
   optional int64 timestamp = 8;
   optional int64 timestampFrom = 9;

@@ -162,8 +162,7 @@ public class PubSubUtils implements Serializable {
   private final PubSubDestination destination;
   private transient Charset charsetObj;
 
-  public PubSubUtils(
-      BigtableSource sourceInfo, PubSubDestination destinationInfo) {
+  public PubSubUtils(BigtableSource sourceInfo, PubSubDestination destinationInfo) {
     this.source = sourceInfo;
     this.destination = destinationInfo;
     this.charsetObj = Charset.forName(sourceInfo.getCharset());
@@ -234,9 +233,11 @@ public class PubSubUtils implements Serializable {
         encoder = EncoderFactory.get().jsonEncoder(ChangeLogEntry.getClassSchema(), byteStream);
         break;
       default:
-          final String errorMessage =
-                  "Invalid message encoding:" + messageEncoding + ". Supported output formats: JSON, BINARY";
-          throw new IllegalArgumentException(errorMessage);
+        final String errorMessage =
+            "Invalid message encoding:"
+                + messageEncoding
+                + ". Supported output formats: JSON, BINARY";
+        throw new IllegalArgumentException(errorMessage);
     }
     changelogEntry.customEncode(encoder);
     encoder.flush();
@@ -319,9 +320,11 @@ public class PubSubUtils implements Serializable {
         encoder = EncoderFactory.get().jsonEncoder(ChangeLogEntryJson.getClassSchema(), byteStream);
         break;
       default:
-          final String errorMessage =
-                  "Invalid message encoding:" + messageEncoding + ". Supported output formats: JSON, BINARY";
-          throw new IllegalArgumentException(errorMessage);
+        final String errorMessage =
+            "Invalid message encoding:"
+                + messageEncoding
+                + ". Supported output formats: JSON, BINARY";
+        throw new IllegalArgumentException(errorMessage);
     }
     changeLogEntryJson.customEncode(encoder);
     encoder.flush();
@@ -396,9 +399,11 @@ public class PubSubUtils implements Serializable {
         message.setData(ByteString.copyFromUtf8(jsonString));
         break;
       default:
-          final String errorMessage =
-                  "Invalid message encoding:" + messageEncoding + ". Supported output formats: JSON, BINARY";
-          throw new IllegalArgumentException(errorMessage);
+        final String errorMessage =
+            "Invalid message encoding:"
+                + messageEncoding
+                + ". Supported output formats: JSON, BINARY";
+        throw new IllegalArgumentException(errorMessage);
     }
     return message.build();
   }

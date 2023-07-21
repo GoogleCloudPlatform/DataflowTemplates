@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.core.ApiFuture;
-import com.google.api.core.ApiFutures;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -40,9 +39,6 @@ import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.api.core.ApiFuture;
-import com.google.api.core.ApiFutureCallback;
-import com.google.api.gax.rpc.ApiException;
 
 /**
  * Class {@link FailsafeModJsonToPubsubMessageTransformer} provides methods that convert a JSON
@@ -180,7 +176,9 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
 
           default:
             final String errorMessage =
-                "Invalid message format:" + messageFormat + ". Supported output formats: JSON, AVRO";
+                "Invalid message format:"
+                    + messageFormat
+                    + ". Supported output formats: JSON, AVRO";
             LOG.info(errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
