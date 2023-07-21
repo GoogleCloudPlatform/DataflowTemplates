@@ -61,8 +61,6 @@ public class VerboseMappingMapper {
       mapping.setType(PropertyType.String);
     }
     mapping.setMandatory(mappingObj.has("mandatory") && mappingObj.getBoolean("mandatory"));
-    mapping.setDefaultValue(
-        mappingObj.has("default") ? String.valueOf(mappingObj.get("default")) : "");
     return mapping;
   }
 }
