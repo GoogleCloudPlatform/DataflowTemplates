@@ -84,7 +84,6 @@ public class TargetMapper {
     }
     target.setSaveMode(SaveMode.valueOf(targetObj.getString("mode")));
     target.setSource(targetObj.has("source") ? targetObj.getString("source") : "");
-    target.setAutoMap(!targetObj.has("automap") || targetObj.getBoolean("automap"));
     if (targetObj.has("execute_after")) {
       target.setExecuteAfter(ActionExecuteAfter.valueOf(targetObj.getString("execute_after")));
     } else {
