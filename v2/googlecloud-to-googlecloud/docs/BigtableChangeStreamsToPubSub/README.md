@@ -6,7 +6,8 @@ your own Google Cloud project. Make sure to be in the /v2 directory.
 The [BigtableChangeStreamsToPubSub](src/main/java/com/google/cloud/teleport/v2/templates/bigtablechangestreamstopubsub/BigtableChangeStreamsToPubSub.java)
 pipeline reads messages from Cloud Bigtable Change Streams and publish them through Pub/Sub.
 
-Change log schema is defined as follows:
+Change log schema in different formats such as JSON, AVRO and PROTOCOL_BUFFERS are available in .avsc and .proto files resources directory.
+And the change log schema is defined as follows:
 
 | Field name       | Protobuf Type   | Avro Type             | JSON Type | Nullable? | Description                                                                                                                                          |
 |------------------|-----------------|-----------------------|-----------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------|
