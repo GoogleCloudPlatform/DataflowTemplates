@@ -19,10 +19,12 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.mod
 public enum PubSubFields {
   ROW_KEY_STRING("row_key"),
   ROW_KEY_BYTES("row_key"),
+  ROW_KEY_STRING_BASE64("row_key"),
   MOD_TYPE("mod_type"),
   COMMIT_TIMESTAMP("commit_timestamp"),
   COLUMN_FAMILY("column_family"),
   COLUMN("column"),
+  COLUMN_STRING_BASE64("column"),
   TIMESTAMP("timestamp"),
   TIMESTAMP_NUM("timestamp"),
   VALUE_STRING("value"),

@@ -27,6 +27,8 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.util.JsonFormat;
 import com.google.pubsub.v1.PubsubMessage;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -53,6 +55,8 @@ public class PubSubUtils implements Serializable {
           return pb.convertBase64ToString(rowkeyEncoded);
         });
     FORMATTERS.put(
+        PubSubFields.ROW_KEY_STRING_BASE64, (pb, chg) -> PubSubFields.ROW_KEY_STRING_BASE64);
+    FORMATTERS.put(
         PubSubFields.ROW_KEY_BYTES,
         (pb, chg) -> {
           String rowkeyEncoded = chg.getString(PubSubFields.ROW_KEY_BYTES.name());
@@ -73,6 +77,8 @@ public class PubSubUtils implements Serializable {
           String qualifierEncoded = chg.getString(PubSubFields.COLUMN.name());
           return pb.convertBase64ToBytes(qualifierEncoded);
         });
+    FORMATTERS.put(
+        (PubSubFields.COLUMN_STRING_BASE64), (pb, chg) -> PubSubFields.COLUMN_STRING_BASE64);
     FORMATTERS.put(
         PubSubFields.TIMESTAMP,
         (pb, chg) -> {
@@ -177,6 +183,11 @@ public class PubSubUtils implements Serializable {
     return destination;
   }
 
+  private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+    in.defaultReadObject();
+    charsetObj = Charset.forName(source.getCharset());
+  }
+
   private String convertBase64ToString(String base64String) {
     return new String(Base64.getDecoder().decode(base64String), charsetObj);
   }
@@ -189,39 +200,35 @@ public class PubSubUtils implements Serializable {
       throws Exception {
     String messageEncoding = this.getDestination().getMessageEncoding();
     ChangelogEntryMessage changelogEntryMessage = new ChangelogEntryMessage();
-    try {
-      JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
+    JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
 
-      changelogEntryMessage.setRowKey(
-          ByteBuffer.wrap(
-              (byte[]) FORMATTERS.get(PubSubFields.ROW_KEY_BYTES).format(this, changeJsonParsed)));
-      changelogEntryMessage.setModType(
-          ModType.valueOf(
-              (String) FORMATTERS.get(PubSubFields.MOD_TYPE).format(this, changeJsonParsed)));
-      changelogEntryMessage.setIsGC(
-          (Boolean) FORMATTERS.get(PubSubFields.IS_GC).format(this, changeJsonParsed));
-      changelogEntryMessage.setTieBreaker(
-          (Integer) FORMATTERS.get(PubSubFields.TIEBREAKER).format(this, changeJsonParsed));
-      changelogEntryMessage.setColumnFamily(
-          (String) FORMATTERS.get(PubSubFields.COLUMN_FAMILY).format(this, changeJsonParsed));
-      changelogEntryMessage.setCommitTimestamp(
-          (Long) FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed));
-      changelogEntryMessage.setColumn(
-          ByteBuffer.wrap(
-              (byte[]) FORMATTERS.get(PubSubFields.COLUMN).format(this, changeJsonParsed)));
-      changelogEntryMessage.setTimestamp(
-          (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed));
-      changelogEntryMessage.setTimestampFrom(
-          (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM_NUM).format(this, changeJsonParsed));
-      changelogEntryMessage.setTimestampTo(
-          (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed));
-      changelogEntryMessage.setValue(
-          ByteBuffer.wrap(
-              (byte[]) FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)));
+    changelogEntryMessage.setRowKey(
+        ByteBuffer.wrap(
+            (byte[]) FORMATTERS.get(PubSubFields.ROW_KEY_BYTES).format(this, changeJsonParsed)));
+    changelogEntryMessage.setModType(
+        ModType.valueOf(
+            (String) FORMATTERS.get(PubSubFields.MOD_TYPE).format(this, changeJsonParsed)));
+    changelogEntryMessage.setIsGC(
+        (Boolean) FORMATTERS.get(PubSubFields.IS_GC).format(this, changeJsonParsed));
+    changelogEntryMessage.setTieBreaker(
+        (Integer) FORMATTERS.get(PubSubFields.TIEBREAKER).format(this, changeJsonParsed));
+    changelogEntryMessage.setColumnFamily(
+        (String) FORMATTERS.get(PubSubFields.COLUMN_FAMILY).format(this, changeJsonParsed));
+    changelogEntryMessage.setCommitTimestamp(
+        (Long) FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed));
+    changelogEntryMessage.setColumn(
+        ByteBuffer.wrap(
+            (byte[]) FORMATTERS.get(PubSubFields.COLUMN).format(this, changeJsonParsed)));
+    changelogEntryMessage.setTimestamp(
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed));
+    changelogEntryMessage.setTimestampFrom(
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM_NUM).format(this, changeJsonParsed));
+    changelogEntryMessage.setTimestampTo(
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed));
+    changelogEntryMessage.setValue(
+        ByteBuffer.wrap(
+            (byte[]) FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)));
 
-    } catch (Exception e) {
-      throw e;
-    }
     Publisher publisher = null;
     ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
 
@@ -266,49 +273,35 @@ public class PubSubUtils implements Serializable {
       throws Exception {
     String messageEncoding = this.getDestination().getMessageEncoding();
     ChangelogEntryMessageJson changelogEntryMessageJson = new ChangelogEntryMessageJson();
-    try {
-      JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
+    JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
 
-      changelogEntryMessageJson.setRowKey(
-          bytesToString(
-              ByteBuffer.wrap(
-                  (byte[])
-                      FORMATTERS.get(PubSubFields.ROW_KEY_STRING).format(this, changeJsonParsed)),
-              this.destination.getUseBase64Rowkey(),
-              this.charsetObj));
-      changelogEntryMessageJson.setModType(
-          ModType.valueOf(
-              (String) FORMATTERS.get(PubSubFields.MOD_TYPE).format(this, changeJsonParsed)));
-      changelogEntryMessageJson.setIsGC(
-          (Boolean) FORMATTERS.get(PubSubFields.IS_GC).format(this, changeJsonParsed));
-      changelogEntryMessageJson.setTieBreaker(
-          (Integer) FORMATTERS.get(PubSubFields.TIEBREAKER).format(this, changeJsonParsed));
-      changelogEntryMessageJson.setColumnFamily(
-          (String) FORMATTERS.get(PubSubFields.COLUMN_FAMILY).format(this, changeJsonParsed));
-      changelogEntryMessageJson.setCommitTimestamp(
-          (Long) FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed));
-      changelogEntryMessageJson.setColumn(
-          bytesToString(
-              ByteBuffer.wrap(
-                  (byte[]) FORMATTERS.get(PubSubFields.COLUMN).format(this, changeJsonParsed)),
-              this.destination.getUseBase64ColumnQualifier(),
-              this.charsetObj));
-      changelogEntryMessageJson.setTimestamp(
-          (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed));
-      changelogEntryMessageJson.setTimestampFrom(
-          (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM_NUM).format(this, changeJsonParsed));
-      changelogEntryMessageJson.setTimestampTo(
-          (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed));
-      changelogEntryMessageJson.setValue(
-          bytesToString(
-              ByteBuffer.wrap(
-                  (byte[]) FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)),
-              this.destination.getUseBase64Value(),
-              this.charsetObj));
-
-    } catch (Exception e) {
-      throw e;
-    }
+    changelogEntryMessageJson.setRowKey(
+        (String) FORMATTERS.get(PubSubFields.ROW_KEY_STRING_BASE64).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setModType(
+        ModType.valueOf(
+            (String) FORMATTERS.get(PubSubFields.MOD_TYPE).format(this, changeJsonParsed)));
+    changelogEntryMessageJson.setIsGC(
+        (Boolean) FORMATTERS.get(PubSubFields.IS_GC).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setTieBreaker(
+        (Integer) FORMATTERS.get(PubSubFields.TIEBREAKER).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setColumnFamily(
+        (String) FORMATTERS.get(PubSubFields.COLUMN_FAMILY).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setCommitTimestamp(
+        (Long) FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setColumn(
+        (String) FORMATTERS.get(PubSubFields.COLUMN_STRING_BASE64).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setTimestamp(
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setTimestampFrom(
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM_NUM).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setTimestampTo(
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setValue(
+        bytesToString(
+            ByteBuffer.wrap(
+                (byte[]) FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)),
+            this.destination.getUseBase64Value(),
+            this.charsetObj));
 
     Publisher publisher = null;
     ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
@@ -344,51 +337,38 @@ public class PubSubUtils implements Serializable {
     String messageEncoding = this.getDestination().getMessageEncoding();
     ChangelogEntryMessageProto.ChangelogEntryProto changelogEntryMessageProto;
 
-    try {
-      JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
-      changelogEntryMessageProto =
-          ChangelogEntryMessageProto.ChangelogEntryProto.newBuilder()
-              .setRowKey(
-                  ByteString.copyFrom(
-                      (byte[])
-                          FORMATTERS
-                              .get(PubSubFields.ROW_KEY_BYTES)
-                              .format(this, changeJsonParsed)))
-              .setModType(
-                  ChangelogEntryMessageProto.ChangelogEntryProto.ModType.valueOf(
-                      (String)
-                          FORMATTERS.get(PubSubFields.MOD_TYPE).format(this, changeJsonParsed)))
-              .setIsGC((Boolean) FORMATTERS.get(PubSubFields.IS_GC).format(this, changeJsonParsed))
-              .setTieBreaker(
-                  (Integer) FORMATTERS.get(PubSubFields.TIEBREAKER).format(this, changeJsonParsed))
-              .setColumnFamily(
-                  (String)
-                      FORMATTERS.get(PubSubFields.COLUMN_FAMILY).format(this, changeJsonParsed))
-              .setCommitTimestamp(
-                  (Long)
-                      FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed))
-              .setColumn(
-                  ByteString.copyFrom(
-                      (byte[]) FORMATTERS.get(PubSubFields.COLUMN).format(this, changeJsonParsed)))
-              .setTimestamp(
-                  (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed))
-              .setTimestampFrom(
-                  (Long)
-                      FORMATTERS
-                          .get(PubSubFields.TIMESTAMP_FROM_NUM)
-                          .format(this, changeJsonParsed))
-              .setTimestampTo(
-                  (Long)
-                      FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed))
-              .setValue(
-                  ByteString.copyFrom(
-                      (byte[])
-                          FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)))
-              .build();
-
-    } catch (Exception e) {
-      throw e;
-    }
+    JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
+    changelogEntryMessageProto =
+        ChangelogEntryMessageProto.ChangelogEntryProto.newBuilder()
+            .setRowKey(
+                ByteString.copyFrom(
+                    (byte[])
+                        FORMATTERS.get(PubSubFields.ROW_KEY_BYTES).format(this, changeJsonParsed)))
+            .setModType(
+                ChangelogEntryMessageProto.ChangelogEntryProto.ModType.valueOf(
+                    (String) FORMATTERS.get(PubSubFields.MOD_TYPE).format(this, changeJsonParsed)))
+            .setIsGC((Boolean) FORMATTERS.get(PubSubFields.IS_GC).format(this, changeJsonParsed))
+            .setTieBreaker(
+                (Integer) FORMATTERS.get(PubSubFields.TIEBREAKER).format(this, changeJsonParsed))
+            .setColumnFamily(
+                (String) FORMATTERS.get(PubSubFields.COLUMN_FAMILY).format(this, changeJsonParsed))
+            .setCommitTimestamp(
+                (Long) FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed))
+            .setColumn(
+                ByteString.copyFrom(
+                    (byte[]) FORMATTERS.get(PubSubFields.COLUMN).format(this, changeJsonParsed)))
+            .setTimestamp(
+                (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed))
+            .setTimestampFrom(
+                (Long)
+                    FORMATTERS.get(PubSubFields.TIMESTAMP_FROM_NUM).format(this, changeJsonParsed))
+            .setTimestampTo(
+                (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed))
+            .setValue(
+                ByteString.copyFrom(
+                    (byte[])
+                        FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)))
+            .build();
 
     Publisher publisher = null;
     PubsubMessage.Builder message = PubsubMessage.newBuilder();

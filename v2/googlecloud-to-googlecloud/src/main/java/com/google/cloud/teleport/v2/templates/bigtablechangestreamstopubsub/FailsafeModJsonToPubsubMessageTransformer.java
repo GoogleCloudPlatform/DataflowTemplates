@@ -57,11 +57,8 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
     private static final Logger LOG =
         LoggerFactory.getLogger(FailsafeModJsonToPubsubMessageTransformer.class);
 
-    private static final String NATIVE_CLIENT = "native_client";
-    private static final String PUBSUBIO = "pubsubio";
-
     /** The tag for the main output of the transformation. */
-    public TupleTag<com.google.pubsub.v1.PubsubMessage> transformOut = new TupleTag<>() {};
+    public TupleTag<PubsubMessage> transformOut = new TupleTag<>() {};
 
     /** The tag for the dead letter output of the transformation. */
     public TupleTag<FailsafeElement<String, String>> transformDeadLetterOut = new TupleTag<>() {};
@@ -137,8 +134,8 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
         FailsafeElement<String, String> failsafeModJsonString = context.element();
 
         try {
-          com.google.pubsub.v1.PubsubMessage pubSubMessage =
-              publishModJsonStringToPubsubMessage(failsafeModJsonString.getPayload());
+          PubsubMessage pubSubMessage =
+              publishModJsonStringAsPubsubMessage(failsafeModJsonString.getPayload());
 
           context.output(pubSubMessage);
         } catch (Exception e) {
@@ -152,7 +149,7 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
       }
 
       /* Schema Details:  */
-      private PubsubMessage publishModJsonStringToPubsubMessage(String modJsonString)
+      private PubsubMessage publishModJsonStringAsPubsubMessage(String modJsonString)
           throws Exception {
         ObjectNode modObjectNode = (ObjectNode) new ObjectMapper().readTree(modJsonString);
         String changeJsonString = Mod.fromJson(modObjectNode.toString()).getChangeJson();
@@ -179,7 +176,6 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
                 "Invalid message format:"
                     + messageFormat
                     + ". Supported output formats: JSON, AVRO";
-            LOG.info(errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
 

@@ -158,7 +158,10 @@ public final class BigtableChangeStreamsToPubSub {
    * @return The result of the pipeline execution.
    */
   public static PipelineResult run(BigtableChangeStreamsToPubSubOptions options) {
-    LOG.info("Requested message format is " + options.getMessageFormat());
+    LOG.info(
+        "Requested message format and message encoding are: "
+            + options.getMessageFormat()
+            + options.getMessageEncoding());
     setOptions(options);
     validateOptions(options);
 
@@ -203,7 +206,6 @@ public final class BigtableChangeStreamsToPubSub {
       Topic topic = topicAdminClient.getTopic(request);
 
       pubSub.getDestination().setPubSubTopic(topic);
-
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -409,7 +411,7 @@ public final class BigtableChangeStreamsToPubSub {
   private static String readTestChangeJsonMessageInBytes() {
     JSONObject object = new JSONObject();
     object.put("row_key", "test_row_key");
-    object.put("mod_type", com.google.cloud.teleport.bigtable.ModType.valueOf("UNKNOWN"));
+    object.put("mod_type", ModType.UNKNOWN.getCode());
     object.put("is_gc", false);
     object.put("column_family", "test_column_family");
     object.put("tiebreaker", 0);
@@ -424,9 +426,7 @@ public final class BigtableChangeStreamsToPubSub {
     object.put("timestamp_from", offset + (long) (Math.random() * diff));
     object.put("timestamp_to", offset + (long) (Math.random() * diff));
 
-    String changeJson = object.toString();
-
-    return changeJson;
+    return object.toString();
   }
 
   /**
