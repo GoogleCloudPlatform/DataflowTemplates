@@ -15,21 +15,23 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **pubSubTopic** (The output Pub/Sub topic): The Pub/Sub topic to publish PubSubMessage.
+* **pubSubTopic** (The output Pub/Sub topic): The Pub/Sub topic to publish changelog entry messages.
 * **bigtableChangeStreamAppProfile** (Cloud Bigtable application profile ID): The application profile is used to distinguish workload in Cloud Bigtable.
 * **bigtableReadInstanceId** (Source Bigtable Instance ID): The ID of the Cloud Bigtable instance that contains the table.
 * **bigtableReadTableId** (Source Cloud Bigtable table ID): The Cloud Bigtable table to read from.
 
 ### Optional Parameters
 
-* **messageEncoding** (The encoding of the message written into PubSub): The format of the message to be written into PubSub. Allowed formats are Binary and JSON Text. Defaults to: JSON.
-* **messageFormat** (The format of the message written into PubSub): The message format chosen for outputting data to PubSub. Allowed formats are AVRO, Protocol Buffer and JSON Text. Defaults to: JSON.
-* **stripValue** (Strip value for SetCell mutation):  If true the SetCell mutation message won’t include the value written. Defaults to: false.
-* **dlqDirectory** (Dead letter queue directory): The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
+* **messageEncoding** (The encoding of the message written into PubSub): The format of the message to be written into PubSub. Allowed formats are BINARY and JSON Text. Default value is JSON.
+* **messageFormat** (The format of the message written into PubSub): The message format chosen for outputting data to PubSub. Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON Text. Default value is JSON.
+* **stripValues** (Strip values for SetCell mutation): Strip values for SetCell mutation. If true the SetCell mutation message won’t include the values written. Defaults to: false.
+* **dlqDirectory** (Dead letter queue directory to store any unpublished change record.): The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
 * **dlqRetryMinutes** (Dead letter queue retry minutes): The number of minutes between dead letter queue retries. Defaults to 10.
 * **dlqMaxRetries** (Dead letter maximum retries): The number of attempts to process change stream mutations. Defaults to 5.
-* **pubSubAPI** (Pub/Sub API): Pub/Sub API used to implement the pipeline. Allowed APIs are pubsubio and native_client. Default is pubsubio. For a small QPS, native_client can achieve a smaller latency than pubsubio. For a large QPS, pubsubio has better and more stable performance.
+* **useBase64Rowkey** (Write Base64-encoded rowkeys): Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeysDefaults to false.
 * **pubSubProjectId** (PubSub project ID): The PubSub Project. Default is the project for the Dataflow job.
+* **useBase64ColumnQualifier** (Write Base64-encoded column qualifiers): Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiersDefaults to false.
+* **useBase64Values** (Write Base64-encoded values): Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String valuesDefaults to false.
 * **bigtableChangeStreamMetadataInstanceId** (Cloud Bigtable change streams metadata instance ID): The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.
 * **bigtableChangeStreamMetadataTableTableId** (Cloud Bigtable change streams metadata table ID): The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty.
 * **bigtableChangeStreamCharset** (Bigtable change streams charset name when reading values and column qualifiers): Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8.
@@ -37,6 +39,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableChangeStreamIgnoreColumnFamilies** (Cloud Bigtable change streams column families to ignore): A comma-separated list of column family names changes to which won't be captured. Defaults to empty.
 * **bigtableChangeStreamIgnoreColumns** (Cloud Bigtable change streams columns to ignore): A comma-separated list of column names changes to which won't be captured. Defaults to empty.
 * **bigtableChangeStreamName** (A unique name of the client pipeline): Allows to resume processing from the point where a previously running pipeline stopped.
+* **bigtableChangeStreamResume** (Resume streaming with the same change stream name): When set to true< a new pipeline will resume processing from the point at which a previously running pipeline with the same bigtableChangeStreamName stopped. If pipeline with the given bigtableChangeStreamName never ran in the past, a new pipeline will fail to start. When set to false a new pipeline will be started. If pipeline with the same bigtableChangeStreamName already ran in the past for the given source, a new pipeline will fail to start. Defaults to false.
 * **bigtableReadProjectId** (Source Cloud Bigtable Project ID): Project to read Cloud Bigtable data from. The default for this parameter is the project where the Dataflow pipeline is running.
 * **bigtableReadAppProfile** (Bigtable App Profile): Bigtable App Profile to use for reads. The default for this parameter is the Bigtable instance's default app profile.
 * **bigtableRpcAttemptTimeoutMs** (The timeout for an RPC attempt in milliseconds): This sets the timeout for an RPC attempt in milliseconds.
@@ -133,12 +136,14 @@ export BIGTABLE_READ_TABLE_ID=<bigtableReadTableId>
 ### Optional
 export MESSAGE_ENCODING="JSON"
 export MESSAGE_FORMAT="JSON"
-export STRIP_VALUE=false
+export STRIP_VALUES=false
 export DLQ_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRIES=5
-export PUB_SUB_API="pubsubio"
+export USE_BASE64ROWKEY=false
 export PUB_SUB_PROJECT_ID=""
+export USE_BASE64COLUMN_QUALIFIER=false
+export USE_BASE64VALUES=false
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
 export BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID=""
 export BIGTABLE_CHANGE_STREAM_CHARSET="UTF-8"
@@ -146,6 +151,7 @@ export BIGTABLE_CHANGE_STREAM_START_TIMESTAMP=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS=""
 export BIGTABLE_CHANGE_STREAM_NAME=<bigtableChangeStreamName>
+export BIGTABLE_CHANGE_STREAM_RESUME=false
 export BIGTABLE_READ_PROJECT_ID=""
 export BIGTABLE_READ_APP_PROFILE="default"
 export BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS=<bigtableRpcAttemptTimeoutMs>
@@ -159,12 +165,14 @@ gcloud dataflow flex-template run "bigtable-change-streams-to-pubsub-job" \
   --parameters "pubSubTopic=$PUB_SUB_TOPIC" \
   --parameters "messageEncoding=$MESSAGE_ENCODING" \
   --parameters "messageFormat=$MESSAGE_FORMAT" \
-  --parameters "stripValue=$STRIP_VALUE" \
+  --parameters "stripValues=$STRIP_VALUES" \
   --parameters "dlqDirectory=$DLQ_DIRECTORY" \
   --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
   --parameters "dlqMaxRetries=$DLQ_MAX_RETRIES" \
-  --parameters "pubSubAPI=$PUB_SUB_API" \
+  --parameters "useBase64Rowkey=$USE_BASE64ROWKEY" \
   --parameters "pubSubProjectId=$PUB_SUB_PROJECT_ID" \
+  --parameters "useBase64ColumnQualifier=$USE_BASE64COLUMN_QUALIFIER" \
+  --parameters "useBase64Values=$USE_BASE64VALUES" \
   --parameters "bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID" \
   --parameters "bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID" \
   --parameters "bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE" \
@@ -173,6 +181,7 @@ gcloud dataflow flex-template run "bigtable-change-streams-to-pubsub-job" \
   --parameters "bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES" \
   --parameters "bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS" \
   --parameters "bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME" \
+  --parameters "bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME" \
   --parameters "bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID" \
   --parameters "bigtableReadTableId=$BIGTABLE_READ_TABLE_ID" \
   --parameters "bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID" \
@@ -206,12 +215,14 @@ export BIGTABLE_READ_TABLE_ID=<bigtableReadTableId>
 ### Optional
 export MESSAGE_ENCODING="JSON"
 export MESSAGE_FORMAT="JSON"
-export STRIP_VALUE=false
+export STRIP_VALUES=false
 export DLQ_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRIES=5
-export PUB_SUB_API="pubsubio"
+export USE_BASE64ROWKEY=false
 export PUB_SUB_PROJECT_ID=""
+export USE_BASE64COLUMN_QUALIFIER=false
+export USE_BASE64VALUES=false
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
 export BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID=""
 export BIGTABLE_CHANGE_STREAM_CHARSET="UTF-8"
@@ -219,6 +230,7 @@ export BIGTABLE_CHANGE_STREAM_START_TIMESTAMP=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS=""
 export BIGTABLE_CHANGE_STREAM_NAME=<bigtableChangeStreamName>
+export BIGTABLE_CHANGE_STREAM_RESUME=false
 export BIGTABLE_READ_PROJECT_ID=""
 export BIGTABLE_READ_APP_PROFILE="default"
 export BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS=<bigtableRpcAttemptTimeoutMs>
@@ -232,7 +244,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigtable-change-streams-to-pubsub-job" \
 -DtemplateName="Bigtable_Change_Streams_to_PubSub" \
--Dparameters="pubSubTopic=$PUB_SUB_TOPIC,messageEncoding=$MESSAGE_ENCODING,messageFormat=$MESSAGE_FORMAT,stripValue=$STRIP_VALUE,dlqDirectory=$DLQ_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetries=$DLQ_MAX_RETRIES,pubSubAPI=$PUB_SUB_API,pubSubProjectId=$PUB_SUB_PROJECT_ID,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID,bigtableReadAppProfile=$BIGTABLE_READ_APP_PROFILE,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES" \
+-Dparameters="pubSubTopic=$PUB_SUB_TOPIC,messageEncoding=$MESSAGE_ENCODING,messageFormat=$MESSAGE_FORMAT,stripValues=$STRIP_VALUES,dlqDirectory=$DLQ_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetries=$DLQ_MAX_RETRIES,useBase64Rowkey=$USE_BASE64ROWKEY,pubSubProjectId=$PUB_SUB_PROJECT_ID,useBase64ColumnQualifier=$USE_BASE64COLUMN_QUALIFIER,useBase64Values=$USE_BASE64VALUES,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID,bigtableReadAppProfile=$BIGTABLE_READ_APP_PROFILE,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES" \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```

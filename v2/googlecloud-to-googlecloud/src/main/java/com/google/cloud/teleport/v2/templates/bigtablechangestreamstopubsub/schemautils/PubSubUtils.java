@@ -32,7 +32,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Base64;
 import java.util.EnumMap;
-import org.apache.avro.io.*;
+import org.apache.avro.io.Encoder;
+import org.apache.avro.io.EncoderFactory;
 import org.apache.commons.lang3.Validate;
 import org.json.JSONObject;
 
