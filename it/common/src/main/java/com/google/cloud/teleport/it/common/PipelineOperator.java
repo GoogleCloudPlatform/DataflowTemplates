@@ -173,6 +173,8 @@ public final class PipelineOperator {
       Config config, Supplier<Boolean>[] conditionCheck, Supplier<Boolean>... stopChecking) {
     Instant start = Instant.now();
 
+    boolean launchFinished = false;
+
     while (timeIsLeft(start, config.timeoutAfter())) {
       LOG.debug("Checking if condition is met.");
       try {
@@ -185,16 +187,21 @@ public final class PipelineOperator {
       }
 
       LOG.info("Condition was not met yet. Checking if job is finished.");
-      if (allMatch(stopChecking)) {
-        LOG.info("Detected that we should stop checking.");
+      if (launchFinished) {
+        LOG.info("Launch was finished, stop checking.");
         return Result.LAUNCH_FINISHED;
       }
-      LOG.info(
-          "Job not finished and conditions not met. Will check again in {} seconds (total wait: {}s of max {}s)",
-          config.checkAfter().getSeconds(),
-          Duration.between(start, Instant.now()).getSeconds(),
-          config.timeoutAfter().getSeconds());
 
+      if (allMatch(stopChecking)) {
+        LOG.info("Detected that launch was finished, checking conditions once more.");
+        launchFinished = true;
+      } else {
+        LOG.info(
+            "Job not finished and conditions not met. Will check again in {} seconds (total wait: {}s of max {}s)",
+            config.checkAfter().getSeconds(),
+            Duration.between(start, Instant.now()).getSeconds(),
+            config.timeoutAfter().getSeconds());
+      }
       try {
         Thread.sleep(config.checkAfter().toMillis());
       } catch (InterruptedException e) {
