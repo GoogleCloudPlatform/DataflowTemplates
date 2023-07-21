@@ -243,7 +243,7 @@ public class PubSubUtils implements Serializable {
         break;
       default:
         final String errorMessage =
-            "Invalid message encoding:"
+            "Invalid message encoding: "
                 + messageEncoding
                 + ". Supported output formats: JSON, BINARY";
         throw new IllegalArgumentException(errorMessage);
@@ -318,7 +318,7 @@ public class PubSubUtils implements Serializable {
         break;
       default:
         final String errorMessage =
-            "Invalid message encoding:"
+            "Invalid message encoding: "
                 + messageEncoding
                 + ". Supported output formats: JSON, BINARY";
         throw new IllegalArgumentException(errorMessage);
@@ -386,7 +386,7 @@ public class PubSubUtils implements Serializable {
         break;
       default:
         final String errorMessage =
-            "Invalid message encoding:"
+            "Invalid message encoding: "
                 + messageEncoding
                 + ". Supported output formats: JSON, BINARY";
         throw new IllegalArgumentException(errorMessage);
