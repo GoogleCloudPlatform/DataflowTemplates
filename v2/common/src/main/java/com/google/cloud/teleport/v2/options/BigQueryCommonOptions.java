@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -45,7 +46,11 @@ public final class BigQueryCommonOptions {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"WRITE_APPEND", "WRITE_EMPTY", "WRITE_TRUNCATE"},
+        enumOptions = {
+          @TemplateEnumOption("WRITE_APPEND"),
+          @TemplateEnumOption("WRITE_EMPTY"),
+          @TemplateEnumOption("WRITE_TRUNCATE")
+        },
         optional = true,
         description = "Write Disposition to use for BigQuery",
         helpText =
@@ -57,7 +62,10 @@ public final class BigQueryCommonOptions {
 
     @TemplateParameter.Enum(
         order = 3,
-        enumOptions = {"CREATE_IF_NEEDED", "CREATE_NEVER"},
+        enumOptions = {
+          @TemplateEnumOption("CREATE_IF_NEEDED"),
+          @TemplateEnumOption("CREATE_NEVER")
+        },
         optional = true,
         description = "Create Disposition to use for BigQuery",
         helpText = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER.")

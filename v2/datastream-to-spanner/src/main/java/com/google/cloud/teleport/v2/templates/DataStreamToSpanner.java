@@ -19,6 +19,7 @@ import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
@@ -108,7 +109,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"avro", "json"},
+        enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
@@ -308,7 +309,7 @@ public class DataStreamToSpanner {
         order = 20,
         optional = true,
         description = "Run mode - currently supported are : regular or retryDLQ",
-        enumOptions = {"regular", "retryDLQ"},
+        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
         helpText = "This is the run mode type, whether regular or with retryDLQ.")
     @Default.String("regular")
     String getRunMode();

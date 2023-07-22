@@ -24,6 +24,7 @@ import com.github.vincentrussell.json.datagenerator.impl.JsonDataGeneratorImpl;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.StreamingDataGeneratorOptions;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigQuery;
@@ -107,7 +108,7 @@ public class StreamingDataGenerator {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"GAME_EVENT"},
+        enumOptions = {@TemplateEnumOption("GAME_EVENT")},
         optional = true,
         description = "Schema template to generate fake data",
         helpText = "Pre-existing schema template to use. The value must be one of: [GAME_EVENT]")
@@ -148,7 +149,11 @@ public class StreamingDataGenerator {
 
     @TemplateParameter.Enum(
         order = 6,
-        enumOptions = {"AVRO", "JSON", "PARQUET"},
+        enumOptions = {
+          @TemplateEnumOption("AVRO"),
+          @TemplateEnumOption("JSON"),
+          @TemplateEnumOption("PARQUET")
+        },
         optional = true,
         description = "Output Encoding Type",
         helpText = "The message Output type. Default is JSON.")
@@ -171,7 +176,13 @@ public class StreamingDataGenerator {
 
     @TemplateParameter.Enum(
         order = 8,
-        enumOptions = {"BIGQUERY", "GCS", "PUBSUB", "JDBC", "SPANNER"},
+        enumOptions = {
+          @TemplateEnumOption("BIGQUERY"),
+          @TemplateEnumOption("GCS"),
+          @TemplateEnumOption("PUBSUB"),
+          @TemplateEnumOption("JDBC"),
+          @TemplateEnumOption("SPANNER")
+        },
         optional = true,
         description = "Output Sink Type",
         helpText = "The message Sink type. Default is PUBSUB")
@@ -192,7 +203,11 @@ public class StreamingDataGenerator {
 
     @TemplateParameter.Enum(
         order = 10,
-        enumOptions = {"WRITE_APPEND", "WRITE_EMPTY", "WRITE_TRUNCATE"},
+        enumOptions = {
+          @TemplateEnumOption("WRITE_APPEND"),
+          @TemplateEnumOption("WRITE_EMPTY"),
+          @TemplateEnumOption("WRITE_TRUNCATE")
+        },
         optional = true,
         description = "Write Disposition to use for BigQuery",
         helpText =

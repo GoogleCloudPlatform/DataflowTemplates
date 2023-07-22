@@ -18,7 +18,9 @@ package com.google.cloud.teleport.plugin.model;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.util.MetadataUtils;
 import java.lang.annotation.Annotation;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 
 /** Parameters in a template. */
@@ -30,6 +32,7 @@ public class ImageSpecParameter {
   private String helpText;
   private Boolean isOptional;
   private List<String> regexes;
+  private List<ImageSpecParameterEnumOption> enumOptions;
   private ImageSpecParameterType paramType;
   private Object defaultValue;
 
@@ -103,6 +106,14 @@ public class ImageSpecParameter {
 
   public void setDefaultValue(Object defaultValue) {
     this.defaultValue = defaultValue;
+  }
+
+  public List<ImageSpecParameterEnumOption> getEnumOptions() {
+    return enumOptions;
+  }
+
+  public void setEnumOptions(List<ImageSpecParameterEnumOption> enumOptions) {
+    this.enumOptions = enumOptions;
   }
 
   public void processParamType(Annotation parameterAnnotation) {
@@ -243,7 +254,7 @@ public class ImageSpecParameter {
             booleanParam.helpText(),
             booleanParam.example());
         this.setOptional(booleanParam.optional());
-        this.setParamType(ImageSpecParameterType.TEXT);
+        this.setParamType(ImageSpecParameterType.BOOLEAN);
         break;
       case "Integer":
         TemplateParameter.Integer integerParam = (TemplateParameter.Integer) parameterAnnotation;
@@ -256,7 +267,7 @@ public class ImageSpecParameter {
             integerParam.helpText(),
             integerParam.example());
         this.setOptional(integerParam.optional());
-        this.setParamType(ImageSpecParameterType.TEXT);
+        this.setParamType(ImageSpecParameterType.NUMBER);
         break;
       case "Long":
         TemplateParameter.Long longParam = (TemplateParameter.Long) parameterAnnotation;
@@ -269,7 +280,7 @@ public class ImageSpecParameter {
             longParam.helpText(),
             longParam.example());
         this.setOptional(longParam.optional());
-        this.setParamType(ImageSpecParameterType.TEXT);
+        this.setParamType(ImageSpecParameterType.NUMBER);
         break;
       case "Enum":
         TemplateParameter.Enum enumParam = (TemplateParameter.Enum) parameterAnnotation;
@@ -282,7 +293,8 @@ public class ImageSpecParameter {
             enumParam.helpText(),
             enumParam.example());
         this.setOptional(enumParam.optional());
-        this.setParamType(ImageSpecParameterType.TEXT);
+        this.setParamType(ImageSpecParameterType.ENUM);
+        this.setEnumOptions(buildEnumOptions(enumParam));
         break;
       case "DateTime":
         TemplateParameter.DateTime dateTimeParam = (TemplateParameter.DateTime) parameterAnnotation;
@@ -342,6 +354,16 @@ public class ImageSpecParameter {
         throw new IllegalArgumentException("Invalid type " + parameterAnnotation);
     }
     this.setRegexes(MetadataUtils.getRegexes(parameterAnnotation));
+  }
+
+  private static List<ImageSpecParameterEnumOption> buildEnumOptions(
+      TemplateParameter.Enum enumParam) {
+    return Arrays.stream(enumParam.enumOptions())
+        .map(
+            option ->
+                new ImageSpecParameterEnumOption(
+                    option.value(), option.label(), option.description()))
+        .collect(Collectors.toList());
   }
 
   protected void processDescriptions(

@@ -21,6 +21,7 @@ import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.templates.SpannerToText.SpannerToTextOptions;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
@@ -95,7 +96,11 @@ public class SpannerToText {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"LOW", "MEDIUM", "HIGH"},
+        enumOptions = {
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
+        },
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =

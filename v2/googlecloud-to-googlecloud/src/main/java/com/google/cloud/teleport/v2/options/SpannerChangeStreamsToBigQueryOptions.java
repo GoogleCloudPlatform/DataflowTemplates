@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
@@ -116,7 +117,11 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   @TemplateParameter.Enum(
       order = 9,
-      enumOptions = {"LOW", "MEDIUM", "HIGH"},
+      enumOptions = {
+        @TemplateEnumOption("LOW"),
+        @TemplateEnumOption("MEDIUM"),
+        @TemplateEnumOption("HIGH")
+      },
       optional = true,
       description = "Priority for Spanner RPC invocations",
       helpText =

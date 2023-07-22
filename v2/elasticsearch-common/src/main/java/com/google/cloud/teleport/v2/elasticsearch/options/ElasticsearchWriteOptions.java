@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.elasticsearch.utils.BulkInsertMethod.BulkInsertMethodOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -226,7 +227,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   @TemplateParameter.Enum(
       order = 21,
-      enumOptions = {"INDEX", "CREATE"},
+      enumOptions = {@TemplateEnumOption("INDEX"), @TemplateEnumOption("CREATE")},
       optional = true,
       description = "Build insert method",
       helpText =

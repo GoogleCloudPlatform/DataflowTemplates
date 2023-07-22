@@ -19,6 +19,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
@@ -171,7 +172,7 @@ public class SpannerChangeStreamsToSink {
     @TemplateParameter.Enum(
         order = 10,
         optional = false,
-        enumOptions = {"pubsub", "kafka"},
+        enumOptions = {@TemplateEnumOption("pubsub"), @TemplateEnumOption("kafka")},
         description = "Type of sink to write the data to",
         helpText = "The type of sink where the data will get written to.")
     String getSinkType();
