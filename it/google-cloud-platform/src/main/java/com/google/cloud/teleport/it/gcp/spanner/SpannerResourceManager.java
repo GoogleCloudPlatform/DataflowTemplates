@@ -362,7 +362,9 @@ public final class SpannerResourceManager implements ResourceManager {
     } catch (SpannerException e) {
       throw new SpannerResourceManagerException("Failed to delete instance.", e);
     } finally {
-      spanner.close();
+      if (!spanner.isClosed()) {
+        spanner.close();
+      }
     }
     LOG.info("Manager successfully cleaned up.");
   }
