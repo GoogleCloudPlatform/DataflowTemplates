@@ -179,7 +179,7 @@ public final class SpannerResourceManagerTest {
 
     assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-\\d{6}");
 
-    assertThat(actualDatabaseId).isEqualTo(TEST_ID);
+    assertThat(actualDatabaseId).matches(TEST_ID + "_\\d{8}_\\d{6}_\\d{6}");
     assertThat(actualStatement).containsExactlyElementsIn(ImmutableList.of(statement));
   }
 
