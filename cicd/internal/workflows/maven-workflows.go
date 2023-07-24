@@ -101,6 +101,10 @@ func (*mvnFlags) SkipShade() string {
 	return "-DskipShade"
 }
 
+func (*mvnFlags) SkipSpotlessCheck() string {
+	return "-Dspotless.check.skip"
+}
+
 func (*mvnFlags) SkipIntegrationTests() string {
 	return "-DskipIntegrationTests"
 }
