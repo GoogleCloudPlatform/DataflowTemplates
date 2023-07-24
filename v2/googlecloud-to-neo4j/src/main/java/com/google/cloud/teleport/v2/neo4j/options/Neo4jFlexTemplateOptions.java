@@ -47,8 +47,9 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 3,
+      optional = true,
       description = "Options JSON",
-      helpText = "Options JSON. Use runtime tokens.",
+      helpText = "Options JSON. Use runtime tokens (optional).",
       example = "{token1:value1,token2:value2}")
   @Default.String("")
   String getOptionsJson();
