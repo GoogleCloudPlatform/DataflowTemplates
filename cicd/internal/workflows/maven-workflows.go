@@ -57,6 +57,7 @@ type MavenFlags interface {
 	SkipTests() string
 	SkipJacoco() string
 	SkipShade() string
+	SkipSpotlessCheck() string
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
 	RunIntegrationTests() string
