@@ -55,7 +55,8 @@ public class PubSubUtils implements Serializable {
           return pb.convertBase64ToString(rowkeyEncoded);
         });
     FORMATTERS.put(
-        PubSubFields.ROW_KEY_STRING_BASE64, (pb, chg) -> PubSubFields.ROW_KEY_STRING_BASE64);
+        PubSubFields.ROW_KEY_STRING_BASE64,
+        (pb, chg) -> chg.getString(PubSubFields.ROW_KEY_STRING_BASE64.name()));
     FORMATTERS.put(
         PubSubFields.ROW_KEY_BYTES,
         (pb, chg) -> {
@@ -69,50 +70,33 @@ public class PubSubUtils implements Serializable {
     FORMATTERS.put(
         PubSubFields.COLUMN_FAMILY, (pb, chg) -> chg.getString(PubSubFields.COLUMN_FAMILY.name()));
     FORMATTERS.put(
-        PubSubFields.COLUMN,
+        PubSubFields.COLUMN_BYTES,
         (pb, chg) -> {
-          if (!chg.has(PubSubFields.COLUMN.name())) {
+          if (!chg.has(PubSubFields.COLUMN_BYTES.name())) {
             return null;
           }
-          String qualifierEncoded = chg.getString(PubSubFields.COLUMN.name());
+          String qualifierEncoded = chg.getString(PubSubFields.COLUMN_BYTES.name());
           return pb.convertBase64ToBytes(qualifierEncoded);
         });
     FORMATTERS.put(
-        (PubSubFields.COLUMN_STRING_BASE64), (pb, chg) -> PubSubFields.COLUMN_STRING_BASE64);
+        (PubSubFields.COLUMN_STRING_BASE64),
+        (pb, chg) -> chg.getString(PubSubFields.COLUMN_STRING_BASE64.name()));
     FORMATTERS.put(
         PubSubFields.TIMESTAMP,
         (pb, chg) -> {
           if (!chg.has(PubSubFields.TIMESTAMP.name())) {
             return null;
           }
-          return chg.getString(PubSubFields.TIMESTAMP.name());
+          return chg.getLong(PubSubFields.TIMESTAMP.name());
         });
     FORMATTERS.put(
-        PubSubFields.TIMESTAMP_NUM,
+        PubSubFields.VALUES_BYTES,
         (pb, chg) -> {
-          if (!chg.has(PubSubFields.TIMESTAMP_NUM.name())) {
-            return null;
-          }
-          return chg.getLong(PubSubFields.TIMESTAMP_NUM.name());
-        });
-    FORMATTERS.put(
-        PubSubFields.VALUE_STRING,
-        (pb, chg) -> {
-          if (!chg.has(PubSubFields.VALUE_BYTES.name())) {
+          if (!chg.has(PubSubFields.VALUES_BYTES.name())) {
             return null;
           }
 
-          String valueEncoded = chg.getString(PubSubFields.VALUE_BYTES.name());
-          return pb.convertBase64ToString(valueEncoded);
-        });
-    FORMATTERS.put(
-        PubSubFields.VALUE_BYTES,
-        (pb, chg) -> {
-          if (!chg.has(PubSubFields.VALUE_BYTES.name())) {
-            return null;
-          }
-
-          String valueEncoded = chg.getString(PubSubFields.VALUE_BYTES.name());
+          String valueEncoded = chg.getString(PubSubFields.VALUES_BYTES.name());
           return pb.convertBase64ToBytes(valueEncoded);
         });
     FORMATTERS.put(
@@ -121,15 +105,7 @@ public class PubSubUtils implements Serializable {
           if (!chg.has(PubSubFields.TIMESTAMP_FROM.name())) {
             return null;
           }
-          return chg.getString(PubSubFields.TIMESTAMP_FROM.name());
-        });
-    FORMATTERS.put(
-        PubSubFields.TIMESTAMP_FROM_NUM,
-        (pb, chg) -> {
-          if (!chg.has(PubSubFields.TIMESTAMP_FROM_NUM.name())) {
-            return null;
-          }
-          return chg.getLong(PubSubFields.TIMESTAMP_FROM_NUM.name());
+          return chg.getLong(PubSubFields.TIMESTAMP_FROM.name());
         });
     FORMATTERS.put(
         PubSubFields.TIMESTAMP_TO,
@@ -137,15 +113,7 @@ public class PubSubUtils implements Serializable {
           if (!chg.has(PubSubFields.TIMESTAMP_TO.name())) {
             return null;
           }
-          return chg.getString(PubSubFields.TIMESTAMP_TO.name());
-        });
-    FORMATTERS.put(
-        PubSubFields.TIMESTAMP_TO_NUM,
-        (pb, chg) -> {
-          if (!chg.has(PubSubFields.TIMESTAMP_TO_NUM.name())) {
-            return null;
-          }
-          return chg.getLong(PubSubFields.TIMESTAMP_TO_NUM.name());
+          return chg.getLong(PubSubFields.TIMESTAMP_TO.name());
         });
     FORMATTERS.put(PubSubFields.IS_GC, (pb, chg) -> chg.getBoolean(PubSubFields.IS_GC.name()));
     FORMATTERS.put(
@@ -218,16 +186,22 @@ public class PubSubUtils implements Serializable {
         (Long) FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed));
     changelogEntryMessage.setColumn(
         ByteBuffer.wrap(
-            (byte[]) FORMATTERS.get(PubSubFields.COLUMN).format(this, changeJsonParsed)));
+            (byte[]) FORMATTERS.get(PubSubFields.COLUMN_BYTES).format(this, changeJsonParsed)));
     changelogEntryMessage.setTimestamp(
-        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed));
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP).format(this, changeJsonParsed));
     changelogEntryMessage.setTimestampFrom(
-        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM_NUM).format(this, changeJsonParsed));
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM).format(this, changeJsonParsed));
     changelogEntryMessage.setTimestampTo(
-        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed));
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO).format(this, changeJsonParsed));
     changelogEntryMessage.setValue(
         ByteBuffer.wrap(
-            (byte[]) FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)));
+            (byte[]) FORMATTERS.get(PubSubFields.VALUES_BYTES).format(this, changeJsonParsed)));
+    changelogEntryMessage.setSourceInstance(
+        (String) FORMATTERS.get(PubSubFields.SOURCE_INSTANCE).format(this, changeJsonParsed));
+    changelogEntryMessage.setSourceCluster(
+        (String) FORMATTERS.get(PubSubFields.SOURCE_CLUSTER).format(this, changeJsonParsed));
+    changelogEntryMessage.setSourceTable(
+        (String) FORMATTERS.get(PubSubFields.SOURCE_TABLE).format(this, changeJsonParsed));
 
     Publisher publisher = null;
     ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
@@ -275,8 +249,14 @@ public class PubSubUtils implements Serializable {
     ChangelogEntryMessageJson changelogEntryMessageJson = new ChangelogEntryMessageJson();
     JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
 
-    changelogEntryMessageJson.setRowKey(
-        (String) FORMATTERS.get(PubSubFields.ROW_KEY_STRING_BASE64).format(this, changeJsonParsed));
+    if (this.destination.getUseBase64Rowkey()) {
+      changelogEntryMessageJson.setRowKey(
+          (String)
+              FORMATTERS.get(PubSubFields.ROW_KEY_STRING_BASE64).format(this, changeJsonParsed));
+    } else {
+      changelogEntryMessageJson.setRowKey(
+          (String) FORMATTERS.get(PubSubFields.ROW_KEY_STRING).format(this, changeJsonParsed));
+    }
     changelogEntryMessageJson.setModType(
         ModType.valueOf(
             (String) FORMATTERS.get(PubSubFields.MOD_TYPE).format(this, changeJsonParsed)));
@@ -288,20 +268,32 @@ public class PubSubUtils implements Serializable {
         (String) FORMATTERS.get(PubSubFields.COLUMN_FAMILY).format(this, changeJsonParsed));
     changelogEntryMessageJson.setCommitTimestamp(
         (Long) FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed));
-    changelogEntryMessageJson.setColumn(
-        (String) FORMATTERS.get(PubSubFields.COLUMN_STRING_BASE64).format(this, changeJsonParsed));
+    if (this.destination.getUseBase64ColumnQualifiers()) {
+      changelogEntryMessageJson.setColumn(
+          (String)
+              FORMATTERS.get(PubSubFields.COLUMN_STRING_BASE64).format(this, changeJsonParsed));
+    } else {
+      changelogEntryMessageJson.setColumn(
+          (String) FORMATTERS.get(PubSubFields.COLUMN_BYTES).format(this, changeJsonParsed));
+    }
     changelogEntryMessageJson.setTimestamp(
-        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed));
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP).format(this, changeJsonParsed));
     changelogEntryMessageJson.setTimestampFrom(
-        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM_NUM).format(this, changeJsonParsed));
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM).format(this, changeJsonParsed));
     changelogEntryMessageJson.setTimestampTo(
-        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed));
+        (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO).format(this, changeJsonParsed));
     changelogEntryMessageJson.setValue(
         bytesToString(
             ByteBuffer.wrap(
-                (byte[]) FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)),
-            this.destination.getUseBase64Value(),
+                (byte[]) FORMATTERS.get(PubSubFields.VALUES_BYTES).format(this, changeJsonParsed)),
+            this.destination.getUseBase64Values(),
             this.charsetObj));
+    changelogEntryMessageJson.setSourceInstance(
+        (String) FORMATTERS.get(PubSubFields.SOURCE_INSTANCE).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setSourceCluster(
+        (String) FORMATTERS.get(PubSubFields.SOURCE_CLUSTER).format(this, changeJsonParsed));
+    changelogEntryMessageJson.setSourceTable(
+        (String) FORMATTERS.get(PubSubFields.SOURCE_TABLE).format(this, changeJsonParsed));
 
     Publisher publisher = null;
     ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
@@ -356,18 +348,25 @@ public class PubSubUtils implements Serializable {
                 (Long) FORMATTERS.get(PubSubFields.COMMIT_TIMESTAMP).format(this, changeJsonParsed))
             .setColumn(
                 ByteString.copyFrom(
-                    (byte[]) FORMATTERS.get(PubSubFields.COLUMN).format(this, changeJsonParsed)))
+                    (byte[])
+                        FORMATTERS.get(PubSubFields.COLUMN_BYTES).format(this, changeJsonParsed)))
             .setTimestamp(
-                (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_NUM).format(this, changeJsonParsed))
+                (Long) FORMATTERS.get(PubSubFields.TIMESTAMP).format(this, changeJsonParsed))
             .setTimestampFrom(
-                (Long)
-                    FORMATTERS.get(PubSubFields.TIMESTAMP_FROM_NUM).format(this, changeJsonParsed))
+                (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM).format(this, changeJsonParsed))
             .setTimestampTo(
-                (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO_NUM).format(this, changeJsonParsed))
+                (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO).format(this, changeJsonParsed))
             .setValue(
                 ByteString.copyFrom(
                     (byte[])
-                        FORMATTERS.get(PubSubFields.VALUE_BYTES).format(this, changeJsonParsed)))
+                        FORMATTERS.get(PubSubFields.VALUES_BYTES).format(this, changeJsonParsed)))
+            .setSourceInstance(
+                (String)
+                    FORMATTERS.get(PubSubFields.SOURCE_INSTANCE).format(this, changeJsonParsed))
+            .setSourceCluster(
+                (String) FORMATTERS.get(PubSubFields.SOURCE_CLUSTER).format(this, changeJsonParsed))
+            .setSourceTable(
+                (String) FORMATTERS.get(PubSubFields.SOURCE_TABLE).format(this, changeJsonParsed))
             .build();
 
     Publisher publisher = null;

@@ -22,4 +22,7 @@ message ChangelogEntryProto{
   optional int64 timestampFrom = 9;
   optional int64 timestampTo = 10;
   optional bytes value = 11;
+  required string sourceInstance = 12;
+  required string sourceCluster = 13;
+  required string sourceTable = 14;
 }

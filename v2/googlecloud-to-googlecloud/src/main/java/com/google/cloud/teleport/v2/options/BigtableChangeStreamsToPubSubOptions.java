@@ -136,9 +136,9 @@ public interface BigtableChangeStreamsToPubSubOptions
           "Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiers"
               + "Defaults to false.")
   @Default.Boolean(false)
-  Boolean getUseBase64ColumnQualifier();
+  Boolean getUseBase64ColumnQualifiers();
 
-  void setUseBase64ColumnQualifier(Boolean useBase64ColumnQualifier);
+  void setUseBase64ColumnQualifiers(Boolean useBase64ColumnQualifiers);
 
   @TemplateParameter.Boolean(
       order = 10,

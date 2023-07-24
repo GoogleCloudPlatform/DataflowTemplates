@@ -25,6 +25,7 @@ import com.google.cloud.pubsub.v1.SchemaServiceClient;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions;
 import com.google.cloud.teleport.v2.bigtable.utils.UnsupportedEntryException;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
@@ -79,6 +80,17 @@ import org.slf4j.LoggerFactory;
     description =
         "Streaming pipeline. Streams Bigtable data change records and writes them into PubSub using Dataflow Runner V2.",
     optionsClass = BigtableChangeStreamsToPubSubOptions.class,
+    optionsOrder = {
+      BigtableChangeStreamsToPubSubOptions.class,
+      BigtableCommonOptions.ReadChangeStreamOptions.class,
+      BigtableCommonOptions.ReadOptions.class
+    },
+    skipOptions = {
+      "bigtableReadAppProfile",
+      "bigtableAdditionalRetryCodes",
+      "bigtableRpcAttemptTimeoutMs",
+      "bigtableRpcTimeoutMs"
+    },
     flexContainerName = "bigtable-changestreams-to-pubsub",
     contactInformation = "https://cloud.google.com/support")
 public final class BigtableChangeStreamsToPubSub {
@@ -189,7 +201,7 @@ public final class BigtableChangeStreamsToPubSub {
             options.getMessageFormat(),
             options.getMessageEncoding(),
             options.getUseBase64Rowkey(),
-            options.getUseBase64ColumnQualifier(),
+            options.getUseBase64ColumnQualifiers(),
             options.getUseBase64Values());
 
     PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo);

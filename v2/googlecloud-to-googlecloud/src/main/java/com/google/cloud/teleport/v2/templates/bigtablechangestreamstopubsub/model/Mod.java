@@ -27,8 +27,6 @@ import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.io.Serializable;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
@@ -46,11 +44,6 @@ import org.threeten.bp.Instant;
 public final class Mod implements Serializable {
 
   private static final long serialVersionUID = 8703757194338184299L;
-
-  private static final String PATTERN_FORMAT = "yyyy-MM-dd HH:mm:ss.SSSSSS";
-  private static final ThreadLocal<DateTimeFormatter> TIMESTAMP_FORMATTER =
-      ThreadLocal.withInitial(
-          () -> DateTimeFormatter.ofPattern(PATTERN_FORMAT).withZone(ZoneId.of("UTC")));
 
   private String changeJson;
   private long commitTimestampSeconds;
@@ -106,19 +99,15 @@ public final class Mod implements Serializable {
     propertiesMap.put(PubSubFields.TIEBREAKER.name(), mutation.getTieBreaker());
     propertiesMap.put(
         PubSubFields.IS_GC.name(), mutation.getType() == MutationType.GARBAGE_COLLECTION);
-    propertiesMap.put(
-        PubSubFields.COMMIT_TIMESTAMP.name(), cbtTimestampToPubSub(mutation.getCommitTimestamp()));
+    propertiesMap.put(PubSubFields.COMMIT_TIMESTAMP.name(), mutation.getCommitTimestamp());
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, SetCell setCell) {
     propertiesMap.put(PubSubFields.MOD_TYPE.name(), ModType.SET_CELL.getCode());
     propertiesMap.put(PubSubFields.COLUMN_FAMILY.name(), setCell.getFamilyName());
-    propertiesMap.put(PubSubFields.COLUMN.name(), encodeBytes(setCell.getQualifier()));
-    propertiesMap.put(
-        PubSubFields.TIMESTAMP.name(), cbtTimestampMicrosToPubSub(setCell.getTimestamp()));
-    propertiesMap.put(
-        PubSubFields.TIMESTAMP_NUM.name(), cbtTimestampMicrosToPubSubInt(setCell.getTimestamp()));
-    propertiesMap.put(PubSubFields.VALUE_BYTES.name(), encodeBytes(setCell.getValue()));
+    propertiesMap.put(PubSubFields.COLUMN_BYTES.name(), encodeBytes(setCell.getQualifier()));
+    propertiesMap.put(PubSubFields.TIMESTAMP.name(), setCell.getTimestamp());
+    propertiesMap.put(PubSubFields.VALUES_BYTES.name(), encodeBytes(setCell.getValue()));
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, DeleteCells deleteCells) {
@@ -133,14 +122,9 @@ public final class Mod implements Serializable {
 
     propertiesMap.put(PubSubFields.MOD_TYPE.name(), ModType.DELETE_CELLS.getCode());
     propertiesMap.put(PubSubFields.COLUMN_FAMILY.name(), deleteCells.getFamilyName());
-    propertiesMap.put(PubSubFields.COLUMN.name(), encodeBytes(deleteCells.getQualifier()));
-    propertiesMap.put(
-        PubSubFields.TIMESTAMP_FROM.name(), cbtTimestampMicrosToPubSub(startTimestamp));
-    propertiesMap.put(
-        PubSubFields.TIMESTAMP_FROM_NUM.name(), cbtTimestampMicrosToPubSubInt(startTimestamp));
-    propertiesMap.put(PubSubFields.TIMESTAMP_TO.name(), cbtTimestampMicrosToPubSub(endTimestamp));
-    propertiesMap.put(
-        PubSubFields.TIMESTAMP_TO_NUM.name(), cbtTimestampMicrosToPubSubInt(endTimestamp));
+    propertiesMap.put(PubSubFields.COLUMN_BYTES.name(), encodeBytes(deleteCells.getQualifier()));
+    propertiesMap.put(PubSubFields.TIMESTAMP_FROM.name(), startTimestamp);
+    propertiesMap.put(PubSubFields.TIMESTAMP_TO.name(), endTimestamp);
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, DeleteFamily deleteFamily) {
@@ -227,40 +211,11 @@ public final class Mod implements Serializable {
     }
   }
 
-  private String cbtTimestampToPubSub(Instant timestamp) {
-    if (timestamp == null) {
-      return null;
-    }
-    if (timestamp.getEpochSecond() == 0 && timestamp.getNano() == 0) {
-      return TIMESTAMP_FORMATTER.get().format(java.time.Instant.EPOCH);
-    } else {
-      return TIMESTAMP_FORMATTER
-          .get()
-          .format(java.time.Instant.ofEpochSecond(timestamp.getEpochSecond(), timestamp.getNano()));
-    }
-  }
-
   private String cbtTimestampMicrosToPubSubInt(Long timestampMicros) {
     if (timestampMicros == null) {
       return null;
     }
     return Long.toString(timestampMicros);
-  }
-
-  private String cbtTimestampMicrosToPubSub(Long timestampMicros) {
-    if (timestampMicros == null) {
-      return null;
-    }
-    if (timestampMicros == 0) {
-      return TIMESTAMP_FORMATTER.get().format(java.time.Instant.EPOCH);
-    } else {
-      long seconds = timestampMicros / 1000000;
-      return TIMESTAMP_FORMATTER
-          .get()
-          .format(
-              java.time.Instant.ofEpochSecond(
-                  seconds, (timestampMicros - seconds * 1000000) * 1000));
-    }
   }
 
   private String convertPropertiesToJson(Map<String, Object> propertiesMap) {

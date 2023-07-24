@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.core.ApiFuture;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.pubsub.v1.Publisher;
@@ -54,8 +52,7 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
       extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
 
     private final PubSubUtils pubSubUtils;
-    private static final Logger LOG =
-        LoggerFactory.getLogger(FailsafeModJsonToPubsubMessageTransformer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FailsafeModJsonToPubsubMessage.class);
 
     /** The tag for the main output of the transformation. */
     public TupleTag<PubsubMessage> transformOut = new TupleTag<>() {};
@@ -130,7 +127,6 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
 
       @ProcessElement
       public void processElement(ProcessContext context) {
-        LOG.info("Reading a failsafeModJsonString");
         FailsafeElement<String, String> failsafeModJsonString = context.element();
 
         try {
@@ -151,8 +147,7 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
       /* Schema Details:  */
       private PubsubMessage publishModJsonStringAsPubsubMessage(String modJsonString)
           throws Exception {
-        ObjectNode modObjectNode = (ObjectNode) new ObjectMapper().readTree(modJsonString);
-        String changeJsonString = Mod.fromJson(modObjectNode.toString()).getChangeJson();
+        String changeJsonString = Mod.fromJson(modJsonString).getChangeJson();
         String messageFormat = pubSubUtils.getDestination().getMessageFormat();
         Publisher publisher = null;
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
