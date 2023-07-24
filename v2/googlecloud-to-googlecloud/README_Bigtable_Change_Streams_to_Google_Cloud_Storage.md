@@ -1,10 +1,10 @@
-Cloud Bigtable change streams to BigQuery Template
+Cloud Bigtable change streams to Cloud Storage Template
 ---
-Streaming pipeline. Streams Bigtable data change records and writes them into BigQuery using Dataflow Runner V2.
+Streaming pipeline. Streams Bigtable change stream data records and writes them into a Cloud Storage bucket using Dataflow Runner V2.
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Bigtable_Change_Streams_to_BigQuery).
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Bigtable_Change_Streams_to_Google_Cloud_Storage).
 
 
 :bulb: This is a generated documentation based
@@ -15,24 +15,23 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **bigQueryDataset** (BigQuery dataset): The BigQuery dataset for change streams output.
+* **gcsOutputDirectory** (Output file directory in Cloud Storage): The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).
 * **bigtableChangeStreamAppProfile** (Cloud Bigtable application profile ID): The application profile is used to distinguish workload in Cloud Bigtable.
 * **bigtableReadInstanceId** (Source Bigtable Instance ID): The ID of the Cloud Bigtable instance that contains the table.
 * **bigtableReadTableId** (Source Cloud Bigtable table ID): The Cloud Bigtable table to read from.
 
 ### Optional Parameters
 
-* **writeRowkeyAsBytes** (Write rowkeys as BigQuery BYTES): When set true rowkeys are written to BYTES column, otherwise to STRING column. Defaults to false.
-* **writeValuesAsBytes** (Write values as BigQuery BYTES): When set true values are written to BYTES column, otherwise to STRING column. Defaults to false.
-* **writeNumericTimestamps** (Write Bigtable timestamp as BigQuery INT): When set true values are written to INT column, otherwise to TIMESTAMP column. Columns affected: `timestamp`, `timestamp_from`, `timestamp_to`. Defaults to false. When set to true the value is a number of microseconds since midnight of 01-JAN-1970.
-* **bigQueryProjectId** (BigQuery project ID): The BigQuery Project. Default is the project for the Dataflow job.
-* **bigQueryChangelogTableName** (BigQuery changelog table name): The BigQuery table name that contains the changelog records. Default: {bigtableTableId}_changelog.
-* **bigQueryChangelogTablePartitionGranularity** (Changelog table will be partitioned at specified granularity): When set, table partitioning will be in effect. Accepted values: `HOUR`, `DAY`, `MONTH`, `YEAR`. Default is no partitioning.
-* **bigQueryChangelogTablePartitionExpirationMs** (Sets partition expiration time in milliseconds): When set true partitions older than specified number of milliseconds will be deleted. Default is no expiration.
-* **bigQueryChangelogTableFieldsToIgnore** (Optional changelog table columns to be disabled): A comma-separated list of the changelog columns which will not be created and populated if specified. Supported values should be from the following list: `is_gc`, `source_instance`, `source_cluster`, `source_table`, `tiebreaker`, `big_query_commit_timestamp`. Defaults to all columns to be populated.
-* **dlqDirectory** (Dead letter queue directory): The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
-* **dlqRetryMinutes** (Dead letter queue retry minutes): The number of minutes between dead letter queue retries. Defaults to 10.
-* **dlqMaxRetries** (Dead letter maximum retries): The number of attempts to process change stream mutations. Defaults to 5.
+* **outputFileFormat** (Output file format): The format of the output Cloud Storage file. Allowed formats are TEXT, AVRO. Defaults to AVRO.
+* **windowDuration** (Window duration): The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 1h). Defaults to: 1h.
+* **bigtableMetadataTableTableId** (Bigtable Metadata Table Id): Table ID used for creating the metadata table.
+* **schemaOutputFormat** (Output schema format): Schema chosen for outputting data to GCS. CHANGELOG_ENTRY support TEXT and AVRO output formats, BIGTABLE_ROW only supports AVRO output. Defaults to: CHANGELOG_ENTRY.
+* **outputFilenamePrefix** (Output filename prefix of the files to write): The prefix to place on each windowed file. Defaults to "changelog-" (Example: changelog-).
+* **outputBatchSize** (Maximum number of mutations in a batch): Batching mutations reduces overhead and cost. Depending on the size of values written to Cloud Bigtable the batch size might need to be adjusted lower to avoid memory pressures on the worker fleet. Defaults to 10000.
+* **outputShardsCount** (Number of output file shards): The maximum number of output shards produced when writing to Cloud Storage. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 20.
+* **useBase64Rowkeys** (Write Base64-encoded rowkeys): Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeysDefaults to false.
+* **useBase64ColumnQualifiers** (Write Base64-encoded column qualifiers): Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiersDefaults to false.
+* **useBase64Values** (Write Base64-encoded value): Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String valuesDefaults to false.
 * **bigtableChangeStreamMetadataInstanceId** (Cloud Bigtable change streams metadata instance ID): The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.
 * **bigtableChangeStreamMetadataTableTableId** (Cloud Bigtable change streams metadata table ID): The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty.
 * **bigtableChangeStreamCharset** (Bigtable change streams charset name when reading values and column qualifiers): Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8.
@@ -57,7 +56,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/bigtablechangestreamstobigquery/BigtableChangeStreamsToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/bigtablechangestreamstogcs/BigtableChangeStreamsToGcs.java)
 
 ### Templates Plugin
 
@@ -92,7 +91,7 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
--DtemplateName="Bigtable_Change_Streams_to_BigQuery" \
+-DtemplateName="Bigtable_Change_Streams_to_Google_Cloud_Storage" \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
@@ -102,7 +101,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/Bigtable_Change_Streams_to_BigQuery
+Flex Template was staged! gs://<bucket-name>/templates/flex/Bigtable_Change_Streams_to_Google_Cloud_Storage
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -122,26 +121,25 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Bigtable_Change_Streams_to_BigQuery"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Bigtable_Change_Streams_to_Google_Cloud_Storage"
 
 ### Required
-export BIG_QUERY_DATASET=<bigQueryDataset>
+export GCS_OUTPUT_DIRECTORY=<gcsOutputDirectory>
 export BIGTABLE_CHANGE_STREAM_APP_PROFILE=<bigtableChangeStreamAppProfile>
 export BIGTABLE_READ_INSTANCE_ID=<bigtableReadInstanceId>
 export BIGTABLE_READ_TABLE_ID=<bigtableReadTableId>
 
 ### Optional
-export WRITE_ROWKEY_AS_BYTES=false
-export WRITE_VALUES_AS_BYTES=false
-export WRITE_NUMERIC_TIMESTAMPS=false
-export BIG_QUERY_PROJECT_ID=""
-export BIG_QUERY_CHANGELOG_TABLE_NAME=""
-export BIG_QUERY_CHANGELOG_TABLE_PARTITION_GRANULARITY=""
-export BIG_QUERY_CHANGELOG_TABLE_PARTITION_EXPIRATION_MS=<bigQueryChangelogTablePartitionExpirationMs>
-export BIG_QUERY_CHANGELOG_TABLE_FIELDS_TO_IGNORE=<bigQueryChangelogTableFieldsToIgnore>
-export DLQ_DIRECTORY=""
-export DLQ_RETRY_MINUTES=10
-export DLQ_MAX_RETRIES=5
+export OUTPUT_FILE_FORMAT="AVRO"
+export WINDOW_DURATION="1h"
+export BIGTABLE_METADATA_TABLE_TABLE_ID=<bigtableMetadataTableTableId>
+export SCHEMA_OUTPUT_FORMAT="CHANGELOG_ENTRY"
+export OUTPUT_FILENAME_PREFIX="changelog-"
+export OUTPUT_BATCH_SIZE=10000
+export OUTPUT_SHARDS_COUNT=20
+export USE_BASE64ROWKEYS=false
+export USE_BASE64COLUMN_QUALIFIERS=false
+export USE_BASE64VALUES=false
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
 export BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID=""
 export BIGTABLE_CHANGE_STREAM_CHARSET="UTF-8"
@@ -152,22 +150,21 @@ export BIGTABLE_CHANGE_STREAM_NAME=<bigtableChangeStreamName>
 export BIGTABLE_CHANGE_STREAM_RESUME=false
 export BIGTABLE_READ_PROJECT_ID=""
 
-gcloud dataflow flex-template run "bigtable-change-streams-to-bigquery-job" \
+gcloud dataflow flex-template run "bigtable-change-streams-to-google-cloud-storage-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "bigQueryDataset=$BIG_QUERY_DATASET" \
-  --parameters "writeRowkeyAsBytes=$WRITE_ROWKEY_AS_BYTES" \
-  --parameters "writeValuesAsBytes=$WRITE_VALUES_AS_BYTES" \
-  --parameters "writeNumericTimestamps=$WRITE_NUMERIC_TIMESTAMPS" \
-  --parameters "bigQueryProjectId=$BIG_QUERY_PROJECT_ID" \
-  --parameters "bigQueryChangelogTableName=$BIG_QUERY_CHANGELOG_TABLE_NAME" \
-  --parameters "bigQueryChangelogTablePartitionGranularity=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_GRANULARITY" \
-  --parameters "bigQueryChangelogTablePartitionExpirationMs=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_EXPIRATION_MS" \
-  --parameters "bigQueryChangelogTableFieldsToIgnore=$BIG_QUERY_CHANGELOG_TABLE_FIELDS_TO_IGNORE" \
-  --parameters "dlqDirectory=$DLQ_DIRECTORY" \
-  --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
-  --parameters "dlqMaxRetries=$DLQ_MAX_RETRIES" \
+  --parameters "outputFileFormat=$OUTPUT_FILE_FORMAT" \
+  --parameters "windowDuration=$WINDOW_DURATION" \
+  --parameters "bigtableMetadataTableTableId=$BIGTABLE_METADATA_TABLE_TABLE_ID" \
+  --parameters "schemaOutputFormat=$SCHEMA_OUTPUT_FORMAT" \
+  --parameters "gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY" \
+  --parameters "outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX" \
+  --parameters "outputBatchSize=$OUTPUT_BATCH_SIZE" \
+  --parameters "outputShardsCount=$OUTPUT_SHARDS_COUNT" \
+  --parameters "useBase64Rowkeys=$USE_BASE64ROWKEYS" \
+  --parameters "useBase64ColumnQualifiers=$USE_BASE64COLUMN_QUALIFIERS" \
+  --parameters "useBase64Values=$USE_BASE64VALUES" \
   --parameters "bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID" \
   --parameters "bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID" \
   --parameters "bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE" \
@@ -198,23 +195,22 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export BIG_QUERY_DATASET=<bigQueryDataset>
+export GCS_OUTPUT_DIRECTORY=<gcsOutputDirectory>
 export BIGTABLE_CHANGE_STREAM_APP_PROFILE=<bigtableChangeStreamAppProfile>
 export BIGTABLE_READ_INSTANCE_ID=<bigtableReadInstanceId>
 export BIGTABLE_READ_TABLE_ID=<bigtableReadTableId>
 
 ### Optional
-export WRITE_ROWKEY_AS_BYTES=false
-export WRITE_VALUES_AS_BYTES=false
-export WRITE_NUMERIC_TIMESTAMPS=false
-export BIG_QUERY_PROJECT_ID=""
-export BIG_QUERY_CHANGELOG_TABLE_NAME=""
-export BIG_QUERY_CHANGELOG_TABLE_PARTITION_GRANULARITY=""
-export BIG_QUERY_CHANGELOG_TABLE_PARTITION_EXPIRATION_MS=<bigQueryChangelogTablePartitionExpirationMs>
-export BIG_QUERY_CHANGELOG_TABLE_FIELDS_TO_IGNORE=<bigQueryChangelogTableFieldsToIgnore>
-export DLQ_DIRECTORY=""
-export DLQ_RETRY_MINUTES=10
-export DLQ_MAX_RETRIES=5
+export OUTPUT_FILE_FORMAT="AVRO"
+export WINDOW_DURATION="1h"
+export BIGTABLE_METADATA_TABLE_TABLE_ID=<bigtableMetadataTableTableId>
+export SCHEMA_OUTPUT_FORMAT="CHANGELOG_ENTRY"
+export OUTPUT_FILENAME_PREFIX="changelog-"
+export OUTPUT_BATCH_SIZE=10000
+export OUTPUT_SHARDS_COUNT=20
+export USE_BASE64ROWKEYS=false
+export USE_BASE64COLUMN_QUALIFIERS=false
+export USE_BASE64VALUES=false
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
 export BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID=""
 export BIGTABLE_CHANGE_STREAM_CHARSET="UTF-8"
@@ -230,9 +226,9 @@ mvn clean package -PtemplatesRun \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="bigtable-change-streams-to-bigquery-job" \
--DtemplateName="Bigtable_Change_Streams_to_BigQuery" \
--Dparameters="bigQueryDataset=$BIG_QUERY_DATASET,writeRowkeyAsBytes=$WRITE_ROWKEY_AS_BYTES,writeValuesAsBytes=$WRITE_VALUES_AS_BYTES,writeNumericTimestamps=$WRITE_NUMERIC_TIMESTAMPS,bigQueryProjectId=$BIG_QUERY_PROJECT_ID,bigQueryChangelogTableName=$BIG_QUERY_CHANGELOG_TABLE_NAME,bigQueryChangelogTablePartitionGranularity=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_GRANULARITY,bigQueryChangelogTablePartitionExpirationMs=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_EXPIRATION_MS,bigQueryChangelogTableFieldsToIgnore=$BIG_QUERY_CHANGELOG_TABLE_FIELDS_TO_IGNORE,dlqDirectory=$DLQ_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetries=$DLQ_MAX_RETRIES,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID" \
+-DjobName="bigtable-change-streams-to-google-cloud-storage-job" \
+-DtemplateName="Bigtable_Change_Streams_to_Google_Cloud_Storage" \
+-Dparameters="outputFileFormat=$OUTPUT_FILE_FORMAT,windowDuration=$WINDOW_DURATION,bigtableMetadataTableTableId=$BIGTABLE_METADATA_TABLE_TABLE_ID,schemaOutputFormat=$SCHEMA_OUTPUT_FORMAT,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,outputBatchSize=$OUTPUT_BATCH_SIZE,outputShardsCount=$OUTPUT_SHARDS_COUNT,useBase64Rowkeys=$USE_BASE64ROWKEYS,useBase64ColumnQualifiers=$USE_BASE64COLUMN_QUALIFIERS,useBase64Values=$USE_BASE64VALUES,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID" \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
