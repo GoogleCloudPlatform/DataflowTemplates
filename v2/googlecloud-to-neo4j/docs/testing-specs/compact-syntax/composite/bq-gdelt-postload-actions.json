@@ -24,7 +24,6 @@
         "transform": {
           "group": true
         },
-        "automap": false,
         "mappings": {
           "labels": [
             "\"BQ_GGGRecord\""
@@ -68,7 +67,6 @@
         "transform": {
           "group": true
         },
-        "automap": false,
         "mappings": {
           "labels": [
             "\"BQ_GGGRecord3\""

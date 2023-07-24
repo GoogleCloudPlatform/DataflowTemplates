@@ -219,7 +219,6 @@ gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VER
 - Support for auditing writes to Parquet on GCS
 - Supporting join transformations inside the job
 - Support for write back to Neo4j
-- Implement automap to auto-generate properties
 - Performance benchmark documentation
 
 ## Running Apache Hop

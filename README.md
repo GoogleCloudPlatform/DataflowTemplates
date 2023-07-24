@@ -408,3 +408,11 @@ mvn clean package -PtemplatesRelease \
   -DlibrariesBucketName="{bucketName}-libraries" \
   -DstagePrefix="$(date +%Y_%m_%d)-00_RC00"
 ```
+
+## More Information
+
+* [Dataflow templates](https://cloud.google.com/dataflow/docs/concepts/dataflow-templates)
+* [Google-provided templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+* [Apache Beam](https://beam.apache.org)
+  - [Overview](https://beam.apache.org/use/beam-overview/)
+  - Quickstart: [Java](https://beam.apache.org/get-started/quickstart-java), [Python](https://beam.apache.org/get-started/quickstart-py), [Go](https://beam.apache.org/get-started/quickstart-go)

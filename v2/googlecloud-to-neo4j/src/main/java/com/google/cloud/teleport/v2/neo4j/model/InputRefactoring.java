@@ -45,15 +45,9 @@ public class InputRefactoring {
 
   public void refactorJobSpec(JobSpec jobSpec) {
 
-    // Create or enrich targets from options
-    if (jobSpec.getTargets().size() == 0) {
-      if (jobSpec.getOptions().size() > 0) {
-        LOG.info("Targets not found, synthesizing from options");
-        throw new RuntimeException("Not currently synthesizing targets from options.");
-      }
-      // targets defined but no field names defined.
-    } else if (jobSpec.getAllFieldNames().isEmpty()) {
-      LOG.info("Targets not found, synthesizing from source.  All properties will be indexed.");
+    // targets defined but no field names defined.
+    if (jobSpec.getAllFieldNames().isEmpty()) {
+      LOG.error("Targets not found, synthesizing from source is not currently supported.");
       throw new RuntimeException("Not currently auto-generating targets.");
     }
 
