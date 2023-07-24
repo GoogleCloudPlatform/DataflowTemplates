@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.templates.BulkCompressor.Options;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteStreams;
@@ -136,7 +137,11 @@ public class BulkCompressor {
 
     @TemplateParameter.Enum(
         order = 4,
-        enumOptions = {"BZIP2", "DEFLATE", "GZIP"},
+        enumOptions = {
+          @TemplateEnumOption("BZIP2"),
+          @TemplateEnumOption("DEFLATE"),
+          @TemplateEnumOption("GZIP")
+        },
         description = "Compression",
         helpText =
             "The compression algorithm used to compress the matched files. Valid algorithms: BZIP2, DEFLATE, GZIP")

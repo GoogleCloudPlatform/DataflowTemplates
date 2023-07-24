@@ -121,7 +121,7 @@ public final class TemplateParameter {
     boolean optional() default false;
 
     /** Enum options, to show the possible values for an option. */
-    String[] enumOptions() default "";
+    TemplateEnumOption[] enumOptions();
 
     /** Description of the parameter. */
     String description();
@@ -131,6 +131,14 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+  }
+
+  public @interface TemplateEnumOption {
+    String value();
+
+    String label() default "";
+
+    String description() default "";
   }
 
   /** Template Parameter containing numerical inputs (32 bits). */

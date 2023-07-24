@@ -24,6 +24,7 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFor
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
@@ -138,7 +139,7 @@ public class DataplexFileFormatConversion {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"AVRO", "PARQUET"},
+        enumOptions = {@TemplateEnumOption("AVRO"), @TemplateEnumOption("PARQUET")},
         description = "Output file format in Cloud Storage.",
         helpText = "Output file format in Cloud Storage. Format: PARQUET or AVRO.")
     @Required
@@ -148,7 +149,12 @@ public class DataplexFileFormatConversion {
 
     @TemplateParameter.Enum(
         order = 3,
-        enumOptions = {"UNCOMPRESSED", "SNAPPY", "GZIP", "BZIP2"},
+        enumOptions = {
+          @TemplateEnumOption("UNCOMPRESSED"),
+          @TemplateEnumOption("SNAPPY"),
+          @TemplateEnumOption("GZIP"),
+          @TemplateEnumOption("BZIP2")
+        },
         optional = true,
         description = "Output file compression in Cloud Storage.",
         helpText =
@@ -177,7 +183,11 @@ public class DataplexFileFormatConversion {
 
     @TemplateParameter.Enum(
         order = 5,
-        enumOptions = {"OVERWRITE", "FAIL", "SKIP"},
+        enumOptions = {
+          @TemplateEnumOption("OVERWRITE"),
+          @TemplateEnumOption("FAIL"),
+          @TemplateEnumOption("SKIP")
+        },
         optional = true,
         description = "Action that occurs if a destination file already exists.",
         helpText =

@@ -16,12 +16,14 @@
 package com.google.cloud.teleport.metadata.util;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import java.beans.Introspector;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** Utilities for working with template metadata. */
 public final class MetadataUtils {
@@ -164,7 +166,13 @@ public final class MetadataUtils {
         return List.of("^[0-9]+$");
       case "Enum":
         TemplateParameter.Enum enumParam = (TemplateParameter.Enum) parameterAnnotation;
-        return List.of("^(" + String.join("|", enumParam.enumOptions()) + ")$");
+
+        String optionsRegex =
+            Arrays.stream(enumParam.enumOptions())
+                .map(TemplateEnumOption::value)
+                .collect(Collectors.joining("|"));
+
+        return List.of("^(" + optionsRegex + ")$");
       case "DateTime":
         TemplateParameter.DateTime dateTimeParam = (TemplateParameter.DateTime) parameterAnnotation;
         return List.of(

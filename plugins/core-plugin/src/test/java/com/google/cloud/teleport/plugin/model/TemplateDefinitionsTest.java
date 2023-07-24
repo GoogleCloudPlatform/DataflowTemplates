@@ -56,11 +56,11 @@ public class TemplateDefinitionsTest {
     assertEquals(ImageSpecParameterType.BIGQUERY_TABLE, to.getParamType());
 
     ImageSpecParameter logical = metadata.getParameter("logical").get();
-    assertEquals(ImageSpecParameterType.TEXT, logical.getParamType());
+    assertEquals(ImageSpecParameterType.BOOLEAN, logical.getParamType());
     assertEquals("^(true|false)$", logical.getRegexes().get(0));
 
     ImageSpecParameter json = metadata.getParameter("JSON").get();
-    assertEquals(ImageSpecParameterType.TEXT, json.getParamType());
+    assertEquals(ImageSpecParameterType.BOOLEAN, json.getParamType());
   }
 
   @Test

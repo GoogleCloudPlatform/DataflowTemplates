@@ -40,5 +40,14 @@ public enum ImageSpecParameterType {
   PUBSUB_SUBSCRIPTION,
 
   /** Pub/Sub Topic to read or write. */
-  PUBSUB_TOPIC;
+  PUBSUB_TOPIC,
+
+  /** Boolean parameter. */
+  BOOLEAN,
+
+  /** Enum parameter. */
+  ENUM,
+
+  /** Number parameter. */
+  NUMBER;
 }

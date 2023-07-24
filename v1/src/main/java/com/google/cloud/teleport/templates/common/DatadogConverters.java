@@ -17,6 +17,7 @@ package com.google.cloud.teleport.templates.common;
 
 import com.google.cloud.teleport.datadog.DatadogEvent;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Joiner;
 import com.google.common.base.Throwables;
@@ -175,7 +176,11 @@ public class DatadogConverters {
     @TemplateParameter.Enum(
         order = 8,
         optional = true,
-        enumOptions = {"PLAINTEXT", "KMS", "SECRET_MANAGER"},
+        enumOptions = {
+          @TemplateEnumOption("PLAINTEXT"),
+          @TemplateEnumOption("KMS"),
+          @TemplateEnumOption("SECRET_MANAGER")
+        },
         description = "Source of the API key passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
         helpText =
             "Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter "

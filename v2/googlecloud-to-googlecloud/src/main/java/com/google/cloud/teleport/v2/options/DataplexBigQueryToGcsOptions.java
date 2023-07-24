@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
@@ -100,7 +101,7 @@ public interface DataplexBigQueryToGcsOptions
 
   @TemplateParameter.Enum(
       order = 6,
-      enumOptions = {"AVRO", "PARQUET"},
+      enumOptions = {@TemplateEnumOption("AVRO"), @TemplateEnumOption("PARQUET")},
       optional = true,
       description = "Output file format in Cloud Storage.",
       helpText = "Output file format in Cloud Storage. Format: PARQUET or AVRO.")
@@ -112,7 +113,12 @@ public interface DataplexBigQueryToGcsOptions
 
   @TemplateParameter.Enum(
       order = 7,
-      enumOptions = {"UNCOMPRESSED", "SNAPPY", "GZIP", "BZIP2"},
+      enumOptions = {
+        @TemplateEnumOption("UNCOMPRESSED"),
+        @TemplateEnumOption("SNAPPY"),
+        @TemplateEnumOption("GZIP"),
+        @TemplateEnumOption("BZIP2")
+      },
       optional = true,
       description = "Output file compression in Cloud Storage.",
       helpText =
@@ -134,7 +140,11 @@ public interface DataplexBigQueryToGcsOptions
 
   @TemplateParameter.Enum(
       order = 9,
-      enumOptions = {"OVERWRITE", "FAIL", "SKIP"},
+      enumOptions = {
+        @TemplateEnumOption("OVERWRITE"),
+        @TemplateEnumOption("FAIL"),
+        @TemplateEnumOption("SKIP")
+      },
       optional = true,
       description = "Action that occurs if a destination file already exists.",
       helpText =
