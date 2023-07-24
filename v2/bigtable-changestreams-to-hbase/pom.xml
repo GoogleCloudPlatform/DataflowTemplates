@@ -76,5 +76,11 @@
       <version>${hbase.client.version}</version>
       <scope>test</scope>
     </dependency>
+    <!--    HbaseIO dependency  -->
+    <dependency>
+      <groupId>com.github.spotbugs</groupId>
+      <artifactId>spotbugs-annotations</artifactId>
+      <version>3.1.12</version>
+    </dependency>
   </dependencies>
 </project>
