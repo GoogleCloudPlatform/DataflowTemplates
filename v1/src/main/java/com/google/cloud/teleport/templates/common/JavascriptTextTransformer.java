@@ -104,7 +104,7 @@ public abstract class JavascriptTextTransformer {
         description = "Enable JavaScript UDF auto-reload feature",
         helpText =
             "If set to true, enables the JavaScript UDF auto-reload feature, which guarantees that "
-            + "updated code is used without the need to restart jobs.")
+                + "updated code is used without the need to restart jobs.")
     ValueProvider<Boolean> getJavascriptFunctionReload();
 
     void setJavascriptFunctionReload(ValueProvider<Boolean> javascriptFunctionReload);
@@ -186,11 +186,11 @@ public abstract class JavascriptTextTransformer {
       }
 
       if (invocable == null
-              || (reloadFunction() != null
+          || (reloadFunction() != null
               && reloadFunction()
               && reloadIntervalMinutes() != null
               && Duration.between(lastRefreshCheck, Instant.now()).toMinutes()
-              > reloadIntervalMinutes())) {
+                  > reloadIntervalMinutes())) {
 
         // List of all scripts read from the filesystem
         Collection<String> scripts = getScripts(fileSystemPath());
@@ -434,8 +434,8 @@ public abstract class JavascriptTextTransformer {
                                 functionName().get(),
                                 functionReload() != null ? functionReload().get() : null,
                                 reloadIntervalMinutes() != null
-                                        ? reloadIntervalMinutes().get()
-                                        : null);
+                                    ? reloadIntervalMinutes().get()
+                                    : null);
                       }
 
                       if (loggingEnabled() != null && loggingEnabled().isAccessible()) {

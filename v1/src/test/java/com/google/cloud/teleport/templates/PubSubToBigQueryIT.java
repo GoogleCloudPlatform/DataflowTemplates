@@ -258,10 +258,10 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
   public void testTopicToBigQueryClassicWithReload() throws IOException, InterruptedException {
     // Arrange
     List<Field> bqSchemaFields =
-            Arrays.asList(
-                    Field.of("id", StandardSQLTypeName.INT64),
-                    Field.of("job", StandardSQLTypeName.STRING),
-                    Field.of("name", StandardSQLTypeName.STRING));
+        Arrays.asList(
+            Field.of("id", StandardSQLTypeName.INT64),
+            Field.of("job", StandardSQLTypeName.STRING),
+            Field.of("name", StandardSQLTypeName.STRING));
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     TopicName topic = pubsubResourceManager.createTopic("input");
@@ -269,29 +269,35 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
 
     TableId dlqTable =
-            bigQueryResourceManager.createTable(
-                    table.getTable() + PubSubToBigQuery.DEFAULT_DEADLETTER_TABLE_SUFFIX,
-                    BIG_QUERY_DLQ_SCHEMA);
+        bigQueryResourceManager.createTable(
+            table.getTable() + PubSubToBigQuery.DEFAULT_DEADLETTER_TABLE_SUFFIX,
+            BIG_QUERY_DLQ_SCHEMA);
 
     // Act
     LaunchInfo info =
-            launchTemplate(
-                    LaunchConfig.builder(testName, specPath)
-                            .addParameter("inputTopic", topic.toString())
-                            .addParameter("outputTableSpec", toTableSpecLegacy(table))
-                            .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                            .addParameter("javascriptTextTransformFunctionName", "uppercaseName")
-                            .addParameter("javascriptFunctionReload", "true")
-                            .addParameter("javascriptReloadIntervalMinutes", "1")
-                            .addParameter("outputDeadletterTable", toTableSpecLegacy(dlqTable)));
+        launchTemplate(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputTopic", topic.toString())
+                .addParameter("outputTableSpec", toTableSpecLegacy(table))
+                .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
+                .addParameter("javascriptTextTransformFunctionName", "uppercaseName")
+                .addParameter("javascriptFunctionReload", "true")
+                .addParameter("javascriptReloadIntervalMinutes", "1")
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(dlqTable)));
     assertThatPipeline(info).isRunning();
 
     List<Map<String, Object>> expectedUpperMessages = new ArrayList<>();
     List<ByteString> goodUpperData = new ArrayList<>();
     for (int i = 1; i <= MESSAGES_COUNT; i++) {
       Map<String, Object> message =
-              new HashMap<>(
-                      Map.of("id", i, "job", testName, "name", "UPPER: " + RandomStringUtils.randomAlphabetic(1, 20)));
+          new HashMap<>(
+              Map.of(
+                  "id",
+                  i,
+                  "job",
+                  testName,
+                  "name",
+                  "UPPER: " + RandomStringUtils.randomAlphabetic(1, 20)));
       ByteString messageData = ByteString.copyFromUtf8(new JSONObject(message).toString());
       goodUpperData.add(messageData);
       pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
@@ -309,13 +315,13 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     // For tests that run against topics, sending repeatedly will make it work for
     // cases in which the on-demand subscription is created after sending messages.
     Supplier<Boolean> pubSubMessageSender =
-            () -> {
-              goodUpperData.forEach(
-                      goodMessage -> pubsubResourceManager.publish(topic, ImmutableMap.of(), goodMessage));
-              badData.forEach(
-                      badMessage -> pubsubResourceManager.publish(topic, ImmutableMap.of(), badMessage));
-              return true;
-            };
+        () -> {
+          goodUpperData.forEach(
+              goodMessage -> pubsubResourceManager.publish(topic, ImmutableMap.of(), goodMessage));
+          badData.forEach(
+              badMessage -> pubsubResourceManager.publish(topic, ImmutableMap.of(), badMessage));
+          return true;
+        };
 
     BigQueryRowsCheck bigQueryRowsCheck =
         BigQueryRowsCheck.builder(bigQueryResourceManager, table)
@@ -326,12 +332,9 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
             .setMinRows(BAD_MESSAGES_COUNT)
             .build();
     Result result =
-            pipelineOperator()
-                    .waitForCondition(
-                            createConfig(info),
-                            pubSubMessageSender,
-                            bigQueryRowsCheck,
-                            bigQueryDlqRowsCheck);
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(info), pubSubMessageSender, bigQueryRowsCheck, bigQueryDlqRowsCheck);
     // Assert
     assertThatResult(result).meetsConditions();
     TableResult records = bigQueryResourceManager.readTable(table);
@@ -341,17 +344,17 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     TableResult dlqRecords = bigQueryResourceManager.readTable(dlqTable);
     assertThat(dlqRecords.getValues().iterator().next().toString())
-            .contains("Expected json literal but found");
+        .contains("Expected json literal but found");
     assertThat(dlqRecords.getTotalRows()).isAtLeast(BAD_MESSAGES_COUNT);
 
     // modify UDF to test reloading
     gcsClient.createArtifact(
-            "udf.js",
-            "function uppercaseName(value) {\n"
-                    + "  const data = JSON.parse(value);\n"
-                    + "  data.name = data.name.toLowerCase();\n"
-                    + "  return JSON.stringify(data);\n"
-                    + "}");
+        "udf.js",
+        "function uppercaseName(value) {\n"
+            + "  const data = JSON.parse(value);\n"
+            + "  data.name = data.name.toLowerCase();\n"
+            + "  return JSON.stringify(data);\n"
+            + "}");
 
     // wait to ensure the reload will take effect.
     TimeUnit.MINUTES.sleep(2);
@@ -359,8 +362,14 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     List<ByteString> goodLowerData = new ArrayList<>();
     for (int i = MESSAGES_COUNT + 1; i <= MESSAGES_COUNT * 2; i++) {
       Map<String, Object> message =
-              new HashMap<>(
-                      Map.of("id", i, "job", testName, "name", "lower: " + RandomStringUtils.randomAlphabetic(1, 20)));
+          new HashMap<>(
+              Map.of(
+                  "id",
+                  i,
+                  "job",
+                  testName,
+                  "name",
+                  "lower: " + RandomStringUtils.randomAlphabetic(1, 20)));
       ByteString messageData = ByteString.copyFromUtf8(new JSONObject(message).toString());
       goodLowerData.add(messageData);
       pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
@@ -371,20 +380,20 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     // For tests that run against topics, sending repeatedly will make it work for
     // cases in which the on-demand subscription is created after sending messages.
     Supplier<Boolean> pubSubReloadedMessageSender =
-            () -> {
-              goodLowerData.forEach(
-                      goodMessage -> pubsubResourceManager.publish(topic, ImmutableMap.of(), goodMessage));
-              return true;
-            };
+        () -> {
+          goodLowerData.forEach(
+              goodMessage -> pubsubResourceManager.publish(topic, ImmutableMap.of(), goodMessage));
+          return true;
+        };
 
     Result reloadedResult =
-            pipelineOperator()
-                    .waitForConditionsAndFinish(
-                            createConfig(info),
-                            pubSubReloadedMessageSender,
-                            BigQueryRowsCheck.builder(bigQueryResourceManager, table)
-                                    .setMinRows(bigQueryRowsCheck.getRowCount().intValue() + (MESSAGES_COUNT * 2))
-                                    .build());
+        pipelineOperator()
+            .waitForConditionsAndFinish(
+                createConfig(info),
+                pubSubReloadedMessageSender,
+                BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+                    .setMinRows(bigQueryRowsCheck.getRowCount().intValue() + (MESSAGES_COUNT * 2))
+                    .build());
     // Assert
     assertThatResult(reloadedResult).meetsConditions();
     TableResult reloadedRecords = bigQueryResourceManager.readTable(table);
@@ -393,6 +402,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
     assertThatBigQueryRecords(reloadedRecords).hasRecordsUnordered(expectedUpperMessages);
     assertThatBigQueryRecords(reloadedRecords).hasRecordsUnordered(expectedLowerMessages);
   }
+
   private static Schema getDlqSchema() {
     return Schema.of(
         Arrays.asList(
