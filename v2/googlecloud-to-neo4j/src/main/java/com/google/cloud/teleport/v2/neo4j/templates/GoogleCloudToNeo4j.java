@@ -21,13 +21,13 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.neo4j.actions.ActionDoFnFactory;
 import com.google.cloud.teleport.v2.neo4j.actions.ActionPreloadFactory;
 import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadAction;
+import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.InputRefactoring;
 import com.google.cloud.teleport.v2.neo4j.model.InputValidator;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ArtifactType;
-import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.JobSpecMapper;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.OptionsParamsMapper;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec;
@@ -43,8 +43,8 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
-import com.google.cloud.teleport.v2.neo4j.transforms.Neo4jRowWriterTransform;
 import com.google.cloud.teleport.v2.neo4j.utils.BeamBlock;
+import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.ProcessingCoder;
 import com.google.gson.Gson;
@@ -53,16 +53,20 @@ import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.neo4j.Neo4jIO;
+import org.apache.beam.sdk.io.neo4j.Neo4jIO.DriverConfiguration;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.commons.lang3.StringUtils;
+import org.neo4j.driver.SessionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -269,8 +273,23 @@ public class GoogleCloudToNeo4j {
           preInsertBeamRows = nullableSourceBeamRows;
         }
 
-        Neo4jRowWriterTransform targetWriterTransform =
-            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, TargetType.node, nodeTarget);
+        PTransform<PCollection<Row>, PCollection<Row>> nodeImport =
+            Neo4jIO.<Row>writeUnwind()
+                .withSessionConfig(
+                    StringUtils.isNotEmpty(neo4jConnection.database)
+                        ? SessionConfig.forDatabase(neo4jConnection.database)
+                        : SessionConfig.defaultConfig())
+                .withDriverConfiguration(
+                    DriverConfiguration.create()
+                        .withUrl(neo4jConnection.serverUrl)
+                        .withUsername(neo4jConnection.username)
+                        .withPassword(neo4jConnection.password))
+                .withBatchSize(jobSpec.getConfig().getNodeBatchSize())
+                .withParallelism(jobSpec.getConfig().getNodeParallelism())
+                .withUnwindMapName("rows")
+                .withCypher(CypherGenerator.getUnwindCreateCypher(nodeTarget))
+                .withParametersFunction(
+                    (row) -> DataCastingUtils.rowToNeo4jDataMap(row, nodeTarget));
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -288,7 +307,7 @@ public class GoogleCloudToNeo4j {
                             nodeTarget.getExecuteAfterName(),
                             nodeStepDescription)))
                 .setCoder(preInsertBeamRows.getCoder())
-                .apply("Writing " + nodeStepDescription, targetWriterTransform)
+                .apply("Writing " + nodeStepDescription, nodeImport)
                 .setCoder(preInsertBeamRows.getCoder());
 
         processingQueue.addToQueue(
@@ -323,9 +342,24 @@ public class GoogleCloudToNeo4j {
         } else {
           preInsertBeamRows = nullableSourceBeamRows;
         }
-        Neo4jRowWriterTransform targetWriterTransform =
-            new Neo4jRowWriterTransform(
-                jobSpec, neo4jConnection, TargetType.edge, relationshipTarget);
+
+        PTransform<PCollection<Row>, PCollection<Row>> edgeImport =
+            Neo4jIO.<Row>writeUnwind()
+                .withSessionConfig(
+                    StringUtils.isNotEmpty(neo4jConnection.database)
+                        ? SessionConfig.forDatabase(neo4jConnection.database)
+                        : SessionConfig.defaultConfig())
+                .withDriverConfiguration(
+                    DriverConfiguration.create()
+                        .withUrl(neo4jConnection.serverUrl)
+                        .withUsername(neo4jConnection.username)
+                        .withPassword(neo4jConnection.password))
+                .withBatchSize(jobSpec.getConfig().getEdgeBatchSize())
+                .withParallelism(jobSpec.getConfig().getEdgeParallelism())
+                .withUnwindMapName("rows")
+                .withCypher(CypherGenerator.getUnwindCreateCypher(relationshipTarget))
+                .withParametersFunction(
+                    (row) -> DataCastingUtils.rowToNeo4jDataMap(row, relationshipTarget));
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -343,7 +377,7 @@ public class GoogleCloudToNeo4j {
                             relationshipTarget.getExecuteAfterName(),
                             relationshipStepDescription)))
                 .setCoder(preInsertBeamRows.getCoder())
-                .apply("Writing " + relationshipStepDescription, targetWriterTransform)
+                .apply("Writing " + relationshipStepDescription, edgeImport)
                 .setCoder(preInsertBeamRows.getCoder());
 
         // serialize relationships
