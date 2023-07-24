@@ -100,6 +100,9 @@ public class PubSubUtils implements Serializable {
           return pb.convertBase64ToBytes(valueEncoded);
         });
     FORMATTERS.put(
+        PubSubFields.VALUES_STRING_BASE64,
+        (pb, chg) -> chg.getString(PubSubFields.VALUES_STRING_BASE64.name()));
+    FORMATTERS.put(
         PubSubFields.TIMESTAMP_FROM,
         (pb, chg) -> {
           if (!chg.has(PubSubFields.TIMESTAMP_FROM.name())) {
@@ -231,18 +234,6 @@ public class PubSubUtils implements Serializable {
     return message;
   }
 
-  private String bytesToString(ByteBuffer bytes, boolean useBase64, Charset charset) {
-    if (bytes == null) {
-      return null;
-    } else {
-      if (useBase64) {
-        return charset.decode(Base64.getEncoder().encode(bytes)).toString();
-      } else {
-        return charset.decode(bytes).toString();
-      }
-    }
-  }
-
   public PubsubMessage mapChangeJsonStringToPubSubMessageAsJson(String changeJsonSting)
       throws Exception {
     String messageEncoding = this.getDestination().getMessageEncoding();
@@ -282,12 +273,14 @@ public class PubSubUtils implements Serializable {
         (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM).format(this, changeJsonParsed));
     changelogEntryMessageJson.setTimestampTo(
         (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO).format(this, changeJsonParsed));
-    changelogEntryMessageJson.setValue(
-        bytesToString(
-            ByteBuffer.wrap(
-                (byte[]) FORMATTERS.get(PubSubFields.VALUES_BYTES).format(this, changeJsonParsed)),
-            this.destination.getUseBase64Values(),
-            this.charsetObj));
+    if (this.destination.getUseBase64Values()) {
+      changelogEntryMessageJson.setValue(
+          (String)
+              FORMATTERS.get(PubSubFields.VALUES_STRING_BASE64).format(this, changeJsonParsed));
+    } else {
+      changelogEntryMessageJson.setValue(
+          (String) FORMATTERS.get(PubSubFields.VALUES_BYTES).format(this, changeJsonParsed));
+    }
     changelogEntryMessageJson.setSourceInstance(
         (String) FORMATTERS.get(PubSubFields.SOURCE_INSTANCE).format(this, changeJsonParsed));
     changelogEntryMessageJson.setSourceCluster(

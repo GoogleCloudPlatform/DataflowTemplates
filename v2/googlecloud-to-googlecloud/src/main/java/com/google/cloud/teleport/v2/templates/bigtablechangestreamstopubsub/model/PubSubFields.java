@@ -27,6 +27,7 @@ public enum PubSubFields {
   COLUMN_STRING_BASE64("column"),
   TIMESTAMP("timestamp"),
   VALUES_BYTES("value"),
+  VALUES_STRING_BASE64("value"),
   TIMESTAMP_FROM("timestamp_from"),
   TIMESTAMP_TO("timestamp_to"),
   IS_GC("is_gc"),
