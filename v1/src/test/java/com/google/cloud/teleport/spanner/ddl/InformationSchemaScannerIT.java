@@ -529,7 +529,7 @@ public class InformationSchemaScannerIT {
 
   @Test
   public void foreignKeys() throws Exception {
-    List<String> statements =
+    List<String> dbCreationStatements =
         Arrays.asList(
             "CREATE TABLE `Ref` ("
                 + " `id1`                               INT64 NOT NULL,"
@@ -543,14 +543,30 @@ public class InformationSchemaScannerIT {
             " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
                 + " REFERENCES `Ref` (`id2`, `id1`)");
 
-    spannerServer.createDatabase(dbId, statements);
+    List<String> dbVerificationStatements =
+        Arrays.asList(
+            "CREATE TABLE `Ref` ("
+                + " `id1`                               INT64 NOT NULL,"
+                + " `id2`                               INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`id1` ASC, `id2` ASC)",
+            " CREATE TABLE `Tab` ("
+                + " `key`                               INT64 NOT NULL,"
+                + " `id1`                               INT64 NOT NULL,"
+                + " `id2`                               INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`key` ASC)",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
+                // Unspecified DELETE action defaults to "NO ACTION"
+                + " REFERENCES `Ref` (`id2`, `id1`) ON DELETE NO ACTION");
+
+    spannerServer.createDatabase(dbId, dbCreationStatements);
     Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    assertThat(
+        ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", dbVerificationStatements)));
   }
 
   @Test
   public void pgForeignKeys() throws Exception {
-    List<String> statements =
+    List<String> dbCreationStatements =
         Arrays.asList(
             "CREATE TABLE \"Ref\" ("
                 + " \"id1\"                               bigint NOT NULL,"
@@ -565,10 +581,27 @@ public class InformationSchemaScannerIT {
                 + " )",
             " ALTER TABLE \"Tab\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"id1\", \"id2\")"
                 + " REFERENCES \"Ref\" (\"id2\", \"id1\")");
+    List<String> dbVerificationStatements =
+        Arrays.asList(
+            "CREATE TABLE \"Ref\" ("
+                + " \"id1\"                               bigint NOT NULL,"
+                + " \"id2\"                               bigint NOT NULL,"
+                + " PRIMARY KEY (\"id1\", \"id2\")"
+                + " )",
+            " CREATE TABLE \"Tab\" ("
+                + " \"key\"                               bigint NOT NULL,"
+                + " \"id1\"                               bigint NOT NULL,"
+                + " \"id2\"                               bigint NOT NULL,"
+                + " PRIMARY KEY (\"key\")"
+                + " )",
+            " ALTER TABLE \"Tab\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"id1\", \"id2\")"
+                // Unspecified DELETE action defaults to "NO ACTION"
+                + " REFERENCES \"Ref\" (\"id2\", \"id1\") ON DELETE NO ACTION");
 
-    spannerServer.createPgDatabase(dbId, statements);
+    spannerServer.createPgDatabase(dbId, dbCreationStatements);
     Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    assertThat(
+        ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", dbVerificationStatements)));
   }
 
   // TODO: enable this test once CHECK constraints are enabled
