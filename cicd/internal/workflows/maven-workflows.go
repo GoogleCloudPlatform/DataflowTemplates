@@ -57,6 +57,7 @@ type MavenFlags interface {
 	SkipTests() string
 	SkipJacoco() string
 	SkipShade() string
+	SkipSpotlessCheck() string
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
 	RunIntegrationTests() string
@@ -99,6 +100,10 @@ func (*mvnFlags) SkipJacoco() string {
 
 func (*mvnFlags) SkipShade() string {
 	return "-DskipShade"
+}
+
+func (*mvnFlags) SkipSpotlessCheck() string {
+	return "-Dspotless.check.skip"
 }
 
 func (*mvnFlags) SkipIntegrationTests() string {

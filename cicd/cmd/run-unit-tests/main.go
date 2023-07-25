@@ -35,6 +35,7 @@ func main() {
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),
+		mvnFlags.SkipSpotlessCheck(),
 		mvnFlags.SkipIntegrationTests(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.ThreadCount(8))

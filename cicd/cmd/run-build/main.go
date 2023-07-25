@@ -33,6 +33,7 @@ func main() {
 		mvnFlags.SkipDependencyAnalysis(), // TODO(zhoufek): Fix our dependencies then remove this flag
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),
+		mvnFlags.SkipSpotlessCheck(),
 		mvnFlags.SkipTests(),
 		mvnFlags.ThreadCount(8))
 	if err != nil {
