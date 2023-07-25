@@ -139,7 +139,7 @@ public class BigtableUtils implements Serializable {
             .setFamily(this.bigtableRowColumnFamilyName)
             .setQualifier(ChangelogColumns.IS_GC.getColumnNameAsByteBuffer(this.charsetObj))
             .setTimestamp(DEFAULT_TIMESTAMP)
-            .setValue(getByteBufferFromString(Boolean.toString(entry.getIsGc())))
+            .setValue(getByteBufferFromString(Boolean.toString(entry.getIsGC())))
             .build());
 
     // tiebreaker
@@ -302,7 +302,7 @@ public class BigtableUtils implements Serializable {
         ChangelogEntry.newBuilder()
             .setRowKey(mutation.getRowKey().asReadOnlyByteBuffer())
             .setModType(getModType(mutationEntry))
-            .setIsGc(mutation.getType() == MutationType.GARBAGE_COLLECTION)
+            .setIsGC(mutation.getType() == MutationType.GARBAGE_COLLECTION)
             .setTieBreaker(mutation.getTieBreaker())
             .setCommitTimestamp(commitMicros)
             .setLowWatermark(0); // TODO: Low watermark is not available yet
