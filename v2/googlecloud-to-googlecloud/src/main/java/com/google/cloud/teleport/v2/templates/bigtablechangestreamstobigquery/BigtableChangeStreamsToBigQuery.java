@@ -31,7 +31,6 @@ import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamToBigQueryOptions;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.*;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
