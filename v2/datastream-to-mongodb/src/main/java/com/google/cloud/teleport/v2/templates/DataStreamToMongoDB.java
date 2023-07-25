@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -96,7 +97,7 @@ public class DataStreamToMongoDB {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"avro", "json"},
+        enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         optional = false,
         description = "The GCS input format avro/json",
         helpText = "The file format of the desired input files. Can be avro or json.")

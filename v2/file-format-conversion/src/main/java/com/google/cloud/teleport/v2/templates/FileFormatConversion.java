@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.FileFormatConversion.FileFormatConversionOptions;
 import com.google.cloud.teleport.v2.transforms.AvroConverters.AvroOptions;
@@ -81,7 +82,11 @@ public class FileFormatConversion {
       extends PipelineOptions, CsvPipelineOptions, AvroOptions, ParquetOptions {
     @TemplateParameter.Enum(
         order = 1,
-        enumOptions = {"avro", "csv", "parquet"},
+        enumOptions = {
+          @TemplateEnumOption("avro"),
+          @TemplateEnumOption("csv"),
+          @TemplateEnumOption("parquet")
+        },
         description = "File format of the input files.",
         helpText = "File format of the input files. Needs to be either avro, parquet or csv.")
     @Required
@@ -91,7 +96,7 @@ public class FileFormatConversion {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"avro", "parquet"},
+        enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("parquet")},
         description = "File format of the output files.",
         helpText = "File format of the output files. Needs to be either avro or parquet.")
     @Required

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.OrderedChangestreamBufferToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
@@ -98,7 +99,7 @@ public class OrderedChangestreamBufferToSourceDb {
         order = 3,
         optional = true,
         description = "Destination source type",
-        enumOptions = {"mysql"},
+        enumOptions = {@TemplateEnumOption("mysql")},
         helpText = "This is the type of source databse.Currently only" + " mysql is supported.")
     @Default.String("mysql")
     String getSourceType();
@@ -108,7 +109,7 @@ public class OrderedChangestreamBufferToSourceDb {
     @TemplateParameter.Enum(
         order = 4,
         optional = true,
-        enumOptions = {"pubsub", "kafka"},
+        enumOptions = {@TemplateEnumOption("pubsub"), @TemplateEnumOption("kafka")},
         description = "Input buffer type",
         helpText = "This is the type of input buffer read from. Supported values - PubSub/Kafka.")
     @Default.String("pubsub")

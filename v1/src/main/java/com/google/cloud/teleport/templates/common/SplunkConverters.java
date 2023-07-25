@@ -17,6 +17,7 @@ package com.google.cloud.teleport.templates.common;
 
 import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Throwables;
@@ -190,7 +191,11 @@ public class SplunkConverters {
     @TemplateParameter.Enum(
         order = 9,
         optional = true,
-        enumOptions = {"PLAINTEXT", "KMS", "SECRET_MANAGER"},
+        enumOptions = {
+          @TemplateEnumOption("PLAINTEXT"),
+          @TemplateEnumOption("KMS"),
+          @TemplateEnumOption("SECRET_MANAGER")
+        },
         description = "Source of the token passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
         helpText =
             "Source of the token. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter "

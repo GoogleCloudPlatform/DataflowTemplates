@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
@@ -37,19 +38,23 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   void setPubSubTopic(String pubSubTopic);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Enum(
       order = 2,
+      enumOptions = {
+              @TemplateEnumOption("BINARY"),
+              @TemplateEnumOption("JSON"),
+      },
       optional = true,
       description = "The encoding of the message written into PubSub",
       helpText =
           "The format of the message to be written into PubSub. "
               + "Allowed formats are BINARY and JSON Text. Default value is JSON.")
-  @Default.String("JSON")
+  @Default.Enum("JSON")
   String getMessageEncoding();
 
   void setMessageEncoding(String messageEncoding);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Enum(
       order = 3,
       optional = true,
       description = "The format of the message written into PubSub",

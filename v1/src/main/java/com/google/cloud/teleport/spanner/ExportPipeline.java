@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.spanner.ExportPipeline.ExportPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -190,7 +191,11 @@ public class ExportPipeline {
 
     @TemplateParameter.Enum(
         order = 12,
-        enumOptions = {"LOW", "MEDIUM", "HIGH"},
+        enumOptions = {
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
+        },
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =

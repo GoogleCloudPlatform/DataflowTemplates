@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcPartitionUtils.PartitioningSchema;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionOptions;
@@ -180,7 +181,11 @@ public interface DataplexJdbcIngestionOptions
 
   @TemplateParameter.Enum(
       order = 11,
-      enumOptions = {"DAILY", "HOURLY", "MONTHLY"},
+      enumOptions = {
+        @TemplateEnumOption("DAILY"),
+        @TemplateEnumOption("HOURLY"),
+        @TemplateEnumOption("MONTHLY")
+      },
       optional = true,
       description = "The partition scheme when writing the file.",
       helpText = "The partition scheme when writing the file. Format: DAILY or MONTHLY or HOURLY.")
@@ -202,7 +207,12 @@ public interface DataplexJdbcIngestionOptions
 
   @TemplateParameter.Enum(
       order = 13,
-      enumOptions = {"SKIP", "WRITE_APPEND", "WRITE_TRUNCATE", "WRITE_EMPTY"},
+      enumOptions = {
+        @TemplateEnumOption("SKIP"),
+        @TemplateEnumOption("WRITE_APPEND"),
+        @TemplateEnumOption("WRITE_TRUNCATE"),
+        @TemplateEnumOption("WRITE_EMPTY")
+      },
       optional = true,
       description = "BigQuery write disposition type",
       helpText =
@@ -216,7 +226,7 @@ public interface DataplexJdbcIngestionOptions
 
   @TemplateParameter.Enum(
       order = 14,
-      enumOptions = {"AVRO", "PARQUET"},
+      enumOptions = {@TemplateEnumOption("AVRO"), @TemplateEnumOption("PARQUET")},
       optional = true,
       description = "Output file format in Cloud Storage.",
       helpText = "Output file format in Cloud Storage. Format: PARQUET or AVRO.")

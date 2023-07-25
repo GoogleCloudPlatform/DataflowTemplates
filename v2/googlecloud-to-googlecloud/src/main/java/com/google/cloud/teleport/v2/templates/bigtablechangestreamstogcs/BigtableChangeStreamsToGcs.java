@@ -23,6 +23,8 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadChangeStreamOptions;
+import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadOptions;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToGcsOptions;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstogcs.model.BigtableSchemaFormat;
 import com.google.cloud.teleport.v2.utils.BigtableSource;
@@ -67,9 +69,20 @@ import org.slf4j.LoggerFactory;
     displayName = "Cloud Bigtable change streams to Cloud Storage",
     description =
         "Streaming pipeline. Streams Bigtable change stream data records and writes them into a Cloud Storage bucket using Dataflow Runner V2.",
+    optionsClass = BigtableChangeStreamsToGcsOptions.class,
+    optionsOrder = {
+      BigtableChangeStreamsToGcsOptions.class,
+      ReadChangeStreamOptions.class,
+      ReadOptions.class
+    },
+    skipOptions = {
+      "bigtableReadAppProfile",
+      "bigtableAdditionalRetryCodes",
+      "bigtableRpcAttemptTimeoutMs",
+      "bigtableRpcTimeoutMs"
+    },
     flexContainerName = "bigtable-changestreams-to-gcs",
-    contactInformation = "https://cloud.google.com/support",
-    optionsClass = BigtableChangeStreamsToGcsOptions.class)
+    contactInformation = "https://cloud.google.com/support")
 public class BigtableChangeStreamsToGcs {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToGcs.class);

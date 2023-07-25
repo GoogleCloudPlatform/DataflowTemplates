@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadChangeStreamOptions;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstogcs.model.BigtableSchemaFormat;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility.FileFormat;
@@ -28,7 +29,7 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Enum(
       order = 1,
-      enumOptions = {"TEXT", "AVRO"},
+      enumOptions = {@TemplateEnumOption("TEXT"), @TemplateEnumOption("AVRO")},
       optional = true,
       description = "Output file format",
       helpText =
@@ -62,7 +63,7 @@ public interface BigtableChangeStreamsToGcsOptions
 
   @TemplateParameter.Enum(
       order = 4,
-      enumOptions = {"CHANGELOG_ENTRY", "BIGTABLE_ROW"},
+      enumOptions = {@TemplateEnumOption("CHANGELOG_ENTRY"), @TemplateEnumOption("BIGTABLE_ROW")},
       optional = true,
       description = "Output schema format",
       helpText =

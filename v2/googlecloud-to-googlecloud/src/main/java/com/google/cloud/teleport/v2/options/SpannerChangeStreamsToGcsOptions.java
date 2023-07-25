@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToGcsAvro;
 import com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToGcsText;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility.FileFormat;
@@ -158,7 +159,7 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @TemplateParameter.Enum(
       order = 12,
-      enumOptions = {"TEXT", "AVRO"},
+      enumOptions = {@TemplateEnumOption("TEXT"), @TemplateEnumOption("AVRO")},
       optional = true,
       description = "Output file format",
       helpText =
@@ -185,7 +186,11 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @TemplateParameter.Enum(
       order = 14,
-      enumOptions = {"LOW", "MEDIUM", "HIGH"},
+      enumOptions = {
+        @TemplateEnumOption("LOW"),
+        @TemplateEnumOption("MEDIUM"),
+        @TemplateEnumOption("HIGH")
+      },
       optional = true,
       description = "Priority for Spanner RPC invocations",
       helpText =

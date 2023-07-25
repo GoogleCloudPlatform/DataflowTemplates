@@ -23,6 +23,7 @@ import static com.google.cloud.teleport.v2.templates.PubSubToRedis.RedisSinkType
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.io.RedisHashIO;
 import com.google.cloud.teleport.v2.templates.transforms.MessageTransformation;
@@ -172,7 +173,12 @@ public class PubSubToRedis {
     @TemplateParameter.Enum(
         order = 6,
         optional = true,
-        enumOptions = {"STRING_SINK", "HASH_SINK", "STREAMS_SINK", "LOGGING_SINK"},
+        enumOptions = {
+          @TemplateEnumOption("STRING_SINK"),
+          @TemplateEnumOption("HASH_SINK"),
+          @TemplateEnumOption("STREAMS_SINK"),
+          @TemplateEnumOption("LOGGING_SINK")
+        },
         description = "Redis sink to write",
         helpText =
             "Supported Redis sinks are STRING_SINK, HASH_SINK, STREAMS_SINK and LOGGING_SINK",

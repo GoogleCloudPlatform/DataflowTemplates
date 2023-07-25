@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.CdcJdbcIO;
@@ -99,7 +100,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Enum(
         order = 3,
-        enumOptions = {"avro", "json"},
+        enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
@@ -150,7 +151,7 @@ public class DataStreamToSQL {
     @TemplateParameter.Enum(
         order = 7,
         optional = true,
-        enumOptions = {"postgres", "mysql"},
+        enumOptions = {@TemplateEnumOption("postgres"), @TemplateEnumOption("mysql")},
         description = "SQL Database Type (postgres or mysql).",
         helpText = "The database type to write to (for example, Postgres).")
     @Default.String("postgres")
