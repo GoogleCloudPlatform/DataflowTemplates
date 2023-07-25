@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
@@ -321,6 +322,20 @@ public class DMLGenerator {
           valuesJson.getJSONArray(colName).toList().stream()
               .map(String::valueOf)
               .collect(Collectors.joining(","));
+    } else if ("STRING".equals(colType)
+        && ("binary".equals(sourceColDef.getType().getName())
+            || "varbinary".equals(sourceColDef.getType().getName()))) {
+
+      // Spanner has the hex string in this case
+      try {
+        colInputValue = new String(Hex.decodeHex(valuesJson.getString(colName)));
+      } catch (DecoderException e) {
+        // return the same string value
+        colInputValue = valuesJson.getString(colName);
+      }
+
+    } else if ("BYTES".equals(colType)) {
+      colInputValue = new String(Base64.decodeBase64(valuesJson.getString(colName).getBytes()));
     } else {
       colInputValue = valuesJson.getString(colName);
     }
@@ -356,6 +371,10 @@ public class DMLGenerator {
       case "multilinestring":
       case "polygon":
       case "multipolygon":
+      case "tinyblob":
+      case "mediumblob":
+      case "blob":
+      case "longblob":
         response = getQuotedEscapedString(colValue);
         break;
       case "timestamp":
@@ -368,13 +387,6 @@ public class DMLGenerator {
                 + sourceDbTimezoneOffset
                 + "')";
 
-        break;
-      case "tinyblob":
-      case "mediumblob":
-      case "blob":
-      case "longblob":
-        decodedString = new String(Base64.decodeBase64(colValue.getBytes()));
-        response = getQuotedEscapedString(decodedString);
         break;
       case "binary":
       case "varbinary":
@@ -400,8 +412,7 @@ public class DMLGenerator {
   }
 
   private static String getHexString(String input) {
-    String decodedString = new String(Base64.decodeBase64(input.getBytes()));
-    String cleanedString = escapeString(decodedString);
+    String cleanedString = escapeString(input);
     String hexString = Hex.encodeHexString(cleanedString.getBytes());
     String response = "X\'" + hexString + "\'";
     return response;
