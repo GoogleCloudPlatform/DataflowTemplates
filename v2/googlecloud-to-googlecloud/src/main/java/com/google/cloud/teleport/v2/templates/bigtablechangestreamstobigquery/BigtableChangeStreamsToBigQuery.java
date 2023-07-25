@@ -24,6 +24,8 @@ import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadChangeStreamOptions;
+import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadOptions;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -79,6 +81,17 @@ import org.slf4j.LoggerFactory;
     description =
         "Streaming pipeline. Streams Bigtable data change records and writes them into BigQuery using Dataflow Runner V2.",
     optionsClass = BigtableChangeStreamToBigQueryOptions.class,
+    optionsOrder = {
+      BigtableChangeStreamToBigQueryOptions.class,
+      ReadChangeStreamOptions.class,
+      ReadOptions.class
+    },
+    skipOptions = {
+      "bigtableReadAppProfile",
+      "bigtableAdditionalRetryCodes",
+      "bigtableRpcAttemptTimeoutMs",
+      "bigtableRpcTimeoutMs"
+    },
     flexContainerName = "bigtable-changestreams-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public final class BigtableChangeStreamsToBigQuery {
