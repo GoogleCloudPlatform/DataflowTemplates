@@ -79,6 +79,7 @@ public final class SpannerResourceManager implements ResourceManager {
 
   private final String projectId;
   private final String instanceId;
+  private final boolean usingStaticInstance;
   private final String databaseId;
   private final String region;
 
@@ -94,12 +95,20 @@ public final class SpannerResourceManager implements ResourceManager {
         builder.testId,
         builder.projectId,
         builder.region,
-        builder.dialect);
+        builder.dialect,
+        builder.useStaticInstance,
+        builder.instanceId);
   }
 
   @VisibleForTesting
   SpannerResourceManager(
-      Spanner spanner, String testId, String projectId, String region, Dialect dialect) {
+      Spanner spanner,
+      String testId,
+      String projectId,
+      String region,
+      Dialect dialect,
+      boolean useStaticInstance,
+      String instanceId) {
     // Check that the project ID conforms to GCP standards
     checkValidProjectId(projectId);
 
@@ -107,9 +116,18 @@ public final class SpannerResourceManager implements ResourceManager {
       testId = generateNewId(testId, MAX_BASE_ID_LENGTH);
     }
     this.projectId = projectId;
-    this.instanceId = generateInstanceId(testId);
-    this.databaseId = generateDatabaseId(testId);
 
+    if (useStaticInstance) {
+      if (instanceId == null) {
+        throw new SpannerResourceManagerException(
+            "This manager was configured to use a static resource, but the instanceId was not properly set.");
+      }
+      this.instanceId = instanceId;
+    } else {
+      this.instanceId = generateInstanceId(testId);
+    }
+    this.usingStaticInstance = useStaticInstance;
+    this.databaseId = generateDatabaseId(testId);
     this.region = region;
     this.dialect = dialect;
     this.spanner = spanner;
@@ -127,9 +145,17 @@ public final class SpannerResourceManager implements ResourceManager {
 
   private synchronized void maybeCreateInstance() {
     checkIsUsable();
+
+    if (usingStaticInstance) {
+      LOG.info("Not creating Spanner instance - reusing static {}", instanceId);
+      hasInstance = true;
+      return;
+    }
+
     if (hasInstance) {
       return;
     }
+
     LOG.info("Creating instance {} in project {}.", instanceId, projectId);
     try {
       InstanceInfo instanceInfo =
@@ -350,14 +376,23 @@ public final class SpannerResourceManager implements ResourceManager {
   @Override
   public synchronized void cleanupAll() {
     try {
-      LOG.info("Deleting instance {}...", instanceId);
 
-      if (instanceAdminClient != null) {
-        Failsafe.with(retryOnQuotaException())
-            .run(() -> instanceAdminClient.deleteInstance(instanceId));
+      if (usingStaticInstance) {
+        if (databaseAdminClient != null) {
+          Failsafe.with(retryOnQuotaException())
+              .run(() -> databaseAdminClient.dropDatabase(instanceId, databaseId));
+        }
+      } else {
+        LOG.info("Deleting instance {}...", instanceId);
+
+        if (instanceAdminClient != null) {
+          Failsafe.with(retryOnQuotaException())
+              .run(() -> instanceAdminClient.deleteInstance(instanceId));
+        }
+
+        hasInstance = false;
       }
 
-      hasInstance = false;
       hasDatabase = false;
     } catch (SpannerException e) {
       throw new SpannerResourceManagerException("Failed to delete instance.", e);
@@ -375,6 +410,8 @@ public final class SpannerResourceManager implements ResourceManager {
     private final String testId;
     private final String projectId;
     private final String region;
+    private boolean useStaticInstance;
+    private String instanceId;
 
     private final Dialect dialect;
 
@@ -383,6 +420,31 @@ public final class SpannerResourceManager implements ResourceManager {
       this.projectId = projectId;
       this.region = region;
       this.dialect = dialect;
+    }
+
+    /**
+     * Configures the resource manager to use a static GCP resource instead of creating a new
+     * instance of the resource.
+     *
+     * @return this builder object with the useStaticInstance option enabled.
+     */
+    public Builder useStaticInstance() {
+      this.useStaticInstance = true;
+      return this;
+    }
+
+    /**
+     * Looks at the system properties if there's an instance id, and reuses it if configured.
+     *
+     * @return this builder object with the useStaticInstance option enabled and instance set if
+     *     configured, the same builder otherwise.
+     */
+    public Builder maybeUseStaticInstance() {
+      if (System.getProperty("spannerInstanceId") != null) {
+        this.useStaticInstance = true;
+        this.instanceId = System.getProperty("spannerInstanceId");
+      }
+      return this;
     }
 
     public SpannerResourceManager build() {
