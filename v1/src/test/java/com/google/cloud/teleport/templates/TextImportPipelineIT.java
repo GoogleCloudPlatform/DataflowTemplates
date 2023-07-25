@@ -57,9 +57,12 @@ public final class TextImportPipelineIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException, URISyntaxException {
-    googleSqlResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    googleSqlResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
     postgresResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL).build();
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .build();
   }
 
   @After

@@ -67,7 +67,8 @@ public class SpannerChangeStreamsToPubSubIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(credentialsProvider)
