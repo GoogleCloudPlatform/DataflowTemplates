@@ -56,12 +56,17 @@ public interface BigtableChangeStreamsToPubSubOptions
 
   @TemplateParameter.Enum(
       order = 3,
+      enumOptions = {
+        @TemplateEnumOption("AVRO"),
+        @TemplateEnumOption("PROTOCOL_BUFFERS"),
+        @TemplateEnumOption("JSON"),
+      },
       optional = true,
       description = "The format of the message written into PubSub",
       helpText =
           "The message format chosen for outputting data to PubSub. "
               + "Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON Text. Default value is JSON.")
-  @Default.String("JSON")
+  @Default.Enum("JSON")
   String getMessageFormat();
 
   void setMessageFormat(String messageFormat);
@@ -129,9 +134,9 @@ public interface BigtableChangeStreamsToPubSubOptions
           "Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeys"
               + "Defaults to false.")
   @Default.Boolean(false)
-  Boolean getUseBase64Rowkey();
+  Boolean getUseBase64Rowkeys();
 
-  void setUseBase64Rowkey(Boolean useBase64Rowkey);
+  void setUseBase64Rowkeys(Boolean useBase64Rowkeys);
 
   @TemplateParameter.Boolean(
       order = 9,

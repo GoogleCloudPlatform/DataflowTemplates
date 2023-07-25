@@ -31,7 +31,16 @@ import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamToBigQueryOptions;
+<<<<<<< Updated upstream
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.*;
+=======
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigtableSource;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ModType;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.TransientColumn;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.UnsupportedEntryException;
+>>>>>>> Stashed changes
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;

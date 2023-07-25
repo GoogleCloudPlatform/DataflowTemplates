@@ -46,7 +46,6 @@ import com.google.pubsub.v1.ValidateMessageRequest;
 import com.google.pubsub.v1.ValidateMessageResponse;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -126,18 +125,6 @@ public final class BigtableChangeStreamsToPubSub {
     if (options.getDlqMaxRetries() < 0) {
       throw new IllegalArgumentException("dlqMaxRetries cannot be negative.");
     }
-
-    List<String> acceptableMessageFormats = Arrays.asList("AVRO", "PROTOCOL_BUFFERS", "JSON");
-    if (!acceptableMessageFormats.contains(options.getMessageFormat())) {
-      throw new IllegalArgumentException(
-          "Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON Text. Default value is JSON.");
-    }
-
-    List<String> acceptableMessageEncodings = Arrays.asList("BINARY", "JSON");
-    if (!acceptableMessageEncodings.contains(options.getMessageFormat())) {
-      throw new IllegalArgumentException(
-          "Allowed formats are BINARY and JSON Text. Default value is JSON.");
-    }
   }
 
   private static void setOptions(BigtableChangeStreamsToPubSubOptions options) {
@@ -200,7 +187,7 @@ public final class BigtableChangeStreamsToPubSub {
             options.getPubSubTopic(),
             options.getMessageFormat(),
             options.getMessageEncoding(),
-            options.getUseBase64Rowkey(),
+            options.getUseBase64Rowkeys(),
             options.getUseBase64ColumnQualifiers(),
             options.getUseBase64Values());
 
