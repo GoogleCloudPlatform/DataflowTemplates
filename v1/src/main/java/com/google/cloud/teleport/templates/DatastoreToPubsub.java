@@ -59,8 +59,6 @@ public class DatastoreToPubsub {
             TransformTextViaJavascript.newBuilder()
                 .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                 .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                .setReloadFunction(options.getJavascriptFunctionReload())
-                .setReloadIntervalMinutes(options.getJavascriptReloadIntervalMinutes())
                 .build())
         .apply(PubsubIO.writeStrings().to(options.getPubsubWriteTopic()));
 
