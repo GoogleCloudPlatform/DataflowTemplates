@@ -41,8 +41,8 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Enum(
       order = 2,
       enumOptions = {
-              @TemplateEnumOption("BINARY"),
-              @TemplateEnumOption("JSON"),
+        @TemplateEnumOption("BINARY"),
+        @TemplateEnumOption("JSON"),
       },
       optional = true,
       description = "The encoding of the message written into PubSub",
