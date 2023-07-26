@@ -294,7 +294,7 @@ public class PubSubUtils implements Serializable {
         (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM).format(this, changeJsonParsed));
     changelogEntryMessageJson.setTimestampTo(
         (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO).format(this, changeJsonParsed));
-    if (!stripValues) {
+    if (!this.stripValues) {
       if (this.destination.getUseBase64Values()) {
         changelogEntryMessageJson.setValue(
             (String)
