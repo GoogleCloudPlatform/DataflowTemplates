@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.Timestamp;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
@@ -194,13 +195,6 @@ public final class BigtableChangeStreamsToBigQuery {
 
     BigQueryUtils bigQuery = new BigQueryUtils(sourceInfo, destinationInfo);
 
-    /*
-     * Stages: 1) Read {@link ChangeStreamMutation} from change stream. 2) Create {@link
-     * FailsafeElement} of {@link Mod} JSON and merge from: - {@link ChangeStreamMutation}. - GCS Dead
-     * letter queue. 3) Convert {@link Mod} JSON into {@link TableRow}.
-     * 4) Append {@link TableRow} to BigQuery. 5) Write Failures from 2), 3) and
-     * 4) to GCS dead letter queue.
-     */
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
@@ -232,34 +226,17 @@ public final class BigtableChangeStreamsToBigQuery {
             .apply("Read from Cloud Bigtable Change Streams", readChangeStream)
             .apply(Values.create());
 
-    PCollection<FailsafeElement<String, String>> sourceFailsafeModJson =
-        dataChangeRecord
-            .apply(
-                "ChangeStreamMutation To Mod JSON",
-                ParDo.of(new ChangeStreamMutationToModJsonFn(sourceInfo)))
-            .apply(
-                "Wrap Mod JSON In FailsafeElement",
-                ParDo.of(
-                    new DoFn<String, FailsafeElement<String, String>>() {
-                      @ProcessElement
-                      public void process(
-                          @Element String input,
-                          OutputReceiver<FailsafeElement<String, String>> receiver) {
-                        receiver.output(FailsafeElement.of(input, input));
-                      }
-                    }))
-            .setCoder(FAILSAFE_ELEMENT_CODER);
+    PCollection<TableRow> changeStreamMutationToTableRow =
+        dataChangeRecord.apply(
+            "ChangeStreamMutation To TableRow",
+            ParDo.of(new ChangeStreamMutationToTableRowFn(sourceInfo, bigQuery)));
 
+    // -- DLQ reading -->
     PCollectionTuple dlqModJson =
         dlqManager.getReconsumerDataTransform(
             pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
-    PCollection<FailsafeElement<String, String>> retryableDlqFailsafeModJson =
-        dlqModJson.get(DeadLetterQueueManager.RETRYABLE_ERRORS).setCoder(FAILSAFE_ELEMENT_CODER);
-
     PCollection<FailsafeElement<String, String>> failsafeModJson =
-        PCollectionList.of(sourceFailsafeModJson)
-            .and(retryableDlqFailsafeModJson)
-            .apply("Merge Source And DLQ Mod JSON", Flatten.pCollections());
+        dlqModJson.get(DeadLetterQueueManager.RETRYABLE_ERRORS).setCoder(FAILSAFE_ELEMENT_CODER);
 
     FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions
         failsafeModJsonToTableRowOptions =
@@ -272,25 +249,31 @@ public final class BigtableChangeStreamsToBigQuery {
         failsafeModJsonToTableRow =
             new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
                 bigQuery, failsafeModJsonToTableRowOptions);
-
     PCollectionTuple tableRowTuple =
         failsafeModJson.apply("Mod JSON To TableRow", failsafeModJsonToTableRow);
+    // <-- DLQ reading --
+
+    PCollection<TableRow> dlqSourceTableRows =
+        tableRowTuple.get(failsafeModJsonToTableRow.transformOut);
+    PCollection<TableRow> mergeSourceWithDlq =
+        PCollectionList.of(changeStreamMutationToTableRow)
+            .and(dlqSourceTableRows)
+            .apply(Flatten.pCollections());
 
     WriteResult writeResult =
-        tableRowTuple
-            .get(failsafeModJsonToTableRow.transformOut)
-            .apply(
-                "Write To BigQuery",
-                BigQueryIO.<TableRow>write()
-                    .to(bigQuery.getDynamicDestinations())
-                    .withFormatFunction(
-                        BigtableChangeStreamsToBigQuery::removeIntermediateMetadataFields)
-                    .withFormatRecordOnFailureFunction(element -> element)
-                    .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                    .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-                    .withExtendedErrorInfo()
-                    .withMethod(Write.Method.STREAMING_INSERTS)
-                    .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+        mergeSourceWithDlq.apply(
+            "Write To BigQuery",
+            BigQueryIO.<TableRow>write()
+                .to(bigQuery.getDynamicDestinations())
+                .withFormatFunction(
+                    BigtableChangeStreamsToBigQuery::removeIntermediateMetadataFields)
+                .withFormatRecordOnFailureFunction(element -> element)
+                .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+                .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                .withExtendedErrorInfo()
+                .withMethod(Write.Method.STREAMING_INSERTS)
+                .withAutoSharding()
+                .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
     PCollection<String> transformDlqJson =
         tableRowTuple
@@ -402,17 +385,23 @@ public final class BigtableChangeStreamsToBigQuery {
    * DoFn that converts a {@link ChangeStreamMutation} to multiple {@link Mod} in serialized JSON
    * format.
    */
-  static class ChangeStreamMutationToModJsonFn extends DoFn<ChangeStreamMutation, String> {
+  static class ChangeStreamMutationToTableRowFn extends DoFn<ChangeStreamMutation, TableRow> {
 
+    private static final ThreadLocal<ObjectMapper> OBJECT_MAPPER =
+        ThreadLocal.withInitial(ObjectMapper::new);
     private final BigtableSource sourceInfo;
+    private final BigQueryUtils bigQuery;
 
-    ChangeStreamMutationToModJsonFn(BigtableSource source) {
+    ChangeStreamMutationToTableRowFn(BigtableSource source, BigQueryUtils bigQuery) {
       this.sourceInfo = source;
+      this.bigQuery = bigQuery;
     }
 
     @ProcessElement
-    public void process(@Element ChangeStreamMutation input, OutputReceiver<String> receiver)
+    public void process(@Element ChangeStreamMutation input, OutputReceiver<TableRow> receiver)
         throws Exception {
+      ObjectMapper objectMapper = OBJECT_MAPPER.get();
+
       for (Entry entry : input.getEntries()) {
         ModType modType = getModType(entry);
 
@@ -439,12 +428,16 @@ public final class BigtableChangeStreamsToBigQuery {
         String modJsonString;
 
         try {
-          modJsonString = mod.toJson();
+          modJsonString = objectMapper.writeValueAsString(mod);
         } catch (IOException e) {
           // Ignore exception and print bad format.
           modJsonString = String.format("\"%s\"", input);
         }
-        receiver.output(modJsonString);
+
+        TableRow tableRow = new TableRow();
+        if (bigQuery.setTableRowFields(mod, modJsonString, tableRow)) {
+          receiver.output(tableRow);
+        }
       }
     }
 

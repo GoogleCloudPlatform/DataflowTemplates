@@ -22,6 +22,7 @@ import static com.google.cloud.teleport.it.gcp.bigtable.BigtableResourceManagerU
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.rpc.ServerStream;
+import com.google.bigtable.admin.v2.DeleteTableRequest;
 import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminSettings;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
@@ -35,6 +36,7 @@ import com.google.cloud.bigtable.admin.v2.models.CreateInstanceRequest;
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
 import com.google.cloud.bigtable.admin.v2.models.GCRules;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
+import com.google.cloud.bigtable.admin.v2.models.UpdateTableRequest;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
 import com.google.cloud.bigtable.data.v2.models.Query;
@@ -48,6 +50,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,6 +82,8 @@ public class BigtableResourceManager implements ResourceManager {
 
   private List<String> createdTables;
 
+  private Set<String> cdcEnabledTables;
+
   private List<String> createdAppProfiles;
 
   private boolean hasInstance;
@@ -97,6 +102,8 @@ public class BigtableResourceManager implements ResourceManager {
     // Check that the project ID conforms to GCP standards
     checkValidProjectId(builder.projectId);
     this.projectId = builder.projectId;
+
+    this.cdcEnabledTables = new HashSet<>();
 
     // Check if RM was configured to use static Bigtable instance.
     if (builder.useStaticInstance) {
@@ -344,7 +351,10 @@ public class BigtableResourceManager implements ResourceManager {
           createTableRequest.addFamily(
               columnFamily, GCRules.GCRULES.maxAge(bigtableTableSpec.getMaxAge()));
         }
-        // TODO: Set CDC enabled
+        if (bigtableTableSpec.getCdcEnabled()) {
+          createTableRequest.addChangeStreamRetention(Duration.ofDays(7));
+          cdcEnabledTables.add(tableId);
+        }
         tableAdminClient.createTable(createTableRequest);
       } else {
         throw new IllegalStateException(
@@ -537,9 +547,16 @@ public class BigtableResourceManager implements ResourceManager {
   public synchronized void cleanupAll() throws BigtableResourceManagerException {
     LOG.info("Attempting to cleanup manager.");
 
-    if (usingStaticInstance) {
-      try (BigtableTableAdminClient tableAdminClient =
-          bigtableResourceManagerClientFactory.bigtableTableAdminClient()) {
+    try (BigtableTableAdminClient tableAdminClient =
+        bigtableResourceManagerClientFactory.bigtableTableAdminClient()) {
+      // Change streams must be disabled before table or instance can be deleted
+      for (String tableId : cdcEnabledTables) {
+        tableAdminClient.updateTable(
+            UpdateTableRequest.of(tableId).disableChangeStreamRetention()
+        );
+      }
+
+      if (usingStaticInstance) {
         createdTables.forEach(tableAdminClient::deleteTable);
         LOG.info(
             "This manager was configured to use a static instance that will not be cleaned up.");
@@ -550,6 +567,7 @@ public class BigtableResourceManager implements ResourceManager {
     if (hasInstance) {
       try (BigtableInstanceAdminClient instanceAdminClient =
           bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
+
         instanceAdminClient.deleteInstance(instanceId);
         hasInstance = false;
       } catch (Exception e) {
