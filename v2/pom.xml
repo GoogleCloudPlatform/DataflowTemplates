@@ -674,6 +674,7 @@
     </profiles>
 
     <modules>
+        <module>astradb-to-bigquery</module>
         <module>azure-eventhub-to-pubsub</module>
         <module>bigtable-cdc-to-hbase</module>
         <module>bigtable-common</module>
