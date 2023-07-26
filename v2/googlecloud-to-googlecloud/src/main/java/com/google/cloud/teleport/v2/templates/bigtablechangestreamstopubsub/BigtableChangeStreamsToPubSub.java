@@ -381,6 +381,9 @@ public final class BigtableChangeStreamsToPubSub {
   private static Boolean validateSchema(
       BigtableChangeStreamsToPubSubOptions options, PubSubUtils pubSub) throws Exception {
     Topic topic = pubSub.getDestination().getPubSubTopic();
+    if (topic.getSchemaSettings() == null) {
+      return true;
+    }
     String messageFormatPath = topic.getSchemaSettings().getSchema();
     if (topic.getSchemaSettings().getSchema().isEmpty()) {
       return true;
