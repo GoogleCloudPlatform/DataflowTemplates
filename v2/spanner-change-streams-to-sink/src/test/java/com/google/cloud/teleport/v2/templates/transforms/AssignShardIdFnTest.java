@@ -54,7 +54,7 @@ public class AssignShardIdFnTest {
         pipeline
             .apply(
                 Create.of(records).withCoder(SerializableCoder.of(TrimmedDataChangeRecord.class)))
-            .apply(ParDo.of(new AssignShardIdFn(getSchemaObject())));
+            .apply(ParDo.of(new AssignShardIdFn(null, getSchemaObject(), null)));
 
     PAssert.that(output)
         .containsInAnyOrder(
