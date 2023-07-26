@@ -551,9 +551,7 @@ public class BigtableResourceManager implements ResourceManager {
         bigtableResourceManagerClientFactory.bigtableTableAdminClient()) {
       // Change streams must be disabled before table or instance can be deleted
       for (String tableId : cdcEnabledTables) {
-        tableAdminClient.updateTable(
-            UpdateTableRequest.of(tableId).disableChangeStreamRetention()
-        );
+        tableAdminClient.updateTable(UpdateTableRequest.of(tableId).disableChangeStreamRetention());
       }
 
       if (usingStaticInstance) {

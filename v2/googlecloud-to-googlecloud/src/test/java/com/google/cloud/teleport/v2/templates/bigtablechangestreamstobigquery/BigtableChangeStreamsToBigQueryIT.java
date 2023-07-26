@@ -34,7 +34,7 @@ import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.PipelineOperator.Config;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
-import com.google.cloud.teleport.it.common.utils.ExceptionMessageUtils;
+import com.google.cloud.teleport.it.common.utils.ExceptionUtils;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateTestBase;
 import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
@@ -424,7 +424,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
       try {
         return bigQueryResourceManager.runQuery(query).getTotalRows() >= minRows;
       } catch (Exception e) {
-        if (ExceptionMessageUtils.underlyingErrorContains(e, "Not found: Table")) {
+        if (ExceptionUtils.containsMessage(e, "Not found: Table")) {
           return false;
         } else {
           throw e;
