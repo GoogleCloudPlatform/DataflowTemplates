@@ -158,11 +158,14 @@ public class PubSubUtils implements Serializable {
   private final BigtableSource source;
   private final PubSubDestination destination;
   private transient Charset charsetObj;
+  private final Boolean stripValues;
 
-  public PubSubUtils(BigtableSource sourceInfo, PubSubDestination destinationInfo) {
+  public PubSubUtils(
+      BigtableSource sourceInfo, PubSubDestination destinationInfo, Boolean stripValues) {
     this.source = sourceInfo;
     this.destination = destinationInfo;
     this.charsetObj = Charset.forName(sourceInfo.getCharset());
+    this.stripValues = stripValues;
   }
 
   public BigtableSource getSource() {
@@ -215,9 +218,11 @@ public class PubSubUtils implements Serializable {
         (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM).format(this, changeJsonParsed));
     changelogEntryMessage.setTimestampTo(
         (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO).format(this, changeJsonParsed));
-    changelogEntryMessage.setValue(
-        ByteBuffer.wrap(
-            (byte[]) FORMATTERS.get(PubSubFields.VALUES_BYTES).format(this, changeJsonParsed)));
+    if (!this.stripValues) {
+      changelogEntryMessage.setValue(
+          ByteBuffer.wrap(
+              (byte[]) FORMATTERS.get(PubSubFields.VALUES_BYTES).format(this, changeJsonParsed)));
+    }
     changelogEntryMessage.setSourceInstance(
         (String) FORMATTERS.get(PubSubFields.SOURCE_INSTANCE).format(this, changeJsonParsed));
     changelogEntryMessage.setSourceCluster(
@@ -289,13 +294,15 @@ public class PubSubUtils implements Serializable {
         (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_FROM).format(this, changeJsonParsed));
     changelogEntryMessageJson.setTimestampTo(
         (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO).format(this, changeJsonParsed));
-    if (this.destination.getUseBase64Values()) {
-      changelogEntryMessageJson.setValue(
-          (String)
-              FORMATTERS.get(PubSubFields.VALUES_STRING_BASE64).format(this, changeJsonParsed));
-    } else {
-      changelogEntryMessageJson.setValue(
-          (String) FORMATTERS.get(PubSubFields.VALUES_STRING).format(this, changeJsonParsed));
+    if (!stripValues) {
+      if (this.destination.getUseBase64Values()) {
+        changelogEntryMessageJson.setValue(
+            (String)
+                FORMATTERS.get(PubSubFields.VALUES_STRING_BASE64).format(this, changeJsonParsed));
+      } else {
+        changelogEntryMessageJson.setValue(
+            (String) FORMATTERS.get(PubSubFields.VALUES_STRING).format(this, changeJsonParsed));
+      }
     }
     changelogEntryMessageJson.setSourceInstance(
         (String) FORMATTERS.get(PubSubFields.SOURCE_INSTANCE).format(this, changeJsonParsed));
@@ -362,9 +369,13 @@ public class PubSubUtils implements Serializable {
             .setTimestampTo(
                 (Long) FORMATTERS.get(PubSubFields.TIMESTAMP_TO).format(this, changeJsonParsed))
             .setValue(
-                ByteString.copyFrom(
-                    (byte[])
-                        FORMATTERS.get(PubSubFields.VALUES_BYTES).format(this, changeJsonParsed)))
+                (this.stripValues == false)
+                    ? ByteString.copyFrom(
+                        (byte[])
+                            FORMATTERS
+                                .get(PubSubFields.VALUES_BYTES)
+                                .format(this, changeJsonParsed))
+                    : null)
             .setSourceInstance(
                 (String)
                     FORMATTERS.get(PubSubFields.SOURCE_INSTANCE).format(this, changeJsonParsed))

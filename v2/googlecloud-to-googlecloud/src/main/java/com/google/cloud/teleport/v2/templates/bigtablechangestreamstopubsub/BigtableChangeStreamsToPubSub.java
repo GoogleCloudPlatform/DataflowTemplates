@@ -191,7 +191,7 @@ public final class BigtableChangeStreamsToPubSub {
             options.getUseBase64ColumnQualifiers(),
             options.getUseBase64Values());
 
-    PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo);
+    PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo, options.getStripValues());
 
     try (TopicAdminClient topicAdminClient = TopicAdminClient.create()) {
       GetTopicRequest request =
