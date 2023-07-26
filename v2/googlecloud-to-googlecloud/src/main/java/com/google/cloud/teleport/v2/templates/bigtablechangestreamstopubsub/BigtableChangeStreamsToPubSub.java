@@ -390,18 +390,14 @@ public final class BigtableChangeStreamsToPubSub {
     } else {
       ByteString testChangeJsonMessage =
           ByteString.copyFromUtf8(readTestChangeJsonMessageInBytes());
-      try (SchemaServiceClient schemaServiceClient = SchemaServiceClient.create()) {
-        ValidateMessageRequest request =
-            ValidateMessageRequest.newBuilder()
-                .setParent(pubSub.getDestination().getPubSubProject())
-                .setMessage(testChangeJsonMessage)
-                .setName(messageFormatPath)
-                .build();
-        ValidateMessageResponse response = schemaServiceClient.validateMessage(request);
-
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
+      SchemaServiceClient schemaServiceClient = SchemaServiceClient.create();
+      ValidateMessageRequest request =
+          ValidateMessageRequest.newBuilder()
+              .setParent(pubSub.getDestination().getPubSubProject())
+              .setMessage(testChangeJsonMessage)
+              .setName(messageFormatPath)
+              .build();
+      ValidateMessageResponse response = schemaServiceClient.validateMessage(request);
     }
     return true;
   }
