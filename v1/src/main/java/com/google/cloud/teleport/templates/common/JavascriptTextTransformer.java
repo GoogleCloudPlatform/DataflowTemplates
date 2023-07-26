@@ -28,10 +28,14 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.script.Invocable;
@@ -45,6 +49,7 @@ import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -91,6 +96,29 @@ public abstract class JavascriptTextTransformer {
 
     void setJavascriptTextTransformFunctionName(
         ValueProvider<String> javascriptTextTransformFunctionName);
+
+    // Support for auto reload UDFs
+    @TemplateParameter.Boolean(
+        order = 12,
+        optional = true,
+        description = "Enable JavaScript UDF auto-reload feature",
+        helpText =
+            "If set to true, enables the JavaScript UDF auto-reload feature, which guarantees that "
+                + "updated code is used without the need to restart jobs.")
+    ValueProvider<Boolean> getJavascriptFunctionReload();
+
+    void setJavascriptFunctionReload(ValueProvider<Boolean> javascriptFunctionReload);
+
+    @TemplateParameter.Integer(
+        order = 13,
+        optional = true,
+        description = "JavaScript UDF auto-reload interval (minutes)",
+        helpText =
+            "Define the interval that workers may check for JavaScript UDF changes to reload the files.")
+    @Default.Integer(60)
+    ValueProvider<Integer> getJavascriptReloadIntervalMinutes();
+
+    void setJavascriptReloadIntervalMinutes(ValueProvider<Integer> javascriptReloadIntervalMinutes);
   }
 
   /**
@@ -110,7 +138,16 @@ public abstract class JavascriptTextTransformer {
     @Nullable
     public abstract String functionName();
 
+    @Nullable
+    public abstract Boolean reloadFunction();
+
+    @Nullable
+    public abstract Integer reloadIntervalMinutes();
+
     private Invocable invocable;
+
+    private Instant lastRefreshCheck = Instant.now();
+    private Set<String> lastScripts;
 
     /** Builder for {@link JavascriptTextTransformer}. */
     @AutoValue.Builder
@@ -118,6 +155,10 @@ public abstract class JavascriptTextTransformer {
       public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder setFunctionName(@Nullable String functionName);
+
+      public abstract Builder setReloadFunction(@Nullable Boolean value);
+
+      public abstract Builder setReloadIntervalMinutes(@Nullable Integer value);
 
       public abstract JavascriptRuntime build();
     }
@@ -144,9 +185,24 @@ public abstract class JavascriptTextTransformer {
         return null;
       }
 
-      if (invocable == null) {
+      if (invocable == null
+          || (reloadFunction() != null
+              && reloadFunction()
+              && reloadIntervalMinutes() != null
+              && Duration.between(lastRefreshCheck, Instant.now()).toMinutes()
+                  > reloadIntervalMinutes())) {
+
+        // List of all scripts read from the filesystem
         Collection<String> scripts = getScripts(fileSystemPath());
-        invocable = newInvocable(scripts);
+
+        // We compare the entire code, and reload invocable if changed
+        Set<String> uniqueCode = new TreeSet<>(scripts);
+        if (!uniqueCode.equals(lastScripts)) {
+          invocable = newInvocable(scripts);
+          lastScripts = uniqueCode;
+        }
+
+        lastRefreshCheck = Instant.now();
       }
       return invocable;
     }
@@ -217,7 +273,7 @@ public abstract class JavascriptTextTransformer {
      * Loads into memory scripts from a File System from a given path. Supports any file system that
      * {@link FileSystems} supports.
      *
-     * @return a collection of scripts loaded as UF8 Strings
+     * @return a collection of scripts loaded as UTF8 Strings
      */
     private static Collection<String> getScripts(String path) throws IOException {
       MatchResult result = FileSystems.match(path);
@@ -225,23 +281,20 @@ public abstract class JavascriptTextTransformer {
           result.status() == Status.OK && !result.metadata().isEmpty(),
           "Failed to match any files with the pattern: " + path);
 
-      List<String> scripts =
-          result.metadata().stream()
-              .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
-              .map(Metadata::resourceId)
-              .map(
-                  resourceId -> {
-                    try (Reader reader =
-                        Channels.newReader(
-                            FileSystems.open(resourceId), StandardCharsets.UTF_8.name())) {
-                      return CharStreams.toString(reader);
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  })
-              .collect(Collectors.toList());
-
-      return scripts;
+      return result.metadata().stream()
+          .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
+          .map(Metadata::resourceId)
+          .map(
+              resourceId -> {
+                try (Reader reader =
+                    Channels.newReader(
+                        FileSystems.open(resourceId), StandardCharsets.UTF_8.name())) {
+                  return CharStreams.toString(reader);
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              })
+          .collect(Collectors.toList());
     }
   }
 
@@ -253,12 +306,20 @@ public abstract class JavascriptTextTransformer {
 
     public abstract @Nullable ValueProvider<String> functionName();
 
+    public abstract @Nullable ValueProvider<Boolean> reloadFunction();
+
+    public abstract @Nullable ValueProvider<Integer> reloadIntervalMinutes();
+
     /** Builder for {@link TransformTextViaJavascript}. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setFileSystemPath(@Nullable ValueProvider<String> fileSystemPath);
 
       public abstract Builder setFunctionName(@Nullable ValueProvider<String> functionName);
+
+      public abstract Builder setReloadFunction(@Nullable ValueProvider<Boolean> value);
+
+      public abstract Builder setReloadIntervalMinutes(@Nullable ValueProvider<Integer> value);
 
       public abstract TransformTextViaJavascript build();
     }
@@ -278,7 +339,11 @@ public abstract class JavascriptTextTransformer {
                 public void setup() {
                   if (fileSystemPath() != null && functionName() != null) {
                     javascriptRuntime =
-                        getJavascriptRuntime(fileSystemPath().get(), functionName().get());
+                        getJavascriptRuntime(
+                            fileSystemPath().get(),
+                            functionName().get(),
+                            reloadFunction() != null ? reloadFunction().get() : null,
+                            reloadIntervalMinutes() != null ? reloadIntervalMinutes().get() : null);
                   }
                 }
 
@@ -311,6 +376,10 @@ public abstract class JavascriptTextTransformer {
 
     public abstract @Nullable ValueProvider<String> functionName();
 
+    public abstract @Nullable ValueProvider<Boolean> functionReload();
+
+    public abstract @Nullable ValueProvider<Integer> reloadIntervalMinutes();
+
     public abstract @Nullable ValueProvider<Boolean> loggingEnabled();
 
     public abstract TupleTag<FailsafeElement<T, String>> successTag();
@@ -334,6 +403,10 @@ public abstract class JavascriptTextTransformer {
 
       public abstract Builder<T> setFunctionName(@Nullable ValueProvider<String> functionName);
 
+      public abstract Builder<T> setFunctionReload(@Nullable ValueProvider<Boolean> functionReload);
+
+      public abstract Builder<T> setReloadIntervalMinutes(ValueProvider<Integer> value);
+
       public abstract Builder<T> setLoggingEnabled(@Nullable ValueProvider<Boolean> loggingEnabled);
 
       public abstract Builder<T> setSuccessTag(TupleTag<FailsafeElement<T, String>> successTag);
@@ -356,7 +429,13 @@ public abstract class JavascriptTextTransformer {
                     public void setup() {
                       if (fileSystemPath() != null && functionName() != null) {
                         javascriptRuntime =
-                            getJavascriptRuntime(fileSystemPath().get(), functionName().get());
+                            getJavascriptRuntime(
+                                fileSystemPath().get(),
+                                functionName().get(),
+                                functionReload() != null ? functionReload().get() : null,
+                                reloadIntervalMinutes() != null
+                                    ? reloadIntervalMinutes().get()
+                                    : null);
                       }
 
                       if (loggingEnabled() != null && loggingEnabled().isAccessible()) {
@@ -427,10 +506,15 @@ public abstract class JavascriptTextTransformer {
    *
    * @param fileSystemPath The file path to the JavaScript file to execute.
    * @param functionName The function name which will be invoked within the JavaScript script.
+   * @param reloadFunction If function should be reloaded after initialized.
+   * @param reloadIntervalMinutes The interval to check for function changes.
    * @return The {@link JavascriptRuntime} instance.
    */
   private static JavascriptRuntime getJavascriptRuntime(
-      String fileSystemPath, String functionName) {
+      String fileSystemPath,
+      String functionName,
+      Boolean reloadFunction,
+      Integer reloadIntervalMinutes) {
     JavascriptRuntime javascriptRuntime = null;
 
     if (!Strings.isNullOrEmpty(fileSystemPath) && !Strings.isNullOrEmpty(functionName)) {
@@ -438,6 +522,8 @@ public abstract class JavascriptTextTransformer {
           JavascriptRuntime.newBuilder()
               .setFunctionName(functionName)
               .setFileSystemPath(fileSystemPath)
+              .setReloadFunction(reloadFunction)
+              .setReloadIntervalMinutes(reloadIntervalMinutes)
               .build();
     }
 
