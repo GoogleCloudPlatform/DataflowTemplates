@@ -22,9 +22,9 @@ And the change log schema is defined as follows:
 | timestampFrom   | NT64          | LONG             | STRING    | Y         | Time range start in microseconds (inclusive) for a DeleteFromColumn mutation. Type is determined by _writeNumericTimestamps_ pipeline option |
 | timestampTo     | INT64         | LONG             | STRING    | Y         | Time range end in microseconds (exclusive) for a DeleteFromColumn mutation. Type is determined by _writeNumericTimestamps_ pipeline option   |                             
 | value           | BYTES         | BYTES            | STRING    | Y         | Bigtable cell value. Not specified for delete operations                                                                                     |
-| sourceInstance           | STRING        | STRING           | STRING    | N         | The ID of the Cloud Bigtable instance that contains the table.                                                                               |
-| sourceCluster           | STRING        | STRING           | STRING    | N         | The ID of the cloud Bigtable cluster where mutation was made.                                                                                |
-| sourceTable           | STRING        | STRING           | STRING    | N         | The Cloud Bigtable table to read the change streams from.                                                                                    |
+| sourceInstance           | STRING        | STRING           | STRING    | N         | The name of the Bigtable instance registered the mutation.                                                                              |
+| sourceCluster           | STRING        | STRING           | STRING    | N         | The name of the Bigtable cluster registered the mutation.                                                                                |
+| sourceTable           | STRING        | STRING           | STRING    | N         | The name of the Bigtable table registered the mutation.                                                                                    |
 
 &ast; Populating these columns can be skipped using pipeline options configuration.
 ## Getting started

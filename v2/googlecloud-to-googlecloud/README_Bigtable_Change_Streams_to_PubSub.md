@@ -22,16 +22,16 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional Parameters
 
-* **messageEncoding** (The encoding of the message written into PubSub): The format of the message to be written into PubSub. Allowed formats are BINARY and JSON Text. Default value is JSON.
-* **messageFormat** (The format of the message written into PubSub): The message format chosen for outputting data to PubSub. Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON Text. Default value is JSON.
+* **messageEncoding** (The encoding of the message written into PubSub): The format of the message to be written into PubSub. Allowed formats are BINARY and JSON. Default value is JSON.
+* **messageFormat** (The format of the message written into PubSub): The message format chosen for outputting data to PubSub. Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON. Default value is JSON.
 * **stripValues** (Strip values for SetCell mutation): Strip values for SetCell mutation. If true the SetCell mutation message won’t include the values written. Defaults to: false.
 * **dlqDirectory** (Dead letter queue directory to store any unpublished change record.): The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
 * **dlqRetryMinutes** (Dead letter queue retry minutes): The number of minutes between dead letter queue retries. Defaults to 10.
 * **dlqMaxRetries** (Dead letter maximum retries): The number of attempts to process change stream mutations. Defaults to 5.
-* **useBase64Rowkey** (Write Base64-encoded rowkeys): Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeysDefaults to false.
+* **useBase64Rowkeys** (Write Base64-encoded row keys): Only supported for the JSON messageFormat. When set to true, row keys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String row keysDefaults to false.
 * **pubSubProjectId** (PubSub project ID): The PubSub Project. Default is the project for the Dataflow job.
-* **useBase64ColumnQualifiers** (Write Base64-encoded column qualifiers): Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiersDefaults to false.
-* **useBase64Values** (Write Base64-encoded values): Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String valuesDefaults to false.
+* **useBase64ColumnQualifiers** (Write Base64-encoded column qualifiers): Only supported for the JSON messageFormat. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiersDefaults to false.
+* **useBase64Values** (Write Base64-encoded values): Only supported for the JSON messageFormat. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String valuesDefaults to false.
 * **bigtableChangeStreamMetadataInstanceId** (Cloud Bigtable change streams metadata instance ID): The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.
 * **bigtableChangeStreamMetadataTableTableId** (Cloud Bigtable change streams metadata table ID): The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty.
 * **bigtableChangeStreamCharset** (Bigtable change streams charset name when reading values and column qualifiers): Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8.
@@ -136,7 +136,7 @@ export STRIP_VALUES=false
 export DLQ_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRIES=5
-export USE_BASE64ROWKEY=false
+export USE_BASE64ROWKEYS=false
 export PUB_SUB_PROJECT_ID=""
 export USE_BASE64COLUMN_QUALIFIERS=false
 export USE_BASE64VALUES=false
@@ -161,7 +161,7 @@ gcloud dataflow flex-template run "bigtable-change-streams-to-pubsub-job" \
   --parameters "dlqDirectory=$DLQ_DIRECTORY" \
   --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
   --parameters "dlqMaxRetries=$DLQ_MAX_RETRIES" \
-  --parameters "useBase64Rowkey=$USE_BASE64ROWKEY" \
+  --parameters "useBase64Rowkeys=$USE_BASE64ROWKEYS" \
   --parameters "pubSubProjectId=$PUB_SUB_PROJECT_ID" \
   --parameters "useBase64ColumnQualifiers=$USE_BASE64COLUMN_QUALIFIERS" \
   --parameters "useBase64Values=$USE_BASE64VALUES" \
@@ -207,7 +207,7 @@ export STRIP_VALUES=false
 export DLQ_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRIES=5
-export USE_BASE64ROWKEY=false
+export USE_BASE64ROWKEYS=false
 export PUB_SUB_PROJECT_ID=""
 export USE_BASE64COLUMN_QUALIFIERS=false
 export USE_BASE64VALUES=false
@@ -228,7 +228,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigtable-change-streams-to-pubsub-job" \
 -DtemplateName="Bigtable_Change_Streams_to_PubSub" \
--Dparameters="pubSubTopic=$PUB_SUB_TOPIC,messageEncoding=$MESSAGE_ENCODING,messageFormat=$MESSAGE_FORMAT,stripValues=$STRIP_VALUES,dlqDirectory=$DLQ_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetries=$DLQ_MAX_RETRIES,useBase64Rowkey=$USE_BASE64ROWKEY,pubSubProjectId=$PUB_SUB_PROJECT_ID,useBase64ColumnQualifiers=$USE_BASE64COLUMN_QUALIFIERS,useBase64Values=$USE_BASE64VALUES,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID" \
+-Dparameters="pubSubTopic=$PUB_SUB_TOPIC,messageEncoding=$MESSAGE_ENCODING,messageFormat=$MESSAGE_FORMAT,stripValues=$STRIP_VALUES,dlqDirectory=$DLQ_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetries=$DLQ_MAX_RETRIES,useBase64Rowkeys=$USE_BASE64ROWKEYS,pubSubProjectId=$PUB_SUB_PROJECT_ID,useBase64ColumnQualifiers=$USE_BASE64COLUMN_QUALIFIERS,useBase64Values=$USE_BASE64VALUES,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID" \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```

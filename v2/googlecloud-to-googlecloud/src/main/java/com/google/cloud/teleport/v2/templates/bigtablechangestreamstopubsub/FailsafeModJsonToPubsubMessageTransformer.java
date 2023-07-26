@@ -170,7 +170,7 @@ public final class FailsafeModJsonToPubsubMessageTransformer {
             final String errorMessage =
                 "Invalid message format:"
                     + messageFormat
-                    + ". Supported output formats: JSON, AVRO";
+                    + ". Supported output formats: JSON, AVRO and PROTOCOL_BUFFERS";
             throw new IllegalArgumentException(errorMessage);
         }
 

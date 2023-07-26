@@ -48,7 +48,7 @@ public interface BigtableChangeStreamsToPubSubOptions
       description = "The encoding of the message written into PubSub",
       helpText =
           "The format of the message to be written into PubSub. "
-              + "Allowed formats are BINARY and JSON Text. Default value is JSON.")
+              + "Allowed formats are BINARY and JSON. Default value is JSON.")
   @Default.Enum("JSON")
   String getMessageEncoding();
 
@@ -65,7 +65,7 @@ public interface BigtableChangeStreamsToPubSubOptions
       description = "The format of the message written into PubSub",
       helpText =
           "The message format chosen for outputting data to PubSub. "
-              + "Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON Text. Default value is JSON.")
+              + "Allowed formats are AVRO, PROTOCOL_BUFFERS and JSON. Default value is JSON.")
   @Default.Enum("JSON")
   String getMessageFormat();
 
@@ -129,9 +129,9 @@ public interface BigtableChangeStreamsToPubSubOptions
   @TemplateParameter.Boolean(
       order = 8,
       optional = true,
-      description = "Write Base64-encoded rowkeys",
+      description = "Write Base64-encoded row keys",
       helpText =
-          "Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeys"
+          "Only supported for the JSON messageFormat. When set to true, row keys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String row keys"
               + "Defaults to false.")
   @Default.Boolean(false)
   Boolean getUseBase64Rowkeys();
@@ -143,7 +143,7 @@ public interface BigtableChangeStreamsToPubSubOptions
       optional = true,
       description = "Write Base64-encoded column qualifiers",
       helpText =
-          "Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiers"
+          "Only supported for the JSON messageFormat. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiers"
               + "Defaults to false.")
   @Default.Boolean(false)
   Boolean getUseBase64ColumnQualifiers();
@@ -155,7 +155,7 @@ public interface BigtableChangeStreamsToPubSubOptions
       optional = true,
       description = "Write Base64-encoded values",
       helpText =
-          "Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String values"
+          "Only supported for the JSON messageFormat. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String values"
               + "Defaults to false.")
   @Default.Boolean(false)
   Boolean getUseBase64Values();

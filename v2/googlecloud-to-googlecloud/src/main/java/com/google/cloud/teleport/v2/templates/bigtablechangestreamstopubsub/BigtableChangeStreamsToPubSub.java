@@ -158,9 +158,9 @@ public final class BigtableChangeStreamsToPubSub {
    */
   public static PipelineResult run(BigtableChangeStreamsToPubSubOptions options) {
     LOG.info(
-        "Requested message format and message encoding are: "
-            + options.getMessageFormat()
-            + options.getMessageEncoding());
+        "Requested message format: {}, message encoding: {}",
+        options.getMessageFormat(),
+        options.getMessageEncoding());
     setOptions(options);
     validateOptions(options);
 
@@ -381,11 +381,7 @@ public final class BigtableChangeStreamsToPubSub {
   private static Boolean validateSchema(
       BigtableChangeStreamsToPubSubOptions options, PubSubUtils pubSub) throws Exception {
     Topic topic = pubSub.getDestination().getPubSubTopic();
-    if (options.getMessageEncoding() != topic.getSchemaSettings().getEncoding().toString()) {
-      return false;
-    }
     String messageFormatPath = topic.getSchemaSettings().getSchema();
-    String messageFormat = pubSub.getDestination().getMessageFormat();
     if (topic.getSchemaSettings().getSchema().isEmpty()) {
       return true;
     } else {
@@ -424,6 +420,9 @@ public final class BigtableChangeStreamsToPubSub {
     object.put("timestamp", offset + (long) (Math.random() * diff));
     object.put("timestamp_from", offset + (long) (Math.random() * diff));
     object.put("timestamp_to", offset + (long) (Math.random() * diff));
+    object.put("source_instance", "source_instance");
+    object.put("source_cluster", "source_cluster");
+    object.put("source_table", "source_table");
 
     return object.toString();
   }

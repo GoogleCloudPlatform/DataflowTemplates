@@ -238,12 +238,9 @@ public class PubSubUtils implements Serializable {
             EncoderFactory.get().jsonEncoder(ChangelogEntryMessage.getClassSchema(), byteStream);
         break;
       default:
-        final String errorMessage =
-            "Invalid message encoding: "
-                + messageEncoding
-                + ". Supported output formats: JSON, BINARY";
-        throw new IllegalArgumentException(errorMessage);
+        throw new IllegalStateException("Unknown message encoding: " + messageEncoding);
     }
+
     changelogEntryMessage.customEncode(encoder);
     encoder.flush();
 
@@ -321,11 +318,7 @@ public class PubSubUtils implements Serializable {
                 .jsonEncoder(ChangelogEntryMessageJson.getClassSchema(), byteStream);
         break;
       default:
-        final String errorMessage =
-            "Invalid message encoding: "
-                + messageEncoding
-                + ". Supported output formats: JSON, BINARY";
-        throw new IllegalArgumentException(errorMessage);
+        throw new IllegalStateException("Unknown message encoding: " + messageEncoding);
     }
     changelogEntryMessageJson.customEncode(encoder);
     encoder.flush();
@@ -396,11 +389,7 @@ public class PubSubUtils implements Serializable {
         message.setData(ByteString.copyFromUtf8(jsonString));
         break;
       default:
-        final String errorMessage =
-            "Invalid message encoding: "
-                + messageEncoding
-                + ". Supported output formats: JSON, BINARY";
-        throw new IllegalArgumentException(errorMessage);
+        throw new IllegalStateException("Unknown message encoding: " + messageEncoding);
     }
     return message.build();
   }

@@ -43,8 +43,4 @@ public enum PubSubFields {
   PubSubFields(String fieldName) {
     this.fieldName = fieldName;
   }
-
-  public String getFieldName() {
-    return fieldName;
-  }
 }
