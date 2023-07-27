@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToSink.Options;
@@ -44,6 +45,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -322,19 +324,29 @@ public class SpannerChangeStreamsToSink {
 
     Schema schema = SessionFileReader.read(options.getSessionFilePath());
 
+    // Prepare Spanner config
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+
+    Ddl ddl = InformationSchemaReader.getInformationSchemaAsDdl(spannerConfig);
+
     pipeline
-        .apply(getReadChangeStreamDoFn(options))
+        .apply(getReadChangeStreamDoFn(options, spannerConfig))
         .apply(ParDo.of(new FilterRecordsFn()))
         .apply(ParDo.of(new PreprocessRecordsFn()))
         .setCoder(SerializableCoder.of(TrimmedDataChangeRecord.class))
-        .apply(ParDo.of(new AssignShardIdFn(schema)))
+        .apply(ParDo.of(new AssignShardIdFn(spannerConfig, schema, ddl)))
         .apply(
             ParDo.of(new OrderRecordsAndWriteToSinkFn(options.getIncrementInterval(), dataSink)));
 
     return pipeline.run();
   }
 
-  public static SpannerIO.ReadChangeStream getReadChangeStreamDoFn(Options options) {
+  public static SpannerIO.ReadChangeStream getReadChangeStreamDoFn(
+      Options options, SpannerConfig spannerConfig) {
 
     Timestamp startTime = Timestamp.now();
     if (!options.getStartTimestamp().equals("")) {
@@ -342,11 +354,7 @@ public class SpannerChangeStreamsToSink {
     }
     SpannerIO.ReadChangeStream readChangeStreamDoFn =
         SpannerIO.readChangeStream()
-            .withSpannerConfig(
-                SpannerConfig.create()
-                    .withProjectId(options.getSpannerProjectId())
-                    .withInstanceId(options.getInstanceId())
-                    .withDatabaseId(options.getDatabaseId()))
+            .withSpannerConfig(spannerConfig)
             .withChangeStreamName(options.getChangeStreamName())
             .withMetadataInstance(options.getMetadataInstance())
             .withMetadataDatabase(options.getMetadataDatabase())

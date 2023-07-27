@@ -78,9 +78,9 @@ public class TargetMapper {
     target.setSaveMode(SaveMode.valueOf(targetObj.getString("mode")));
     if (target.getType() == TargetType.edge) {
       target.setEdgeNodesMatchMode(
-          !targetObj.has("edgeNodesMatchMode")
+          !targetObj.has("edge_nodes_match_mode")
               ? EdgeNodesMatchMode.match
-              : EdgeNodesMatchMode.valueOf(targetObj.getString("edgeNodesMatchMode")));
+              : EdgeNodesMatchMode.valueOf(targetObj.getString("edge_nodes_match_mode")));
     }
     target.setSaveMode(SaveMode.valueOf(targetObj.getString("mode")));
     target.setSource(targetObj.has("source") ? targetObj.getString("source") : "");
