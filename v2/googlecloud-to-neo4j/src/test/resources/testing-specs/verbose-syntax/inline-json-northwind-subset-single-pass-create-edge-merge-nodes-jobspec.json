@@ -63,7 +63,7 @@
       "name": "Purchase Edges",
       "type": "edge",
       "mode": "append",
-      "edgeNodesMatchMode": "merge",
+      "edge_nodes_match_mode": "merge",
       "source": "1k orders inline",
       "transform": {
         "group": false,

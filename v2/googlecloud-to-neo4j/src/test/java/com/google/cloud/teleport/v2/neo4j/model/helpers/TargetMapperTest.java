@@ -30,7 +30,7 @@ public class TargetMapperTest {
   public void setsSpecifiedMatchModeForEdgeTargets() {
     JSONObject object = targetOfType("edge");
     object.put("mode", "merge");
-    object.put("edgeNodesMatchMode", "merge");
+    object.put("edge_nodes_match_mode", "merge");
 
     Target target = TargetMapper.fromJson(object);
 
@@ -41,7 +41,7 @@ public class TargetMapperTest {
   public void setsSpecifiedMatchModeForEdgeTargetsInAppendMode() {
     JSONObject object = targetOfType("edge");
     object.put("mode", "append");
-    object.put("edgeNodesMatchMode", "merge");
+    object.put("edge_nodes_match_mode", "merge");
 
     Target target = TargetMapper.fromJson(object);
 
@@ -51,7 +51,7 @@ public class TargetMapperTest {
   @Test
   public void ignoresSpecifiedMatchModeForNodeTargets() {
     JSONObject object = targetOfType("node");
-    object.put("edgeNodesMatchMode", "match");
+    object.put("edge_nodes_match_mode", "match");
 
     Target target = TargetMapper.fromJson(object);
 
