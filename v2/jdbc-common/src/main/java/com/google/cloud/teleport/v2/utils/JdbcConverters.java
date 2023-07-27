@@ -26,6 +26,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +38,11 @@ public class JdbcConverters {
   /** Factory method for {@link ResultSetToTableRow}. */
   public static JdbcIO.RowMapper<TableRow> getResultSetToTableRow(boolean useColumnAlias) {
     return new ResultSetToTableRow(useColumnAlias);
+  }
+
+  /** Factory method for {@link ResultSetToJSONString}. */
+  public static JdbcIO.RowMapper<String> getResultSetToJsonString(boolean useColumnAlias) {
+    return new ResultSetToJSONString(useColumnAlias);
   }
 
   /**
@@ -53,7 +59,7 @@ public class JdbcConverters {
     private static final DateTimeFormatter TIMESTAMP_FORMATTER =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSXXX");
 
-    private Boolean useColumnAlias;
+    private final Boolean useColumnAlias;
 
     public ResultSetToTableRow(Boolean useColumnAlias) {
       this.useColumnAlias = useColumnAlias;
@@ -121,6 +127,66 @@ public class JdbcConverters {
       }
 
       return outputTableRow;
+    }
+
+    protected String getColumnRef(ResultSetMetaData metaData, int index) throws SQLException {
+      if (useColumnAlias != null && useColumnAlias) {
+        String columnLabel = metaData.getColumnLabel(index);
+        if (columnLabel != null && !columnLabel.isEmpty()) {
+          return columnLabel;
+        }
+      }
+
+      return metaData.getColumnName(index);
+    }
+  }
+
+  /**
+   * {@link JdbcIO.RowMapper} implementation to convert Jdbc ResultSet rows to UTF-8 encoded JSONs.
+   */
+  public static class ResultSetToJSONString implements JdbcIO.RowMapper<String> {
+
+    private final Boolean useColumnAlias;
+
+    public ResultSetToJSONString() {
+      this(false);
+    }
+
+    public ResultSetToJSONString(Boolean useColumnAlias) {
+      this.useColumnAlias = useColumnAlias;
+    }
+
+    @Override
+    public String mapRow(ResultSet resultSet) throws Exception {
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      JSONObject json = new JSONObject();
+
+      for (int i = 1; i <= metaData.getColumnCount(); i++) {
+        Object value = resultSet.getObject(i);
+
+        // JSONObject.put() does not support null values. The exception is JSONObject.NULL
+        if (value == null) {
+          json.put(getColumnRef(metaData, i), JSONObject.NULL);
+          continue;
+        }
+
+        switch (metaData.getColumnTypeName(i).toLowerCase()) {
+          case "clob":
+            Clob clobObject = resultSet.getClob(i);
+            if (clobObject.length() > Integer.MAX_VALUE) {
+              LOG.warn(
+                  "The Clob value size {} in column {} exceeds 2GB and will be truncated.",
+                  clobObject.length(),
+                  getColumnRef(metaData, i));
+            }
+            json.put(
+                getColumnRef(metaData, i), clobObject.getSubString(1, (int) clobObject.length()));
+            break;
+          default:
+            json.put(getColumnRef(metaData, i), value);
+        }
+      }
+      return json.toString();
     }
 
     protected String getColumnRef(ResultSetMetaData metaData, int index) throws SQLException {

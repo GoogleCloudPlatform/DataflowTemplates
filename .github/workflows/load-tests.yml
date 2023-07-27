@@ -41,7 +41,7 @@ jobs:
       run: |
         if [[ $SPEC_PATH ]]
         then 
-          mvn test -Dtest=${TEST_PATTERN} -Dproject=apache-beam-testing -DartifactBucket=gs://apache-beam-testing-pranavbhandari -DspecPath=${SPEC_PATH} -DhostIp=${HOST_IP} -DexportProject=cloud-teleport-testing -DexportDataset=performance_tests -DexportTable=template_performance_metrics -Djib.skip=true -DfailIfNoTests=false -DtrimStackTrace=false -fae
+          mvn test -Dtest=${TEST_PATTERN} -Dproject=apache-beam-testing -DartifactBucket=gs://apache-beam-testing-pranavbhandari -DspecPath=${SPEC_PATH} -DhostIp=${HOST_IP} -Djib.skip=true -DfailIfNoTests=false -DtrimStackTrace=false -fae
         else
           mvn test -Dtest=${TEST_PATTERN} -Dproject=apache-beam-testing -DartifactBucket=gs://apache-beam-testing-pranavbhandari -DhostIp=${HOST_IP} -DexportProject=cloud-teleport-testing -DexportDataset=performance_tests -DexportTable=template_performance_metrics -Djib.skip=true -DfailIfNoTests=false -DtrimStackTrace=false -fae
         fi

@@ -63,4 +63,16 @@ public class TemplateLoadTestBase extends LoadTestBase {
   protected LaunchConfig.Builder enableStreamingEngine(LaunchConfig.Builder config) {
     return config.addEnvironment("enableStreamingEngine", true);
   }
+
+  protected class TestConfiguration {
+    public long numMessages;
+    public int dataGeneratorTimeout;
+    public int pipelineTimeout;
+
+    public TestConfiguration(long numMessages, int dataGeneratorTimeout, int pipelineTimeout) {
+      this.numMessages = numMessages;
+      this.dataGeneratorTimeout = dataGeneratorTimeout;
+      this.pipelineTimeout = pipelineTimeout;
+    }
+  }
 }

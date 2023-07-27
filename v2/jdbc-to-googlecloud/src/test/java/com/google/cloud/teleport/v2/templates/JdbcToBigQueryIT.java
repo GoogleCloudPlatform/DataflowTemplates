@@ -75,6 +75,31 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   private static final String KMS_REGION = "global";
   private static final String KEYRING_ID = "JDBCToBigQuery";
   private static final String CRYPTO_KEY_NAME = "key1";
+  private static final String BQ_JSON_SCHEMA =
+      "{\n"
+          + "  \"fields\": [\n"
+          + "    {\n"
+          + "      \"name\": \"row_id\",\n"
+          + "      \"type\": \"INTEGER\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"name\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"age\",\n"
+          + "      \"type\": \"INTEGER\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"member\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"entry_added\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    }\n"
+          + "  ]\n"
+          + "}";
 
   private MySQLResourceManager mySQLResourceManager;
   private PostgresResourceManager postgresResourceManager;
@@ -101,7 +126,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         msSQLResourceManager,
         postgresResourceManager,
         oracleResourceManager,
-        bigQueryResourceManager);
+        bigQueryResourceManager,
+        kmsResourceManager);
   }
 
   @Test
@@ -248,6 +274,33 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         config -> config.addParameter("table", testName).addParameter("partitionColumn", ROW_ID));
   }
 
+  @Test
+  public void testReadWithAvroFn() throws IOException {
+    postgresResourceManager = PostgresResourceManager.builder(testId).build();
+
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "INTEGER NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "INTEGER");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        testName,
+        schema,
+        POSTGRES_DRIVER,
+        postgresDriverGCSPath(),
+        postgresResourceManager,
+        false,
+        config ->
+            config
+                .addParameter("table", testName)
+                .addParameter("partitionColumn", ROW_ID)
+                .addParameter("jsonSchema", BQ_JSON_SCHEMA));
+  }
+
   private void simpleJdbcToBigQueryTest(
       String testName,
       JDBCResourceManager.JDBCSchema schema,
@@ -268,7 +321,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         Arrays.asList(
             Field.of(ROW_ID, StandardSQLTypeName.INT64),
             Field.of(useColumnAlias ? FULL_NAME : NAME, StandardSQLTypeName.STRING),
-            Field.of(AGE, StandardSQLTypeName.FLOAT64),
+            Field.of(AGE, StandardSQLTypeName.INT64),
             Field.of(useColumnAlias ? IS_MEMBER : MEMBER, StandardSQLTypeName.STRING),
             Field.of(ENTRY_ADDED, StandardSQLTypeName.STRING));
     Schema bqSchema = Schema.of(bqSchemaFields);

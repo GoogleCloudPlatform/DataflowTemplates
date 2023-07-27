@@ -22,17 +22,23 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
+import com.google.cloud.teleport.v2.transforms.JsonConverters;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.bigquery.AvroWriteRequest;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
-import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 
 /**
@@ -78,7 +84,17 @@ public class JdbcToBigQuery {
     JdbcToBigQueryOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(JdbcToBigQueryOptions.class);
 
-    run(options, writeToBQTransform(options));
+    if (options.getJsonSchema() != null) {
+      run(
+          options,
+          JdbcConverters.getResultSetToJsonString(options.getUseColumnAlias()),
+          writeToBqAvro(options));
+    } else {
+      run(
+          options,
+          JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()),
+          writeToBQJson(options));
+    }
   }
 
   /**
@@ -89,7 +105,8 @@ public class JdbcToBigQuery {
    * @return The result of the pipeline execution.
    */
   @VisibleForTesting
-  static PipelineResult run(JdbcToBigQueryOptions options, Write<TableRow> writeToBQ) {
+  static <T> PipelineResult run(
+      JdbcToBigQueryOptions options, RowMapper<T> rowMapper, Write<T> writeToBQ) {
     // Validate BQ STORAGE_WRITE_API options
     BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
 
@@ -120,16 +137,16 @@ public class JdbcToBigQuery {
      * Step 1: Read records via JDBC and convert to TableRow
      *         via {@link org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper}
      */
-    PCollection<TableRow> rows;
+    PCollection<T> rows;
     if (options.getPartitionColumn() != null && options.getTable() != null) {
       // Read with Partitions
       // TODO(pranavbhandari): Support readWithPartitions for other data types.
-      JdbcIO.ReadWithPartitions<TableRow, Long> readIO =
-          JdbcIO.<TableRow>readWithPartitions()
+      JdbcIO.ReadWithPartitions<T, Long> readIO =
+          JdbcIO.<T>readWithPartitions()
               .withDataSourceConfiguration(dataSourceConfiguration)
               .withTable(options.getTable())
               .withPartitionColumn(options.getPartitionColumn())
-              .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
+              .withRowMapper(rowMapper);
       if (options.getNumPartitions() != null) {
         readIO = readIO.withNumPartitions(options.getNumPartitions());
       }
@@ -142,12 +159,10 @@ public class JdbcToBigQuery {
       rows =
           pipeline.apply(
               "Read from JdbcIO",
-              JdbcIO.<TableRow>read()
+              JdbcIO.<T>read()
                   .withDataSourceConfiguration(dataSourceConfiguration)
                   .withQuery(options.getQuery())
-                  .withCoder(TableRowJsonCoder.of())
-                  .withRowMapper(
-                      JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())));
+                  .withRowMapper(rowMapper));
     }
 
     /*
@@ -163,7 +178,7 @@ public class JdbcToBigQuery {
    * Create the {@link Write} transform that outputs the collection to BigQuery as per input option.
    */
   @VisibleForTesting
-  static Write<TableRow> writeToBQTransform(JdbcToBigQueryOptions options) {
+  static Write<TableRow> writeToBQJson(JdbcToBigQueryOptions options) {
     return BigQueryIO.writeTableRows()
         .withoutValidation()
         .withCreateDisposition(Write.CreateDisposition.CREATE_NEVER)
@@ -174,5 +189,34 @@ public class JdbcToBigQuery {
         .withCustomGcsTempLocation(
             StaticValueProvider.of(options.getBigQueryLoadingTemporaryDirectory()))
         .to(options.getOutputTable());
+  }
+
+  static Write<String> writeToBqAvro(JdbcToBigQueryOptions options) {
+    return BigQueryIO.<String>write()
+        .withoutValidation()
+        .withCreateDisposition(Write.CreateDisposition.CREATE_NEVER)
+        .withWriteDisposition(
+            options.getIsTruncate()
+                ? Write.WriteDisposition.WRITE_TRUNCATE
+                : Write.WriteDisposition.WRITE_APPEND)
+        .withCustomGcsTempLocation(
+            StaticValueProvider.of(options.getBigQueryLoadingTemporaryDirectory()))
+        .to(options.getOutputTable())
+        .withJsonSchema(options.getJsonSchema())
+        .withAvroFormatFunction(new AvroFormatFn());
+  }
+
+  private static class AvroFormatFn
+      implements SerializableFunction<AvroWriteRequest<String>, GenericRecord> {
+
+    @Override
+    public GenericRecord apply(AvroWriteRequest<String> input) {
+      try {
+        return JsonConverters.jsonObjectToAvro(
+            new Gson().fromJson(input.getElement(), JsonObject.class), input.getSchema());
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 }

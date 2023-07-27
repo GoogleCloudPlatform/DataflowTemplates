@@ -90,7 +90,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
 
     gcsClient =
         GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
@@ -185,7 +185,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
                 PipelineLauncher.LaunchConfig.builder(testName, SPEC_PATH)
                     .addEnvironment("maxWorkers", 10)
                     .addEnvironment("numWorkers", 5)
-                    .addParameter("outputTable", toTableSpec(PROJECT, table))
+                    .addParameter("outputTable", toTableSpec(project, table))
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*")
                     .addParameter("JSONPath", jsonPath)
                     .addParameter(
@@ -195,7 +195,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     PipelineOperator.Result result =
         // The method waitForConditionAndCancel was used because the streaming pipeline template
@@ -245,7 +245,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
                 PipelineLauncher.LaunchConfig.builder(testName, SPEC_PATH)
                     .addEnvironment("maxWorkers", 10)
                     .addEnvironment("numWorkers", 5)
-                    .addParameter("outputTable", toTableSpec(PROJECT, table))
+                    .addParameter("outputTable", toTableSpec(project, table))
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*")
                     .addParameter("JSONPath", jsonPath)
                     .addParameter(
@@ -255,7 +255,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
 
     // Executes the data generator and return approximate number of messages

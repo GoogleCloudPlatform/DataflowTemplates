@@ -109,10 +109,10 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   @BeforeClass
   public static void beforeClass() throws IOException {
     resourceManager =
-        BigQueryResourceManager.builder("io-bigquery-lt", PROJECT)
+        BigQueryResourceManager.builder("io-bigquery-lt", project)
             .setCredentials(CREDENTIALS)
             .build();
-    resourceManager.createDataset(REGION);
+    resourceManager.createDataset(region);
   }
 
   @Before
@@ -124,7 +124,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
                 .withZone(ZoneId.of("UTC"))
                 .format(java.time.Instant.now())
             + UUID.randomUUID().toString().substring(0, 10);
-    tableQualifier = String.format("%s:%s.%s", PROJECT, resourceManager.getDatasetId(), tableName);
+    tableQualifier = String.format("%s:%s.%s", project, resourceManager.getDatasetId(), tableName);
 
     // parse configuration
     String testConfig =
@@ -274,7 +274,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.runner)
             .build();
 
-    PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(PROJECT, REGION, options);
+    PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(project, region, options);
     PipelineOperator.Result result =
         pipelineOperator.waitUntilDone(
             createConfig(launchInfo, Duration.ofMinutes(configuration.pipelineTimeout)));
@@ -307,7 +307,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.runner)
             .build();
 
-    PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(PROJECT, REGION, options);
+    PipelineLauncher.LaunchInfo launchInfo = pipelineLauncher.launch(project, region, options);
     PipelineOperator.Result result =
         pipelineOperator.waitUntilDone(
             createConfig(launchInfo, Duration.ofMinutes(configuration.pipelineTimeout)));
@@ -318,8 +318,8 @@ public final class BigQueryIOLT extends IOLoadTestBase {
     // check metrics
     double numRecords =
         pipelineLauncher.getMetric(
-            PROJECT,
-            REGION,
+            project,
+            region,
             launchInfo.jobId(),
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
     assertEquals(configuration.numRecords, numRecords, 0.5);

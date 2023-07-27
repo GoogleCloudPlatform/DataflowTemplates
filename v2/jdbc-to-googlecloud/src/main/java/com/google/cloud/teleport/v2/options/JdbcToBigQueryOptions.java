@@ -230,4 +230,15 @@ public interface JdbcToBigQueryOptions
   Long getUpperBound();
 
   void setUpperBound(Long lowerBound);
+
+  @TemplateParameter.Text(
+      order = 18,
+      optional = true,
+      groupName = "Sink Parameters",
+      description = "BigQuery schema for rows to be written.",
+      helpText =
+          "BigQuery schema of the output table. If not provided, it is automatically inferred by Beam.")
+  String getJsonSchema();
+
+  void setJsonSchema(String jsonSchema);
 }

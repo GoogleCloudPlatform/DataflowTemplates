@@ -157,7 +157,7 @@ public final class JsonConverters {
     }
   }
 
-  private static GenericRecord jsonObjectToAvro(JsonObject jsonObject, Schema schema)
+  public static GenericRecord jsonObjectToAvro(JsonObject jsonObject, Schema schema)
       throws JsonSchemaMismatchException {
     GenericRecord avroRecord = new GenericData.Record(schema);
     for (Schema.Field field : schema.getFields()) {

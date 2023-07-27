@@ -23,6 +23,7 @@ import com.google.api.services.bigquery.model.TableReference;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
+import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.sql.Connection;
@@ -108,7 +109,9 @@ public class JdbcToBigQueryTest {
   @Test
   public void testE2EWithDefaultApi() throws IOException, InterruptedException {
     JdbcToBigQuery.run(
-            options, JdbcToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
+            options,
+            JdbcConverters.getResultSetToTableRow(false),
+            JdbcToBigQuery.writeToBQJson(options).withTestServices(bigQueryServices))
         .waitUntilFinish();
 
     assertThat(fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE))
@@ -121,7 +124,9 @@ public class JdbcToBigQueryTest {
     options.setUseStorageWriteApiAtLeastOnce(true);
 
     JdbcToBigQuery.run(
-            options, JdbcToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
+            options,
+            JdbcConverters.getResultSetToTableRow(false),
+            JdbcToBigQuery.writeToBQJson(options).withTestServices(bigQueryServices))
         .waitUntilFinish();
 
     fakeDatasetService
@@ -135,7 +140,9 @@ public class JdbcToBigQueryTest {
     options.setUseStorageWriteApi(true);
 
     JdbcToBigQuery.run(
-            options, JdbcToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
+            options,
+            JdbcConverters.getResultSetToTableRow(false),
+            JdbcToBigQuery.writeToBQJson(options).withTestServices(bigQueryServices))
         .waitUntilFinish();
 
     assertThat(fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE))

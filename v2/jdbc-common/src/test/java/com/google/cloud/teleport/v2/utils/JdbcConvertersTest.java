@@ -16,10 +16,12 @@
 package com.google.cloud.teleport.v2.utils;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.v2.utils.JdbcConverters.ResultSetToJSONString;
 import java.sql.Clob;
 import java.sql.Date;
 import java.sql.ResultSet;
@@ -29,6 +31,7 @@ import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.TimeZone;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -49,6 +52,32 @@ public class JdbcConvertersTest {
   @Mock private ResultSet resultSet;
   @Mock private ResultSetMetaData resultSetMetaData;
   @Mock private Clob clobData;
+
+  @Test
+  public void testResultSetToJSONString() throws Exception {
+    when(resultSetMetaData.getColumnCount()).thenReturn(3);
+    when(resultSetMetaData.getColumnLabel(1)).thenReturn("Name");
+    when(resultSetMetaData.getColumnLabel(2)).thenReturn("Points");
+    when(resultSetMetaData.getColumnLabel(3)).thenReturn("Clob_Column");
+    when(resultSetMetaData.getColumnTypeName(1)).thenReturn("VARCHAR");
+    when(resultSetMetaData.getColumnTypeName(2)).thenReturn("INTEGER");
+    when(resultSetMetaData.getColumnTypeName(3)).thenReturn("CLOB");
+    when(resultSet.getMetaData()).thenReturn(resultSetMetaData);
+    when(resultSet.getObject(1)).thenReturn("testName");
+    when(resultSet.getObject(2)).thenReturn(123);
+    when(resultSet.getObject(3)).thenReturn(clobData);
+    when(resultSet.getClob(3)).thenReturn(clobData);
+    when(clobData.length()).thenReturn((long) 20);
+    when(clobData.getSubString(1, 20)).thenReturn("This is a long text.");
+
+    JdbcConverters.ResultSetToJSONString mapper = new ResultSetToJSONString();
+    String jsonString = mapper.mapRow(resultSet);
+    JSONObject jsonObject = new JSONObject(jsonString);
+
+    assertEquals(jsonObject.getInt("Points"), 123);
+    assertEquals(jsonObject.getString("Name"), "testName");
+    assertEquals(jsonObject.getString("Clob_Column"), "This is a long text.");
+  }
 
   @Test
   public void testRowMapper() throws Exception {

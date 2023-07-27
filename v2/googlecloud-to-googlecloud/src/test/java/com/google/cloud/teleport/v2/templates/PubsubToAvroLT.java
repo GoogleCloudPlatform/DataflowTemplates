@@ -74,7 +74,7 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
 
@@ -147,7 +147,7 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
 
     // Act
     dataGenerator.execute(Duration.ofMinutes(timeoutMin));
-    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
 
     PipelineOperator.Result result =
@@ -201,7 +201,7 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
 
     // Executes the data generator and return approximate number of messages

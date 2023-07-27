@@ -66,7 +66,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    spannerResourceManager = SpannerResourceManager.builder(testName, project, region).build();
     gcsClient =
         GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
             .setCredentials(CREDENTIALS)
@@ -114,7 +114,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
             .setQPS("1000000")
             .setMessagesLimit(NUM_MESSAGES)
             .setSinkType("SPANNER")
-            .setProjectId(PROJECT)
+            .setProjectId(project)
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
             .setSpannerTableName(tableName)
@@ -132,7 +132,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 

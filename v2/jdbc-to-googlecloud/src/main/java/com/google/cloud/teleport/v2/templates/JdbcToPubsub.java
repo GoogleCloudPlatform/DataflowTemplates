@@ -21,9 +21,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.JdbcToPubsubOptions;
-import java.sql.Clob;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
+import com.google.cloud.teleport.v2.utils.JdbcConverters.ResultSetToJSONString;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -32,7 +30,6 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.values.PCollection;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,45 +67,6 @@ public class JdbcToPubsub {
 
   /* Logger for class.*/
   private static final Logger LOG = LoggerFactory.getLogger(JdbcToPubsub.class);
-
-  /**
-   * {@link JdbcIO.RowMapper} implementation to convert Jdbc ResultSet rows to UTF-8 encoded JSONs.
-   */
-  public static class ResultSetToJSONString implements JdbcIO.RowMapper<String> {
-
-    @Override
-    public String mapRow(ResultSet resultSet) throws Exception {
-      ResultSetMetaData metaData = resultSet.getMetaData();
-      JSONObject json = new JSONObject();
-
-      for (int i = 1; i <= metaData.getColumnCount(); i++) {
-        Object value = resultSet.getObject(i);
-
-        // JSONObject.put() does not support null values. The exception is JSONObject.NULL
-        if (value == null) {
-          json.put(metaData.getColumnLabel(i), JSONObject.NULL);
-          continue;
-        }
-
-        switch (metaData.getColumnTypeName(i).toLowerCase()) {
-          case "clob":
-            Clob clobObject = resultSet.getClob(i);
-            if (clobObject.length() > Integer.MAX_VALUE) {
-              LOG.warn(
-                  "The Clob value size {} in column {} exceeds 2GB and will be truncated.",
-                  clobObject.length(),
-                  metaData.getColumnLabel(i));
-            }
-            json.put(
-                metaData.getColumnLabel(i), clobObject.getSubString(1, (int) clobObject.length()));
-            break;
-          default:
-            json.put(metaData.getColumnLabel(i), value);
-        }
-      }
-      return json.toString();
-    }
-  }
 
   /**
    * Main entry point for pipeline execution.
