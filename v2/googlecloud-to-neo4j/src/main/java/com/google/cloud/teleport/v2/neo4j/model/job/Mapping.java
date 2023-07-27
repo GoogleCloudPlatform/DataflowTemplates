@@ -158,7 +158,6 @@ public class Mapping implements Serializable {
         && Objects.equals(labels, mapping.labels)
         && Objects.equals(field, mapping.field)
         && Objects.equals(description, mapping.description)
-        && Objects.equals(defaultValue, mapping.defaultValue)
         && fragmentType == mapping.fragmentType;
   }
 
@@ -172,7 +171,6 @@ public class Mapping implements Serializable {
         labels,
         field,
         description,
-        defaultValue,
         mandatory,
         unique,
         indexed,
@@ -199,9 +197,6 @@ public class Mapping implements Serializable {
         + '\''
         + ", description='"
         + description
-        + '\''
-        + ", defaultValue='"
-        + defaultValue
         + '\''
         + ", mandatory="
         + mandatory
