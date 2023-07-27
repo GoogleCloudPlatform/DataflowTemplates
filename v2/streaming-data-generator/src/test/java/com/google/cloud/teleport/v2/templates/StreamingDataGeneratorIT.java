@@ -262,7 +262,8 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   @Test
   public void testFakeMessagesToSpanner() throws IOException {
     // Arrange
-    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
     String createTableStatement =
         String.format(
             "CREATE TABLE `%s` (\n"

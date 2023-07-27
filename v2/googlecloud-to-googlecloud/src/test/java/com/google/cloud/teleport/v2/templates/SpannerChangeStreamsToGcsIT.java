@@ -68,7 +68,8 @@ public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    spannerResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
   }
 
   @After

@@ -56,9 +56,12 @@ public class SpannerToTextIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    googleSqlResourceManager = SpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    googleSqlResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
     postgresResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL).build();
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .build();
   }
 
   @After
