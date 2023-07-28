@@ -13,24 +13,27 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.pubsubtotext;
+package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.it.common.TestProperties.getProperty;
-import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
+import static com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManagerUtils.toTableSpec;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
-import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
 import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
 import com.google.cloud.teleport.it.common.PipelineOperator.Result;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.TemplateLoadTestBase;
-import com.google.cloud.teleport.it.gcp.artifacts.ArtifactClient;
+import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
+import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.it.gcp.datagenerator.DataGenerator;
 import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.storage.GcsResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
@@ -40,7 +43,6 @@ import java.text.ParseException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -49,80 +51,76 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Performance tests for {@link PubsubToText PubSub to GCS Text} Flex template. */
+/** Performance tests for {@link PubSubToBigQuery PubSub to BigQuery} template. */
 @Category(TemplateLoadTest.class)
-@TemplateLoadTest(PubsubToText.class)
+@TemplateLoadTest(PubSubToBigQuery.class)
 @RunWith(JUnit4.class)
-public final class PubsubToTextLT extends TemplateLoadTestBase {
+public class PubsubToBigQueryLT extends TemplateLoadTestBase {
 
-  private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
-          TestProperties.specPath(),
-          "gs://dataflow-templates/latest/flex/Cloud_PubSub_to_GCS_Text_Flex");
-  private static final String TEST_ROOT_DIR = PubsubToTextLT.class.getSimpleName().toLowerCase();
-  private static final String INPUT_SUBSCRIPTION = "inputSubscription";
-  private static final String NUM_SHARDS_KEY = "numShards";
-  private static final String OUTPUT_DIRECTORY_KEY = "outputDirectory";
-  private static final String WINDOW_DURATION_KEY = "windowDuration";
-  private static final String NUM_WORKERS_KEY = "numWorkers";
-  private static final String MAX_WORKERS_KEY = "maxNumWorkers";
-  private static final String OUTPUT_FILENAME_PREFIX = "outputFilenamePrefix";
-  private static final String DEFAULT_WINDOW_DURATION = "10s";
-  private static final Pattern EXPECTED_PATTERN = Pattern.compile(".*subscription-output-.*");
-  private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
-  private static final String OUTPUT_PCOLLECTION =
-      "Write File(s)/WriteFiles/WriteShardedBundlesToTempFiles/ApplyShardingKey.out0";
+          TestProperties.specPath(), "gs://dataflow-templates/latest/flex/PubSub_to_BigQuery_Flex");
   // 35,000,000 messages of the given schema make up approximately 10GB
-  private static final long NUM_MESSAGES = 35000000L;
-
+  private static final int NUM_MESSAGES = 35_000_000;
+  // schema should match schema supplied to generate fake records.
+  private static final Schema SCHEMA =
+      Schema.of(
+          Field.of("eventId", StandardSQLTypeName.STRING),
+          Field.of("eventTimestamp", StandardSQLTypeName.INT64),
+          Field.of("ipv4", StandardSQLTypeName.STRING),
+          Field.of("ipv6", StandardSQLTypeName.STRING),
+          Field.of("country", StandardSQLTypeName.STRING),
+          Field.of("username", StandardSQLTypeName.STRING),
+          Field.of("quest", StandardSQLTypeName.STRING),
+          Field.of("score", StandardSQLTypeName.INT64),
+          Field.of("completed", StandardSQLTypeName.BOOL));
+  private static final String INPUT_PCOLLECTION =
+      "ReadPubSubSubscription/PubsubUnboundedSource.out0";
+  private static final String OUTPUT_PCOLLECTION =
+      "WriteSuccessfulRecords/StreamingInserts/StreamingWriteTables/StripShardId/Map.out0";
   private static PubsubResourceManager pubsubResourceManager;
-  private static ArtifactClient gcsClient;
+  private static BigQueryResourceManager bigQueryResourceManager;
 
   @Before
   public void setup() throws IOException {
-    // Set up resource managers
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
-    gcsClient =
-        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
-            .setCredentials(CREDENTIALS)
-            .build();
+    bigQueryResourceManager =
+        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(CREDENTIALS).build();
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(gcsClient, pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, bigQueryResourceManager);
   }
 
   @Test
-  public void testBacklog10gb() throws IOException, InterruptedException, ParseException {
+  public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
     testBacklog(this::disableRunnerV2);
   }
 
   @Test
-  public void testSteadyState1hr() throws IOException, InterruptedException, ParseException {
+  public void testSteadyState1hr() throws ParseException, IOException, InterruptedException {
     testSteadyState1hr(this::disableRunnerV2);
   }
 
   @Test
   public void testSteadyState1hrUsingStreamingEngine()
-      throws IOException, InterruptedException, ParseException {
+      throws ParseException, IOException, InterruptedException {
     testSteadyState1hr(this::enableStreamingEngine);
   }
 
   @Ignore("RunnerV2 is disabled on streaming templates.")
   @Test
   public void testSteadyState1hrUsingRunnerV2()
-      throws IOException, ParseException, InterruptedException {
+      throws ParseException, IOException, InterruptedException {
     testSteadyState1hr(this::enableRunnerV2);
   }
 
   public void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
-      throws IOException, InterruptedException, ParseException {
-    // Create topic and subscription
+      throws IOException, ParseException, InterruptedException {
     TopicName backlogTopic = pubsubResourceManager.createTopic("backlog-input");
     SubscriptionName backlogSubscription =
         pubsubResourceManager.createSubscription(backlogTopic, "backlog-subscription");
@@ -136,83 +134,85 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             .setMaxNumWorkers("100")
             .build();
     dataGenerator.execute(Duration.ofMinutes(30));
+    TableId table = bigQueryResourceManager.createTable(testName, SCHEMA);
     LaunchConfig options =
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addEnvironment("maxWorkers", 10)
-                    .addEnvironment("numWorkers", 7)
-                    .addEnvironment("machineType", "e2-standard-2")
-                    .addParameter(INPUT_SUBSCRIPTION, backlogSubscription.toString())
-                    .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-                    .addParameter(OUTPUT_DIRECTORY_KEY, getTestMethodDirPath())
-                    .addParameter(NUM_SHARDS_KEY, "20")
-                    .addParameter(OUTPUT_FILENAME_PREFIX, "subscription-output-"))
-            .build();
-
-    // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
-    assertThatPipeline(info).isRunning();
-    Result result =
-        pipelineOperator.waitForConditionAndFinish(
-            createConfig(info, Duration.ofMinutes(30)),
-            () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, NUM_MESSAGES));
-
-    // Assert
-    assertThatResult(result).meetsConditions();
-    assertThat(gcsClient.listArtifacts(testName, EXPECTED_PATTERN)).isNotEmpty();
-
-    // export results
-    exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
-  }
-
-  public void testSteadyState1hr(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
-      throws IOException, InterruptedException, ParseException {
-    // Arrange
-    String qps = getProperty("qps", "100000", TestProperties.Type.PROPERTY);
-    TopicName topic = pubsubResourceManager.createTopic(testName + "input");
-    SubscriptionName subscription =
-        pubsubResourceManager.createSubscription(topic, "input-subscription");
-    DataGenerator dataGenerator =
-        DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
-            .setQPS(qps)
-            .setTopic(topic.toString())
-            .setNumWorkers("10")
-            .setMaxNumWorkers("100")
-            .build();
-    LaunchConfig options =
-        paramsAdder
-            .apply(
-                LaunchConfig.builder(testName, SPEC_PATH)
-                    .addEnvironment("additionalUserLabels", Collections.singletonMap("qps", qps))
-                    .addEnvironment("maxWorkers", 10)
-                    .addEnvironment("numWorkers", 7)
-                    .addParameter(INPUT_SUBSCRIPTION, subscription.toString())
-                    .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-                    .addParameter(OUTPUT_DIRECTORY_KEY, getTestMethodDirPath())
-                    .addParameter(NUM_SHARDS_KEY, "20")
-                    .addParameter(OUTPUT_FILENAME_PREFIX, "subscription-output-")
+                    .addEnvironment("maxWorkers", 5)
+                    .addEnvironment("numWorkers", 4)
+                    .addParameter("inputSubscription", backlogSubscription.toString())
+                    .addParameter("outputTableSpec", toTableSpec(PROJECT, table))
+                    .addParameter("useStorageWriteApi", "true")
+                    .addParameter("numStorageWriteApiStreams", "20")
+                    .addParameter("storageWriteApiTriggeringFrequencySec", "60")
                     .addParameter("autoscalingAlgorithm", "THROUGHPUT_BASED"))
             .build();
 
     // Act
     LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
-    // ElementCount metric in dataflow is approximate, allow for 1% difference
-    long expectedMessages = (long) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
     Result result =
-        pipelineOperator.waitForConditionAndFinish(
-            createConfig(info, Duration.ofMinutes(20)),
-            () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, expectedMessages));
+        pipelineOperator.waitForConditionAndCancel(
+            createConfig(info, Duration.ofMinutes(40)),
+            BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+                .setMinRows(NUM_MESSAGES)
+                .build());
+
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThat(gcsClient.listArtifacts(testName, EXPECTED_PATTERN)).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
-  private String getTestMethodDirPath() {
-    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, gcsClient.runId(), testName);
+  public void testSteadyState1hr(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws ParseException, IOException, InterruptedException {
+    // Arrange
+    String qps = getProperty("qps", "100000", TestProperties.Type.PROPERTY);
+    TopicName inputTopic = pubsubResourceManager.createTopic("steady-state-input");
+    SubscriptionName inputSubscription =
+        pubsubResourceManager.createSubscription(inputTopic, "steady-state-subscription");
+    TableId table =
+        bigQueryResourceManager.createTable(
+            testName, SCHEMA, System.currentTimeMillis() + 7200000); // expire in 2 hrs
+    DataGenerator dataGenerator =
+        DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
+            .setQPS(qps)
+            .setTopic(inputTopic.toString())
+            .setNumWorkers("8")
+            .setMaxNumWorkers("10")
+            .build();
+
+    LaunchConfig options =
+        paramsAdder
+            .apply(
+                LaunchConfig.builder(testName, SPEC_PATH)
+                    .addEnvironment("maxWorkers", 8)
+                    .addEnvironment("numWorkers", 7)
+                    .addEnvironment("additionalUserLabels", Collections.singletonMap("qps", qps))
+                    .addParameter("inputSubscription", inputSubscription.toString())
+                    .addParameter("useStorageWriteApi", "true")
+                    .addParameter("numStorageWriteApiStreams", "100")
+                    .addParameter("storageWriteApiTriggeringFrequencySec", "60")
+                    .addParameter("outputTableSpec", toTableSpec(PROJECT, table)))
+            .build();
+
+    // Act
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
+    // ElementCount metric in dataflow is approximate, allow for 1% difference
+    int expectedMessages = (int) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
+    Result result =
+        pipelineOperator.waitForConditionAndCancel(
+            createConfig(info, Duration.ofMinutes(20)),
+            BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+                .setMinRows(expectedMessages)
+                .build());
+    // Assert
+    assertThatResult(result).meetsConditions();
+
+    // export results
+    exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 }

@@ -370,7 +370,7 @@ public class AnyToAnySyndeoTestLT {
   }
 
   @BeforeClass
-  public void setUpSourceAndSink() {}
+  public static void setUpSourceAndSink() {}
 
   @Test
   public void testSelectedSinkAndSelectedSource() throws JsonProcessingException {
@@ -413,7 +413,7 @@ public class AnyToAnySyndeoTestLT {
   }
 
   @AfterClass
-  public void cleanup() {
+  public static void cleanup() {
     ResourceManagerUtils.cleanResources(RESOURCE_MANAGERS.toArray(new ResourceManager[0]));
     RESOURCE_MANAGERS.clear();
   }

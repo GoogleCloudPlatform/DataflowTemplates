@@ -85,19 +85,25 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
   }
 
   @After
-  public void teardown() {
+  public void tearDown() {
     ResourceManagerUtils.cleanResources(pubsubResourceManager, gcsResourceManager);
   }
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
     testBacklog(
-        Function.identity(), NUM_MESSAGES_FOR_10_GB_TEST, TIMEOUT_FOR_10_GB_TEST_IN_MINUTES);
+        this::disableRunnerV2, NUM_MESSAGES_FOR_10_GB_TEST, TIMEOUT_FOR_10_GB_TEST_IN_MINUTES);
   }
 
   @Test
   public void testSteadyState1hr() throws IOException, ParseException, InterruptedException {
-    testSteadyState1hr(Function.identity());
+    testSteadyState1hr(this::disableRunnerV2);
+  }
+
+  @Test
+  public void testSteadyState1hrUsingStreamingEngine()
+      throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(this::enableStreamingEngine);
   }
 
   private void testBacklog(
@@ -130,7 +136,9 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 PipelineLauncher.LaunchConfig.builder(testName, SPEC_PATH)
-                    .addEnvironment("maxWorkers", 100)
+                    .addEnvironment("maxWorkers", 7)
+                    .addEnvironment("numWorkers", 4)
+                    .addParameter("numShards", "20")
                     .addParameter("inputSubscription", backlogSubscription.toString())
                     .addParameter("outputDirectory", outputDirectoryPath)
                     .addParameter("avroTempDirectory", tempDirectoryPath)
@@ -183,7 +191,8 @@ public class PubsubToAvroLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 PipelineLauncher.LaunchConfig.builder(testName, SPEC_PATH)
-                    .addEnvironment("maxWorkers", 100)
+                    .addEnvironment("maxWorkers", 10)
+                    .addEnvironment("numWorkers", 7)
                     .addParameter("numShards", "20")
                     .addParameter("inputSubscription", backlogSubscription.toString())
                     .addParameter("outputDirectory", outputDirectoryPath)

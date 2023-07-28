@@ -120,7 +120,7 @@ public final class PipelineOperator {
    * done or ready to be done.
    *
    * <p>If the condition was met before the job entered a done or finishing state, then this will
-   * cancel the job and wait for the job to enter a done state.
+   * drain the job and wait for the job to enter a done state.
    *
    * @param config the configuration for performing operations
    * @param conditionChecks {@link Supplier} varargs that will be called periodically to check if
