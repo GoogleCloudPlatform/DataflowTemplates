@@ -30,7 +30,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputProjectId** (Project Id for BigQuery datasets.): Project for BigQuery datasets to output data into. The default for this parameter is the project where the Dataflow pipeline is running.
 * **outputStagingTableNameTemplate** (Template for the name of staging tables.): This is the template for the name of staging tables (e.g. {_metadata_table}). Default is {_metadata_table}_log.
 * **outputTableNameTemplate** (Template for the name of replica tables.): This is the template for the name of replica tables (e.g. {_metadata_table}). Default is {_metadata_table}.
-* **ignoreFields** (Fields to be ignored): Fields to ignore in BigQuery (comma separator). (Example: _metadata_stream,_metadata_schema). Defaults to: _metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count.
+* **ignoreFields** (Fields to be ignored): Fields to ignore in BigQuery (comma separator). (Example: _metadata_stream,_metadata_schema). Defaults to: _metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count.
 * **mergeFrequencyMinutes** (The number of minutes between merges for a given table): The number of minutes between merges for a given table. Defaults to: 5.
 * **dlqRetryMinutes** (The number of minutes between DLQ Retries.): The number of minutes between DLQ Retries. Defaults to: 10.
 * **dataStreamRootUrl** (Datastream API Root URL (only required for testing)): Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
@@ -154,7 +154,7 @@ export FILE_READ_CONCURRENCY=10
 export OUTPUT_PROJECT_ID=<outputProjectId>
 export OUTPUT_STAGING_TABLE_NAME_TEMPLATE="{_metadata_table}_log"
 export OUTPUT_TABLE_NAME_TEMPLATE="{_metadata_table}"
-export IGNORE_FIELDS="_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count"
+export IGNORE_FIELDS="_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count"
 export MERGE_FREQUENCY_MINUTES=5
 export DLQ_RETRY_MINUTES=10
 export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
@@ -237,7 +237,7 @@ export FILE_READ_CONCURRENCY=10
 export OUTPUT_PROJECT_ID=<outputProjectId>
 export OUTPUT_STAGING_TABLE_NAME_TEMPLATE="{_metadata_table}_log"
 export OUTPUT_TABLE_NAME_TEMPLATE="{_metadata_table}"
-export IGNORE_FIELDS="_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count"
+export IGNORE_FIELDS="_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count"
 export MERGE_FREQUENCY_MINUTES=5
 export DLQ_RETRY_MINUTES=10
 export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
