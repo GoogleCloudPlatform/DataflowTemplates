@@ -57,7 +57,8 @@ import org.slf4j.LoggerFactory;
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    skipOptions = {"javascriptFunctionReload", "javascriptReloadIntervalMinutes"})
 public class TextIOToBigQuery {
 
   /** Options supported by {@link TextIOToBigQuery}. */

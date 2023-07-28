@@ -51,7 +51,9 @@ import org.apache.beam.sdk.options.ValueProvider;
       "firestoreReadProjectId",
       "firestoreReadNamespace",
       "firestoreDeleteProjectId",
-      "firestoreHintNumWorkers"
+      "firestoreHintNumWorkers",
+      "javascriptFunctionReload",
+      "javascriptReloadIntervalMinutes"
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-bulk-delete",
@@ -73,7 +75,9 @@ import org.apache.beam.sdk.options.ValueProvider;
       "datastoreReadProjectId",
       "datastoreReadNamespace",
       "datastoreDeleteProjectId",
-      "datastoreHintNumWorkers"
+      "datastoreHintNumWorkers",
+      "javascriptFunctionReload",
+      "javascriptReloadIntervalMinutes"
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/firestore-bulk-delete",

@@ -55,7 +55,6 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
   private static final String TEST_ROOT_DIR = ExportPipelineLT.class.getSimpleName().toLowerCase();
   // 35,000,000 messages of the given schema make up approximately 10GB
-
   private static final String NUM_MESSAGES = "35000000";
   private static final String INPUT_PCOLLECTION =
       "Run Export/Read all rows from Spanner/Read from Cloud Spanner/Read from Partitions.out0";
@@ -75,19 +74,25 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
   }
 
   @After
-  public void teardown() {
+  public void tearDown() {
     ResourceManagerUtils.cleanResources(spannerResourceManager, gcsClient);
   }
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(Function.identity());
+    testBacklog(this::disableRunnerV2);
   }
 
-  public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+  @Test
+  public void testBacklog10gbUsingRunnerV2()
+      throws IOException, ParseException, InterruptedException {
+    testBacklog(this::enableRunnerV2);
+  }
+
+  public void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // Arrange
-    String name = testName;
+    String tableName = testName;
     // create spanner table
     String createTableStatement =
         String.format(
@@ -102,7 +107,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
                 + "  score INT64,\n"
                 + "  completed BOOL,\n"
                 + ") PRIMARY KEY(eventId)",
-            name);
+            tableName);
     spannerResourceManager.executeDdlStatement(createTableStatement);
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
@@ -112,7 +117,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
             .setProjectId(PROJECT)
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
-            .setSpannerTableName(name)
+            .setSpannerTableName(tableName)
             .setNumWorkers("50")
             .setMaxNumWorkers("100")
             .build();
@@ -134,7 +139,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
     // check to see if messages reached the output bucket
-    assertThat(gcsClient.listArtifacts(name, Pattern.compile(".*"))).isNotEmpty();
+    assertThat(gcsClient.listArtifacts(testName, Pattern.compile(".*"))).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));

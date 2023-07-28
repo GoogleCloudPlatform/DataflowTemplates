@@ -20,14 +20,17 @@ import static com.google.cloud.spanner.Value.string;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Database;
+import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Instance;
 import com.google.cloud.spanner.InstanceAdminClient;
@@ -62,6 +65,7 @@ public final class SpannerResourceManagerTest {
   @Mock private Database database;
   @Mock private Instance instance;
   @Mock private InstanceAdminClient instanceAdminClient;
+  @Mock private DatabaseAdminClient databaseAdminClient;
   @Mock private ResultSet resultSet;
 
   private static final String TEST_ID = "test";
@@ -77,7 +81,8 @@ public final class SpannerResourceManagerTest {
 
   @Before
   public void setUp() {
-    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT);
+    testManager =
+        new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT, false, null);
   }
 
   private void prepareCreateInstanceMock() throws ExecutionException, InterruptedException {
@@ -413,7 +418,8 @@ public final class SpannerResourceManagerTest {
     // arrange
     doThrow(SpannerException.class).when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
-    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT);
+    testManager =
+        new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT, false, null);
 
     // act & assert
     assertThrows(SpannerResourceManagerException.class, () -> testManager.cleanupAll());
@@ -424,7 +430,8 @@ public final class SpannerResourceManagerTest {
     // arrange
     doNothing().when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
-    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT);
+    testManager =
+        new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT, false, null);
 
     // act
     testManager.cleanupAll();
@@ -440,7 +447,8 @@ public final class SpannerResourceManagerTest {
     doNothing().when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
     when(spanner.isClosed()).thenReturn(true);
-    testManager = new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT);
+    testManager =
+        new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT, false, null);
     testManager.cleanupAll();
     String statement =
         "CREATE TABLE Singers (\n"
@@ -467,6 +475,25 @@ public final class SpannerResourceManagerTest {
     assertThrows(IllegalStateException.class, () -> testManager.write(testMutation));
     assertThrows(
         IllegalStateException.class, () -> testManager.write(ImmutableList.of(testMutation)));
+  }
+
+  @Test
+  public void testCleanupAllShouldNotDeleteInstanceWhenStatic() {
+    // arrange
+    doNothing().when(databaseAdminClient).dropDatabase(any(), any());
+    when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
+    when(spanner.getDatabaseAdminClient()).thenReturn(databaseAdminClient);
+    testManager =
+        new SpannerResourceManager(
+            spanner, TEST_ID, PROJECT_ID, REGION, DIALECT, true, "existing-instance");
+
+    // act
+    testManager.cleanupAll();
+
+    // assert
+    verify(spanner.getDatabaseAdminClient()).dropDatabase(eq("existing-instance"), any());
+    verify(spanner.getInstanceAdminClient(), never()).deleteInstance(any());
+    verify(spanner).close();
   }
 
   private void prepareCreateDatabaseMock() throws ExecutionException, InterruptedException {

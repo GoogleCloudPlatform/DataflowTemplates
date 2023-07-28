@@ -73,16 +73,22 @@ public class SpannerToTextLT extends TemplateLoadTestBase {
   }
 
   @After
-  public void teardown() {
+  public void tearDown() {
     ResourceManagerUtils.cleanResources(spannerResourceManager, gcsClient);
   }
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(Function.identity());
+    testBacklog(this::disableRunnerV2);
   }
 
-  public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+  @Test
+  public void testBacklog10gbUsingRunnerV2()
+      throws IOException, ParseException, InterruptedException {
+    testBacklog(this::enableRunnerV2);
+  }
+
+  public void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // Arrange
     String name = testName;

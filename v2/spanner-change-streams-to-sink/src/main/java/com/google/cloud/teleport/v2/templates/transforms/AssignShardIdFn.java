@@ -15,16 +15,31 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TimestampBound;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.templates.changestream.DataChangeRecordTypeConvertor;
 import com.google.cloud.teleport.v2.templates.common.TrimmedDataChangeRecord;
+import com.google.common.collect.ImmutableList;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.values.KV;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,10 +48,41 @@ public class AssignShardIdFn
     extends DoFn<TrimmedDataChangeRecord, KV<String, TrimmedDataChangeRecord>> {
   private static final Logger LOG = LoggerFactory.getLogger(AssignShardIdFn.class);
 
+  private final SpannerConfig spannerConfig;
+
+  /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
+  private transient SpannerAccessor spannerAccessor;
+
+  /* The information schema of the Cloud Spanner database */
+  private final Ddl ddl;
+
   private final Schema schema;
 
-  public AssignShardIdFn(Schema schema) {
+  // Jackson Object mapper.
+  private transient ObjectMapper mapper;
+
+  public AssignShardIdFn(SpannerConfig spannerConfig, Schema schema, Ddl ddl) {
+    this.spannerConfig = spannerConfig;
     this.schema = schema;
+    this.ddl = ddl;
+  }
+
+  /** Setup function connects to Cloud Spanner. */
+  @Setup
+  public void setup() {
+    if (spannerConfig != null) {
+      spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    }
+    mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+  }
+
+  /** Teardown function disconnects from the Cloud Spanner. */
+  @Teardown
+  public void teardown() {
+    if (spannerConfig != null) {
+      spannerAccessor.close();
+    }
   }
 
   @ProcessElement
@@ -45,15 +91,23 @@ public class AssignShardIdFn
 
     try {
       String shardIdColumn = getShardIdColumnForTableName(record.getTableName());
+
       String keysJsonStr = record.getMods().get(0).getKeysJson();
+      JsonNode keysJson = mapper.readTree(keysJsonStr);
+
       String newValueJsonStr = record.getMods().get(0).getNewValuesJson();
-      JSONObject keysJson = new JSONObject(keysJsonStr);
-      JSONObject newValueJson = new JSONObject(newValueJsonStr);
-      if (newValueJson.has(shardIdColumn)) {
-        String shardId = newValueJson.getString(shardIdColumn);
+      JsonNode newValueJson = mapper.readTree(newValueJsonStr);
+
+      if (keysJson.has(shardIdColumn)) {
+        String shardId = keysJson.get(shardIdColumn).asText();
         c.output(KV.of(shardId, record));
-      } else if (keysJson.has(shardIdColumn)) {
-        String shardId = keysJson.getString(shardIdColumn);
+      } else if (newValueJson.has(shardIdColumn)) {
+        String shardId = newValueJson.get(shardIdColumn).asText();
+        c.output(KV.of(shardId, record));
+      } else if (record.getModType() == ModType.DELETE) {
+        String shardId =
+            fetchShardId(
+                record.getTableName(), record.getCommitTimestamp(), shardIdColumn, keysJson);
         c.output(KV.of(shardId, record));
       } else {
         LOG.error(
@@ -68,7 +122,7 @@ public class AssignShardIdFn
     } catch (Exception e) {
       StringWriter errors = new StringWriter();
       e.printStackTrace(new PrintWriter(errors));
-      LOG.error("Error while parsing json: " + e.getMessage() + ": " + errors.toString());
+      LOG.error("Error fetching shard Id colum: " + e.getMessage() + ": " + errors.toString());
       return;
     }
   }
@@ -92,5 +146,104 @@ public class AssignShardIdFn
               + " not found in session file. Please provide a valid session file.");
     }
     return spTable.getColDefs().get(shardColId).getName();
+  }
+
+  // Perform a stale read on spanner to fetch shardId.
+  private String fetchShardId(
+      String tableName,
+      com.google.cloud.Timestamp commitTimestamp,
+      String shardIdColName,
+      JsonNode keysJson)
+      throws Exception {
+    com.google.cloud.Timestamp staleReadTs =
+        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
+            commitTimestamp.getSeconds() - 1, commitTimestamp.getNanos());
+    Struct row =
+        spannerAccessor
+            .getDatabaseClient()
+            .singleUse(TimestampBound.ofReadTimestamp(staleReadTs))
+            .readRow(tableName, generateKey(tableName, keysJson), Arrays.asList(shardIdColName));
+    if (row == null) {
+      throw new Exception("stale read on Spanner returned null");
+    }
+    return row.getString(0);
+  }
+
+  private com.google.cloud.spanner.Key generateKey(String tableName, JsonNode keysJson)
+      throws Exception {
+    try {
+      Table table = ddl.table(tableName);
+      ImmutableList<IndexColumn> keyColumns = table.primaryKeys();
+      com.google.cloud.spanner.Key.Builder pk = com.google.cloud.spanner.Key.newBuilder();
+
+      for (IndexColumn keyColumn : keyColumns) {
+        Column key = table.column(keyColumn.name());
+        Type keyColType = key.type();
+        String keyColName = key.name();
+        switch (keyColType.getCode()) {
+          case BOOL:
+          case PG_BOOL:
+            pk.append(
+                DataChangeRecordTypeConvertor.toBoolean(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case INT64:
+          case PG_INT8:
+            pk.append(
+                DataChangeRecordTypeConvertor.toLong(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case FLOAT64:
+          case PG_FLOAT8:
+            pk.append(
+                DataChangeRecordTypeConvertor.toDouble(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case STRING:
+          case PG_VARCHAR:
+          case PG_TEXT:
+            pk.append(
+                DataChangeRecordTypeConvertor.toString(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case NUMERIC:
+          case PG_NUMERIC:
+            pk.append(
+                DataChangeRecordTypeConvertor.toNumericBigDecimal(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case JSON:
+          case PG_JSONB:
+            pk.append(
+                DataChangeRecordTypeConvertor.toString(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case BYTES:
+          case PG_BYTEA:
+            pk.append(
+                DataChangeRecordTypeConvertor.toByteArray(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case TIMESTAMP:
+          case PG_TIMESTAMPTZ:
+            pk.append(
+                DataChangeRecordTypeConvertor.toTimestamp(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case DATE:
+          case PG_DATE:
+            pk.append(
+                DataChangeRecordTypeConvertor.toDate(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          default:
+            throw new IllegalArgumentException(
+                "Column name(" + keyColName + ") has unsupported column type(" + keyColType + ")");
+        }
+      }
+      return pk.build();
+    } catch (Exception e) {
+      throw new Exception("Error generating key: " + e.getMessage());
+    }
   }
 }

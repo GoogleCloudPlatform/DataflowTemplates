@@ -57,6 +57,7 @@ type MavenFlags interface {
 	SkipTests() string
 	SkipJacoco() string
 	SkipShade() string
+	SkipSpotlessCheck() string
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
 	RunIntegrationTests() string
@@ -65,6 +66,7 @@ type MavenFlags interface {
 	ThreadCount(int) string
 	IntegrationTestParallelism(int) string
 	StaticBigtableInstance(string) string
+	StaticSpannerInstance(string) string
 }
 
 type mvnFlags struct{}
@@ -101,6 +103,10 @@ func (*mvnFlags) SkipShade() string {
 	return "-DskipShade"
 }
 
+func (*mvnFlags) SkipSpotlessCheck() string {
+	return "-Dspotless.check.skip"
+}
+
 func (*mvnFlags) SkipIntegrationTests() string {
 	return "-DskipIntegrationTests"
 }
@@ -131,6 +137,10 @@ func (*mvnFlags) IntegrationTestParallelism(count int) string {
 
 func (*mvnFlags) StaticBigtableInstance(instanceID string) string {
 	return "-DbigtableInstanceId=" + instanceID
+}
+
+func (*mvnFlags) StaticSpannerInstance(instanceID string) string {
+	return "-DspannerInstanceId=" + instanceID
 }
 
 func NewMavenFlags() MavenFlags {

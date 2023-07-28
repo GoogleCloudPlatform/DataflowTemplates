@@ -21,7 +21,7 @@
       "type": "edge",
       "name": "Source CSV rel file",
       "mode": "merge",
-      "edgeNodesMatchMode": "merge",
+      "edge_nodes_match_mode": "merge",
       "transform": {
         "group": true
       },

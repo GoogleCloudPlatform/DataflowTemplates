@@ -44,7 +44,6 @@ import java.time.Duration;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -100,23 +99,26 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(Function.identity());
+    testBacklog(this::disableRunnerV2);
   }
 
-  @Ignore("Test fails, sickbay")
+  @Test
+  public void testBacklog10gbUsingStorageApi()
+      throws IOException, ParseException, InterruptedException {
+    testBacklog(
+        config ->
+            config
+                .addParameter("useStorageWriteApi", "true")
+                .addParameter("experiments", "disable_runner_v2"));
+  }
+
   @Test
   public void testBacklog10gbUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(config -> config.addParameter("experiments", "use_runner_v2"));
+    testBacklog(this::enableRunnerV2);
   }
 
-  @Ignore("Test fails, sickbay")
-  @Test
-  public void testBacklog10gbUsingPrime() throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(config -> config.addParameter("experiments", "enable_prime"));
-  }
-
-  public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+  public void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // upload schema files and save path
     String jsonPath =

@@ -43,6 +43,7 @@ import java.time.Duration;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -121,12 +122,37 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog(Function.identity());
+    testBacklog(this::disableRunnerV2);
   }
 
   @Test
   public void testSteadyState1hr() throws IOException, ParseException, InterruptedException {
-    testSteadyState1hr(Function.identity());
+    testSteadyState1hr(this::disableRunnerV2);
+  }
+
+  @Test
+  public void testSteadyState1hrUsingStreamingEngine()
+      throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(this::enableStreamingEngine);
+  }
+
+  @Ignore("RunnerV2 is disabled on streaming templates.")
+  @Test
+  public void testSteadyState1hrUsingRunnerV2()
+      throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(this::enableRunnerV2);
+  }
+
+  @Test
+  public void testSteadyState1hrUsingStorageApi()
+      throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(
+        config ->
+            config
+                .addParameter("useStorageWriteApi", "true")
+                .addParameter("numStorageWriteApiStreams", "60")
+                .addParameter("storageWriteApiTriggeringFrequencySec", "60")
+                .addParameter("experiments", "disable_runner_v2"));
   }
 
   private void testBacklog(
@@ -157,7 +183,8 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 PipelineLauncher.LaunchConfig.builder(testName, SPEC_PATH)
-                    .addEnvironment("maxWorkers", 100)
+                    .addEnvironment("maxWorkers", 10)
+                    .addEnvironment("numWorkers", 5)
                     .addParameter("outputTable", toTableSpec(PROJECT, table))
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*")
                     .addParameter("JSONPath", jsonPath)
@@ -202,7 +229,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
             .setOutputDirectory(getTestMethodDirPath())
             .setNumShards("20")
             .setNumWorkers("10")
-            .setMaxNumWorkers("100")
+            .setMaxNumWorkers("15")
             .build();
 
     /*
@@ -216,7 +243,8 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 PipelineLauncher.LaunchConfig.builder(testName, SPEC_PATH)
-                    .addEnvironment("maxWorkers", 100)
+                    .addEnvironment("maxWorkers", 10)
+                    .addEnvironment("numWorkers", 5)
                     .addParameter("outputTable", toTableSpec(PROJECT, table))
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*")
                     .addParameter("JSONPath", jsonPath)

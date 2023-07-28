@@ -19,6 +19,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadChangeStreamOptions;
+import com.google.cloud.teleport.v2.templates.hbase.HBaseIO;
 import com.google.cloud.teleport.v2.templates.transforms.ChangeStreamToRowMutations;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,6 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
-import org.apache.beam.sdk.io.hbase.HBaseIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.ExperimentalOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -52,16 +52,16 @@ import org.slf4j.LoggerFactory;
  * records with the row key as the record key.
  */
 @Template(
-    name = "bigtable-cdc-to-hbase",
+    name = "Bigtable_Change_Streams_to_HBase",
     category = TemplateCategory.STREAMING,
-    displayName = "Bigtable CDC to HBase Replicator",
-    description = "A streaming pipeline that replicates Bigtable change stream data to HBase",
-    optionsClass = BigtableCdcToHbase.BigtableToHbasePipelineOptions.class,
-    flexContainerName = "bigtable-cdc-to-hbase",
+    displayName = "Bigtable Change Streams to HBase Replicator",
+    description = "A streaming pipeline that replicates Bigtable change stream mutations to HBase",
+    optionsClass = BigtableChangeStreamsToHBase.BigtableToHbasePipelineOptions.class,
+    flexContainerName = "bigtable-changestreams-to-hbase",
     contactInformation = "https://cloud.google.com/support")
-public class BigtableCdcToHbase {
+public class BigtableChangeStreamsToHBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BigtableCdcToHbase.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToHBase.class);
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
 
   /** Options to run pipeline with. */
@@ -148,7 +148,7 @@ public class BigtableCdcToHbase {
             ? Instant.now()
             : Instant.parse(pipelineOptions.getBigtableChangeStreamStartTimestamp());
 
-    LOG.info("BigtableCdcToHbase pipeline starting from", startTime.toString());
+    LOG.info("BigtableChangeStreamsToHBase pipeline starting from", startTime.toString());
 
     PCollection<KV<byte[], RowMutations>> convertedMutations =
         pipeline
