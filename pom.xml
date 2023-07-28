@@ -495,6 +495,9 @@
      mvn test -Psnapshot -Dbeam.version=2.50.0-SNAPSHOT -->
     <profile>
       <id>snapshot</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
       <repositories>
         <repository>
           <id>apache.snapshots</id>
