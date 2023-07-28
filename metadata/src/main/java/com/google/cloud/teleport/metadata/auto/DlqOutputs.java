@@ -15,10 +15,19 @@
  */
 package com.google.cloud.teleport.metadata.auto;
 
-import java.io.Serializable;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/** TemplateBlock interface, implementing classes will be used as blocks in a Template. */
-public interface TemplateBlock<X> extends Serializable {
+/** Annotation that marks the deadletter queue output type of a block method. */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD})
+public @interface DlqOutputs {
 
-  Class<X> getOptionsClass();
+  /** Output that this source can produce. */
+  Class<?> value();
+
+  /** List of types if the above class is generic. */
+  Class<?>[] types() default void.class;
 }

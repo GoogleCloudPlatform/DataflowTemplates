@@ -15,11 +15,13 @@
  */
 package com.google.cloud.teleport.metadata.auto;
 
-import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.values.PCollection;
 
-public interface TemplateSource<T, X extends PipelineOptions> extends TemplateBlock<X> {
+/**
+ * Preprocessor interface, implementing classes need to have a method to preprocess {@link
+ * PipelineOptions}.
+ */
+public interface Preprocessor<X extends PipelineOptions> {
 
-  PCollection<T> read(Pipeline pipeline, X options);
+  void accept(X options);
 }

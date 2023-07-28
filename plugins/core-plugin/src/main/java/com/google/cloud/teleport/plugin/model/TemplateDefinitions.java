@@ -155,7 +155,10 @@ public class TemplateDefinitions {
           classOrder.putIfAbsent(block.getBlockInstance().getOptionsClass(), order++);
         }
         optionsClass =
-            AutoTemplate.createNewOptionsClass(executionBlocks, templateClass.getClassLoader());
+            AutoTemplate.createNewOptionsClass(
+                executionBlocks,
+                templateClass.getClassLoader(),
+                AutoTemplate.getDlqInstance(templateClass).getOptionsClass());
       } catch (Exception e) {
         throw new RuntimeException("Error parsing template blocks", e);
       }

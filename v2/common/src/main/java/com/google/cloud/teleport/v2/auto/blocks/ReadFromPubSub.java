@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.auto.blocks;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Outputs;
-import com.google.cloud.teleport.metadata.auto.TemplateSource;
+import com.google.cloud.teleport.metadata.auto.TemplateTransform;
 import com.google.cloud.teleport.v2.auto.blocks.ReadFromPubSub.ReadFromPubSubOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -25,7 +25,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.values.PCollection;
 
-public class ReadFromPubSub implements TemplateSource<PubsubMessage, ReadFromPubSubOptions> {
+public class ReadFromPubSub implements TemplateTransform<ReadFromPubSubOptions> {
 
   public interface ReadFromPubSubOptions extends PipelineOptions {
 
@@ -39,13 +39,13 @@ public class ReadFromPubSub implements TemplateSource<PubsubMessage, ReadFromPub
     void setInputSubscription(String input);
   }
 
-  @Override
   @Outputs(PubsubMessage.class)
   public PCollection<PubsubMessage> read(Pipeline pipeline, ReadFromPubSubOptions options) {
 
     return pipeline.apply(
         "ReadPubSubSubscription",
-        PubsubIO.readMessagesWithAttributes().fromSubscription(options.getInputSubscription()));
+        PubsubIO.readMessagesWithAttributesAndMessageId()
+            .fromSubscription(options.getInputSubscription()));
   }
 
   @Override

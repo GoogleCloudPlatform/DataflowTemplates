@@ -20,10 +20,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/** Annotation that marks input type accepted by a block method. */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface Consumes {
 
   /** Input that this sink can consume. */
   Class<?> value();
+
+  /** List of types if the above class is generic. */
+  Class<?>[] types() default void.class;
 }

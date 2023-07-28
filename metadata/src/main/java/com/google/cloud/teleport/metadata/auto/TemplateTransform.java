@@ -15,4 +15,7 @@
  */
 package com.google.cloud.teleport.metadata.auto;
 
+/**
+ * TemplateTransform interface, implementing classes will be used as block transforms in a Template.
+ */
 public interface TemplateTransform<X> extends TemplateBlock<X> {}

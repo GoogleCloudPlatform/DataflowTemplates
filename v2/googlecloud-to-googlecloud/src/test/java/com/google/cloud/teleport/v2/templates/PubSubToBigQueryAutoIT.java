@@ -13,6 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.metadata.auto;
+package com.google.cloud.teleport.v2.templates;
 
-public interface TemplateSink<X> extends TemplateBlock<X> {}
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+@Category(TemplateIntegrationTest.class)
+@TemplateIntegrationTest(PubSubToBigQueryAuto.class)
+@RunWith(JUnit4.class)
+public class PubSubToBigQueryAutoIT extends PubSubToBigQueryIT {}

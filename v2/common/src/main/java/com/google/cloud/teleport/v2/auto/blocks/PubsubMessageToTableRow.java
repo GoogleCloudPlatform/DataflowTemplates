@@ -18,10 +18,10 @@ package com.google.cloud.teleport.v2.auto.blocks;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Consumes;
+import com.google.cloud.teleport.metadata.auto.DlqOutputs;
 import com.google.cloud.teleport.metadata.auto.Outputs;
 import com.google.cloud.teleport.metadata.auto.TemplateTransform;
 import com.google.cloud.teleport.v2.auto.blocks.PubsubMessageToTableRow.TransformOptions;
-import com.google.cloud.teleport.v2.auto.dlq.AutoDLQUtil;
 import com.google.cloud.teleport.v2.auto.dlq.BigQueryDeadletterOptions;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
@@ -34,11 +34,12 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesAndMessageIdCoder;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
-import org.apache.commons.lang3.StringUtils;
 
 public class PubsubMessageToTableRow implements TemplateTransform<TransformOptions> {
 
@@ -49,7 +50,7 @@ public class PubsubMessageToTableRow implements TemplateTransform<TransformOptio
         order = 1,
         description = "BigQuery output table",
         helpText =
-            "BigQuery table location to write the output to. The table’s schema must match the "
+            "BigQuery table location to write the output to. The table's schema must match the "
                 + "input JSON objects.")
     String getOutputTableSpec();
   }
@@ -76,8 +77,10 @@ public class PubsubMessageToTableRow implements TemplateTransform<TransformOptio
 
   @Consumes(PubsubMessage.class)
   @Outputs(TableRow.class)
-  public PCollection<TableRow> transform(
-      PCollection<PubsubMessage> input, TransformOptions options) {
+  @DlqOutputs(
+      value = FailsafeElement.class,
+      types = {PubsubMessage.class, String.class})
+  public PCollectionTuple transform(PCollection<PubsubMessage> input, TransformOptions options) {
 
     PCollectionTuple udfOut =
         input
@@ -105,17 +108,25 @@ public class PubsubMessageToTableRow implements TemplateTransform<TransformOptio
                     .setFailureTag(TRANSFORM_DEADLETTER_OUT)
                     .build());
 
-    String dlqTable =
-        StringUtils.isEmpty(options.getOutputDeadletterTable())
-            ? options.getOutputTableSpec() + BlockConstants.DEFAULT_DEADLETTER_TABLE_SUFFIX
-            : options.getOutputDeadletterTable();
+    // String dlqTable =
+    //     StringUtils.isEmpty(options.getOutputDeadletterTable())
+    //         ? options.getOutputTableSpec() + BlockConstants.DEFAULT_DEADLETTER_TABLE_SUFFIX
+    //         : options.getOutputDeadletterTable();
 
-    AutoDLQUtil.writeDLQToBigQueryForPubsubMessage(
-        udfOut.get(UDF_DEADLETTER_OUT).setCoder(FAILSAFE_ELEMENT_CODER), dlqTable);
-    AutoDLQUtil.writeDLQToBigQueryForPubsubMessage(
-        jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT).setCoder(FAILSAFE_ELEMENT_CODER), dlqTable);
+    // AutoDLQUtil.writeDLQToBigQueryForPubsubMessage(
+    //     udfOut.get(UDF_DEADLETTER_OUT).setCoder(FAILSAFE_ELEMENT_CODER), dlqTable);
+    // AutoDLQUtil.writeDLQToBigQueryForPubsubMessage(
+    //     jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT).setCoder(FAILSAFE_ELEMENT_CODER),
+    // dlqTable);
 
-    return jsonToTableRowOut.get(TRANSFORM_OUT);
+    PCollectionList<FailsafeElement<PubsubMessage, String>> pcs =
+        PCollectionList.of(udfOut.get(UDF_DEADLETTER_OUT).setCoder(FAILSAFE_ELEMENT_CODER))
+            .and(jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT).setCoder(FAILSAFE_ELEMENT_CODER));
+
+    // return jsonToTableRowOut.get(TRANSFORM_OUT);
+
+    return PCollectionTuple.of(BlockConstants.OUTPUT_TAG, jsonToTableRowOut.get(TRANSFORM_OUT))
+        .and(BlockConstants.ERROR_TAG_PS, pcs.apply(Flatten.pCollections()));
   }
 
   private class PubsubMessageToFailsafeElementFn

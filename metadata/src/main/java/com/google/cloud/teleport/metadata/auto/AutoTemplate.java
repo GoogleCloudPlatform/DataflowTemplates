@@ -30,39 +30,58 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** AutoTemplate, the class which builds the pipeline based on the Template blocks. */
 public class AutoTemplate {
 
   private static final Logger LOG = LoggerFactory.getLogger(AutoTemplate.class);
 
-  public static void setup(Class<?> templateClass, String[] args) {
-    LOG.info("Starting automatic template for template {}...", templateClass);
+  public static void setup(
+      Class<?> templateClass, String[] args, Preprocessor<PipelineOptions> preprocess) {
+    LOG.debug("Starting automatic template for template {}...", templateClass);
 
     try {
       List<ExecutionBlock> orderedBlocks = buildExecutionBlocks(templateClass);
 
-      Class<? extends PipelineOptions> newOptionsClass =
-          createNewOptionsClass(orderedBlocks, AutoTemplate.class.getClassLoader());
+      TemplateBlock dlqInstance = getDlqInstance(templateClass);
 
-      LOG.info("Created options class {}", newOptionsClass);
+      Class<? extends PipelineOptions> newOptionsClass =
+          createNewOptionsClass(
+              orderedBlocks, AutoTemplate.class.getClassLoader(), dlqInstance.getOptionsClass());
+
+      LOG.debug("Created options class {}", newOptionsClass);
 
       PipelineOptions options = PipelineOptionsFactory.fromArgs(args).as(newOptionsClass);
 
+      preprocess.accept(options);
+
       Pipeline pipeline = Pipeline.create(options);
 
-      LOG.info("Parsed options {}", options);
+      LOG.debug("Parsed options {}", options);
       Object input = null;
+
+      ExecutionBlock sourceBlock = orderedBlocks.remove(0);
+      TemplateBlock sourceBlockInstance = sourceBlock.blockInstance;
+      input =
+          sourceBlock.blockMethod.invoke(
+              sourceBlock.blockInstance,
+              pipeline,
+              options.as(sourceBlockInstance.getOptionsClass()));
 
       for (ExecutionBlock executionBlock : orderedBlocks) {
         TemplateBlock blockInstance = executionBlock.blockInstance;
         PipelineOptions optionsClass = options.as(blockInstance.getOptionsClass());
 
-        if (executionBlock.blockInstance instanceof TemplateSource) {
-          input =
-              executionBlock.blockMethod.invoke(
-                  executionBlock.blockInstance, pipeline, optionsClass);
-        } else {
-          input =
-              executionBlock.blockMethod.invoke(executionBlock.blockInstance, input, optionsClass);
+        input =
+            executionBlock.blockMethod.invoke(executionBlock.blockInstance, input, optionsClass);
+
+        if (dlqInstance != null) {
+          ExecutionBlock dlqBlock;
+          if (dlqOutputs(executionBlock.getBlockMethod()) != null) {
+            dlqBlock =
+                buildDlqExecutionBlock(templateClass, dlqOutputs(executionBlock.getBlockMethod()));
+            dlqBlock.blockMethod.invoke(
+                dlqBlock.blockInstance, input, options.as(dlqInstance.getOptionsClass()));
+          }
         }
       }
 
@@ -95,31 +114,32 @@ public class AutoTemplate {
     }
 
     List<Class<?>> chainedClasses = Arrays.asList(blocks);
-    LOG.info("Chaining blocks {}", chainedClasses);
+    LOG.debug("Chaining blocks {}", chainedClasses);
 
-    Class<? extends TemplateSource> sourceBlockClass =
-        chainedClasses.get(0).asSubclass(TemplateSource.class);
-    TemplateSource<?, ?> templateSourceInstance =
+    Class<? extends TemplateTransform> sourceBlockClass =
+        chainedClasses.get(0).asSubclass(TemplateTransform.class);
+    TemplateTransform<?> templateSourceInstance =
         sourceBlockClass.getDeclaredConstructor().newInstance();
 
     Method sourceMethod = getReadMethod(sourceBlockClass);
-    LOG.info("Going to read source method {}", sourceMethod);
+    LOG.debug("Going to read source method {}", sourceMethod);
 
     List<Class<?>> transformations = chainedClasses.subList(1, chainedClasses.size() - 1);
-    LOG.info("Transformations are {}", transformations);
+    LOG.debug("Transformations are {}", transformations);
 
-    Class<?> previousType = outputs(sourceMethod);
+    Outputs previousType = outputs(sourceMethod);
 
     List<ExecutionBlock> orderedBlocks = new ArrayList<>();
     orderedBlocks.add(new ExecutionBlock(sourceBlockClass, templateSourceInstance, sourceMethod));
 
     for (Class<?> transformationClass : transformations) {
 
-      LOG.info("Returned type from the previous block: {}", previousType);
+      LOG.debug("Returned type from the previous block: {}", previousType);
 
-      Method transformMethod = getTransformMethod(transformationClass, previousType);
+      Method transformMethod =
+          getTransformMethod(transformationClass, previousType.value(), previousType.types());
 
-      LOG.info("Next method will be {}", transformMethod);
+      LOG.debug("Next method will be {}", transformMethod);
 
       TemplateTransform<?> transformInstance =
           transformationClass
@@ -133,17 +153,72 @@ public class AutoTemplate {
     }
 
     Class<?> sinkClass = chainedClasses.get(chainedClasses.size() - 1);
-    LOG.info("Sink is {}", sinkClass);
+    LOG.debug("Sink is {}", sinkClass);
 
-    Method sinkMethod = getTransformMethod(sinkClass, previousType);
-    TemplateSink<?> sinkInstance =
-        sinkClass.asSubclass(TemplateSink.class).getDeclaredConstructor().newInstance();
+    Method sinkMethod = getTransformMethod(sinkClass, previousType.value(), previousType.types());
+    TemplateTransform<?> sinkInstance =
+        sinkClass.asSubclass(TemplateTransform.class).getDeclaredConstructor().newInstance();
 
     orderedBlocks.add(new ExecutionBlock(sinkClass, sinkInstance, sinkMethod));
     return orderedBlocks;
   }
 
-  private static Method getReadMethod(Class<? extends TemplateSource> clazz) {
+  public static ExecutionBlock buildDlqExecutionBlock(Class<?> templateClass, DlqOutputs output)
+      throws InstantiationException,
+          IllegalAccessException,
+          InvocationTargetException,
+          NoSuchMethodException {
+
+    Template annotations = templateClass.getAnnotation(Template.class);
+    if (annotations == null) {
+      throw new IllegalStateException(
+          "Class "
+              + templateClass
+              + " does not have a @Template annotation, can not use auto template features.");
+    }
+    Class<?> dlqBlock = annotations.dlqBlock();
+    if (dlqBlock == null) {
+      return null;
+    }
+
+    LOG.debug("Found DLQ Block {}", dlqBlock);
+
+    Class<? extends TemplateTransform> dlqBlockClass = dlqBlock.asSubclass(TemplateTransform.class);
+    TemplateTransform<?> templateDlqInstance = dlqBlockClass.getDeclaredConstructor().newInstance();
+
+    Method dlqMethod = getTransformMethod(dlqBlockClass, output.value(), output.types());
+
+    LOG.debug("Dlq method will be {}", dlqMethod);
+
+    return new ExecutionBlock(dlqBlockClass, templateDlqInstance, dlqMethod);
+  }
+
+  public static TemplateTransform<?> getDlqInstance(Class<?> templateClass)
+      throws InstantiationException,
+          IllegalAccessException,
+          InvocationTargetException,
+          NoSuchMethodException {
+    Template annotations = templateClass.getAnnotation(Template.class);
+    if (annotations == null) {
+      throw new IllegalStateException(
+          "Class "
+              + templateClass
+              + " does not have a @Template annotation, can not use auto template features.");
+    }
+    Class<?> dlqBlock = annotations.dlqBlock();
+    if (dlqBlock == null) {
+      throw new IllegalStateException(
+          "Class "
+              + templateClass
+              + " does not have a @Template annotation with valid dlqBlock, can not use auto template features.");
+    }
+
+    Class<? extends TemplateTransform> dlqBlockClass = dlqBlock.asSubclass(TemplateTransform.class);
+    TemplateTransform<?> templateDlqInstance = dlqBlockClass.getDeclaredConstructor().newInstance();
+    return templateDlqInstance;
+  }
+
+  private static Method getReadMethod(Class<? extends TemplateTransform> clazz) {
     for (Method method : clazz.getDeclaredMethods()) {
       if (method.getName().equals("read")) {
         return method;
@@ -153,13 +228,17 @@ public class AutoTemplate {
     throw new IllegalStateException("Class " + clazz + " does not have a read implementation");
   }
 
-  private static Method getTransformMethod(Class<?> clazz, Class<?> input) {
+  private static Method getTransformMethod(Class<?> clazz, Class<?> input, Class<?>[] types) {
     for (Method method : clazz.getMethods()) {
       Consumes annotation = method.getAnnotation(Consumes.class);
       if (annotation != null) {
-        LOG.info("Class {} has method to consume {}", clazz, annotation.value());
+        LOG.debug(
+            "Class {} has method to consume {} with types {}",
+            clazz,
+            annotation.value(),
+            annotation.types());
 
-        if (annotation.value() == input) {
+        if (annotation.value() == input && Arrays.equals(annotation.types(), types)) {
           return method;
         }
       }
@@ -169,18 +248,24 @@ public class AutoTemplate {
         "Class " + clazz + " does not have a transform implementation for " + input);
   }
 
-  private static Class<?> outputs(Method method) {
+  private static Outputs outputs(Method method) {
     if (method.getAnnotation(Outputs.class) == null) {
       throw new IllegalStateException("Method " + method + " does not implement @Outputs");
     }
+    return method.getAnnotation(Outputs.class);
+  }
 
-    return method.getAnnotation(Outputs.class).value();
+  private static DlqOutputs dlqOutputs(Method method) {
+    if (method.getAnnotation(DlqOutputs.class) == null) {
+      return null;
+    }
+    return method.getAnnotation(DlqOutputs.class);
   }
 
   public static Class<? extends PipelineOptions> createNewOptionsClass(
-      Collection<ExecutionBlock> blocks, ClassLoader loader) {
+      Collection<ExecutionBlock> blocks, ClassLoader loader, Class<?> dlqOptions) {
 
-    LOG.info("Creating new options class to implement {}", blocks);
+    LOG.debug("Creating new options class to implement {}", blocks);
 
     DynamicType.Builder<PipelineOptions> allOptionsClassBuilder =
         new ByteBuddy().makeInterface(PipelineOptions.class).name("AllOptionsClass");
@@ -189,7 +274,9 @@ public class AutoTemplate {
       allOptionsClassBuilder =
           allOptionsClassBuilder.implement(executionBlock.blockInstance.getOptionsClass());
     }
-
+    if (dlqOptions != null) {
+      allOptionsClassBuilder = allOptionsClassBuilder.implement(dlqOptions);
+    }
     return allOptionsClassBuilder.make().load(loader).getLoaded();
   }
 

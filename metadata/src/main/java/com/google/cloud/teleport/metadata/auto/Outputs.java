@@ -20,10 +20,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/** Annotation that marks the output type of a block method. */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface Outputs {
 
-  /** Input that this sink can consume. */
+  /** Output that this source can produce. */
   Class<?> value();
+
+  /** List of types if the above class is generic. */
+  Class<?>[] types() default void.class;
 }

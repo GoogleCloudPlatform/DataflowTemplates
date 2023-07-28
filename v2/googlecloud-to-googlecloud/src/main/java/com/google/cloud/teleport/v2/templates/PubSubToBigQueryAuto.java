@@ -18,9 +18,12 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.auto.AutoTemplate;
+import com.google.cloud.teleport.metadata.auto.Preprocessor;
 import com.google.cloud.teleport.v2.auto.blocks.PubsubMessageToTableRow;
 import com.google.cloud.teleport.v2.auto.blocks.ReadFromPubSub;
 import com.google.cloud.teleport.v2.auto.blocks.WriteToBigQuery;
+import com.google.cloud.teleport.v2.auto.dlq.WriteDlqToBigQuery;
+import org.apache.beam.sdk.options.PipelineOptions;
 
 @Template(
     name = "PubSub_to_BigQuery_Auto",
@@ -29,11 +32,26 @@ import com.google.cloud.teleport.v2.auto.blocks.WriteToBigQuery;
     description =
         "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub subscription or topic, transforms them using a JavaScript user-defined function (UDF), and writes them to a pre-existing BigQuery table as BigQuery elements.",
     blocks = {ReadFromPubSub.class, PubsubMessageToTableRow.class, WriteToBigQuery.class},
+    dlqBlock = WriteDlqToBigQuery.class,
     flexContainerName = "pubsub-to-bigquery-auto",
     contactInformation = "https://cloud.google.com/support")
 public class PubSubToBigQueryAuto {
 
   public static void main(String[] args) {
-    AutoTemplate.setup(PubSubToBigQueryAuto.class, args);
+    AutoTemplate.setup(PubSubToBigQueryAuto.class, args, new DefaultDLQProvider());
+  }
+
+  static class DefaultDLQProvider implements Preprocessor<PipelineOptions> {
+    @Override
+    public void accept(PipelineOptions options) {
+      WriteDlqToBigQuery.BigQueryDlqOptions dlqOptions =
+          options.as(WriteDlqToBigQuery.BigQueryDlqOptions.class);
+      if (dlqOptions.getOutputDeadletterTable() == null
+          || dlqOptions.getOutputDeadletterTable().isEmpty()) {
+        dlqOptions.setOutputDeadletterTable(
+            options.as(WriteToBigQuery.SinkOptions.class).getOutputTableSpec()
+                + PubSubToBigQuery.DEFAULT_DEADLETTER_TABLE_SUFFIX);
+      }
+    }
   }
 }

@@ -15,16 +15,22 @@
  */
 package com.google.cloud.teleport.v2.auto.blocks;
 
+import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
+
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Consumes;
-import com.google.cloud.teleport.metadata.auto.TemplateSink;
+import com.google.cloud.teleport.metadata.auto.Outputs;
+import com.google.cloud.teleport.metadata.auto.TemplateTransform;
 import com.google.cloud.teleport.v2.auto.blocks.WriteToBigQuery.SinkOptions;
 import com.google.cloud.teleport.v2.auto.dlq.AutoDLQUtil;
 import com.google.cloud.teleport.v2.auto.dlq.BigQueryDeadletterOptions;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
@@ -41,22 +47,37 @@ import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.commons.lang3.StringUtils;
 
-public class WriteToBigQuery implements TemplateSink<SinkOptions> {
+public class WriteToBigQuery implements TemplateTransform<SinkOptions> {
 
   public interface SinkOptions
-      extends PipelineOptions, BigQueryDeadletterOptions, BigQueryStorageApiStreamingOptions {
+      extends PipelineOptions,
+          WriteOptions,
+          BigQueryDeadletterOptions,
+          BigQueryStorageApiStreamingOptions,
+          BigQueryStorageApiBatchOptions {
 
     @TemplateParameter.BigQueryTable(
         order = 1,
+        optional = true,
         description = "BigQuery output table",
         helpText =
-            "BigQuery table location to write the output to. The table’s schema must match the "
+            "BigQuery table location to write the output to. The table's schema must match the "
                 + "input JSON objects.")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String input);
+
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        description = "GCS Path to JSON file containing BigQuery table schema.",
+        helpText = "sample text")
+    String getBigQuerySchemaPath();
+
+    void setBigQuerySchemaPath(String bigQuerySchemaPath);
   }
 
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
@@ -65,19 +86,33 @@ public class WriteToBigQuery implements TemplateSink<SinkOptions> {
   private static final JsonFactory JSON_FACTORY = Transport.getJsonFactory();
 
   @Consumes(TableRow.class)
-  public void writeTableRows(PCollection<TableRow> input, SinkOptions options) {
+  @Outputs(
+      value = FailsafeElement.class,
+      types = {String.class, String.class})
+  public PCollectionTuple writeTableRows(PCollectionTuple input, SinkOptions options) {
     WriteResult writeResult =
-        input.apply(
-            "WriteTableRows",
-            BigQueryIO.writeTableRows()
-                .withoutValidation()
-                .withCreateDisposition(CreateDisposition.CREATE_NEVER)
-                .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-                .withExtendedErrorInfo()
-                .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
-                .to(options.getOutputTableSpec()));
+        input
+            .get(BlockConstants.OUTPUT_TAG)
+            .apply(
+                "WriteTableRows",
+                BigQueryIO.writeTableRows()
+                    .withoutValidation()
+                    .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+                    .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                    .withExtendedErrorInfo()
+                    .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
+                    .to(options.getOutputTableSpec()));
 
-    handleFailures(writeResult, options);
+    PCollection<FailsafeElement<String, String>> failedInserts =
+        BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
+            .apply(
+                "WrapInsertionErrors",
+                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                    .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
+            .setCoder(FAILSAFE_ELEMENT_CODER);
+
+    return PCollectionTuple.of(BlockConstants.ERROR_TAG_STR, failedInserts);
+    // handleFailures(writeResult, options);
   }
 
   @Consumes(GenericRecord.class)
@@ -91,6 +126,25 @@ public class WriteToBigQuery implements TemplateSink<SinkOptions> {
                 .withExtendedErrorInfo()
                 .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
                 .to(options.getOutputTableSpec()));
+
+    handleFailures(writeResult, options);
+  }
+
+  @Consumes(String.class)
+  @Outputs(
+      value = FailsafeElement.class,
+      types = {String.class, String.class})
+  public void writeJson(PCollection<String> input, SinkOptions options) {
+    WriteResult writeResult =
+        input.apply(
+            "WriteTableRows",
+            BigQueryIO.<String>write()
+                .to(options.getOutputTableSpec())
+                .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
+                .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
+                .withExtendedErrorInfo()
+                .withFormatFunction(BigQueryConverters::convertJsonToTableRow)
+                .withJsonSchema(getGcsFileAsString(options.getBigQuerySchemaPath())));
 
     handleFailures(writeResult, options);
   }
