@@ -241,11 +241,6 @@ public class BigQueryUtils implements Serializable {
    */
   public boolean setTableRowFields(Mod mod, String modJsonString, TableRow tableRow)
       throws Exception {
-    // Metadata columns, not written to BQ
-    tableRow.set(
-        TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName(),
-        modJsonString);
-
     JSONObject changeJsonParsed = new JSONObject(mod.getChangeJson());
 
     String columnFamily = null;
@@ -282,6 +277,10 @@ public class BigQueryUtils implements Serializable {
       tableRow.set(column.getBqColumnName(), value);
     }
 
+    // Metadata columns, not written to BQ
+    tableRow.set(
+        TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName(),
+        modJsonString);
     return true;
   }
 

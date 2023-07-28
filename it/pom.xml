@@ -36,6 +36,31 @@
     <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
   </properties>
 
+  <!-- TODO: remove this block once libraries-bom gets past 26.19.0 -->
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>google-cloud-bigtable</artifactId>
+        <version>2.25.0</version>
+        <type>jar</type>
+      </dependency>
+      <dependency>
+        <groupId>com.google.api</groupId>
+        <artifactId>gax</artifactId>
+        <version>2.31.0</version>
+        <type>jar</type>
+      </dependency>
+      <dependency>
+        <groupId>com.google.api.grpc</groupId>
+        <artifactId>proto-google-cloud-bigtable-v2</artifactId>
+        <version>2.25.0</version>
+        <type>jar</type>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+  <!-- -->
+
   <dependencies>
     <!-- Templates Annotations -->
     <dependency>

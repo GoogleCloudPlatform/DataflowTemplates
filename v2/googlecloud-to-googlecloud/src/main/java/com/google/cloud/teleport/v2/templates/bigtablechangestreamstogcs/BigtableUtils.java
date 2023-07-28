@@ -293,7 +293,6 @@ public class BigtableUtils implements Serializable {
 
   private com.google.cloud.teleport.bigtable.ChangelogEntry createChangelogEntry(
       ChangeStreamMutation mutation, Entry mutationEntry) {
-    // TODO: this seems like a precision loss, we should keep it precise
     long commitMicros =
         mutation.getCommitTimestamp().toEpochMilli() * 1000
             + mutation.getCommitTimestamp().getNano() / 1000;
