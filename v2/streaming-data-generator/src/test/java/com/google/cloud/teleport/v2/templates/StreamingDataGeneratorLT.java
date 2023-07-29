@@ -91,7 +91,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGeneratePubsub10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     TopicName backlogTopic = pubsubResourceManager.createTopic("output");
@@ -110,7 +110,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
@@ -148,7 +148,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
@@ -164,7 +164,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
     // Set up resource manager
     String name = testName;
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(name, PROJECT).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(name, project).setCredentials(CREDENTIALS).build();
     // schema should match schema supplied to generate fake records.
     Schema schema =
         Schema.of(
@@ -185,14 +185,14 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", NUM_MESSAGES)
             .addParameter("sinkType", "BIGQUERY")
-            .addParameter("outputTableSpec", toTableSpec(PROJECT, table))
+            .addParameter("outputTableSpec", toTableSpec(project, table))
             .addParameter("numWorkers", "50")
             .addParameter("maxNumWorkers", "100")
             .addParameter("autoscalingAlgorithm", "THROUGHPUT_BASED")
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
     // Assert
@@ -207,7 +207,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGenerateSpanner10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     String name = testName;
-    spannerResourceManager = SpannerResourceManager.builder(name, PROJECT, REGION).build();
+    spannerResourceManager = SpannerResourceManager.builder(name, project, region).build();
     String createTableStatement =
         String.format(
             "CREATE TABLE `%s` (\n"
@@ -241,7 +241,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", NUM_MESSAGES)
             .addParameter("sinkType", "SPANNER")
-            .addParameter("projectId", PROJECT)
+            .addParameter("projectId", project)
             .addParameter("spannerInstanceName", spannerResourceManager.getInstanceId())
             .addParameter("spannerDatabaseName", spannerResourceManager.getDatabaseId())
             .addParameter("spannerTableName", name)
@@ -251,7 +251,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));
 
@@ -303,7 +303,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 

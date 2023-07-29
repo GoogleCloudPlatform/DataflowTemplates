@@ -89,7 +89,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
             .setCredentials(CREDENTIALS)
             .build();
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
   }
 
   @After
@@ -155,7 +155,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
                 LaunchConfig.builder(testName, SPEC_PATH)
                     .addParameter("JSONPath", jsonPath)
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*")
-                    .addParameter("outputTable", toTableSpec(PROJECT, table))
+                    .addParameter("outputTable", toTableSpec(project, table))
                     .addParameter("javascriptTextTransformGcsPath", udfPath)
                     .addParameter("javascriptTextTransformFunctionName", "identity")
                     .addParameter(
@@ -163,7 +163,7 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(30)));

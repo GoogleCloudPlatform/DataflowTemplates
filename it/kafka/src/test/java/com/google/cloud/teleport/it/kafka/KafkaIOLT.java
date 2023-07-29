@@ -133,26 +133,26 @@ public final class KafkaIOLT extends IOLoadTestBase {
       // streaming read pipeline does not end itself
       assertEquals(
           PipelineLauncher.JobState.RUNNING,
-          pipelineLauncher.getJobStatus(PROJECT, REGION, readInfo.jobId()));
+          pipelineLauncher.getJobStatus(project, region, readInfo.jobId()));
       // Fail the test if write pipeline (streaming) not in running state.
       // TODO: there is a limitation (or bug) that the cache in KafkaWriter can stay indefinitely if
       // there is no upcoming records. Currently set expected records = (records generated - 10).
       double numRecords =
           pipelineLauncher.getMetric(
-              PROJECT,
-              REGION,
+              project,
+              region,
               readInfo.jobId(),
               getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
       assertEquals(configuration.getNumRows(), numRecords, 10.0);
     } finally {
       // clean up pipelines
-      if (pipelineLauncher.getJobStatus(PROJECT, REGION, writeInfo.jobId())
+      if (pipelineLauncher.getJobStatus(project, region, writeInfo.jobId())
           == PipelineLauncher.JobState.RUNNING) {
-        pipelineLauncher.cancelJob(PROJECT, REGION, writeInfo.jobId());
+        pipelineLauncher.cancelJob(project, region, writeInfo.jobId());
       }
-      if (pipelineLauncher.getJobStatus(PROJECT, REGION, readInfo.jobId())
+      if (pipelineLauncher.getJobStatus(project, region, readInfo.jobId())
           == PipelineLauncher.JobState.RUNNING) {
-        pipelineLauncher.cancelJob(PROJECT, REGION, readInfo.jobId());
+        pipelineLauncher.cancelJob(project, region, readInfo.jobId());
       }
     }
   }
@@ -179,7 +179,7 @@ public final class KafkaIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.getRunner())
             .build();
 
-    return pipelineLauncher.launch(PROJECT, REGION, options);
+    return pipelineLauncher.launch(project, region, options);
   }
 
   private PipelineLauncher.LaunchInfo testRead() throws IOException {
@@ -199,7 +199,7 @@ public final class KafkaIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.getRunner())
             .build();
 
-    return pipelineLauncher.launch(PROJECT, REGION, options);
+    return pipelineLauncher.launch(project, region, options);
   }
 
   /** Options for Kafka IO load test. */

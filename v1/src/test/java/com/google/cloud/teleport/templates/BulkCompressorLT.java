@@ -111,7 +111,7 @@ public class BulkCompressorLT extends TemplateLoadTestBase {
                     .addParameter("compression", "GZIP"))
             .build();
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 
