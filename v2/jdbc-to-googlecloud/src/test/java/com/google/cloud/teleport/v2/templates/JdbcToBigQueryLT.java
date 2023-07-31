@@ -151,7 +151,7 @@ public class JdbcToBigQueryLT extends TemplateLoadTestBase {
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
                     .addParameter(
-                        "driverJars", "gs://apache-beam-pranavbhandari/postgresql-42.2.27.jar")
+                        "driverJars", "gs://apache-beam-pranavbhandari/postgresql-42.6.0.jar")
                     .addParameter("table", testName)
                     .addParameter("partitionColumn", "score")
                     .addParameter("driverClassName", DRIVER_CLASS_NAME)

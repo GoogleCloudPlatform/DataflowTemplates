@@ -81,7 +81,7 @@
     <!-- Note: File it/src/main/java/com/google/cloud/teleport/it/common/JDBCBaseIT.java -->
     <!-- should be updated when these versions are changed. -->
     <mysql-connector-java.version>8.0.30</mysql-connector-java.version>
-    <postgresql.version>42.2.27</postgresql.version>
+    <postgresql.version>42.6.0</postgresql.version>
     <ojdbc8.version>19.3.0.0</ojdbc8.version>
     <mssql-jdbc.version>6.4.0.jre8</mssql-jdbc.version>
     <neo4j-driver.version>4.4.12</neo4j-driver.version>
