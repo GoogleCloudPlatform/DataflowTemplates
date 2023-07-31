@@ -15,21 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
-import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.common.PipelineOperator.Result;
-import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
-import com.google.cloud.teleport.it.gcp.artifacts.utils.JsonTestUtil;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
-import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
-import com.google.cloud.teleport.it.jdbc.MySQLResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -42,6 +32,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.JDBCBaseIT;
+import org.apache.beam.it.gcp.artifacts.utils.JsonTestUtil;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;

@@ -32,8 +32,6 @@
     <failsafe.version>3.3.0</failsafe.version>
     <testcontainers.version>1.17.5</testcontainers.version>
     <dataflow-api.version>v1b3-rev20220920-2.0.0</dataflow-api.version>
-
-    <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
   </properties>
 
   <dependencies>
@@ -126,6 +124,39 @@
           <parameters>true</parameters>
           <testCompilerArgument>-parameters</testCompilerArgument>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless-maven-plugin.version}</version>
+        <configuration combine.self="override">
+          <formats>
+            <!-- Avoid trailing whitespace and require ending newline. -->
+            <format>
+              <includes>
+                <include>*.md</include>
+                <include>.gitignore</include>
+              </includes>
+              <trimTrailingWhitespace/>
+              <endWithNewline/>
+            </format>
+          </formats>
+          <java>
+            <toggleOffOn/>
+            <googleJavaFormat>
+              <version>1.17.0</version>
+              <style>GOOGLE</style>
+            </googleJavaFormat>
+          </java>
+        </configuration>
+        <!-- Bind to verify. -->
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

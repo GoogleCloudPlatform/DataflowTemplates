@@ -15,19 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifacts;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifacts;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.common.PipelineOperator.Result;
-import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
-import com.google.cloud.teleport.it.gcp.artifacts.utils.AvroTestUtil;
-import com.google.cloud.teleport.it.gcp.artifacts.utils.ParquetTestUtil;
-import com.google.cloud.teleport.it.truthmatchers.RecordsSubject;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import java.io.IOException;
@@ -39,6 +31,14 @@ import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.artifacts.Artifact;
+import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
+import org.apache.beam.it.gcp.artifacts.utils.ParquetTestUtil;
+import org.apache.beam.it.truthmatchers.RecordsSubject;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;

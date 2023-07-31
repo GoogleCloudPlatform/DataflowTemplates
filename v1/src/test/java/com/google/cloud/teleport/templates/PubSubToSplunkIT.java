@@ -15,22 +15,13 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.splunk.SplunkResourceManagerUtils.splunkEventToMap;
-import static com.google.cloud.teleport.it.splunk.matchers.SplunkAsserts.assertThatSplunkEvents;
-import static com.google.cloud.teleport.it.splunk.matchers.SplunkAsserts.splunkEventsToRecords;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.apache.beam.it.splunk.SplunkResourceManagerUtils.splunkEventToMap;
+import static org.apache.beam.it.splunk.matchers.SplunkAsserts.assertThatSplunkEvents;
+import static org.apache.beam.it.splunk.matchers.SplunkAsserts.splunkEventsToRecords;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.kms.v1.CryptoKey;
-import com.google.cloud.teleport.it.common.PipelineLauncher;
-import com.google.cloud.teleport.it.common.PipelineOperator;
-import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.kms.KMSResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
-import com.google.cloud.teleport.it.splunk.SplunkResourceManager;
-import com.google.cloud.teleport.it.splunk.conditions.SplunkEventsCheck;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -44,6 +35,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.kms.KMSResourceManager;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
+import org.apache.beam.it.splunk.SplunkResourceManager;
+import org.apache.beam.it.splunk.conditions.SplunkEventsCheck;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.json.JSONObject;
 import org.junit.After;
