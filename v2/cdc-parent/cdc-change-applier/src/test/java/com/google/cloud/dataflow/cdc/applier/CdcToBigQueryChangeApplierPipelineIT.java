@@ -15,23 +15,14 @@
  */
 package com.google.cloud.dataflow.cdc.applier;
 
-import static com.google.cloud.teleport.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.dataflow.cdc.connector.App;
 import com.google.cloud.dataflow.cdc.connector.DebeziumToPubSubDataSender;
-import com.google.cloud.teleport.it.common.PipelineLauncher;
-import com.google.cloud.teleport.it.common.PipelineOperator;
-import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.JDBCBaseIT;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.it.jdbc.JDBCResourceManager;
-import com.google.cloud.teleport.it.jdbc.MySQLResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -50,6 +41,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.JDBCBaseIT;
+import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
+import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;

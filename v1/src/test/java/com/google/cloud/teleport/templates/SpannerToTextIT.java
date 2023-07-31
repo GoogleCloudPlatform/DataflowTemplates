@@ -15,25 +15,25 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.gcp.spanner.matchers.SpannerAsserts.mutationsToRecords;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts.mutationsToRecords;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.it.common.PipelineLauncher;
-import com.google.cloud.teleport.it.common.PipelineOperator;
-import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
-import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.artifacts.Artifact;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.astradb.templates;
 
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.dtsx.astra.sdk.db.AstraDbClient;
@@ -26,12 +26,6 @@ import com.dtsx.astra.sdk.db.domain.DatabaseCreationRequest;
 import com.dtsx.astra.sdk.db.domain.DatabaseStatusType;
 import com.dtsx.astra.sdk.utils.ApiLocator;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.it.common.PipelineLauncher;
-import com.google.cloud.teleport.it.common.PipelineOperator;
-import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -41,6 +35,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
+import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.junit.After;
 import org.junit.Before;

@@ -15,21 +15,14 @@
  */
 package com.google.cloud.teleport.spanner;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatGenericRecords;
-import static com.google.cloud.teleport.it.gcp.spanner.matchers.SpannerAsserts.mutationsToRecords;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatGenericRecords;
+import static org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts.mutationsToRecords;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.it.common.PipelineLauncher;
-import com.google.cloud.teleport.it.common.PipelineOperator;
-import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.artifacts.Artifact;
-import com.google.cloud.teleport.it.gcp.artifacts.utils.AvroTestUtil;
-import com.google.cloud.teleport.it.gcp.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,6 +30,13 @@ import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.artifacts.Artifact;
+import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

@@ -15,18 +15,11 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.common.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.common.PipelineOperator.Result;
-import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
-import com.google.cloud.teleport.it.gcp.TemplateTestBase;
-import com.google.cloud.teleport.it.gcp.pubsub.PubsubResourceManager;
-import com.google.cloud.teleport.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.ByteStreams;
 import com.google.pubsub.v1.SubscriptionName;
@@ -40,6 +33,13 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.util.MimeTypes;
