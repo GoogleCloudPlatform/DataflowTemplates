@@ -31,6 +31,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
@@ -44,6 +45,7 @@ import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Model;
+import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.annotations.VisibleForTesting;
@@ -79,6 +81,11 @@ public class AvroSchemaToDdlConverter {
         builder.addModel(toModel(null, schema));
       } else if (schema.getProp(SPANNER_CHANGE_STREAM_FOR_CLAUSE) != null) {
         builder.addChangeStream(toChangeStream(null, schema));
+      } else if (schema.getProp(SPANNER_SEQUENCE_OPTION + "0") != null) {
+        // Cloud Sequence always requires at least one option,
+        // `sequence_kind='bit_reversed_positive`, so `sequenceOption_0` must
+        // always be valid.
+        builder.addSequence(toSequence(null, schema));
       } else {
         builder.addTable(toTable(null, schema));
       }
@@ -168,6 +175,23 @@ public class AvroSchemaToDdlConverter {
       changeStreamOptions.add(spannerOption);
     }
     builder.options(changeStreamOptions.build());
+
+    return builder.build();
+  }
+
+  public Sequence toSequence(String sequenceName, Schema schema) {
+    if (sequenceName == null) {
+      sequenceName = schema.getName();
+    }
+    LOG.debug("Converting to Ddl sequenceName {}", sequenceName);
+
+    Sequence.Builder builder = Sequence.builder(dialect).name(sequenceName);
+
+    ImmutableList.Builder<String> sequenceOptions = ImmutableList.builder();
+    for (int i = 0; schema.getProp(SPANNER_SEQUENCE_OPTION + i) != null; i++) {
+      sequenceOptions.add(schema.getProp(SPANNER_SEQUENCE_OPTION + i));
+    }
+    builder.options(sequenceOptions.build());
 
     return builder.build();
   }

@@ -764,7 +764,8 @@ public class CopyDbTest {
   @Test
   public void models() throws Exception {
     // spotless:off
-    String endpoint = "//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760";
+    String endpoint =
+        "//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760";
     Ddl ddl =
         Ddl.builder()
             .createModel("Iris")
@@ -876,6 +877,32 @@ public class CopyDbTest {
   }
 
   @Test
+  public void sequences() throws Exception {
+    Ddl ddl =
+        Ddl.builder()
+            .createSequence("Sequence1")
+            .options(
+                ImmutableList.of(
+                    "sequence_kind=\"bit_reversed_positive\"",
+                    "skip_range_min=0",
+                    "skip_range_max=1000",
+                    "start_with_counter=50"))
+            .endSequence()
+            .createSequence("Sequence2")
+            .options(
+                ImmutableList.of(
+                    "sequence_kind=\"bit_reversed_positive\"", "start_with_counter=9999"))
+            .endSequence()
+            .createSequence("Sequence3")
+            .options(ImmutableList.of("sequence_kind=\"bit_reversed_positive\""))
+            .endSequence()
+            .build();
+
+    createAndPopulate(ddl, 0);
+    runTest();
+  }
+
+  @Test
   public void randomSchema() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
     createAndPopulate(ddl, 100);
@@ -927,6 +954,7 @@ public class CopyDbTest {
         new ImportTransform(
             destConfig,
             source,
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),

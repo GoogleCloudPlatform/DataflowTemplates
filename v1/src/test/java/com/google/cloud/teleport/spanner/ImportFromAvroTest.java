@@ -1083,6 +1083,7 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(30)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
@@ -1181,6 +1182,7 @@ public class ImportFromAvroTest {
         new ImportTransform(
             spannerServer.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
@@ -1295,6 +1297,7 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(30)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
@@ -1322,6 +1325,98 @@ public class ImportFromAvroTest {
                 + " FOR \"T\"()"
                 + " CREATE CHANGE STREAM \"ChangeStreamTable\""
                 + " FOR \"T\""));
+  }
+
+  @Test
+  public void sequences() throws Exception {
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put(
+        "Sequence1.avro",
+        SchemaBuilder.record("Sequence1")
+            .prop("sequenceOption_0", "sequence_kind=\"bit_reversed_positive\"")
+            .prop("sequenceOption_1", "skip_range_min=10")
+            .prop("sequenceOption_2", "skip_range_max=10000")
+            .prop("sequenceOption_3", "start_with_counter=99")
+            .fields()
+            .endRecord());
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addSequences(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    // Create the target database.
+    String sequenceDef =
+        "CREATE SEQUENCE `Sequence2`"
+            + " OPTIONS (sequence_kind=\"bit_reversed_positive\", "
+            + " skip_range_min=0, skip_range_max=1000, start_with_counter=50)";
+    String tableDef =
+        "CREATE TABLE `T` ("
+            + "`id` INT64 NOT NULL DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE Sequence2)),"
+            + "`c1` BOOL,"
+            + "`c2` INT64,"
+            + ") PRIMARY KEY (`id`)";
+
+    spannerServer.createDatabase(dbName, Arrays.asList(sequenceDef, tableDef));
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            spannerServer.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE SEQUENCE `Sequence1`\n\tOPTIONS "
+                + "(sequence_kind=\"bit_reversed_positive\","
+                + " skip_range_max=10000,"
+                + " skip_range_min=10,"
+                + " start_with_counter=99)\n"
+                + "\nCREATE SEQUENCE `Sequence2`\n\tOPTIONS "
+                + "(sequence_kind=\"bit_reversed_positive\","
+                + " skip_range_max=1000,"
+                + " skip_range_min=0,"
+                + " start_with_counter=50)"
+                + "CREATE TABLE `T` (\n\t"
+                + "`id`                                    INT64 NOT NULL "
+                + "DEFAULT  (GET_NEXT_SEQUENCE_VALUE(SEQUENCE Sequence2)),\n\t"
+                + "`c1`                                    BOOL,\n\t"
+                + "`c2`                                    INT64,\n) "
+                + "PRIMARY KEY (`id` ASC)\n\n"));
   }
 
   private void runTest(Schema avroSchema, String spannerSchema, Iterable<GenericRecord> records)
@@ -1384,6 +1479,7 @@ public class ImportFromAvroTest {
         new ImportTransform(
             spannerServer.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),

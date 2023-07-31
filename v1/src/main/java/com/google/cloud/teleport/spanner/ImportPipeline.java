@@ -71,7 +71,8 @@ public class ImportPipeline {
         regexes = {"^[a-z_0-9\\-]+$"},
         description = "Cloud Spanner database id",
         helpText =
-            "The database id of the Cloud Spanner database that you want to import into (must already exist).")
+            "The database id of the Cloud Spanner database that you want to import into (must"
+                + " already exist).")
     ValueProvider<String> getDatabaseId();
 
     void setDatabaseId(ValueProvider<String> value);
@@ -100,10 +101,10 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Indexes",
         helpText =
-            "By default the import pipeline is not blocked on index creation, and it "
-                + "may complete with indexes still being created in the background. In testing, it may "
-                + "be useful to set this option to false so that the pipeline waits until indexes are "
-                + "finished.")
+            "By default the import pipeline is not blocked on index creation, and it may complete"
+                + " with indexes still being created in the background. In testing, it may be"
+                + " useful to set this option to false so that the pipeline waits until indexes are"
+                + " finished.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForIndexes();
 
@@ -114,10 +115,10 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Foreign Keys",
         helpText =
-            "By default the import pipeline is not blocked on foreign key creation, and it may complete"
-                + " with foreign keys still being created in the background. In testing, it may be"
-                + " useful to set this option to false so that the pipeline waits until foreign keys"
-                + " are finished.")
+            "By default the import pipeline is not blocked on foreign key creation, and it may"
+                + " complete with foreign keys still being created in the background. In testing,"
+                + " it may be useful to set this option to false so that the pipeline waits until"
+                + " foreign keys are finished.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForForeignKeys();
 
@@ -136,13 +137,26 @@ public class ImportPipeline {
     void setWaitForChangeStreams(ValueProvider<Boolean> value);
 
     @TemplateParameter.Boolean(
+        order = 7,
+        optional = true,
+        description = "Wait for Sequences",
+        helpText =
+            "By default the import pipeline is blocked on sequence creation. If false, it may"
+                + " complete with sequences still being created in the background.")
+    @Default.Boolean(true)
+    ValueProvider<Boolean> getWaitForSequences();
+
+    void setWaitForSequences(ValueProvider<Boolean> value);
+
+    @TemplateParameter.Boolean(
         order = 8,
         optional = true,
         description = "Create Indexes early",
         helpText =
-            "Flag to turn off early index creation if there are many indexes. Indexes and Foreign keys are created after dataload. If there are more than "
-                + "40 DDL statements to be executed after dataload, it is preferable to create the "
-                + "indexes before datalod. This is the flag to turn the feature off.")
+            "Flag to turn off early index creation if there are many indexes. Indexes and Foreign"
+                + " keys are created after dataload. If there are more than 40 DDL statements to be"
+                + " executed after dataload, it is preferable to create the indexes before datalod."
+                + " This is the flag to turn the feature off.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEarlyIndexCreateFlag();
 
@@ -185,7 +199,8 @@ public class ImportPipeline {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
+            "The request priority for Cloud Spanner calls. The value must be one of:"
+                + " [HIGH,MEDIUM,LOW].")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
@@ -222,6 +237,7 @@ public class ImportPipeline {
             options.getWaitForIndexes(),
             options.getWaitForForeignKeys(),
             options.getWaitForChangeStreams(),
+            options.getWaitForSequences(),
             options.getEarlyIndexCreateFlag(),
             options.getDdlCreationTimeoutInMinutes()));
 

@@ -1069,6 +1069,63 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroSchema3.getProp(SPANNER_OPTION + "0"), nullValue());
   }
 
+  @Test
+  public void sequences() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    Ddl ddl =
+        Ddl.builder()
+            .createSequence("Sequence1")
+            .options(
+                ImmutableList.of(
+                    "sequence_kind=\"bit_reversed_positive\"",
+                    "skip_range_min=0",
+                    "skip_range_max=1000",
+                    "start_with_counter=50"))
+            .endSequence()
+            .createSequence("Sequence2")
+            .options(
+                ImmutableList.of(
+                    "sequence_kind=\"bit_reversed_positive\"", "start_with_counter=9999"))
+            .endSequence()
+            .createSequence("Sequence3")
+            .options(ImmutableList.of("sequence_kind=\"bit_reversed_positive\""))
+            .endSequence()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(3));
+    for (Schema s : result) {
+      assertThat(s.getNamespace(), equalTo("spannertest"));
+      assertThat(s.getProp("googleFormatVersion"), equalTo("booleans"));
+      assertThat(s.getProp("googleStorage"), equalTo("CloudSpanner"));
+      assertThat(s.getFields(), empty());
+    }
+
+    Iterator<Schema> it = result.iterator();
+    Schema avroSchema1 = it.next();
+    assertThat(avroSchema1.getName(), equalTo("Sequence1"));
+    assertThat(
+        avroSchema1.getProp("sequenceOption_0"),
+        equalTo("sequence_kind=\"bit_reversed_positive\""));
+    assertThat(avroSchema1.getProp("sequenceOption_1"), equalTo("skip_range_min=0"));
+    assertThat(avroSchema1.getProp("sequenceOption_2"), equalTo("skip_range_max=1000"));
+    assertThat(avroSchema1.getProp("sequenceOption_3"), equalTo("start_with_counter=50"));
+
+    Schema avroSchema2 = it.next();
+    assertThat(avroSchema2.getName(), equalTo("Sequence2"));
+    assertThat(
+        avroSchema2.getProp("sequenceOption_0"),
+        equalTo("sequence_kind=\"bit_reversed_positive\""));
+    assertThat(avroSchema2.getProp("sequenceOption_1"), equalTo("start_with_counter=9999"));
+
+    Schema avroSchema3 = it.next();
+    assertThat(avroSchema3.getName(), equalTo("Sequence3"));
+    assertThat(
+        avroSchema3.getProp("sequenceOption_0"),
+        equalTo("sequence_kind=\"bit_reversed_positive\""));
+  }
+
   private Schema nullableUnion(Schema.Type s) {
     return Schema.createUnion(Schema.create(Schema.Type.NULL), Schema.create(s));
   }

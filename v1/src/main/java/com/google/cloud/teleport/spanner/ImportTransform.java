@@ -21,6 +21,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
@@ -104,6 +105,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
   private final ValueProvider<Boolean> waitForIndexes;
   private final ValueProvider<Boolean> waitForForeignKeys;
   private final ValueProvider<Boolean> waitForChangeStreams;
+  private final ValueProvider<Boolean> waitForSequences;
   private final ValueProvider<Boolean> earlyIndexCreateFlag;
   private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
@@ -113,6 +115,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       ValueProvider<Boolean> waitForIndexes,
       ValueProvider<Boolean> waitForForeignKeys,
       ValueProvider<Boolean> waitForChangeStreams,
+      ValueProvider<Boolean> waitForSequences,
       ValueProvider<Boolean> earlyIndexCreateFlag,
       ValueProvider<Integer> ddlCreationTimeoutInMinutes) {
     this.spannerConfig = spannerConfig;
@@ -120,6 +123,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     this.waitForIndexes = waitForIndexes;
     this.waitForForeignKeys = waitForForeignKeys;
     this.waitForChangeStreams = waitForChangeStreams;
+    this.waitForSequences = waitForSequences;
     this.earlyIndexCreateFlag = earlyIndexCreateFlag;
     this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
   }
@@ -196,6 +200,10 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         createTableOutput
             .get(CreateTables.getPendingChangeStreamsTag())
             .apply("As change streams view", View.asSingleton());
+    final PCollectionView<List<String>> pendingSequences =
+        createTableOutput
+            .get(CreateTables.getPendingSequencesTag())
+            .apply("As sequences view", View.asSingleton());
 
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
@@ -280,7 +288,10 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
             new ApplyDDLTransform(spannerConfig, pendingForeignKeys, waitForForeignKeys))
         .apply(
             "Create Change Streams",
-            new ApplyDDLTransform(spannerConfig, pendingChangeStreams, waitForChangeStreams));
+            new ApplyDDLTransform(spannerConfig, pendingChangeStreams, waitForChangeStreams))
+        .apply(
+            "Create Sequences",
+            new ApplyDDLTransform(spannerConfig, pendingSequences, waitForSequences));
     return PDone.in(begin.getPipeline());
   }
 
@@ -421,11 +432,17 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       return pendingChangeStreamsTag;
     }
 
+    public static TupleTag<List<String>> getPendingSequencesTag() {
+      return pendingSequencesTag;
+    }
+
     private static final TupleTag<Ddl> ddlObjectTag = new TupleTag<Ddl>() {};
     private static final TupleTag<List<String>> pendingIndexesTag = new TupleTag<List<String>>() {};
     private static final TupleTag<List<String>> pendingForeignKeysTag =
         new TupleTag<List<String>>() {};
     private static final TupleTag<List<String>> pendingChangeStreamsTag =
+        new TupleTag<List<String>>() {};
+    private static final TupleTag<List<String>> pendingSequencesTag =
         new TupleTag<List<String>>() {};
 
     public CreateTables(
@@ -476,11 +493,13 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           List<KV<String, Schema>> missingModels = new ArrayList<>();
                           List<KV<String, Schema>> missingViews = new ArrayList<>();
                           List<KV<String, Schema>> missingChangeStreams = new ArrayList<>();
+                          List<KV<String, Schema>> missingSequences = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
                             if (informationSchemaDdl.table(kv.getKey()) == null
                                 && informationSchemaDdl.model(kv.getKey()) == null
                                 && informationSchemaDdl.view(kv.getKey()) == null
-                                && informationSchemaDdl.changeStream(kv.getKey()) == null) {
+                                && informationSchemaDdl.changeStream(kv.getKey()) == null
+                                && informationSchemaDdl.sequence(kv.getKey()) == null) {
                               Schema schema = parser.parse(kv.getValue());
                               if (schema.getProp(AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE)
                                   != null) {
@@ -489,6 +508,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 missingModels.add(KV.of(kv.getKey(), schema));
                               } else if (schema.getProp("spannerViewQuery") != null) {
                                 missingViews.add(KV.of(kv.getKey(), schema));
+                              } else if (schema.getProp("sequenceOption_0") != null) {
+                                missingSequences.add(KV.of(kv.getKey(), schema));
                               } else {
                                 missingTables.add(KV.of(kv.getKey(), schema));
                               }
@@ -499,6 +520,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           List<String> createIndexStatements = new ArrayList<>();
                           List<String> createForeignKeyStatements = new ArrayList<>();
                           List<String> createChangeStreamStatements = new ArrayList<>();
+                          List<String> createSequenceStatements = new ArrayList<>();
 
                           Ddl.Builder mergedDdl = informationSchemaDdl.toBuilder();
                           List<String> ddlStatements = new ArrayList<>();
@@ -571,6 +593,18 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 newDdl.createChangeStreamStatements());
                           }
                           c.output(pendingChangeStreamsTag, createChangeStreamStatements);
+
+                          if (!missingSequences.isEmpty()) {
+                            Ddl.Builder builder = Ddl.builder(dialect);
+                            for (KV<String, Schema> kv : missingSequences) {
+                              Sequence sequence = converter.toSequence(kv.getKey(), kv.getValue());
+                              builder.addSequence(sequence);
+                            }
+                            Ddl newDdl = builder.build();
+                            createSequenceStatements.addAll(newDdl.createSequenceStatements());
+                          }
+                          c.output(pendingSequencesTag, createSequenceStatements);
+
                           LOG.info(
                               "Applying DDL statements for tables, models and views: {}",
                               ddlStatements);
@@ -606,7 +640,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                       ddlObjectTag,
                       TupleTagList.of(pendingIndexesTag)
                           .and(pendingForeignKeysTag)
-                          .and(pendingChangeStreamsTag)));
+                          .and(pendingChangeStreamsTag)
+                          .and(pendingSequencesTag)));
     }
   }
 
@@ -686,6 +721,12 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           c.output(KV.of(changeStream.getName(), fullPath));
                         }
                       }
+                      for (Export.Table sequence : proto.getSequencesList()) {
+                        for (String f : sequence.getDataFilesList()) {
+                          String fullPath = GcsUtil.joinPath(importDirectory.get(), f);
+                          c.output(KV.of(sequence.getName(), fullPath));
+                        }
+                      }
                     }
                   }));
 
@@ -706,6 +747,11 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                       for (Export.Table changeStream : proto.getChangeStreamsList()) {
                         if (!Strings.isNullOrEmpty(changeStream.getManifestFile())) {
                           c.output(KV.of(changeStream.getName(), changeStream.getManifestFile()));
+                        }
+                      }
+                      for (Export.Table sequence : proto.getSequencesList()) {
+                        if (!Strings.isNullOrEmpty(sequence.getManifestFile())) {
+                          c.output(KV.of(sequence.getName(), sequence.getManifestFile()));
                         }
                       }
                     }

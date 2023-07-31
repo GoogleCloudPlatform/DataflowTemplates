@@ -33,6 +33,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
@@ -46,6 +47,7 @@ import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.ModelColumn;
+import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
 import java.util.ArrayList;
@@ -224,6 +226,19 @@ public class DdlToAvroSchemaConverter {
       if (changeStream.options() != null) {
         for (int i = 0; i < changeStream.options().size(); i++) {
           recordBuilder.prop(SPANNER_OPTION + i, changeStream.options().get(i));
+        }
+      }
+      schemas.add(recordBuilder.fields().endRecord());
+    }
+
+    for (Sequence sequence : ddl.sequences()) {
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(sequence.name()).namespace(this.namespace);
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      if (sequence.options() != null) {
+        for (int i = 0; i < sequence.options().size(); i++) {
+          recordBuilder.prop(SPANNER_SEQUENCE_OPTION + i, sequence.options().get(i));
         }
       }
       schemas.add(recordBuilder.fields().endRecord());

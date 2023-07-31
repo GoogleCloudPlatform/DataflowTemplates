@@ -6,8 +6,8 @@ option java_package = "com.google.cloud.teleport.spanner.proto";
 option java_outer_classname = "ExportProtos";
 
 enum ProtoDialect {
-    GOOGLE_STANDARD_SQL = 0;
-    POSTGRESQL = 1;
+  GOOGLE_STANDARD_SQL = 0;
+  POSTGRESQL = 1;
 }
 
 // Protobuf schema for the content of the exported table manifest file.
@@ -25,12 +25,12 @@ message TableManifest {
 // Protobuf schema for the content of the export summary file representing the
 // whole database.
 message Export {
-  // An export summary of the table, view or change stream.
-  // During the import, `name` will be used as the Cloud Spanner table, view or
-  // change stream name. Both `data_files` and `manifest_file` can be used to
-  // locate the corresponding data files.
+  // An export summary of the table, view, change stream or sequence.
+  // During the import, `name` will be used as the Cloud Spanner table, view,
+  // change stream or sequence name. Both `data_files` and `manifest_file` can
+  // be used to locate the corresponding data files.
   message Table {
-    // The name of the table, view or change stream.
+    // The name of the table, view, change stream or sequence.
     string name = 1;
     // Set of Avro file globs.
     // Use `data_files` when table manifest files with checksums are not
@@ -47,11 +47,14 @@ message Export {
     string option_value = 3;
   }
 
+  // The dialect of the database.
+  ProtoDialect dialect = 4;
+
   // The set of tables that were exported.
   repeated Table tables = 1;
   repeated DatabaseOption database_options = 2;
   // The set of change streams that were exported.
   repeated Table change_streams = 3;
-  // The dialect of the database.
-  ProtoDialect dialect = 4;
+  // The set of sequences that were exported.
+  repeated Table sequences = 5;
 }

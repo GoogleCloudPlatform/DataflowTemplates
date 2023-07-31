@@ -42,6 +42,7 @@ public class AvroUtil {
   public static final String SPANNER_PARENT = "spannerParent";
   public static final String SPANNER_PRIMARY_KEY = "spannerPrimaryKey";
   public static final String SPANNER_REMOTE = "spannerRemote";
+  public static final String SPANNER_SEQUENCE_OPTION = "sequenceOption_";
   public static final String SPANNER_VIEW_QUERY = "spannerViewQuery";
   public static final String SPANNER_VIEW_SECURITY = "spannerViewSecurity";
   public static final String STORED = "stored";

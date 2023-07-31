@@ -1036,6 +1036,7 @@ public final class ExportRelatedTablesCheckTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(30)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();

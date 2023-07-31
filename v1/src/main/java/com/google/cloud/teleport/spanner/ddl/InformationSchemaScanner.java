@@ -72,6 +72,11 @@ public class InformationSchemaScanner {
       listChangeStreams(builder);
       listChangeStreamOptions(builder);
     }
+    if (isSequenceSupported()) {
+      Map<String, Long> currentCounters = Maps.newHashMap();
+      listSequences(builder, currentCounters);
+      listSequenceOptions(builder, currentCounters);
+    }
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
     listIndexColumns(builder, indexes);
@@ -1027,6 +1032,99 @@ public class InformationSchemaScanner {
       String changeStreamName = entry.getKey();
       ImmutableList<String> options = entry.getValue().build();
       builder.createChangeStream(changeStreamName).options(options).endChangeStream();
+    }
+  }
+
+  private boolean isSequenceSupported() {
+    Statement statement =
+        Statement.of(
+            "SELECT COUNT(1)"
+                + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                + " t.TABLE_SCHEMA = 'INFORMATION_SCHEMA'"
+                + " AND t.TABLE_NAME = 'SEQUENCES'");
+
+    try (ResultSet resultSet = context.executeQuery(statement)) {
+      // Returns a single row with a 1 if sequences are supported and a 0 if not.
+      resultSet.next();
+      if (resultSet.getLong(0) == 0) {
+        LOG.info("information_schema.sequences is not present");
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private void listSequences(Ddl.Builder builder, Map<String, Long> currentCounters) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of("SELECT s.name, s.data_type FROM information_schema.sequences AS s"));
+
+    while (resultSet.next()) {
+      String sequenceName = resultSet.getString(0);
+      builder.createSequence(sequenceName).endSequence();
+
+      ResultSet resultSetForCounter =
+          context.executeQuery(
+              Statement.of("SELECT GET_INTERNAL_SEQUENCE_STATE(SEQUENCE " + sequenceName + ")"));
+      if (resultSetForCounter.next() && !resultSetForCounter.isNull(0)) {
+        Long counterValue = resultSetForCounter.getLong(0);
+        currentCounters.put(sequenceName, counterValue);
+      }
+    }
+  }
+
+  private void listSequenceOptions(Ddl.Builder builder, Map<String, Long> currentCounters) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.name, t.option_name, t.option_type, t.option_value"
+                    + " FROM information_schema.sequence_options AS t"
+                    + " ORDER BY t.name, t.option_name"));
+
+    Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String sequenceName = resultSet.getString(0);
+      String optionName = resultSet.getString(1);
+      String optionType = resultSet.getString(2);
+      String optionValue = resultSet.getString(3);
+
+      if (optionName == Sequence.SEQUENCE_START_WITH_COUNTER
+          && currentCounters.containsKey(sequenceName)) {
+        // The sequence is in use, we need to apply the current counter to
+        // the DDL builder, instead of the one retrieved from Information Schema.
+        continue;
+      }
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(sequenceName, k -> ImmutableList.builder());
+      if (optionType.equalsIgnoreCase("STRING")) {
+        options.add(
+            optionName
+                + "="
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    // Inject the current counter value to sequences that are in use.
+    for (Map.Entry<String, Long> entry : currentCounters.entrySet()) {
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(entry.getKey(), k -> ImmutableList.builder());
+      // Add a buffer to accommodate writes that may happen after import
+      // is run. Note that this is not 100% failproof, since more writes may
+      // happen and they will make the sequence advances past the buffer.
+      options.add(
+          Sequence.SEQUENCE_START_WITH_COUNTER
+              + "="
+              + String.valueOf(entry.getValue() + Sequence.SEQUENCE_COUNTER_BUFFER));
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry : allOptions.entrySet()) {
+      String sequenceName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder.createSequence(sequenceName).options(options).endSequence();
     }
   }
 }

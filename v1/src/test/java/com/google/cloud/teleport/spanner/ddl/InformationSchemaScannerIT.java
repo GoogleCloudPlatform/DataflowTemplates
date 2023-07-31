@@ -255,10 +255,9 @@ public class InformationSchemaScannerIT {
   @Test
   public void simpleModel() throws Exception {
     String modelDef =
-        "CREATE MODEL `Iris`"
-            + " INPUT ( `f1` FLOAT64, `f2` FLOAT64, `f3` FLOAT64, `f4` FLOAT64, )"
-            + " OUTPUT ( `classes` ARRAY<STRING(MAX)>, `scores` ARRAY<FLOAT64>, )"
-            + " REMOTE OPTIONS (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\")";
+        "CREATE MODEL `Iris` INPUT ( `f1` FLOAT64, `f2` FLOAT64, `f3` FLOAT64, `f4` FLOAT64, )"
+            + " OUTPUT ( `classes` ARRAY<STRING(MAX)>, `scores` ARRAY<FLOAT64>, ) REMOTE OPTIONS"
+            + " (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\")";
 
     spannerServer.createDatabase(dbId, Arrays.asList(modelDef));
     Ddl ddl = getDatabaseDdl();
@@ -816,5 +815,38 @@ public class InformationSchemaScannerIT {
     spannerServer.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void sequences() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE SEQUENCE `MySequence` OPTIONS (" + "sequence_kind = \"bit_reversed_positive\")",
+            "CREATE SEQUENCE `MySequence2` OPTIONS ("
+                + "sequence_kind = \"bit_reversed_positive\","
+                + "skip_range_min = 1,"
+                + "skip_range_max = 1000,"
+                + "start_with_counter = 100)",
+            "CREATE TABLE `Account` ("
+                + " `id`        INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE MySequence)),"
+                + " `balanceId` INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`id` ASC)");
+
+    spannerServer.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    String expectedDdl =
+        "\nCREATE SEQUENCE `MySequence`\n\tOPTIONS "
+            + "(sequence_kind=\"bit_reversed_positive\")\n"
+            + "CREATE SEQUENCE `MySequence2`\n\tOPTIONS "
+            + "(sequence_kind=\"bit_reversed_positive\","
+            + " skip_range_max=1000,"
+            + " skip_range_min=1,"
+            + " start_with_counter=100)"
+            + "CREATE TABLE `Account` ("
+            + "\n\t`id`                                    INT64 DEFAULT"
+            + "  (GET_NEXT_SEQUENCE_VALUE(SEQUENCE MySequence)),"
+            + "\n\t`balanceId`                             INT64 NOT NULL,"
+            + "\n) PRIMARY KEY (`id` ASC)\n\n";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
   }
 }

@@ -138,7 +138,9 @@ public class ExportTransformTest {
             "table2",
             "table2 manifest",
             "changeStream",
-            "changeStream manifest");
+            "changeStream manifest",
+            "sequence",
+            "sequence manifest");
 
     PCollection<List<Export.Table>> metadataTables =
         pipeline
@@ -155,6 +157,7 @@ public class ExportTransformTest {
     ddlBuilder.mergeDatabaseOptions(databaseOptions);
     ddlBuilder.createModel("model1").remote(true).endModel();
     ddlBuilder.createChangeStream("changeStream").endChangeStream();
+    ddlBuilder.createSequence("sequence").endSequence();
     Ddl ddl = ddlBuilder.build();
     PCollectionView<Ddl> ddlView = pipeline.apply(Create.of(ddl)).apply(View.asSingleton());
     PCollectionView<Dialect> dialectView =
@@ -200,6 +203,12 @@ public class ExportTransformTest {
                   assertThat(
                       manifestProto.getChangeStreams(0).getManifestFile(),
                       is("changeStream-manifest.json"));
+
+                  assertThat(manifestProto.getSequencesCount(), is(1));
+                  assertThat(manifestProto.getSequences(0).getName(), is("sequence"));
+                  assertThat(
+                      manifestProto.getSequences(0).getManifestFile(),
+                      is("sequence-manifest.json"));
                   return null;
                 });
 

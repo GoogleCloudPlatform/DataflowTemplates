@@ -739,6 +739,37 @@ public class DdlTest {
   }
 
   @Test
+  public void sequences() {
+    Ddl ddl =
+        Ddl.builder()
+            .createSequence("MySequence")
+            .options(
+                ImmutableList.of(
+                    "sequence_kind=\"bit_reversed_positive\"",
+                    "skip_range_min=0",
+                    "skip_range_max=1000",
+                    "start_with_counter=50"))
+            .endSequence()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE SEQUENCE `MySequence`"
+                + " OPTIONS (sequence_kind=\"bit_reversed_positive\", "
+                + " skip_range_min=0, skip_range_max=1000, start_with_counter=50)"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(1, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace(
+            "CREATE SEQUENCE `MySequence`"
+                + " OPTIONS (sequence_kind=\"bit_reversed_positive\", "
+                + " skip_range_min=0, skip_range_max=1000, start_with_counter=50)"));
+    assertNotNull(ddl.hashCode());
+  }
+
+  @Test
   public void testDdlEquals() {
     Ddl ddl1 = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL).build();
     Ddl ddl2 = Ddl.builder(Dialect.POSTGRESQL).build();
