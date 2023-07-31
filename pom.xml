@@ -71,7 +71,7 @@
     <snakeyaml.version>2.0</snakeyaml.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
-    <truth.version>1.0.1</truth.version>
+    <truth.version>1.1.5</truth.version>
 
     <!-- JDBC driver / Connector versions -->
     <!-- Note: File it/src/main/java/com/google/cloud/teleport/it/common/JDBCBaseIT.java -->

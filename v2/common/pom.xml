@@ -30,7 +30,6 @@
         <commons.version>1.8</commons.version>
         <commons-text.version>1.10.0</commons-text.version>
         <nashorn.version>15.4</nashorn.version>
-        <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
     </properties>
 
     <dependencies>
@@ -143,7 +142,7 @@
         <dependency>
             <groupId>com.google.truth.extensions</groupId>
             <artifactId>truth-proto-extension</artifactId>
-            <version>${truth-proto-extension.version}</version>
+            <version>${truth.version}</version>
             <scope>test</scope>
             <exclusions>
               <exclusion>
