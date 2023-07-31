@@ -58,7 +58,7 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
   private static final String MYSQL_VERSION = "8.0.30";
   private static final String POSTGRES_VERSION = "42.2.27";
   private static final String ORACLE_VERSION = "19.3.0.0";
-  private static final String MSSQL_VERSION = "6.4.0.jre8";
+  private static final String MSSQL_VERSION = "12.2.0.jre11";
 
   @Before
   public void setUpJDBC() throws IOException {
