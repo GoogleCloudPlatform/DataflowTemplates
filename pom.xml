@@ -67,7 +67,7 @@
     <json.version>20230227</json.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
-    <slf4j.version>1.7.25</slf4j.version>
+    <slf4j.version>1.7.36</slf4j.version>
     <snakeyaml.version>2.0</snakeyaml.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
