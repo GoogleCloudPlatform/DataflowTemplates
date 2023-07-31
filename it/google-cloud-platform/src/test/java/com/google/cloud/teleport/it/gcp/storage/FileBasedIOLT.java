@@ -186,7 +186,7 @@ public class FileBasedIOLT extends IOLoadTestBase {
             .setPipeline(writePipeline)
             .addParameter("runner", configuration.runner)
             .build();
-    PipelineLauncher.LaunchInfo writeInfo = pipelineLauncher.launch(PROJECT, REGION, writeOptions);
+    PipelineLauncher.LaunchInfo writeInfo = pipelineLauncher.launch(project, region, writeOptions);
     PipelineOperator.Result writeResult =
         pipelineOperator.waitUntilDone(
             createConfig(writeInfo, Duration.ofMinutes(configuration.pipelineTimeout)));
@@ -200,7 +200,7 @@ public class FileBasedIOLT extends IOLoadTestBase {
             .setPipeline(readPipeline)
             .addParameter("runner", configuration.runner)
             .build();
-    PipelineLauncher.LaunchInfo readInfo = pipelineLauncher.launch(PROJECT, REGION, readOptions);
+    PipelineLauncher.LaunchInfo readInfo = pipelineLauncher.launch(project, region, readOptions);
     PipelineOperator.Result readResult =
         pipelineOperator.waitUntilDone(
             createConfig(readInfo, Duration.ofMinutes(configuration.pipelineTimeout)));
@@ -211,8 +211,8 @@ public class FileBasedIOLT extends IOLoadTestBase {
     // check metrics
     double numRecords =
         pipelineLauncher.getMetric(
-            PROJECT,
-            REGION,
+            project,
+            region,
             readInfo.jobId(),
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
 

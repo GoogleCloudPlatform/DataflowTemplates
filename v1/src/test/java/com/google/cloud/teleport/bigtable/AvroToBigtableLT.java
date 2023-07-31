@@ -68,7 +68,7 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    bigtableResourceManager = BigtableResourceManager.builder(testName, PROJECT).build();
+    bigtableResourceManager = BigtableResourceManager.builder(testName, project).build();
     gcsClient =
         GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
             .setCredentials(CREDENTIALS)
@@ -132,14 +132,14 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
-                    .addParameter("bigtableProjectId", PROJECT)
+                    .addParameter("bigtableProjectId", project)
                     .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
                     .addParameter("bigtableTableId", tableId)
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*"))
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 

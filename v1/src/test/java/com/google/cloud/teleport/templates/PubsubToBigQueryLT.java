@@ -91,11 +91,11 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
   }
 
   @After
@@ -150,11 +150,11 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
                     .addEnvironment("maxWorkers", 5)
                     .addEnvironment("numWorkers", 4)
                     .addParameter("inputSubscription", backlogSubscription.toString())
-                    .addParameter("outputTableSpec", toTableSpec(PROJECT, table)))
+                    .addParameter("outputTableSpec", toTableSpec(project, table)))
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result =
         pipelineOperator.waitForConditionAndCancel(
@@ -196,11 +196,11 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
                     .addEnvironment("numWorkers", 7)
                     .addEnvironment("additionalUserLabels", Collections.singletonMap("qps", qps))
                     .addParameter("inputSubscription", inputSubscription.toString())
-                    .addParameter("outputTableSpec", toTableSpec(PROJECT, table)))
+                    .addParameter("outputTableSpec", toTableSpec(project, table)))
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     // ElementCount metric in dataflow is approximate, allow for 1% difference
     Integer expectedMessages = (int) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);

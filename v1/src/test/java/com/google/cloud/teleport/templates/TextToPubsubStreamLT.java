@@ -75,7 +75,7 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
 
@@ -144,7 +144,7 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*"))
             .build();
     // Act
-    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
 
     // Waits until a number of messages condition is met
@@ -160,7 +160,7 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
             () -> {
               Long currentMessages =
                   monitoringClient.getNumMessagesInSubscription(
-                      PROJECT, outputSubscription.getSubscription());
+                      project, outputSubscription.getSubscription());
               LOG.info(
                   "Found {} messages in output subscription, expected {} messages.",
                   currentMessages,
@@ -203,7 +203,7 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
                     .addParameter("inputFilePattern", getTestMethodDirPath() + "/*"))
             .build();
     // Act
-    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
 
     // Executes the data generator and return approximate number of messages
@@ -223,7 +223,7 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
             () -> {
               Long currentMessages =
                   monitoringClient.getNumMessagesInSubscription(
-                      PROJECT, outputSubscription.getSubscription());
+                      project, outputSubscription.getSubscription());
               LOG.info(
                   "Found {} messages in output subscription, expected {} messages.",
                   currentMessages,

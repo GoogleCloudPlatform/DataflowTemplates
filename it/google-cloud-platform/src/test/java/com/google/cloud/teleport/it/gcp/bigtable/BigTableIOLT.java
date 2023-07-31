@@ -75,7 +75,7 @@ public class BigTableIOLT extends IOLoadTestBase {
 
   @Before
   public void setup() throws IOException {
-    resourceManager = BigtableResourceManager.builder(testName, PROJECT).build();
+    resourceManager = BigtableResourceManager.builder(testName, project).build();
 
     String testConfig =
         TestProperties.getProperty("configuration", "small", TestProperties.Type.PROPERTY);
@@ -134,11 +134,11 @@ public class BigTableIOLT extends IOLoadTestBase {
     assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
     assertEquals(
         PipelineLauncher.JobState.DONE,
-        pipelineLauncher.getJobStatus(PROJECT, REGION, readInfo.jobId()));
+        pipelineLauncher.getJobStatus(project, region, readInfo.jobId()));
     double numRecords =
         pipelineLauncher.getMetric(
-            PROJECT,
-            REGION,
+            project,
+            region,
             readInfo.jobId(),
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
     assertEquals(configuration.getNumRows(), numRecords, 0.5);
@@ -161,7 +161,7 @@ public class BigTableIOLT extends IOLoadTestBase {
 
     BigtableIO.Write writeIO =
         BigtableIO.write()
-            .withProjectId(PROJECT)
+            .withProjectId(project)
             .withInstanceId(resourceManager.getInstanceId())
             .withTableId(tableId);
 
@@ -177,14 +177,14 @@ public class BigTableIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.getRunner())
             .build();
 
-    return pipelineLauncher.launch(PROJECT, REGION, options);
+    return pipelineLauncher.launch(project, region, options);
   }
 
   private PipelineLauncher.LaunchInfo testRead() throws IOException {
     BigtableIO.Read readIO =
         BigtableIO.read()
             .withoutValidation()
-            .withProjectId(PROJECT)
+            .withProjectId(project)
             .withInstanceId(resourceManager.getInstanceId())
             .withTableId(tableId);
 
@@ -199,7 +199,7 @@ public class BigTableIOLT extends IOLoadTestBase {
             .addParameter("runner", configuration.getRunner())
             .build();
 
-    return pipelineLauncher.launch(PROJECT, REGION, options);
+    return pipelineLauncher.launch(project, region, options);
   }
 
   /** Options for Bigquery IO load test. */

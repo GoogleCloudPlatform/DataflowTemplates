@@ -83,7 +83,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
+        PubsubResourceManager.builder(testName, project)
             .credentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     gcsClient =
@@ -151,7 +151,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result =
         pipelineOperator.waitForConditionAndFinish(
@@ -196,7 +196,7 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     // ElementCount metric in dataflow is approximate, allow for 1% difference
     long expectedMessages = (long) (dataGenerator.execute(Duration.ofMinutes(60)) * 0.99);
