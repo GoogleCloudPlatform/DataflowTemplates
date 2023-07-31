@@ -31,7 +31,11 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
@@ -81,7 +85,8 @@ public class AvroSchemaToDdlConverter {
         builder.addModel(toModel(null, schema));
       } else if (schema.getProp(SPANNER_CHANGE_STREAM_FOR_CLAUSE) != null) {
         builder.addChangeStream(toChangeStream(null, schema));
-      } else if (schema.getProp(SPANNER_SEQUENCE_OPTION + "0") != null) {
+      } else if (schema.getProp(SPANNER_SEQUENCE_OPTION + "0") != null
+          || schema.getProp(SPANNER_SEQUENCE_KIND) != null) {
         // Cloud Sequence always requires at least one option,
         // `sequence_kind='bit_reversed_positive`, so `sequenceOption_0` must
         // always be valid.
@@ -184,8 +189,20 @@ public class AvroSchemaToDdlConverter {
       sequenceName = schema.getName();
     }
     LOG.debug("Converting to Ddl sequenceName {}", sequenceName);
-
     Sequence.Builder builder = Sequence.builder(dialect).name(sequenceName);
+
+    if (schema.getProp(SPANNER_SEQUENCE_KIND) != null) {
+      builder.sequenceKind(schema.getProp(SPANNER_SEQUENCE_KIND));
+    }
+    if (schema.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN) != null
+        && schema.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX) != null) {
+      builder
+          .skipRangeMin(Long.valueOf(schema.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN)))
+          .skipRangeMax(Long.valueOf(schema.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX)));
+    }
+    if (schema.getProp(SPANNER_SEQUENCE_COUNTER_START) != null) {
+      builder.counterStartValue(Long.valueOf(schema.getProp(SPANNER_SEQUENCE_COUNTER_START)));
+    }
 
     ImmutableList.Builder<String> sequenceOptions = ImmutableList.builder();
     for (int i = 0; schema.getProp(SPANNER_SEQUENCE_OPTION + i) != null; i++) {

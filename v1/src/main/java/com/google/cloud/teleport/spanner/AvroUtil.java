@@ -43,6 +43,10 @@ public class AvroUtil {
   public static final String SPANNER_PRIMARY_KEY = "spannerPrimaryKey";
   public static final String SPANNER_REMOTE = "spannerRemote";
   public static final String SPANNER_SEQUENCE_OPTION = "sequenceOption_";
+  public static final String SPANNER_SEQUENCE_KIND = "sequenceKind";
+  public static final String SPANNER_SEQUENCE_SKIP_RANGE_MIN = "skipRangeMin";
+  public static final String SPANNER_SEQUENCE_SKIP_RANGE_MAX = "skipRangeMax";
+  public static final String SPANNER_SEQUENCE_COUNTER_START = "counterStartValue";
   public static final String SPANNER_VIEW_QUERY = "spannerViewQuery";
   public static final String SPANNER_VIEW_SECURITY = "spannerViewSecurity";
   public static final String STORED = "stored";

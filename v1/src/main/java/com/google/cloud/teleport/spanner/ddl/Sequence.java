@@ -35,6 +35,20 @@ public abstract class Sequence implements Serializable {
   @Nullable
   public abstract ImmutableList<String> options();
 
+  // For PostgreSQL dialect only. These fields are stored in
+  // `options` in GoogleSQL dialect.
+  @Nullable
+  public abstract String sequenceKind();
+
+  @Nullable
+  public abstract Long counterStartValue();
+
+  @Nullable
+  public abstract Long skipRangeMin();
+
+  @Nullable
+  public abstract Long skipRangeMax();
+
   public abstract Dialect dialect();
 
   public abstract Builder toBuilder();
@@ -61,6 +75,24 @@ public abstract class Sequence implements Serializable {
     if (dialect() == Dialect.GOOGLE_STANDARD_SQL && (options() != null && !options().isEmpty())) {
       String optionsString = String.join(", ", options());
       appendable.append("\n\tOPTIONS (").append(optionsString).append(")");
+    }
+
+    if (dialect() == Dialect.POSTGRESQL) {
+      if (!sequenceKind().equalsIgnoreCase("bit_reversed_positive")) {
+        throw new IllegalArgumentException(
+            String.format("Unrecognized sequence kind: %s.", sequenceKind()));
+      }
+      appendable.append(" BIT_REVERSED_POSITIVE");
+      if (skipRangeMin() != null && skipRangeMax() != null) {
+        appendable
+            .append(" SKIP RANGE ")
+            .append(String.valueOf(skipRangeMin()))
+            .append(" ")
+            .append(String.valueOf(skipRangeMax()));
+      }
+      if (counterStartValue() != null) {
+        appendable.append(" START COUNTER WITH ").append(String.valueOf(counterStartValue()));
+      }
     }
   }
 
@@ -92,6 +124,14 @@ public abstract class Sequence implements Serializable {
     public abstract Builder name(String name);
 
     public abstract Builder options(ImmutableList<String> options);
+
+    public abstract Builder sequenceKind(String sequenceKind);
+
+    public abstract Builder counterStartValue(Long value);
+
+    public abstract Builder skipRangeMin(Long value);
+
+    public abstract Builder skipRangeMax(Long value);
 
     abstract Builder dialect(Dialect dialect);
 

@@ -849,4 +849,31 @@ public class InformationSchemaScannerIT {
             + "\n) PRIMARY KEY (`id` ASC)\n\n";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
   }
+
+  @Test
+  public void pgSequences() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE",
+            "CREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"
+                + " SKIP RANGE 1 1000 START COUNTER WITH 100",
+            "CREATE TABLE \"Account\" ("
+                + " \"id\"        bigint DEFAULT nextval('MyPGSequence'),"
+                + " \"balanceId\" bigint NOT NULL,"
+                + " PRIMARY KEY (\"id\"))");
+
+    spannerServer.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    String expectedDdl =
+        "\nCREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE"
+            + " START COUNTER WITH 1"
+            + "\nCREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"
+            + " SKIP RANGE 1 1000 START COUNTER WITH 100"
+            + "CREATE TABLE \"Account\" ("
+            + "\n\t\"id\"                                    bigint NOT NULL"
+            + " DEFAULT nextval('MyPGSequence'::text),\n\t"
+            + "\"balanceId\"                             bigint NOT NULL,"
+            + "\n\tPRIMARY KEY (\"id\")\n)\n\n";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
 }

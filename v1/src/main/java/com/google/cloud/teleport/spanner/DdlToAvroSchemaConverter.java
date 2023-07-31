@@ -33,7 +33,11 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
@@ -240,6 +244,21 @@ public class DdlToAvroSchemaConverter {
         for (int i = 0; i < sequence.options().size(); i++) {
           recordBuilder.prop(SPANNER_SEQUENCE_OPTION + i, sequence.options().get(i));
         }
+      }
+      if (sequence.sequenceKind() != null) {
+        recordBuilder.prop(SPANNER_SEQUENCE_KIND, sequence.sequenceKind());
+      }
+      if (sequence.counterStartValue() != null) {
+        recordBuilder.prop(
+            SPANNER_SEQUENCE_COUNTER_START, String.valueOf(sequence.counterStartValue()));
+      }
+      if (sequence.skipRangeMin() != null) {
+        recordBuilder.prop(
+            SPANNER_SEQUENCE_SKIP_RANGE_MIN, String.valueOf(sequence.skipRangeMin()));
+      }
+      if (sequence.skipRangeMax() != null) {
+        recordBuilder.prop(
+            SPANNER_SEQUENCE_SKIP_RANGE_MAX, String.valueOf(sequence.skipRangeMax()));
       }
       schemas.add(recordBuilder.fields().endRecord());
     }

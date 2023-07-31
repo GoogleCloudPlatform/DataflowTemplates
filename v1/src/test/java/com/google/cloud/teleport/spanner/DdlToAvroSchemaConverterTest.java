@@ -33,6 +33,10 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
@@ -1124,6 +1128,54 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema3.getProp("sequenceOption_0"),
         equalTo("sequence_kind=\"bit_reversed_positive\""));
+  }
+
+  @Test
+  public void pgSequences() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createSequence("PGSequence1")
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(Long.valueOf(50))
+            .skipRangeMin(Long.valueOf(0))
+            .skipRangeMax(Long.valueOf(1000))
+            .endSequence()
+            .createSequence("PGSequence2")
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(Long.valueOf(9999))
+            .endSequence()
+            .createSequence("PGSequence3")
+            .sequenceKind("bit_reversed_positive")
+            .endSequence()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(3));
+    for (Schema s : result) {
+      assertThat(s.getNamespace(), equalTo("spannertest"));
+      assertThat(s.getProp("googleFormatVersion"), equalTo("booleans"));
+      assertThat(s.getProp("googleStorage"), equalTo("CloudSpanner"));
+      assertThat(s.getFields(), empty());
+    }
+
+    Iterator<Schema> it = result.iterator();
+    Schema avroSchema1 = it.next();
+    assertThat(avroSchema1.getName(), equalTo("PGSequence1"));
+    assertThat(avroSchema1.getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
+    assertThat(avroSchema1.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("0"));
+    assertThat(avroSchema1.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("1000"));
+    assertThat(avroSchema1.getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("50"));
+
+    Schema avroSchema2 = it.next();
+    assertThat(avroSchema2.getName(), equalTo("PGSequence2"));
+    assertThat(avroSchema2.getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
+    assertThat(avroSchema2.getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("9999"));
+
+    Schema avroSchema3 = it.next();
+    assertThat(avroSchema3.getName(), equalTo("PGSequence3"));
+    assertThat(avroSchema3.getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
   }
 
   private Schema nullableUnion(Schema.Type s) {

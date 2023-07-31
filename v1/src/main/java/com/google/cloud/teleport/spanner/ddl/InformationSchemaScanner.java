@@ -75,7 +75,11 @@ public class InformationSchemaScanner {
     if (isSequenceSupported()) {
       Map<String, Long> currentCounters = Maps.newHashMap();
       listSequences(builder, currentCounters);
-      listSequenceOptions(builder, currentCounters);
+      if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
+        listSequenceOptionsGoogleSQL(builder, currentCounters);
+      } else {
+        listSequenceOptionsPostgreSQL(builder, currentCounters);
+      }
     }
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
@@ -1036,12 +1040,27 @@ public class InformationSchemaScanner {
   }
 
   private boolean isSequenceSupported() {
-    Statement statement =
-        Statement.of(
-            "SELECT COUNT(1)"
-                + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
-                + " t.TABLE_SCHEMA = 'INFORMATION_SCHEMA'"
-                + " AND t.TABLE_NAME = 'SEQUENCES'");
+    Statement statement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        statement =
+            Statement.of(
+                "SELECT COUNT(1)"
+                    + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                    + " t.TABLE_SCHEMA = 'INFORMATION_SCHEMA'"
+                    + " AND t.TABLE_NAME = 'SEQUENCES'");
+        break;
+      case POSTGRESQL:
+        statement =
+            Statement.of(
+                "SELECT COUNT(1)"
+                    + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                    + " t.TABLE_SCHEMA = 'information_schema'"
+                    + " AND t.TABLE_NAME = 'sequences'");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
 
     try (ResultSet resultSet = context.executeQuery(statement)) {
       // Returns a single row with a 1 if sequences are supported and a 0 if not.
@@ -1055,17 +1074,41 @@ public class InformationSchemaScanner {
   }
 
   private void listSequences(Ddl.Builder builder, Map<String, Long> currentCounters) {
-    ResultSet resultSet =
-        context.executeQuery(
-            Statement.of("SELECT s.name, s.data_type FROM information_schema.sequences AS s"));
+    Statement queryStatement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        queryStatement =
+            Statement.of("SELECT s.name, s.data_type FROM information_schema.sequences AS s");
+        break;
+      case POSTGRESQL:
+        queryStatement =
+            Statement.of(
+                "SELECT s.sequence_name, s.data_type FROM information_schema.sequences AS s");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
 
+    ResultSet resultSet = context.executeQuery(queryStatement);
     while (resultSet.next()) {
       String sequenceName = resultSet.getString(0);
       builder.createSequence(sequenceName).endSequence();
 
-      ResultSet resultSetForCounter =
-          context.executeQuery(
-              Statement.of("SELECT GET_INTERNAL_SEQUENCE_STATE(SEQUENCE " + sequenceName + ")"));
+      Statement sequenceCounterStatement;
+      switch (dialect) {
+        case GOOGLE_STANDARD_SQL:
+          sequenceCounterStatement =
+              Statement.of("SELECT GET_INTERNAL_SEQUENCE_STATE(SEQUENCE " + sequenceName + ")");
+          break;
+        case POSTGRESQL:
+          sequenceCounterStatement =
+              Statement.of("SELECT spanner.GET_INTERNAL_SEQUENCE_STATE('" + sequenceName + "')");
+          break;
+        default:
+          throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+      }
+
+      ResultSet resultSetForCounter = context.executeQuery(sequenceCounterStatement);
       if (resultSetForCounter.next() && !resultSetForCounter.isNull(0)) {
         Long counterValue = resultSetForCounter.getLong(0);
         currentCounters.put(sequenceName, counterValue);
@@ -1073,7 +1116,11 @@ public class InformationSchemaScanner {
     }
   }
 
-  private void listSequenceOptions(Ddl.Builder builder, Map<String, Long> currentCounters) {
+  private void listSequenceOptionsGoogleSQL(
+      Ddl.Builder builder, Map<String, Long> currentCounters) {
+    if (dialect != Dialect.GOOGLE_STANDARD_SQL) {
+      throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
     ResultSet resultSet =
         context.executeQuery(
             Statement.of(
@@ -1115,16 +1162,67 @@ public class InformationSchemaScanner {
       // Add a buffer to accommodate writes that may happen after import
       // is run. Note that this is not 100% failproof, since more writes may
       // happen and they will make the sequence advances past the buffer.
+      Long newCounterStartValue = entry.getValue() + Sequence.SEQUENCE_COUNTER_BUFFER;
       options.add(
-          Sequence.SEQUENCE_START_WITH_COUNTER
-              + "="
-              + String.valueOf(entry.getValue() + Sequence.SEQUENCE_COUNTER_BUFFER));
+          Sequence.SEQUENCE_START_WITH_COUNTER + "=" + String.valueOf(newCounterStartValue));
+      LOG.info(
+          "Sequence "
+              + entry.getKey()
+              + "'s current counter is updated to "
+              + newCounterStartValue);
     }
 
     for (Map.Entry<String, ImmutableList.Builder<String>> entry : allOptions.entrySet()) {
       String sequenceName = entry.getKey();
       ImmutableList<String> options = entry.getValue().build();
       builder.createSequence(sequenceName).options(options).endSequence();
+    }
+  }
+
+  private void listSequenceOptionsPostgreSQL(
+      Ddl.Builder builder, Map<String, Long> currentCounters) {
+    if (dialect != Dialect.POSTGRESQL) {
+      throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.sequence_name, t.sequence_kind, t.counter_start_value, "
+                    + " t.skip_range_min, t.skip_range_max"
+                    + " FROM information_schema.sequences AS t"
+                    + " ORDER BY t.sequence_name"));
+
+    Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String sequenceName = resultSet.getString(0);
+      String sequenceKind = resultSet.isNull(1) ? null : resultSet.getString(1);
+      Long counterStartValue = resultSet.isNull(2) ? null : resultSet.getLong(2);
+      Long skipRangeMin = resultSet.isNull(3) ? null : resultSet.getLong(3);
+      Long skipRangeMax = resultSet.isNull(4) ? null : resultSet.getLong(4);
+
+      if (sequenceKind == null) {
+        throw new IllegalArgumentException(
+            "Sequence kind for sequence " + sequenceName + " cannot be null");
+      }
+      if (currentCounters.containsKey(sequenceName)) {
+        // The sequence is in use, we need to apply the current counter to
+        // the DDL builder, instead of the one retrieved from Information Schema.
+        // Add a buffer to accommodate writes that may happen after import
+        // is run. Note that this is not 100% failproof, since more writes may
+        // happen and they will make the sequence advances past the buffer.
+        counterStartValue = currentCounters.get(sequenceName) + Sequence.SEQUENCE_COUNTER_BUFFER;
+        LOG.info(
+            "Sequence " + sequenceName + "'s current counter is updated to " + counterStartValue);
+      }
+
+      builder
+          .createSequence(sequenceName)
+          .sequenceKind(sequenceKind)
+          .counterStartValue(counterStartValue)
+          .skipRangeMin(skipRangeMin)
+          .skipRangeMax(skipRangeMax)
+          .endSequence();
     }
   }
 }

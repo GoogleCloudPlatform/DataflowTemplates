@@ -714,6 +714,62 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
+  public void pgSequences() {
+    String avroString1 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence1\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceKind\" : \"bit_reversed_positive\","
+            + "  \"skipRangeMin\" : \"1\","
+            + "  \"skipRangeMax\" : \"1000\","
+            + "  \"counterStartValue\" : \"50\""
+            + "}";
+    String avroString2 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence2\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceKind\" : \"bit_reversed_positive\","
+            + "  \"counterStartValue\" : \"9999\""
+            + "}";
+    String avroString3 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence3\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceKind\" : \"bit_reversed_positive\""
+            + "}";
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString1));
+    schemas.add(parser.parse(avroString2));
+    schemas.add(parser.parse(avroString3));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertEquals(ddl.dialect(), Dialect.POSTGRESQL);
+    assertThat(ddl.sequences(), hasSize(3));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE SEQUENCE \"Sequence1\" BIT_REVERSED_POSITIVE "
+                + "SKIP RANGE 1 1000 START COUNTER WITH 50"
+                + "\nCREATE SEQUENCE \"Sequence2\" BIT_REVERSED_POSITIVE "
+                + "START COUNTER WITH 9999"
+                + "\nCREATE SEQUENCE \"Sequence3\" BIT_REVERSED_POSITIVE"));
+  }
+
+  @Test
   public void testInferType() {
     AvroSchemaToDdlConverter avroSchemaToDdlConverter = new AvroSchemaToDdlConverter();
 

@@ -770,6 +770,40 @@ public class DdlTest {
   }
 
   @Test
+  public void pgSequences() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createSequence("MyPGSequence")
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(Long.valueOf(30))
+            .skipRangeMin(Long.valueOf(1))
+            .skipRangeMax(Long.valueOf(1000))
+            .endSequence()
+            .createSequence("MyPGSequence2")
+            .sequenceKind("bit_reversed_positive")
+            .endSequence()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE"
+                + " SKIP RANGE 1 1000 START COUNTER WITH 30 "
+                + "\nCREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(2, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace(
+            "CREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE"
+                + " SKIP RANGE 1 1000 START COUNTER WITH 30"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace("CREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"));
+    assertNotNull(ddl.hashCode());
+  }
+
+  @Test
   public void testDdlEquals() {
     Ddl ddl1 = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL).build();
     Ddl ddl2 = Ddl.builder(Dialect.POSTGRESQL).build();

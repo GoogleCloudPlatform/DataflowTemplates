@@ -508,7 +508,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 missingModels.add(KV.of(kv.getKey(), schema));
                               } else if (schema.getProp("spannerViewQuery") != null) {
                                 missingViews.add(KV.of(kv.getKey(), schema));
-                              } else if (schema.getProp("sequenceOption_0") != null) {
+                              } else if (schema.getProp("sequenceOption_0") != null
+                                  || schema.getProp(AvroUtil.SPANNER_SEQUENCE_KIND) != null) {
                                 missingSequences.add(KV.of(kv.getKey(), schema));
                               } else {
                                 missingTables.add(KV.of(kv.getKey(), schema));

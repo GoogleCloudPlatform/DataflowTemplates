@@ -903,6 +903,29 @@ public class CopyDbTest {
   }
 
   @Test
+  public void pgSequences() throws Exception {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createSequence("PGSequence1")
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(Long.valueOf(50))
+            .skipRangeMin(Long.valueOf(0))
+            .skipRangeMax(Long.valueOf(1000))
+            .endSequence()
+            .createSequence("PGSequence2")
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(Long.valueOf(9999))
+            .endSequence()
+            .createSequence("PGSequence3")
+            .sequenceKind("bit_reversed_positive")
+            .endSequence()
+            .build();
+
+    createAndPopulate(ddl, 0);
+    runTest(Dialect.POSTGRESQL);
+  }
+
+  @Test
   public void randomSchema() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
     createAndPopulate(ddl, 100);

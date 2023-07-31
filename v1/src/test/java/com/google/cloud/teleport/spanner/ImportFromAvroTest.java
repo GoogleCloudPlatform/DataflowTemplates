@@ -1419,6 +1419,90 @@ public class ImportFromAvroTest {
                 + "PRIMARY KEY (`id` ASC)\n\n"));
   }
 
+  @Test
+  public void pgSequences() throws Exception {
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put(
+        "Sequence1.avro",
+        SchemaBuilder.record("PGSequence1")
+            .prop("sequenceKind", "bit_reversed_positive")
+            .prop("skipRangeMin", "10")
+            .prop("skipRangeMax", "10000")
+            .prop("counterStartValue", "99")
+            .fields()
+            .endRecord());
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    exportProtoBuilder.setDialect(ProtoDialect.POSTGRESQL);
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addSequences(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    // Create the target database.
+    String sequenceDef =
+        "CREATE SEQUENCE \"PGSequence2\" BIT_REVERSED_POSITIVE"
+            + " SKIP RANGE 0 1000 START COUNTER WITH 50";
+    String tableDef =
+        "CREATE TABLE \"T\" ("
+            + "\"id\" bigint NOT NULL DEFAULT nextval('PGSequence2'),"
+            + "\"c\" bigint,"
+            + "PRIMARY KEY (\"id\"))";
+
+    spannerServer.createPgDatabase(dbName, Arrays.asList(sequenceDef, tableDef));
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            spannerServer.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx, Dialect.POSTGRESQL).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE SEQUENCE \"PGSequence1\" BIT_REVERSED_POSITIVE"
+                + " SKIP RANGE 10 10000 START COUNTER WITH 99"
+                + "\nCREATE SEQUENCE \"PGSequence2\" BIT_REVERSED_POSITIVE"
+                + " SKIP RANGE 0 1000 START COUNTER WITH 50"
+                + "CREATE TABLE \"T\" ("
+                + "\n\t\"id\"                                    bigint NOT NULL"
+                + " DEFAULT nextval('PGSequence2'::text),\n\t"
+                + "\"c\"                                     bigint,"
+                + "\n\tPRIMARY KEY (\"id\")\n)\n\n"));
+  }
+
   private void runTest(Schema avroSchema, String spannerSchema, Iterable<GenericRecord> records)
       throws Exception {
     runTest(avroSchema, spannerSchema, records, Dialect.GOOGLE_STANDARD_SQL);
