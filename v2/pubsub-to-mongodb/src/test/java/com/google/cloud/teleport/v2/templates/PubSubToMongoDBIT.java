@@ -29,6 +29,7 @@ import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -158,9 +159,130 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
     assertThatMongoDBDocuments(documents).hasRecordsUnordered(jsonRecordsToRecords(outMessages));
   }
 
+  @Test
+  public void testPubsubToMongoDBWithReload() throws IOException, InterruptedException {
+    // Arrange
+    TopicName tc = pubsubResourceManager.createTopic(testName);
+    SubscriptionName subscription = pubsubResourceManager.createSubscription(tc, "sub-" + testName);
+
+    bigQueryClient.createDataset(REGION);
+    TableId dlqTableId = TableId.of(bigQueryClient.getDatasetId(), "dlq");
+
+    mongoResourceManager.createCollection(testName);
+
+    String udfFileName = "transform.js";
+    gcsClient.createArtifact(
+        "input/" + udfFileName,
+        "function transform(inJson) {\n"
+            + "    var outJson = JSON.parse(inJson);\n"
+            + "    outJson.udf = \"out\";\n"
+            + "    return JSON.stringify(outJson);\n"
+            + "}");
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("mongoDBUri", mongoResourceManager.getUri())
+            .addParameter("database", mongoResourceManager.getDatabaseName())
+            .addParameter("collection", testName)
+            .addParameter("inputSubscription", subscription.toString())
+            .addParameter("deadletterTable", toTableSpecLegacy(dlqTableId))
+            .addParameter("batchSize", "1")
+            .addParameter("sslEnabled", "false")
+            .addParameter("javascriptTextTransformGcsPath", getGcsPath("input/" + udfFileName))
+            .addParameter("javascriptTextTransformFunctionName", "transform")
+            .addParameter("javascriptTextTransformFunctionReload", "true")
+            .addParameter("javascriptTextTransformReloadIntervalMinutes", "1");
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    LOG.info("Triggered template job");
+
+    assertThatPipeline(info).isRunning();
+
+    List<String> inMessages = generateMessages();
+    for (final String message : inMessages) {
+      ByteString data = ByteString.copyFromUtf8(message);
+      pubsubResourceManager.publish(tc, ImmutableMap.of(), data);
+    }
+
+    for (int i = 1; i <= BAD_MESSAGES_COUNT; i++) {
+      ByteString messageData = ByteString.copyFromUtf8("bad id " + i);
+      pubsubResourceManager.publish(tc, ImmutableMap.of(), messageData);
+    }
+
+    Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(info),
+                MongoDBDocumentsCheck.builder(mongoResourceManager, testName)
+                    .setMinDocuments(MESSAGES_COUNT)
+                    .build(),
+                BigQueryRowsCheck.builder(bigQueryClient, dlqTableId)
+                    .setMinRows(BAD_MESSAGES_COUNT)
+                    .build());
+
+    List<Document> documents = mongoResourceManager.readCollection(testName);
+    documents.forEach(document -> document.remove("_id"));
+    List<String> outMessages = new ArrayList<>();
+    inMessages.forEach(
+        message -> outMessages.add(message.replace("\"udf\": \"in\"", "\"udf\": \"out\"")));
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+    assertThatMongoDBDocuments(documents).hasRecordsUnordered(jsonRecordsToRecords(outMessages));
+
+    gcsClient.createArtifact(
+        "input/" + udfFileName,
+        "function transform(inJson) {\n"
+            + "    var outJson = JSON.parse(inJson);\n"
+            + "    outJson.udf = \"out - reloaded\";\n"
+            + "    return JSON.stringify(outJson);\n"
+            + "}");
+    TimeUnit.MINUTES.sleep(2);
+    List<String> inMessagesReload = generateMessagesReloaded();
+    for (final String message : inMessagesReload) {
+      ByteString data = ByteString.copyFromUtf8(message);
+      pubsubResourceManager.publish(tc, ImmutableMap.of(), data);
+    }
+
+    Result reloadedResult =
+        pipelineOperator()
+            .waitForConditionsAndFinish(
+                createConfig(info),
+                MongoDBDocumentsCheck.builder(mongoResourceManager, testName)
+                    .setMinDocuments(MESSAGES_COUNT * 2)
+                    .build());
+
+    List<Document> documentsReloaded = mongoResourceManager.readCollection(testName);
+    documentsReloaded.forEach(document -> document.remove("_id"));
+    List<String> outMessagesReloaded = new ArrayList<>();
+    inMessagesReload.forEach(
+        message ->
+            outMessagesReloaded.add(
+                message.replace("\"udf\": \"in\"", "\"udf\": \"out - reloaded\"")));
+
+    // Assert
+    assertThatResult(reloadedResult).meetsConditions();
+    assertThatMongoDBDocuments(documentsReloaded)
+        .hasRecordsUnordered(jsonRecordsToRecords(outMessages));
+    assertThatMongoDBDocuments(documentsReloaded)
+        .hasRecordsUnordered(jsonRecordsToRecords(outMessagesReloaded));
+  }
+
   private static List<String> generateMessages() {
     List<String> messages = new ArrayList<>();
     for (int i = 1; i <= MESSAGES_COUNT; i++) {
+      messages.add(
+          String.format(
+              "{\"id\": %d, \"name\": \"%s\", \"udf\": \"in\"}",
+              i, RandomStringUtils.randomAlphabetic(1, 20)));
+    }
+    return messages;
+  }
+
+  private static List<String> generateMessagesReloaded() {
+    List<String> messages = new ArrayList<>();
+    for (int i = MESSAGES_COUNT + 1; i <= MESSAGES_COUNT * 2; i++) {
       messages.add(
           String.format(
               "{\"id\": %d, \"name\": \"%s\", \"udf\": \"in\"}",

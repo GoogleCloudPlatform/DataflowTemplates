@@ -421,6 +421,9 @@ public class BigQueryConverters {
                     JavascriptTextTransformer.FailsafeJavascriptUdf.<TableRow>newBuilder()
                         .setFileSystemPath(options().getJavascriptTextTransformGcsPath())
                         .setFunctionName(options().getJavascriptTextTransformFunctionName())
+                        .setFunctionReload(options().getJavascriptTextTransformFunctionReload())
+                        .setReloadIntervalMinutes(
+                            options().getJavascriptTextTransformReloadIntervalMinutes())
                         .setSuccessTag(udfOutTag())
                         .setFailureTag(udfDeadletterOutTag())
                         .build());
