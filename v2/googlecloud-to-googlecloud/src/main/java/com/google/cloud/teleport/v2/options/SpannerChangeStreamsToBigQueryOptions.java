@@ -240,4 +240,14 @@ public interface SpannerChangeStreamsToBigQueryOptions
   String getIgnoreFields();
 
   void setIgnoreFields(String value);
+
+  @TemplateParameter.Boolean(
+      order = 19,
+      optional = true,
+      description = "Whether or not to disable retries for the DLQ",
+      helpText = "Whether or not to disable retries for the DLQ")
+  @Default.Boolean(false)
+  boolean getDisableDlqRetries();
+
+  void setDisableDlqRetries(boolean value);
 }

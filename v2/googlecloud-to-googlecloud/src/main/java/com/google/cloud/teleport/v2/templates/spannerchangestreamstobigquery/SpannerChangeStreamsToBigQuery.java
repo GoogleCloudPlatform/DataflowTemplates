@@ -164,6 +164,28 @@ public final class SpannerChangeStreamsToBigQuery {
     String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
     String tempDlqDirectory = dlqManager.getRetryDlqDirectory() + "tmp/";
 
+    /**
+     * There are two types of errors that can occur in this pipeline:
+     *
+     * <p>1) Error originating from modJsonStringToTableRow. Errors here are either due to pk values
+     * missing, a spanner table / column missing in the in-memory map, or some Spanner read error
+     * happening in readSpannerRow. We already retry the Spanner read error inline 3 times. Th other
+     * types of errors are more likely to be un-retriable.
+     *
+     * <p>2) Error originating from BigQueryIO.write. BigQuery storage write API already retries all
+     * transient errors and outputs more permanent errors.
+     *
+     * <p>As a result, it is reasonable to write all errors happening in the pipeline directly into
+     * the permanent DLQ, since most of the errors are likely to be non-transient.
+     */
+    if (options.getDisableDlqRetries()) {
+      LOG.info(
+          "Disabling retries for the DLQ, directly writing into severe DLQ: {}",
+          dlqManager.getSevereDlqDirectoryWithDateTime());
+      dlqDirectory = dlqManager.getSevereDlqDirectoryWithDateTime();
+      tempDlqDirectory = dlqManager.getSevereDlqDirectory() + "tmp/";
+    }
+
     // Retrieve and parse the startTimestamp and endTimestamp.
     Timestamp startTimestamp =
         options.getStartTimestamp().isEmpty()
@@ -293,6 +315,8 @@ public final class SpannerChangeStreamsToBigQuery {
                 MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
 
     PCollectionList.of(transformDlqJson)
+        // Generally BigQueryIO storage write retries transient errors, and only more
+        // persistent errors make it into DLQ.
         .and(bqWriteDlqJson)
         .apply("Merge Failed Mod JSON From Transform And BigQuery", Flatten.pCollections())
         .apply(
