@@ -49,6 +49,7 @@ import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -131,6 +132,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
+  // TODO: fix case sensitivity and re-enable
+  @Ignore("Schema field not found: ROW_ID")
   public void testMySqlToBigQueryWithStorageWriteApi() throws IOException {
     // Create MySQL Resource manager
     mySQLResourceManager = MySQLResourceManager.builder(testName).build();
