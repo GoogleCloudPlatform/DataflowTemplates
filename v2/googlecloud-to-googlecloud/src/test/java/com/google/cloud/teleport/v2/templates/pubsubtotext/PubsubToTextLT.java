@@ -83,13 +83,8 @@ public final class PubsubToTextLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, project)
-            .credentialsProvider(CREDENTIALS_PROVIDER)
-            .build();
-    gcsClient =
-        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
-            .setCredentials(CREDENTIALS)
-            .build();
+        PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER).build();
+    gcsClient = GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR, CREDENTIALS).build();
   }
 
   @After

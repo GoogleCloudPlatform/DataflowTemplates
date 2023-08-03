@@ -18,6 +18,7 @@
 package org.apache.beam.it.conditions;
 
 import java.util.function.Supplier;
+import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +30,7 @@ public abstract class ConditionCheck implements Supplier<Boolean> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConditionCheck.class);
 
-  private ConditionCheck prev;
+  private @Nullable ConditionCheck prev = null;
 
   protected abstract String getDescription();
 
@@ -64,10 +65,11 @@ public abstract class ConditionCheck implements Supplier<Boolean> {
 
   public static class CheckResult {
     private final boolean success;
-    private String message;
+    private final String message;
 
     public CheckResult(boolean success) {
       this.success = success;
+      this.message = "";
     }
 
     public CheckResult(boolean success, String message) {

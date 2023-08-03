@@ -29,7 +29,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.it.gcp.artifacts.Artifact;
@@ -44,14 +43,14 @@ import org.apache.beam.it.truthmatchers.RecordsSubject;
  */
 public final class ArtifactsSubject extends Subject {
 
-  @Nullable private final List<Artifact> actual;
+  private final List<Artifact> actual;
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private static final TypeReference<Map<String, Object>> recordTypeReference =
       new TypeReference<Map<String, Object>>() {};
 
-  private ArtifactsSubject(FailureMetadata metadata, @Nullable List<Artifact> actual) {
+  private ArtifactsSubject(FailureMetadata metadata, List<Artifact> actual) {
     super(metadata, actual);
     this.actual = actual;
   }
@@ -80,8 +79,8 @@ public final class ArtifactsSubject extends Subject {
    * @param content Content to search for
    */
   public void hasContent(String content) {
-    if (!actual.stream()
-        .anyMatch(
+    if (actual.stream()
+        .noneMatch(
             artifact ->
                 new String(artifact.contents(), StandardCharsets.UTF_8).contains(content))) {
       failWithActual("expected to contain", content);
@@ -94,8 +93,8 @@ public final class ArtifactsSubject extends Subject {
    * @param hash Content to search for
    */
   public void hasHash(String hash) {
-    if (!actual.stream()
-        .anyMatch(artifact -> sha256().hashBytes(artifact.contents()).toString().equals(hash))) {
+    if (actual.stream()
+        .noneMatch(artifact -> sha256().hashBytes(artifact.contents()).toString().equals(hash))) {
       failWithActual("expected to contain hash", hash);
     }
   }

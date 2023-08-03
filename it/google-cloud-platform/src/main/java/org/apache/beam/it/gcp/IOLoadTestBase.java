@@ -33,6 +33,9 @@ import org.slf4j.LoggerFactory;
 
 /** Base class for IO Load tests. */
 @RunWith(JUnit4.class)
+@SuppressWarnings({
+  "nullness" // TODO(https://github.com/apache/beam/issues/27438)
+})
 public class IOLoadTestBase extends LoadTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(IOLoadTestBase.class);
@@ -60,7 +63,7 @@ public class IOLoadTestBase extends LoadTestBase {
 
   @Override
   PipelineLauncher launcher() {
-    return DefaultPipelineLauncher.builder().setCredentials(CREDENTIALS).build();
+    return DefaultPipelineLauncher.builder().build();
   }
 
   /** A utility DoFn that counts elements passed through. */

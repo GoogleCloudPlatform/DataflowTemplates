@@ -59,9 +59,7 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     elasticsearchResourceManager = ElasticsearchResourceManager.builder(testId).build();
   }
 

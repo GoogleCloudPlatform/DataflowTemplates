@@ -164,6 +164,20 @@ public class ResourceManagerUtils {
     }
   }
 
+  /**
+   * Generates a password using random characters for tests.
+   *
+   * <p>Note: The password generated is not cryptographically secure and should only be used in
+   * tests.
+   *
+   * @param minLength minimum length of password
+   * @param maxLength maximum length of password
+   * @param numLower number of lower case letters
+   * @param numUpper number of upper case letters
+   * @param numSpecial number of special characters
+   * @param specialChars special characters to use
+   * @return
+   */
   public static String generatePassword(
       int minLength,
       int maxLength,

@@ -63,6 +63,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Default class for implementation of {@link PipelineLauncher} interface. */
+@SuppressWarnings({
+  "nullness" // TODO(https://github.com/apache/beam/issues/27438)
+})
 public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultPipelineLauncher.class);
   private static final String READ_PIPELINE_NAME_OVERWRITE = "readPipelineNameOverride";

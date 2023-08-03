@@ -18,6 +18,10 @@
 package org.apache.beam.it.jdbc;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.jdbc.JDBCResourceManagerUtils.ALLOWED_SPECIAL_CHARS;
+import static org.apache.beam.it.jdbc.JDBCResourceManagerUtils.checkValidTableName;
+import static org.apache.beam.it.jdbc.JDBCResourceManagerUtils.generateDatabaseName;
+import static org.apache.beam.it.jdbc.JDBCResourceManagerUtils.generateJdbcPassword;
 import static org.junit.Assert.assertThrows;
 
 import org.apache.commons.lang3.StringUtils;
@@ -32,21 +36,21 @@ public class JDBCResourceManagerUtilsTest {
   @Test
   public void testGenerateDatabaseNameShouldReplaceHyphen() {
     String testBaseString = "test-id";
-    String actual = JDBCResourceManagerUtils.generateDatabaseName(testBaseString);
+    String actual = generateDatabaseName(testBaseString);
     assertThat(actual).matches("test_id_\\d{8}_\\d{6}_\\d{6}");
   }
 
   @Test
   public void testGenerateDatabaseNameShouldReplaceIllegalCharacters() {
     String testBaseString = "!@#_()";
-    String actual = JDBCResourceManagerUtils.generateDatabaseName(testBaseString);
+    String actual = generateDatabaseName(testBaseString);
     assertThat(actual).matches("d___#___\\d{8}_\\d{6}_\\d{6}");
   }
 
   @Test
   public void testGeneratePasswordMeetsRequirements() {
     for (int i = 0; i < 10000; i++) {
-      String password = JDBCResourceManagerUtils.generateJdbcPassword();
+      String password = generateJdbcPassword();
       int lower = 0;
       int upper = 0;
       int special = 0;
@@ -56,7 +60,7 @@ public class JDBCResourceManagerUtilsTest {
         String s = String.valueOf(c);
         lower += s.toLowerCase().equals(s) ? 1 : 0;
         upper += s.toUpperCase().equals(s) ? 1 : 0;
-        special += JDBCResourceManagerUtils.ALLOWED_SPECIAL_CHARS.contains(c) ? 1 : 0;
+        special += ALLOWED_SPECIAL_CHARS.contains(c) ? 1 : 0;
       }
 
       assertThat(lower).isAtLeast(2);
@@ -67,33 +71,27 @@ public class JDBCResourceManagerUtilsTest {
 
   @Test
   public void testCheckValidTableNameThrowsErrorWhenNameIsTooShort() {
-    assertThrows(
-        IllegalArgumentException.class, () -> JDBCResourceManagerUtils.checkValidTableName(""));
+    assertThrows(IllegalArgumentException.class, () -> checkValidTableName(""));
   }
 
   @Test
   public void testCheckValidTableNameThrowsErrorWhenNameIsTooLong() {
     assertThrows(
-        IllegalArgumentException.class,
-        () -> JDBCResourceManagerUtils.checkValidTableName(StringUtils.repeat("a", 31)));
+        IllegalArgumentException.class, () -> checkValidTableName(StringUtils.repeat("a", 31)));
   }
 
   @Test
   public void testCheckValidTableNameThrowsErrorWhenContainsBackslash() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> JDBCResourceManagerUtils.checkValidTableName("table/name"));
+    assertThrows(IllegalArgumentException.class, () -> checkValidTableName("table/name"));
   }
 
   @Test
   public void testCheckValidTableNameThrowsErrorWhenContainsPeriod() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> JDBCResourceManagerUtils.checkValidTableName("table.name"));
+    assertThrows(IllegalArgumentException.class, () -> checkValidTableName("table.name"));
   }
 
   @Test
   public void testCheckValidTableNameDoesNotThrowErrorWhenNameIsValid() {
-    JDBCResourceManagerUtils.checkValidTableName("A-l3gal_t4ble NAME!");
+    checkValidTableName("A-l3gal_t4ble NAME!");
   }
 }

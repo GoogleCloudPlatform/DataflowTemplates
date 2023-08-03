@@ -45,6 +45,7 @@ import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.ExceptionUtils;
 import org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils;
@@ -109,7 +110,7 @@ public final class SpannerResourceManager implements ResourceManager {
       String region,
       Dialect dialect,
       boolean useStaticInstance,
-      String instanceId) {
+      @Nullable String instanceId) {
     // Check that the project ID conforms to GCP standards
     checkValidProjectId(projectId);
 
@@ -412,7 +413,7 @@ public final class SpannerResourceManager implements ResourceManager {
     private final String projectId;
     private final String region;
     private boolean useStaticInstance;
-    private String instanceId;
+    private @Nullable String instanceId;
 
     private final Dialect dialect;
 
@@ -421,6 +422,7 @@ public final class SpannerResourceManager implements ResourceManager {
       this.projectId = projectId;
       this.region = region;
       this.dialect = dialect;
+      this.instanceId = null;
     }
 
     /**
@@ -440,6 +442,7 @@ public final class SpannerResourceManager implements ResourceManager {
      * @return this builder object with the useStaticInstance option enabled and instance set if
      *     configured, the same builder otherwise.
      */
+    @SuppressWarnings("nullness")
     public Builder maybeUseStaticInstance() {
       if (System.getProperty("spannerInstanceId") != null) {
         this.useStaticInstance = true;

@@ -84,11 +84,9 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, project)
-            .credentialsProvider(CREDENTIALS_PROVIDER)
-            .build();
+        PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER).build();
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(testName, project, CREDENTIALS).build();
   }
 
   @After

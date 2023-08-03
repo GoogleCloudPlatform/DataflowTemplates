@@ -55,6 +55,7 @@ public abstract class PubsubMessagesCheck extends ConditionCheck {
   }
 
   @Override
+  @SuppressWarnings("unboxing.of.nullable")
   public CheckResult check() {
     PullResponse pullResponse =
         resourceManager()

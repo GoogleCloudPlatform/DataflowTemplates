@@ -91,9 +91,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGeneratePubsub10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, project)
-            .credentialsProvider(CREDENTIALS_PROVIDER)
-            .build();
+        PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER).build();
     TopicName backlogTopic = pubsubResourceManager.createTopic("output");
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(backlogTopic, "output-subscription");
@@ -126,10 +124,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGenerateGcs10gb() throws IOException, ParseException, InterruptedException {
     String artifactBucket = TestProperties.artifactBucket();
     // Set up resource manager
-    gcsClient =
-        GcsResourceManager.builder(artifactBucket, TEST_ROOT_DIR)
-            .setCredentials(CREDENTIALS)
-            .build();
+    gcsClient = GcsResourceManager.builder(artifactBucket, TEST_ROOT_DIR, CREDENTIALS).build();
     String outputDirectory =
         getFullGcsPath(artifactBucket, TEST_ROOT_DIR, gcsClient.runId(), testName);
     // Arrange
@@ -163,8 +158,7 @@ public class StreamingDataGeneratorLT extends TemplateLoadTestBase {
   public void testGenerateBigQuery10gb() throws IOException, ParseException, InterruptedException {
     // Set up resource manager
     String name = testName;
-    bigQueryResourceManager =
-        BigQueryResourceManager.builder(name, project).setCredentials(CREDENTIALS).build();
+    bigQueryResourceManager = BigQueryResourceManager.builder(name, project, CREDENTIALS).build();
     // schema should match schema supplied to generate fake records.
     Schema schema =
         Schema.of(

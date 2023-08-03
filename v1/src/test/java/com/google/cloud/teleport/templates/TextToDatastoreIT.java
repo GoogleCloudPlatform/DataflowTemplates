@@ -52,7 +52,7 @@ public final class TextToDatastoreIT extends TemplateTestBase {
     testId = PipelineUtils.createJobName("test");
 
     datastoreResourceManager =
-        DatastoreResourceManager.builder(PROJECT, testId).credentials(credentials).build();
+        DatastoreResourceManager.builder(PROJECT, testId, credentials).build();
   }
 
   @After

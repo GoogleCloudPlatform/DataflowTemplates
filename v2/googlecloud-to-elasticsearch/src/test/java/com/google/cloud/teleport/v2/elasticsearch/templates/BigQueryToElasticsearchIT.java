@@ -70,8 +70,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
 
   @Before
   public void setup() {
-    bigQueryClient =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+    bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     elasticsearchResourceManager = ElasticsearchResourceManager.builder(testId).build();
   }
 

@@ -78,12 +78,9 @@ public class PubSubToSplunkIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     splunkResourceManager = SplunkResourceManager.builder(testName).build();
-    kmsResourceManager =
-        KMSResourceManager.builder(PROJECT).setCredentialsProvider(credentialsProvider).build();
+    kmsResourceManager = KMSResourceManager.builder(PROJECT, credentialsProvider).build();
 
     gcsClient.createArtifact(
         "udf.js",

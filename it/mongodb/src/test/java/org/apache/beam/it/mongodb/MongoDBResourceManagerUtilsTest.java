@@ -18,6 +18,8 @@
 package org.apache.beam.it.mongodb;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.mongodb.MongoDBResourceManagerUtils.checkValidCollectionName;
+import static org.apache.beam.it.mongodb.MongoDBResourceManagerUtils.generateDatabaseName;
 import static org.junit.Assert.assertThrows;
 
 import org.apache.commons.lang3.StringUtils;
@@ -32,119 +34,102 @@ public class MongoDBResourceManagerUtilsTest {
   @Test
   public void testGenerateDatabaseNameShouldReplaceForwardSlash() {
     String testBaseString = "Test/DB/Name";
-    String actual = MongoDBResourceManagerUtils.generateDatabaseName(testBaseString);
+    String actual = generateDatabaseName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateDatabaseNameShouldReplaceBackwardSlash() {
     String testBaseString = "Test\\DB\\Name";
-    String actual = MongoDBResourceManagerUtils.generateDatabaseName(testBaseString);
+    String actual = generateDatabaseName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateDatabaseNameShouldReplacePeriod() {
     String testBaseString = "Test.DB.Name";
-    String actual = MongoDBResourceManagerUtils.generateDatabaseName(testBaseString);
+    String actual = generateDatabaseName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateDatabaseNameShouldReplaceSpace() {
     String testBaseString = "Test DB Name";
-    String actual = MongoDBResourceManagerUtils.generateDatabaseName(testBaseString);
+    String actual = generateDatabaseName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateDatabaseNameShouldReplaceDoubleQuotes() {
     String testBaseString = "Test\"DB\"Name";
-    String actual = MongoDBResourceManagerUtils.generateDatabaseName(testBaseString);
+    String actual = generateDatabaseName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateDatabaseNameShouldReplaceDollarSign() {
     String testBaseString = "Test$DB$Name";
-    String actual = MongoDBResourceManagerUtils.generateDatabaseName(testBaseString);
+    String actual = generateDatabaseName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateDatabaseNameShouldReplaceNullCharacter() {
     String testBaseString = "Test\0DB\0Name";
-    String actual = MongoDBResourceManagerUtils.generateDatabaseName(testBaseString);
+    String actual = generateDatabaseName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testCheckValidCollectionNameThrowsErrorWhenNameIsTooShort() {
     assertThrows(
-        IllegalArgumentException.class,
-        () -> MongoDBResourceManagerUtils.checkValidCollectionName("test-database", ""));
+        IllegalArgumentException.class, () -> checkValidCollectionName("test-database", ""));
   }
 
   @Test
   public void testCheckValidCollectionNameThrowsErrorWhenNameIsTooLong() {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            MongoDBResourceManagerUtils.checkValidCollectionName(
-                StringUtils.repeat("a", 1), StringUtils.repeat("b", 100)));
+        () -> checkValidCollectionName(StringUtils.repeat("a", 1), StringUtils.repeat("b", 100)));
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            MongoDBResourceManagerUtils.checkValidCollectionName(
-                StringUtils.repeat("a", 50), StringUtils.repeat("b", 50)));
+        () -> checkValidCollectionName(StringUtils.repeat("a", 50), StringUtils.repeat("b", 50)));
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            MongoDBResourceManagerUtils.checkValidCollectionName(
-                StringUtils.repeat("a", 100), StringUtils.repeat("b", 1)));
+        () -> checkValidCollectionName(StringUtils.repeat("a", 100), StringUtils.repeat("b", 1)));
   }
 
   @Test
   public void testCheckValidCollectionNameThrowsErrorWhenNameContainsDollarSign() {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            MongoDBResourceManagerUtils.checkValidCollectionName(
-                "test-database", "test$collection"));
+        () -> checkValidCollectionName("test-database", "test$collection"));
   }
 
   @Test
   public void testCheckValidCollectionNameThrowsErrorWhenNameContainsNull() {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            MongoDBResourceManagerUtils.checkValidCollectionName(
-                "test-database", "test\0collection"));
+        () -> checkValidCollectionName("test-database", "test\0collection"));
   }
 
   @Test
   public void testCheckValidCollectionNameThrowsErrorWhenNameBeginsWithSystemKeyword() {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            MongoDBResourceManagerUtils.checkValidCollectionName(
-                "test-database", "system.test-collection"));
+        () -> checkValidCollectionName("test-database", "system.test-collection"));
   }
 
   @Test
   public void testCheckValidCollectionNameThrowsErrorWhenNameDoesNotBeginWithLetterOrUnderscore() {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            MongoDBResourceManagerUtils.checkValidCollectionName(
-                "test-database", "1test-collection"));
+        () -> checkValidCollectionName("test-database", "1test-collection"));
   }
 
   @Test
   public void testCheckValidCollectionNameDoesNotThrowErrorWhenNameIsValid() {
-    MongoDBResourceManagerUtils.checkValidCollectionName(
-        "test-database", "a collection-name_valid.Test1");
-    MongoDBResourceManagerUtils.checkValidCollectionName(
-        "test-database", "_a collection-name_valid.Test1");
+    checkValidCollectionName("test-database", "a collection-name_valid.Test1");
+    checkValidCollectionName("test-database", "_a collection-name_valid.Test1");
   }
 }

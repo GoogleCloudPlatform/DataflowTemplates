@@ -168,8 +168,7 @@ public abstract class TemplateTestBase {
     }
     if (artifactBucketName != null) {
       gcsClient =
-          GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName())
-              .setCredentials(credentials)
+          GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
               .build();
 
       // Keep name compatibility, for now
@@ -355,9 +354,9 @@ public abstract class TemplateTestBase {
     if (usingDirectRunner) {
       return DirectRunnerClient.builder(templateClass).setCredentials(credentials).build();
     } else if (template.flexContainerName() != null && !template.flexContainerName().isEmpty()) {
-      return FlexTemplateClient.builder().setCredentials(credentials).build();
+      return FlexTemplateClient.builder(credentials).build();
     } else {
-      return ClassicTemplateClient.builder().setCredentials(credentials).build();
+      return ClassicTemplateClient.builder(credentials).build();
     }
   }
 

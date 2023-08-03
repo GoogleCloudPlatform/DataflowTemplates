@@ -77,11 +77,9 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException {
-    bigQueryClient =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+    bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     bigtableClient =
-        BigtableResourceManager.builder(testName, PROJECT)
-            .setCredentialsProvider(credentialsProvider)
+        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider)
             .maybeUseStaticInstance()
             .build();
   }

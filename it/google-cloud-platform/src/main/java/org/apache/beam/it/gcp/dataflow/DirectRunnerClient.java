@@ -38,6 +38,9 @@ import org.slf4j.LoggerFactory;
  * Implementation of the {@link PipelineLauncher} interface which invokes the template class using
  * DirectRunner, and manages the state in memory.
  */
+@SuppressWarnings({
+  "nullness" // TODO(https://github.com/apache/beam/issues/27438)
+})
 public class DirectRunnerClient implements PipelineLauncher {
 
   private static final Logger LOG = LoggerFactory.getLogger(DirectRunnerClient.class);

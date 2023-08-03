@@ -32,8 +32,9 @@ public class DatastoreResourceManagerIT {
   public void testInsert() {
     DatastoreResourceManager resourceManager =
         DatastoreResourceManager.builder(
-                TestProperties.project(), DatastoreUtils.createTestId("testInsert"))
-            .credentials(TestProperties.credentials())
+                TestProperties.project(),
+                DatastoreUtils.createTestId("testInsert"),
+                TestProperties.credentials())
             .build();
     List<Entity> entities =
         resourceManager.insert(
@@ -52,8 +53,9 @@ public class DatastoreResourceManagerIT {
   public void testInsertQuery() {
     DatastoreResourceManager resourceManager =
         DatastoreResourceManager.builder(
-                TestProperties.project(), DatastoreUtils.createTestId("testInsertQuery"))
-            .credentials(TestProperties.buildCredentialsFromEnv())
+                TestProperties.project(),
+                DatastoreUtils.createTestId("testInsertQuery"),
+                TestProperties.buildCredentialsFromEnv())
             .build();
 
     List<Entity> entities =
@@ -75,8 +77,9 @@ public class DatastoreResourceManagerIT {
   public void testInsertCleanUp() {
     DatastoreResourceManager resourceManager =
         DatastoreResourceManager.builder(
-                TestProperties.project(), DatastoreUtils.createTestId("testInsertCleanUp"))
-            .credentials(TestProperties.buildCredentialsFromEnv())
+                TestProperties.project(),
+                DatastoreUtils.createTestId("testInsertCleanUp"),
+                TestProperties.buildCredentialsFromEnv())
             .build();
     resourceManager.insert(
         "person", ImmutableMap.of(1L, Entity.newBuilder().set("name", "John Doe").build()));

@@ -59,11 +59,9 @@ public final class PubSubTopicToBigQueryIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After

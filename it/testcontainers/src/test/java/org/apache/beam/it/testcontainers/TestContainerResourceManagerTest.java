@@ -52,7 +52,8 @@ public class TestContainerResourceManagerTest {
   @Before
   public void setUp() {
     testManagerBuilder =
-        new TestContainerResourceManager.Builder<TestContainerResourceManagerImpl>(TEST_ID) {
+        new TestContainerResourceManager.Builder<TestContainerResourceManagerImpl>(
+            TEST_ID, null, null) {
           @Override
           public TestContainerResourceManagerImpl build() {
             return new TestContainerResourceManagerImpl(container, this);

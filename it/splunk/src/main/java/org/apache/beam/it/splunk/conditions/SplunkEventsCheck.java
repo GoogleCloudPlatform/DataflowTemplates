@@ -47,6 +47,7 @@ public abstract class SplunkEventsCheck extends ConditionCheck {
   }
 
   @Override
+  @SuppressWarnings("nullness")
   public CheckResult check() {
     long totalEvents;
     if (query() != null) {

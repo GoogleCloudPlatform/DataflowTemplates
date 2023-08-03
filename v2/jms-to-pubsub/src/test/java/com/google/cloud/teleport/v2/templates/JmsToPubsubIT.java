@@ -66,9 +66,7 @@ public final class JmsToPubsubIT extends TemplateTestBase {
   public void setup() throws IOException {
 
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
 
     activeMqContainer =
         new GenericContainer<>(DockerImageName.parse("rmohr/activemq:5.14.3"))

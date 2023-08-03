@@ -93,11 +93,9 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
   public void setUp() throws IOException {
     mySQLResourceManager = MySQLResourceManager.builder(testName).build();
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After

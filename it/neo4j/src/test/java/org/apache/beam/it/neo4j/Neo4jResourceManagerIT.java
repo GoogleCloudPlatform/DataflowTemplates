@@ -20,6 +20,7 @@ package org.apache.beam.it.neo4j;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -49,13 +50,16 @@ public class Neo4jResourceManagerIT {
 
   @Test
   public void testResourceManagerE2E() {
-    neo4jResourceManager.run("CREATE (:Hello {whom: $whom})", Map.of("whom", "world"));
+    neo4jResourceManager.run(
+        "CREATE (:Hello {whom: $whom})", Collections.singletonMap("whom", "world"));
 
     List<Map<String, Object>> results =
         neo4jResourceManager.run("MATCH (h:Hello) RETURN h.whom AS whom");
 
     assertThat(results).hasSize(1);
-    assertThat(results).containsExactlyElementsIn(List.of(Map.of("whom", "world")));
+    assertThat(results)
+        .containsExactlyElementsIn(
+            Collections.singletonList(Collections.singletonMap("whom", "world")));
   }
 
   @After

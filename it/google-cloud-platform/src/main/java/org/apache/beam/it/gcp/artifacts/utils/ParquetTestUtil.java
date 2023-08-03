@@ -85,7 +85,7 @@ public class ParquetTestUtil {
   private static File createTempFile() throws IOException {
     File tempFile = File.createTempFile(ParquetTestUtil.class.getSimpleName(), ".tmp");
     tempFile.deleteOnExit();
-    tempFile.delete();
+    boolean unused = tempFile.delete();
     return tempFile;
   }
 

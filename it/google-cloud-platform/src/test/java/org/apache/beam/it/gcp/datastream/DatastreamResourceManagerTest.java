@@ -68,14 +68,15 @@ public class DatastreamResourceManagerTest {
   public void setup() {
     testManager =
         new DatastreamResourceManager(
-            datastreamClient, DatastreamResourceManager.builder(PROJECT_ID, LOCATION));
+            datastreamClient, DatastreamResourceManager.builder(PROJECT_ID, LOCATION, null));
   }
 
   @Test
   public void testBuilderWithInvalidProjectShouldFail() {
     IllegalArgumentException exception =
         assertThrows(
-            IllegalArgumentException.class, () -> DatastreamResourceManager.builder("", LOCATION));
+            IllegalArgumentException.class,
+            () -> DatastreamResourceManager.builder("", LOCATION, null));
     assertThat(exception).hasMessageThat().contains("projectID can not be null or empty");
   }
 
@@ -84,7 +85,7 @@ public class DatastreamResourceManagerTest {
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
-            () -> DatastreamResourceManager.builder(PROJECT_ID, ""));
+            () -> DatastreamResourceManager.builder(PROJECT_ID, "", null));
     assertThat(exception).hasMessageThat().contains("location can not be null or empty");
   }
 

@@ -65,9 +65,7 @@ public class PubsubToPubsubLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, project)
-            .credentialsProvider(CREDENTIALS_PROVIDER)
-            .build();
+        PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER).build();
   }
 
   @After

@@ -40,6 +40,9 @@ import org.slf4j.LoggerFactory;
  * variables. Those set on the command line always follow a camelCase naming convention, and those
  * set as environment variable always follow a CAPITALIZED_SNAKE_CASE naming convention.
  */
+@SuppressWarnings({
+  "nullness" // TODO(https://github.com/apache/beam/issues/27438)
+})
 public final class TestProperties {
   private TestProperties() {}
 
@@ -209,12 +212,8 @@ public final class TestProperties {
 
       // if on Compute Engine, return default credentials.
       GoogleCredentials applicationDefault = ServiceAccountCredentials.getApplicationDefault();
-      try {
-        if (applicationDefault instanceof ComputeEngineCredentials) {
-          return applicationDefault;
-        }
-      } catch (Exception e) {
-        // no problem
+      if (applicationDefault instanceof ComputeEngineCredentials) {
+        return applicationDefault;
       }
 
       InputStream credentialsStream = getCredentialsStream();

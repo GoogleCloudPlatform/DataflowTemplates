@@ -55,8 +55,7 @@ public class BigtableToParquetIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     bigtableResourceManager =
-        BigtableResourceManager.builder(testName, PROJECT)
-            .setCredentialsProvider(credentialsProvider)
+        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider)
             .maybeUseStaticInstance()
             .build();
   }

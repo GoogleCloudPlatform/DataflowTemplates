@@ -69,7 +69,7 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
   @Before
   public void setup() {
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After

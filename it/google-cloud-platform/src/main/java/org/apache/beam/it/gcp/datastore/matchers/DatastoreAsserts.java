@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.truthmatchers.RecordsSubject;
 
+@SuppressWarnings({
+  "nullness" // TODO(https://github.com/apache/beam/issues/27438)
+})
 public class DatastoreAsserts {
 
   /**

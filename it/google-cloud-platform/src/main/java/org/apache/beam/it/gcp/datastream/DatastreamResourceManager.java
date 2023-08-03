@@ -97,10 +97,11 @@ public final class DatastreamResourceManager implements ResourceManager {
     this.createdConnectionProfileIds = Collections.synchronizedSet(new HashSet<>());
   }
 
-  public static Builder builder(String projectId, String location) {
+  public static Builder builder(
+      String projectId, String location, CredentialsProvider credentialsProvider) {
     checkArgument(!Strings.isNullOrEmpty(projectId), "projectID can not be null or empty");
     checkArgument(!Strings.isNullOrEmpty(location), "location can not be null or empty");
-    return new Builder(projectId, location);
+    return new Builder(projectId, location, credentialsProvider);
   }
 
   /**
@@ -488,9 +489,10 @@ public final class DatastreamResourceManager implements ResourceManager {
     private final String location;
     private CredentialsProvider credentialsProvider;
 
-    private Builder(String projectId, String location) {
+    private Builder(String projectId, String location, CredentialsProvider credentialsProvider) {
       this.projectId = projectId;
       this.location = location;
+      this.credentialsProvider = credentialsProvider;
     }
 
     public Builder setCredentialsProvider(CredentialsProvider credentialsProvider) {

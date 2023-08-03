@@ -43,8 +43,14 @@ public abstract class Neo4jQueryCheck extends ConditionCheck {
   }
 
   @Override
+  @SuppressWarnings("nullness")
   protected CheckResult check() {
-    List<Map<String, Object>> actualResult = resourceManager().run(query(), parameters());
+    List<Map<String, Object>> actualResult;
+    if (parameters() != null) {
+      actualResult = resourceManager().run(query(), parameters());
+    } else {
+      actualResult = resourceManager().run(query());
+    }
     List<Map<String, Object>> expectedResult = expectedResult();
     if (actualResult == null) {
       return new CheckResult(expectedResult == null);

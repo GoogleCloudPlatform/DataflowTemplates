@@ -21,7 +21,6 @@ import static com.google.common.truth.Truth.assertAbout;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords;
 
 import java.util.List;
-import javax.annotation.Nullable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.truthmatchers.RecordsSubject;
@@ -36,7 +35,7 @@ public class ArtifactAsserts {
    * @param artifacts Artifacts in list format to use in the comparisons.
    * @return Truth Subject to chain assertions.
    */
-  public static ArtifactsSubject assertThatArtifacts(@Nullable List<Artifact> artifacts) {
+  public static ArtifactsSubject assertThatArtifacts(List<Artifact> artifacts) {
     return assertAbout(ArtifactsSubject.records()).that(artifacts);
   }
 
@@ -47,7 +46,7 @@ public class ArtifactAsserts {
    * @param artifact Artifact to use in the comparisons.
    * @return Truth Subject to chain assertions.
    */
-  public static ArtifactsSubject assertThatArtifact(@Nullable Artifact artifact) {
+  public static ArtifactsSubject assertThatArtifact(Artifact artifact) {
     return assertAbout(ArtifactsSubject.records()).that(ImmutableList.of(artifact));
   }
 

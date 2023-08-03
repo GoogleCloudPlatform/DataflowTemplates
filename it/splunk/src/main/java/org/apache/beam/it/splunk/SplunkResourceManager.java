@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.beam.it.splunk;
 
 import static org.apache.beam.it.splunk.SplunkResourceManagerUtils.generateHecToken;
@@ -35,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.testcontainers.TestContainerResourceManager;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
@@ -96,6 +96,7 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
   }
 
   @VisibleForTesting
+  @SuppressWarnings("nullness")
   SplunkResourceManager(
       SplunkClientFactory clientFactory,
       SplunkContainer container,
@@ -343,14 +344,17 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
   public static final class Builder
       extends TestContainerResourceManager.Builder<SplunkResourceManager> {
 
-    private String username;
-    private String password;
-    private String hecToken;
+    private @Nullable String username;
+    private @Nullable String password;
+    private @Nullable String hecToken;
     private int hecPort;
     private int splunkdPort;
 
     private Builder(String testId) {
       super(testId, DEFAULT_SPLUNK_CONTAINER_NAME, DEFAULT_SPLUNK_CONTAINER_TAG);
+      this.username = null;
+      this.password = null;
+      this.hecToken = null;
       this.hecPort = -1;
       this.splunkdPort = -1;
     }

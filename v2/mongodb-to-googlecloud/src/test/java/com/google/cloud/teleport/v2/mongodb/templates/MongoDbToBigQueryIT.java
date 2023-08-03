@@ -106,8 +106,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
   @Before
   public void setup() {
     mongoDbClient = MongoDBResourceManager.builder(testName).build();
-    bigQueryClient =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+    bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After

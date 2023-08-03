@@ -17,11 +17,14 @@
  */
 package org.apache.beam.it.neo4j;
 
+import static org.apache.beam.it.common.utils.ResourceManagerUtils.generatePassword;
 import static org.apache.beam.it.neo4j.Neo4jResourceManagerUtils.generateDatabaseName;
 
 import com.google.common.annotations.VisibleForTesting;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.testcontainers.TestContainerResourceManager;
 import org.neo4j.driver.AuthTokens;
@@ -75,8 +78,11 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
   }
 
   @VisibleForTesting
+  @SuppressWarnings("nullness")
   Neo4jResourceManager(
-      Driver neo4jDriver, Neo4jContainer<?> container, Neo4jResourceManager.Builder builder) {
+      @Nullable Driver neo4jDriver,
+      Neo4jContainer<?> container,
+      Neo4jResourceManager.Builder builder) {
     super(container, builder);
 
     this.adminPassword = builder.adminPassword;
@@ -105,7 +111,7 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
   }
 
   public List<Map<String, Object>> run(String query) {
-    return this.run(query, Map.of());
+    return this.run(query, Collections.emptyMap());
   }
 
   public List<Map<String, Object>> run(String query, Map<String, Object> parameters) {
@@ -164,7 +170,7 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
   private void createDatabase(String databaseName) {
     try (Session session =
         neo4jDriver.session(SessionConfig.builder().withDatabase("system").build())) {
-      session.run("CREATE DATABASE $db", Map.of("db", databaseName)).consume();
+      session.run("CREATE DATABASE $db", Collections.singletonMap("db", databaseName)).consume();
     } catch (Exception e) {
       throw new Neo4jResourceManagerException(
           String.format("Error dropping database %s.", databaseName), e);
@@ -175,7 +181,7 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
   void dropDatabase(String databaseName) {
     try (Session session =
         neo4jDriver.session(SessionConfig.builder().withDatabase("system").build())) {
-      session.run("DROP DATABASE $db", Map.of("db", databaseName)).consume();
+      session.run("DROP DATABASE $db", Collections.singletonMap("db", databaseName)).consume();
     } catch (Exception e) {
       throw new Neo4jResourceManagerException(
           String.format("Error dropping database %s.", databaseName), e);
@@ -190,14 +196,17 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
   public static final class Builder
       extends TestContainerResourceManager.Builder<Neo4jResourceManager> {
 
-    private String databaseName;
+    private @Nullable String databaseName;
 
-    private String adminPassword;
+    private @Nullable String adminPassword;
 
-    private Driver driver;
+    private @Nullable Driver driver;
 
     private Builder(String testId) {
       super(testId, DEFAULT_NEO4J_CONTAINER_NAME, DEFAULT_NEO4J_CONTAINER_TAG);
+      this.adminPassword = generatePassword(4, 10, 2, 2, 0, Collections.emptyList());
+      this.databaseName = null;
+      this.driver = null;
     }
 
     /**

@@ -54,8 +54,8 @@ public final class ClassicTemplateClient extends AbstractPipelineLauncher {
     return new ClassicTemplateClient(dataflow);
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public static Builder builder(Credentials credentials) {
+    return new Builder(credentials);
   }
 
   @Override
@@ -67,6 +67,7 @@ public final class ClassicTemplateClient extends AbstractPipelineLauncher {
     LOG.info("Using the spec at {}", options.specPath());
     LOG.info("Using parameters:\n{}", formatForLogging(options.parameters()));
 
+    @SuppressWarnings("nullness")
     CreateJobFromTemplateRequest parameter =
         new CreateJobFromTemplateRequest()
             .setJobName(options.jobName())
@@ -108,7 +109,9 @@ public final class ClassicTemplateClient extends AbstractPipelineLauncher {
 
     private Credentials credentials;
 
-    private Builder() {}
+    private Builder(Credentials credentials) {
+      this.credentials = credentials;
+    }
 
     public Credentials getCredentials() {
       return credentials;

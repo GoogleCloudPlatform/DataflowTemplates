@@ -116,10 +116,11 @@ public final class PubsubResourceManager implements ResourceManager {
     this.schemaServiceClient = schemaServiceClient;
   }
 
-  public static Builder builder(String testName, String projectId) {
+  public static Builder builder(
+      String testName, String projectId, CredentialsProvider credentialsProvider) {
     checkArgument(!Strings.isNullOrEmpty(testName), "testName can not be null or empty");
     checkArgument(!projectId.isEmpty(), "projectId can not be empty");
-    return new Builder(testName, projectId);
+    return new Builder(testName, projectId, credentialsProvider);
   }
 
   /**
@@ -359,9 +360,10 @@ public final class PubsubResourceManager implements ResourceManager {
     private final String testName;
     private CredentialsProvider credentialsProvider;
 
-    private Builder(String testName, String projectId) {
+    private Builder(String testName, String projectId, CredentialsProvider credentialsProvider) {
       this.testName = testName;
       this.projectId = projectId;
+      this.credentialsProvider = credentialsProvider;
     }
 
     public Builder credentialsProvider(CredentialsProvider credentialsProvider) {
