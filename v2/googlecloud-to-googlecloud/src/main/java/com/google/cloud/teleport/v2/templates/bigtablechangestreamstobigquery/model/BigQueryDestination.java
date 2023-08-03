@@ -15,14 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model;
 
+import com.google.api.services.bigquery.model.TableReference;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TimePartitioning;
-import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -144,16 +143,6 @@ public class BigQueryDestination implements Serializable {
     return !column.isIgnorable() || !changelogFieldsToIgnore.contains(column.getBqColumnName());
   }
 
-  public ImmutableSet<String> getIgnoredBigQueryColumnsNames() {
-    Set<String> ignoredColumns = new HashSet<>();
-    for (ChangelogColumn col : ChangelogColumn.values()) {
-      if (col.isIgnorable() && changelogFieldsToIgnore.contains(col.getBqColumnName())) {
-        ignoredColumns.add(col.getBqColumnName());
-      }
-    }
-    return ImmutableSet.copyOf(ignoredColumns);
-  }
-
   public boolean isPartitioned() {
     return StringUtils.isNotBlank(bigQueryChangelogTablePartitionGranularity);
   }
@@ -172,5 +161,12 @@ public class BigQueryDestination implements Serializable {
 
   public TableId getBigQueryTableId() {
     return TableId.of(bigQueryProject, bigQueryDataset, bigQueryTableName);
+  }
+
+  public TableReference getBigQueryTableReference() {
+    return new TableReference()
+        .setProjectId(bigQueryProject)
+        .setDatasetId(bigQueryDataset)
+        .setTableId(bigQueryTableName);
   }
 }

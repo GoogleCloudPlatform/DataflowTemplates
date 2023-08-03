@@ -27,26 +27,19 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadChangeStreamOptions;
 import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadOptions;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
-import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
-import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamToBigQueryOptions;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ModType;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.TransientColumn;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.UnsupportedEntryException;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
-import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
@@ -57,13 +50,10 @@ import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO.ExistingPipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionList;
-import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -95,11 +85,6 @@ import org.slf4j.LoggerFactory;
     flexContainerName = "bigtable-changestreams-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public final class BigtableChangeStreamsToBigQuery {
-
-  /** String/String Coder for {@link FailsafeElement}. */
-  public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
-      FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
-
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToBigQuery.class);
 
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
@@ -120,15 +105,6 @@ public final class BigtableChangeStreamsToBigQuery {
     run(options);
   }
 
-  private static void validateOptions(BigtableChangeStreamToBigQueryOptions options) {
-    if (options.getDlqRetryMinutes() <= 0) {
-      throw new IllegalArgumentException("dlqRetryMinutes must be positive.");
-    }
-    if (options.getDlqMaxRetries() < 0) {
-      throw new IllegalArgumentException("dlqMaxRetries cannot be negative.");
-    }
-  }
-
   private static void setOptions(BigtableChangeStreamToBigQueryOptions options) {
     options.setStreaming(true);
     options.setEnableStreamingEngine(true);
@@ -141,7 +117,7 @@ public final class BigtableChangeStreamsToBigQuery {
     }
     boolean hasUseRunnerV2 = false;
     for (String experiment : experiments) {
-      if (experiment.toLowerCase().equals(USE_RUNNER_V2_EXPERIMENT)) {
+      if (experiment.equalsIgnoreCase(USE_RUNNER_V2_EXPERIMENT)) {
         hasUseRunnerV2 = true;
         break;
       }
@@ -160,7 +136,6 @@ public final class BigtableChangeStreamsToBigQuery {
    */
   public static PipelineResult run(BigtableChangeStreamToBigQueryOptions options) {
     setOptions(options);
-    validateOptions(options);
 
     String changelogTableName = getBigQueryChangelogTableName(options);
     String bigtableProject = getBigtableProjectId(options);
@@ -194,18 +169,8 @@ public final class BigtableChangeStreamsToBigQuery {
 
     BigQueryUtils bigQuery = new BigQueryUtils(sourceInfo, destinationInfo);
 
-    /*
-     * Stages: 1) Read {@link ChangeStreamMutation} from change stream. 2) Create {@link
-     * FailsafeElement} of {@link Mod} JSON and merge from: - {@link ChangeStreamMutation}. - GCS Dead
-     * letter queue. 3) Convert {@link Mod} JSON into {@link TableRow}.
-     * 4) Append {@link TableRow} to BigQuery. 5) Write Failures from 2), 3) and
-     * 4) to GCS dead letter queue.
-     */
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
-
-    String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
-    String tempDlqDirectory = dlqManager.getRetryDlqDirectory() + "tmp/";
 
     BigtableIO.ReadChangeStream readChangeStream =
         BigtableIO.readChangeStream()
@@ -232,102 +197,51 @@ public final class BigtableChangeStreamsToBigQuery {
             .apply("Read from Cloud Bigtable Change Streams", readChangeStream)
             .apply(Values.create());
 
-    PCollection<FailsafeElement<String, String>> sourceFailsafeModJson =
-        dataChangeRecord
-            .apply(
-                "ChangeStreamMutation To Mod JSON",
-                ParDo.of(new ChangeStreamMutationToModJsonFn(sourceInfo)))
-            .apply(
-                "Wrap Mod JSON In FailsafeElement",
-                ParDo.of(
-                    new DoFn<String, FailsafeElement<String, String>>() {
-                      @ProcessElement
-                      public void process(
-                          @Element String input,
-                          OutputReceiver<FailsafeElement<String, String>> receiver) {
-                        receiver.output(FailsafeElement.of(input, input));
-                      }
-                    }))
-            .setCoder(FAILSAFE_ELEMENT_CODER);
+    PCollection<TableRow> changeStreamMutationToTableRow =
+        dataChangeRecord.apply(
+            "ChangeStreamMutation To TableRow",
+            ParDo.of(new ChangeStreamMutationToTableRowFn(sourceInfo, bigQuery)));
 
-    PCollectionTuple dlqModJson =
-        dlqManager.getReconsumerDataTransform(
-            pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
-    PCollection<FailsafeElement<String, String>> retryableDlqFailsafeModJson =
-        dlqModJson.get(DeadLetterQueueManager.RETRYABLE_ERRORS).setCoder(FAILSAFE_ELEMENT_CODER);
+    Write<TableRow> bigQueryWrite =
+        BigQueryIO.<TableRow>write()
+            .to(destinationInfo.getBigQueryTableReference())
+            .withSchema(bigQuery.getDestinationTableSchema())
+            .withFormatFunction(element -> element)
+            .withFormatRecordOnFailureFunction(element -> element)
+            .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+            .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+            .withExtendedErrorInfo()
+            .withMethod(Write.Method.STORAGE_API_AT_LEAST_ONCE)
+            .withNumStorageWriteApiStreams(0)
+            .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors());
 
-    PCollection<FailsafeElement<String, String>> failsafeModJson =
-        PCollectionList.of(sourceFailsafeModJson)
-            .and(retryableDlqFailsafeModJson)
-            .apply("Merge Source And DLQ Mod JSON", Flatten.pCollections());
+    if (destinationInfo.isPartitioned()) {
+      bigQueryWrite = bigQueryWrite.withTimePartitioning(bigQuery.getTimePartitioning());
+    }
 
-    FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions
-        failsafeModJsonToTableRowOptions =
-            FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
-                .setCoder(FAILSAFE_ELEMENT_CODER)
-                .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
-                .build();
-
-    FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow
-        failsafeModJsonToTableRow =
-            new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
-                bigQuery, failsafeModJsonToTableRowOptions);
-
-    PCollectionTuple tableRowTuple =
-        failsafeModJson.apply("Mod JSON To TableRow", failsafeModJsonToTableRow);
+    // Unfortunately, due to https://github.com/apache/beam/issues/24090, it is no longer possible
+    // to pass metadata via fake columns when writing to BigQuery. Previously we'd pass something
+    // like retry count and then format it out before writing, but BQ would return original object
+    // which would allow us to increment retry count and store it to DLQ with incremented number.
+    // Because WRITE API doesn't allow access to original object, all metadata values are stripped
+    // and we can only rely on retry policy and put all other persistently failing rows to DLQ as
+    // a non-retriable severe failure.
+    //
+    // Since we're not going to be retrying such failures, we'll not use any reading from DLQ
+    // capability.
 
     WriteResult writeResult =
-        tableRowTuple
-            .get(failsafeModJsonToTableRow.transformOut)
-            .apply(
-                "Write To BigQuery",
-                BigQueryIO.<TableRow>write()
-                    .to(bigQuery.getDynamicDestinations())
-                    .withFormatFunction(
-                        BigtableChangeStreamsToBigQuery::removeIntermediateMetadataFields)
-                    .withFormatRecordOnFailureFunction(element -> element)
-                    .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                    .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-                    .withExtendedErrorInfo()
-                    .withMethod(Write.Method.STREAMING_INSERTS)
-                    .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+        changeStreamMutationToTableRow.apply("Write To BigQuery", bigQueryWrite);
 
-    PCollection<String> transformDlqJson =
-        tableRowTuple
-            .get(failsafeModJsonToTableRow.transformDeadLetterOut)
-            .apply(
-                "Failed Mod JSON During Table Row Transformation",
-                MapElements.via(new StringDeadLetterQueueSanitizer()));
-
-    PCollection<String> bqWriteDlqJson =
-        writeResult
-            .getFailedInsertsWithErr()
-            .apply(
-                "Failed Mod JSON During BigQuery Writes",
-                MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
-
-    PCollectionList.of(transformDlqJson)
-        .and(bqWriteDlqJson)
-        .apply("Merge Failed Mod JSON From Transform And BigQuery", Flatten.pCollections())
+    writeResult
+        .getFailedStorageApiInserts()
         .apply(
-            "Write Failed Mod JSON To DLQ",
+            "Failed Mod JSON During BigQuery Writes",
+            MapElements.via(new BigQueryDeadLetterQueueSanitizer()))
+        .apply(
+            "Write rejected TableRow JSON To DLQ",
             DLQWriteTransform.WriteDLQ.newBuilder()
-                .withDlqDirectory(dlqDirectory)
-                .withTmpDirectory(tempDlqDirectory)
-                .setIncludePaneInfo(true)
-                .build());
-
-    PCollection<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
-        dlqModJson.get(DeadLetterQueueManager.PERMANENT_ERRORS).setCoder(FAILSAFE_ELEMENT_CODER);
-
-    nonRetryableDlqModJsonFailsafe
-        .apply(
-            "Write Mod JSON With Non-retryable Error To DLQ",
-            MapElements.via(new StringDeadLetterQueueSanitizer()))
-        .setCoder(StringUtf8Coder.of())
-        .apply(
-            DLQWriteTransform.WriteDLQ.newBuilder()
-                .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
+                .withDlqDirectory(dlqManager.getSevereDlqDirectory() + "YYYY/MM/dd/HH/mm/")
                 .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp/")
                 .setIncludePaneInfo(true)
                 .build());
@@ -353,7 +267,7 @@ public final class BigtableChangeStreamsToBigQuery {
         options.getDlqDirectory().isEmpty() ? tempLocation + "dlq/" : options.getDlqDirectory();
 
     LOG.info("Dead letter queue directory: {}", dlqDirectory);
-    return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetries());
+    return DeadLetterQueueManager.create(dlqDirectory, 1);
   }
 
   private static String getBigtableCharset(BigtableChangeStreamToBigQueryOptions options) {
@@ -382,36 +296,20 @@ public final class BigtableChangeStreamsToBigQuery {
   }
 
   /**
-   * Remove the following intermediate metadata fields that are not user data from {@link TableRow}:
-   * _metadata_error, _metadata_retry_count, _metadata_original_payload_json.
-   */
-  private static TableRow removeIntermediateMetadataFields(TableRow tableRow) {
-    TableRow cleanTableRow = tableRow.clone();
-    Set<String> allColumns = tableRow.keySet();
-
-    for (String column : allColumns) {
-      if (TransientColumn.isTransientColumn(column)) {
-        cleanTableRow.remove(column);
-      }
-    }
-
-    return cleanTableRow;
-  }
-
-  /**
    * DoFn that converts a {@link ChangeStreamMutation} to multiple {@link Mod} in serialized JSON
    * format.
    */
-  static class ChangeStreamMutationToModJsonFn extends DoFn<ChangeStreamMutation, String> {
-
+  static class ChangeStreamMutationToTableRowFn extends DoFn<ChangeStreamMutation, TableRow> {
     private final BigtableSource sourceInfo;
+    private final BigQueryUtils bigQuery;
 
-    ChangeStreamMutationToModJsonFn(BigtableSource source) {
+    ChangeStreamMutationToTableRowFn(BigtableSource source, BigQueryUtils bigQuery) {
       this.sourceInfo = source;
+      this.bigQuery = bigQuery;
     }
 
     @ProcessElement
-    public void process(@Element ChangeStreamMutation input, OutputReceiver<String> receiver)
+    public void process(@Element ChangeStreamMutation input, OutputReceiver<TableRow> receiver)
         throws Exception {
       for (Entry entry : input.getEntries()) {
         ModType modType = getModType(entry);
@@ -436,15 +334,10 @@ public final class BigtableChangeStreamsToBigQuery {
                     + "Please update your Dataflow template with the latest template version");
         }
 
-        String modJsonString;
-
-        try {
-          modJsonString = mod.toJson();
-        } catch (IOException e) {
-          // Ignore exception and print bad format.
-          modJsonString = String.format("\"%s\"", input);
+        TableRow tableRow = new TableRow();
+        if (bigQuery.setTableRowFields(mod, tableRow)) {
+          receiver.output(tableRow);
         }
-        receiver.output(modJsonString);
       }
     }
 

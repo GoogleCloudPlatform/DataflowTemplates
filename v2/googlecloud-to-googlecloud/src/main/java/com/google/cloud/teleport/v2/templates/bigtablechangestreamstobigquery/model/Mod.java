@@ -34,7 +34,6 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.DefaultCoder;
-import org.apache.commons.lang3.StringUtils;
 import org.threeten.bp.Instant;
 
 /**
@@ -48,6 +47,10 @@ public final class Mod implements Serializable {
   private static final long serialVersionUID = 8703757194338184299L;
 
   private static final String PATTERN_FORMAT = "yyyy-MM-dd HH:mm:ss.SSSSSS";
+
+  private static final ThreadLocal<ObjectMapper> OBJECT_MAPPER =
+      ThreadLocal.withInitial(ObjectMapper::new);
+
   private static final ThreadLocal<DateTimeFormatter> TIMESTAMP_FORMATTER =
       ThreadLocal.withInitial(
           () -> DateTimeFormatter.ofPattern(PATTERN_FORMAT).withZone(ZoneId.of("UTC")));
@@ -151,31 +154,11 @@ public final class Mod implements Serializable {
     propertiesMap.put(ChangelogColumn.COLUMN_FAMILY.name(), deleteFamily.getFamilyName());
   }
 
-  public static Mod fromJson(String json) throws IOException {
-    return new ObjectMapper().readValue(json, Mod.class);
-  }
-
   /**
    * @return JSON object as String representing the changelog record
    */
   public String getChangeJson() {
     return changeJson;
-  }
-
-  /**
-   * The seconds part of the timestamp at which the modifications within were committed in Cloud
-   * Bigtable.
-   */
-  public long getCommitTimestampSeconds() {
-    return commitTimestampSeconds;
-  }
-
-  /**
-   * The nanoseconds part of the timestamp at which the modifications within were committed in Cloud
-   * Bigtable.
-   */
-  public int getCommitTimestampNanos() {
-    return commitTimestampNanos;
   }
 
   /** The type of operation that caused the modifications within this record. */
@@ -184,18 +167,18 @@ public final class Mod implements Serializable {
   }
 
   @Override
-  public boolean equals(@javax.annotation.Nullable Object o) {
+  public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
     if (!(o instanceof Mod)) {
       return false;
     }
-    Mod that = (Mod) o;
-    return StringUtils.equals(changeJson, that.changeJson)
-        && commitTimestampSeconds == that.commitTimestampSeconds
-        && commitTimestampNanos == that.commitTimestampNanos
-        && modType == that.modType;
+    Mod mod = (Mod) o;
+    return commitTimestampSeconds == mod.commitTimestampSeconds
+        && commitTimestampNanos == mod.commitTimestampNanos
+        && Objects.equals(changeJson, mod.changeJson)
+        && modType == mod.modType;
   }
 
   @Override
@@ -219,7 +202,7 @@ public final class Mod implements Serializable {
   }
 
   public String toJson() throws JsonProcessingException {
-    return new ObjectMapper().writeValueAsString(this);
+    return OBJECT_MAPPER.get().writeValueAsString(this);
   }
 
   private String encodeBytes(ByteString rowKey) {
@@ -268,7 +251,7 @@ public final class Mod implements Serializable {
 
   private String convertPropertiesToJson(Map<String, Object> propertiesMap) {
     try {
-      return new ObjectMapper().writeValueAsString(propertiesMap);
+      return OBJECT_MAPPER.get().writeValueAsString(propertiesMap);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

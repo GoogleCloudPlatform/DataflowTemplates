@@ -90,7 +90,7 @@ public class DeadLetterQueueManager implements Serializable {
   }
 
   public String getSevereDlqDirectory() {
-    return retryDlqDirectory;
+    return severeDlqDirectory;
   }
 
   public String getRetryDlqDirectoryWithDateTime() {
