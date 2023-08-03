@@ -28,7 +28,6 @@ const (
 	ProjectRoot = "."
 	ClassicRoot = "v1"
 	FlexRoot    = "v2"
-	SyndeoRoot  = "syndeo-template"
 	ItRoot      = "it"
 )
 
@@ -49,7 +48,6 @@ func GetModulesForPaths(paths []string) map[string][]string {
 	it := fmt.Sprintf("it%s", string(os.PathSeparator))
 	v1 := fmt.Sprintf("v1%s", string(os.PathSeparator))
 	v2 := fmt.Sprintf("v2%s", string(os.PathSeparator))
-	syndeo := fmt.Sprintf("syndeo-template%s", string(os.PathSeparator))
 
 	for _, path := range paths {
 		if strings.HasPrefix(path, v1) {
@@ -58,8 +56,6 @@ func GetModulesForPaths(paths []string) map[string][]string {
 			flex = append(flex, strings.TrimPrefix(path, v2))
 		} else if strings.HasPrefix(path, it) {
 			m[ItRoot] = make([]string, 0)
-		} else if strings.HasPrefix(path, syndeo) {
-			m[SyndeoRoot] = make([]string, 0)
 		} else {
 			// TODO(zhoufek): Make this more granular, especially separating .github and cicd code
 			// into separate "modules"

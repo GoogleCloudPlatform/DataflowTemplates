@@ -1,7 +1,0 @@
-{
-    "mainClass": "com.google.cloud.syndeo.SyndeoTemplate",
-    "classPath": "/templates/syndeo-template/*:/templates/syndeo-template/libs/*:/template/syndeo-template/classes",
-    "defaultParameterValues": {
-        "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"syndeo_template\"}"
-    }
-}

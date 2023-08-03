@@ -452,15 +452,6 @@
         <directory>${project.basedir}/target/plugin/${pluginRunId}</directory>
       </build>
     </profile>
-    <profile>
-      <id>oss-build</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <modules>
-        <module>syndeo-template</module>
-      </modules>
-    </profile>
     <!-- The following snapshot profile allows us to test Templates with
      unreleased Apache Beam versions, for example:
      mvn test -Psnapshot -Dbeam.version=2.50.0-SNAPSHOT -->
