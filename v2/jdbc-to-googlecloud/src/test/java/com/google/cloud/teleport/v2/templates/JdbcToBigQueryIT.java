@@ -144,9 +144,11 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
+    String tableName = "mySqlToBigQueryStorageWrite";
+
     // Run a simple IT
     simpleJdbcToBigQueryTest(
-        testName,
+        tableName,
         schema,
         MYSQL_DRIVER,
         mySqlDriverGCSPath(),
@@ -157,7 +159,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
                 .addParameter(
                     "query",
                     "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
-                        + testName)
+                        + tableName)
                 .addParameter("useStorageWriteApi", "true"));
   }
 
@@ -277,7 +279,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   private void simpleJdbcToBigQueryTest(
-      String testName,
+      String tableName,
       JDBCResourceManager.JDBCSchema schema,
       String driverClassName,
       String driverJars,
@@ -289,8 +291,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     // Arrange
     List<Map<String, Object>> jdbcData =
         getJdbcData(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED));
-    jdbcResourceManager.createTable(testName, schema);
-    jdbcResourceManager.write(testName, jdbcData);
+    jdbcResourceManager.createTable(tableName, schema);
+    jdbcResourceManager.write(tableName, jdbcData);
 
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -302,7 +304,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryResourceManager.createDataset(REGION);
-    TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
+    TableId table = bigQueryResourceManager.createTable(tableName, bqSchema);
 
     Function<String, String> encrypt =
         message -> kmsResourceManager.encrypt(KEYRING_ID, CRYPTO_KEY_NAME, message);
@@ -310,7 +312,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
 
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
-            PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            PipelineLauncher.LaunchConfig.builder(tableName, specPath)
                 .addParameter("connectionURL", encrypt.apply(jdbcResourceManager.getUri()))
                 .addParameter("driverClassName", driverClassName)
                 .addParameter("outputTable", toTableSpecLegacy(table))
@@ -339,7 +341,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
             row.put("is_member", row.remove("member"));
           });
     }
-    assertThatBigQueryRecords(bigQueryResourceManager.readTable(testName))
+    assertThatBigQueryRecords(bigQueryResourceManager.readTable(tableName))
         .hasRecordsUnorderedCaseInsensitiveColumns(jdbcData);
   }
 
