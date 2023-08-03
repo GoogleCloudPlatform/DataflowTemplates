@@ -456,7 +456,7 @@
       <properties>
         <!-- Skip coverage checks, unit tests are skipped -->
         <jacoco.skip>true</jacoco.skip>
-        <!-- Some modules may yield no integration tests -->
+        <!-- Some modules may not have integration tests -->
         <failIfNoTests>false</failIfNoTests>
         <!-- Parallelism settings. Default is 2, set to consider methods -->
         <itParallelismType>classesAndMethods</itParallelismType>
