@@ -40,7 +40,7 @@ public class DeadLetterQueueManager implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(DeadLetterQueueManager.class);
 
-  private static final String DATETIME_FILEPATH_SUFFIX = "YYYY/MM/DD/HH/mm/";
+  private static final String DATETIME_FILEPATH_SUFFIX = "YYYY/MM/dd/HH/mm/";
   private final String retryDlqDirectory;
   private final String severeDlqDirectory;
   private final int maxRetries;

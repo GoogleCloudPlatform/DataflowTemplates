@@ -80,8 +80,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
   private static final String TEST_REGION = "us-central1";
   private static final String TEST_ZONE = "us-central1-a";
-  private static BigtableResourceManager bigtableResourceManager;
-  private static BigQueryResourceManager bigQueryResourceManager;
+  private BigtableResourceManager bigtableResourceManager;
+  private BigQueryResourceManager bigQueryResourceManager;
 
   private LaunchInfo launchInfo;
 

@@ -15,29 +15,44 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model;
 
+import static com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ChangelogColumnConstants.NO_DEFAULT_EXPRESSION;
+
 import com.google.cloud.bigquery.StandardSQLTypeName;
+
+class ChangelogColumnConstants {
+  public static final String NO_DEFAULT_EXPRESSION = null;
+}
 
 /** Static metadata class for all changelog columns. */
 public enum ChangelogColumn {
-  ROW_KEY_STRING("row_key", StandardSQLTypeName.STRING.name(), true, false, null),
-  ROW_KEY_BYTES("row_key", StandardSQLTypeName.BYTES.name(), true, false, null),
-  MOD_TYPE("mod_type", StandardSQLTypeName.STRING.name(), true, false, null),
-  COMMIT_TIMESTAMP("commit_timestamp", StandardSQLTypeName.TIMESTAMP.name(), true, false, null),
-  COLUMN_FAMILY("column_family", StandardSQLTypeName.STRING.name(), true, false, null),
-  COLUMN("column", StandardSQLTypeName.STRING.name(), false, false, null),
-  TIMESTAMP("timestamp", StandardSQLTypeName.TIMESTAMP.name(), false, false, null),
-  TIMESTAMP_NUM("timestamp", StandardSQLTypeName.INT64.name(), false, false, null),
-  VALUE_STRING("value", StandardSQLTypeName.STRING.name(), false, false, null),
-  VALUE_BYTES("value", StandardSQLTypeName.BYTES.name(), false, false, null),
-  TIMESTAMP_FROM("timestamp_from", StandardSQLTypeName.TIMESTAMP.name(), false, false, null),
-  TIMESTAMP_FROM_NUM("timestamp_from", StandardSQLTypeName.INT64.name(), false, false, null),
-  TIMESTAMP_TO("timestamp_to", StandardSQLTypeName.TIMESTAMP.name(), false, false, null),
-  TIMESTAMP_TO_NUM("timestamp_to", StandardSQLTypeName.INT64.name(), false, false, null),
+  ROW_KEY_STRING("row_key", StandardSQLTypeName.STRING.name(), true, false, NO_DEFAULT_EXPRESSION),
+  ROW_KEY_BYTES("row_key", StandardSQLTypeName.BYTES.name(), true, false, NO_DEFAULT_EXPRESSION),
+  MOD_TYPE("mod_type", StandardSQLTypeName.STRING.name(), true, false, NO_DEFAULT_EXPRESSION),
+  COMMIT_TIMESTAMP(
+      "commit_timestamp", StandardSQLTypeName.TIMESTAMP.name(), true, false, NO_DEFAULT_EXPRESSION),
+  COLUMN_FAMILY(
+      "column_family", StandardSQLTypeName.STRING.name(), true, false, NO_DEFAULT_EXPRESSION),
+  COLUMN("column", StandardSQLTypeName.STRING.name(), false, false, NO_DEFAULT_EXPRESSION),
+  TIMESTAMP("timestamp", StandardSQLTypeName.TIMESTAMP.name(), false, false, NO_DEFAULT_EXPRESSION),
+  TIMESTAMP_NUM("timestamp", StandardSQLTypeName.INT64.name(), false, false, NO_DEFAULT_EXPRESSION),
+  VALUE_STRING("value", StandardSQLTypeName.STRING.name(), false, false, NO_DEFAULT_EXPRESSION),
+  VALUE_BYTES("value", StandardSQLTypeName.BYTES.name(), false, false, NO_DEFAULT_EXPRESSION),
+  TIMESTAMP_FROM(
+      "timestamp_from", StandardSQLTypeName.TIMESTAMP.name(), false, false, NO_DEFAULT_EXPRESSION),
+  TIMESTAMP_FROM_NUM(
+      "timestamp_from", StandardSQLTypeName.INT64.name(), false, false, NO_DEFAULT_EXPRESSION),
+  TIMESTAMP_TO(
+      "timestamp_to", StandardSQLTypeName.TIMESTAMP.name(), false, false, NO_DEFAULT_EXPRESSION),
+  TIMESTAMP_TO_NUM(
+      "timestamp_to", StandardSQLTypeName.INT64.name(), false, false, NO_DEFAULT_EXPRESSION),
   IS_GC("is_gc", "BOOL", true, true, null),
-  SOURCE_INSTANCE("source_instance", StandardSQLTypeName.STRING.name(), true, true, null),
-  SOURCE_CLUSTER("source_cluster", StandardSQLTypeName.STRING.name(), true, true, null),
-  SOURCE_TABLE("source_table", StandardSQLTypeName.STRING.name(), true, true, null),
-  TIEBREAKER("tiebreaker", StandardSQLTypeName.INT64.name(), true, true, null),
+  SOURCE_INSTANCE(
+      "source_instance", StandardSQLTypeName.STRING.name(), true, true, NO_DEFAULT_EXPRESSION),
+  SOURCE_CLUSTER(
+      "source_cluster", StandardSQLTypeName.STRING.name(), true, true, NO_DEFAULT_EXPRESSION),
+  SOURCE_TABLE(
+      "source_table", StandardSQLTypeName.STRING.name(), true, true, NO_DEFAULT_EXPRESSION),
+  TIEBREAKER("tiebreaker", StandardSQLTypeName.INT64.name(), true, true, NO_DEFAULT_EXPRESSION),
   BQ_COMMIT_TIMESTAMP(
       "big_query_commit_timestamp",
       StandardSQLTypeName.TIMESTAMP.name(),
