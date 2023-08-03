@@ -196,14 +196,15 @@ public final class SpannerResourceManagerTest {
     // arrange
     prepareTable();
     when(spanner.getDatabaseClient(any()).write(any())).thenReturn(Timestamp.now());
-    // spotless:off
     Mutation testMutation =
-            Mutation.newInsertOrUpdateBuilder("SingerId")
-                    .set("SingerId").to(1)
-                    .set("FirstName").to("Marc")
-                    .set("LastName").to("Richards")
-                    .build();
-    // spotless:on
+        Mutation.newInsertOrUpdateBuilder("SingerId")
+            .set("SingerId")
+            .to(1)
+            .set("FirstName")
+            .to("Marc")
+            .set("LastName")
+            .to("Richards")
+            .build();
 
     // act
     testManager.write(testMutation);
@@ -217,14 +218,15 @@ public final class SpannerResourceManagerTest {
   @Test
   public void testWriteSingleRecordShouldThrowExceptionWhenCalledBeforeExecuteDdlStatement() {
     // arrange
-    // spotless:off
     Mutation testMutation =
-            Mutation.newInsertOrUpdateBuilder("SingerId")
-                    .set("SingerId").to(1)
-                    .set("FirstName").to("Marc")
-                    .set("LastName").to("Richards")
-                    .build();
-    // spotless:on
+        Mutation.newInsertOrUpdateBuilder("SingerId")
+            .set("SingerId")
+            .to(1)
+            .set("FirstName")
+            .to("Marc")
+            .set("LastName")
+            .to("Richards")
+            .build();
 
     // act & assert
     assertThrows(IllegalStateException.class, () -> testManager.write(testMutation));
@@ -236,14 +238,15 @@ public final class SpannerResourceManagerTest {
     // arrange
     prepareTable();
     when(spanner.getDatabaseClient(any()).write(any())).thenThrow(SpannerException.class);
-    // spotless:off
     Mutation testMutation =
-            Mutation.newInsertOrUpdateBuilder("SingerId")
-                    .set("SingerId").to(1)
-                    .set("FirstName").to("Marc")
-                    .set("LastName").to("Richards")
-                    .build();
-    // spotless:on
+        Mutation.newInsertOrUpdateBuilder("SingerId")
+            .set("SingerId")
+            .to(1)
+            .set("FirstName")
+            .to("Marc")
+            .set("LastName")
+            .to("Richards")
+            .build();
 
     // act & assert
     assertThrows(SpannerResourceManagerException.class, () -> testManager.write(testMutation));
@@ -255,20 +258,24 @@ public final class SpannerResourceManagerTest {
     // arrange
     prepareTable();
     when(spanner.getDatabaseClient(any()).write(any())).thenReturn(Timestamp.now());
-    // spotless:off
     ImmutableList<Mutation> testMutations =
-            ImmutableList.of(
-                    Mutation.newInsertOrUpdateBuilder("SingerId")
-                            .set("SingerId").to(1)
-                            .set("FirstName").to("Marc")
-                            .set("LastName").to("Richards")
-                            .build(),
-                    Mutation.newInsertOrUpdateBuilder("SingerId")
-                            .set("SingerId").to(2)
-                            .set("FirstName").to("Catalina")
-                            .set("LastName").to("Smith")
-                            .build());
-    // spotless:on
+        ImmutableList.of(
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(1)
+                .set("FirstName")
+                .to("Marc")
+                .set("LastName")
+                .to("Richards")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(2)
+                .set("FirstName")
+                .to("Catalina")
+                .set("LastName")
+                .to("Smith")
+                .build());
 
     // act
     testManager.write(testMutations);
@@ -283,20 +290,24 @@ public final class SpannerResourceManagerTest {
   @Test
   public void testWriteMultipleRecordsShouldThrowExceptionWhenCalledBeforeExecuteDdlStatement() {
     // arrange
-    // spotless:off
     ImmutableList<Mutation> testMutations =
-            ImmutableList.of(
-                    Mutation.newInsertOrUpdateBuilder("SingerId")
-                            .set("SingerId").to(1)
-                            .set("FirstName").to("Marc")
-                            .set("LastName").to("Richards")
-                            .build(),
-                    Mutation.newInsertOrUpdateBuilder("SingerId")
-                            .set("SingerId").to(2)
-                            .set("FirstName").to("Catalina")
-                            .set("LastName").to("Smith")
-                            .build());
-    // spotless:on
+        ImmutableList.of(
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(1)
+                .set("FirstName")
+                .to("Marc")
+                .set("LastName")
+                .to("Richards")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(2)
+                .set("FirstName")
+                .to("Catalina")
+                .set("LastName")
+                .to("Smith")
+                .build());
 
     // act & assert
     assertThrows(IllegalStateException.class, () -> testManager.write(testMutations));
@@ -308,20 +319,24 @@ public final class SpannerResourceManagerTest {
     // arrange
     prepareTable();
     when(spanner.getDatabaseClient(any()).write(any())).thenThrow(SpannerException.class);
-    // spotless:off
     ImmutableList<Mutation> testMutations =
-            ImmutableList.of(
-                    Mutation.newInsertOrUpdateBuilder("SingerId")
-                            .set("SingerId").to(1)
-                            .set("FirstName").to("Marc")
-                            .set("LastName").to("Richards")
-                            .build(),
-                    Mutation.newInsertOrUpdateBuilder("SingerId")
-                            .set("SingerId").to(2)
-                            .set("FirstName").to("Catalina")
-                            .set("LastName").to("Smith")
-                            .build());
-    // spotless:on
+        ImmutableList.of(
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(1)
+                .set("FirstName")
+                .to("Marc")
+                .set("LastName")
+                .to("Richards")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(2)
+                .set("FirstName")
+                .to("Catalina")
+                .set("LastName")
+                .to("Smith")
+                .build());
 
     // act & assert
     assertThrows(SpannerResourceManagerException.class, () -> testManager.write(testMutations));
@@ -333,20 +348,24 @@ public final class SpannerResourceManagerTest {
     // arrange
     prepareTable();
     when(resultSet.next()).thenReturn(true).thenReturn(true).thenReturn(false);
-    // spotless:off
     Struct struct1 =
-            Struct.newBuilder()
-                    .set("SingerId").to(int64(1))
-                    .set("FirstName").to(string("Marc"))
-                    .set("LastName").to(string("Richards"))
-                    .build();
+        Struct.newBuilder()
+            .set("SingerId")
+            .to(int64(1))
+            .set("FirstName")
+            .to(string("Marc"))
+            .set("LastName")
+            .to(string("Richards"))
+            .build();
     Struct struct2 =
-            Struct.newBuilder()
-                    .set("SingerId").to(int64(2))
-                    .set("FirstName").to(string("Catalina"))
-                    .set("LastName").to(string("Smith"))
-                    .build();
-    // spotless:on
+        Struct.newBuilder()
+            .set("SingerId")
+            .to(int64(2))
+            .set("FirstName")
+            .to(string("Catalina"))
+            .set("LastName")
+            .to(string("Smith"))
+            .build();
     when(resultSet.getCurrentRowAsStruct()).thenReturn(struct1).thenReturn(struct2);
     when(spanner.getDatabaseClient(any()).singleUse().read(any(), any(), any()))
         .thenReturn(resultSet);
@@ -366,14 +385,15 @@ public final class SpannerResourceManagerTest {
     // arrange
     prepareTable();
     when(resultSet.next()).thenReturn(true).thenReturn(false);
-    // spotless:off
     Struct struct =
-            Struct.newBuilder()
-                    .set("SingerId").to(int64(1))
-                    .set("FirstName").to(string("Marc"))
-                    .set("LastName").to(string("Richards"))
-                    .build();
-    // spotless:on
+        Struct.newBuilder()
+            .set("SingerId")
+            .to(int64(1))
+            .set("FirstName")
+            .to(string("Marc"))
+            .set("LastName")
+            .to(string("Richards"))
+            .build();
     when(resultSet.getCurrentRowAsStruct()).thenReturn(struct);
     when(spanner.getDatabaseClient(any()).singleUse().read(any(), any(), any()))
         .thenReturn(resultSet);
@@ -458,14 +478,15 @@ public final class SpannerResourceManagerTest {
             + "  FirstName  STRING(1024),\n"
             + "  LastName   STRING(1024),\n"
             + ") PRIMARY KEY (SingerId)";
-    // spotless:off
     Mutation testMutation =
-            Mutation.newInsertOrUpdateBuilder("SingerId")
-                    .set("SingerId").to(1)
-                    .set("FirstName").to("Marc")
-                    .set("LastName").to("Richards")
-                    .build();
-    // spotless:on
+        Mutation.newInsertOrUpdateBuilder("SingerId")
+            .set("SingerId")
+            .to(1)
+            .set("FirstName")
+            .to("Marc")
+            .set("LastName")
+            .to("Richards")
+            .build();
     ImmutableList<String> columnNames = ImmutableList.of("SingerId");
 
     // act & assert

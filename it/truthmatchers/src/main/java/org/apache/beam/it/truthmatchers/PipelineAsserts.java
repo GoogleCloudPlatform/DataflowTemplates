@@ -66,7 +66,8 @@ public class PipelineAsserts {
    * @param jsonRecords List of JSON Strings to parse
    * @return List of maps to use in {@link RecordsSubject}
    */
-  public static List<Map<String, Object>> jsonRecordsToRecords(Iterable<String> jsonRecords) {
+  public static List<Map<String, Object>> jsonRecordsToRecords(
+      @Nullable Iterable<String> jsonRecords) {
     try {
       List<Map<String, Object>> records = new ArrayList<>();
       if (jsonRecords != null) {

@@ -67,10 +67,7 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     spannerResourceManager = SpannerResourceManager.builder(testName, project, region).build();
-    gcsClient =
-        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
-            .setCredentials(CREDENTIALS)
-            .build();
+    gcsClient = GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR, CREDENTIALS).build();
   }
 
   @After

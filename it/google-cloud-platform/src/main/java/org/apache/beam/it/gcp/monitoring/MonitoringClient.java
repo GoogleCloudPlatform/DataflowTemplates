@@ -36,6 +36,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +62,8 @@ public final class MonitoringClient {
     return new MonitoringClient(metricServiceClient);
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public static Builder builder(CredentialsProvider credentialsProvider) {
+    return new Builder(credentialsProvider);
   }
 
   /**
@@ -92,7 +93,7 @@ public final class MonitoringClient {
    * @param subscriptionName name of the Pub/Sub subscription
    * @return number of undelivered messages in the subscription
    */
-  public Long getNumMessagesInSubscription(String project, String subscriptionName) {
+  public @Nullable Long getNumMessagesInSubscription(String project, String subscriptionName) {
     LOG.info(
         "Getting number of messages in subscription for {} under {}", subscriptionName, project);
     String filter =
@@ -137,7 +138,8 @@ public final class MonitoringClient {
    * @param timeInterval interval for the monitoring query
    * @return CPU Utilization time series data for the given job.
    */
-  public List<Double> getCpuUtilization(String project, String jobId, TimeInterval timeInterval) {
+  public @Nullable List<Double> getCpuUtilization(
+      String project, String jobId, TimeInterval timeInterval) {
     LOG.info("Getting CPU utilization for {} under {}", jobId, project);
     String filter =
         String.format(
@@ -175,7 +177,8 @@ public final class MonitoringClient {
    * @param timeInterval interval for the monitoring query
    * @return System Latency time series data for the given job.
    */
-  public List<Double> getSystemLatency(String project, String jobId, TimeInterval timeInterval) {
+  public @Nullable List<Double> getSystemLatency(
+      String project, String jobId, TimeInterval timeInterval) {
     LOG.info("Getting system latency for {} under {}", jobId, project);
     String filter =
         String.format(
@@ -211,7 +214,8 @@ public final class MonitoringClient {
    * @param timeInterval interval for the monitoring query
    * @return Data freshness time series data for the given job.
    */
-  public List<Double> getDataFreshness(String project, String jobId, TimeInterval timeInterval) {
+  public @Nullable List<Double> getDataFreshness(
+      String project, String jobId, TimeInterval timeInterval) {
     LOG.info("Getting data freshness for {} under {}", jobId, project);
     String filter =
         String.format(
@@ -249,7 +253,7 @@ public final class MonitoringClient {
    * @param timeInterval interval for the monitoring query
    * @return output throughput from a particular PCollection during job run interval
    */
-  public List<Double> getThroughputBytesPerSecond(
+  public @Nullable List<Double> getThroughputBytesPerSecond(
       String project, String jobId, String pcollection, TimeInterval timeInterval) {
     if (pcollection == null) {
       LOG.warn("Output PCollection name not provided. Unable to calculate throughput.");
@@ -292,7 +296,7 @@ public final class MonitoringClient {
    * @param timeInterval interval for the monitoring query
    * @return output throughput from a particular PCollection during job run interval
    */
-  public List<Double> getThroughputElementsPerSecond(
+  public @Nullable List<Double> getThroughputElementsPerSecond(
       String project, String jobId, String pcollection, TimeInterval timeInterval) {
     if (pcollection == null) {
       LOG.warn("Output PCollection name not provided. Unable to calculate throughput.");
@@ -333,7 +337,8 @@ public final class MonitoringClient {
    * @return elapsed time
    * @throws ParseException if timestamp is inaccurate
    */
-  public Double getElapsedTime(String project, LaunchInfo launchInfo) throws ParseException {
+  public @Nullable Double getElapsedTime(String project, LaunchInfo launchInfo)
+      throws ParseException {
     LOG.info("Getting elapsed time for {} under {}", launchInfo.jobId(), project);
     String filter =
         String.format(
@@ -370,8 +375,8 @@ public final class MonitoringClient {
    * @return data processed
    * @throws ParseException if timestamp is inaccurate
    */
-  public Double getDataProcessed(String project, LaunchInfo launchInfo, String pCollection)
-      throws ParseException {
+  public @Nullable Double getDataProcessed(
+      String project, LaunchInfo launchInfo, String pCollection) throws ParseException {
     if (pCollection == null) {
       LOG.warn("PCollection name not provided. Unable to calculate data processed.");
       return null;
@@ -442,7 +447,9 @@ public final class MonitoringClient {
   public static final class Builder {
     private CredentialsProvider credentialsProvider;
 
-    private Builder() {}
+    private Builder(CredentialsProvider credentialsProvider) {
+      this.credentialsProvider = credentialsProvider;
+    }
 
     public CredentialsProvider getCredentialsProvider() {
       return credentialsProvider;

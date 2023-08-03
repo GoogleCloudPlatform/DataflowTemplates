@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import org.apache.beam.it.truthmatchers.RecordsSubject;
 
 public class CassandraAsserts {
@@ -37,6 +36,7 @@ public class CassandraAsserts {
    * @param rows Rows to parse.
    * @return List of maps to use in {@link RecordsSubject}.
    */
+  @SuppressWarnings("nullness")
   public static List<Map<String, Object>> cassandraRowsToRecords(Iterable<Row> rows) {
     try {
       List<Map<String, Object>> records = new ArrayList<>();
@@ -68,7 +68,7 @@ public class CassandraAsserts {
    * @param rows Records in Cassandra's {@link Row} format to use in the comparison.
    * @return Truth subject to chain assertions on.
    */
-  public static RecordsSubject assertThatCassandraRecords(@Nullable Iterable<Row> rows) {
+  public static RecordsSubject assertThatCassandraRecords(Iterable<Row> rows) {
     return assertThatRecords(cassandraRowsToRecords(rows));
   }
 }

@@ -84,11 +84,11 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
   }
 
   /** Returns a new {@link Builder} for configuring a client. */
-  public static Builder builder(String bucket, String testClassName) {
+  public static Builder builder(String bucket, String testClassName, Credentials credentials) {
     checkArgument(!bucket.equals(""));
     checkArgument(!testClassName.equals(""));
 
-    return new Builder(bucket, testClassName);
+    return new Builder(bucket, testClassName, credentials);
   }
 
   @Override
@@ -285,9 +285,10 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     private final String testClassName;
     private Credentials credentials;
 
-    private Builder(String bucket, String testClassName) {
+    private Builder(String bucket, String testClassName, Credentials credentials) {
       this.bucket = bucket;
       this.testClassName = testClassName;
+      this.credentials = credentials;
     }
 
     public Builder setCredentials(Credentials credentials) {

@@ -47,6 +47,7 @@ public abstract class MongoDBDocumentsCheck extends ConditionCheck {
   }
 
   @Override
+  @SuppressWarnings("unboxing.of.nullable")
   public CheckResult check() {
     long totalDocuments = resourceManager().countCollection(collectionName());
     if (totalDocuments < minDocuments()) {

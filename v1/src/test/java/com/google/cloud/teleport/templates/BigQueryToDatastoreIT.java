@@ -69,9 +69,9 @@ public final class BigQueryToDatastoreIT extends TemplateTestBase {
   @Before
   public void setup() {
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     datastoreResourceManager =
-        DatastoreResourceManager.builder(PROJECT, testId).credentials(credentials).build();
+        DatastoreResourceManager.builder(PROJECT, testId, credentials).build();
   }
 
   @After

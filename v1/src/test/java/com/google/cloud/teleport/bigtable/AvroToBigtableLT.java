@@ -68,11 +68,9 @@ public class AvroToBigtableLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    bigtableResourceManager = BigtableResourceManager.builder(testName, project).build();
-    gcsClient =
-        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
-            .setCredentials(CREDENTIALS)
-            .build();
+    bigtableResourceManager =
+        BigtableResourceManager.builder(testName, project, CREDENTIALS_PROVIDER).build();
+    gcsClient = GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR, CREDENTIALS).build();
     // upload schema files and save path
     generatorSchemaPath =
         getFullGcsPath(

@@ -32,6 +32,9 @@ import javax.annotation.Nullable;
  * Subject that has assertion operations for record lists, usually coming from the result of a
  * template.
  */
+@SuppressWarnings({
+  "nullness" // TODO(https://github.com/apache/beam/issues/27438)
+})
 public class RecordsSubject extends Subject {
 
   @Nullable private final List<Map<String, Object>> actual;

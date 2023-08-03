@@ -85,11 +85,9 @@ public class TextIOtoBigQueryLT extends TemplateLoadTestBase {
   public void setup() throws IOException {
     // Set up resource managers
     artifactClient =
-        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
-            .setCredentials(CREDENTIALS)
-            .build();
+        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR, CREDENTIALS).build();
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(testName, project, CREDENTIALS).build();
   }
 
   @After

@@ -99,7 +99,7 @@ public class JdbcToBigQueryLT extends TemplateLoadTestBase {
   public void setup() {
     jdbcResourceManager = PostgresResourceManager.builder(testName).build();
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(testName, project, CREDENTIALS).build();
   }
 
   @After

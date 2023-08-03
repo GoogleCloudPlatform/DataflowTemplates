@@ -32,6 +32,7 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.ExceptionUtils;
 import org.apache.beam.it.testcontainers.TestContainerResourceManager;
@@ -63,7 +64,7 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
   // https://hub.docker.com/_/cassandra/tags
   private static final String DEFAULT_CASSANDRA_CONTAINER_TAG = "4.1.0";
 
-  // 27017 is the default port that Cassandra is configured to listen on
+  // 9042 is the default port that Cassandra is configured to listen on
   private static final int CASSANDRA_INTERNAL_PORT = 9042;
 
   private final CqlSession cassandraClient;
@@ -80,7 +81,7 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
 
   @VisibleForTesting
   CassandraResourceManager(
-      CqlSession cassandraClient, CassandraContainer<?> container, Builder builder) {
+      @Nullable CqlSession cassandraClient, CassandraContainer<?> container, Builder builder) {
     super(container, builder);
 
     this.usingStaticDatabase = builder.keyspaceName != null;
@@ -287,10 +288,11 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
   public static final class Builder
       extends TestContainerResourceManager.Builder<CassandraResourceManager> {
 
-    private String keyspaceName;
+    private @Nullable String keyspaceName;
 
     private Builder(String testId) {
       super(testId, DEFAULT_CASSANDRA_CONTAINER_NAME, DEFAULT_CASSANDRA_CONTAINER_TAG);
+      this.keyspaceName = null;
     }
 
     /**

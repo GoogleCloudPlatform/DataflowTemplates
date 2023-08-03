@@ -115,10 +115,7 @@ public class AzureEventhubToPubsubIT extends TemplateTestBase {
         new EventHubClientBuilder()
             .connectionString(connectionString, eventHubName)
             .buildProducerClient();
-    pubsubClient =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+    pubsubClient = PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
   @After

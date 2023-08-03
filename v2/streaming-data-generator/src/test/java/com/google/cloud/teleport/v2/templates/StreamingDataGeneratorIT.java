@@ -155,9 +155,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   public void testFakeMessagesToPubSub() throws IOException {
     // Set up resource manager
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     TopicName backlogTopic = pubsubResourceManager.createTopic("output");
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(backlogTopic, "output-subscription");
@@ -186,7 +184,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   public void testFakeMessagesToBigQuery() throws IOException {
     // Set up resource manager
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     // schema should match schema supplied to generate fake records.
     Schema schema =
         Schema.of(
@@ -224,7 +222,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   public void testFakeMessagesToBigQueryWithErrors() throws IOException {
     // Set up resource manager
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     // removes fields intentionally to reproduce DLQ errors
     Schema schema =
         Schema.of(

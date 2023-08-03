@@ -60,8 +60,7 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException {
-    bigQueryClient =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+    bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After

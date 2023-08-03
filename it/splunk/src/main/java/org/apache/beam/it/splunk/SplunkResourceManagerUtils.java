@@ -43,6 +43,7 @@ public final class SplunkResourceManagerUtils {
 
   private SplunkResourceManagerUtils() {}
 
+  @SuppressWarnings("nullness")
   public static Map<String, Object> splunkEventToMap(SplunkEvent event) {
     Map<String, Object> eventMap = new HashMap<>();
     eventMap.put(SPLUNK_EVENT_KEY, event.event());

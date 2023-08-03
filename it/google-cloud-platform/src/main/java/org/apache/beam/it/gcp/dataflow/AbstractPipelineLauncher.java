@@ -42,6 +42,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
 import org.slf4j.Logger;
@@ -134,7 +135,7 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   }
 
   @Override
-  public Double getMetric(String project, String region, String jobId, String metricName)
+  public @Nullable Double getMetric(String project, String region, String jobId, String metricName)
       throws IOException {
     LOG.info("Getting '{}' metric for {} under {}", metricName, jobId, project);
     List<MetricUpdate> metrics =

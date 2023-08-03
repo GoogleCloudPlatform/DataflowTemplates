@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import org.apache.beam.it.truthmatchers.RecordsSubject;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 
@@ -60,7 +59,7 @@ public class SplunkAsserts {
    *     comparison.
    * @return Truth subject to chain assertions.
    */
-  public static RecordsSubject assertThatSplunkEvents(@Nullable Collection<SplunkEvent> events) {
+  public static RecordsSubject assertThatSplunkEvents(Collection<SplunkEvent> events) {
     return assertThatRecords(splunkEventsToRecords(events));
   }
 }

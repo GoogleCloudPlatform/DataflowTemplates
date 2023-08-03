@@ -63,7 +63,9 @@ final class PubsubUtils {
         matcher.find(),
         "Topic name must be in the format 'projects/{project_id}/topics/{topic_name}.");
 
-    return TopicName.of(matcher.group("projectId"), matcher.group("topicName"));
+    @SuppressWarnings("nullness")
+    TopicName topicName = TopicName.of(matcher.group("projectId"), matcher.group("topicName"));
+    return topicName;
   }
 
   /**
@@ -82,7 +84,10 @@ final class PubsubUtils {
         "Subscription name must be in the format"
             + " 'projects/{project_id}/subscriptions/{subscription_name}.");
 
-    return SubscriptionName.of(matcher.group("projectId"), matcher.group("subscriptionName"));
+    @SuppressWarnings("nullness")
+    SubscriptionName subscriptionName =
+        SubscriptionName.of(matcher.group("projectId"), matcher.group("subscriptionName"));
+    return subscriptionName;
   }
 
   /**

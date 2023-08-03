@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import org.apache.beam.it.truthmatchers.RecordsSubject;
 
 public class BigtableAsserts {
@@ -65,8 +64,7 @@ public class BigtableAsserts {
    * @param family The column family to read records from.
    * @return Truth subject to chain assertions.
    */
-  public static RecordsSubject assertThatBigtableRecords(
-      @Nullable Iterable<Row> rows, String family) {
+  public static RecordsSubject assertThatBigtableRecords(Iterable<Row> rows, String family) {
     return assertThatRecords(bigtableRowsToRecords(rows, family));
   }
 }

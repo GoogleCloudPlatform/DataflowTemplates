@@ -19,11 +19,11 @@ package org.apache.beam.it.kafka;
 
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.testcontainers.TestContainerResourceManager;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
@@ -76,8 +76,11 @@ public class KafkaResourceManager extends TestContainerResourceManager<GenericCo
   }
 
   @VisibleForTesting
+  @SuppressWarnings("nullness")
   KafkaResourceManager(
-      AdminClient client, KafkaContainer container, KafkaResourceManager.Builder builder) {
+      @Nullable AdminClient client,
+      KafkaContainer container,
+      KafkaResourceManager.Builder builder) {
     super(container, builder);
 
     this.usingStaticTopic = builder.topicNames.size() > 0;
@@ -102,7 +105,7 @@ public class KafkaResourceManager extends TestContainerResourceManager<GenericCo
             : AdminClient.create(ImmutableMap.of("bootstrap.servers", this.connectionString));
   }
 
-  public static KafkaResourceManager.Builder builder(String testId) throws IOException {
+  public static KafkaResourceManager.Builder builder(String testId) {
     return new KafkaResourceManager.Builder(testId);
   }
 
@@ -271,7 +274,7 @@ public class KafkaResourceManager extends TestContainerResourceManager<GenericCo
 
   static class DefaultKafkaContainer extends KafkaContainer {
 
-    private final String host;
+    private final @Nullable String host;
 
     public DefaultKafkaContainer(Builder builder) {
       super(DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag));
@@ -287,6 +290,7 @@ public class KafkaResourceManager extends TestContainerResourceManager<GenericCo
     }
 
     @Override
+    @SuppressWarnings("nullness")
     public boolean equals(Object o) {
       return super.equals(o);
     }

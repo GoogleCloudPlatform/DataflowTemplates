@@ -47,6 +47,7 @@ public abstract class BigQueryRowsCheck extends ConditionCheck {
   }
 
   @Override
+  @SuppressWarnings("unboxing.of.nullable")
   public CheckResult check() {
     long totalRows = getRowCount();
     if (totalRows < minRows()) {

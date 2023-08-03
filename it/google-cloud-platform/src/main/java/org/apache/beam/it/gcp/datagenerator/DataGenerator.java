@@ -52,7 +52,7 @@ public class DataGenerator {
   private final PipelineOperator pipelineOperator;
 
   private DataGenerator(Builder builder) {
-    pipelineLauncher = FlexTemplateClient.builder().setCredentials(CREDENTIALS).build();
+    pipelineLauncher = FlexTemplateClient.builder(CREDENTIALS).build();
     pipelineOperator = new PipelineOperator(pipelineLauncher);
     this.dataGeneratorOptions =
         LaunchConfig.builder(builder.getJobName(), SPEC_PATH)
@@ -103,6 +103,7 @@ public class DataGenerator {
       Result dataGeneratorResult = pipelineOperator.waitUntilDoneAndFinish(config);
       assertThatResult(dataGeneratorResult).hasTimedOut();
     }
+    @SuppressWarnings("nullness")
     int generatedMessages =
         pipelineLauncher
             .getMetric(

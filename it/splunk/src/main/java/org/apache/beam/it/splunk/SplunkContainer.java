@@ -54,6 +54,7 @@ public class SplunkContainer extends GenericContainer<SplunkContainer> {
     this(DockerImageName.parse(dockerImageName));
   }
 
+  @SuppressWarnings("nullness")
   public SplunkContainer(DockerImageName dockerImageName) {
     super(dockerImageName);
     dockerImageName.assertCompatibleWith(DEFAULT_IMAGE_NAME);

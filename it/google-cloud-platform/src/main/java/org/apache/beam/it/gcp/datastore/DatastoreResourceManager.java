@@ -136,10 +136,10 @@ public class DatastoreResourceManager implements ResourceManager {
     keys.clear();
   }
 
-  public static Builder builder(String project, String namespace) {
+  public static Builder builder(String project, String namespace, Credentials credentials) {
     checkArgument(!Strings.isNullOrEmpty(project), "project can not be empty");
     checkArgument(!Strings.isNullOrEmpty(namespace), "namespace can not be empty");
-    return new Builder(project, namespace);
+    return new Builder(project, namespace, credentials);
   }
 
   public static final class Builder {
@@ -148,9 +148,10 @@ public class DatastoreResourceManager implements ResourceManager {
     private final String namespace;
     private Credentials credentials;
 
-    private Builder(String project, String namespace) {
+    private Builder(String project, String namespace, Credentials credentials) {
       this.project = project;
       this.namespace = namespace;
+      this.credentials = credentials;
     }
 
     public Builder credentials(Credentials credentials) {

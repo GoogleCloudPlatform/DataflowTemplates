@@ -68,7 +68,7 @@ public class PostgreSQLToBigQueryIT extends TemplateTestBase {
   @Before
   public void setUp() {
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After

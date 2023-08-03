@@ -44,9 +44,7 @@ public final class FlexTemplateClient extends AbstractPipelineLauncher {
         new Dataflow(
             Utils.getDefaultTransport(),
             Utils.getDefaultJsonFactory(),
-            builder.getCredentials() == null
-                ? null
-                : new HttpCredentialsAdapter(builder.getCredentials())));
+            new HttpCredentialsAdapter(builder.getCredentials())));
   }
 
   private FlexTemplateClient(Dataflow dataflow) {
@@ -57,8 +55,8 @@ public final class FlexTemplateClient extends AbstractPipelineLauncher {
     return new FlexTemplateClient(dataflow);
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public static Builder builder(Credentials credentials) {
+    return new Builder(credentials);
   }
 
   @Override
@@ -70,6 +68,7 @@ public final class FlexTemplateClient extends AbstractPipelineLauncher {
     LOG.info("Using the spec at {}", options.specPath());
     LOG.info("Using parameters:\n{}", formatForLogging(options.parameters()));
 
+    @SuppressWarnings("nullness")
     LaunchFlexTemplateParameter parameter =
         new LaunchFlexTemplateParameter()
             .setJobName(options.jobName())
@@ -117,7 +116,9 @@ public final class FlexTemplateClient extends AbstractPipelineLauncher {
   public static final class Builder {
     private Credentials credentials;
 
-    private Builder() {}
+    private Builder(Credentials credentials) {
+      this.credentials = credentials;
+    }
 
     public Credentials getCredentials() {
       return credentials;

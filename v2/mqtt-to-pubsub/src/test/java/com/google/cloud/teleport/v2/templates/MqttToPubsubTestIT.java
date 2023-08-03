@@ -57,10 +57,7 @@ public class MqttToPubsubTestIT extends TemplateTestBase {
   public void setup() throws IOException {
     hiveMQContainer =
         new HiveMQContainer(DockerImageName.parse("hivemq/hivemq-ce").withTag("2021.3"));
-    pubsubClient =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+    pubsubClient = PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     hiveMQContainer.start();
     mqttClient =
         Mqtt5Client.builder()

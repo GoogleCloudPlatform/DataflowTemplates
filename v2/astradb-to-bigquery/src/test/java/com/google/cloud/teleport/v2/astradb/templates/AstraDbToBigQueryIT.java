@@ -84,8 +84,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
   @Before
   public void setup() throws Exception {
     // Setup bigQuery
-    bigQueryClient =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+    bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     // Setup Astra Db
     createOrResumeAstraDatabase();
     // Setup Astra Data

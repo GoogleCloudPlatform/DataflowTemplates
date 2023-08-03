@@ -24,13 +24,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
 import com.google.cloud.secretmanager.v1.ProjectName;
 import com.google.cloud.secretmanager.v1.Secret;
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.cloud.secretmanager.v1.SecretName;
-import com.google.cloud.secretmanager.v1.SecretVersion;
-import com.google.cloud.secretmanager.v1.SecretVersionName;
 import java.io.IOException;
 import org.junit.Before;
 import org.junit.Rule;
@@ -43,24 +40,16 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-/** Unit tests for {@link DefaultSecretManagerResourceManager}. */
+/** Unit tests for {@link SecretManagerResourceManager}. */
 @RunWith(JUnit4.class)
-public final class DefaultSecretManagerResourceManagerTest {
+public final class SecretManagerResourceManagerTest {
   private static final String PROJECT_ID = "testProject";
   private static final String SECRET_ID = "testSecretId";
   private static final String SECRET_DATA = "testSecretData";
-  private static final String VERSION = "1";
-  private static final String SECRET = SecretName.of(PROJECT_ID, SECRET_ID).toString();
-  private static final String SECRET_VERSION =
-      SecretVersionName.of(PROJECT_ID, SECRET_ID, VERSION).toString();
+
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
   @Mock private SecretManagerServiceClient secretManagerServiceClient;
-  @Mock private Secret secret;
-  @Mock private SecretVersion secretVersion;
-
-  @Mock private AccessSecretVersionResponse accessSecretVersionResponse;
-
-  private DefaultSecretManagerResourceManager testManager;
+  private SecretManagerResourceManager testManager;
 
   @Captor private ArgumentCaptor<Secret> secretCaptor;
   @Captor private ArgumentCaptor<String> secretNameStringCaptor;
@@ -68,12 +57,9 @@ public final class DefaultSecretManagerResourceManagerTest {
   @Captor private ArgumentCaptor<SecretName> secretNameClassCaptor;
   @Captor private ArgumentCaptor<ProjectName> projectNameCaptor;
 
-  @Captor private ArgumentCaptor<String> secretDataCaptor;
-  @Captor private ArgumentCaptor<SecretVersionName> secretVersionNameCaptor;
-
   @Before
   public void setUp() throws IOException {
-    testManager = new DefaultSecretManagerResourceManager(PROJECT_ID, secretManagerServiceClient);
+    testManager = new SecretManagerResourceManager(PROJECT_ID, secretManagerServiceClient);
   }
 
   @Test
@@ -81,7 +67,7 @@ public final class DefaultSecretManagerResourceManagerTest {
 
     IllegalArgumentException exception =
         assertThrows(
-            IllegalArgumentException.class, () -> DefaultSecretManagerResourceManager.builder(""));
+            IllegalArgumentException.class, () -> SecretManagerResourceManager.builder("", null));
     assertThat(exception).hasMessageThat().contains("projectId can not be empty");
   }
 
@@ -110,6 +96,7 @@ public final class DefaultSecretManagerResourceManagerTest {
 
   @Test
   public void testCreateSecretShouldCreate() {
+    Secret secret = Secret.getDefaultInstance();
     when(secretManagerServiceClient.createSecret(
             any(ProjectName.class), any(String.class), any(Secret.class)))
         .thenReturn(secret);
@@ -121,11 +108,12 @@ public final class DefaultSecretManagerResourceManagerTest {
             projectNameCaptor.capture(), secretNameStringCaptor.capture(), secretCaptor.capture());
     ProjectName actualProjectName = projectNameCaptor.getValue();
     assertThat(actualProjectName.getProject()).isEqualTo(PROJECT_ID);
-    assertThat(secretNameStringCaptor.toString().matches(SECRET_ID));
+    assertThat(secretNameStringCaptor.getValue()).matches(SECRET_ID);
   }
 
   @Test
   public void testCleanupTopicsShouldDeleteTopics() {
+    Secret secret = Secret.getDefaultInstance();
     when(secretManagerServiceClient.createSecret(
             any(ProjectName.class), any(String.class), any(Secret.class)))
         .thenReturn(secret);

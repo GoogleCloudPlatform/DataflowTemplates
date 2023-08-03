@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import org.apache.beam.it.truthmatchers.RecordsSubject;
 
 /** Assert utilities for BigQuery tests. */
@@ -104,7 +103,7 @@ public class BigQueryAsserts {
    * @param tableResult Records in BigQuery {@link TableResult} format to use in the comparison.
    * @return Truth Subject to chain assertions.
    */
-  public static RecordsSubject assertThatBigQueryRecords(@Nullable TableResult tableResult) {
+  public static RecordsSubject assertThatBigQueryRecords(TableResult tableResult) {
     return assertThatRecords(tableResultToRecords(tableResult));
   }
 }

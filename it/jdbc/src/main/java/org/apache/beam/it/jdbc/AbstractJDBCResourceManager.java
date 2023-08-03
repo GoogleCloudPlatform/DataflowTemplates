@@ -17,6 +17,10 @@
  */
 package org.apache.beam.it.jdbc;
 
+import static org.apache.beam.it.jdbc.JDBCResourceManagerUtils.checkValidTableName;
+import static org.apache.beam.it.jdbc.JDBCResourceManagerUtils.generateDatabaseName;
+import static org.apache.beam.it.jdbc.JDBCResourceManagerUtils.generateJdbcPassword;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -27,8 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.testcontainers.TestContainerResourceManager;
-import org.apache.beam.repackaged.core.org.apache.commons.lang3.math.NumberUtils;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.JdbcDatabaseContainer;
@@ -59,8 +63,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
   private final Map<String, String> tableIds;
 
   @VisibleForTesting
-  AbstractJDBCResourceManager(
-      T container, AbstractJDBCResourceManager.Builder<T> builder, JDBCDriverFactory driver) {
+  AbstractJDBCResourceManager(T container, Builder<T> builder, JDBCDriverFactory driver) {
     super(
         container
             .withUsername(builder.username)
@@ -75,8 +78,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
     this.driver = driver;
   }
 
-  protected AbstractJDBCResourceManager(
-      T container, AbstractJDBCResourceManager.Builder<T> builder) {
+  protected AbstractJDBCResourceManager(T container, Builder<T> builder) {
     this(container, builder, new JDBCDriverFactory());
   }
 
@@ -114,7 +116,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
   @Override
   public boolean createTable(String tableName, JDBCSchema schema) {
     // Check table ID
-    JDBCResourceManagerUtils.checkValidTableName(tableName);
+    checkValidTableName(tableName);
 
     // Check if table already exists
     if (tableIds.containsKey(tableName)) {
@@ -166,6 +168,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
    *     Exception when attempting to insert the rows.
    */
   @Override
+  @SuppressWarnings("nullness")
   public boolean write(String tableName, List<Map<String, Object>> rows)
       throws JDBCResourceManagerException {
     if (rows.size() == 0) {
@@ -189,7 +192,9 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
         List<String> valueList = new ArrayList<>();
         for (String colName : columns) {
           Object value = row.get(colName);
-          if (NumberUtils.isCreatable(value.toString())
+          if (value == null) {
+            valueList.add(null);
+          } else if (NumberUtils.isCreatable(value.toString())
               || "true".equalsIgnoreCase(value.toString())
               || "false".equalsIgnoreCase(value.toString())) {
             valueList.add(String.valueOf(value));
@@ -218,6 +223,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
   }
 
   @Override
+  @SuppressWarnings("nullness")
   public List<Map<String, Object>> readTable(String tableName) {
     LOG.info("Reading all rows from {}.{}", databaseName, tableName);
 
@@ -318,8 +324,8 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
       super(testId, containerImageName, containerImageTag);
 
       this.username = DEFAULT_JDBC_USERNAME;
-      this.password = JDBCResourceManagerUtils.generateJdbcPassword();
-      this.databaseName = JDBCResourceManagerUtils.generateDatabaseName(testId);
+      this.password = generateJdbcPassword();
+      this.databaseName = generateDatabaseName(testId);
     }
 
     /**
@@ -329,7 +335,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
      * @param databaseName The database name.
      * @return this builder object with the database name set.
      */
-    public AbstractJDBCResourceManager.Builder<T> setDatabaseName(String databaseName) {
+    public Builder<T> setDatabaseName(String databaseName) {
       this.databaseName = databaseName;
       return this;
     }
@@ -341,7 +347,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
      * @param username the username for the JDBC database.
      * @return this builder with the username manually set.
      */
-    public AbstractJDBCResourceManager.Builder<T> setUsername(String username) {
+    public Builder<T> setUsername(String username) {
       this.username = username;
       return this;
     }
@@ -353,7 +359,7 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
      * @param password the password for the JDBC database.
      * @return this builder with the password manually set.
      */
-    public AbstractJDBCResourceManager.Builder<T> setPassword(String password) {
+    public Builder<T> setPassword(String password) {
       this.password = password;
       return this;
     }

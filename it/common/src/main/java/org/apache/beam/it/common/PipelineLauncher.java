@@ -32,6 +32,9 @@ import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
 
 /** Client for working with Cloud Dataflow. */
+@SuppressWarnings({
+  "nullness" // TODO(https://github.com/apache/beam/issues/27438)
+})
 public interface PipelineLauncher {
   /** Enum representing Apache Beam SDKs. */
   enum Sdk {
@@ -414,6 +417,7 @@ public interface PipelineLauncher {
    * @return value of the metric or null
    * @throws IOException if there is an issue sending the request
    */
+  @Nullable
   Double getMetric(String project, String region, String jobId, String metricName)
       throws IOException;
 

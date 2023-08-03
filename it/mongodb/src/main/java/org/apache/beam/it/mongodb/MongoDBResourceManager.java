@@ -28,6 +28,7 @@ import com.mongodb.client.MongoDatabase;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.testcontainers.TestContainerResourceManager;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
@@ -77,8 +78,11 @@ public class MongoDBResourceManager extends TestContainerResourceManager<MongoDB
   }
 
   @VisibleForTesting
+  @SuppressWarnings("nullness")
   MongoDBResourceManager(
-      MongoClient mongoClient, MongoDBContainer container, MongoDBResourceManager.Builder builder) {
+      @Nullable MongoClient mongoClient,
+      MongoDBContainer container,
+      MongoDBResourceManager.Builder builder) {
     super(container, builder);
 
     this.usingStaticDatabase = builder.databaseName != null;
@@ -306,10 +310,11 @@ public class MongoDBResourceManager extends TestContainerResourceManager<MongoDB
   public static final class Builder
       extends TestContainerResourceManager.Builder<MongoDBResourceManager> {
 
-    private String databaseName;
+    private @Nullable String databaseName;
 
     private Builder(String testId) {
       super(testId, DEFAULT_MONGODB_CONTAINER_NAME, DEFAULT_MONGODB_CONTAINER_TAG);
+      this.databaseName = null;
     }
 
     /**

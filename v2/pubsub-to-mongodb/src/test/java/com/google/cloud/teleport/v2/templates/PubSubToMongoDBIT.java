@@ -72,14 +72,11 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
   public void setup() throws IOException {
 
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
 
     mongoResourceManager = MongoDBResourceManager.builder(testName).build();
 
-    bigQueryClient =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
+    bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After

@@ -75,11 +75,8 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
-    bigQueryResourceManager =
-        BigQueryResourceManager.builder(testId, PROJECT).setCredentials(credentials).build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
+    bigQueryResourceManager = BigQueryResourceManager.builder(testId, PROJECT, credentials).build();
 
     URL avroSchemaResource = Resources.getResource("PubsubAvroToBigQueryIT/avro_schema.avsc");
     gcsClient.uploadArtifact("schema.avsc", avroSchemaResource.getPath());

@@ -45,6 +45,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The class is thread-safe.
  */
+@SuppressWarnings({
+  "nullness" // TODO(https://github.com/apache/beam/issues/27438)
+})
 public class KMSResourceManager implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(KMSResourceManager.class);
@@ -65,11 +68,13 @@ public class KMSResourceManager implements ResourceManager {
   KMSResourceManager(KMSClientFactory clientFactory, Builder builder) {
     this.clientFactory = clientFactory;
     this.projectId = builder.projectId;
-    this.region = builder.region == null ? DEFAULT_KMS_REGION : builder.region;
+    this.region = builder.region;
+    this.keyRing = null;
   }
 
-  public static KMSResourceManager.Builder builder(String projectId) {
-    return new KMSResourceManager.Builder(projectId);
+  public static KMSResourceManager.Builder builder(
+      String projectId, CredentialsProvider credentialsProvider) {
+    return new KMSResourceManager.Builder(projectId, credentialsProvider);
   }
 
   /**
@@ -230,8 +235,10 @@ public class KMSResourceManager implements ResourceManager {
     private CredentialsProvider credentialsProvider;
     private String region;
 
-    private Builder(String projectId) {
+    private Builder(String projectId, CredentialsProvider credentialsProvider) {
       this.projectId = projectId;
+      this.region = DEFAULT_KMS_REGION;
+      this.credentialsProvider = credentialsProvider;
     }
 
     /**

@@ -67,10 +67,8 @@ public class DLPTextToBigQueryStreamingIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException {
-    bigQueryClient =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
-    dlpResourceManager =
-        DlpResourceManager.builder(PROJECT).setCredentialsProvider(credentialsProvider).build();
+    bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
+    dlpResourceManager = DlpResourceManager.builder(PROJECT, credentialsProvider).build();
   }
 
   @After

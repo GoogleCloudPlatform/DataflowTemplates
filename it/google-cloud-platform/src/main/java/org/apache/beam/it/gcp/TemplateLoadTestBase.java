@@ -46,9 +46,9 @@ public class TemplateLoadTestBase extends LoadTestBase {
               getClass()));
     } else if (templateAnnotations[0].flexContainerName() != null
         && !templateAnnotations[0].flexContainerName().isEmpty()) {
-      return FlexTemplateClient.builder().setCredentials(CREDENTIALS).build();
+      return FlexTemplateClient.builder(CREDENTIALS).build();
     } else {
-      return ClassicTemplateClient.builder().setCredentials(CREDENTIALS).build();
+      return ClassicTemplateClient.builder(CREDENTIALS).build();
     }
   }
 

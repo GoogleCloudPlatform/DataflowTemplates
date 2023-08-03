@@ -23,6 +23,7 @@ import com.google.auth.Credentials;
 import org.apache.beam.it.common.TestProperties;
 import org.junit.Before;
 
+@SuppressWarnings("nullness")
 public abstract class GCPBaseIT {
   protected static final String PROJECT = TestProperties.project();
   protected static final String REGION = TestProperties.region();

@@ -84,9 +84,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   @Before
   public void setUp() {
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT).setCredentials(credentials).build();
-    kmsResourceManager =
-        KMSResourceManager.builder(PROJECT).setCredentialsProvider(credentialsProvider).build();
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
+    kmsResourceManager = KMSResourceManager.builder(PROJECT, credentialsProvider).build();
   }
 
   @After

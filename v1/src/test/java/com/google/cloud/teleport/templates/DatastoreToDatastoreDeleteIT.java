@@ -48,7 +48,7 @@ public final class DatastoreToDatastoreDeleteIT extends TemplateTestBase {
   @Before
   public void setup() {
     datastoreResourceManager =
-        DatastoreResourceManager.builder(PROJECT, testId).credentials(credentials).build();
+        DatastoreResourceManager.builder(PROJECT, testId, credentials).build();
   }
 
   @After

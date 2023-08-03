@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -79,9 +80,10 @@ public class BigtableResourceManager implements ResourceManager {
   private final String instanceId;
   private final BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory;
 
-  private List<String> createdTables;
-
-  private List<String> createdAppProfiles;
+  // List to store created tables for static RM
+  private final List<String> createdTables;
+  // List to store created app profiles for static RM
+  private final List<String> createdAppProfiles;
 
   private boolean hasInstance;
   private final boolean usingStaticInstance;
@@ -93,12 +95,14 @@ public class BigtableResourceManager implements ResourceManager {
   @VisibleForTesting
   BigtableResourceManager(
       BigtableResourceManager.Builder builder,
-      BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory)
+      @Nullable BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory)
       throws BigtableResourceManagerException, IOException {
 
     // Check that the project ID conforms to GCP standards
     checkValidProjectId(builder.projectId);
     this.projectId = builder.projectId;
+    this.createdTables = new ArrayList<>();
+    this.createdAppProfiles = new ArrayList<>();
 
     // Check if RM was configured to use static Bigtable instance.
     if (builder.useStaticInstance) {
@@ -107,9 +111,7 @@ public class BigtableResourceManager implements ResourceManager {
             "This manager was configured to use a static resource, but the instanceId was not properly set.");
       }
       this.instanceId = builder.instanceId;
-      // List to store created tables and app profiles for static RM
-      this.createdTables = new ArrayList<>();
-      this.createdAppProfiles = new ArrayList<>();
+      this.hasInstance = true;
     } else {
       if (builder.instanceId != null) {
         throw new BigtableResourceManagerException(
@@ -117,8 +119,8 @@ public class BigtableResourceManager implements ResourceManager {
       }
       // Generate instance id based on given test id.
       this.instanceId = generateInstanceId(builder.testId);
+      this.hasInstance = false;
     }
-    this.hasInstance = false;
     this.usingStaticInstance = builder.useStaticInstance;
 
     if (bigtableResourceManagerClientFactory != null) {
@@ -153,9 +155,9 @@ public class BigtableResourceManager implements ResourceManager {
     }
   }
 
-  public static BigtableResourceManager.Builder builder(String testId, String projectId)
-      throws IOException {
-    return new BigtableResourceManager.Builder(testId, projectId);
+  public static BigtableResourceManager.Builder builder(
+      String testId, String projectId, CredentialsProvider credentialsProvider) {
+    return new BigtableResourceManager.Builder(testId, projectId, credentialsProvider);
   }
 
   /**
@@ -193,30 +195,26 @@ public class BigtableResourceManager implements ResourceManager {
           "Instance " + instanceId + " already exists for project " + projectId + ".");
     }
 
-    if (usingStaticInstance) {
-      LOG.info("Skipping instance creation. Static instance is used: {}", instanceId);
-    } else {
-      LOG.info("Creating instance {} in project {}.", instanceId, projectId);
+    LOG.info("Creating instance {} in project {}.", instanceId, projectId);
 
-      // Create instance request object and add all the given clusters to the request
-      CreateInstanceRequest request = CreateInstanceRequest.of(instanceId);
-      for (BigtableResourceManagerCluster cluster : clusters) {
-        request.addCluster(
-            cluster.clusterId(), cluster.zone(), cluster.numNodes(), cluster.storageType());
-      }
+    // Create instance request object and add all the given clusters to the request
+    CreateInstanceRequest request = CreateInstanceRequest.of(instanceId);
+    for (BigtableResourceManagerCluster cluster : clusters) {
+      request.addCluster(
+          cluster.clusterId(), cluster.zone(), cluster.numNodes(), cluster.storageType());
+    }
 
-      // Send the instance request to Google Cloud
-      try (BigtableInstanceAdminClient instanceAdminClient =
-          bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
-        instanceAdminClient.createInstance(request);
-      } catch (Exception e) {
-        throw new BigtableResourceManagerException(
-            "Failed to create instance " + instanceId + ".", e);
-      }
-
-      LOG.info("Successfully created instance {}.", instanceId);
+    // Send the instance request to Google Cloud
+    try (BigtableInstanceAdminClient instanceAdminClient =
+        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
+      instanceAdminClient.createInstance(request);
+    } catch (Exception e) {
+      throw new BigtableResourceManagerException(
+          "Failed to create instance " + instanceId + ".", e);
     }
     hasInstance = true;
+
+    LOG.info("Successfully created instance {}.", instanceId);
   }
 
   /**
@@ -264,10 +262,7 @@ public class BigtableResourceManager implements ResourceManager {
    */
   public synchronized void createTable(String tableId, Iterable<String> columnFamilies)
       throws BigtableResourceManagerException {
-    BigtableTableSpec spec = new BigtableTableSpec();
-    spec.setColumnFamilies(columnFamilies);
-    spec.setMaxAge(Duration.ofHours(1));
-    createTable(tableId, spec);
+    createTable(tableId, columnFamilies, Duration.ofHours(1));
   }
 
   /**
@@ -492,7 +487,7 @@ public class BigtableResourceManager implements ResourceManager {
    *     up, if the manager object has no instance, if the table does not exist or if there is an
    *     IOException when attempting to retrieve the bigtable data client.
    */
-  public synchronized ImmutableList<Row> readTable(String tableId, Long limit)
+  public synchronized ImmutableList<Row> readTable(String tableId, @Nullable Long limit)
       throws BigtableResourceManagerException {
     checkHasInstance();
     checkHasTable(tableId);
@@ -575,13 +570,15 @@ public class BigtableResourceManager implements ResourceManager {
 
     private final String testId;
     private final String projectId;
-    private String instanceId;
+    private @Nullable String instanceId;
     private boolean useStaticInstance;
     private CredentialsProvider credentialsProvider;
 
-    private Builder(String testId, String projectId) {
+    private Builder(String testId, String projectId, CredentialsProvider credentialsProvider) {
       this.testId = testId;
       this.projectId = projectId;
+      this.credentialsProvider = credentialsProvider;
+      this.instanceId = null;
     }
 
     /**

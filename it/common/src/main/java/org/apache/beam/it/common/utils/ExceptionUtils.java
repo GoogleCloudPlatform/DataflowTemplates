@@ -17,6 +17,8 @@
  */
 package org.apache.beam.it.common.utils;
 
+import javax.annotation.Nullable;
+
 /** Utility class for handling exceptions in tests or resource managers. */
 public class ExceptionUtils {
 
@@ -27,7 +29,7 @@ public class ExceptionUtils {
    * @param message Message to search for.
    * @return true if the message is found in the exception or any of the causes, false otherwise.
    */
-  public static boolean containsMessage(Throwable exception, String message) {
+  public static boolean containsMessage(@Nullable Throwable exception, String message) {
     if (exception == null) {
       return false;
     }
@@ -46,7 +48,8 @@ public class ExceptionUtils {
    * @param type Type to search for.
    * @return true if the type is found in the exception or any of the causes, false otherwise.
    */
-  public static boolean containsType(Throwable exception, Class<? extends Throwable> type) {
+  public static boolean containsType(
+      @Nullable Throwable exception, Class<? extends Throwable> type) {
     if (exception == null) {
       return false;
     }

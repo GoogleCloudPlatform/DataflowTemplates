@@ -47,6 +47,7 @@ public class MSSQLResourceManager
 
   private boolean initialized;
 
+  @SuppressWarnings("nullness")
   private MSSQLResourceManager(Builder builder) {
     super(
         new DefaultMSSQLServerContainer<>(
@@ -134,6 +135,7 @@ public class MSSQLResourceManager
     private final String databaseName;
     private final boolean usingStaticDatabase;
 
+    @SuppressWarnings("nullness")
     DefaultMSSQLServerContainer(
         DockerImageName dockerImageName, String databaseName, boolean usingStaticDatabase) {
       super(dockerImageName);
@@ -165,6 +167,7 @@ public class MSSQLResourceManager
     }
 
     @Override
+    @SuppressWarnings("nullness")
     public boolean equals(Object o) {
       return super.equals(o);
     }

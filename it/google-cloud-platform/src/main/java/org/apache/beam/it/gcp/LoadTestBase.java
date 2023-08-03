@@ -28,6 +28,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.monitoring.v3.TimeInterval;
 import com.google.protobuf.util.Timestamps;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
@@ -59,6 +60,9 @@ import org.slf4j.LoggerFactory;
 
 /** Base class for performance tests. It provides helper methods for common operations. */
 @RunWith(JUnit4.class)
+@SuppressWarnings({
+  "nullness" // TODO(https://github.com/apache/beam/issues/27438)
+})
 public abstract class LoadTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(LoadTestBase.class);
   // Dataflow resources cost factors (showing us-central-1 pricing).
@@ -79,8 +83,13 @@ public abstract class LoadTestBase {
   protected static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   protected static final CredentialsProvider CREDENTIALS_PROVIDER =
       FixedCredentialsProvider.create(CREDENTIALS);
+
+  @SuppressFBWarnings("MS_PKGPROTECT")
   protected static String project;
+
+  @SuppressFBWarnings("MS_PKGPROTECT")
   protected static String region;
+
   protected MonitoringClient monitoringClient;
   protected PipelineLauncher pipelineLauncher;
   protected PipelineOperator pipelineOperator;
@@ -99,11 +108,11 @@ public abstract class LoadTestBase {
       };
 
   @Before
+  @SuppressFBWarnings("ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD")
   public void setUp() throws IOException {
     project = TestProperties.project();
     region = TestProperties.region();
-    monitoringClient =
-        MonitoringClient.builder().setCredentialsProvider(CREDENTIALS_PROVIDER).build();
+    monitoringClient = MonitoringClient.builder(CREDENTIALS_PROVIDER).build();
     pipelineLauncher = launcher();
     pipelineOperator = new PipelineOperator(pipelineLauncher);
   }
@@ -128,9 +137,8 @@ public abstract class LoadTestBase {
       // either use the user specified project for exporting, or the same project
       String exportProject = MoreObjects.firstNonNull(TestProperties.exportProject(), project);
       BigQueryResourceManager bigQueryResourceManager =
-          BigQueryResourceManager.builder(testName, exportProject)
+          BigQueryResourceManager.builder(testName, exportProject, CREDENTIALS)
               .setDatasetId(TestProperties.exportDataset())
-              .setCredentials(CREDENTIALS)
               .build();
       // exporting metrics to bigQuery table
       Map<String, Object> rowContent = new HashMap<>();

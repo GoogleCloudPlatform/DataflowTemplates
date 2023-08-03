@@ -149,6 +149,7 @@ public interface JDBCResourceManager extends ResourceManager {
      *
      * @return this schema object as a SQL statement.
      */
+    @SuppressWarnings("nullness")
     public String toSqlStatement() {
       StringBuilder sql = new StringBuilder(idColumn + " " + columns.get(idColumn));
       if (!columns.get(idColumn).toUpperCase().contains(" NOT NULL")) {

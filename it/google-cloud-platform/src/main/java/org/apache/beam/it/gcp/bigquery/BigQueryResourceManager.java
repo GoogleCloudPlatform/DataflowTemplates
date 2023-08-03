@@ -51,6 +51,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The class is thread-safe.
  */
+@SuppressWarnings({
+  "nullness" // TODO(https://github.com/apache/beam/issues/27438)
+})
 public final class BigQueryResourceManager implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryResourceManager.class);
@@ -80,6 +83,7 @@ public final class BigQueryResourceManager implements ResourceManager {
       dataset = getDatasetIfExists(this.datasetId);
     } else {
       this.datasetId = BigQueryResourceManagerUtils.generateDatasetId(builder.testId);
+      this.dataset = null;
     }
   }
 
@@ -90,8 +94,8 @@ public final class BigQueryResourceManager implements ResourceManager {
     this.bigQuery = bigQuery;
   }
 
-  public static BigQueryResourceManager.Builder builder(String testId, String projectId) {
-    return new BigQueryResourceManager.Builder(testId, projectId);
+  public static Builder builder(String testId, String projectId, Credentials credentials) {
+    return new Builder(testId, projectId, credentials);
   }
 
   public String getProjectId() {
@@ -472,9 +476,11 @@ public final class BigQueryResourceManager implements ResourceManager {
     private String datasetId;
     private Credentials credentials;
 
-    private Builder(String testId, String projectId) {
+    private Builder(String testId, String projectId, Credentials credentials) {
       this.testId = testId;
       this.projectId = projectId;
+      this.datasetId = null;
+      this.credentials = credentials;
     }
 
     public Builder setDatasetId(String datasetId) {

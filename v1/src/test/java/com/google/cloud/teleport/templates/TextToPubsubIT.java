@@ -51,9 +51,7 @@ public class TextToPubsubIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
   @After

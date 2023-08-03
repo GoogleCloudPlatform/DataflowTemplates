@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import org.apache.beam.it.truthmatchers.RecordsSubject;
 import org.bson.Document;
 
@@ -59,8 +58,7 @@ public class MongoDBAsserts {
    * @param documents List of Documents in MongoDB {@link Document} format to use in the comparison.
    * @return Truth Subject to chain assertions.
    */
-  public static RecordsSubject assertThatMongoDBDocuments(
-      @Nullable Collection<Document> documents) {
+  public static RecordsSubject assertThatMongoDBDocuments(Collection<Document> documents) {
     return assertThatRecords(mongoDBDocumentsToRecords(documents));
   }
 }

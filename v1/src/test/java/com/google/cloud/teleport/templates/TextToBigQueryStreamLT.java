@@ -90,12 +90,9 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
   @Before
   public void setup() throws IOException {
     bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, project).setCredentials(CREDENTIALS).build();
+        BigQueryResourceManager.builder(testName, project, CREDENTIALS).build();
 
-    gcsClient =
-        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
-            .setCredentials(CREDENTIALS)
-            .build();
+    gcsClient = GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR, CREDENTIALS).build();
     // upload schema files and save path
     jsonPath =
         getFullGcsPath(

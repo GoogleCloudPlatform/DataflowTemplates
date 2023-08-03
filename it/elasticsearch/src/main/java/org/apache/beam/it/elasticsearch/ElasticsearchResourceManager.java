@@ -17,12 +17,15 @@
  */
 package org.apache.beam.it.elasticsearch;
 
+import static org.apache.beam.it.elasticsearch.ElasticsearchUtils.checkValidIndexName;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.testcontainers.TestContainerResourceManager;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
@@ -77,26 +80,24 @@ public class ElasticsearchResourceManager extends TestContainerResourceManager<G
   private final String connectionString;
   private final List<String> managedIndexNames = new ArrayList<>();
 
-  private ElasticsearchResourceManager(ElasticsearchResourceManager.Builder builder) {
+  private ElasticsearchResourceManager(Builder builder) {
     this(
         /* elasticsearchClient= */ null,
-        builder.useStaticContainer
-            ? null
-            : new ElasticsearchContainer(
-                DockerImageName.parse(builder.containerImageName)
-                    .withTag(builder.containerImageTag)),
+        new ElasticsearchContainer(
+            DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
         builder);
   }
 
   @VisibleForTesting
+  @SuppressWarnings("nullness")
   ElasticsearchResourceManager(
-      RestHighLevelClient elasticsearchClient,
+      @Nullable RestHighLevelClient elasticsearchClient,
       ElasticsearchContainer container,
-      ElasticsearchResourceManager.Builder builder) {
+      Builder builder) {
     super(container, builder);
 
     this.connectionString =
-        "http://" + this.getHost() + ":" + container.getMappedPort(ELASTICSEARCH_INTERNAL_PORT);
+        "http://" + this.getHost() + ":" + this.getPort(ELASTICSEARCH_INTERNAL_PORT);
 
     RestClientBuilder restClientBuilder =
         RestClient.builder(HttpHost.create(container.getHttpHostAddress()));
@@ -106,8 +107,8 @@ public class ElasticsearchResourceManager extends TestContainerResourceManager<G
             : new RestHighLevelClient(restClientBuilder);
   }
 
-  public static ElasticsearchResourceManager.Builder builder(String testId) {
-    return new ElasticsearchResourceManager.Builder(testId);
+  public static Builder builder(String testId) {
+    return new Builder(testId);
   }
 
   /** Returns the URI connection string to the Elasticsearch service. */
@@ -117,7 +118,7 @@ public class ElasticsearchResourceManager extends TestContainerResourceManager<G
 
   private synchronized boolean indexExists(String indexName) throws IOException {
     // Check index name
-    ElasticsearchUtils.checkValidIndexName(indexName);
+    checkValidIndexName(indexName);
 
     return elasticsearchClient
         .indices()

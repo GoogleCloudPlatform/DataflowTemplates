@@ -59,9 +59,7 @@ public class BulkCompressorLT extends TemplateLoadTestBase {
   public void setup() {
     // Set up resource managers
     artifactClient =
-        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR)
-            .setCredentials(CREDENTIALS)
-            .build();
+        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR, CREDENTIALS).build();
   }
 
   @After

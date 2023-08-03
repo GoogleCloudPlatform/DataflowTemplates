@@ -70,9 +70,7 @@ public final class PubsubToKafkaIT extends TemplateTestBase {
   public void setup() throws IOException {
 
     pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
 
     kafkaResourceManager =
         KafkaResourceManager.builder(testName).setHost(TestProperties.hostIp()).build();
