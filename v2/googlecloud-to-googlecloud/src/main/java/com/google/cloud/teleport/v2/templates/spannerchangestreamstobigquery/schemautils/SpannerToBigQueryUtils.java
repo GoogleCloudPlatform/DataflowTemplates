@@ -64,6 +64,8 @@ public class SpannerToBigQueryUtils {
       bigQueryField.setType("JSON");
     } else if (spannerType.equals(Type.array(Type.numeric()))) {
       bigQueryField.setType("NUMERIC");
+    } else if (spannerType.equals(Type.array(Type.pgJsonb()))) {
+      bigQueryField.setType("JSON");
     } else if (spannerType.equals(Type.array(Type.string()))) {
       bigQueryField.setType("STRING");
     } else if (spannerType.equals(Type.array(Type.timestamp()))) {
@@ -97,6 +99,9 @@ public class SpannerToBigQueryUtils {
           break;
         case NUMERIC:
           bigQueryType = StandardSQLTypeName.NUMERIC;
+          break;
+        case PG_JSONB:
+          bigQueryType = StandardSQLTypeName.JSON;
           break;
         case STRING:
           bigQueryType = StandardSQLTypeName.STRING;
@@ -162,6 +167,8 @@ public class SpannerToBigQueryUtils {
       return removeNulls(resultSet.getJsonList(columnName));
     } else if (columnType.equals(Type.array(Type.numeric()))) {
       return removeNulls(resultSet.getBigDecimalList(columnName));
+    } else if (columnType.equals(Type.array(Type.pgJsonb()))) {
+      return removeNulls(resultSet.getPgJsonbList(columnName));
     } else if (columnType.equals(Type.array(Type.string()))) {
       return removeNulls(resultSet.getStringList(columnName));
     } else if (columnType.equals(Type.array(Type.timestamp()))) {
@@ -185,6 +192,8 @@ public class SpannerToBigQueryUtils {
           return resultSet.getJson(columnName);
         case NUMERIC:
           return resultSet.getBigDecimal(columnName);
+        case PG_JSONB:
+          return resultSet.getPgJsonb(columnName);
         case STRING:
           return resultSet.getString(columnName);
         case TIMESTAMP:
@@ -217,6 +226,7 @@ public class SpannerToBigQueryUtils {
           || columnType.equals(Type.array(Type.int64()))
           || columnType.equals(Type.array(Type.json()))
           || columnType.equals(Type.array(Type.numeric()))
+          || columnType.equals(Type.array(Type.pgJsonb()))
           || columnType.equals(Type.array(Type.string()))
           || columnType.equals(Type.array(Type.timestamp()))) {
         JSONArray jsonArray = newValuesJsonObject.getJSONArray(columnName);
