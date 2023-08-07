@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.BigtableChangeStreamsToHBase",
+  "classPath": "/template/bigtable-changestreams-to-hbase/bigtable-changestreams-to-hbase-conscrypt.jar:template/bigtable-changestreams-to-hbase/*:/template/bigtable-changestreams-to-hbase/libs/*:/template/bigtable-changestreams-to-hbase/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"bigtable_changestreams_to_hbase\"}"
+  }
+}
