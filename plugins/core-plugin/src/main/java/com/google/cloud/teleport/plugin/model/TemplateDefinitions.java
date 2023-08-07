@@ -230,7 +230,10 @@ public class TemplateDefinitions {
       }
 
       // Set the default value, if any
-      parameter.setDefaultValue(getDefault(method.getDefiningMethod()));
+      Object defaultVal = getDefault(method.getDefiningMethod());
+      if (defaultVal != null) {
+        parameter.setDefaultValue(String.valueOf(defaultVal));
+      }
 
       if (parameterNames.add(parameter.getName())) {
         metadata.getParameters().add(parameter);

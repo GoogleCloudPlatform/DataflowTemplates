@@ -34,7 +34,7 @@ public class ImageSpecParameter {
   private List<String> regexes;
   private List<ImageSpecParameterEnumOption> enumOptions;
   private ImageSpecParameterType paramType;
-  private Object defaultValue;
+  private String defaultValue;
 
   public String getName() {
     return name;
@@ -100,11 +100,11 @@ public class ImageSpecParameter {
     return isOptional;
   }
 
-  public Object getDefaultValue() {
+  public String getDefaultValue() {
     return defaultValue;
   }
 
-  public void setDefaultValue(Object defaultValue) {
+  public void setDefaultValue(String defaultValue) {
     this.defaultValue = defaultValue;
   }
 
