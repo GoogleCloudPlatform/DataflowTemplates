@@ -16,9 +16,9 @@
 package com.google.cloud.teleport.it.datadog.conditions;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.it.conditions.ConditionCheck;
 import com.google.cloud.teleport.it.datadog.DatadogResourceManager;
 import javax.annotation.Nullable;
+import org.apache.beam.it.conditions.ConditionCheck;
 
 /** ConditionCheck to validate if Datadog has received a certain amount of events. */
 @AutoValue

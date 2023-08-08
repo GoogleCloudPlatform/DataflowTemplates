@@ -16,15 +16,15 @@
 package com.google.cloud.teleport.it.datadog.matchers;
 
 import static com.google.cloud.teleport.it.datadog.DatadogResourceManagerUtils.datadogEntryToMap;
-import static com.google.cloud.teleport.it.truthmatchers.PipelineAsserts.assertThatRecords;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords;
 
 import com.google.cloud.teleport.it.datadog.DatadogLogEntry;
-import com.google.cloud.teleport.it.truthmatchers.RecordsSubject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
+import org.apache.beam.it.truthmatchers.RecordsSubject;
 
 /** Assert utilities for Datadog tests. */
 public class DatadogAsserts {
