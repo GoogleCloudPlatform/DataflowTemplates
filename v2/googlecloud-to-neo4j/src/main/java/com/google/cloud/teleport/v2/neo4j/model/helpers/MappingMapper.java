@@ -23,8 +23,6 @@ import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -32,10 +30,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/** Helper object for parsing transposed field mappings (ie. strings, indexed, longs, etc.). */
-public class TransposedMappingMapper {
-
-  private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+/** Helper object for parsing field mappings (ie. strings, indexed, longs, etc.). */
+public class MappingMapper {
 
   public static List<Mapping> parseMappings(Target target, JSONObject mappingsObject) {
     TargetType type = target.getType();
@@ -341,11 +337,12 @@ public class TransposedMappingMapper {
   }
 
   private static void addMapping(List<Mapping> mappings, Mapping mapping) {
-    if (!StringUtils.isEmpty(mapping.getField())) {
+    String field = mapping.getField();
+    if (!StringUtils.isEmpty(field)) {
       for (Mapping existingMapping : mappings) {
-        if (existingMapping.getField() != null
-            && existingMapping.getField().equals(mapping.getField())) {
-          throw new RuntimeException("Duplicate mapping: " + gson.toJson(mapping));
+        if (existingMapping.getField() != null && existingMapping.getField().equals(field)) {
+          throw new RuntimeException(
+              String.format("Duplicate mapping: field %s has already been declared", field));
         }
       }
     }

@@ -51,7 +51,7 @@ public class TargetMapper {
   private static void parseMappingsObject(Target target, JSONObject targetObj) {
     parseHeader(target, targetObj);
     List<Mapping> mappings =
-        TransposedMappingMapper.parseMappings(target, targetObj.getJSONObject("mappings"));
+        MappingMapper.parseMappings(target, targetObj.getJSONObject("mappings"));
     for (Mapping mapping : mappings) {
       addMapping(target, mapping);
     }
