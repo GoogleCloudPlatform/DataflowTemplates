@@ -274,20 +274,12 @@ public class ModelUtils {
   public static List<String> getStaticLabels(FragmentType fragmentType, Target target) {
     List<String> labels = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
-      if (m.getFragmentType() != fragmentType) {
+      if (m.getFragmentType() != fragmentType || m.getRole() != RoleType.label) {
         continue;
       }
-      if (m.getLabels().size() > 0) {
-        labels.addAll(m.getLabels());
-      } else if (m.getRole() == RoleType.label) {
-        if (StringUtils.isNotEmpty(m.getConstant())) {
-          labels.add(m.getConstant());
-        }
-        // we cannot index on dynamic labels.  These would need to happen with a pre-transform
-        // action
-        // dynamic labels not handled here
-        // labels.add(prefix+"."+m.field);
-
+      String labelConstantValue = m.getConstant();
+      if (StringUtils.isNotEmpty(labelConstantValue)) {
+        labels.add(labelConstantValue);
       }
     }
     return labels;

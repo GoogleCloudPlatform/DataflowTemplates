@@ -60,57 +60,36 @@
   },
   "targets": [
     {
-      "name": "Purchase Edges",
-      "type": "edge",
-      "mode": "append",
-      "edge_nodes_match_mode": "merge",
-      "source": "1k orders inline",
-      "transform": {
-        "group": false,
-        "order_by": "product_name ASC",
-        "limit": -1
-      },
-      "mappings": [
-        {
-          "constant": "PURCHASES",
-          "role": "type",
-          "fragment": "rel"
+      "edge": {
+        "name": "Purchase Relationships",
+        "mode": "append",
+        "edge_nodes_match_mode": "merge",
+        "source": "1k orders inline",
+        "transform": {
+          "order_by": "product_name ASC",
+          "limit": -1
         },
-        {
-          "constant": "Customer",
-          "role": "label",
-          "fragment": "source"
-        },
-        {
-          "constant": "Product",
-          "role": "label",
-          "fragment": "target"
-        },
-        {
-          "field": "customer_id",
-          "name": "customerId",
-          "role": "key",
-          "fragment": "source",
-          "description": "",
-          "type": "String"
-        },
-        {
-          "field": "product_id",
-          "name": "productId",
-          "role": "key",
-          "fragment": "target",
-          "description": "",
-          "type": "Integer"
-        },
-        {
-          "field": "order_id",
-          "name": "orderId",
-          "fragment": "rel",
-          "role": "key",
-          "description": "Unique order id",
-          "type": "Integer"
+        "mappings": {
+          "type": "\"PURCHASES\"",
+          "source": {
+            "label": "\"Customer\"",
+            "key": {
+              "customer_id": "customerId"
+            }
+          },
+          "target": {
+            "label": "\"Product\"",
+            "key": {
+              "product_id": "productId"
+            }
+          },
+          "properties": {
+            "keys": {
+              "order_id": "orderId"
+            }
+          }
         }
-      ]
+      }
     }
   ]
 }

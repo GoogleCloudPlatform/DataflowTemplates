@@ -39,8 +39,11 @@ public class TargetMapper {
       target.setType(TargetType.edge);
       parseMappingsObject(target, targetObj.getJSONObject("edge"));
     } else {
-      target.setType(TargetType.valueOf(targetObj.getString("type")));
-      parseMappingsArray(target, targetObj);
+      String error =
+          String.format(
+              "Expected target JSON to have top-level \"node\" or \"edge\" field, but found fields: \"%s\"",
+              String.join("\", \"", targetObj.keySet()));
+      throw new IllegalArgumentException(error);
     }
     return target;
   }
@@ -51,16 +54,6 @@ public class TargetMapper {
         TransposedMappingMapper.parseMappings(target, targetObj.getJSONObject("mappings"));
     for (Mapping mapping : mappings) {
       addMapping(target, mapping);
-    }
-  }
-
-  public static void parseMappingsArray(Target target, JSONObject targetObj) {
-
-    parseHeader(target, targetObj);
-    JSONArray mappingsArray = targetObj.getJSONArray("mappings");
-    for (int i = 0; i < mappingsArray.length(); i++) {
-      JSONObject mappingObj = mappingsArray.getJSONObject(i);
-      addMapping(target, VerboseMappingMapper.fromJsonObject(mappingObj));
     }
   }
 

@@ -38,12 +38,18 @@ public class TransposedMappingMapper {
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
   public static List<Mapping> parseMappings(Target target, JSONObject mappingsObject) {
-    if (target.getType() == TargetType.node) {
-      return parseNode(mappingsObject);
-    } else if (target.getType() == TargetType.edge) {
-      return parseEdge(mappingsObject);
-    } else {
-      return new ArrayList<>();
+    TargetType type = target.getType();
+    switch (type) {
+      case node:
+        return parseNode(mappingsObject);
+      case edge:
+        return parseEdge(mappingsObject);
+      default:
+        String error =
+            String.format(
+                "Unknown target type: only \"node\" and \"edge\" types are supported, got: %s",
+                type);
+        throw new IllegalArgumentException(error);
     }
   }
 
@@ -85,7 +91,6 @@ public class TransposedMappingMapper {
 
   public static List<Mapping> parseEdge(JSONObject edgeMappingsObject) {
     List<Mapping> mappings = new ArrayList<>();
-    // type
     if (edgeMappingsObject.has("type")) {
       FieldNameTuple typeTuple =
           createFieldNameTuple(
@@ -95,36 +100,11 @@ public class TransposedMappingMapper {
     }
 
     if (edgeMappingsObject.has("source")) {
-      JSONObject sourceObj = edgeMappingsObject.getJSONObject("source");
-      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(sourceObj.get("key"));
-      for (FieldNameTuple keyTuple : keyTuples) {
-        Mapping keyMapping = new Mapping(FragmentType.source, RoleType.key, keyTuple);
-        mappings.add(keyMapping);
-      }
-
-      // support dynamic labels on source
-      List<FieldNameTuple> labels = getFieldAndNameTuples(sourceObj.get("label"));
-      for (FieldNameTuple f : labels) {
-        Mapping mapping = new Mapping(FragmentType.source, RoleType.label, f);
-        mapping.setIndexed(true);
-        addMapping(mappings, mapping);
-      }
+      mappings.addAll(parseEdgeNode(FragmentType.source, edgeMappingsObject));
     }
 
     if (edgeMappingsObject.has("target")) {
-      JSONObject targetObj = edgeMappingsObject.getJSONObject("target");
-      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(targetObj.get("key"));
-      for (FieldNameTuple keyTuple : keyTuples) {
-        Mapping keyMapping = new Mapping(FragmentType.target, RoleType.key, keyTuple);
-        mappings.add(keyMapping);
-      }
-
-      List<FieldNameTuple> labels = getFieldAndNameTuples(targetObj.get("label"));
-      for (FieldNameTuple f : labels) {
-        Mapping mapping = new Mapping(FragmentType.target, RoleType.label, f);
-        mapping.setIndexed(true);
-        addMapping(mappings, mapping);
-      }
+      mappings.addAll(parseEdgeNode(FragmentType.target, edgeMappingsObject));
     }
 
     if (edgeMappingsObject.has("keys")) {
@@ -141,15 +121,70 @@ public class TransposedMappingMapper {
     return mappings;
   }
 
+  private static List<Mapping> parseEdgeNode(
+      FragmentType fragmentType, JSONObject edgeMappingsObject) {
+    String fieldName = jsonPropertyNameForEdgeNode(fragmentType);
+    List<Mapping> mappings = new ArrayList<>();
+    JSONObject edgeNodeMapping = edgeMappingsObject.getJSONObject(fieldName);
+    if (!edgeNodeMapping.has("key") && !edgeNodeMapping.has("keys")) {
+      String error =
+          String.format(
+              "Edge node fragment of type %s should define a \"key\" or \"keys\" attribute. None found",
+              fragmentType);
+      throw new IllegalArgumentException(error);
+    }
+    if (edgeNodeMapping.has("key")) {
+      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(edgeNodeMapping.get("key"));
+      for (FieldNameTuple keyTuple : keyTuples) {
+        Mapping keyMapping = new Mapping(FragmentType.source, RoleType.key, keyTuple);
+        mappings.add(keyMapping);
+      }
+    }
+    if (edgeNodeMapping.has("keys")) {
+      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(edgeNodeMapping.get("keys"));
+      keyTuples.forEach(
+          keyTuple -> {
+            Mapping keyMapping = new Mapping(fragmentType, RoleType.key, keyTuple);
+            mappings.add(keyMapping);
+          });
+    }
+
+    List<FieldNameTuple> labels = getFieldAndNameTuples(edgeNodeMapping.get("label"));
+    for (FieldNameTuple f : labels) {
+      Mapping mapping = new Mapping(fragmentType, RoleType.label, f);
+      addMapping(mappings, mapping);
+    }
+    return mappings;
+  }
+
+  private static String jsonPropertyNameForEdgeNode(FragmentType fragmentType) {
+    switch (fragmentType) {
+      case source:
+        return "source";
+      case target:
+        return "target";
+      default:
+        String error =
+            String.format(
+                "Unexpected fragment type for edge mapping: expected \"source\" or \"target\", got: %s",
+                fragmentType);
+        throw new IllegalArgumentException(error);
+    }
+  }
+
   private static void parseProperties(
       JSONObject propertyMappingsObject, List<Mapping> mappings, FragmentType fragmentType) {
     if (propertyMappingsObject == null) {
       return;
     }
 
-    List<FieldNameTuple> uniques = new ArrayList();
+    List<FieldNameTuple> keys = new ArrayList<>();
+    List<FieldNameTuple> uniques = new ArrayList<>();
     List<FieldNameTuple> indexed = new ArrayList<>();
 
+    if (propertyMappingsObject.has("keys")) {
+      keys = getFieldAndNameTuples(propertyMappingsObject.get("keys"));
+    }
     if (propertyMappingsObject.has("unique")) {
       uniques = getFieldAndNameTuples(propertyMappingsObject.get("unique"));
     }
@@ -157,15 +192,23 @@ public class TransposedMappingMapper {
       indexed = getFieldAndNameTuples(propertyMappingsObject.get("indexed"));
     }
 
+    for (FieldNameTuple key : keys) {
+      Mapping mapping = new Mapping(fragmentType, RoleType.key, key);
+      addMapping(mappings, mapping);
+    }
+
+    // TODO: remove keys from uniques
     for (FieldNameTuple f : uniques) {
       Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
       addMapping(mappings, mapping);
-      mapping.setIndexed(indexed.contains(f));
+      mapping.setUnique(true);
     }
+
+    // TODO: remove keys and uniques from indexed since they're implicitly indexed
     for (FieldNameTuple f : indexed) {
       Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
       addMapping(mappings, mapping);
-      mapping.setUnique(uniques.contains(f));
+      mapping.setIndexed(true);
     }
     if (propertyMappingsObject.has("dates")) {
       List<FieldNameTuple> dates = getFieldAndNameTuples(propertyMappingsObject.get("dates"));
@@ -177,9 +220,7 @@ public class TransposedMappingMapper {
         addMapping(mappings, mapping);
       }
     }
-
     if (propertyMappingsObject.has("doubles")) {
-
       List<FieldNameTuple> numbers = getFieldAndNameTuples(propertyMappingsObject.get("doubles"));
       for (FieldNameTuple f : numbers) {
         Mapping mapping = new Mapping(fragmentType, RoleType.property, f);

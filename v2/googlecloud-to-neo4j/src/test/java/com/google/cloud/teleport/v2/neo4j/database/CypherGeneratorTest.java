@@ -136,8 +136,7 @@ public class CypherGeneratorTest {
 
   @Test
   public void generatesMultiLabelNodeKeyConstraintsWhenMergingEdgeNodes() {
-    JobSpec jobSpec =
-        JobSpecMapper.fromUri(SPEC_PATH + "/multi-label-single-pass-import.verbose.json");
+    JobSpec jobSpec = JobSpecMapper.fromUri(SPEC_PATH + "/multi-label-single-pass-import.json");
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     List<String> statements =
@@ -155,7 +154,7 @@ public class CypherGeneratorTest {
   @Test
   public void generatesMultiDistinctKeysNodeKeyConstraintsWhenMergingEdgeNodes() {
     JobSpec jobSpec =
-        JobSpecMapper.fromUri(SPEC_PATH + "/multi-distinct-keys-single-pass-import.verbose.json");
+        JobSpecMapper.fromUri(SPEC_PATH + "/multi-distinct-keys-single-pass-import.json");
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     List<String> statements =
