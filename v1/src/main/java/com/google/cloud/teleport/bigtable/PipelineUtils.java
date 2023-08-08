@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.bigtable;
 
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.SdkHarnessOptions;
 
 /** Utility class to set Pipeline Options. */
 final class PipelineUtils {
@@ -44,7 +44,7 @@ final class PipelineUtils {
      * with higher memory or reduce the parallelism on the workers (by setting
      * --numberOfWorkerHarnessThreads).
      */
-    SdkHarnessOptions debugOptions = options.as(SdkHarnessOptions.class);
+    DataflowPipelineOptions debugOptions = options.as(DataflowPipelineOptions.class);
     debugOptions.setGCThrashingPercentagePerPeriod(100.00);
 
     return debugOptions;
