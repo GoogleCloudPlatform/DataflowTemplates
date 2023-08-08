@@ -82,14 +82,15 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     if (cyphers.isEmpty()) {
       return;
     }
-    Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection);
-    LOG.info("Adding {} indices and constraints", cyphers.size());
-    for (String cypher : cyphers) {
-      LOG.info("Executing cypher: {}", cypher);
-      try {
-        neo4jDirectConnect.executeCypher(cypher);
-      } catch (Exception e) {
-        LOG.error("Error executing cypher: {}, {}", cypher, e.getMessage());
+    try (Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection)) {
+      LOG.info("Adding {} indices and constraints", cyphers.size());
+      for (String cypher : cyphers) {
+        LOG.info("Executing cypher: {}", cypher);
+        try {
+          neo4jDirectConnect.executeCypher(cypher);
+        } catch (Exception e) {
+          LOG.error("Error executing cypher: {}, {}", cypher, e.getMessage());
+        }
       }
     }
   }
