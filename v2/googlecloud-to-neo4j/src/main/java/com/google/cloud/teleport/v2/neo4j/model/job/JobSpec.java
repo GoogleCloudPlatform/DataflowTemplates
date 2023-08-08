@@ -32,24 +32,10 @@ public class JobSpec implements Serializable {
   private Config config = new Config();
   private final List<Action> actions = new ArrayList<>();
 
-  public List<Target> getActiveNodeTargetsBySource(String sourceName) {
+  public List<Target> getActiveTargetsBySourceAndType(String sourceName, TargetType type) {
     List<Target> targets = new ArrayList<>();
     for (Target target : this.targets) {
-      if (target.isActive()
-          && target.getType() == TargetType.node
-          && target.getSource().equals(sourceName)) {
-        targets.add(target);
-      }
-    }
-    return targets;
-  }
-
-  public List<Target> getActiveRelationshipTargetsBySource(String sourceName) {
-    List<Target> targets = new ArrayList<>();
-    for (Target target : this.targets) {
-      if (target.isActive()
-          && target.getType() == TargetType.edge
-          && target.getSource().equals(sourceName)) {
+      if (target.isActive() && target.getType() == type && target.getSource().equals(sourceName)) {
         targets.add(target);
       }
     }

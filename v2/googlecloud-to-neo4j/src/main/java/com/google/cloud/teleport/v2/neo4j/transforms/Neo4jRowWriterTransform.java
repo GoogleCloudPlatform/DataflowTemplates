@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
+import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
@@ -40,36 +41,45 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jRowWriterTransform.class);
   private final JobSpec jobSpec;
   private final ConnectionParams neoConnection;
-  private final TargetType targetType;
   private final Target target;
 
-  public Neo4jRowWriterTransform(
-      JobSpec jobSpec, ConnectionParams neoConnection, TargetType targetType, Target target) {
+  public Neo4jRowWriterTransform(JobSpec jobSpec, ConnectionParams neoConnection, Target target) {
     this.jobSpec = jobSpec;
     this.neoConnection = neoConnection;
-    this.targetType = targetType;
     this.target = target;
   }
 
   @NonNull
   @Override
   public PCollection<Row> expand(@NonNull PCollection<Row> input) {
-    createIndicesAndConstraints();
-
-    int batchSize = jobSpec.getConfig().getNodeBatchSize();
-    int parallelism = jobSpec.getConfig().getNodeParallelism();
-    if (target.getType() == TargetType.edge) {
-      batchSize = jobSpec.getConfig().getEdgeBatchSize();
-      parallelism = jobSpec.getConfig().getEdgeParallelism();
+    TargetType targetType = target.getType();
+    if (targetType != TargetType.custom) {
+      createIndicesAndConstraints();
     }
 
-    // data loading
-    String unwindCypher = CypherGenerator.getUnwindCreateCypher(target);
-    LOG.info("Unwind cypher: {}", unwindCypher);
+    Config config = jobSpec.getConfig();
+    int batchSize;
+    int parallelism;
+    switch (targetType) {
+      case node:
+        batchSize = config.getNodeBatchSize();
+        parallelism = config.getNodeParallelism();
+        break;
+      case edge:
+        batchSize = config.getEdgeBatchSize();
+        parallelism = config.getEdgeParallelism();
+        break;
+      case custom:
+        batchSize = config.getCustomQueryBatchSize();
+        parallelism = config.getCustomQueryParallelism();
+        break;
+      default:
+        throw new IllegalStateException(String.format("Unsupported target type: %s", targetType));
+    }
 
     Neo4jBlockingUnwindFn neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
-            neoConnection, unwindCypher, batchSize, false, "rows", getRowCastingFunction());
+            neoConnection, getCypherQuery(), batchSize, false, "rows", getRowCastingFunction());
 
     return input
         .apply("Create KV pairs", CreateKvTransform.of(parallelism))
@@ -95,13 +105,24 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     }
   }
 
+  private String getCypherQuery() {
+    if (target.getType() == TargetType.custom) {
+      String cypher = target.getCustomQuery();
+      LOG.info("Custom cypher query: {}", cypher);
+      return cypher;
+    }
+    String unwindCypher = CypherGenerator.getUnwindCreateCypher(target);
+    LOG.info("Unwind cypher: {}", unwindCypher);
+    return unwindCypher;
+  }
+
   private List<String> generateIndexAndConstraints() {
     if (target.getType() == TargetType.edge
         && target.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge) {
       return CypherGenerator.getEdgeNodeConstraintsCypherStatements(target);
     }
     return CypherGenerator.getIndexAndConstraintsCypherStatements(
-        targetType, jobSpec.getConfig(), target);
+        target.getType(), jobSpec.getConfig(), target);
   }
 
   private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {

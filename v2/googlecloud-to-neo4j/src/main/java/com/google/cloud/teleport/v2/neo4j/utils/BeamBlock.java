@@ -38,6 +38,7 @@ public class BeamBlock {
   private final List<PCollection<Row>> processActionQueue = new ArrayList<>();
   private final List<PCollection<Row>> nodeQueue = new ArrayList<>();
   private final List<PCollection<Row>> edgeQueue = new ArrayList<>();
+  private final List<PCollection<Row>> customQueue = new ArrayList<>();
   private final Map<String, PCollection<Row>> executeAfterNamedQueue = new HashMap<>();
   private final Map<String, PCollection<Row>> executionContexts = new HashMap<>();
   private PCollection<Row> defaultCollection;
@@ -54,18 +55,26 @@ public class BeamBlock {
       String name,
       PCollection<Row> blockingReturn,
       PCollection<Row> executionContext) {
-    if (artifactType == ArtifactType.action) {
-      if (preload) {
-        preloadActionQueue.add(blockingReturn);
-      } else {
-        processActionQueue.add(blockingReturn);
-      }
-    } else if (artifactType == ArtifactType.source) {
-      sourceQueue.add(blockingReturn);
-    } else if (artifactType == ArtifactType.node) {
-      nodeQueue.add(blockingReturn);
-    } else if (artifactType == ArtifactType.edge) {
-      edgeQueue.add(blockingReturn);
+    switch (artifactType) {
+      case action:
+        if (preload) {
+          preloadActionQueue.add(blockingReturn);
+        } else {
+          processActionQueue.add(blockingReturn);
+        }
+        break;
+      case source:
+        sourceQueue.add(blockingReturn);
+        break;
+      case node:
+        nodeQueue.add(blockingReturn);
+        break;
+      case edge:
+        edgeQueue.add(blockingReturn);
+        break;
+      case custom:
+        customQueue.add(blockingReturn);
+        break;
     }
     executeAfterNamedQueue.put(artifactType.name() + ":" + name, blockingReturn);
     executionContexts.put(artifactType.name() + ":" + name, executionContext);
@@ -97,6 +106,17 @@ public class BeamBlock {
     } else if (executeAfter == ActionExecuteAfter.edges
         || executeAfter == ActionExecuteAfter.loads) {
       waitOnQueues.addAll(edgeQueue);
+      if (waitOnQueues.isEmpty()) {
+        waitOnQueues.addAll(nodeQueue);
+      }
+      if (waitOnQueues.isEmpty()) {
+        waitOnQueues.addAll(sourceQueue);
+      }
+    } else if (executeAfter == ActionExecuteAfter.custom) {
+      waitOnQueues.addAll(customQueue);
+      if (waitOnQueues.isEmpty()) {
+        waitOnQueues.addAll(edgeQueue);
+      }
       if (waitOnQueues.isEmpty()) {
         waitOnQueues.addAll(nodeQueue);
       }

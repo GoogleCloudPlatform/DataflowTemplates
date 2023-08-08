@@ -25,7 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Target (node/edge) metadata. */
+/** Target metadata. */
 public class Target implements Serializable, Comparable<Target> {
 
   private String source = "";
@@ -43,17 +43,22 @@ public class Target implements Serializable, Comparable<Target> {
   private ActionExecuteAfter executeAfter;
   private String executeAfterName = "";
 
+  private String customQuery = "";
+
   public Target() {}
 
   @Override
   public int compareTo(Target o) {
     if (this.type == o.type) {
       return 0;
-    } else if (this.type == TargetType.edge && o.type == TargetType.node) {
-      return 1;
-    } else {
-      return -1;
     }
+    if (this.type == TargetType.custom) {
+      return 1;
+    }
+    if (this.type == TargetType.edge && o.type == TargetType.node) {
+      return 1;
+    }
+    return -1;
   }
 
   public String getSource() {
@@ -150,5 +155,13 @@ public class Target implements Serializable, Comparable<Target> {
 
   public void setExecuteAfterName(String executeAfterName) {
     this.executeAfterName = executeAfterName;
+  }
+
+  public String getCustomQuery() {
+    return customQuery;
+  }
+
+  public void setCustomQuery(String customQuery) {
+    this.customQuery = customQuery;
   }
 }

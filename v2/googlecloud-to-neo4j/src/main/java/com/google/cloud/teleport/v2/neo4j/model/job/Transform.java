@@ -72,4 +72,13 @@ public class Transform implements Serializable {
   public void setLimit(int limit) {
     this.limit = limit;
   }
+
+  public boolean isDefault() {
+    return sql.isEmpty()
+        && aggregations.isEmpty()
+        && !group
+        && orderBy.isEmpty()
+        && where.isEmpty()
+        && limit == -1;
+  }
 }
