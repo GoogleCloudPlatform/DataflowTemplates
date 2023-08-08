@@ -204,6 +204,18 @@ public class BigQueryConverters {
     Boolean getUseLegacySql();
 
     void setUseLegacySql(Boolean useLegacySql);
+
+    @TemplateParameter.Text(
+        order = 4,
+        optional = true,
+        regexes = {"[a-zA-Z0-9-]+"},
+        description = "BigQuery geographic location where the query job  will be executed.",
+        helpText =
+            "Needed when reading from an authorized view without underlying table's permission.",
+        example = "US")
+    String getQueryLocation();
+
+    void setQueryLocation(String query);
   }
 
   /**
@@ -323,13 +335,17 @@ public class BigQueryConverters {
               readFunction()
                   .fromQuery(options().getQuery())
                   .withTemplateCompatibility()
+                  .withQueryLocation(options().getQueryLocation())
                   .usingStandardSql());
         } else {
 
           LOG.info("Using Legacy SQL");
           return pipeline.apply(
               "ReadFromBigQueryWithQuery",
-              readFunction().fromQuery(options().getQuery()).withTemplateCompatibility());
+              readFunction()
+                  .fromQuery(options().getQuery())
+                  .withTemplateCompatibility()
+                  .withQueryLocation(options().getQueryLocation()));
         }
       }
     }
