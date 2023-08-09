@@ -15,10 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
-import com.google.api.services.bigquery.model.TableRow;
+import com.google.api.client.json.GenericJson;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueSanitizer;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.TransientColumn;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ChangelogColumn;
+import com.google.gson.Gson;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryStorageApiInsertError;
 
 /**
  * Class {@link BigQueryDeadLetterQueueSanitizer} cleans and prepares failed BigQuery inserts to be
@@ -26,20 +29,30 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
  * be a String unless your override formatMessage().
  */
 public final class BigQueryDeadLetterQueueSanitizer
-    extends DeadLetterQueueSanitizer<BigQueryInsertError, String> {
+    extends DeadLetterQueueSanitizer<BigQueryStorageApiInsertError, String> {
+  private static final ThreadLocal<Gson> gsonThreadLocal = ThreadLocal.withInitial(Gson::new);
 
   public BigQueryDeadLetterQueueSanitizer() {}
 
   @Override
-  public String getJsonMessage(BigQueryInsertError input) {
-    TableRow tableRow = input.getRow();
-    // Extract the original payload from the {@link TableRow}.
-    return (String)
-        tableRow.get(TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName());
+  public String getJsonMessage(BigQueryStorageApiInsertError input) {
+    // BQ returns final TableRow value it tried to write to BQ, but failed.
+    // At this point there is no access to Mod JSON
+    GenericJson tableRow = input.getRow();
+
+    Map<String, Object> filtered = new HashMap<>();
+
+    for (ChangelogColumn column : ChangelogColumn.values()) {
+      Object value = tableRow.get(column.getBqColumnName());
+      if (value != null) {
+        filtered.put(column.getBqColumnName(), value);
+      }
+    }
+    return gsonThreadLocal.get().toJson(filtered);
   }
 
   @Override
-  public String getErrorMessageJson(BigQueryInsertError input) {
-    return input.getError().toString();
+  public String getErrorMessageJson(BigQueryStorageApiInsertError input) {
+    return input.getErrorMessage();
   }
 }

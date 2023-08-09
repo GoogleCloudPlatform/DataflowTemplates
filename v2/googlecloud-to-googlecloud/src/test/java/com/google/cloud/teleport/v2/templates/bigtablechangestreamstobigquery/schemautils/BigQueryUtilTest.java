@@ -32,6 +32,7 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.mo
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import java.nio.charset.Charset;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Test;
@@ -56,7 +57,7 @@ public class BigQueryUtilTest {
 
     Mod setCell = getSetCellMod(getDefaultSourceInfo(), false);
     TableRow tableRow = new TableRow();
-    Assert.assertTrue(bigQuery.setTableRowFields(setCell, setCell.toJson(), tableRow));
+    Assert.assertTrue(bigQuery.setTableRowFields(setCell, tableRow));
 
     Assert.assertEquals("false", tableRow.get(ChangelogColumn.IS_GC.getBqColumnName()));
     Assert.assertEquals(
@@ -77,8 +78,7 @@ public class BigQueryUtilTest {
         tableRow.get(ChangelogColumn.COMMIT_TIMESTAMP.getBqColumnName()));
     Assert.assertEquals(
         "1970-01-01 00:03:51.243214", tableRow.get(ChangelogColumn.TIMESTAMP.getBqColumnName()));
-    Assert.assertEquals(
-        "AUTO", tableRow.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()));
+    Assert.assertNull(tableRow.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()));
     Assert.assertEquals(
         TestUtil.TEST_CBT_INSTANCE,
         tableRow.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()));
@@ -98,7 +98,7 @@ public class BigQueryUtilTest {
 
     Mod deleteCells = getDeleteCellsMod(getDefaultSourceInfo());
     TableRow tableRow = new TableRow();
-    Assert.assertTrue(bigQuery.setTableRowFields(deleteCells, deleteCells.toJson(), tableRow));
+    Assert.assertTrue(bigQuery.setTableRowFields(deleteCells, tableRow));
 
     Assert.assertEquals("false", tableRow.get(ChangelogColumn.IS_GC.getBqColumnName()));
     Assert.assertEquals(
@@ -123,8 +123,6 @@ public class BigQueryUtilTest {
     Assert.assertEquals(
         "1970-01-01 00:00:00.000001", tableRow.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()));
     Assert.assertEquals(
-        "AUTO", tableRow.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()));
-    Assert.assertEquals(
         TestUtil.TEST_CBT_INSTANCE,
         tableRow.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()));
     Assert.assertEquals(
@@ -146,16 +144,13 @@ public class BigQueryUtilTest {
     TableRow tableRowNotWritten = new TableRow();
 
     // Not written!
-    Assert.assertFalse(
-        bigQuery.setTableRowFields(
-            setIgnoredColumn, setIgnoredColumn.toJson(), tableRowNotWritten));
+    Assert.assertFalse(bigQuery.setTableRowFields(setIgnoredColumn, tableRowNotWritten));
 
     Mod setGoodColumn = getSetIgnoredColumnMod(getDefaultSourceInfo(), false);
     TableRow tableRowWritten = new TableRow();
 
     // Written!
-    Assert.assertTrue(
-        bigQuery.setTableRowFields(setGoodColumn, setGoodColumn.toJson(), tableRowWritten));
+    Assert.assertTrue(bigQuery.setTableRowFields(setGoodColumn, tableRowWritten));
   }
 
   @Test
@@ -171,17 +166,13 @@ public class BigQueryUtilTest {
     TableRow tableRowNotWritten = new TableRow();
 
     // Not written!
-    Assert.assertFalse(
-        bigQuery.setTableRowFields(
-            deleteFamilyIgnored, deleteFamilyIgnored.toJson(), tableRowNotWritten));
+    Assert.assertFalse(bigQuery.setTableRowFields(deleteFamilyIgnored, tableRowNotWritten));
 
     Mod deleteFamilyWritten = getDeleteIgnoredColumnFamily(getDefaultSourceInfo(), false);
     TableRow tableRowWritten = new TableRow();
 
     // Written
-    Assert.assertTrue(
-        bigQuery.setTableRowFields(
-            deleteFamilyWritten, deleteFamilyWritten.toJson(), tableRowWritten));
+    Assert.assertTrue(bigQuery.setTableRowFields(deleteFamilyWritten, tableRowWritten));
 
     Assert.assertNull(tableRowWritten.get(ChangelogColumn.IS_GC.getBqColumnName()));
     Assert.assertNull(tableRowWritten.get(ChangelogColumn.COLUMN.getBqColumnName()));
@@ -205,8 +196,6 @@ public class BigQueryUtilTest {
     Assert.assertNull(tableRowWritten.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()));
     Assert.assertNull(tableRowWritten.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()));
     Assert.assertEquals(
-        "AUTO", tableRowWritten.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()));
-    Assert.assertEquals(
         TestUtil.TEST_CBT_INSTANCE,
         tableRowWritten.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()));
     Assert.assertEquals(
@@ -229,10 +218,11 @@ public class BigQueryUtilTest {
     Mod setCellsMissingRK = getSetCellMod(getDefaultSourceInfo(), true);
     TableRow tableRowNotWritten = new TableRow();
     try {
-      bigQuery.setTableRowFields(setCellsMissingRK, setCellsMissingRK.toJson(), tableRowNotWritten);
+      bigQuery.setTableRowFields(setCellsMissingRK, tableRowNotWritten);
       Assert.fail("It should not be possible to process mutation without rowkey set");
     } catch (Exception e) {
-      Assert.assertEquals("JSONObject[\"ROW_KEY_BYTES\"] is not a string.", e.getMessage());
+      Assert.assertTrue(
+          StringUtils.contains(e.getMessage(), "JSONObject[\"ROW_KEY_BYTES\"] is not a string"));
     }
   }
 
@@ -250,7 +240,7 @@ public class BigQueryUtilTest {
 
     Mod setCell = getSetCellModNonUTFChars(getNonDefaultSourceInfo());
     TableRow tableRow = new TableRow();
-    Assert.assertTrue(bigQuery.setTableRowFields(setCell, setCell.toJson(), tableRow));
+    Assert.assertTrue(bigQuery.setTableRowFields(setCell, tableRow));
 
     Assert.assertEquals("false", tableRow.get(ChangelogColumn.IS_GC.getBqColumnName()));
     Assert.assertEquals("Б", tableRow.get(ChangelogColumn.COLUMN.getBqColumnName()));
@@ -270,8 +260,6 @@ public class BigQueryUtilTest {
     Assert.assertEquals(
         "1970-01-01 00:03:51.243214", tableRow.get(ChangelogColumn.TIMESTAMP.getBqColumnName()));
     Assert.assertEquals(
-        "AUTO", tableRow.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()));
-    Assert.assertEquals(
         TestUtil.TEST_CBT_INSTANCE,
         tableRow.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()));
     Assert.assertEquals(
@@ -290,7 +278,7 @@ public class BigQueryUtilTest {
 
     Mod setCell = getSetCellMod(getDefaultSourceInfo(), false);
     TableRow tableRow = new TableRow();
-    Assert.assertTrue(bigQuery.setTableRowFields(setCell, setCell.toJson(), tableRow));
+    Assert.assertTrue(bigQuery.setTableRowFields(setCell, tableRow));
 
     Assert.assertNull(tableRow.get(ChangelogColumn.IS_GC.getBqColumnName()));
     Assert.assertEquals(
@@ -313,8 +301,6 @@ public class BigQueryUtilTest {
     Assert.assertEquals(
         "" + TestUtil.TEST_TIMESTAMP, tableRow.get(ChangelogColumn.TIMESTAMP.getBqColumnName()));
     Assert.assertEquals(
-        "AUTO", tableRow.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()));
-    Assert.assertEquals(
         TestUtil.TEST_CBT_INSTANCE,
         tableRow.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()));
     Assert.assertEquals(
@@ -335,8 +321,7 @@ public class BigQueryUtilTest {
 
     Mod deleteCellsMod = getDeleteCellsMod(getDefaultSourceInfo());
     TableRow tableRow = new TableRow();
-    Assert.assertTrue(
-        bigQuery.setTableRowFields(deleteCellsMod, deleteCellsMod.toJson(), tableRow));
+    Assert.assertTrue(bigQuery.setTableRowFields(deleteCellsMod, tableRow));
 
     Assert.assertNull(tableRow.get(ChangelogColumn.IS_GC.getBqColumnName()));
     Assert.assertEquals(
@@ -357,8 +342,6 @@ public class BigQueryUtilTest {
     Assert.assertNull(tableRow.get(ChangelogColumn.TIMESTAMP.getBqColumnName()));
     Assert.assertEquals("-1", tableRow.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()));
     Assert.assertEquals("1", tableRow.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()));
-    Assert.assertEquals(
-        "AUTO", tableRow.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()));
     Assert.assertEquals(
         TestUtil.TEST_CBT_INSTANCE,
         tableRow.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()));

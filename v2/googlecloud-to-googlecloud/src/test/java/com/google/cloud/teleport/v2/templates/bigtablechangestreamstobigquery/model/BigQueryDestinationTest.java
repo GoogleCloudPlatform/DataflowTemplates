@@ -26,7 +26,7 @@ import org.junit.runners.JUnit4;
 
 /**
  * Test class for {@link
- * com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.BigQueryDynamicDestinationsTest}.
+ * com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination}.
  */
 @RunWith(JUnit4.class)
 @Category(IntegrationTest.class)

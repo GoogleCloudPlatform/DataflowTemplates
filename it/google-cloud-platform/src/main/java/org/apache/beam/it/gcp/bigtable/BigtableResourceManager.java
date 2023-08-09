@@ -37,6 +37,7 @@ import com.google.cloud.bigtable.admin.v2.models.CreateInstanceRequest;
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
 import com.google.cloud.bigtable.admin.v2.models.GCRules;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
+import com.google.cloud.bigtable.admin.v2.models.UpdateTableRequest;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
 import com.google.cloud.bigtable.data.v2.models.Query;
@@ -49,6 +50,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.commons.lang3.StringUtils;
@@ -84,6 +86,8 @@ public class BigtableResourceManager implements ResourceManager {
   private final List<String> createdTables;
   // List to store created app profiles for static RM
   private final List<String> createdAppProfiles;
+  // List of tables we enabled CDC for
+  private Set<String> cdcEnabledTables;
 
   private boolean hasInstance;
   private final boolean usingStaticInstance;
@@ -103,6 +107,7 @@ public class BigtableResourceManager implements ResourceManager {
     this.projectId = builder.projectId;
     this.createdTables = new ArrayList<>();
     this.createdAppProfiles = new ArrayList<>();
+    this.cdcEnabledTables = new HashSet<>();
 
     // Check if RM was configured to use static Bigtable instance.
     if (builder.useStaticInstance) {
@@ -111,7 +116,6 @@ public class BigtableResourceManager implements ResourceManager {
             "This manager was configured to use a static resource, but the instanceId was not properly set.");
       }
       this.instanceId = builder.instanceId;
-      this.hasInstance = true;
     } else {
       if (builder.instanceId != null) {
         throw new BigtableResourceManagerException(
@@ -119,8 +123,8 @@ public class BigtableResourceManager implements ResourceManager {
       }
       // Generate instance id based on given test id.
       this.instanceId = generateInstanceId(builder.testId);
-      this.hasInstance = false;
     }
+    this.hasInstance = false;
     this.usingStaticInstance = builder.useStaticInstance;
 
     if (bigtableResourceManagerClientFactory != null) {
@@ -195,26 +199,30 @@ public class BigtableResourceManager implements ResourceManager {
           "Instance " + instanceId + " already exists for project " + projectId + ".");
     }
 
-    LOG.info("Creating instance {} in project {}.", instanceId, projectId);
+    if (usingStaticInstance) {
+      LOG.info("Skipping instance creation. Static instance is used: {}", instanceId);
+    } else {
+      LOG.info("Creating instance {} in project {}.", instanceId, projectId);
 
-    // Create instance request object and add all the given clusters to the request
-    CreateInstanceRequest request = CreateInstanceRequest.of(instanceId);
-    for (BigtableResourceManagerCluster cluster : clusters) {
-      request.addCluster(
-          cluster.clusterId(), cluster.zone(), cluster.numNodes(), cluster.storageType());
-    }
+      // Create instance request object and add all the given clusters to the request
+      CreateInstanceRequest request = CreateInstanceRequest.of(instanceId);
+      for (BigtableResourceManagerCluster cluster : clusters) {
+        request.addCluster(
+            cluster.clusterId(), cluster.zone(), cluster.numNodes(), cluster.storageType());
+      }
 
-    // Send the instance request to Google Cloud
-    try (BigtableInstanceAdminClient instanceAdminClient =
-        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
-      instanceAdminClient.createInstance(request);
-    } catch (Exception e) {
-      throw new BigtableResourceManagerException(
-          "Failed to create instance " + instanceId + ".", e);
+      // Send the instance request to Google Cloud
+      try (BigtableInstanceAdminClient instanceAdminClient =
+          bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
+        instanceAdminClient.createInstance(request);
+      } catch (Exception e) {
+        throw new BigtableResourceManagerException(
+            "Failed to create instance " + instanceId + ".", e);
+      }
+
+      LOG.info("Successfully created instance {}.", instanceId);
     }
     hasInstance = true;
-
-    LOG.info("Successfully created instance {}.", instanceId);
   }
 
   /**
@@ -262,7 +270,10 @@ public class BigtableResourceManager implements ResourceManager {
    */
   public synchronized void createTable(String tableId, Iterable<String> columnFamilies)
       throws BigtableResourceManagerException {
-    createTable(tableId, columnFamilies, Duration.ofHours(1));
+    BigtableTableSpec spec = new BigtableTableSpec();
+    spec.setColumnFamilies(columnFamilies);
+    spec.setMaxAge(Duration.ofHours(1));
+    createTable(tableId, spec);
   }
 
   /**
@@ -341,7 +352,10 @@ public class BigtableResourceManager implements ResourceManager {
           createTableRequest.addFamily(
               columnFamily, GCRules.GCRULES.maxAge(bigtableTableSpec.getMaxAge()));
         }
-        // TODO: Set CDC enabled
+        if (bigtableTableSpec.getCdcEnabled()) {
+          createTableRequest.addChangeStreamRetention(Duration.ofDays(7));
+          cdcEnabledTables.add(tableId);
+        }
         tableAdminClient.createTable(createTableRequest);
       } else {
         throw new IllegalStateException(
@@ -534,9 +548,14 @@ public class BigtableResourceManager implements ResourceManager {
   public synchronized void cleanupAll() throws BigtableResourceManagerException {
     LOG.info("Attempting to cleanup manager.");
 
-    if (usingStaticInstance) {
-      try (BigtableTableAdminClient tableAdminClient =
-          bigtableResourceManagerClientFactory.bigtableTableAdminClient()) {
+    try (BigtableTableAdminClient tableAdminClient =
+        bigtableResourceManagerClientFactory.bigtableTableAdminClient()) {
+      // Change streams must be disabled before table or instance can be deleted
+      for (String tableId : cdcEnabledTables) {
+        tableAdminClient.updateTable(UpdateTableRequest.of(tableId).disableChangeStreamRetention());
+      }
+
+      if (usingStaticInstance) {
         createdTables.forEach(tableAdminClient::deleteTable);
         LOG.info(
             "This manager was configured to use a static instance that will not be cleaned up.");
@@ -547,6 +566,7 @@ public class BigtableResourceManager implements ResourceManager {
     if (hasInstance) {
       try (BigtableInstanceAdminClient instanceAdminClient =
           bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
+
         instanceAdminClient.deleteInstance(instanceId);
         hasInstance = false;
       } catch (Exception e) {
