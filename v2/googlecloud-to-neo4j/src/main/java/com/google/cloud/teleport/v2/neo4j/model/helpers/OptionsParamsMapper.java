@@ -31,7 +31,7 @@ public class OptionsParamsMapper {
       if (StringUtils.isNotEmpty(pipelineOptions.getInputFilePattern())) {
         optionsParams.setInputFilePattern(pipelineOptions.getInputFilePattern());
       }
-      if (StringUtils.isNotEmpty(pipelineOptions.getInputFilePattern())) {
+      if (StringUtils.isNotEmpty(pipelineOptions.getOptionsJson())) {
         optionsParams.overlayTokens(pipelineOptions.getOptionsJson());
       }
     } catch (Exception e) {
