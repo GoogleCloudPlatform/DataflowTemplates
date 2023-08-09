@@ -26,12 +26,6 @@
 
   <artifactId>plaintext-logging</artifactId>
 
-  <properties>
-    <java.version>11</java.version>
-    <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
-    <surefire.version>2.21.0</surefire.version>
-  </properties>
-
   <build>
     <plugins>
       <!-- Core Maven plugins. -->
@@ -49,7 +43,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>${surefire.version}</version>
+        <version>${maven-surefire-plugin.version}</version>
       </plugin>
     </plugins>
   </build>

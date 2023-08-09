@@ -496,7 +496,7 @@
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>exec-maven-plugin</artifactId>
-          <version>1.6.0</version>
+          <version>${exec-maven-plugin.version}</version>
           <configuration>
             <cleanupDaemonThreads>false</cleanupDaemonThreads>
           </configuration>
@@ -914,7 +914,6 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-shade-plugin</artifactId>
-            <version>${maven-shade-plugin.version}</version>
             <executions>
               <execution>
                 <id>bundle-and-repackage</id>

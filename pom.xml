@@ -34,14 +34,16 @@
     <java.version>11</java.version>
 
     <!-- Plugins -->
-    <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
-    <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
+    <maven-checkstyle-plugin.version>3.3.0</maven-checkstyle-plugin.version>
+    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
-    <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
+    <maven-enforcer-plugin.version>3.3.0</maven-enforcer-plugin.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
-    <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
-    <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
+    <maven-javadoc-plugin.version>3.5.0</maven-javadoc-plugin.version>
+    <maven-shade-plugin.version>3.5.0</maven-shade-plugin.version>
     <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+    <maven-surefire-plugin.version>3.1.2</maven-surefire-plugin.version>
+    <exec-maven-plugin.version>3.1.0</exec-maven-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
 
     <!-- Beam and linked versions -->
@@ -71,7 +73,6 @@
     <snakeyaml.version>2.0</snakeyaml.version>
     <snappy.version>1.1.10.3</snappy.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
-    <surefire.version>2.21.0</surefire.version>
     <truth.version>1.0.1</truth.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
@@ -245,6 +246,19 @@
             </dependency>
           </dependencies>
         </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${maven-surefire-plugin.version}</version>
+        </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>${maven-shade-plugin.version}</version>
+        </plugin>
+
       </plugins>
     </pluginManagement>
 
@@ -252,7 +266,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>${surefire.version}</version>
         <configuration>
           <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
           They can be run manually using 'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
@@ -365,7 +378,6 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
-            <version>${surefire.version}</version>
             <configuration combine.self="override">
               <includes>
                 <include>**/*IT.java</include>
@@ -399,7 +411,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
-            <version>${surefire.version}</version>
+            <version>${maven-surefire-plugin.version}</version>
             <configuration combine.self="override">
               <includes>
                 <include>**/*LT.java</include>
@@ -432,7 +444,6 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
-            <version>${surefire.version}</version>
             <configuration combine.self="override">
               <includes>
                 <include>**/*IT.java</include>
@@ -476,7 +487,6 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
-            <version>${surefire.version}</version>
             <configuration combine.self="override">
               <includes>
                 <include>**/*IT.java</include>
