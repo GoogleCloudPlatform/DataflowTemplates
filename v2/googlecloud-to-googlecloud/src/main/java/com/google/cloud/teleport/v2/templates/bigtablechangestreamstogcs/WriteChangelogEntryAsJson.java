@@ -49,7 +49,7 @@ public class WriteChangelogEntryAsJson extends SimpleFunction<ChangelogEntry, St
     jsonType.setTimestamp(record.getTimestamp());
     jsonType.setTimestampTo(record.getTimestampTo());
     jsonType.setTimestampFrom(record.getTimestampFrom());
-    jsonType.setIsGc(record.getIsGc());
+    jsonType.setIsGC(record.getIsGC());
     jsonType.setValue(
         bytesToString(record.getValue(), destination.isValueBase64Encoded(), charset));
     jsonType.setColumnFamily(record.getColumnFamily());
