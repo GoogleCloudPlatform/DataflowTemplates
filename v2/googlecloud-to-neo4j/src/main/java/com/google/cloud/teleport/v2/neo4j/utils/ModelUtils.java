@@ -27,9 +27,9 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.model.job.Transform;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -359,7 +359,7 @@ public class ModelUtils {
     return fieldOrConstants;
   }
 
-  public static String replaceVariableTokens(String text, HashMap<String, String> replacements) {
+  public static String replaceVariableTokens(String text, Map<String, String> replacements) {
     Matcher matcher = variablePattern.matcher(text);
     // populate the replacements map ...
     StringBuilder builder = new StringBuilder();
