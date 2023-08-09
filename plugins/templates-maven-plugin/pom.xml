@@ -38,7 +38,7 @@
   <properties>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
-    <maven.version>3.6.3</maven.version>
+    <maven.version>3.5.2</maven.version>
     <dataflow.api.version>0.7.6</dataflow.api.version>
     <mojo.executor.version>2.4.0</mojo.executor.version>
   </properties>
@@ -108,7 +108,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-plugin-plugin</artifactId>
-        <version>3.9.0</version>
+        <version>${maven.version}</version>
         <configuration>
           <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
         </configuration>
