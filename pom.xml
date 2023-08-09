@@ -452,8 +452,7 @@
                 com.google.cloud.teleport.metadata.SkipDirectRunnerTest
               </excludedGroups>
               <groups>
-                ${integration.tests}
-                ${direct-runner.tests}
+                ${integration.tests},${direct-runner.tests}
               </groups>
               <systemProperties>
                 <!-- Pass on the flag directRunnerTest to the templates test base -->
@@ -492,9 +491,7 @@
                 <include>**/*IT.java</include>
               </includes>
               <groups>
-                ${direct-runner.tests}
-                org.apache.beam.it.testcontainers.TestContainersIntegrationTest
-                org.apache.beam.it.gcp.GoogleCloudIntegrationTest
+                ${direct-runner.tests},org.apache.beam.it.testcontainers.TestContainersIntegrationTest,org.apache.beam.it.gcp.GoogleCloudIntegrationTest
               </groups>
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>
