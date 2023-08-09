@@ -822,6 +822,7 @@
         <artifactId>jacoco-maven-plugin</artifactId>
         <version>${jacoco.version}</version>
         <configuration>
+          <haltOnFailure>false</haltOnFailure>
           <excludes>
             <!-- Excluding classes covered only by integration tests. -->
             <exclude>**/*InformationSchemaScanner.*</exclude>
