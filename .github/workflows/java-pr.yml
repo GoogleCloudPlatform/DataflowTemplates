@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -54,7 +54,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -69,14 +69,14 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
         run: ./cicd/run-unit-tests --changed-files="${{ steps.setup-env.outputs.changed-files }}"
       - name: Upload Unit Tests Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
         with:
           name: surefire-test-results
@@ -92,7 +92,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -104,7 +104,7 @@ jobs:
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
       - name: Upload Smoke Tests Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
         with:
           name: surefire-test-results
@@ -120,7 +120,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -132,7 +132,7 @@ jobs:
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
       - name: Upload Integration Tests Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
         with:
           name: surefire-test-results
@@ -149,7 +149,7 @@ jobs:
     runs-on: [self-hosted, perf]
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v2
+      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
