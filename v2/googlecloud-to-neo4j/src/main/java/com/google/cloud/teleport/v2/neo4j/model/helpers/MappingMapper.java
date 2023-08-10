@@ -24,8 +24,11 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -34,41 +37,40 @@ import org.json.JSONObject;
 public class MappingMapper {
 
   public static List<Mapping> parseMappings(Target target, JSONObject mappingsObject) {
+    String targetName = target.getName();
+    MappingAccumulator accumulator = new MappingAccumulator(targetName);
     TargetType type = target.getType();
     switch (type) {
       case node:
-        return parseNode(mappingsObject);
+        return parseNode(accumulator, mappingsObject);
       case edge:
-        return parseEdge(mappingsObject);
+        return parseEdge(accumulator, mappingsObject);
       default:
         String error =
             String.format(
-                "Unknown target type: only \"node\" and \"edge\" types are supported, got: %s",
-                type);
+                "Unknown target type for target %s: only \"node\" and \"edge\" types are supported, got: %s",
+                targetName, type);
         throw new IllegalArgumentException(error);
     }
   }
 
-  public static List<Mapping> parseNode(JSONObject nodeMappingsObject) {
-    List<Mapping> mappings = new ArrayList<>();
-
+  private static List<Mapping> parseNode(
+      MappingAccumulator accumulator, JSONObject nodeMappingsObject) {
     if (nodeMappingsObject.has("label")) {
       FieldNameTuple labelTuple = createFieldNameTuple(nodeMappingsObject.getString("label"));
-      Mapping mapping = new Mapping(FragmentType.node, RoleType.label, labelTuple);
-      addMapping(mappings, mapping);
+      accumulator.add(new Mapping(FragmentType.node, RoleType.label, labelTuple));
     }
     if (nodeMappingsObject.has("labels")) {
       List<FieldNameTuple> labels = getFieldAndNameTuples(nodeMappingsObject.get("labels"));
       for (FieldNameTuple f : labels) {
         Mapping mapping = new Mapping(FragmentType.node, RoleType.label, f);
         mapping.setIndexed(true);
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (nodeMappingsObject.has("key")) {
       FieldNameTuple labelTuple = createFieldNameTuple(nodeMappingsObject.getString("key"));
-      Mapping mapping = new Mapping(FragmentType.node, RoleType.key, labelTuple);
-      addMapping(mappings, mapping);
+      accumulator.add(new Mapping(FragmentType.node, RoleType.key, labelTuple));
     }
 
     if (nodeMappingsObject.has("keys")) {
@@ -76,51 +78,51 @@ public class MappingMapper {
       for (FieldNameTuple f : keys) {
         Mapping mapping = new Mapping(FragmentType.node, RoleType.key, f);
         mapping.setIndexed(true);
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (nodeMappingsObject.has("properties")) {
-      parseProperties(nodeMappingsObject.getJSONObject("properties"), mappings, FragmentType.node);
+      parseProperties(
+          accumulator, nodeMappingsObject.getJSONObject("properties"), FragmentType.node);
     }
-    return mappings;
+    return accumulator.getMappings();
   }
 
-  public static List<Mapping> parseEdge(JSONObject edgeMappingsObject) {
-    List<Mapping> mappings = new ArrayList<>();
+  private static List<Mapping> parseEdge(
+      MappingAccumulator accumulator, JSONObject edgeMappingsObject) {
     if (edgeMappingsObject.has("type")) {
       FieldNameTuple typeTuple =
           createFieldNameTuple(
               edgeMappingsObject.getString("type"), edgeMappingsObject.getString("type"));
-      Mapping mapping = new Mapping(FragmentType.rel, RoleType.type, typeTuple);
-      addMapping(mappings, mapping);
+      accumulator.add(new Mapping(FragmentType.rel, RoleType.type, typeTuple));
     }
 
     if (edgeMappingsObject.has("source")) {
-      mappings.addAll(parseEdgeNode(FragmentType.source, edgeMappingsObject));
+      parseEdgeNode(accumulator, FragmentType.source, edgeMappingsObject);
     }
 
     if (edgeMappingsObject.has("target")) {
-      mappings.addAll(parseEdgeNode(FragmentType.target, edgeMappingsObject));
+      parseEdgeNode(accumulator, FragmentType.target, edgeMappingsObject);
     }
 
     if (edgeMappingsObject.has("keys")) {
       List<FieldNameTuple> keys = getFieldAndNameTuples(edgeMappingsObject.get("keys"));
       for (FieldNameTuple f : keys) {
-        Mapping mapping = new Mapping(FragmentType.rel, RoleType.key, f);
-        addMapping(mappings, mapping);
+        accumulator.add(new Mapping(FragmentType.rel, RoleType.key, f));
       }
     }
 
     if (edgeMappingsObject.has("properties")) {
-      parseProperties(edgeMappingsObject.getJSONObject("properties"), mappings, FragmentType.rel);
+      parseProperties(
+          accumulator, edgeMappingsObject.getJSONObject("properties"), FragmentType.rel);
     }
-    return mappings;
+    return accumulator.getMappings();
   }
 
-  private static List<Mapping> parseEdgeNode(
-      FragmentType fragmentType, JSONObject edgeMappingsObject) {
+  private static void parseEdgeNode(
+      MappingAccumulator accumulator, FragmentType fragmentType, JSONObject edgeMappingsObject) {
+
     String fieldName = jsonPropertyNameForEdgeNode(fragmentType);
-    List<Mapping> mappings = new ArrayList<>();
     JSONObject edgeNodeMapping = edgeMappingsObject.getJSONObject(fieldName);
     if (!edgeNodeMapping.has("key") && !edgeNodeMapping.has("keys")) {
       String error =
@@ -132,25 +134,21 @@ public class MappingMapper {
     if (edgeNodeMapping.has("key")) {
       List<FieldNameTuple> keyTuples = getFieldAndNameTuples(edgeNodeMapping.get("key"));
       for (FieldNameTuple keyTuple : keyTuples) {
-        Mapping keyMapping = new Mapping(FragmentType.source, RoleType.key, keyTuple);
-        mappings.add(keyMapping);
+        accumulator.add(new Mapping(fragmentType, RoleType.key, keyTuple));
       }
     }
     if (edgeNodeMapping.has("keys")) {
       List<FieldNameTuple> keyTuples = getFieldAndNameTuples(edgeNodeMapping.get("keys"));
       keyTuples.forEach(
           keyTuple -> {
-            Mapping keyMapping = new Mapping(fragmentType, RoleType.key, keyTuple);
-            mappings.add(keyMapping);
+            accumulator.add(new Mapping(fragmentType, RoleType.key, keyTuple));
           });
     }
 
     List<FieldNameTuple> labels = getFieldAndNameTuples(edgeNodeMapping.get("label"));
     for (FieldNameTuple f : labels) {
-      Mapping mapping = new Mapping(fragmentType, RoleType.label, f);
-      addMapping(mappings, mapping);
+      accumulator.add(new Mapping(fragmentType, RoleType.label, f));
     }
-    return mappings;
   }
 
   private static String jsonPropertyNameForEdgeNode(FragmentType fragmentType) {
@@ -169,7 +167,9 @@ public class MappingMapper {
   }
 
   private static void parseProperties(
-      JSONObject propertyMappingsObject, List<Mapping> mappings, FragmentType fragmentType) {
+      MappingAccumulator accumulator,
+      JSONObject propertyMappingsObject,
+      FragmentType fragmentType) {
     if (propertyMappingsObject == null) {
       return;
     }
@@ -189,22 +189,21 @@ public class MappingMapper {
     }
 
     for (FieldNameTuple key : keys) {
-      Mapping mapping = new Mapping(fragmentType, RoleType.key, key);
-      addMapping(mappings, mapping);
+      accumulator.add(new Mapping(fragmentType, RoleType.key, key));
     }
 
     // TODO: remove keys from uniques
     for (FieldNameTuple f : uniques) {
       Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-      addMapping(mappings, mapping);
       mapping.setUnique(true);
+      accumulator.add(mapping);
     }
 
     // TODO: remove keys and uniques from indexed since they're implicitly indexed
     for (FieldNameTuple f : indexed) {
       Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-      addMapping(mappings, mapping);
       mapping.setIndexed(true);
+      accumulator.add(mapping);
     }
     if (propertyMappingsObject.has("dates")) {
       List<FieldNameTuple> dates = getFieldAndNameTuples(propertyMappingsObject.get("dates"));
@@ -213,7 +212,7 @@ public class MappingMapper {
         mapping.setType(PropertyType.Date);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("doubles")) {
@@ -223,7 +222,7 @@ public class MappingMapper {
         mapping.setType(PropertyType.BigDecimal);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("longs")) {
@@ -233,7 +232,7 @@ public class MappingMapper {
         mapping.setType(PropertyType.Long);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("strings")) {
@@ -243,7 +242,7 @@ public class MappingMapper {
         mapping.setType(PropertyType.String);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("points")) {
@@ -253,7 +252,7 @@ public class MappingMapper {
         mapping.setType(PropertyType.Point);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("floats")) {
@@ -263,7 +262,7 @@ public class MappingMapper {
         mapping.setType(PropertyType.Float);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("integers")) {
@@ -273,7 +272,7 @@ public class MappingMapper {
         mapping.setType(PropertyType.Integer);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
   }
@@ -335,17 +334,29 @@ public class MappingMapper {
     }
     return fieldSet;
   }
+}
 
-  private static void addMapping(List<Mapping> mappings, Mapping mapping) {
+class MappingAccumulator {
+  private final Set<String> fields = new HashSet<>();
+  private final List<Mapping> mappings = new ArrayList<>();
+  private final String targetName;
+
+  public MappingAccumulator(String targetName) {
+    this.targetName = targetName;
+  }
+
+  public void add(Mapping mapping) {
     String field = mapping.getField();
-    if (!StringUtils.isEmpty(field)) {
-      for (Mapping existingMapping : mappings) {
-        if (existingMapping.getField() != null && existingMapping.getField().equals(field)) {
-          throw new RuntimeException(
-              String.format("Duplicate mapping: field %s has already been declared", field));
-        }
-      }
+    if (!StringUtils.isEmpty(field) && !fields.add(field)) {
+      throw new RuntimeException(
+          String.format(
+              "Duplicate mapping: field %s has already been declared for target %s",
+              field, targetName));
     }
     mappings.add(mapping);
+  }
+
+  public List<Mapping> getMappings() {
+    return Collections.unmodifiableList(mappings);
   }
 }
