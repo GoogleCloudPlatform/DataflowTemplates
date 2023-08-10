@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /** Field to Neo4j property mapping. */
 public class Mapping implements Serializable {
@@ -136,5 +137,75 @@ public class Mapping implements Serializable {
 
   public void setFragmentType(FragmentType fragmentType) {
     this.fragmentType = fragmentType;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Mapping mapping = (Mapping) o;
+    return mandatory == mapping.mandatory
+        && unique == mapping.unique
+        && indexed == mapping.indexed
+        && Objects.equals(constant, mapping.constant)
+        && role == mapping.role
+        && type == mapping.type
+        && Objects.equals(name, mapping.name)
+        && Objects.equals(labels, mapping.labels)
+        && Objects.equals(field, mapping.field)
+        && Objects.equals(description, mapping.description)
+        && fragmentType == mapping.fragmentType;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        constant,
+        role,
+        type,
+        name,
+        labels,
+        field,
+        description,
+        mandatory,
+        unique,
+        indexed,
+        fragmentType);
+  }
+
+  @Override
+  public String toString() {
+    return "Mapping{"
+        + "constant='"
+        + constant
+        + '\''
+        + ", role="
+        + role
+        + ", type="
+        + type
+        + ", name='"
+        + name
+        + '\''
+        + ", labels="
+        + labels
+        + ", field='"
+        + field
+        + '\''
+        + ", description='"
+        + description
+        + '\''
+        + ", mandatory="
+        + mandatory
+        + ", unique="
+        + unique
+        + ", indexed="
+        + indexed
+        + ", fragmentType="
+        + fragmentType
+        + '}';
   }
 }
