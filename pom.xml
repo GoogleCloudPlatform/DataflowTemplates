@@ -41,7 +41,7 @@
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
     <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
-    <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
+    <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
 
     <!-- Beam and linked versions -->
@@ -208,6 +208,13 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-source-plugin</artifactId>
           <version>${maven-source-plugin.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.codehaus.plexus</groupId>
+              <artifactId>plexus-archiver</artifactId>
+              <version>${plexus-archiver.version}</version>
+            </dependency>
+          </dependencies>
           <executions>
             <execution>
               <id>attach-sources</id>
