@@ -121,7 +121,7 @@ export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 
 ### Optional
-export CASSANDRA_PORT=9042
+export CASSANDRA_PORT="9042"
 export DEFAULT_COLUMN_FAMILY="default"
 export ROW_KEY_SEPARATOR="#"
 export SPLIT_LARGE_ROWS=<splitLargeRows>
@@ -166,7 +166,7 @@ export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 
 ### Optional
-export CASSANDRA_PORT=9042
+export CASSANDRA_PORT="9042"
 export DEFAULT_COLUMN_FAMILY="default"
 export ROW_KEY_SEPARATOR="#"
 export SPLIT_LARGE_ROWS=<splitLargeRows>

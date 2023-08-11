@@ -128,7 +128,7 @@ export DATASTORE_DELETE_PROJECT_ID=<datastoreDeleteProjectId>
 export DATASTORE_READ_NAMESPACE=<datastoreReadNamespace>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export DATASTORE_HINT_NUM_WORKERS=500
+export DATASTORE_HINT_NUM_WORKERS="500"
 
 gcloud dataflow jobs run "datastore-to-datastore-delete-job" \
   --project "$PROJECT" \
@@ -167,7 +167,7 @@ export DATASTORE_DELETE_PROJECT_ID=<datastoreDeleteProjectId>
 export DATASTORE_READ_NAMESPACE=<datastoreReadNamespace>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export DATASTORE_HINT_NUM_WORKERS=500
+export DATASTORE_HINT_NUM_WORKERS="500"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

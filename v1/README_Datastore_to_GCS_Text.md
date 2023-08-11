@@ -128,7 +128,7 @@ export TEXT_WRITE_PREFIX=<textWritePrefix>
 export DATASTORE_READ_NAMESPACE=<datastoreReadNamespace>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
 
 gcloud dataflow jobs run "datastore-to-gcs-text-job" \
   --project "$PROJECT" \
@@ -167,7 +167,7 @@ export TEXT_WRITE_PREFIX=<textWritePrefix>
 export DATASTORE_READ_NAMESPACE=<datastoreReadNamespace>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

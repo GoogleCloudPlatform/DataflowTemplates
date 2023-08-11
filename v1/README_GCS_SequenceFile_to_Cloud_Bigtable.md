@@ -113,7 +113,7 @@ export BIGTABLE_PROJECT=<bigtableProject>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export SOURCE_PATTERN=<sourcePattern>
-export MUTATION_THROTTLE_LATENCY_MS=0
+export MUTATION_THROTTLE_LATENCY_MS="0"
 
 ### Optional
 export BIGTABLE_APP_PROFILE_ID=<bigtableAppProfileId>
@@ -150,7 +150,7 @@ export BIGTABLE_PROJECT=<bigtableProject>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export SOURCE_PATTERN=<sourcePattern>
-export MUTATION_THROTTLE_LATENCY_MS=0
+export MUTATION_THROTTLE_LATENCY_MS="0"
 
 ### Optional
 export BIGTABLE_APP_PROFILE_ID=<bigtableAppProfileId>

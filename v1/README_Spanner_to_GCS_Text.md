@@ -124,7 +124,7 @@ export CSV_TEMP_DIRECTORY=<csvTempDirectory>
 export SPANNER_PRIORITY=<spannerPriority>
 export SPANNER_HOST="https://batch-spanner.googleapis.com"
 export SPANNER_SNAPSHOT_TIME=""
-export DATA_BOOST_ENABLED=false
+export DATA_BOOST_ENABLED="false"
 
 gcloud dataflow jobs run "spanner-to-gcs-text-job" \
   --project "$PROJECT" \
@@ -169,7 +169,7 @@ export CSV_TEMP_DIRECTORY=<csvTempDirectory>
 export SPANNER_PRIORITY=<spannerPriority>
 export SPANNER_HOST="https://batch-spanner.googleapis.com"
 export SPANNER_SNAPSHOT_TIME=""
-export DATA_BOOST_ENABLED=false
+export DATA_BOOST_ENABLED="false"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

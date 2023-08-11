@@ -129,7 +129,7 @@ export CONNECTION_PROPERTIES=<connectionProperties>
 export USERNAME=<username>
 export PASSWORD=<password>
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
-export USE_COLUMN_ALIAS=false
+export USE_COLUMN_ALIAS="false"
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -180,7 +180,7 @@ export CONNECTION_PROPERTIES=<connectionProperties>
 export USERNAME=<username>
 export PASSWORD=<password>
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
-export USE_COLUMN_ALIAS=false
+export USE_COLUMN_ALIAS="false"
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
