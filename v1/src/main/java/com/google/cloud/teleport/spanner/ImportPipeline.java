@@ -101,10 +101,9 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Indexes",
         helpText =
-            "By default the import pipeline is not blocked on index creation, and it may complete"
-                + " with indexes still being created in the background. In testing, it may be"
-                + " useful to set this option to false so that the pipeline waits until indexes are"
-                + " finished.")
+            "By default the import pipeline is not blocked on index creation, and it "
+                + "may complete with indexes still being created in the background. If true, the "
+                + "pipeline waits until indexes are created.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForIndexes();
 
@@ -116,9 +115,8 @@ public class ImportPipeline {
         description = "Wait for Foreign Keys",
         helpText =
             "By default the import pipeline is not blocked on foreign key creation, and it may"
-                + " complete with foreign keys still being created in the background. In testing,"
-                + " it may be useful to set this option to false so that the pipeline waits until"
-                + " foreign keys are finished.")
+                + " complete with foreign keys still being created in the background. If true, the"
+                + " pipeline waits until foreign keys are created.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForForeignKeys();
 
@@ -127,7 +125,7 @@ public class ImportPipeline {
     @TemplateParameter.Boolean(
         order = 7,
         optional = true,
-        description = "Wait for Foreign Keys",
+        description = "Wait for Change Streams",
         helpText =
             "By default the import pipeline is blocked on change stream creation. If false, it may"
                 + " complete with change streams still being created in the background.")
