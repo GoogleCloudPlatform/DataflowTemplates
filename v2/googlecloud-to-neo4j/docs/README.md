@@ -210,31 +210,3 @@ gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VER
     https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/build
     https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
 
-## Known issues
-
-### Roadmap
-
-- Support for reading data from other non-SQL sources including Avro, Parquet,
-  and MongoDb
-- Support for reading data from other SQL based sources including Spanner and
-  Postgres
-- Support for auditing writes to Parquet on GCS
-- Supporting join transformations inside the job
-- Support for write back to Neo4j
-- Performance benchmark documentation
-
-## Running Apache Hop
-
-```sh
-export JAVA_HOME=`/usr/libexec/java_home -v 11`
-cd ~/Documents/hop
-./hop-gui.sh
-```
-
-### Testing Template
-
-The template unit tests can be run using:
-
-```sh
-mvn test
-```
