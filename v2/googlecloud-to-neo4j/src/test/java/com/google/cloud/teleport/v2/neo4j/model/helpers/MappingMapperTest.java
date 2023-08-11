@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import static com.google.common.truth.Truth.assertThat;
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
@@ -25,11 +26,216 @@ import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.util.List;
+import java.util.Map;
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
 public class MappingMapperTest {
+  @Test
+  public void parsesMultipleKeyMappingsFromObjectForEdgeSourceNode() {
+    Target target = target("my-target", TargetType.edge);
+    JSONObject mappings = new JSONObject();
+    mappings.put("type", "PLACEHOLDER");
+    JSONObject sourceKeys = new JSONObject();
+    sourceKeys.put("key1", "value1");
+    sourceKeys.put("key2", "value2");
+    JSONObject sourceMapping = new JSONObject();
+    sourceMapping.put("label", "Placeholder");
+    sourceMapping.put("key", sourceKeys);
+    mappings.put("source", sourceMapping);
+
+    List<Mapping> result =
+        MappingMapper.parseMappings(target, mappings).stream()
+            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .collect(toList());
+
+    assertThat(result)
+        .isEqualTo(
+            List.of(
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key1", "value1")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key2", "value2"))));
+  }
+
+  @Test
+  public void parsesMultipleKeyMappingsFromObjectArrayForEdgeSourceNode() {
+    Target target = target("my-target", TargetType.edge);
+    JSONObject mappings = new JSONObject();
+    mappings.put("type", "PLACEHOLDER");
+    JSONArray sourceKeys = new JSONArray();
+    sourceKeys.put(Map.of("key1", "value1", "key2", "value2"));
+    sourceKeys.put(Map.of("key3", "value3", "key4", "value4"));
+    JSONObject sourceMapping = new JSONObject();
+    sourceMapping.put("label", "Placeholder");
+    sourceMapping.put("key", sourceKeys);
+    mappings.put("source", sourceMapping);
+
+    List<Mapping> result =
+        MappingMapper.parseMappings(target, mappings).stream()
+            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .collect(toList());
+
+    assertThat(result)
+        .isEqualTo(
+            List.of(
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key1", "value1")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key2", "value2")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key3", "value3")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key4", "value4"))));
+  }
+
+  @Test
+  public void parsesMultipleKeyMappingsFromStringArrayForEdgeSourceNode() {
+    Target target = target("my-target", TargetType.edge);
+    JSONObject mappings = new JSONObject();
+    mappings.put("type", "PLACEHOLDER");
+    JSONArray sourceKeys = new JSONArray();
+    sourceKeys.put("value1");
+    sourceKeys.put("value2");
+    JSONObject sourceMapping = new JSONObject();
+    sourceMapping.put("label", "Placeholder");
+    sourceMapping.put("key", sourceKeys);
+    mappings.put("source", sourceMapping);
+
+    List<Mapping> result =
+        MappingMapper.parseMappings(target, mappings).stream()
+            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .collect(toList());
+
+    assertThat(result)
+        .isEqualTo(
+            List.of(
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("value1", "value1")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("value2", "value2"))));
+  }
+
+  @Test
+  public void parsesMultipleKeyMappingsFromMixedArrayForEdgeSourceNode() {
+    Target target = target("my-target", TargetType.edge);
+    JSONObject mappings = new JSONObject();
+    mappings.put("type", "PLACEHOLDER");
+    JSONArray sourceKeys = new JSONArray();
+    sourceKeys.put("value1");
+    sourceKeys.put(Map.of("key2", "value2"));
+    JSONObject sourceMapping = new JSONObject();
+    sourceMapping.put("label", "Placeholder");
+    sourceMapping.put("key", sourceKeys);
+    mappings.put("source", sourceMapping);
+
+    List<Mapping> result =
+        MappingMapper.parseMappings(target, mappings).stream()
+            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .collect(toList());
+
+    assertThat(result)
+        .isEqualTo(
+            List.of(
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("value1", "value1")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key2", "value2"))));
+  }
+
+  @Test
+  public void parsesMultipleKeyMappingsFromObjectForEdgeTargetNode() {
+    Target target = target("my-target", TargetType.edge);
+    JSONObject mappings = new JSONObject();
+    mappings.put("type", "PLACEHOLDER");
+    JSONObject targetKeys = new JSONObject();
+    targetKeys.put("key1", "value1");
+    targetKeys.put("key2", "value2");
+    JSONObject targetMapping = new JSONObject();
+    targetMapping.put("label", "Placeholder");
+    targetMapping.put("key", targetKeys);
+    mappings.put("target", targetMapping);
+
+    List<Mapping> result =
+        MappingMapper.parseMappings(target, mappings).stream()
+            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .collect(toList());
+
+    assertThat(result)
+        .isEqualTo(
+            List.of(
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key1", "value1")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key2", "value2"))));
+  }
+
+  @Test
+  public void parsesMultipleKeyMappingsFromObjectArrayForEdgeTargetNode() {
+    Target target = target("my-target", TargetType.edge);
+    JSONObject mappings = new JSONObject();
+    mappings.put("type", "PLACEHOLDER");
+    JSONArray targetKeys = new JSONArray();
+    targetKeys.put(Map.of("key1", "value1", "key2", "value2"));
+    targetKeys.put(Map.of("key3", "value3", "key4", "value4"));
+    JSONObject sourceMapping = new JSONObject();
+    sourceMapping.put("label", "Placeholder");
+    sourceMapping.put("key", targetKeys);
+    mappings.put("target", sourceMapping);
+
+    List<Mapping> result =
+        MappingMapper.parseMappings(target, mappings).stream()
+            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .collect(toList());
+
+    assertThat(result)
+        .isEqualTo(
+            List.of(
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key1", "value1")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key2", "value2")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key3", "value3")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key4", "value4"))));
+  }
+
+  @Test
+  public void parsesMultipleKeyMappingsFromStringArrayForEdgeTargetNode() {
+    Target target = target("my-target", TargetType.edge);
+    JSONObject mappings = new JSONObject();
+    mappings.put("type", "PLACEHOLDER");
+    JSONArray targetKeys = new JSONArray();
+    targetKeys.put("value1");
+    targetKeys.put("value2");
+    JSONObject sourceMapping = new JSONObject();
+    sourceMapping.put("label", "Placeholder");
+    sourceMapping.put("key", targetKeys);
+    mappings.put("target", sourceMapping);
+
+    List<Mapping> result =
+        MappingMapper.parseMappings(target, mappings).stream()
+            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .collect(toList());
+
+    assertThat(result)
+        .isEqualTo(
+            List.of(
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("value1", "value1")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("value2", "value2"))));
+  }
+
+  @Test
+  public void parsesMultipleKeyMappingsFromMixedArrayForEdgeTargetNode() {
+    Target target = target("my-target", TargetType.edge);
+    JSONObject mappings = new JSONObject();
+    mappings.put("type", "PLACEHOLDER");
+    JSONArray targetKeys = new JSONArray();
+    targetKeys.put(Map.of("key1", "value1"));
+    targetKeys.put("value2");
+    JSONObject sourceMapping = new JSONObject();
+    sourceMapping.put("label", "Placeholder");
+    sourceMapping.put("key", targetKeys);
+    mappings.put("target", sourceMapping);
+
+    List<Mapping> result =
+        MappingMapper.parseMappings(target, mappings).stream()
+            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .collect(toList());
+
+    assertThat(result)
+        .isEqualTo(
+            List.of(
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key1", "value1")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("value2", "value2"))));
+  }
 
   @Test
   public void rejectsNodeMappingsForAlreadyMappedFields() {
@@ -128,5 +334,13 @@ public class MappingMapperTest {
     tuple.setName(constant);
     tuple.setConstant(constant);
     return tuple;
+  }
+
+  @NotNull
+  private static FieldNameTuple fieldTuple(String field, String name) {
+    FieldNameTuple fieldNameTuple = new FieldNameTuple();
+    fieldNameTuple.setField(field);
+    fieldNameTuple.setName(name);
+    return fieldNameTuple;
   }
 }
