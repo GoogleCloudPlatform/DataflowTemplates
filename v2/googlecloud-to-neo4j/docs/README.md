@@ -63,18 +63,20 @@ The template requires the following parameters:
 Template can be executed using the following gcloud command:
 
 ```sh
+export PROJECT=<my-project>
 export IMAGE_NAME_VERSION=b0.12
-export TEMPLATE_IMAGE_SPEC="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec-${IMAGE_NAME_VERSION}.json"
+export TEMPLATE_SPEC_GCSPATH="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec-${IMAGE_NAME_VERSION}.json"
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
  
 gcloud dataflow flex-template run "googlecloud-to-neo4j-text-cli-`date +%Y%m%d-%H%M%S`" \
-    --template-file-gcs-location="$TEMPLATE_IMAGE_SPEC" \
+    --project "$PROJECT" \
     --region "$REGION" \
+    --template-file-gcs-location="TEMPLATE_SPEC_GCSPATH" \
     --parameters jobSpecUri="gs://neo4j-dataflow/job-specs/testing/text/text-northwind-jobspec.json" \
     --parameters neo4jConnectionUri="gs://neo4j-dataflow/job-specs/testing/connection/auradb-free-connection.json" \
-    --max-workers=1 \
-    --worker-machine-type=${MACHINE_TYPE} 
+    --parameters workerMachineType="$WORKER_MACHINE" \
+    --max-workers=1
 ```
 
 ## Building Project
