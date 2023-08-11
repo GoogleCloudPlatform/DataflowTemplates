@@ -22,7 +22,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Optional Parameters
 
 * **apiKey** (Logs API key.): Datadog Logs API key. Must be provided if the apiKeySource is set to PLAINTEXT or KMS. See: https://docs.datadoghq.com/account_management/api-app-keys.
-* **batchCount** (Batch size for sending multiple events to Datadog Logs API.): Batch size for sending multiple events to Datadog Logs API. Defaults to 10. Max is 1000.
+* **batchCount** (Batch size for sending multiple events to Datadog Logs API.): Batch size for sending multiple events to Datadog Logs API. Min is 10. Max is 1000. Defaults to 100.
 * **parallelism** (Maximum number of parallel requests.): Maximum number of parallel requests. Default 1 (no parallelism).
 * **includePubsubMessage** (Include full Pub/Sub message in the payload.): Include full Pub/Sub message in the payload (true/false). Defaults to false (only data element is included in the payload).
 * **apiKeyKMSEncryptionKey** (Google Cloud KMS encryption key for the API key): The Cloud KMS key to decrypt the Logs API key. This parameter must be provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
@@ -142,7 +142,7 @@ export API_KEY_SOURCE=<apiKeySource>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
 
 gcloud dataflow jobs run "cloud-pubsub-to-datadog-job" \
   --project "$PROJECT" \
@@ -195,7 +195,7 @@ export API_KEY_SOURCE=<apiKeySource>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
