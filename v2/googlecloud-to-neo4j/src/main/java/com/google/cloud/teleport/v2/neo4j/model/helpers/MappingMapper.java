@@ -69,8 +69,8 @@ public class MappingMapper {
       }
     }
     if (nodeMappingsObject.has("key")) {
-      FieldNameTuple labelTuple = createFieldNameTuple(nodeMappingsObject.getString("key"));
-      accumulator.add(new Mapping(FragmentType.node, RoleType.key, labelTuple));
+      FieldNameTuple tuple = createFieldNameTuple(nodeMappingsObject.getString("key"));
+      accumulator.add(new Mapping(FragmentType.node, RoleType.key, tuple));
     }
 
     if (nodeMappingsObject.has("keys")) {
@@ -348,9 +348,9 @@ class MappingAccumulator {
   public void add(Mapping mapping) {
     String field = mapping.getField();
     if (!StringUtils.isEmpty(field) && !fields.add(field)) {
-      throw new RuntimeException(
+      throw new IllegalArgumentException(
           String.format(
-              "Duplicate mapping: field %s has already been declared for target %s",
+              "Duplicate mapping: field %s has already been mapped for target %s",
               field, targetName));
     }
     mappings.add(mapping);
