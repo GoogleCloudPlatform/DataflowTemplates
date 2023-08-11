@@ -25,7 +25,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.Gson;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

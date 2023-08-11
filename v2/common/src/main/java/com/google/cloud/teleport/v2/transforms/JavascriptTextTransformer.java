@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -55,9 +55,9 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.CharStreams;
 import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.slf4j.Logger;

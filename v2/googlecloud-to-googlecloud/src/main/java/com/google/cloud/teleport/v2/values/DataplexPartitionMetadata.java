@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.values;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkState;
 
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.auto.value.AutoValue;
