@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
@@ -49,6 +50,7 @@ public class TransposedMappingMapperTest {
     List<Mapping> result =
         TransposedMappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
