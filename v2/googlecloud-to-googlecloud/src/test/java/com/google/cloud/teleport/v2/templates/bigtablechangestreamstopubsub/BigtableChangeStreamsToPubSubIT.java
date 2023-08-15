@@ -113,7 +113,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testJsonNoSchemaCharsetsAndBase64Values() throws Exception {
-    appProfileId = generateAppProfileId();
     String suffix = "" + System.nanoTime();
     String srcTable = "src" + suffix;
 
