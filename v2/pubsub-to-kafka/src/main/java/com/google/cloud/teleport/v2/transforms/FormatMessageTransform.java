@@ -69,7 +69,6 @@ public class FormatMessageTransform {
               JavascriptTextTransformer.FailsafeJavascriptUdf.<String>newBuilder()
                   .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                   .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                  .setFunctionReload(options.getJavascriptTextTransformFunctionReload())
                   .setReloadIntervalMinutes(
                       options.getJavascriptTextTransformReloadIntervalMinutes())
                   .setLoggingEnabled(true)

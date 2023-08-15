@@ -354,7 +354,6 @@ public final class PubsubProtoToBigQuery {
               FailsafeJavascriptUdf.<String>newBuilder()
                   .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                   .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                  .setFunctionReload(options.getJavascriptTextTransformFunctionReload())
                   .setReloadIntervalMinutes(
                       options.getJavascriptTextTransformReloadIntervalMinutes())
                   .setSuccessTag(UDF_SUCCESS_TAG)
