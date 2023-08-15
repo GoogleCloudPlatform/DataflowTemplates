@@ -76,6 +76,7 @@ public class TransposedMappingMapperTest {
     List<Mapping> result =
         TransposedMappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
@@ -103,6 +104,7 @@ public class TransposedMappingMapperTest {
     List<Mapping> result =
         TransposedMappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
@@ -128,13 +130,14 @@ public class TransposedMappingMapperTest {
     List<Mapping> result =
         TransposedMappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
         .isEqualTo(
             List.of(
-                new Mapping(FragmentType.source, RoleType.key, field("value1", "value1")),
-                new Mapping(FragmentType.source, RoleType.key, field("key2", "value2"))));
+                new Mapping(FragmentType.source, RoleType.key, field("key2", "value2")),
+                new Mapping(FragmentType.source, RoleType.key, field("value1", "value1"))));
   }
 
   @Test
@@ -153,6 +156,7 @@ public class TransposedMappingMapperTest {
     List<Mapping> result =
         TransposedMappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
@@ -178,6 +182,7 @@ public class TransposedMappingMapperTest {
     List<Mapping> result =
         TransposedMappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
@@ -205,6 +210,7 @@ public class TransposedMappingMapperTest {
     List<Mapping> result =
         TransposedMappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
@@ -230,6 +236,7 @@ public class TransposedMappingMapperTest {
     List<Mapping> result =
         TransposedMappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
