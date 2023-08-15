@@ -1,5 +1,5 @@
 {
-    "name" : "ChangelogEntry",
+    "name" : "ChangelogEntryMessage",
     "type" : "record",
     "namespace" : "com.google.cloud.teleport.bigtable",
     "fields" : [
@@ -15,11 +15,13 @@
       { "name": "tieBreaker", "type": "int"},
       { "name": "columnFamily", "type": "string"},
       { "name": "commitTimestamp", "type" : "long"},
-      { "name": "lowWatermark", "type" : "long"},
-      { "name": "column", "type" : ["null", "bytes"]},
+      { "name" : "sourceInstance", "type" : "string"},
+      { "name" : "sourceCluster", "type" : "string"},
+      { "name" : "sourceTable", "type" : "string"},
+      { "name": "column", "type" : ["null","bytes"]},
       { "name": "timestamp", "type" : ["null", "long"]},
       { "name": "timestampFrom", "type" : ["null", "long"]},
       { "name": "timestampTo", "type" : ["null", "long"]},
       { "name" : "value", "type" : ["null", "bytes"]}
-    ]
+   ]
 }
