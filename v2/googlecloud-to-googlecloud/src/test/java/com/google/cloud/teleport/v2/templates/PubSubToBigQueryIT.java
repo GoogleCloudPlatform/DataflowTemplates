@@ -199,7 +199,6 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
                 .addParameter("inputSubscription", subscription.toString())
                 .addParameter("outputTableSpec", toTableSpecLegacy(table))
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                .addParameter("javascriptTextTransformFunctionReload", "true")
                 .addParameter("javascriptTextTransformReloadIntervalMinutes", "1")
                 .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
 

@@ -53,7 +53,6 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
       "datastoreReadNamespace",
       "datastoreReadGqlQuery",
       "datastoreReadProjectId",
-      "javascriptFunctionReload",
       "javascriptReloadIntervalMinutes"
     },
     flexContainerName = "firestore-to-bigquery",

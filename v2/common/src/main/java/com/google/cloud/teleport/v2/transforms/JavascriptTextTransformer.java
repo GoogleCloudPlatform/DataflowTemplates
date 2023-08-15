@@ -95,18 +95,6 @@ public abstract class JavascriptTextTransformer {
 
     void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
 
-    // Support for auto reload is only needed for Pub/Sub to Splunk for now.
-    // This can be moved to JavascriptTextTransformerOptions to support in other templates.
-    @TemplateParameter.Boolean(
-        order = 3,
-        optional = true,
-        description = "Enable JavaScript UDF auto-reload feature",
-        helpText =
-            "If set to true, enables the JavaScript UDF auto-reload feature, which guarantees that updated code is used without the need to restart jobs.")
-    Boolean getJavascriptTextTransformFunctionReload();
-
-    void setJavascriptTextTransformFunctionReload(Boolean javascriptTextTransformFunctionReload);
-
     @TemplateParameter.Integer(
         order = 4,
         optional = true,
@@ -138,9 +126,6 @@ public abstract class JavascriptTextTransformer {
     public abstract String functionName();
 
     @Nullable
-    public abstract Boolean reloadFunction();
-
-    @Nullable
     public abstract Integer reloadIntervalMinutes();
 
     private Invocable invocable;
@@ -154,8 +139,6 @@ public abstract class JavascriptTextTransformer {
       public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder setFunctionName(@Nullable String functionName);
-
-      public abstract Builder setReloadFunction(@Nullable Boolean value);
 
       public abstract Builder setReloadIntervalMinutes(@Nullable Integer value);
 
@@ -185,9 +168,8 @@ public abstract class JavascriptTextTransformer {
       }
 
       if (invocable == null
-          || (reloadFunction() != null
-              && reloadFunction()
-              && reloadIntervalMinutes() != null
+          || (reloadIntervalMinutes() != null
+              && reloadIntervalMinutes() > 0
               && Duration.between(lastRefreshCheck, Instant.now()).toMinutes()
                   > reloadIntervalMinutes())) {
 
@@ -304,8 +286,6 @@ public abstract class JavascriptTextTransformer {
 
     public abstract @Nullable String functionName();
 
-    public abstract @Nullable Boolean reloadFunction();
-
     public abstract @Nullable Integer reloadIntervalMinutes();
 
     /** Builder for {@link TransformTextViaJavascript}. */
@@ -314,8 +294,6 @@ public abstract class JavascriptTextTransformer {
       public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder setFunctionName(@Nullable String functionName);
-
-      public abstract Builder setReloadFunction(@Nullable Boolean value);
 
       public abstract Builder setReloadIntervalMinutes(@Nullable Integer value);
 
@@ -340,7 +318,6 @@ public abstract class JavascriptTextTransformer {
                         getJavascriptRuntime(
                             fileSystemPath(),
                             functionName(),
-                            reloadFunction() != null ? reloadFunction() : null,
                             reloadIntervalMinutes() != null ? reloadIntervalMinutes() : null);
                   }
                 }
@@ -374,8 +351,6 @@ public abstract class JavascriptTextTransformer {
 
     public abstract @Nullable String functionName();
 
-    public abstract @Nullable Boolean functionReload();
-
     public abstract @Nullable Integer reloadIntervalMinutes();
 
     public abstract @Nullable Boolean loggingEnabled();
@@ -400,8 +375,6 @@ public abstract class JavascriptTextTransformer {
       public abstract Builder<T> setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder<T> setFunctionName(@Nullable String functionName);
-
-      public abstract Builder<T> setFunctionReload(@Nullable Boolean functionReload);
 
       public abstract Builder<T> setReloadIntervalMinutes(Integer value);
 
@@ -430,7 +403,6 @@ public abstract class JavascriptTextTransformer {
                             getJavascriptRuntime(
                                 fileSystemPath(),
                                 functionName(),
-                                functionReload() != null ? functionReload() : null,
                                 reloadIntervalMinutes() != null ? reloadIntervalMinutes() : null);
                       }
 
@@ -490,7 +462,6 @@ public abstract class JavascriptTextTransformer {
   private static JavascriptRuntime getJavascriptRuntime(
       String fileSystemPath,
       String functionName,
-      Boolean reloadFunction,
       Integer reloadIntervalMinutes) {
     JavascriptRuntime javascriptRuntime = null;
 
@@ -499,7 +470,6 @@ public abstract class JavascriptTextTransformer {
           JavascriptRuntime.newBuilder()
               .setFunctionName(functionName)
               .setFileSystemPath(fileSystemPath)
-              .setReloadFunction(reloadFunction)
               .setReloadIntervalMinutes(reloadIntervalMinutes)
               .build();
     }

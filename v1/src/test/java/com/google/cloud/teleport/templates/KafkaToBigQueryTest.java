@@ -78,7 +78,6 @@ public class KafkaToBigQueryTest {
 
     options.setJavascriptTextTransformGcsPath(transformPath);
     options.setJavascriptTextTransformFunctionName(transformFunction);
-    options.setJavascriptFunctionReload(functionReload);
     options.setJavascriptReloadIntervalMinutes(functionReloadInterval);
 
     // Build pipeline

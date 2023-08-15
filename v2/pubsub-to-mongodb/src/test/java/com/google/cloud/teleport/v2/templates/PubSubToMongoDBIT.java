@@ -187,7 +187,6 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
             .addParameter("sslEnabled", "false")
             .addParameter("javascriptTextTransformGcsPath", getGcsPath("input/" + udfFileName))
             .addParameter("javascriptTextTransformFunctionName", "transform")
-            .addParameter("javascriptTextTransformFunctionReload", "true")
             .addParameter("javascriptTextTransformReloadIntervalMinutes", "1");
 
     // Act
