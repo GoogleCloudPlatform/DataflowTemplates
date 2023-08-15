@@ -37,6 +37,7 @@ import com.google.cloud.bigtable.admin.v2.models.CreateInstanceRequest;
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
 import com.google.cloud.bigtable.admin.v2.models.GCRules;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
+import com.google.cloud.bigtable.admin.v2.models.Table.ReplicationState;
 import com.google.cloud.bigtable.admin.v2.models.UpdateTableRequest;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
@@ -50,6 +51,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
@@ -87,7 +89,7 @@ public class BigtableResourceManager implements ResourceManager {
   // List to store created app profiles for static RM
   private final List<String> createdAppProfiles;
   // List of tables we enabled CDC for
-  private Set<String> cdcEnabledTables;
+  private final Set<String> cdcEnabledTables;
 
   private boolean hasInstance;
   private final boolean usingStaticInstance;
@@ -357,6 +359,20 @@ public class BigtableResourceManager implements ResourceManager {
           cdcEnabledTables.add(tableId);
         }
         tableAdminClient.createTable(createTableRequest);
+
+        boolean allReady;
+        do {
+          allReady = true;
+          Map<String, ReplicationState> states = tableAdminClient.getTable(tableId)
+              .getReplicationStatesByClusterId();
+          for (ReplicationState state : states.values()) {
+            if (!state.equals(ReplicationState.READY)) {
+              allReady = false;
+              Thread.sleep(5000);
+              break;
+            }
+          }
+        } while (!allReady);
       } else {
         throw new IllegalStateException(
             "Table " + tableId + " already exists for instance " + instanceId + ".");
@@ -583,6 +599,10 @@ public class BigtableResourceManager implements ResourceManager {
       }
     }
     return false;
+  }
+
+  public void isTableReady() {
+
   }
 
   /** Builder for {@link BigtableResourceManager}. */
