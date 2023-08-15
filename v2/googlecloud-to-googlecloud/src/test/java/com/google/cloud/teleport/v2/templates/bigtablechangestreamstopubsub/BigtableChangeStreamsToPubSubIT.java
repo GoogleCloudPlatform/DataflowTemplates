@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,19 +53,22 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.Function;
+import java.util.regex.Pattern;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Config;
+import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManagerCluster;
 import org.apache.beam.it.gcp.bigtable.BigtableTableSpec;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
@@ -78,7 +82,9 @@ import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link BigtableChangeStreamsToPubSub}. */
+/**
+ * Integration test for {@link BigtableChangeStreamsToPubSub}.
+ */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableChangeStreamsToPubSub.class)
 @RunWith(Parameterized.class)
@@ -92,62 +98,43 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   private BigtableResourceManager bigtableResourceManager;
   private PubsubResourceManager pubsubResourceManager;
 
-  private LaunchInfo launchInfo;
-
   @Parameterized.Parameter(0)
   public Boolean noDlqRetry;
+  private final String clusterName = "teleport-c1";
+  private String appProfileId;
+  private TopicName topicName;
+  private SubscriptionName subscriptionName;
+  private String srcTable;
 
   @Parameterized.Parameters(name = "{0}")
   public static List<Boolean> testParameters() {
-    return Lists.asList(true, new Boolean[] {false});
+    return Lists.asList(true, new Boolean[]{false});
   }
 
   @Test
   public void testJsonNoSchemaCharsetsAndBase64Values() throws Exception {
-    String clusterName = "cluster-c1" + System.nanoTime();
-    String appProfileId = generateAppProfileId();
+    appProfileId = generateAppProfileId();
     String suffix = "" + System.nanoTime();
-    String topicName = "topic-" + suffix;
-    String subscriptionName = "subscription-" + suffix;
     String srcTable = "src" + suffix;
 
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    TopicName tn = pubsubResourceManager.createTopic(topicName);
-    SubscriptionName sn = pubsubResourceManager.createSubscription(tn, subscriptionName);
-
-    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
-    launchInfo =
-        launchTemplate(
-            paramsAdder.apply(
-                LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-                    .addParameter("bigtableReadTableId", srcTable)
-                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                    .addParameter("messageFormat", "JSON")
-                    .addParameter("messageEncoding", "JSON")
-                    .addParameter("useBase64Values", "true")
-                    .addParameter("bigtableChangeStreamCharset", "KOI8-R")
-                    .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-                    .addParameter("pubSubTopic", tn.getTopic())));
+    LaunchInfo launchInfo = launchTemplate(
+        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            .addParameter("bigtableReadTableId", srcTable)
+            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+            .addParameter("messageFormat", "JSON")
+            .addParameter("messageEncoding", "JSON")
+            .addParameter("useBase64Values", "true")
+            .addParameter("bigtableChangeStreamCharset", "KOI8-R")
+            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+            .addParameter("pubSubTopic", this.topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
 
     // Russian letter B in KOI8-R
-    byte[] columnBytes = new byte[] {(byte) 0xc2};
+    byte[] columnBytes = new byte[]{(byte) 0xc2};
 
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
@@ -178,12 +165,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     bigtableResourceManager.write(rowMutation);
 
-    LOG.info("Pulling 1 message from PubSub");
-    List<ReceivedMessage> receivedMessages =
-        pubsubResourceManager.getMessages(sn, 1, EXPECTED_REPLICATION_MAX_WAIT_TIME);
-    Assert.assertFalse(receivedMessages.isEmpty());
-
-    LOG.info("Pulled messages: {}", receivedMessages);
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
     for (ReceivedMessage message : receivedMessages) {
       validateJsonMessageData(expected, message.getMessage().getData().toString("UTF-8"));
     }
@@ -191,44 +173,18 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testDeadLetterQueueDelivery() throws Exception {
-    String clusterName = "cluster-c1" + System.nanoTime();
-    String appProfileId = generateAppProfileId();
-    String suffix = "" + System.nanoTime();
-    String topicName = "topic-" + suffix;
-    String subscriptionName = "subscription-" + suffix;
-    String srcTable = "src" + suffix;
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    TopicName tn = pubsubResourceManager.createTopic(topicName);
-    SubscriptionName sn = pubsubResourceManager.createSubscription(tn, subscriptionName);
-
-    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
-    launchInfo =
-        launchTemplate(
-            paramsAdder.apply(
-                LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-                    .addParameter("bigtableReadTableId", srcTable)
-                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                    .addParameter("messageFormat", "JSON")
-                    .addParameter("messageEncoding", "JSON")
-                    .addParameter("dlqDirectory", getGcsPath("dlq"))
-                    .addParameter("dlqMaxRetries", "1")
-                    .addParameter("dlqRetryMinutes", "1")
-                    .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-                    .addParameter("pubSubTopic", tn.getTopic())));
+    LaunchInfo launchInfo = launchTemplate(
+        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            .addParameter("bigtableReadTableId", srcTable)
+            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+            .addParameter("messageFormat", "JSON")
+            .addParameter("messageEncoding", "JSON")
+            .addParameter("dlqDirectory", getGcsPath("dlq"))
+            .addParameter("dlqMaxRetries", "1")
+            .addParameter("dlqRetryMinutes", "1")
+            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+            .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -268,101 +224,55 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             .setValue(goodValue)
             .build();
 
-    LOG.info("Pulling 1 message from PubSub");
-    List<ReceivedMessage> receivedMessages =
-        pubsubResourceManager.getMessages(sn, 1, EXPECTED_REPLICATION_MAX_WAIT_TIME);
-    Assert.assertFalse(receivedMessages.isEmpty());
-    LOG.info("Pulled messages: {}", receivedMessages);
-
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
     for (ReceivedMessage message : receivedMessages) {
       validateJsonMessageData(expected, message.getMessage().getData().toString("UTF-8"));
     }
 
-    Storage storage = StorageOptions.newBuilder().build().getService();
+    LOG.info("Looking for files in DLQ");
 
-    long started = System.currentTimeMillis();
-    long waitForFile = Duration.ofMinutes(30).toMillis();
+    Result result = pipelineOperator().waitForConditionAndFinish(
+        createConfig(launchInfo),
+        () -> {
+          List<Artifact> artifacts = gcsClient.listArtifacts("dlq/severe", Pattern.compile(".*"));
+          for (Artifact artifact : artifacts) {
+            try {
+              ObjectMapper om = new ObjectMapper();
+              JsonNode severeError = om.readTree(artifact.contents());
+              Assert.assertNotNull(severeError);
+              JsonNode errorMessageNode = severeError.get("error_message");
+              Assert.assertNotNull(errorMessageNode);
+              Assert.assertTrue(errorMessageNode instanceof TextNode);
+              String messageText = errorMessageNode.asText();
+              Assert.assertTrue(
+                  "Unexpected message text: " + messageText,
+                  StringUtils.contains(messageText,
+                      "Request payload size exceeds the limit"));
+              return true;
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          }
+          return false;
+        });
 
-    String filterPrefix =
-        String.join("/", getClass().getSimpleName(), gcsClient.runId(), "dlq", "severe");
-    BlobListOption listOptions = BlobListOption.prefix(filterPrefix);
-
-    LOG.info("Looking for files with a prefix: " + filterPrefix);
-
-    boolean found = false;
-    while (!found && System.currentTimeMillis() <= (started + waitForFile)) {
-      Page<Blob> blobs = storage.list(artifactBucketName, listOptions);
-
-      for (Blob blob : blobs.iterateAll()) {
-        try {
-          byte[] content = storage.readAllBytes(blob.getBlobId());
-          ObjectMapper om = new ObjectMapper();
-          JsonNode severeError = om.readTree(content);
-          Assert.assertNotNull(severeError);
-          JsonNode errorMessageNode = severeError.get("error_message");
-          Assert.assertNotNull(errorMessageNode);
-          Assert.assertTrue(errorMessageNode instanceof TextNode);
-          String messageText = errorMessageNode.asText();
-          Assert.assertTrue(
-              "Unexpected message text: " + messageText,
-              StringUtils.contains(messageText, "Request payload size exceeds the limit"));
-          found = true;
-        } catch (Exception e) {
-          //
-          LOG.warn("Error during processing DLQ file: ", e);
-        }
-      }
-
-      if (!found) {
-        Thread.sleep(1000);
-      }
-    }
-
-    if (!found) {
-      Assert.fail("The failed message was not found in DLQ");
-    }
+    assertThatResult(result).meetsConditions();
   }
 
   @Test
   public void testJsonNoSchemaB64RkAndColNoVal() throws Exception {
-    String clusterName = "cluster-c1" + System.nanoTime();
-    String appProfileId = generateAppProfileId();
-    String suffix = "" + System.nanoTime();
-    String topicName = "topic-" + suffix;
-    String subscriptionName = "subscription-" + suffix;
-    String srcTable = "src" + suffix;
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    TopicName tn = pubsubResourceManager.createTopic(topicName);
-    SubscriptionName sn = pubsubResourceManager.createSubscription(tn, subscriptionName);
-
-    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
-    launchInfo =
-        launchTemplate(
-            paramsAdder.apply(
-                LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-                    .addParameter("bigtableReadTableId", srcTable)
-                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                    .addParameter("messageFormat", "JSON")
-                    .addParameter("messageEncoding", "JSON")
-                    .addParameter("useBase64Rowkeys", "true")
-                    .addParameter("useBase64ColumnQualifiers", "true")
-                    .addParameter("stripValues", "true")
-                    .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-                    .addParameter("pubSubTopic", tn.getTopic())));
+    LaunchInfo launchInfo = launchTemplate(
+        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            .addParameter("bigtableReadTableId", srcTable)
+            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+            .addParameter("messageFormat", "JSON")
+            .addParameter("messageEncoding", "JSON")
+            .addParameter("useBase64Rowkeys", "true")
+            .addParameter("useBase64ColumnQualifiers", "true")
+            .addParameter("stripValues", "true")
+            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+            .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -392,41 +302,32 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     bigtableResourceManager.write(rowMutation);
 
-    LOG.info("Pulling 1 message from PubSub");
-    List<ReceivedMessage> receivedMessages =
-        pubsubResourceManager.getMessages(sn, 1, EXPECTED_REPLICATION_MAX_WAIT_TIME);
-    Assert.assertFalse(receivedMessages.isEmpty());
-    LOG.info("Pulled messages: {}", receivedMessages);
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(
+        launchInfo);
 
     for (ReceivedMessage message : receivedMessages) {
       validateJsonMessageData(expected, message.getMessage().getData().toString("UTF-8"));
     }
   }
 
+  private List<ReceivedMessage> getAtLeastOneMessage(LaunchInfo launchInfo) throws IOException {
+    LOG.info("Pulling 1 message from PubSub");
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, subscriptionName)
+            .setMinMessages(1)
+            .build();
+
+    Result result = pipelineOperator().waitForCondition(createConfig(launchInfo),
+        pubsubCheck);
+    assertThatResult(result).meetsConditions();
+
+    List<ReceivedMessage> receivedMessages = pubsubCheck.getReceivedMessageList();
+    LOG.info("Pulled messages: {}", receivedMessages);
+    return receivedMessages;
+  }
+
   @Test
   public void testJsonWithSchemaCharsetAndB64Val() throws Exception {
-    String clusterName = "cluster-c1" + System.nanoTime();
-    String appProfileId = generateAppProfileId();
-    String suffix = "" + System.nanoTime();
-    String topicName = "topic-" + suffix;
-    String subscriptionName = "subscription-" + suffix;
-    String srcTable = "src" + suffix;
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    TopicName tn = pubsubResourceManager.createTopic(topicName);
-    SubscriptionName sn = pubsubResourceManager.createSubscription(tn, subscriptionName);
     pubsubResourceManager.createSchema(
         Schema.Type.PROTOCOL_BUFFER,
         "syntax = \"proto2\";\n"
@@ -458,29 +359,26 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             + "  required string sourceTable = 14;\n"
             + "}",
         Encoding.JSON,
-        tn);
+        topicName);
 
-    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
-    launchInfo =
-        launchTemplate(
-            paramsAdder.apply(
-                LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-                    .addParameter("bigtableReadTableId", srcTable)
-                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                    .addParameter("messageFormat", "JSON")
-                    .addParameter("messageEncoding", "JSON")
-                    .addParameter("useBase64Values", "true")
-                    .addParameter("bigtableChangeStreamCharset", "KOI8-R")
-                    .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-                    .addParameter("pubSubTopic", tn.getTopic())));
+    LaunchInfo launchInfo = launchTemplate(
+        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            .addParameter("bigtableReadTableId", srcTable)
+            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+            .addParameter("messageFormat", "JSON")
+            .addParameter("messageEncoding", "JSON")
+            .addParameter("useBase64Values", "true")
+            .addParameter("bigtableChangeStreamCharset", "KOI8-R")
+            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+            .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
 
     // Russian letter B in KOI8-R
-    byte[] columnBytes = new byte[] {(byte) 0xc2};
+    byte[] columnBytes = new byte[]{(byte) 0xc2};
 
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
@@ -511,11 +409,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     bigtableResourceManager.write(rowMutation);
 
-    LOG.info("Pulling 1 message from PubSub");
-    List<ReceivedMessage> receivedMessages =
-        pubsubResourceManager.getMessages(sn, 1, EXPECTED_REPLICATION_MAX_WAIT_TIME);
-    Assert.assertFalse(receivedMessages.isEmpty());
-    LOG.info("Pulled messages: {}", receivedMessages);
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
 
     for (ReceivedMessage message : receivedMessages) {
       validateJsonMessageData(expected, message.getMessage().getData().toString("UTF-8"));
@@ -524,28 +418,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testProtoWithSchema() throws Exception {
-    String clusterName = "cluster-c1" + System.nanoTime();
-    String appProfileId = generateAppProfileId();
-    String suffix = "" + System.nanoTime();
-    String topicName = "topic-" + suffix;
-    String subscriptionName = "subscription-" + suffix;
-    String srcTable = "src" + suffix;
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    TopicName tn = pubsubResourceManager.createTopic(topicName);
-    SubscriptionName sn = pubsubResourceManager.createSubscription(tn, subscriptionName);
     pubsubResourceManager.createSchema(
         Schema.Type.PROTOCOL_BUFFER,
         "syntax = \"proto2\";\n"
@@ -577,18 +449,15 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             + "  required string sourceTable = 14;\n"
             + "}",
         Encoding.BINARY,
-        tn);
+        topicName);
 
-    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
-    launchInfo =
-        launchTemplate(
-            paramsAdder.apply(
-                LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-                    .addParameter("bigtableReadTableId", srcTable)
-                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                    .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-                    .addParameter("pubSubTopic", tn.getTopic())));
+    LaunchInfo launchInfo = launchTemplate(
+        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            .addParameter("bigtableReadTableId", srcTable)
+            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+            .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -619,11 +488,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     bigtableResourceManager.write(rowMutation);
 
-    LOG.info("Pulling 1 message from PubSub");
-    List<ReceivedMessage> receivedMessages =
-        pubsubResourceManager.getMessages(sn, 1, EXPECTED_REPLICATION_MAX_WAIT_TIME);
-    Assert.assertFalse(receivedMessages.isEmpty());
-    LOG.info("Pulled messages: {}", receivedMessages);
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
 
     for (ReceivedMessage message : receivedMessages) {
       validateProtoMessageData(expected, message.getMessage().getData());
@@ -632,42 +497,16 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testProtoNoSchemaNoVal() throws Exception {
-    String clusterName = "cluster-c1" + System.nanoTime();
-    String appProfileId = generateAppProfileId();
-    String suffix = "" + System.nanoTime();
-    String topicName = "topic-" + suffix;
-    String subscriptionName = "subscription-" + suffix;
-    String srcTable = "src" + suffix;
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    TopicName tn = pubsubResourceManager.createTopic(topicName);
-    SubscriptionName sn = pubsubResourceManager.createSubscription(tn, subscriptionName);
-
-    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
-    launchInfo =
-        launchTemplate(
-            paramsAdder.apply(
-                LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-                    .addParameter("bigtableReadTableId", srcTable)
-                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                    .addParameter("messageFormat", "PROTOCOL_BUFFERS")
-                    .addParameter("messageEncoding", "BINARY")
-                    .addParameter("stripValues", "true")
-                    .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-                    .addParameter("pubSubTopic", tn.getTopic())));
+    LaunchInfo launchInfo = launchTemplate(
+        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            .addParameter("bigtableReadTableId", srcTable)
+            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+            .addParameter("messageFormat", "PROTOCOL_BUFFERS")
+            .addParameter("messageEncoding", "BINARY")
+            .addParameter("stripValues", "true")
+            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+            .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -697,11 +536,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     bigtableResourceManager.write(rowMutation);
 
-    LOG.info("Pulling 1 message from PubSub");
-    List<ReceivedMessage> receivedMessages =
-        pubsubResourceManager.getMessages(sn, 1, EXPECTED_REPLICATION_MAX_WAIT_TIME);
-    Assert.assertFalse(receivedMessages.isEmpty());
-    LOG.info("Pulled messages: {}", receivedMessages);
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
 
     for (ReceivedMessage message : receivedMessages) {
       validateProtoMessageData(expected, message.getMessage().getData());
@@ -710,28 +545,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testAvroWithSchema() throws Exception {
-    String clusterName = "cluster-c1" + System.nanoTime();
-    String appProfileId = generateAppProfileId();
-    String suffix = "" + System.nanoTime();
-    String topicName = "topic-" + suffix;
-    String subscriptionName = "subscription-" + suffix;
-    String srcTable = "src" + suffix;
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    TopicName tn = pubsubResourceManager.createTopic(topicName);
-    SubscriptionName sn = pubsubResourceManager.createSubscription(tn, subscriptionName);
     pubsubResourceManager.createSchema(
         Schema.Type.AVRO,
         "{\n"
@@ -762,18 +575,15 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             + "   ]\n"
             + "}",
         Encoding.BINARY,
-        tn);
+        topicName);
 
-    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
-    launchInfo =
-        launchTemplate(
-            paramsAdder.apply(
-                LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-                    .addParameter("bigtableReadTableId", srcTable)
-                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                    .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-                    .addParameter("pubSubTopic", tn.getTopic())));
+    LaunchInfo launchInfo = launchTemplate(
+        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            .addParameter("bigtableReadTableId", srcTable)
+            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+            .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -806,11 +616,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     bigtableResourceManager.write(rowMutation);
 
-    LOG.info("Pulling 1 message from PubSub");
-    List<ReceivedMessage> receivedMessages =
-        pubsubResourceManager.getMessages(sn, 1, EXPECTED_REPLICATION_MAX_WAIT_TIME);
-    Assert.assertFalse(receivedMessages.isEmpty());
-    LOG.info("Pulled messages: {}", receivedMessages);
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
 
     for (ReceivedMessage message : receivedMessages) {
       validateAvroMessageData(expected, message.getMessage());
@@ -819,13 +625,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testAvroWithNoSchemaNoVal() throws Exception {
-    String clusterName = "cluster-c1";
-    String appProfileId = generateAppProfileId();
-    String suffix = "" + System.nanoTime();
-    String topicName = "topic-" + suffix;
-    String subscriptionName = "subscription-" + suffix;
-    String srcTable = "src" + suffix;
-
     String rowkey = UUID.randomUUID().toString();
     String column = UUID.randomUUID().toString();
     String value = UUID.randomUUID().toString();
@@ -849,35 +648,16 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             .setValue(null)
             .build();
 
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    TopicName tn = pubsubResourceManager.createTopic(topicName);
-    SubscriptionName sn = pubsubResourceManager.createSubscription(tn, subscriptionName);
-
-    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
-    launchInfo =
-        launchTemplate(
-            paramsAdder.apply(
-                LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-                    .addParameter("bigtableReadTableId", srcTable)
-                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                    .addParameter("messageFormat", "AVRO")
-                    .addParameter("messageEncoding", "BINARY")
-                    .addParameter("stripValues", "true")
-                    .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-                    .addParameter("pubSubTopic", tn.getTopic())));
+    LaunchInfo launchInfo = launchTemplate(
+        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            .addParameter("bigtableReadTableId", srcTable)
+            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+            .addParameter("messageFormat", "AVRO")
+            .addParameter("messageEncoding", "BINARY")
+            .addParameter("stripValues", "true")
+            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+            .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -887,10 +667,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     bigtableResourceManager.write(rowMutation);
 
-    LOG.info("Pulling 1 message from PubSub");
-    List<ReceivedMessage> receivedMessages =
-        pubsubResourceManager.getMessages(sn, 1, Duration.ofMinutes(5));
-    LOG.info("Pulled messages: {}", receivedMessages);
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
 
     for (ReceivedMessage message : receivedMessages) {
       validateAvroMessageData(expected, message.getMessage());
@@ -989,7 +766,31 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
         BigtableResourceManager.builder(
             removeUnsafeCharacters(testName), PROJECT, credentialsProvider);
 
-    bigtableResourceManager = rmBuilder.build();
+    bigtableResourceManager = rmBuilder.maybeUseStaticInstance().build();
+
+    appProfileId = generateAppProfileId();
+
+    String suffix = "" + System.nanoTime();
+    String topicNameToCreate = "topic-" + suffix;
+    String subscriptionNameToCreate = "subscription-" + suffix;
+    srcTable = "src" + suffix;
+
+    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
+    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
+
+    bigtableResourceManager.createInstance(clusters);
+
+    bigtableResourceManager.createAppProfile(
+        appProfileId, true, Lists.asList(clusterName, new String[]{}));
+
+    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
+    cdcTableSpec.setCdcEnabled(true);
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[]{}));
+    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
+
+    topicName = pubsubResourceManager.createTopic(topicNameToCreate);
+    subscriptionName = pubsubResourceManager.createSubscription(topicName,
+        subscriptionNameToCreate);
   }
 
   private String removeUnsafeCharacters(String testName) {

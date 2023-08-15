@@ -255,35 +255,6 @@ public final class PubsubResourceManager implements ResourceManager {
   }
 
   /**
-   * Waits for a number of requested messages to arrive, but no longer than for a given duration of
-   * time.
-   *
-   * @param subscriptionName Subscription to use when pulling messages
-   * @param count Number of messages to accumulate
-   * @param waitForDuration Maximum duration of wait
-   * @return List of received messages
-   * @throws Exception If something goes bad
-   */
-  public List<ReceivedMessage> getMessages(
-      SubscriptionName subscriptionName, int count, Duration waitForDuration) throws Exception {
-    Instant waitUntil = Instant.now().plus(waitForDuration);
-
-    ArrayList<ReceivedMessage> result = new ArrayList<>(count);
-    int leftToPull = count;
-    while (leftToPull > 0 && Instant.now().isBefore(waitUntil)) {
-      PullResponse response = pull(subscriptionName, leftToPull);
-      if (response.getReceivedMessagesCount() == 0) {
-        Thread.sleep(1000L);
-      }
-      for (ReceivedMessage received : response.getReceivedMessagesList()) {
-        leftToPull--;
-        result.add(received);
-      }
-    }
-    return result;
-  }
-
-  /**
    * Registers a new schema of the given type and definition, then assigns it to the specified
    * topic.
    *
