@@ -69,7 +69,10 @@ public abstract class TestContainerResourceManager<T extends GenericContainer<?>
     }
 
     if (!usingStaticContainer) {
-      container.start();
+      container
+          .withLogConsumer(
+              log -> LOG.info("{}: {}", getDockerImageName(), log.getUtf8StringWithoutLineEnding()))
+          .start();
     } else if (builder.host == null || builder.port < 0) {
       throw new TestContainerResourceManagerException(
           "This manager was configured to use a static resource, but the host and port were not properly set.");
