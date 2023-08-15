@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model;
+package com.google.cloud.teleport.v2.bigtable.utils;
 
 public class UnsupportedEntryException extends Exception {
 

@@ -33,6 +33,7 @@ import com.google.pubsub.v1.ProjectName;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.PushConfig;
+import com.google.pubsub.v1.ReceivedMessage;
 import com.google.pubsub.v1.Schema;
 import com.google.pubsub.v1.SchemaName;
 import com.google.pubsub.v1.SchemaSettings;
@@ -42,8 +43,12 @@ import com.google.pubsub.v1.Topic;
 import com.google.pubsub.v1.TopicName;
 import com.google.pubsub.v1.UpdateTopicRequest;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.beam.it.common.ResourceManager;
@@ -246,6 +251,35 @@ public final class PubsubResourceManager implements ResourceManager {
         response.getReceivedMessagesCount(),
         subscriptionName);
     return response;
+  }
+
+  /**
+   * Waits for a number of requested messages to arrive, but no longer than for a given duration of
+   * time.
+   *
+   * @param subscriptionName Subscription to use when pulling messages
+   * @param count Number of messages to accumulate
+   * @param waitForDuration Maximum duration of wait
+   * @return List of received messages
+   * @throws Exception If something goes bad
+   */
+  public List<ReceivedMessage> getMessages(
+      SubscriptionName subscriptionName, int count, Duration waitForDuration) throws Exception {
+    Instant waitUntil = Instant.now().plus(waitForDuration);
+
+    ArrayList<ReceivedMessage> result = new ArrayList<>(count);
+    int leftToPull = count;
+    while (leftToPull > 0 && Instant.now().isBefore(waitUntil)) {
+      PullResponse response = pull(subscriptionName, leftToPull);
+      if (response.getReceivedMessagesCount() == 0) {
+        Thread.sleep(1000L);
+      }
+      for (ReceivedMessage received : response.getReceivedMessagesList()) {
+        leftToPull--;
+        result.add(received);
+      }
+    }
+    return result;
   }
 
   /**
