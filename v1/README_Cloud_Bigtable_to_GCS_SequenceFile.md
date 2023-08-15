@@ -123,7 +123,7 @@ export FILENAME_PREFIX="part"
 export BIGTABLE_APP_PROFILE_ID=<bigtableAppProfileId>
 export BIGTABLE_START_ROW=""
 export BIGTABLE_STOP_ROW=""
-export BIGTABLE_MAX_VERSIONS=2147483647
+export BIGTABLE_MAX_VERSIONS="2147483647"
 export BIGTABLE_FILTER=""
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-sequencefile-job" \
@@ -168,7 +168,7 @@ export FILENAME_PREFIX="part"
 export BIGTABLE_APP_PROFILE_ID=<bigtableAppProfileId>
 export BIGTABLE_START_ROW=""
 export BIGTABLE_STOP_ROW=""
-export BIGTABLE_MAX_VERSIONS=2147483647
+export BIGTABLE_MAX_VERSIONS="2147483647"
 export BIGTABLE_FILTER=""
 
 mvn clean package -PtemplatesRun \

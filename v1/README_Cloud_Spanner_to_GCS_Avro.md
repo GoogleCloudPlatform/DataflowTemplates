@@ -124,11 +124,11 @@ export AVRO_TEMP_DIRECTORY=<avroTempDirectory>
 export SPANNER_HOST="https://batch-spanner.googleapis.com"
 export SNAPSHOT_TIME=""
 export SPANNER_PROJECT_ID=<spannerProjectId>
-export SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE=false
+export SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE="false"
 export TABLE_NAMES=""
-export SHOULD_EXPORT_RELATED_TABLES=false
+export SHOULD_EXPORT_RELATED_TABLES="false"
 export SPANNER_PRIORITY=<spannerPriority>
-export DATA_BOOST_ENABLED=false
+export DATA_BOOST_ENABLED="false"
 
 gcloud dataflow jobs run "cloud-spanner-to-gcs-avro-job" \
   --project "$PROJECT" \
@@ -173,11 +173,11 @@ export AVRO_TEMP_DIRECTORY=<avroTempDirectory>
 export SPANNER_HOST="https://batch-spanner.googleapis.com"
 export SNAPSHOT_TIME=""
 export SPANNER_PROJECT_ID=<spannerProjectId>
-export SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE=false
+export SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE="false"
 export TABLE_NAMES=""
-export SHOULD_EXPORT_RELATED_TABLES=false
+export SHOULD_EXPORT_RELATED_TABLES="false"
 export SPANNER_PRIORITY=<spannerPriority>
-export DATA_BOOST_ENABLED=false
+export DATA_BOOST_ENABLED="false"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

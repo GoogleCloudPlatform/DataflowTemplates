@@ -121,7 +121,7 @@ export READ_ID_COLUMN=<readIdColumn>
 export INVALID_OUTPUT_PATH=<invalidOutputPath>
 export DATASTORE_WRITE_ENTITY_KIND=<datastoreWriteEntityKind>
 export DATASTORE_WRITE_NAMESPACE=<datastoreWriteNamespace>
-export DATASTORE_HINT_NUM_WORKERS=500
+export DATASTORE_HINT_NUM_WORKERS="500"
 
 gcloud dataflow jobs run "cloud-bigquery-to-cloud-datastore-job" \
   --project "$PROJECT" \
@@ -162,7 +162,7 @@ export READ_ID_COLUMN=<readIdColumn>
 export INVALID_OUTPUT_PATH=<invalidOutputPath>
 export DATASTORE_WRITE_ENTITY_KIND=<datastoreWriteEntityKind>
 export DATASTORE_WRITE_NAMESPACE=<datastoreWriteNamespace>
-export DATASTORE_HINT_NUM_WORKERS=500
+export DATASTORE_HINT_NUM_WORKERS="500"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

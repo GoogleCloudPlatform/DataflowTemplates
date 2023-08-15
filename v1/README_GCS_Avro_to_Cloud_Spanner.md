@@ -25,6 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **waitForIndexes** (Wait for Indexes): By default the import pipeline is not blocked on index creation, and it may complete with indexes still being created in the background. In testing, it may be useful to set this option to false so that the pipeline waits until indexes are finished.
 * **waitForForeignKeys** (Wait for Foreign Keys): By default the import pipeline is not blocked on foreign key creation, and it may complete with foreign keys still being created in the background. In testing, it may be useful to set this option to false so that the pipeline waits until foreign keys are finished.
 * **waitForChangeStreams** (Wait for Foreign Keys): By default the import pipeline is blocked on change stream creation. If false, it may complete with change streams still being created in the background.
+* **waitForSequences** (Wait for Sequences): By default the import pipeline is blocked on sequence creation. If false, it may complete with sequences still being created in the background.
 * **earlyIndexCreateFlag** (Create Indexes early): Flag to turn off early index creation if there are many indexes. Indexes and Foreign keys are created after dataload. If there are more than 40 DDL statements to be executed after dataload, it is preferable to create the indexes before datalod. This is the flag to turn the feature off. Defaults to: true.
 * **spannerProjectId** (Cloud Spanner Project Id): The project id of the Cloud Spanner instance.
 * **ddlCreationTimeoutInMinutes** (DDL Creation timeout in minutes): DDL Creation timeout in minutes. Defaults to: 30.
@@ -120,12 +121,13 @@ export INPUT_DIR=<inputDir>
 
 ### Optional
 export SPANNER_HOST="https://batch-spanner.googleapis.com"
-export WAIT_FOR_INDEXES=false
-export WAIT_FOR_FOREIGN_KEYS=false
-export WAIT_FOR_CHANGE_STREAMS=true
-export EARLY_INDEX_CREATE_FLAG=true
+export WAIT_FOR_INDEXES="false"
+export WAIT_FOR_FOREIGN_KEYS="false"
+export WAIT_FOR_CHANGE_STREAMS="true"
+export WAIT_FOR_SEQUENCES="true"
+export EARLY_INDEX_CREATE_FLAG="true"
 export SPANNER_PROJECT_ID=<spannerProjectId>
-export DDL_CREATION_TIMEOUT_IN_MINUTES=30
+export DDL_CREATION_TIMEOUT_IN_MINUTES="30"
 export SPANNER_PRIORITY=<spannerPriority>
 
 gcloud dataflow jobs run "gcs-avro-to-cloud-spanner-job" \
@@ -139,6 +141,7 @@ gcloud dataflow jobs run "gcs-avro-to-cloud-spanner-job" \
   --parameters "waitForIndexes=$WAIT_FOR_INDEXES" \
   --parameters "waitForForeignKeys=$WAIT_FOR_FOREIGN_KEYS" \
   --parameters "waitForChangeStreams=$WAIT_FOR_CHANGE_STREAMS" \
+  --parameters "waitForSequences=$WAIT_FOR_SEQUENCES" \
   --parameters "earlyIndexCreateFlag=$EARLY_INDEX_CREATE_FLAG" \
   --parameters "spannerProjectId=$SPANNER_PROJECT_ID" \
   --parameters "ddlCreationTimeoutInMinutes=$DDL_CREATION_TIMEOUT_IN_MINUTES" \
@@ -167,12 +170,13 @@ export INPUT_DIR=<inputDir>
 
 ### Optional
 export SPANNER_HOST="https://batch-spanner.googleapis.com"
-export WAIT_FOR_INDEXES=false
-export WAIT_FOR_FOREIGN_KEYS=false
-export WAIT_FOR_CHANGE_STREAMS=true
-export EARLY_INDEX_CREATE_FLAG=true
+export WAIT_FOR_INDEXES="false"
+export WAIT_FOR_FOREIGN_KEYS="false"
+export WAIT_FOR_CHANGE_STREAMS="true"
+export WAIT_FOR_SEQUENCES="true"
+export EARLY_INDEX_CREATE_FLAG="true"
 export SPANNER_PROJECT_ID=<spannerProjectId>
-export DDL_CREATION_TIMEOUT_IN_MINUTES=30
+export DDL_CREATION_TIMEOUT_IN_MINUTES="30"
 export SPANNER_PRIORITY=<spannerPriority>
 
 mvn clean package -PtemplatesRun \
@@ -182,7 +186,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-avro-to-cloud-spanner-job" \
 -DtemplateName="GCS_Avro_to_Cloud_Spanner" \
--Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,inputDir=$INPUT_DIR,spannerHost=$SPANNER_HOST,waitForIndexes=$WAIT_FOR_INDEXES,waitForForeignKeys=$WAIT_FOR_FOREIGN_KEYS,waitForChangeStreams=$WAIT_FOR_CHANGE_STREAMS,earlyIndexCreateFlag=$EARLY_INDEX_CREATE_FLAG,spannerProjectId=$SPANNER_PROJECT_ID,ddlCreationTimeoutInMinutes=$DDL_CREATION_TIMEOUT_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY" \
+-Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,inputDir=$INPUT_DIR,spannerHost=$SPANNER_HOST,waitForIndexes=$WAIT_FOR_INDEXES,waitForForeignKeys=$WAIT_FOR_FOREIGN_KEYS,waitForChangeStreams=$WAIT_FOR_CHANGE_STREAMS,waitForSequences=$WAIT_FOR_SEQUENCES,earlyIndexCreateFlag=$EARLY_INDEX_CREATE_FLAG,spannerProjectId=$SPANNER_PROJECT_ID,ddlCreationTimeoutInMinutes=$DDL_CREATION_TIMEOUT_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY" \
 -pl v1 \
 -am
 ```

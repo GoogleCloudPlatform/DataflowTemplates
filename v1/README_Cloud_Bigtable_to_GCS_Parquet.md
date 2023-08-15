@@ -116,7 +116,7 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export FILENAME_PREFIX="part"
 
 ### Optional
-export NUM_SHARDS=0
+export NUM_SHARDS="0"
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-parquet-job" \
   --project "$PROJECT" \
@@ -153,7 +153,7 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export FILENAME_PREFIX="part"
 
 ### Optional
-export NUM_SHARDS=0
+export NUM_SHARDS="0"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

@@ -126,7 +126,7 @@ export FIRESTORE_DELETE_PROJECT_ID=<firestoreDeleteProjectId>
 
 ### Optional
 export FIRESTORE_READ_NAMESPACE=<firestoreReadNamespace>
-export FIRESTORE_HINT_NUM_WORKERS=500
+export FIRESTORE_HINT_NUM_WORKERS="500"
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 
@@ -165,7 +165,7 @@ export FIRESTORE_DELETE_PROJECT_ID=<firestoreDeleteProjectId>
 
 ### Optional
 export FIRESTORE_READ_NAMESPACE=<firestoreReadNamespace>
-export FIRESTORE_HINT_NUM_WORKERS=500
+export FIRESTORE_HINT_NUM_WORKERS="500"
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 

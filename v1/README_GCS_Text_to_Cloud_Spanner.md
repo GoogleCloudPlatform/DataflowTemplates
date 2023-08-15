@@ -126,14 +126,14 @@ export IMPORT_MANIFEST=<importManifest>
 export SPANNER_HOST="https://batch-spanner.googleapis.com"
 export COLUMN_DELIMITER=","
 export FIELD_QUALIFIER="\""
-export TRAILING_DELIMITER=true
+export TRAILING_DELIMITER="true"
 export ESCAPE=<escape>
 export NULL_STRING=<nullString>
 export DATE_FORMAT=<dateFormat>
 export TIMESTAMP_FORMAT=<timestampFormat>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export SPANNER_PRIORITY=<spannerPriority>
-export HANDLE_NEW_LINE=false
+export HANDLE_NEW_LINE="false"
 export INVALID_OUTPUT_PATH=""
 
 gcloud dataflow jobs run "gcs-text-to-cloud-spanner-job" \
@@ -181,14 +181,14 @@ export IMPORT_MANIFEST=<importManifest>
 export SPANNER_HOST="https://batch-spanner.googleapis.com"
 export COLUMN_DELIMITER=","
 export FIELD_QUALIFIER="\""
-export TRAILING_DELIMITER=true
+export TRAILING_DELIMITER="true"
 export ESCAPE=<escape>
 export NULL_STRING=<nullString>
 export DATE_FORMAT=<dateFormat>
 export TIMESTAMP_FORMAT=<timestampFormat>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export SPANNER_PRIORITY=<spannerPriority>
-export HANDLE_NEW_LINE=false
+export HANDLE_NEW_LINE="false"
 export INVALID_OUTPUT_PATH=""
 
 mvn clean package -PtemplatesRun \
