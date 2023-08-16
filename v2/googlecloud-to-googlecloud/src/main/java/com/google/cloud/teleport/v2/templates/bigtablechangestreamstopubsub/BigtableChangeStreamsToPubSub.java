@@ -216,11 +216,18 @@ public final class BigtableChangeStreamsToPubSub {
     PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo);
 
     /*
-     * Stages: 1) Read {@link ChangeStreamMutation} from change stream. 2) Create {@link
-     * FailsafeElement} of {@link Mod} JSON and merge from: - {@link ChangeStreamMutation}. - GCS Dead
-     * letter queue. 3) Convert {@link Mod} JSON into PubsubMessage and publish it to PubSub.
+     * <p>
+     * Stages:
+     *
+     * 1) Read {@link ChangeStreamMutation} from change stream.
+     * 2) Create {@link FailsafeElement} of {@link Mod} JSON and merge from:
+     *    - {@link ChangeStreamMutation}.
+     *    - GCS Dead letter queue.
+     * 3) Convert {@link Mod} JSON into PubsubMessage and publish it to PubSub.
      * 4) Write Failures from 2) and 3) to GCS dead letter queue.
+     * </p>
      */
+
     // Step 1
     Pipeline pipeline = Pipeline.create(options);
 
