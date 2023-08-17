@@ -108,9 +108,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testJsonNoSchemaCharsetsAndBase64Values() throws Exception {
-    String suffix = "" + System.nanoTime();
-    String srcTable = "src" + suffix;
-
     LaunchInfo launchInfo =
         launchTemplate(
             LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
