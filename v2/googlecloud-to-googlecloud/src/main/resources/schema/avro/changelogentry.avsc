@@ -16,10 +16,10 @@
       { "name": "columnFamily", "type": "string"},
       { "name": "commitTimestamp", "type" : "long"},
       { "name": "lowWatermark", "type" : "long"},
-      { "name": "column", "type" : ["bytes", "null"]},
-      { "name": "timestamp", "type" : ["long", "null"]},
-      { "name": "timestampFrom", "type" : ["long", "null"]},
-      { "name": "timestampTo", "type" : ["long", "null"]},
-      { "name" : "value", "type" : ["bytes", "null"]}
+      { "name": "column", "type" : ["null", "bytes"]},
+      { "name": "timestamp", "type" : ["null", "long"]},
+      { "name": "timestampFrom", "type" : ["null", "long"]},
+      { "name": "timestampTo", "type" : ["null", "long"]},
+      { "name" : "value", "type" : ["null", "bytes"]}
     ]
 }

@@ -97,6 +97,11 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
   }
 
   @Override
+  public String getPathForArtifact(String artifactName) {
+    return joinPathParts(testClassName, runId, artifactName);
+  }
+
+  @Override
   public Artifact createArtifact(String artifactName, String contents) {
     return this.createArtifact(artifactName, contents.getBytes(StandardCharsets.UTF_8));
   }
