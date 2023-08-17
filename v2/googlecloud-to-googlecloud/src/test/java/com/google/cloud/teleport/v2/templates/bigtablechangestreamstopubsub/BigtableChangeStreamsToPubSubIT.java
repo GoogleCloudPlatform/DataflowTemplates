@@ -21,13 +21,8 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
-import com.google.api.gax.paging.Page;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.Storage.BlobListOption;
-import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessage;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageProto;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageProto.ChangelogEntryProto;
@@ -82,9 +77,7 @@ import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Integration test for {@link BigtableChangeStreamsToPubSub}.
- */
+/** Integration test for {@link BigtableChangeStreamsToPubSub}. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableChangeStreamsToPubSub.class)
 @RunWith(Parameterized.class)
@@ -100,6 +93,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Parameterized.Parameter(0)
   public Boolean noDlqRetry;
+
   private final String clusterName = "teleport-c1";
   private String appProfileId;
   private TopicName topicName;
@@ -108,7 +102,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Parameterized.Parameters(name = "{0}")
   public static List<Boolean> testParameters() {
-    return Lists.asList(true, new Boolean[]{false});
+    return Lists.asList(true, new Boolean[] {false});
   }
 
   @Test
@@ -116,24 +110,25 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     String suffix = "" + System.nanoTime();
     String srcTable = "src" + suffix;
 
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "JSON")
-            .addParameter("messageEncoding", "JSON")
-            .addParameter("useBase64Values", "true")
-            .addParameter("bigtableChangeStreamCharset", "KOI8-R")
-            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-            .addParameter("pubSubTopic", this.topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("useBase64Values", "true")
+                .addParameter("bigtableChangeStreamCharset", "KOI8-R")
+                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+                .addParameter("pubSubTopic", this.topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
 
     // Russian letter B in KOI8-R
-    byte[] columnBytes = new byte[]{(byte) 0xc2};
+    byte[] columnBytes = new byte[] {(byte) 0xc2};
 
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
@@ -172,18 +167,19 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testDeadLetterQueueDelivery() throws Exception {
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "JSON")
-            .addParameter("messageEncoding", "JSON")
-            .addParameter("dlqDirectory", getGcsPath("dlq"))
-            .addParameter("dlqMaxRetries", "1")
-            .addParameter("dlqRetryMinutes", "1")
-            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("dlqDirectory", getGcsPath("dlq"))
+                .addParameter("dlqMaxRetries", "1")
+                .addParameter("dlqRetryMinutes", "1")
+                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -230,48 +226,52 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     LOG.info("Looking for files in DLQ");
 
-    Result result = pipelineOperator().waitForConditionAndFinish(
-        createConfig(launchInfo),
-        () -> {
-          List<Artifact> artifacts = gcsClient.listArtifacts("dlq/severe", Pattern.compile(".*"));
-          for (Artifact artifact : artifacts) {
-            try {
-              ObjectMapper om = new ObjectMapper();
-              JsonNode severeError = om.readTree(artifact.contents());
-              Assert.assertNotNull(severeError);
-              JsonNode errorMessageNode = severeError.get("error_message");
-              Assert.assertNotNull(errorMessageNode);
-              Assert.assertTrue(errorMessageNode instanceof TextNode);
-              String messageText = errorMessageNode.asText();
-              Assert.assertTrue(
-                  "Unexpected message text: " + messageText,
-                  StringUtils.contains(messageText,
-                      "Request payload size exceeds the limit"));
-              return true;
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
-          }
-          return false;
-        });
+    Result result =
+        pipelineOperator()
+            .waitForConditionAndFinish(
+                createConfig(launchInfo),
+                () -> {
+                  List<Artifact> artifacts =
+                      gcsClient.listArtifacts("dlq/severe", Pattern.compile(".*"));
+                  for (Artifact artifact : artifacts) {
+                    try {
+                      ObjectMapper om = new ObjectMapper();
+                      JsonNode severeError = om.readTree(artifact.contents());
+                      Assert.assertNotNull(severeError);
+                      JsonNode errorMessageNode = severeError.get("error_message");
+                      Assert.assertNotNull(errorMessageNode);
+                      Assert.assertTrue(errorMessageNode instanceof TextNode);
+                      String messageText = errorMessageNode.asText();
+                      Assert.assertTrue(
+                          "Unexpected message text: " + messageText,
+                          StringUtils.contains(
+                              messageText, "Request payload size exceeds the limit"));
+                      return true;
+                    } catch (Exception e) {
+                      throw new RuntimeException(e);
+                    }
+                  }
+                  return false;
+                });
 
     assertThatResult(result).meetsConditions();
   }
 
   @Test
   public void testJsonNoSchemaB64RkAndColNoVal() throws Exception {
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "JSON")
-            .addParameter("messageEncoding", "JSON")
-            .addParameter("useBase64Rowkeys", "true")
-            .addParameter("useBase64ColumnQualifiers", "true")
-            .addParameter("stripValues", "true")
-            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("useBase64Rowkeys", "true")
+                .addParameter("useBase64ColumnQualifiers", "true")
+                .addParameter("stripValues", "true")
+                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -301,8 +301,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     bigtableResourceManager.write(rowMutation);
 
-    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(
-        launchInfo);
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
 
     for (ReceivedMessage message : receivedMessages) {
       validateJsonMessageData(expected, message.getMessage().getData().toString("UTF-8"));
@@ -316,8 +315,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             .setMinMessages(1)
             .build();
 
-    Result result = pipelineOperator().waitForCondition(createConfig(launchInfo),
-        pubsubCheck);
+    Result result = pipelineOperator().waitForCondition(createConfig(launchInfo), pubsubCheck);
     assertThatResult(result).meetsConditions();
 
     List<ReceivedMessage> receivedMessages = pubsubCheck.getReceivedMessageList();
@@ -360,24 +358,25 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
         Encoding.JSON,
         topicName);
 
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "JSON")
-            .addParameter("messageEncoding", "JSON")
-            .addParameter("useBase64Values", "true")
-            .addParameter("bigtableChangeStreamCharset", "KOI8-R")
-            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("useBase64Values", "true")
+                .addParameter("bigtableChangeStreamCharset", "KOI8-R")
+                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
 
     // Russian letter B in KOI8-R
-    byte[] columnBytes = new byte[]{(byte) 0xc2};
+    byte[] columnBytes = new byte[] {(byte) 0xc2};
 
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
@@ -450,13 +449,14 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
         Encoding.BINARY,
         topicName);
 
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -496,16 +496,17 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testProtoNoSchemaNoVal() throws Exception {
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "PROTOCOL_BUFFERS")
-            .addParameter("messageEncoding", "BINARY")
-            .addParameter("stripValues", "true")
-            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "PROTOCOL_BUFFERS")
+                .addParameter("messageEncoding", "BINARY")
+                .addParameter("stripValues", "true")
+                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -576,13 +577,14 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
         Encoding.BINARY,
         topicName);
 
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -647,16 +649,17 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             .setValue(null)
             .build();
 
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "AVRO")
-            .addParameter("messageEncoding", "BINARY")
-            .addParameter("stripValues", "true")
-            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "AVRO")
+                .addParameter("messageEncoding", "BINARY")
+                .addParameter("stripValues", "true")
+                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -780,16 +783,16 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     bigtableResourceManager.createInstance(clusters);
 
     bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[]{}));
+        appProfileId, true, Lists.asList(clusterName, new String[] {}));
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[]{}));
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
     bigtableResourceManager.createTable(srcTable, cdcTableSpec);
 
     topicName = pubsubResourceManager.createTopic(topicNameToCreate);
-    subscriptionName = pubsubResourceManager.createSubscription(topicName,
-        subscriptionNameToCreate);
+    subscriptionName =
+        pubsubResourceManager.createSubscription(topicName, subscriptionNameToCreate);
   }
 
   private String removeUnsafeCharacters(String testName) {

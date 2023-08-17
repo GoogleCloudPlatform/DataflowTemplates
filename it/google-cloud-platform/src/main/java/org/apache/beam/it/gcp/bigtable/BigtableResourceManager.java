@@ -363,8 +363,8 @@ public class BigtableResourceManager implements ResourceManager {
         boolean allReady;
         do {
           allReady = true;
-          Map<String, ReplicationState> states = tableAdminClient.getTable(tableId)
-              .getReplicationStatesByClusterId();
+          Map<String, ReplicationState> states =
+              tableAdminClient.getTable(tableId).getReplicationStatesByClusterId();
           for (ReplicationState state : states.values()) {
             if (!state.equals(ReplicationState.READY)) {
               allReady = false;
@@ -601,9 +601,7 @@ public class BigtableResourceManager implements ResourceManager {
     return false;
   }
 
-  public void isTableReady() {
-
-  }
+  public void isTableReady() {}
 
   /** Builder for {@link BigtableResourceManager}. */
   public static final class Builder {
