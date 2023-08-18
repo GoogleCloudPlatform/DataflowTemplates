@@ -82,7 +82,7 @@
     <!-- should be updated when these versions are changed. -->
     <mysql-connector-java.version>8.0.30</mysql-connector-java.version>
     <postgresql.version>42.2.27</postgresql.version>
-    <ojdbc8.version>19.3.0.0</ojdbc8.version>
+    <ojdbc8.version>23.2.0.0</ojdbc8.version>
     <mssql-jdbc.version>12.2.0.jre11</mssql-jdbc.version>
     <neo4j-driver.version>4.4.12</neo4j-driver.version>
 
