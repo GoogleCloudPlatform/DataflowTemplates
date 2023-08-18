@@ -72,7 +72,7 @@ public class BeamBlock {
       case edge:
         edgeQueue.add(blockingReturn);
         break;
-      case custom:
+      case custom_query:
         customQueue.add(blockingReturn);
         break;
     }
@@ -154,6 +154,12 @@ public class BeamBlock {
     if (executeAfter == ActionExecuteAfter.edge) {
       waitOnQueues.add(
           executeAfterNamedQueue.get(ArtifactType.edge.name() + ":" + executeAfterName));
+      return waitOnQueues;
+    }
+    if (executeAfter == ActionExecuteAfter.custom_query) {
+      PCollection<Row> rows =
+          executeAfterNamedQueue.get(ArtifactType.custom_query.name() + ":" + executeAfterName);
+      waitOnQueues.add(rows);
       return waitOnQueues;
     }
     if (executeAfter == ActionExecuteAfter.action) {

@@ -32,7 +32,7 @@ public class InputValidatorTest {
     String sourceName = "some source";
     Target target = new Target();
     target.setName("custom query target");
-    target.setType(TargetType.custom);
+    target.setType(TargetType.custom_query);
     target.setSource(sourceName);
     JobSpec jobSpec = new JobSpec();
     jobSpec.getSources().put(sourceName, source(sourceName));
@@ -48,7 +48,7 @@ public class InputValidatorTest {
     String sourceName = "some source";
     Target target = new Target();
     target.setName("custom query target");
-    target.setType(TargetType.custom);
+    target.setType(TargetType.custom_query);
     target.setCustomQuery("RETURN 42");
     target.setMappings(List.of(new Mapping()));
     target.setSource(sourceName);
@@ -66,7 +66,7 @@ public class InputValidatorTest {
     String sourceName = "some source";
     Target target = new Target();
     target.setName("custom query target");
-    target.setType(TargetType.custom);
+    target.setType(TargetType.custom_query);
     target.setCustomQuery("RETURN 42");
     target.getTransform().setGroup(true);
     target.setSource(sourceName);

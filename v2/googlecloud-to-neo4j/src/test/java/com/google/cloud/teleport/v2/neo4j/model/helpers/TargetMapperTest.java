@@ -30,7 +30,7 @@ public class TargetMapperTest {
 
   @Test
   public void parsesCustomQueryTarget() {
-    JSONObject object = jsonTargetOfType("custom");
+    JSONObject object = jsonTargetOfType("custom_query");
     JSONObject customObject = object.getJSONObject("custom");
     customObject.put("query", "UNWIND $rows AS row CREATE (:Node {prop: row.prop})");
     JSONObject mappings = new JSONObject();
@@ -42,7 +42,7 @@ public class TargetMapperTest {
 
     Target target = TargetMapper.fromJson(object);
 
-    assertThat(target.getType()).isEqualTo(TargetType.custom);
+    assertThat(target.getType()).isEqualTo(TargetType.custom_query);
     assertThat(target.getCustomQuery())
         .isEqualTo("UNWIND $rows AS row CREATE (:Node {prop: row.prop})");
     assertThat(target.getExecuteAfter()).isEqualTo(ActionExecuteAfter.edges);
@@ -115,7 +115,7 @@ public class TargetMapperTest {
     assertThat(exception)
         .hasMessageThat()
         .isEqualTo(
-            "Expected target JSON to have one of: \"node\", \"edge\", \"custom\" as top-level field, but only found fields: \"invalid\"");
+            "Expected target JSON to have one of: \"node\", \"edge\", \"custom_query\" as top-level field, but only found fields: \"invalid\"");
   }
 
   private static JSONObject jsonTargetOfType(String type) {

@@ -53,7 +53,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   @Override
   public PCollection<Row> expand(@NonNull PCollection<Row> input) {
     TargetType targetType = target.getType();
-    if (targetType != TargetType.custom) {
+    if (targetType != TargetType.custom_query) {
       createIndicesAndConstraints();
     }
 
@@ -69,7 +69,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
         batchSize = config.getEdgeBatchSize();
         parallelism = config.getEdgeParallelism();
         break;
-      case custom:
+      case custom_query:
         batchSize = config.getCustomQueryBatchSize();
         parallelism = config.getCustomQueryParallelism();
         break;
@@ -106,7 +106,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   }
 
   private String getCypherQuery() {
-    if (target.getType() == TargetType.custom) {
+    if (target.getType() == TargetType.custom_query) {
       String cypher = target.getCustomQuery();
       LOG.info("Custom cypher query: {}", cypher);
       return cypher;

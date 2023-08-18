@@ -357,7 +357,7 @@ public class GoogleCloudToNeo4j {
       ////////////////////////////
       // Custom query targets
       List<Target> customQueryTargets =
-          jobSpec.getActiveTargetsBySourceAndType(sourceName, TargetType.custom);
+          jobSpec.getActiveTargetsBySourceAndType(sourceName, TargetType.custom_query);
       for (Target customQueryTarget : customQueryTargets) {
         String customQueryStepDescription =
             customQueryTarget.getSequence()
@@ -389,7 +389,7 @@ public class GoogleCloudToNeo4j {
                 .setCoder(nullableSourceBeamRows.getCoder());
 
         processingQueue.addToQueue(
-            ArtifactType.custom,
+            ArtifactType.custom_query,
             false,
             customQueryTarget.getName(),
             blockingReturn,
@@ -430,6 +430,8 @@ public class GoogleCloudToNeo4j {
         artifactType = ArtifactType.node;
       } else if (action.executeAfter == ActionExecuteAfter.edge) {
         artifactType = ArtifactType.edge;
+      } else if (action.executeAfter == ActionExecuteAfter.custom_query) {
+        artifactType = ArtifactType.custom_query;
       }
       LOG.info("Registering action: {}", action.name);
       // Get targeted execution context

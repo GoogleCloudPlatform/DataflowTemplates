@@ -21,5 +21,5 @@ public enum ArtifactType {
   source,
   node,
   edge,
-  custom
+  custom_query
 }

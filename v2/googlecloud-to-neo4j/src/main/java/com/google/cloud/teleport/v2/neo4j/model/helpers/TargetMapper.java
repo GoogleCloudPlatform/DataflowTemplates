@@ -45,9 +45,9 @@ public class TargetMapper {
       parseEdgeMappingsObject(target, targetObj.getJSONObject("edge"));
       return target;
     }
-    if (targetObj.has("custom")) {
-      target.setType(TargetType.custom);
-      parseCustomQueryMappingsObject(target, targetObj.getJSONObject("custom"));
+    if (targetObj.has("custom_query")) {
+      target.setType(TargetType.custom_query);
+      parseCustomQueryMappingsObject(target, targetObj.getJSONObject("custom_query"));
       return target;
     }
     String error =
@@ -92,6 +92,9 @@ public class TargetMapper {
         !json.has("execute_after")
             ? ActionExecuteAfter.edges
             : ActionExecuteAfter.valueOf(json.getString("execute_after")));
+    if (json.has("execute_after_name")) {
+      target.setExecuteAfterName(json.getString("execute_after_name"));
+    }
     target.setCustomQuery(json.getString("query"));
   }
 

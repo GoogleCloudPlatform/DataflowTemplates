@@ -31,7 +31,7 @@ public class InputRefactoringTest {
     options.overlayTokens("{\"foo\": \"bar\"}");
     JobSpec jobSpec = new JobSpec();
     Target target = new Target();
-    target.setType(TargetType.custom);
+    target.setType(TargetType.custom_query);
     target.setCustomQuery("RETURN \"$foo\"");
     jobSpec.getTargets().add(target);
     InputRefactoring refactorer = new InputRefactoring(options);

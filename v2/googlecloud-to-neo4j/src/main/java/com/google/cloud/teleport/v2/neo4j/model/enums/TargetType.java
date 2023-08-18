@@ -19,5 +19,5 @@ package com.google.cloud.teleport.v2.neo4j.model.enums;
 public enum TargetType {
   node,
   edge,
-  custom
+  custom_query
 }

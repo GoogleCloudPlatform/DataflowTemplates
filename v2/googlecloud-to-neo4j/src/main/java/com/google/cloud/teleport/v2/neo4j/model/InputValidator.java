@@ -145,7 +145,7 @@ public class InputValidator {
         case edge:
           validateEdgeTarget(target, validationMessages);
           break;
-        case custom:
+        case custom_query:
           validateCustomTarget(target, validationMessages);
           break;
         default:

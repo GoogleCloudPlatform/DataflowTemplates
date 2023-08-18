@@ -52,7 +52,7 @@ public class Target implements Serializable, Comparable<Target> {
     if (this.type == o.type) {
       return 0;
     }
-    if (this.type == TargetType.custom) {
+    if (this.type == TargetType.custom_query) {
       return 1;
     }
     if (this.type == TargetType.edge && o.type == TargetType.node) {

@@ -50,7 +50,7 @@ public class InputRefactoring {
     // other types of targets must define at least one source field mapping
     if (jobSpec.getAllFieldNames().isEmpty()
         && jobSpec.getTargets().stream()
-            .noneMatch(target -> target.getType() == TargetType.custom)) {
+            .noneMatch(target -> target.getType() == TargetType.custom_query)) {
       LOG.error("Targets not found, synthesizing from source is not currently supported.");
       throw new RuntimeException("Not currently auto-generating targets.");
     }
@@ -74,7 +74,7 @@ public class InputRefactoring {
       if (StringUtils.isEmpty(target.getName())) {
         target.setName("Target " + targetNum);
       }
-      if (target.getType() == TargetType.custom) {
+      if (target.getType() == TargetType.custom_query) {
         String customQuery = target.getCustomQuery();
         target.setCustomQuery(
             ModelUtils.replaceVariableTokens(customQuery, optionsParams.getTokenMap()));

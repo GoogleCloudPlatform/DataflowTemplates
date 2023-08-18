@@ -30,7 +30,7 @@ public class TargetTest {
 
   @Parameters(name = "targetOfType({0}).compareTo(targetOfType({1})) == {2}")
   public static Collection<Object[]> parameters() {
-    TargetType customQuery = TargetType.custom;
+    TargetType customQuery = TargetType.custom_query;
     TargetType node = TargetType.node;
     TargetType edge = TargetType.edge;
     return List.of(
