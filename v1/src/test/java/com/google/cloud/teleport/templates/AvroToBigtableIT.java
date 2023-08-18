@@ -51,7 +51,9 @@ public class AvroToBigtableIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     bigtableResourceManager =
-        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider).build();
+        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider)
+            .maybeUseStaticInstance()
+            .build();
     gcsClient.uploadArtifact(
         "input/bigtable-to-avro-file_test.avro",
         Resources.getResource("AvroToBigtableIT/bigtable-to-avro-file_test.avro").getPath());
