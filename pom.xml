@@ -498,22 +498,14 @@
         <directory>${project.basedir}/target/plugin/${pluginRunId}</directory>
       </build>
     </profile>
-    <!-- The following snapshot profile allows us to test Templates with
-     unreleased Apache Beam versions, for example:
-     mvn test -Psnapshot -Dbeam.version=2.50.0-SNAPSHOT -->
-    <profile>
-      <id>snapshot</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <repositories>
-        <repository>
-          <id>apache.candidate</id>
-          <url>https://repository.apache.org/content/repositories/orgapachebeam-1353/</url>
-        </repository>
-      </repositories>
-    </profile>
   </profiles>
+
+  <repositories>
+    <repository>
+      <id>apache.candidate</id>
+      <url>https://repository.apache.org/content/repositories/orgapachebeam-1353/</url>
+    </repository>
+  </repositories>
 
   <modules>
     <module>metadata</module>
