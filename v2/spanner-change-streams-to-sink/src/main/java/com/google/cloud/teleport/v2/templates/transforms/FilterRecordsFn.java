@@ -24,8 +24,19 @@ import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 /** This DoFn filters the records that we do not want to process. */
 public class FilterRecordsFn extends DoFn<DataChangeRecord, DataChangeRecord> {
 
+  private final String filtrationMode;
+
+  public FilterRecordsFn(String filtrationMode) {
+    this.filtrationMode = filtrationMode;
+  }
+
   @ProcessElement
   public void processElement(ProcessContext c) {
+    // In this mode, filter no records.
+    if (filtrationMode.equals(Constants.FILTRATION_MODE_NONE)) {
+      c.output(c.element());
+      return;
+    }
     DataChangeRecord record = c.element();
     // TODO: Fetch forward migration Dataflow job id and do full string match for the tag.
     if (!record.getTransactionTag().startsWith(Constants.FWD_MIGRATION_TRANSACTION_TAG_PREFIX)) {

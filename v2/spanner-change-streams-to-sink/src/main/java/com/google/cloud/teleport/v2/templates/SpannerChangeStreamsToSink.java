@@ -251,6 +251,20 @@ public class SpannerChangeStreamsToSink {
     String getSessionFilePath();
 
     void setSessionFilePath(String value);
+
+    @TemplateParameter.Enum(
+        order = 17,
+        optional = true,
+        enumOptions = {@TemplateEnumOption("none"), @TemplateEnumOption("forward_migration")},
+        description = "Filtration mode",
+        helpText =
+            "Mode of Filtration, decides how to drop certain records based on a criteria. Currently"
+                + " supported modes are: none (filter nothing), forward_migration (filter records"
+                + " written via the forward migration pipeline). Defaults to forward_migration.")
+    @Default.String("forward_migration")
+    String getFiltrationMode();
+
+    void setFiltrationMode(String value);
   }
 
   private static void validateSinkParams(Options options) {
@@ -335,7 +349,7 @@ public class SpannerChangeStreamsToSink {
 
     pipeline
         .apply(getReadChangeStreamDoFn(options, spannerConfig))
-        .apply(ParDo.of(new FilterRecordsFn()))
+        .apply(ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
         .apply(ParDo.of(new PreprocessRecordsFn()))
         .setCoder(SerializableCoder.of(TrimmedDataChangeRecord.class))
         .apply(ParDo.of(new AssignShardIdFn(spannerConfig, schema, ddl)))
