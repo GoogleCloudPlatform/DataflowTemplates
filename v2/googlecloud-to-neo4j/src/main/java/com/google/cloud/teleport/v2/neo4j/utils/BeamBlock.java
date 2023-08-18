@@ -90,54 +90,7 @@ public class BeamBlock {
 
   public PCollection<Row> waitOnCollection(
       ActionExecuteAfter executeAfter, String executeAfterName, String queuingDescription) {
-    List<PCollection<Row>> waitOnQueues = new ArrayList<>();
-    if (executeAfter == ActionExecuteAfter.start) {
-      // no dependencies
-    } else if (executeAfter == ActionExecuteAfter.preloads) {
-      waitOnQueues.addAll(preloadActionQueue);
-    } else if (executeAfter == ActionExecuteAfter.sources) {
-      waitOnQueues.addAll(sourceQueue);
-    } else if (executeAfter == ActionExecuteAfter.nodes) {
-      waitOnQueues.addAll(nodeQueue);
-      if (waitOnQueues.isEmpty()) {
-        waitOnQueues.addAll(sourceQueue);
-      }
-      // end is same as after edges
-    } else if (executeAfter == ActionExecuteAfter.edges
-        || executeAfter == ActionExecuteAfter.loads) {
-      waitOnQueues.addAll(edgeQueue);
-      if (waitOnQueues.isEmpty()) {
-        waitOnQueues.addAll(nodeQueue);
-      }
-      if (waitOnQueues.isEmpty()) {
-        waitOnQueues.addAll(sourceQueue);
-      }
-    } else if (executeAfter == ActionExecuteAfter.custom) {
-      waitOnQueues.addAll(customQueue);
-      if (waitOnQueues.isEmpty()) {
-        waitOnQueues.addAll(edgeQueue);
-      }
-      if (waitOnQueues.isEmpty()) {
-        waitOnQueues.addAll(nodeQueue);
-      }
-      if (waitOnQueues.isEmpty()) {
-        waitOnQueues.addAll(sourceQueue);
-      }
-    } else if (!StringUtils.isEmpty(executeAfterName)) {
-      if (executeAfter == ActionExecuteAfter.node) {
-        waitOnQueues.add(
-            executeAfterNamedQueue.get(ArtifactType.node.name() + ":" + executeAfterName));
-      } else if (executeAfter == ActionExecuteAfter.edge) {
-        waitOnQueues.add(
-            executeAfterNamedQueue.get(ArtifactType.edge.name() + ":" + executeAfterName));
-      } else if (executeAfter == ActionExecuteAfter.action) {
-        waitOnQueues.add(
-            executeAfterNamedQueue.get(ArtifactType.action.name() + ":" + executeAfterName));
-      } else if (executeAfter == ActionExecuteAfter.source) {
-        waitOnQueues.add(
-            executeAfterNamedQueue.get(ArtifactType.source.name() + ":" + executeAfterName));
-      }
-    }
+    List<PCollection<Row>> waitOnQueues = populateQueue(executeAfter, executeAfterName);
     if (waitOnQueues.isEmpty()) {
       waitOnQueues.add(defaultCollection);
     }
@@ -162,5 +115,64 @@ public class BeamBlock {
                 + executeAfterName
                 + ")",
             Flatten.pCollections());
+  }
+
+  private List<PCollection<Row>> populateQueue(
+      ActionExecuteAfter executeAfter, String executeAfterName) {
+    List<PCollection<Row>> waitOnQueues = new ArrayList<>();
+    if (executeAfter == ActionExecuteAfter.start) {
+      return waitOnQueues;
+    }
+    if (executeAfter == ActionExecuteAfter.preloads) {
+      return enqueueFirstNonEmpty(waitOnQueues, preloadActionQueue);
+    }
+    if (executeAfter == ActionExecuteAfter.sources) {
+      return enqueueFirstNonEmpty(waitOnQueues, sourceQueue);
+    }
+    if (executeAfter == ActionExecuteAfter.nodes) {
+      return enqueueFirstNonEmpty(waitOnQueues, nodeQueue, sourceQueue);
+    }
+    if (executeAfter == ActionExecuteAfter.edges || executeAfter == ActionExecuteAfter.loads) {
+      return enqueueFirstNonEmpty(waitOnQueues, edgeQueue, nodeQueue, sourceQueue);
+    }
+    if (executeAfter == ActionExecuteAfter.custom_queries) {
+      return enqueueFirstNonEmpty(waitOnQueues, customQueue, edgeQueue, nodeQueue, sourceQueue);
+    }
+    if (StringUtils.isEmpty(executeAfterName)) {
+      return waitOnQueues;
+    }
+    if (executeAfter == ActionExecuteAfter.source) {
+      waitOnQueues.add(
+          executeAfterNamedQueue.get(ArtifactType.source.name() + ":" + executeAfterName));
+      return waitOnQueues;
+    }
+    if (executeAfter == ActionExecuteAfter.node) {
+      waitOnQueues.add(
+          executeAfterNamedQueue.get(ArtifactType.node.name() + ":" + executeAfterName));
+      return waitOnQueues;
+    }
+    if (executeAfter == ActionExecuteAfter.edge) {
+      waitOnQueues.add(
+          executeAfterNamedQueue.get(ArtifactType.edge.name() + ":" + executeAfterName));
+      return waitOnQueues;
+    }
+    if (executeAfter == ActionExecuteAfter.action) {
+      waitOnQueues.add(
+          executeAfterNamedQueue.get(ArtifactType.action.name() + ":" + executeAfterName));
+      return waitOnQueues;
+    }
+    return waitOnQueues;
+  }
+
+  @SafeVarargs
+  private static List<PCollection<Row>> enqueueFirstNonEmpty(
+      List<PCollection<Row>> waitOnQueues, List<PCollection<Row>>... targets) {
+    for (List<PCollection<Row>> target : targets) {
+      waitOnQueues.addAll(target);
+      if (!waitOnQueues.isEmpty()) {
+        return waitOnQueues;
+      }
+    }
+    return waitOnQueues;
   }
 }

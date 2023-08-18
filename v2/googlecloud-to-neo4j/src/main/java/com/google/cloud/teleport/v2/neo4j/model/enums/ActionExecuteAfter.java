@@ -34,7 +34,7 @@ public enum ActionExecuteAfter {
   source,
   node,
   edge,
-  custom,
+  custom_queries,
   action, // after action
   async,
   loads,
