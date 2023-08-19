@@ -170,8 +170,7 @@ mvn spotless:check
 
 Once the template is staged on Google Cloud Storage, it can then be executed
 using the
-gcloud CLI tool. Please
-check [Running classic templates](https://cloud.google.com/dataflow/docs/guides/templates/running-templates#using-gcloud)
+gcloud CLI tool. Please check [Running classic templates](https://cloud.google.com/dataflow/docs/guides/templates/running-templates#using-gcloud)
 or [Using Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates#run-a-flex-template-pipeline)
 for more information.
 
@@ -217,9 +216,7 @@ mvn clean package -PtemplatesStage  \
 ```
 
 Notes:
-
-- Change `-pl v2/googlecloud-to-googlecloud` and `-DtemplateName` to point to the specific Maven module where your
-  template is located. Even though `-pl` is not required, it allows the command to run considerably faster.
+- Change `-pl v2/googlecloud-to-googlecloud` and `-DtemplateName` to point to the specific Maven module where your template is located. Even though `-pl` is not required, it allows the command to run considerably faster.
 - In case `-DtemplateName` is not specified, all templates for the module will be staged.
 
 ### Running a Template
@@ -242,7 +239,6 @@ mvn clean package -PtemplatesRun \
 ```
 
 Notes:
-
 - When running a template, `-DtemplateName` is mandatory, as `-Dparameters=` are
   different across templates.
 - `-PtemplatesRun` is self-contained, i.e., it is not required to run **
@@ -252,13 +248,12 @@ Notes:
 - `-DjobName="{name}"` may be informed if a specific name is desirable (
   optional).
 
+
 ### Running Integration Tests
 
-To run integration tests, the developer plugin can be also used to stage template on-demand (in case the
-parameter `-DspecPath=` is not specified).
+To run integration tests, the developer plugin can be also used to stage template on-demand (in case the parameter `-DspecPath=` is not specified).
 
-For example, to run all the integration tests in a specific module (in the example
-below, `v2/googlecloud-to-googlecloud`):
+For example, to run all the integration tests in a specific module (in the example below, `v2/googlecloud-to-googlecloud`):
 
 ```shell
 mvn clean verify \
@@ -269,11 +264,9 @@ mvn clean verify \
   -pl v2/googlecloud-to-googlecloud -am
 ```
 
-The parameter `-Dtest=` can be given to test a single class (e.g., `-Dtest=PubsubToTextIT`) or single test case (
-e.g., `-Dtest=PubsubToTextIT#testTopicToGcs`).
+The parameter `-Dtest=` can be given to test a single class (e.g., `-Dtest=PubsubToTextIT`) or single test case (e.g., `-Dtest=PubsubToTextIT#testTopicToGcs`).
 
-The same happens when the test is executed from an IDE, just make sure to add the
-parameters `-Dproject=`, `-DartifactBucket=` and `-Dregion=` as program or VM arguments.
+The same happens when the test is executed from an IDE, just make sure to add the parameters `-Dproject=`, `-DartifactBucket=` and `-Dregion=` as program or VM arguments.
 
 ## Metadata Annotations
 
@@ -294,12 +287,12 @@ used for reference, but the structure is as follows:
 ```java
 
 @Template(
-        name = "BigQuery_to_Elasticsearch",
-        category = TemplateCategory.BATCH,
-        displayName = "BigQuery to Elasticsearch",
-        description = "A pipeline which sends BigQuery records into an Elasticsearch instance as JSON documents.",
-        optionsClass = BigQueryToElasticsearchOptions.class,
-        flexContainerName = "bigquery-to-elasticsearch")
+    name = "BigQuery_to_Elasticsearch",
+    category = TemplateCategory.BATCH,
+    displayName = "BigQuery to Elasticsearch",
+    description = "A pipeline which sends BigQuery records into an Elasticsearch instance as JSON documents.",
+    optionsClass = BigQueryToElasticsearchOptions.class,
+    flexContainerName = "bigquery-to-elasticsearch")
 public class BigQueryToElasticsearch {
 ```
 
@@ -312,42 +305,42 @@ repository, but the general structure is as follows:
 
 ```java
 @TemplateParameter.Text(
-        order = 2,
-        optional = false,
-        regexes = {"[,a-zA-Z0-9._-]+"},
-        description = "Kafka topic(s) to read the input from",
-        helpText = "Kafka topic(s) to read the input from.",
-        example = "topic1,topic2")
+    order = 2,
+    optional = false,
+    regexes = {"[,a-zA-Z0-9._-]+"},
+    description = "Kafka topic(s) to read the input from",
+    helpText = "Kafka topic(s) to read the input from.",
+    example = "topic1,topic2")
 @Validation.Required
 String getInputTopics();
 ```
 
 ```java
 @TemplateParameter.GcsReadFile(
-        order = 1,
-        description = "Cloud Storage Input File(s)",
-        helpText = "Path of the file pattern glob to read from.",
-        example = "gs://your-bucket/path/*.csv")
+    order = 1,
+    description = "Cloud Storage Input File(s)",
+    helpText = "Path of the file pattern glob to read from.",
+    example = "gs://your-bucket/path/*.csv")
 String getInputFilePattern();
 ```
 
 ```java
 @TemplateParameter.Boolean(
-        order = 11,
-        optional = true,
-        description = "Whether to use column alias to map the rows.",
-        helpText = "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the column name to map the rows to BigQuery.")
+    order = 11,
+    optional = true,
+    description = "Whether to use column alias to map the rows.",
+    helpText = "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the column name to map the rows to BigQuery.")
 @Default.Boolean(false)
 Boolean getUseColumnAlias();
 ```
 
 ```java
 @TemplateParameter.Enum(
-        order = 21,
-        enumOptions = {"INDEX", "CREATE"},
-        optional = true,
-        description = "Build insert method",
-        helpText = "Whether to use INDEX (index, allows upsert) or CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests.")
+    order = 21,
+    enumOptions = {"INDEX", "CREATE"},
+    optional = true,
+    description = "Build insert method",
+    helpText = "Whether to use INDEX (index, allows upsert) or CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests.")
 @Default.Enum("CREATE")
 BulkInsertMethodOptions getBulkInsertMethod();
 ```
@@ -438,6 +431,7 @@ function transform(inJson) {
 }
 ```
 
+
 ## Generated Documentation
 
 This repository contains generated documentation, which contains a list of parameters
@@ -454,13 +448,11 @@ mvn clean prepare-package \
 ## Release Process
 
 Templates are released in a weekly basis (best-effort) as part of the efforts to
-keep [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates) updated
-with latest fixes and improvements.
+keep [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates) updated with latest fixes and improvements.
 
 In case desired, you can stage and use your own changes using the `Staging (Deploying) Templates` steps.
 
-To execute the release of multiple templates, we provide a single Maven command to release Templates, which is a
-shortcut to
+To execute the release of multiple templates, we provide a single Maven command to release Templates, which is a shortcut to
 stage all templates while running additional validations.
 
 ```shell
@@ -476,6 +468,5 @@ mvn clean package -PtemplatesRelease \
 * [Dataflow templates](https://cloud.google.com/dataflow/docs/concepts/dataflow-templates)
 * [Google-provided templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 * [Apache Beam](https://beam.apache.org)
-    - [Overview](https://beam.apache.org/use/beam-overview/)
-    -
-    Quickstart: [Java](https://beam.apache.org/get-started/quickstart-java), [Python](https://beam.apache.org/get-started/quickstart-py), [Go](https://beam.apache.org/get-started/quickstart-go)
+  - [Overview](https://beam.apache.org/use/beam-overview/)
+  - Quickstart: [Java](https://beam.apache.org/get-started/quickstart-java), [Python](https://beam.apache.org/get-started/quickstart-py), [Go](https://beam.apache.org/get-started/quickstart-go)
