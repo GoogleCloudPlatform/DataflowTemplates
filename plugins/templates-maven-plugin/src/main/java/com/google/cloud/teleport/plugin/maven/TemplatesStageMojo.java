@@ -278,7 +278,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     String[] copyCmd =
         new String[] {
-          "gcloud", "storage", "cp", metadataFile.getAbsolutePath(), templateMetadataPath
+          "gcloud",
+          "storage",
+          "cp",
+          metadataFile.getAbsolutePath(),
+          templateMetadataPath,
+          "--project",
+          projectId,
         };
     LOG.info("Running: {}", String.join(" ", copyCmd));
 

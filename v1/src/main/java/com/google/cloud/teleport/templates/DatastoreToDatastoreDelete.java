@@ -41,7 +41,7 @@ import org.apache.beam.sdk.options.ValueProvider;
  */
 @Template(
     name = "Datastore_to_Datastore_Delete",
-    category = TemplateCategory.UTILITIES,
+    category = TemplateCategory.LEGACY,
     displayName = "Bulk Delete Entities in Datastore [Deprecated]",
     description =
         "A pipeline which reads in Entities (via a GQL query) from Datastore, optionally passes in the JSON encoded Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",

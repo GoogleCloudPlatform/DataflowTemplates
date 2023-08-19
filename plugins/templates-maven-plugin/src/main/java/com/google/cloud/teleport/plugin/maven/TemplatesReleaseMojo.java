@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOn
 
 import com.google.api.gax.rpc.InvalidArgumentException;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
+import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import java.net.MalformedURLException;
@@ -84,6 +85,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
     try {
       URLClassLoader loader = buildClassloader();
+      TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
 
       BuildPluginManager pluginManager =
           (BuildPluginManager) session.lookup("org.apache.maven.plugin.BuildPluginManager");
@@ -139,7 +141,14 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
         LOG.info("Template staged: {}", templatePath);
+
+        // Export the specs for collection
+        generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
+        if (definition.isFlex()) {
+          generator.saveImageSpec(definition, imageSpec, targetDirectory);
+        }
       }
+
     } catch (DependencyResolutionRequiredException e) {
       throw new MojoExecutionException("Dependency resolution failed", e);
     } catch (MalformedURLException e) {

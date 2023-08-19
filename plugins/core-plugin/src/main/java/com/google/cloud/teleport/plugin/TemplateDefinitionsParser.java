@@ -21,6 +21,7 @@ import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.reflections.Reflections;
 
 /**
@@ -42,13 +43,13 @@ public final class TemplateDefinitionsParser {
    */
   public static List<TemplateDefinitions> scanDefinitions(ClassLoader classLoader) {
 
-    List<TemplateDefinitions> definitions = new ArrayList<>();
+    List<TemplateDefinitions> allDefinitions = new ArrayList<>();
 
     // Scan every @Template class
     Set<Class<?>> templates = new Reflections(classLoader).getTypesAnnotatedWith(Template.class);
     for (Class<?> templateClass : templates) {
       Template templateAnnotation = templateClass.getAnnotation(Template.class);
-      definitions.add(new TemplateDefinitions(templateClass, templateAnnotation));
+      allDefinitions.add(new TemplateDefinitions(templateClass, templateAnnotation));
     }
 
     // Scan every @MultiTemplate class
@@ -57,11 +58,33 @@ public final class TemplateDefinitionsParser {
     for (Class<?> multiTemplateClass : multiTemplates) {
       MultiTemplate multiTemplateAnnotation = multiTemplateClass.getAnnotation(MultiTemplate.class);
       for (Template templateAnnotation : multiTemplateAnnotation.value()) {
-        definitions.add(new TemplateDefinitions(multiTemplateClass, templateAnnotation));
+        allDefinitions.add(new TemplateDefinitions(multiTemplateClass, templateAnnotation));
       }
     }
 
-    return definitions;
+    // Do not return definitions that we have the subclass
+    List<TemplateDefinitions> filteredDefinitions = new ArrayList<>();
+    for (TemplateDefinitions definitions : allDefinitions) {
+      System.out.println(
+          "Checking if "
+              + definitions.getTemplateClass()
+              + " is a subclass of any other class here "
+              + allDefinitions.stream()
+                  .map(TemplateDefinitions::getTemplateClass)
+                  .collect(Collectors.toList()));
+
+      if (allDefinitions.stream()
+          .noneMatch(
+              other ->
+                  definitions.getTemplateClass() != other.getTemplateClass()
+                      && definitions
+                          .getTemplateClass()
+                          .isAssignableFrom(other.getTemplateClass()))) {
+        filteredDefinitions.add(definitions);
+      }
+    }
+
+    return filteredDefinitions;
   }
 
   /**

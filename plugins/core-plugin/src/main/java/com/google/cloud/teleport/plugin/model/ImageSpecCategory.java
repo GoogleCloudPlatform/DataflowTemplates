@@ -15,23 +15,17 @@
  */
 package com.google.cloud.teleport.plugin.model;
 
-import org.apache.commons.lang3.StringUtils;
-
-/** Enum Options in a template parameter. */
-public class ImageSpecParameterEnumOption {
+/** Categories for a template. */
+public class ImageSpecCategory {
 
   private String name;
-  private String label;
-  private String description;
+  private String displayName;
 
-  public ImageSpecParameterEnumOption(String name, String label, String description) {
+  public ImageSpecCategory() {}
+
+  public ImageSpecCategory(String name, String displayName) {
     this.name = name;
-    if (StringUtils.isNotEmpty(label)) {
-      this.label = label;
-    }
-    if (StringUtils.isNotEmpty(description)) {
-      this.description = description;
-    }
+    this.displayName = displayName;
   }
 
   public String getName() {
@@ -42,19 +36,11 @@ public class ImageSpecParameterEnumOption {
     this.name = name;
   }
 
-  public String getLabel() {
-    return label;
+  public String getDisplayName() {
+    return displayName;
   }
 
-  public void setLabel(String label) {
-    this.label = label;
-  }
-
-  public String getDescription() {
-    return description;
-  }
-
-  public void setDescription(String description) {
-    this.description = description;
+  public void setDisplayName(String displayName) {
+    this.displayName = displayName;
   }
 }

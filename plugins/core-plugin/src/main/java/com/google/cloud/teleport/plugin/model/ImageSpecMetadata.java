@@ -30,12 +30,13 @@ public class ImageSpecMetadata {
   private String mainClass;
   private List<ImageSpecParameter> parameters = new ArrayList<>();
   private Map<String, String> runtimeParameters = new HashMap<>();
+  private ImageSpecCategory category;
   private String internalName;
   private String module;
   private String documentationLink;
   private boolean googleReleased;
   private boolean udfSupport;
-
+  private boolean flexTemplate;
   private String sourceFilePath;
 
   public String getDescription() {
@@ -94,6 +95,14 @@ public class ImageSpecMetadata {
     this.internalName = internalName;
   }
 
+  public ImageSpecCategory getCategory() {
+    return category;
+  }
+
+  public void setCategory(ImageSpecCategory category) {
+    this.category = category;
+  }
+
   public String getDocumentationLink() {
     return documentationLink;
   }
@@ -124,6 +133,14 @@ public class ImageSpecMetadata {
 
   public void setUdfSupport(boolean udfSupport) {
     this.udfSupport = udfSupport;
+  }
+
+  public boolean isFlexTemplate() {
+    return flexTemplate;
+  }
+
+  public void setFlexTemplate(boolean flexTemplate) {
+    this.flexTemplate = flexTemplate;
   }
 
   public String getSourceFilePath() {

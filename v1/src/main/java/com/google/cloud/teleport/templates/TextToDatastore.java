@@ -48,7 +48,7 @@ import org.apache.beam.sdk.values.TupleTag;
 @MultiTemplate({
   @Template(
       name = "GCS_Text_to_Datastore",
-      category = TemplateCategory.BATCH,
+      category = TemplateCategory.LEGACY,
       displayName = "Text Files on Cloud Storage to Datastore [Deprecated]",
       description =
           "Batch pipeline. Reads from text files stored in Cloud Storage and writes JSON-encoded entities to Datastore.",
