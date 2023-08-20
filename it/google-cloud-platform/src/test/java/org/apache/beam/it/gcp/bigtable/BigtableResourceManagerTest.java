@@ -30,7 +30,6 @@ import static org.mockito.Mockito.when;
 
 import com.google.api.gax.rpc.NotFoundException;
 import com.google.api.gax.rpc.ServerStream;
-import com.google.bigtable.admin.v2.Table;
 import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
@@ -453,9 +452,8 @@ public class BigtableResourceManagerTest {
     var mockTable = Mockito.mock(com.google.cloud.bigtable.admin.v2.models.Table.class);
     when(mockTable.getReplicationStatesByClusterId()).thenReturn(allReplicated);
 
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().getTable(TABLE_ID)).thenReturn(
-        mockTable
-    );
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().getTable(TABLE_ID))
+        .thenReturn(mockTable);
   }
 
   @Test

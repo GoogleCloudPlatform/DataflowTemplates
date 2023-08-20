@@ -365,14 +365,11 @@ public class BigtableResourceManager implements ResourceManager {
             .pollInterval(java.time.Duration.ofMillis(5000))
             .until(
                 () -> {
-                  var t = tableAdminClient
-                      .getTable(tableId);
+                  var t = tableAdminClient.getTable(tableId);
 
-                      var rs = t.getReplicationStatesByClusterId();
+                  var rs = t.getReplicationStatesByClusterId();
 
-                      return rs.values()
-                      .stream()
-                      .allMatch(Table.ReplicationState.READY::equals);
+                  return rs.values().stream().allMatch(Table.ReplicationState.READY::equals);
                 });
 
       } else {
