@@ -69,9 +69,8 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
   private static final String TEST_ZONE = "us-central1-a";
-  private static BigtableResourceManager bigtableResourceManager;
-  private static GcsResourceManager gcsResourceManager;
-
+  private BigtableResourceManager bigtableResourceManager;
+  private GcsResourceManager gcsResourceManager;
   private String outputPath;
   private String outputPath2;
   private String appProfileId;
@@ -524,17 +523,7 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
   protected PipelineOperator.Config createConfig(LaunchInfo info) {
     Config.Builder configBuilder =
         Config.builder().setJobId(info.jobId()).setProject(PROJECT).setRegion(REGION);
-
-    // For DirectRunner tests, reduce the max time and the interval, as there is no worker required
-    if (System.getProperty("directRunnerTest") != null) {
-      configBuilder =
-          configBuilder
-              .setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME.minus(Duration.ofMinutes(3)))
-              .setCheckAfter(Duration.ofSeconds(5));
-    } else {
-      configBuilder.setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME);
-    }
-
+    configBuilder.setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME);
     return configBuilder.build();
   }
 
