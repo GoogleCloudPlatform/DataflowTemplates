@@ -30,14 +30,18 @@ import static org.mockito.Mockito.when;
 
 import com.google.api.gax.rpc.NotFoundException;
 import com.google.api.gax.rpc.ServerStream;
+import com.google.bigtable.admin.v2.Table;
 import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
+import com.google.cloud.bigtable.admin.v2.models.Table.ReplicationState;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Rule;
@@ -142,6 +146,8 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testCreateTableShouldNotCreateInstanceWhenInstanceAlreadyExists() {
+    setupReadyTable();
+
     testManager.createInstance(cluster);
     Mockito.lenient()
         .when(
@@ -194,6 +200,7 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testCreateTableShouldThrowErrorWhenTableAdminClientFailsToClose() {
+    setupReadyTable();
     BigtableTableAdminClient mockClient =
         bigtableResourceManagerClientFactory.bigtableTableAdminClient();
     doThrow(RuntimeException.class).when(mockClient).close();
@@ -205,6 +212,8 @@ public class BigtableResourceManagerTest {
 
   @Test
   public void testCreateTableShouldWorkWhenBigtableDoesNotThrowAnyError() {
+    setupReadyTable();
+
     when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
         .thenReturn(false);
 
@@ -426,6 +435,8 @@ public class BigtableResourceManagerTest {
     when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
         .thenReturn(false);
 
+    setupReadyTable();
+
     testManager.createTable(TABLE_ID, ImmutableList.of("cf1"));
 
     testManager.cleanupAll();
@@ -435,9 +446,24 @@ public class BigtableResourceManagerTest {
     verify(bigtableResourceManagerClientFactory, never()).bigtableInstanceAdminClient();
   }
 
+  private void setupReadyTable() {
+    Map<String, ReplicationState> allReplicated = new HashMap<>();
+    allReplicated.put(CLUSTER_ID, ReplicationState.READY);
+
+    var mockTable = Mockito.mock(com.google.cloud.bigtable.admin.v2.models.Table.class);
+    when(mockTable.getReplicationStatesByClusterId()).thenReturn(allReplicated);
+
+    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().getTable(TABLE_ID)).thenReturn(
+        mockTable
+    );
+  }
+
   @Test
   public void testCleanupAllShouldWorkWhenBigtableDoesNotThrowAnyError() {
+    setupReadyTable();
+
     testManager.createTable(TABLE_ID, ImmutableList.of("cf1"));
+
     when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().exists(anyString()))
         .thenReturn(true);
     testManager.readTable(TABLE_ID);

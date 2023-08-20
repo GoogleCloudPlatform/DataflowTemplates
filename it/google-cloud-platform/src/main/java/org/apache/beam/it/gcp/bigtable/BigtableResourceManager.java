@@ -364,13 +364,17 @@ public class BigtableResourceManager implements ResourceManager {
             .atMost(java.time.Duration.ofMinutes(10))
             .pollInterval(java.time.Duration.ofMillis(5000))
             .until(
-                () ->
-                    tableAdminClient
-                        .getTable(tableId)
-                        .getReplicationStatesByClusterId()
-                        .values()
-                        .stream()
-                        .allMatch(Table.ReplicationState.READY::equals));
+                () -> {
+                  var t = tableAdminClient
+                      .getTable(tableId);
+
+                      var rs = t.getReplicationStatesByClusterId();
+
+                      return rs.values()
+                      .stream()
+                      .allMatch(Table.ReplicationState.READY::equals);
+                });
+
       } else {
         throw new IllegalStateException(
             "Table " + tableId + " already exists for instance " + instanceId + ".");
