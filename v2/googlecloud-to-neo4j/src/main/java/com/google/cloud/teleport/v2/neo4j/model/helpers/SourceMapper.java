@@ -102,12 +102,13 @@ public class SourceMapper {
         sourceObj.has("uri")
             ? sourceObj.getString("uri")
             : sourceObj.has("url") ? sourceObj.getString("url") : "");
-    String colNamesStr =
+    String rawFieldNames =
         sourceObj.has("ordered_field_names") ? sourceObj.getString("ordered_field_names") : "";
-    if (StringUtils.isNotEmpty(colNamesStr)) {
-      source.setFieldNames(StringUtils.split(colNamesStr, ","));
-      for (int i = 0; i < source.getFieldNames().length; i++) {
-        source.getFieldPosByName().put(source.getFieldNames()[i], (i + 1));
+    if (StringUtils.isNotEmpty(rawFieldNames)) {
+      String[] fieldNames = StringUtils.stripAll(StringUtils.split(rawFieldNames, ","));
+      source.setFieldNames(fieldNames);
+      for (int i = 0; i < fieldNames.length; i++) {
+        source.getFieldPosByName().put(fieldNames[i], (i + 1));
       }
     }
     if (StringUtils.isNotEmpty(source.getDelimiter())) {
