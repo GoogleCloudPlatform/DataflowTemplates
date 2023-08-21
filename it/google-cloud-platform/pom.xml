@@ -44,6 +44,11 @@
             <artifactId>truthmatchers</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- File Formats -->
         <dependency>
             <groupId>org.apache.parquet</groupId>

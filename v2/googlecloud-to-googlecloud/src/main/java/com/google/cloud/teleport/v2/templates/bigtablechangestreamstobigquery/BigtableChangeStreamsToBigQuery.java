@@ -17,6 +17,9 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.Timestamp;
+import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.BigQueryOptions;
+import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
 import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
@@ -26,13 +29,13 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadChangeStreamOptions;
 import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadOptions;
+import com.google.cloud.teleport.v2.bigtable.utils.UnsupportedEntryException;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamToBigQueryOptions;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ModType;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.UnsupportedEntryException;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import java.util.ArrayList;
@@ -139,6 +142,13 @@ public final class BigtableChangeStreamsToBigQuery {
 
     String changelogTableName = getBigQueryChangelogTableName(options);
     String bigtableProject = getBigtableProjectId(options);
+    String bigQueryProject = getBigQueryProjectId(options);
+    String bigQueryDataset = options.getBigQueryDataset();
+
+    // If dataset doesn't exist and not checked, pipeline will start failing only after it sees the
+    // first change from Cloud Bigtable. BigQueryIO can create table if it doesn't exist, but it
+    // cannot create a dataset
+    validateBigQueryDatasetExists(bigQueryProject, bigQueryDataset);
 
     // Retrieve and parse the startTimestamp
     Instant startTimestamp =
@@ -157,8 +167,8 @@ public final class BigtableChangeStreamsToBigQuery {
 
     BigQueryDestination destinationInfo =
         new BigQueryDestination(
-            getBigQueryProjectId(options),
-            options.getBigQueryDataset(),
+            bigQueryProject,
+            bigQueryDataset,
             changelogTableName,
             options.getWriteRowkeyAsBytes(),
             options.getWriteValuesAsBytes(),
@@ -247,6 +257,15 @@ public final class BigtableChangeStreamsToBigQuery {
                 .build());
 
     return pipeline.run();
+  }
+
+  private static void validateBigQueryDatasetExists(
+      String bigQueryProject, String bigQueryDataset) {
+    BigQueryOptions options = BigQueryOptions.newBuilder().build();
+    options.setThrowNotFound(true);
+
+    BigQuery bigQuery = options.getService();
+    bigQuery.getDataset(DatasetId.of(bigQueryProject, bigQueryDataset));
   }
 
   private static Instant toInstant(Timestamp timestamp) {

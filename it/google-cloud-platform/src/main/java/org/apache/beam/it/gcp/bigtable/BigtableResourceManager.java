@@ -37,6 +37,7 @@ import com.google.cloud.bigtable.admin.v2.models.CreateInstanceRequest;
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
 import com.google.cloud.bigtable.admin.v2.models.GCRules;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
+import com.google.cloud.bigtable.admin.v2.models.Table;
 import com.google.cloud.bigtable.admin.v2.models.UpdateTableRequest;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
@@ -56,6 +57,7 @@ import org.apache.beam.it.common.ResourceManager;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.threeten.bp.Duration;
 
 /**
@@ -87,7 +89,7 @@ public class BigtableResourceManager implements ResourceManager {
   // List to store created app profiles for static RM
   private final List<String> createdAppProfiles;
   // List of tables we enabled CDC for
-  private Set<String> cdcEnabledTables;
+  private final Set<String> cdcEnabledTables;
 
   private boolean hasInstance;
   private final boolean usingStaticInstance;
@@ -357,6 +359,19 @@ public class BigtableResourceManager implements ResourceManager {
           cdcEnabledTables.add(tableId);
         }
         tableAdminClient.createTable(createTableRequest);
+
+        Awaitility.await("Waiting for all tables to be replicated.")
+            .atMost(java.time.Duration.ofMinutes(10))
+            .pollInterval(java.time.Duration.ofMillis(5000))
+            .until(
+                () -> {
+                  var t = tableAdminClient.getTable(tableId);
+
+                  var rs = t.getReplicationStatesByClusterId();
+
+                  return rs.values().stream().allMatch(Table.ReplicationState.READY::equals);
+                });
+
       } else {
         throw new IllegalStateException(
             "Table " + tableId + " already exists for instance " + instanceId + ".");

@@ -39,4 +39,5 @@
 
   <!-- suppress checks for Dataplex client which is auto-generated -->
   <suppress checks=".*" files="googlecloud-to-googlecloud/src/main/java/com/google/api/services/dataplex/.*\.java" />
+  <suppress checks=".*" files="googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/bigtablechangestreamstopubsub/model/Mod\.java" />
 </suppressions>
