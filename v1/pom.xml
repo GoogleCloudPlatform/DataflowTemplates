@@ -64,6 +64,13 @@
   <dependencyManagement>
       <dependencies>
         <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-spanner-bom</artifactId>
+            <version>6.45.3</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+        <dependency>
           <groupId>org.apache.beam</groupId>
           <artifactId>beam-sdks-java-bom</artifactId>
           <version>${beam.version}</version>
@@ -100,6 +107,10 @@
           <artifactId>junit</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-spanner</artifactId>
     </dependency>
     <dependency>
       <groupId>org.threeten</groupId>

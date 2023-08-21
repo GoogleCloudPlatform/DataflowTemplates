@@ -17,10 +17,12 @@
  */
 package org.apache.beam.sdk.io.gcp.spanner;
 
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Spanner;
+import org.threeten.bp.Duration;
 
 /** Manages lifecycle of {@link DatabaseClient} and {@link Spanner} instances. */
 @SuppressWarnings({
@@ -38,6 +40,20 @@ public class LocalSpannerAccessor implements AutoCloseable {
   }
 
   public static LocalSpannerAccessor getOrCreate(SpannerConfig spannerConfig) {
+    RetrySettings retrySettings =
+        RetrySettings.newBuilder()
+            .setInitialRpcTimeout(Duration.ofHours(2))
+            .setMaxRpcTimeout(Duration.ofHours(2))
+            .setTotalTimeout(Duration.ofHours(2))
+            .setRpcTimeoutMultiplier(1.0)
+            .setInitialRetryDelay(Duration.ofSeconds(2))
+            .setMaxRetryDelay(Duration.ofSeconds(60))
+            .setRetryDelayMultiplier(1.5)
+            .setMaxAttempts(100)
+            .build();
+    spannerConfig = spannerConfig.withExecuteStreamingSqlRetrySettings(retrySettings);
+    // This property sets the default timeout between 2 response packets in the client library.
+    System.setProperty("com.google.cloud.spanner.watchdogTimeoutSeconds", "7200");
     return new LocalSpannerAccessor(SpannerAccessor.getOrCreate(spannerConfig));
   }
 
