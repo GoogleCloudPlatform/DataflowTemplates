@@ -21,7 +21,6 @@ import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.reflections.Reflections;
 
 /**
@@ -62,17 +61,10 @@ public final class TemplateDefinitionsParser {
       }
     }
 
-    // Do not return definitions that we have the subclass
+    // Do not return definitions that we have the subclass. Avoid duplications of the same template
+    // for submodules / branded templates.
     List<TemplateDefinitions> filteredDefinitions = new ArrayList<>();
     for (TemplateDefinitions definitions : allDefinitions) {
-      System.out.println(
-          "Checking if "
-              + definitions.getTemplateClass()
-              + " is a subclass of any other class here "
-              + allDefinitions.stream()
-                  .map(TemplateDefinitions::getTemplateClass)
-                  .collect(Collectors.toList()));
-
       if (allDefinitions.stream()
           .noneMatch(
               other ->
