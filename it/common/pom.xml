@@ -28,7 +28,6 @@
 
     <properties>
         <avro.version>1.8.2</avro.version>
-        <elasticsearch.version>7.9.2</elasticsearch.version>
     </properties>
     <dependencies>
         <dependency>
