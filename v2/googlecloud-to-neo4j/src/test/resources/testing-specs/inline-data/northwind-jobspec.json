@@ -2150,182 +2150,125 @@
   },
   "targets": [
     {
-      "name": "Customer Nodes",
-      "source": "1k orders inline",
-      "active": true,
-      "type": "node",
-      "mode": "merge",
-      "transform": {
-        "group": true
-      },
-      "mappings": [
-        {
-          "constant": "Customer",
-          "name": "Customer",
-          "role": "label"
+      "node": {
+        "name": "Customer Nodes",
+        "source": "1k orders inline",
+        "mode": "merge",
+        "transform": {
+          "group": true
         },
-        {
-          "field": "customer_id",
-          "name": "customerId",
-          "role": "key",
-          "description": "Customer identifier",
-          "type": "String",
-          "unique": true,
-          "indexed": true
-        },
-        {
-          "field": "contact_name",
-          "name": "contactName",
-          "role": "property",
-          "description": "Customer contact",
-          "type": "String",
-          "unique": false,
-          "indexed": true
-        },
-        {
-          "field": "company_name",
-          "name": "companyName",
-          "role": "property",
-          "description": "Customer company",
-          "type": "String",
-          "unique": false,
-          "indexed": true
+        "mappings": {
+          "label": "\"Customer\"",
+          "keys": {
+            "customer_id": "customerId"
+          },
+          "properties": {
+            "indexed": [
+              {
+                "contact_name": "contactName"
+              },
+              {
+                "company_name": "companyName"
+              }
+            ]
+          }
         }
-      ]
+      }
     },
     {
-      "name": "Product Nodes",
-      "type": "node",
-      "source": "1k orders inline",
-      "mode": "merge",
-      "transform": {
-        "aggregations": [
-          {
-            "expr": "SUM(unit_price*quantity)",
-            "field": "total_amount_sold"
+      "node": {
+        "name": "Product Nodes",
+        "source": "1k orders inline",
+        "mode": "merge",
+        "transform": {
+          "aggregations": [
+            {
+              "expr": "SUM(unit_price*quantity)",
+              "field": "total_amount_sold"
+            },
+            {
+              "expr": "SUM(quantity)",
+              "field": "total_quantity_sold"
+            }
+          ],
+          "group": true,
+          "order_by": "product_name ASC",
+          "limit": -1
+        },
+        "mappings": {
+          "label": "\"Product\"",
+          "keys": {
+            "product_id": "productId"
           },
-          {
-            "expr": "SUM(quantity)",
-            "field": "total_quantity_sold"
+          "properties": {
+            "indexed": [
+              {
+                "product_name": "productName"
+              }
+            ],
+            "floats": [
+              {
+                "total_amount_sold": "amount"
+              }
+            ],
+            "integers": [
+              {
+                "total_quantity_sold": "quantity"
+              }
+            ]
           }
-        ],
-        "group": true,
-        "order_by": "product_name ASC",
-        "limit": -1
-      },
-      "mappings": [
-        {
-          "constant": "Product",
-          "name": "Product",
-          "role": "label"
-        },
-        {
-          "field": "product_id",
-          "name": "productId",
-          "role": "key",
-          "description": "",
-          "type": "Integer"
-        },
-        {
-          "field": "product_name",
-          "name": "productName",
-          "role": "property",
-          "description": "",
-          "type": "String",
-          "unique": false,
-          "indexed": true
-        },
-        {
-          "field": "total_amount_sold",
-          "name": "amount",
-          "role": "property",
-          "description": "Total product order amount",
-          "type": "Float"
-        },
-        {
-          "field": "total_quantity_sold",
-          "name": "quantity",
-          "role": "property",
-          "description": "Total product quantity",
-          "type": "Integer"
         }
-      ]
+      }
     },
     {
-      "name": "Purchase Relationships",
-      "type": "edge",
-      "mode": "merge",
-      "source": "1k orders inline",
-      "transform": {
-        "aggregations": [
-          {
-            "expr": "SUM(unit_price*quantity)",
-            "field": "sum_amount"
+      "edge": {
+        "name": "Purchase Relationships",
+        "mode": "merge",
+        "source": "1k orders inline",
+        "transform": {
+          "aggregations": [
+            {
+              "expr": "SUM(unit_price*quantity)",
+              "field": "sum_amount"
+            },
+            {
+              "expr": "SUM(quantity)",
+              "field": "sum_quantity"
+            }
+          ],
+          "group": true,
+          "order_by": "product_name ASC",
+          "limit": -1
+        },
+        "mappings": {
+          "type": "\"PURCHASES\"",
+          "source": {
+            "label": "\"Customer\"",
+            "key": {
+              "customer_id": "customerId"
+            }
           },
-          {
-            "expr": "SUM(quantity)",
-            "field": "sum_quantity"
+          "target": {
+            "label": "\"Product\"",
+            "key": {
+              "product_id": "productId"
+            }
+          },
+          "properties": {
+            "keys": {
+              "order_id": "orderId"
+            },
+            "floats": {
+              "sum_amount": "amount"
+            },
+            "integers": [
+              {
+                "sum_quantity": "quantity"
+              }
+            ]
           }
-        ],
-        "group": true,
-        "order_by": "product_name ASC",
-        "limit": -1
-      },
-      "mappings": [
-        {
-          "constant": "PURCHASES",
-          "role": "type",
-          "fragment": "rel"
-        },
-        {
-          "constant": "Customer",
-          "role": "label",
-          "fragment": "source"
-        },
-        {
-          "constant": "Product",
-          "role": "label",
-          "fragment": "target"
-        },
-        {
-          "field": "customer_id",
-          "name": "customerId",
-          "role": "key",
-          "fragment": "source",
-          "type": "String"
-        },
-        {
-          "field": "product_id",
-          "name": "productId",
-          "role": "key",
-          "fragment": "target",
-          "type": "Integer"
-        },
-        {
-          "field": "order_id",
-          "name": "orderId",
-          "fragment": "rel",
-          "role": "key",
-          "description": "Unique order id",
-          "type": "Integer"
-        },
-        {
-          "field": "sum_amount",
-          "name": "amount",
-          "fragment": "rel",
-          "role": "property",
-          "description": "Calculated order amount",
-          "type": "Float"
-        },
-        {
-          "field": "sum_quantity",
-          "name": "quantity",
-          "fragment": "rel",
-          "role": "property",
-          "description": "Calculated order quantity",
-          "type": "Integer"
         }
-      ]
+      }
     }
   ]
 }

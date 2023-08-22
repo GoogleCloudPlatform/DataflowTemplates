@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import static com.google.common.truth.Truth.assertThat;
 import static java.util.stream.Collectors.toList;
+import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
@@ -24,7 +25,6 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
@@ -32,11 +32,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
-public class TransposedMappingMapperTest {
-
+public class MappingMapperTest {
   @Test
   public void parsesMultipleKeyMappingsFromObjectForEdgeSourceNode() {
-    Target target = edgeTarget();
+    Target target = target("my-target", TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONObject sourceKeys = new JSONObject();
@@ -48,21 +47,20 @@ public class TransposedMappingMapperTest {
     mappings.put("source", sourceMapping);
 
     List<Mapping> result =
-        TransposedMappingMapper.parseMappings(target, mappings).stream()
+        MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
-            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
         .isEqualTo(
             List.of(
-                new Mapping(FragmentType.source, RoleType.key, field("key1", "value1")),
-                new Mapping(FragmentType.source, RoleType.key, field("key2", "value2"))));
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key1", "value1")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key2", "value2"))));
   }
 
   @Test
   public void parsesMultipleKeyMappingsFromObjectArrayForEdgeSourceNode() {
-    Target target = edgeTarget();
+    Target target = target("my-target", TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray sourceKeys = new JSONArray();
@@ -74,23 +72,22 @@ public class TransposedMappingMapperTest {
     mappings.put("source", sourceMapping);
 
     List<Mapping> result =
-        TransposedMappingMapper.parseMappings(target, mappings).stream()
+        MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
-            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
         .isEqualTo(
             List.of(
-                new Mapping(FragmentType.source, RoleType.key, field("key1", "value1")),
-                new Mapping(FragmentType.source, RoleType.key, field("key2", "value2")),
-                new Mapping(FragmentType.source, RoleType.key, field("key3", "value3")),
-                new Mapping(FragmentType.source, RoleType.key, field("key4", "value4"))));
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key1", "value1")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key2", "value2")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key3", "value3")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key4", "value4"))));
   }
 
   @Test
   public void parsesMultipleKeyMappingsFromStringArrayForEdgeSourceNode() {
-    Target target = edgeTarget();
+    Target target = target("my-target", TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray sourceKeys = new JSONArray();
@@ -102,21 +99,20 @@ public class TransposedMappingMapperTest {
     mappings.put("source", sourceMapping);
 
     List<Mapping> result =
-        TransposedMappingMapper.parseMappings(target, mappings).stream()
+        MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
-            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
         .isEqualTo(
             List.of(
-                new Mapping(FragmentType.source, RoleType.key, field("value1", "value1")),
-                new Mapping(FragmentType.source, RoleType.key, field("value2", "value2"))));
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("value1", "value1")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("value2", "value2"))));
   }
 
   @Test
   public void parsesMultipleKeyMappingsFromMixedArrayForEdgeSourceNode() {
-    Target target = edgeTarget();
+    Target target = target("my-target", TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray sourceKeys = new JSONArray();
@@ -128,21 +124,20 @@ public class TransposedMappingMapperTest {
     mappings.put("source", sourceMapping);
 
     List<Mapping> result =
-        TransposedMappingMapper.parseMappings(target, mappings).stream()
+        MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
-            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
         .isEqualTo(
             List.of(
-                new Mapping(FragmentType.source, RoleType.key, field("key2", "value2")),
-                new Mapping(FragmentType.source, RoleType.key, field("value1", "value1"))));
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("value1", "value1")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key2", "value2"))));
   }
 
   @Test
   public void parsesMultipleKeyMappingsFromObjectForEdgeTargetNode() {
-    Target target = edgeTarget();
+    Target target = target("my-target", TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONObject targetKeys = new JSONObject();
@@ -154,21 +149,20 @@ public class TransposedMappingMapperTest {
     mappings.put("target", targetMapping);
 
     List<Mapping> result =
-        TransposedMappingMapper.parseMappings(target, mappings).stream()
+        MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
-            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
         .isEqualTo(
             List.of(
-                new Mapping(FragmentType.target, RoleType.key, field("key1", "value1")),
-                new Mapping(FragmentType.target, RoleType.key, field("key2", "value2"))));
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key1", "value1")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key2", "value2"))));
   }
 
   @Test
   public void parsesMultipleKeyMappingsFromObjectArrayForEdgeTargetNode() {
-    Target target = edgeTarget();
+    Target target = target("my-target", TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray targetKeys = new JSONArray();
@@ -180,23 +174,22 @@ public class TransposedMappingMapperTest {
     mappings.put("target", sourceMapping);
 
     List<Mapping> result =
-        TransposedMappingMapper.parseMappings(target, mappings).stream()
+        MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
-            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
         .isEqualTo(
             List.of(
-                new Mapping(FragmentType.target, RoleType.key, field("key1", "value1")),
-                new Mapping(FragmentType.target, RoleType.key, field("key2", "value2")),
-                new Mapping(FragmentType.target, RoleType.key, field("key3", "value3")),
-                new Mapping(FragmentType.target, RoleType.key, field("key4", "value4"))));
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key1", "value1")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key2", "value2")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key3", "value3")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key4", "value4"))));
   }
 
   @Test
   public void parsesMultipleKeyMappingsFromStringArrayForEdgeTargetNode() {
-    Target target = edgeTarget();
+    Target target = target("my-target", TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray targetKeys = new JSONArray();
@@ -208,21 +201,20 @@ public class TransposedMappingMapperTest {
     mappings.put("target", sourceMapping);
 
     List<Mapping> result =
-        TransposedMappingMapper.parseMappings(target, mappings).stream()
+        MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
-            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
         .isEqualTo(
             List.of(
-                new Mapping(FragmentType.target, RoleType.key, field("value1", "value1")),
-                new Mapping(FragmentType.target, RoleType.key, field("value2", "value2"))));
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("value1", "value1")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("value2", "value2"))));
   }
 
   @Test
   public void parsesMultipleKeyMappingsFromMixedArrayForEdgeTargetNode() {
-    Target target = edgeTarget();
+    Target target = target("my-target", TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray targetKeys = new JSONArray();
@@ -234,27 +226,118 @@ public class TransposedMappingMapperTest {
     mappings.put("target", sourceMapping);
 
     List<Mapping> result =
-        TransposedMappingMapper.parseMappings(target, mappings).stream()
+        MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
-            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
         .isEqualTo(
             List.of(
-                new Mapping(FragmentType.target, RoleType.key, field("key1", "value1")),
-                new Mapping(FragmentType.target, RoleType.key, field("value2", "value2"))));
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("key1", "value1")),
+                new Mapping(FragmentType.target, RoleType.key, fieldTuple("value2", "value2"))));
   }
 
-  @NotNull
-  private static Target edgeTarget() {
+  @Test
+  public void rejectsNodeMappingsForAlreadyMappedFields() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                MappingMapper.parseMappings(
+                    target("my-target", TargetType.node),
+                    jsonKeys(
+                        jsonFieldTuple("source_field", "graphProperty1"),
+                        jsonFieldTuple("source_field", "graphProperty2") // duplicate
+                        )));
+
+    assertThat(exception)
+        .hasMessageThat()
+        .isEqualTo(
+            "Duplicate mapping: field source_field has already been mapped for target my-target");
+  }
+
+  @Test
+  public void rejectsEdgeMappingsForAlreadyMappedFields() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                MappingMapper.parseMappings(
+                    target("my-target", TargetType.edge),
+                    jsonKeys(
+                        jsonFieldTuple("source_field", "graphProperty1"),
+                        jsonFieldTuple("source_field", "graphProperty2") // duplicate
+                        )));
+
+    assertThat(exception)
+        .hasMessageThat()
+        .isEqualTo(
+            "Duplicate mapping: field source_field has already been mapped for target my-target");
+  }
+
+  @Test
+  public void allowsMultipleMappingsWithoutFields() {
+    List<Mapping> mappings =
+        MappingMapper.parseMappings(
+            target("my-target", TargetType.node),
+            jsonLabels("\"Customer\"", "\"Buyer\"")); // label mappings don't map to source fields
+
+    assertThat(mappings)
+        .isEqualTo(
+            List.of(
+                indexedMapping(FragmentType.node, RoleType.label, constantFieldTuple("Customer")),
+                indexedMapping(FragmentType.node, RoleType.label, constantFieldTuple("Buyer"))));
+  }
+
+  private static Target target(String name, TargetType type) {
     Target target = new Target();
-    target.setType(TargetType.edge);
+    target.setName(name);
+    target.setType(type);
     return target;
   }
 
+  private static JSONObject jsonKeys(JSONObject... fieldTuples) {
+    JSONObject mappings = new JSONObject();
+    JSONArray array = new JSONArray();
+    for (JSONObject fieldMapping : fieldTuples) {
+      array.put(fieldMapping);
+    }
+    mappings.put("keys", array);
+    return mappings;
+  }
+
+  private static JSONObject jsonLabels(String... labels) {
+    JSONObject mappings = new JSONObject();
+    JSONArray array = new JSONArray();
+    for (String label : labels) {
+      array.put(label);
+    }
+    mappings.put("labels", array);
+    return mappings;
+  }
+
+  private static JSONObject jsonFieldTuple(String field, String property) {
+    JSONObject nodeKeyMapping1 = new JSONObject();
+    nodeKeyMapping1.put(field, property);
+    return nodeKeyMapping1;
+  }
+
+  private static Mapping indexedMapping(
+      FragmentType fragment, RoleType role, FieldNameTuple tuple) {
+    Mapping mapping = new Mapping(fragment, role, tuple);
+    mapping.setIndexed(true);
+    return mapping;
+  }
+
+  private FieldNameTuple constantFieldTuple(String constant) {
+    FieldNameTuple tuple = new FieldNameTuple();
+    tuple.setName(constant);
+    tuple.setConstant(constant);
+    return tuple;
+  }
+
   @NotNull
-  private static FieldNameTuple field(String field, String name) {
+  private static FieldNameTuple fieldTuple(String field, String name) {
     FieldNameTuple fieldNameTuple = new FieldNameTuple();
     fieldNameTuple.setField(field);
     fieldNameTuple.setName(name);

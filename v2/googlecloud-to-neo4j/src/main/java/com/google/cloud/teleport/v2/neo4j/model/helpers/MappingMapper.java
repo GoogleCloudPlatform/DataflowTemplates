@@ -23,50 +23,54 @@ import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/** Helper object for parsing transposed field mappings (ie. strings, indexed, longs, etc.). */
-public class TransposedMappingMapper {
-
-  private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+/** Helper object for parsing field mappings (ie. strings, indexed, longs, etc.). */
+public class MappingMapper {
 
   public static List<Mapping> parseMappings(Target target, JSONObject mappingsObject) {
-    if (target.getType() == TargetType.node) {
-      return parseNode(mappingsObject);
-    } else if (target.getType() == TargetType.edge) {
-      return parseEdge(mappingsObject);
-    } else {
-      return new ArrayList<>();
+    String targetName = target.getName();
+    MappingAccumulator accumulator = new MappingAccumulator(targetName);
+    TargetType type = target.getType();
+    switch (type) {
+      case node:
+        return parseNode(accumulator, mappingsObject);
+      case edge:
+        return parseEdge(accumulator, mappingsObject);
+      default:
+        String error =
+            String.format(
+                "Unknown target type for target %s: only \"node\" and \"edge\" types are supported, got: %s",
+                targetName, type);
+        throw new IllegalArgumentException(error);
     }
   }
 
-  public static List<Mapping> parseNode(JSONObject nodeMappingsObject) {
-    List<Mapping> mappings = new ArrayList<>();
-
+  private static List<Mapping> parseNode(
+      MappingAccumulator accumulator, JSONObject nodeMappingsObject) {
     if (nodeMappingsObject.has("label")) {
       FieldNameTuple labelTuple = createFieldNameTuple(nodeMappingsObject.getString("label"));
-      Mapping mapping = new Mapping(FragmentType.node, RoleType.label, labelTuple);
-      addMapping(mappings, mapping);
+      accumulator.add(new Mapping(FragmentType.node, RoleType.label, labelTuple));
     }
     if (nodeMappingsObject.has("labels")) {
       List<FieldNameTuple> labels = getFieldAndNameTuples(nodeMappingsObject.get("labels"));
       for (FieldNameTuple f : labels) {
         Mapping mapping = new Mapping(FragmentType.node, RoleType.label, f);
         mapping.setIndexed(true);
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (nodeMappingsObject.has("key")) {
-      FieldNameTuple labelTuple = createFieldNameTuple(nodeMappingsObject.getString("key"));
-      Mapping mapping = new Mapping(FragmentType.node, RoleType.key, labelTuple);
-      addMapping(mappings, mapping);
+      FieldNameTuple tuple = createFieldNameTuple(nodeMappingsObject.getString("key"));
+      accumulator.add(new Mapping(FragmentType.node, RoleType.key, tuple));
     }
 
     if (nodeMappingsObject.has("keys")) {
@@ -74,82 +78,109 @@ public class TransposedMappingMapper {
       for (FieldNameTuple f : keys) {
         Mapping mapping = new Mapping(FragmentType.node, RoleType.key, f);
         mapping.setIndexed(true);
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (nodeMappingsObject.has("properties")) {
-      parseProperties(nodeMappingsObject.getJSONObject("properties"), mappings, FragmentType.node);
+      parseProperties(
+          accumulator, nodeMappingsObject.getJSONObject("properties"), FragmentType.node);
     }
-    return mappings;
+    return accumulator.getMappings();
   }
 
-  public static List<Mapping> parseEdge(JSONObject edgeMappingsObject) {
-    List<Mapping> mappings = new ArrayList<>();
-    // type
+  private static List<Mapping> parseEdge(
+      MappingAccumulator accumulator, JSONObject edgeMappingsObject) {
     if (edgeMappingsObject.has("type")) {
       FieldNameTuple typeTuple =
           createFieldNameTuple(
               edgeMappingsObject.getString("type"), edgeMappingsObject.getString("type"));
-      Mapping mapping = new Mapping(FragmentType.rel, RoleType.type, typeTuple);
-      addMapping(mappings, mapping);
+      accumulator.add(new Mapping(FragmentType.rel, RoleType.type, typeTuple));
     }
 
     if (edgeMappingsObject.has("source")) {
-      JSONObject sourceObj = edgeMappingsObject.getJSONObject("source");
-      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(sourceObj.get("key"));
-      for (FieldNameTuple keyTuple : keyTuples) {
-        Mapping keyMapping = new Mapping(FragmentType.source, RoleType.key, keyTuple);
-        mappings.add(keyMapping);
-      }
-
-      // support dynamic labels on source
-      List<FieldNameTuple> labels = getFieldAndNameTuples(sourceObj.get("label"));
-      for (FieldNameTuple f : labels) {
-        Mapping mapping = new Mapping(FragmentType.source, RoleType.label, f);
-        mapping.setIndexed(true);
-        addMapping(mappings, mapping);
-      }
+      parseEdgeNode(accumulator, FragmentType.source, edgeMappingsObject);
     }
 
     if (edgeMappingsObject.has("target")) {
-      JSONObject targetObj = edgeMappingsObject.getJSONObject("target");
-      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(targetObj.get("key"));
-      for (FieldNameTuple keyTuple : keyTuples) {
-        Mapping keyMapping = new Mapping(FragmentType.target, RoleType.key, keyTuple);
-        mappings.add(keyMapping);
-      }
-
-      List<FieldNameTuple> labels = getFieldAndNameTuples(targetObj.get("label"));
-      for (FieldNameTuple f : labels) {
-        Mapping mapping = new Mapping(FragmentType.target, RoleType.label, f);
-        mapping.setIndexed(true);
-        addMapping(mappings, mapping);
-      }
+      parseEdgeNode(accumulator, FragmentType.target, edgeMappingsObject);
     }
 
     if (edgeMappingsObject.has("keys")) {
       List<FieldNameTuple> keys = getFieldAndNameTuples(edgeMappingsObject.get("keys"));
       for (FieldNameTuple f : keys) {
-        Mapping mapping = new Mapping(FragmentType.rel, RoleType.key, f);
-        addMapping(mappings, mapping);
+        accumulator.add(new Mapping(FragmentType.rel, RoleType.key, f));
       }
     }
 
     if (edgeMappingsObject.has("properties")) {
-      parseProperties(edgeMappingsObject.getJSONObject("properties"), mappings, FragmentType.rel);
+      parseProperties(
+          accumulator, edgeMappingsObject.getJSONObject("properties"), FragmentType.rel);
     }
-    return mappings;
+    return accumulator.getMappings();
+  }
+
+  private static void parseEdgeNode(
+      MappingAccumulator accumulator, FragmentType fragmentType, JSONObject edgeMappingsObject) {
+
+    String fieldName = jsonPropertyNameForEdgeNode(fragmentType);
+    JSONObject edgeNodeMapping = edgeMappingsObject.getJSONObject(fieldName);
+    if (!edgeNodeMapping.has("key") && !edgeNodeMapping.has("keys")) {
+      String error =
+          String.format(
+              "Edge node fragment of type %s should define a \"key\" or \"keys\" attribute. None found",
+              fragmentType);
+      throw new IllegalArgumentException(error);
+    }
+    if (edgeNodeMapping.has("key")) {
+      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(edgeNodeMapping.get("key"));
+      for (FieldNameTuple keyTuple : keyTuples) {
+        accumulator.add(new Mapping(fragmentType, RoleType.key, keyTuple));
+      }
+    }
+    if (edgeNodeMapping.has("keys")) {
+      List<FieldNameTuple> keyTuples = getFieldAndNameTuples(edgeNodeMapping.get("keys"));
+      keyTuples.forEach(
+          keyTuple -> {
+            accumulator.add(new Mapping(fragmentType, RoleType.key, keyTuple));
+          });
+    }
+
+    List<FieldNameTuple> labels = getFieldAndNameTuples(edgeNodeMapping.get("label"));
+    for (FieldNameTuple f : labels) {
+      accumulator.add(new Mapping(fragmentType, RoleType.label, f));
+    }
+  }
+
+  private static String jsonPropertyNameForEdgeNode(FragmentType fragmentType) {
+    switch (fragmentType) {
+      case source:
+        return "source";
+      case target:
+        return "target";
+      default:
+        String error =
+            String.format(
+                "Unexpected fragment type for edge mapping: expected \"source\" or \"target\", got: %s",
+                fragmentType);
+        throw new IllegalArgumentException(error);
+    }
   }
 
   private static void parseProperties(
-      JSONObject propertyMappingsObject, List<Mapping> mappings, FragmentType fragmentType) {
+      MappingAccumulator accumulator,
+      JSONObject propertyMappingsObject,
+      FragmentType fragmentType) {
     if (propertyMappingsObject == null) {
       return;
     }
 
-    List<FieldNameTuple> uniques = new ArrayList();
+    List<FieldNameTuple> keys = new ArrayList<>();
+    List<FieldNameTuple> uniques = new ArrayList<>();
     List<FieldNameTuple> indexed = new ArrayList<>();
 
+    if (propertyMappingsObject.has("keys")) {
+      keys = getFieldAndNameTuples(propertyMappingsObject.get("keys"));
+    }
     if (propertyMappingsObject.has("unique")) {
       uniques = getFieldAndNameTuples(propertyMappingsObject.get("unique"));
     }
@@ -157,15 +188,22 @@ public class TransposedMappingMapper {
       indexed = getFieldAndNameTuples(propertyMappingsObject.get("indexed"));
     }
 
+    for (FieldNameTuple key : keys) {
+      accumulator.add(new Mapping(fragmentType, RoleType.key, key));
+    }
+
+    // TODO: remove keys from uniques
     for (FieldNameTuple f : uniques) {
       Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-      addMapping(mappings, mapping);
-      mapping.setIndexed(indexed.contains(f));
+      mapping.setUnique(true);
+      accumulator.add(mapping);
     }
+
+    // TODO: remove keys and uniques from indexed since they're implicitly indexed
     for (FieldNameTuple f : indexed) {
       Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-      addMapping(mappings, mapping);
-      mapping.setUnique(uniques.contains(f));
+      mapping.setIndexed(true);
+      accumulator.add(mapping);
     }
     if (propertyMappingsObject.has("dates")) {
       List<FieldNameTuple> dates = getFieldAndNameTuples(propertyMappingsObject.get("dates"));
@@ -174,19 +212,17 @@ public class TransposedMappingMapper {
         mapping.setType(PropertyType.Date);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
-
     if (propertyMappingsObject.has("doubles")) {
-
       List<FieldNameTuple> numbers = getFieldAndNameTuples(propertyMappingsObject.get("doubles"));
       for (FieldNameTuple f : numbers) {
         Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
         mapping.setType(PropertyType.BigDecimal);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("longs")) {
@@ -196,7 +232,7 @@ public class TransposedMappingMapper {
         mapping.setType(PropertyType.Long);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("strings")) {
@@ -206,7 +242,7 @@ public class TransposedMappingMapper {
         mapping.setType(PropertyType.String);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("points")) {
@@ -216,7 +252,7 @@ public class TransposedMappingMapper {
         mapping.setType(PropertyType.Point);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("floats")) {
@@ -226,7 +262,7 @@ public class TransposedMappingMapper {
         mapping.setType(PropertyType.Float);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
     if (propertyMappingsObject.has("integers")) {
@@ -236,7 +272,7 @@ public class TransposedMappingMapper {
         mapping.setType(PropertyType.Integer);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
-        addMapping(mappings, mapping);
+        accumulator.add(mapping);
       }
     }
   }
@@ -298,16 +334,29 @@ public class TransposedMappingMapper {
     }
     return fieldSet;
   }
+}
 
-  private static void addMapping(List<Mapping> mappings, Mapping mapping) {
-    if (!StringUtils.isEmpty(mapping.getField())) {
-      for (Mapping existingMapping : mappings) {
-        if (existingMapping.getField() != null
-            && existingMapping.getField().equals(mapping.getField())) {
-          throw new RuntimeException("Duplicate mapping: " + gson.toJson(mapping));
-        }
-      }
+class MappingAccumulator {
+  private final Set<String> fields = new HashSet<>();
+  private final List<Mapping> mappings = new ArrayList<>();
+  private final String targetName;
+
+  public MappingAccumulator(String targetName) {
+    this.targetName = targetName;
+  }
+
+  public void add(Mapping mapping) {
+    String field = mapping.getField();
+    if (!StringUtils.isEmpty(field) && !fields.add(field)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Duplicate mapping: field %s has already been mapped for target %s",
+              field, targetName));
     }
     mappings.add(mapping);
+  }
+
+  public List<Mapping> getMappings() {
+    return Collections.unmodifiableList(mappings);
   }
 }
