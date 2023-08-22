@@ -28,6 +28,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
+    <awaitility.version>4.2.0</awaitility.version>
     <commons-math3.version>3.6.1</commons-math3.version>
     <failsafe.version>3.3.0</failsafe.version>
     <testcontainers.version>1.18.3</testcontainers.version>

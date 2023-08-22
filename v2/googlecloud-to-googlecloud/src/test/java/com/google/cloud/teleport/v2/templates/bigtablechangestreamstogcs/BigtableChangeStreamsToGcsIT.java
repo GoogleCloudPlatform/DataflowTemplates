@@ -50,6 +50,7 @@ import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManagerCluster;
 import org.apache.beam.it.gcp.bigtable.BigtableTableSpec;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.awaitility.Awaitility;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Assert;
@@ -58,7 +59,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 /** Integration test for {@link BigtableChangeStreamsToGcs}. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})

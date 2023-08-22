@@ -21,7 +21,7 @@ import static org.apache.beam.it.common.utils.ResourceManagerUtils.checkValidPro
 import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.checkValidTableId;
 import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.generateDefaultClusters;
 import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.generateInstanceId;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+import static org.awaitility.Awaitility.await;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.rpc.ServerStream;
