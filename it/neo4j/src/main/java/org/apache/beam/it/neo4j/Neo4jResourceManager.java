@@ -198,7 +198,7 @@ public class Neo4jResourceManager extends TestContainerResourceManager<Neo4jCont
 
     private @Nullable String databaseName;
 
-    private @Nullable String adminPassword;
+    private String adminPassword;
 
     private @Nullable Driver driver;
 

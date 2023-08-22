@@ -52,6 +52,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
@@ -94,13 +95,13 @@ public class BigtableResourceManager implements ResourceManager {
   private boolean hasInstance;
   private final boolean usingStaticInstance;
 
-  private BigtableResourceManager(BigtableResourceManager.Builder builder) throws IOException {
+  private BigtableResourceManager(Builder builder) throws IOException {
     this(builder, null);
   }
 
   @VisibleForTesting
   BigtableResourceManager(
-      BigtableResourceManager.Builder builder,
+      Builder builder,
       @Nullable BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory)
       throws BigtableResourceManagerException, IOException {
 
@@ -118,6 +119,7 @@ public class BigtableResourceManager implements ResourceManager {
             "This manager was configured to use a static resource, but the instanceId was not properly set.");
       }
       this.instanceId = builder.instanceId;
+      this.hasInstance = true;
     } else {
       if (builder.instanceId != null) {
         throw new BigtableResourceManagerException(
@@ -125,8 +127,8 @@ public class BigtableResourceManager implements ResourceManager {
       }
       // Generate instance id based on given test id.
       this.instanceId = generateInstanceId(builder.testId);
+      this.hasInstance = false;
     }
-    this.hasInstance = false;
     this.usingStaticInstance = builder.useStaticInstance;
 
     if (bigtableResourceManagerClientFactory != null) {
@@ -161,9 +163,9 @@ public class BigtableResourceManager implements ResourceManager {
     }
   }
 
-  public static BigtableResourceManager.Builder builder(
+  public static Builder builder(
       String testId, String projectId, CredentialsProvider credentialsProvider) {
-    return new BigtableResourceManager.Builder(testId, projectId, credentialsProvider);
+    return new Builder(testId, projectId, credentialsProvider);
   }
 
   /**
@@ -197,34 +199,32 @@ public class BigtableResourceManager implements ResourceManager {
 
     // Check to see if instance already exists, and throw error if it does
     if (hasInstance) {
-      throw new IllegalStateException(
-          "Instance " + instanceId + " already exists for project " + projectId + ".");
+      LOG.warn(
+          "Skipping instance creation. Instance was already created or static instance was passed. Reusing : {}.",
+          instanceId);
+      return;
     }
 
-    if (usingStaticInstance) {
-      LOG.info("Skipping instance creation. Static instance is used: {}", instanceId);
-    } else {
-      LOG.info("Creating instance {} in project {}.", instanceId, projectId);
+    LOG.info("Creating instance {} in project {}.", instanceId, projectId);
 
-      // Create instance request object and add all the given clusters to the request
-      CreateInstanceRequest request = CreateInstanceRequest.of(instanceId);
-      for (BigtableResourceManagerCluster cluster : clusters) {
-        request.addCluster(
-            cluster.clusterId(), cluster.zone(), cluster.numNodes(), cluster.storageType());
-      }
+    // Create instance request object and add all the given clusters to the request
+    CreateInstanceRequest request = CreateInstanceRequest.of(instanceId);
+    for (BigtableResourceManagerCluster cluster : clusters) {
+      request.addCluster(
+          cluster.clusterId(), cluster.zone(), cluster.numNodes(), cluster.storageType());
+    }
 
-      // Send the instance request to Google Cloud
-      try (BigtableInstanceAdminClient instanceAdminClient =
-          bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
-        instanceAdminClient.createInstance(request);
-      } catch (Exception e) {
-        throw new BigtableResourceManagerException(
-            "Failed to create instance " + instanceId + ".", e);
-      }
-
-      LOG.info("Successfully created instance {}.", instanceId);
+    // Send the instance request to Google Cloud
+    try (BigtableInstanceAdminClient instanceAdminClient =
+        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
+      instanceAdminClient.createInstance(request);
+    } catch (Exception e) {
+      throw new BigtableResourceManagerException(
+          "Failed to create instance " + instanceId + ".", e);
     }
     hasInstance = true;
+
+    LOG.info("Successfully created instance {}.", instanceId);
   }
 
   /**
@@ -272,10 +272,7 @@ public class BigtableResourceManager implements ResourceManager {
    */
   public synchronized void createTable(String tableId, Iterable<String> columnFamilies)
       throws BigtableResourceManagerException {
-    BigtableTableSpec spec = new BigtableTableSpec();
-    spec.setColumnFamilies(columnFamilies);
-    spec.setMaxAge(Duration.ofHours(1));
-    createTable(tableId, spec);
+    createTable(tableId, columnFamilies, Duration.ofHours(1));
   }
 
   /**
@@ -362,13 +359,11 @@ public class BigtableResourceManager implements ResourceManager {
 
         await("Waiting for all tables to be replicated.")
             .atMost(java.time.Duration.ofMinutes(10))
-            .pollInterval(java.time.Duration.ofMillis(5000))
+            .pollInterval(java.time.Duration.ofSeconds(5))
             .until(
                 () -> {
-                  var t = tableAdminClient.getTable(tableId);
-
-                  var rs = t.getReplicationStatesByClusterId();
-
+                  Table t = tableAdminClient.getTable(tableId);
+                  Map<String, Table.ReplicationState> rs = t.getReplicationStatesByClusterId();
                   return rs.values().stream().allMatch(Table.ReplicationState.READY::equals);
                 });
 
@@ -590,7 +585,6 @@ public class BigtableResourceManager implements ResourceManager {
     if (hasInstance) {
       try (BigtableInstanceAdminClient instanceAdminClient =
           bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
-
         instanceAdminClient.deleteInstance(instanceId);
         hasInstance = false;
       } catch (Exception e) {

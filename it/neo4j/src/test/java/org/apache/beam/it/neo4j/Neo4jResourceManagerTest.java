@@ -31,7 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Map;
+import java.util.Collections;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -121,7 +121,9 @@ public class Neo4jResourceManagerTest {
 
     assertThrows(
         Neo4jResourceManagerException.class,
-        () -> testManager.run("MATCH (n) WHERE n < $val RETURN n LIMIT 1", Map.of("val", 2)));
+        () ->
+            testManager.run(
+                "MATCH (n) WHERE n < $val RETURN n LIMIT 1", Collections.singletonMap("val", 2)));
   }
 
   @Test

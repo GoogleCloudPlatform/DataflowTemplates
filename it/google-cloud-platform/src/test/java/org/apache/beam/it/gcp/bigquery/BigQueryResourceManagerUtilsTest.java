@@ -17,6 +17,7 @@
  */
 package org.apache.beam.it.gcp.bigquery;
 
+import static org.apache.beam.it.gcp.bigquery.BigQueryResourceManagerUtils.checkValidTableId;
 import static org.junit.Assert.assertThrows;
 
 import java.util.Arrays;
@@ -27,8 +28,7 @@ public class BigQueryResourceManagerUtilsTest {
 
   @Test
   public void testCheckValidTableIdWhenIdIsTooShort() {
-    assertThrows(
-        IllegalArgumentException.class, () -> BigQueryResourceManagerUtils.checkValidTableId(""));
+    assertThrows(IllegalArgumentException.class, () -> checkValidTableId(""));
   }
 
   @Test
@@ -36,18 +36,13 @@ public class BigQueryResourceManagerUtilsTest {
     char[] chars = new char[1025];
     Arrays.fill(chars, 'a');
     String s = new String(chars);
-    assertThrows(
-        IllegalArgumentException.class, () -> BigQueryResourceManagerUtils.checkValidTableId(s));
+    assertThrows(IllegalArgumentException.class, () -> checkValidTableId(s));
   }
 
   @Test
   public void testCheckValidTableIdWhenIdContainsIllegalCharacter() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> BigQueryResourceManagerUtils.checkValidTableId("table-id%"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> BigQueryResourceManagerUtils.checkValidTableId("ta#ble-id"));
+    assertThrows(IllegalArgumentException.class, () -> checkValidTableId("table-id%"));
+    assertThrows(IllegalArgumentException.class, () -> checkValidTableId("ta#ble-id"));
   }
 
   @Test
@@ -56,8 +51,8 @@ public class BigQueryResourceManagerUtilsTest {
     Arrays.fill(chars, 'a');
     String s = new String(chars);
 
-    BigQueryResourceManagerUtils.checkValidTableId(s);
-    BigQueryResourceManagerUtils.checkValidTableId("a");
-    BigQueryResourceManagerUtils.checkValidTableId("this-is_a_valid-id-1");
+    checkValidTableId(s);
+    checkValidTableId("a");
+    checkValidTableId("this-is_a_valid-id-1");
   }
 }

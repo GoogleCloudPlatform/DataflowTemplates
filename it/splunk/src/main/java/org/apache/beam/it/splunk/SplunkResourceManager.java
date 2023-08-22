@@ -139,6 +139,7 @@ public class SplunkResourceManager extends TestContainerResourceManager<SplunkCo
    * @param builder The SplunkResourceManager.Builder to extract config info from.
    * @return The SplunkContainer with all config info injected.
    */
+  @SuppressWarnings("nullness")
   private static SplunkContainer setup(SplunkContainer container, Builder builder) {
     // Validate builder args
     if (builder.useStaticContainer) {

@@ -69,9 +69,11 @@ public abstract class TestContainerResourceManager<T extends GenericContainer<?>
     }
 
     if (!usingStaticContainer) {
+      // TODO(pranavbhandari): Change this to use log.getUtf8StringWithoutLineEnding() when
+      // testcontainers dependency is updated.
       container
           .withLogConsumer(
-              log -> LOG.info("{}: {}", getDockerImageName(), log.getUtf8StringWithoutLineEnding()))
+              log -> LOG.info("{}: {}", container.getDockerImageName(), log.getUtf8String()))
           .start();
     } else if (builder.host == null || builder.port < 0) {
       throw new TestContainerResourceManagerException(

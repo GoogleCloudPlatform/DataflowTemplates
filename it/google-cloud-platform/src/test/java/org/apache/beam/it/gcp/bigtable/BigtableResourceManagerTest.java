@@ -99,13 +99,6 @@ public class BigtableResourceManagerTest {
   }
 
   @Test
-  public void testCreateInstanceShouldThrowExceptionWhenInstanceAlreadyExists() {
-    testManager.createInstance(cluster);
-
-    assertThrows(IllegalStateException.class, () -> testManager.createInstance(cluster));
-  }
-
-  @Test
   public void testCreateInstanceShouldThrowExceptionWhenClientFailsToCreateInstance() {
     when(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient().createInstance(any()))
         .thenThrow(IllegalStateException.class);
@@ -120,19 +113,6 @@ public class BigtableResourceManagerTest {
     doThrow(RuntimeException.class).when(mockClient).close();
 
     assertThrows(BigtableResourceManagerException.class, () -> testManager.createInstance(cluster));
-  }
-
-  @Test
-  public void testCreateInstanceShouldThrowErrorWhenUsingStaticInstance() throws IOException {
-    String instanceId = "static-instance";
-    testManager =
-        new BigtableResourceManager(
-            BigtableResourceManager.builder(TEST_ID, PROJECT_ID, null)
-                .setInstanceId(instanceId)
-                .useStaticInstance(),
-            bigtableResourceManagerClientFactory);
-
-    assertThat(testManager.getInstanceId()).matches(instanceId);
   }
 
   @Test
@@ -450,11 +430,11 @@ public class BigtableResourceManagerTest {
     Map<String, ReplicationState> allReplicated = new HashMap<>();
     allReplicated.put(CLUSTER_ID, ReplicationState.READY);
 
-    var mockTable = Mockito.mock(com.google.cloud.bigtable.admin.v2.models.Table.class);
-    when(mockTable.getReplicationStatesByClusterId()).thenReturn(allReplicated);
-
-    when(bigtableResourceManagerClientFactory.bigtableTableAdminClient().getTable(TABLE_ID))
-        .thenReturn(mockTable);
+    when(bigtableResourceManagerClientFactory
+            .bigtableTableAdminClient()
+            .getTable(TABLE_ID)
+            .getReplicationStatesByClusterId())
+        .thenReturn(allReplicated);
   }
 
   @Test

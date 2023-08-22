@@ -16,5 +16,5 @@
  * limitations under the License.
  */
 
-/** Package for managing Pub/Sub resources within integration tests. */
+/** Package for managing Secret Manager resources within integration tests. */
 package org.apache.beam.it.gcp.secretmanager;
