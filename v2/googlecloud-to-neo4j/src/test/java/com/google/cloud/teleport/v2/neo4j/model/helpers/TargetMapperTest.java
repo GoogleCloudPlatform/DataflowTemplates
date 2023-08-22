@@ -30,8 +30,8 @@ public class TargetMapperTest {
 
   @Test
   public void parsesCustomQueryTarget() {
-    JSONObject object = jsonTargetOfType("custom_query");
-    JSONObject customObject = object.getJSONObject("custom");
+    JSONObject jsonTarget = jsonTargetOfType("custom_query");
+    JSONObject customObject = jsonTarget.getJSONObject("custom_query");
     customObject.put("query", "UNWIND $rows AS row CREATE (:Node {prop: row.prop})");
     JSONObject mappings = new JSONObject();
     mappings.put("labels", "\"Ignored\"");
@@ -40,7 +40,7 @@ public class TargetMapperTest {
     transform.put("group", true);
     customObject.put("transform", transform); // ignored
 
-    Target target = TargetMapper.fromJson(object);
+    Target target = TargetMapper.fromJson(jsonTarget);
 
     assertThat(target.getType()).isEqualTo(TargetType.custom_query);
     assertThat(target.getCustomQuery())
