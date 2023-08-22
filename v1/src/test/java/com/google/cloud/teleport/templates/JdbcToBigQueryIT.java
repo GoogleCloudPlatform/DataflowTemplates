@@ -45,6 +45,7 @@ import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,7 +54,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link JdbcToBigQuery} (JdbcToBigQuery). */
 @Category(TemplateIntegrationTest.class)

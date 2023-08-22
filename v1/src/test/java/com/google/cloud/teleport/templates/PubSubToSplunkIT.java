@@ -45,6 +45,7 @@ import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.apache.beam.it.splunk.SplunkResourceManager;
 import org.apache.beam.it.splunk.conditions.SplunkEventsCheck;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -52,7 +53,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link PubSubToSplunk} classic template. */
 @Category(TemplateIntegrationTest.class)

@@ -17,11 +17,11 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -84,7 +84,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
   private static final String TEST_REGION = "us-central1";
-  private static final String TEST_ZONE = "us-central1-a";
+  private static final String TEST_ZONE = "us-central1-b";
   private BigtableResourceManager bigtableResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
 

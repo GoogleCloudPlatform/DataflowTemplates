@@ -88,7 +88,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
-  private static final String TEST_ZONE = "us-central1-a";
+  private static final String TEST_ZONE = "us-central1-b";
   private BigtableResourceManager bigtableResourceManager;
   private PubsubResourceManager pubsubResourceManager;
 

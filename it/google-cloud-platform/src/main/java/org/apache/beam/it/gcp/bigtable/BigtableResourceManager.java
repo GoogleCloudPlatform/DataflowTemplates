@@ -21,6 +21,7 @@ import static org.apache.beam.it.common.utils.ResourceManagerUtils.checkValidPro
 import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.checkValidTableId;
 import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.generateDefaultClusters;
 import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.generateInstanceId;
+import static org.awaitility.Awaitility.await;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.rpc.ServerStream;
@@ -57,7 +58,6 @@ import org.apache.beam.it.common.ResourceManager;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.threeten.bp.Duration;
 
 /**
@@ -76,7 +76,7 @@ import org.threeten.bp.Duration;
 public class BigtableResourceManager implements ResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableResourceManager.class);
-  private static final String DEFAULT_CLUSTER_ZONE = "us-central1-a";
+  private static final String DEFAULT_CLUSTER_ZONE = "us-central1-b";
   private static final int DEFAULT_CLUSTER_NUM_NODES = 1;
   private static final StorageType DEFAULT_CLUSTER_STORAGE_TYPE = StorageType.SSD;
 
@@ -360,7 +360,7 @@ public class BigtableResourceManager implements ResourceManager {
         }
         tableAdminClient.createTable(createTableRequest);
 
-        Awaitility.await("Waiting for all tables to be replicated.")
+        await("Waiting for all tables to be replicated.")
             .atMost(java.time.Duration.ofMinutes(10))
             .pollInterval(java.time.Duration.ofMillis(5000))
             .until(
@@ -571,9 +571,18 @@ public class BigtableResourceManager implements ResourceManager {
       }
 
       if (usingStaticInstance) {
-        createdTables.forEach(tableAdminClient::deleteTable);
         LOG.info(
             "This manager was configured to use a static instance that will not be cleaned up.");
+
+        // Remove managed tables
+        createdTables.forEach(tableAdminClient::deleteTable);
+
+        // Remove managed app profiles
+        try (BigtableInstanceAdminClient instanceAdminClient =
+            bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
+          createdAppProfiles.forEach(
+              profile -> instanceAdminClient.deleteAppProfile(instanceId, profile, true));
+        }
         return;
       }
     }

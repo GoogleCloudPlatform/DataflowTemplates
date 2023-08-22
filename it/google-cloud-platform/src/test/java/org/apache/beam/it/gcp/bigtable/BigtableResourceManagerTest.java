@@ -442,7 +442,8 @@ public class BigtableResourceManagerTest {
     verify(bigtableResourceManagerClientFactory.bigtableTableAdminClient()).deleteTable(TABLE_ID);
     verify(bigtableResourceManagerClientFactory.bigtableTableAdminClient(), new Times(1))
         .deleteTable(anyString());
-    verify(bigtableResourceManagerClientFactory, never()).bigtableInstanceAdminClient();
+    verify(bigtableResourceManagerClientFactory.bigtableInstanceAdminClient(), never())
+        .deleteInstance(any());
   }
 
   private void setupReadyTable() {

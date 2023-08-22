@@ -37,13 +37,13 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /** Integration test for {@link ExportPipeline Spanner to GCS Avro} template. */
 @Category(TemplateIntegrationTest.class)

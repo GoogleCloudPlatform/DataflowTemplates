@@ -39,6 +39,7 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import org.apache.beam.it.mongodb.MongoDBResourceManager;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
@@ -48,7 +49,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Integration test for {@link MongoDbToBigQuery} (MongoDB_to_BigQuery).
