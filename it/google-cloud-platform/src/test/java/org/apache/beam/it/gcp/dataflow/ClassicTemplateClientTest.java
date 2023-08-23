@@ -88,7 +88,7 @@ public final class ClassicTemplateClientTest {
   @Test
   public void testLaunchNewJob() throws IOException {
     // Arrange
-    Templates.Create launch = mock(Create.class);
+    Create launch = mock(Create.class);
     Get get = mock(Get.class);
     Job launchJob = new Job().setId(JOB_ID);
     Job getJob =

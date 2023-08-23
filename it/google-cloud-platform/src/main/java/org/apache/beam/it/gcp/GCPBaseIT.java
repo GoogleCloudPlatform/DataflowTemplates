@@ -20,6 +20,7 @@ package org.apache.beam.it.gcp;
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.Credentials;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.beam.it.common.TestProperties;
 import org.junit.Before;
 
@@ -29,6 +30,8 @@ public abstract class GCPBaseIT {
   protected static final String REGION = TestProperties.region();
 
   protected Credentials credentials;
+
+  @SuppressFBWarnings("URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD")
   protected CredentialsProvider credentialsProvider;
 
   @Before

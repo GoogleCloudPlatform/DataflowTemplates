@@ -32,7 +32,6 @@ import com.google.cloud.bigquery.Dataset;
 import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.DatasetInfo;
 import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.Schema;
@@ -62,7 +61,7 @@ public class BigQueryResourceManagerTest {
   private BigQuery bigQuery;
 
   private Schema schema;
-  private InsertAllRequest.RowToInsert rowToInsert;
+  private RowToInsert rowToInsert;
   private static final String TABLE_NAME = "table-name";
   private static final String DATASET_ID = "dataset-id";
   private static final String TEST_ID = "test-id";
