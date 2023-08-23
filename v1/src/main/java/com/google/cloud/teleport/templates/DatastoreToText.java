@@ -43,7 +43,7 @@ import org.apache.beam.sdk.options.ValueProvider;
  */
 @Template(
     name = "Datastore_to_GCS_Text",
-    category = TemplateCategory.BATCH,
+    category = TemplateCategory.LEGACY,
     displayName = "Datastore to Text Files on Cloud Storage [Deprecated]",
     description =
         "Batch pipeline. Reads Datastore entities and writes them to Cloud Storage as text files.",

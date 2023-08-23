@@ -456,7 +456,7 @@ To execute the release of multiple templates, we provide a single Maven command 
 stage all templates while running additional validations.
 
 ```shell
-mvn clean package -PtemplatesRelease \
+mvn clean verify -PtemplatesRelease \
   -DprojectId="{projectId}" \
   -DbucketName="{bucketName}" \
   -DlibrariesBucketName="{bucketName}-libraries" \

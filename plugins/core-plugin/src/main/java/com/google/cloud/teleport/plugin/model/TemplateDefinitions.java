@@ -94,6 +94,10 @@ public class TemplateDefinitions {
     metadata.setInternalName(templateAnnotation.name());
     metadata.setName(templateAnnotation.displayName());
     metadata.setDescription(templateAnnotation.description());
+    metadata.setCategory(
+        new ImageSpecCategory(
+            templateAnnotation.category().getName(),
+            templateAnnotation.category().getDisplayName()));
     metadata.setModule(getClassModule());
     metadata.setDocumentationLink(templateAnnotation.documentation());
     metadata.setAdditionalHelp(templateAnnotation.additionalHelp());
@@ -245,9 +249,9 @@ public class TemplateDefinitions {
       }
     }
 
-    boolean isFlex =
-        templateAnnotation.flexContainerName() == null
-            || templateAnnotation.flexContainerName().isEmpty();
+    boolean isFlex = StringUtils.isNotEmpty(templateAnnotation.flexContainerName());
+    metadata.setFlexTemplate(isFlex);
+
     imageSpec.setDefaultEnvironment(
         Map.of(
             "additionalUserLabels",
@@ -263,8 +267,8 @@ public class TemplateDefinitions {
         metadata.getParameters().stream()
             .anyMatch(
                 parameter ->
-                    parameter.getName().equals("javascriptTextTransformGcsPath")
-                        || parameter.getName().equals("javascriptTextTransformFunctionName")));
+                    parameter.getName().contains("javascriptTextTransformGcsPath")
+                        || parameter.getName().contains("javascriptTextTransformFunctionName")));
 
     return imageSpec;
   }
