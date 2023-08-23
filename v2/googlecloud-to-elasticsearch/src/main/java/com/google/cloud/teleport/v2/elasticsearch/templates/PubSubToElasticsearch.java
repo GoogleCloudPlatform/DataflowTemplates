@@ -39,6 +39,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,7 +107,28 @@ public class PubSubToElasticsearch {
                 pubSubToElasticsearchOptions.getNamespace())
             .getIndex());
 
+    validateOptions(pubSubToElasticsearchOptions);
     run(pubSubToElasticsearchOptions);
+  }
+
+  public static void validateOptions(PubSubToElasticsearchOptions options) {
+    switch (options.getApiKeySource()) {
+      case "PLAINTEXT":
+        return;
+      case "KMS":
+        // validate that the encryption key is provided.
+        if (StringUtils.isEmpty(options.getApiKeyKMSEncryptionKey())) {
+          throw new IllegalArgumentException(
+              "If apiKeySource is set to KMS, apiKeyKMSEncryptionKey should be provided.");
+        }
+        return;
+      case "SECRET_MANAGER":
+        // validate that secretId is provided.
+        if (StringUtils.isEmpty(options.getApiKeySecretId())) {
+          throw new IllegalArgumentException(
+              "If apiKeySource is set to SECRET_MANAGER, apiKeySecretId should be provided.");
+        }
+    }
   }
 
   /**
