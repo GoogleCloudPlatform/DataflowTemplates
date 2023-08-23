@@ -76,6 +76,7 @@ public class MappingMapperTest {
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
