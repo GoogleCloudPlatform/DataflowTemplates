@@ -82,11 +82,12 @@ public abstract class WriteChangeStreamMutationsToGcsText
   @Override
   public PDone expand(PCollection<ChangeStreamMutation> mutations) {
     PCollection<com.google.cloud.teleport.bigtable.ChangelogEntry> changelogEntry =
-        mutations.apply(
-            "ChangeStreamMutation to ChangelogEntry",
-            FlatMapElements.via(
-                new BigtableChangeStreamMutationToChangelogEntryFn(bigtableUtils()))).setCoder(
-            AvroCoder.of(ChangelogEntry.class, ChangelogEntry.SCHEMA$));
+        mutations
+            .apply(
+                "ChangeStreamMutation to ChangelogEntry",
+                FlatMapElements.via(
+                    new BigtableChangeStreamMutationToChangelogEntryFn(bigtableUtils())))
+            .setCoder(AvroCoder.of(ChangelogEntry.class, ChangelogEntry.SCHEMA$));
 
     return changelogEntry
         .apply(MapElements.via(new WriteChangelogEntryAsJson(destinationInfo())))
