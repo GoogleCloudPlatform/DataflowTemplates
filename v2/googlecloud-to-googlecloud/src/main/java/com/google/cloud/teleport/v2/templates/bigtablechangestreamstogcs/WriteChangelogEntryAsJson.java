@@ -65,11 +65,15 @@ public class WriteChangelogEntryAsJson extends SimpleFunction<ChangelogEntry, St
     if (bytes == null) {
       return null;
     } else {
+      String result;
+      int position = bytes.position();
       if (useBase64) {
-        return charset.decode(Base64.getEncoder().encode(bytes)).toString();
+        result = charset.decode(Base64.getEncoder().encode(bytes)).toString();
       } else {
-        return charset.decode(bytes).toString();
+        result = charset.decode(bytes).toString();
       }
+      bytes.position(position);
+      return result;
     }
   }
 
