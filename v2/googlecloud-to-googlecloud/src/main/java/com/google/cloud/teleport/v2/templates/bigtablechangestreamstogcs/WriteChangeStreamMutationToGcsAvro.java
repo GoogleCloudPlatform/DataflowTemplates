@@ -20,11 +20,13 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
+import com.google.cloud.teleport.bigtable.ChangelogEntry;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstogcs.model.BigtableSchemaFormat;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.transforms.FlatMapElements;
@@ -77,7 +79,8 @@ public abstract class WriteChangeStreamMutationToGcsAvro
         mutations.apply(
             "ChangeStreamMutation to ChangelogEntry",
             FlatMapElements.via(
-                new BigtableChangeStreamMutationToChangelogEntryFn(bigtableUtils())));
+                new BigtableChangeStreamMutationToChangelogEntryFn(bigtableUtils()))).setCoder(
+            AvroCoder.of(ChangelogEntry.class, ChangelogEntry.SCHEMA$));
     /*
      * Writing as avro file using {@link AvroIO}.
      *

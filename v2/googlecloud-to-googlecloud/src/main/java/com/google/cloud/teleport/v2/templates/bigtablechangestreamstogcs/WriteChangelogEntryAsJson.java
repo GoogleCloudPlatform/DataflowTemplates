@@ -72,6 +72,7 @@ public class WriteChangelogEntryAsJson extends SimpleFunction<ChangelogEntry, St
       } else {
         result = charset.decode(bytes).toString();
       }
+      // ByteBuffer position needs to be restored or it will look like the object state changed
       bytes.position(position);
       return result;
     }
