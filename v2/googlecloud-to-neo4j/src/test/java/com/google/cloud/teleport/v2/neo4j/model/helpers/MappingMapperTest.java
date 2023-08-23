@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
@@ -49,6 +50,7 @@ public class MappingMapperTest {
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
@@ -101,6 +103,7 @@ public class MappingMapperTest {
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
@@ -126,13 +129,14 @@ public class MappingMapperTest {
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
         .isEqualTo(
             List.of(
-                new Mapping(FragmentType.source, RoleType.key, fieldTuple("value1", "value1")),
-                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key2", "value2"))));
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("key2", "value2")),
+                new Mapping(FragmentType.source, RoleType.key, fieldTuple("value1", "value1"))));
   }
 
   @Test
@@ -151,6 +155,7 @@ public class MappingMapperTest {
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
@@ -176,6 +181,7 @@ public class MappingMapperTest {
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
@@ -203,6 +209,7 @@ public class MappingMapperTest {
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
@@ -228,6 +235,7 @@ public class MappingMapperTest {
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
             .filter(mapping -> mapping.getRole() == RoleType.key)
+            .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
     assertThat(result)
