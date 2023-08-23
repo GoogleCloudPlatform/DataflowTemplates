@@ -17,17 +17,20 @@ package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
+import org.neo4j.driver.Config;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
 import org.neo4j.driver.summary.ResultSummary;
@@ -40,6 +43,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jBlockingUnwindFn.class);
   private final Counter numRecords = Metrics.counter(Neo4jBlockingUnwindFn.class, "norecords");
   protected TransactionConfig transactionConfig = TransactionConfig.empty();
+  private OptionsParams optionsParams;
   private String cypher;
   private SerializableFunction<Row, Map<String, Object>> parametersFunction = null;
   private boolean logCypher;
@@ -55,12 +59,15 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
 
   public Neo4jBlockingUnwindFn(
       ConnectionParams connectionParams,
+      OptionsParams optionsParams,
       String cypher,
       long batchSize,
       boolean logCypher,
       String unwindMapName,
       SerializableFunction<Row, Map<String, Object>> parametersFunction) {
+
     this.connectionParams = connectionParams;
+    this.optionsParams = optionsParams;
     this.cypher = cypher;
     this.parametersFunction = parametersFunction;
     this.logCypher = logCypher;
@@ -74,7 +81,14 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
 
   @Setup
   public void setup() {
-    this.neo4jConnection = new Neo4jConnection(this.connectionParams);
+    this.neo4jConnection =
+        new Neo4jConnection(
+            this.connectionParams,
+            () ->
+                Config.builder()
+                    .withMaxTransactionRetryTime(
+                        optionsParams.getMaxTransactionRetryTimeSeconds(), TimeUnit.SECONDS)
+                    .build());
   }
 
   @ProcessElement

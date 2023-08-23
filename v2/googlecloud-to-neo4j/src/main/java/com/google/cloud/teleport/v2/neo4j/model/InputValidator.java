@@ -61,6 +61,10 @@ public class InputValidator {
       validationMessages.add("Job spec URI not provided.");
     }
 
+    if (pipelineOptions.getTransactionMaxRetryTime() <= 0) {
+      validationMessages.add("Import transaction max retry time must be strictly positive");
+    }
+
     return validationMessages;
   }
 

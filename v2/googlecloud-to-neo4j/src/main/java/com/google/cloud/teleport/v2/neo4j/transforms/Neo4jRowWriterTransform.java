@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
+import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
 import java.util.List;
@@ -40,13 +41,19 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jRowWriterTransform.class);
   private final JobSpec jobSpec;
   private final ConnectionParams neoConnection;
+  private final OptionsParams optionsParams;
   private final TargetType targetType;
   private final Target target;
 
   public Neo4jRowWriterTransform(
-      JobSpec jobSpec, ConnectionParams neoConnection, TargetType targetType, Target target) {
+      JobSpec jobSpec,
+      ConnectionParams neoConnection,
+      OptionsParams optionsParams,
+      TargetType targetType,
+      Target target) {
     this.jobSpec = jobSpec;
     this.neoConnection = neoConnection;
+    this.optionsParams = optionsParams;
     this.targetType = targetType;
     this.target = target;
   }
@@ -69,7 +76,13 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
 
     Neo4jBlockingUnwindFn neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
-            neoConnection, unwindCypher, batchSize, false, "rows", getRowCastingFunction());
+            neoConnection,
+            optionsParams,
+            unwindCypher,
+            batchSize,
+            false,
+            "rows",
+            getRowCastingFunction());
 
     return input
         .apply("Create KV pairs", CreateKvTransform.of(parallelism))

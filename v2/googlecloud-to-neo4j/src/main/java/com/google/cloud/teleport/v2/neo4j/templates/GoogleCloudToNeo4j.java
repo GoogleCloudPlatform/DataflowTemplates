@@ -90,7 +90,7 @@ public class GoogleCloudToNeo4j {
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
   private final OptionsParams optionsParams;
-  private final ConnectionParams neo4jConnection;
+  private final ConnectionParams connectionParams;
   private final JobSpec jobSpec;
   private final Pipeline pipeline;
 
@@ -100,35 +100,22 @@ public class GoogleCloudToNeo4j {
    * @param pipelineOptions framework supplied arguments
    */
   public GoogleCloudToNeo4j(Neo4jFlexTemplateOptions pipelineOptions) {
-
-    ////////////////////////////
-    // Job name gets a date on it when running within the container, but not with DirectRunner
-    // final String jobName = pipelineOptions.getJobName() + "-" + System.currentTimeMillis();
-    // pipelineOptions.setJobName(jobName);
-
-    // Set pipeline options
-    this.pipeline = Pipeline.create(pipelineOptions);
-    FileSystems.setDefaultPipelineOptions(pipelineOptions);
-    this.optionsParams = OptionsParamsMapper.fromPipelineOptions(pipelineOptions);
-
-    // Validate pipeline
     processValidations(
         "Errors found validating pipeline options: ",
         InputValidator.validateNeo4jPipelineOptions(pipelineOptions));
-
-    this.neo4jConnection = new ConnectionParams(pipelineOptions.getNeo4jConnectionUri());
-
-    // Validate connection
+    ConnectionParams connection = new ConnectionParams(pipelineOptions.getNeo4jConnectionUri());
     processValidations(
         "Errors found validating Neo4j connection: ",
-        InputValidator.validateNeo4jConnection(this.neo4jConnection));
-
-    this.jobSpec = JobSpecMapper.fromUri(pipelineOptions.getJobSpecUri());
-
-    // Validate job spec
+        InputValidator.validateNeo4jConnection(connection));
+    JobSpec jobSpec = JobSpecMapper.fromUri(pipelineOptions.getJobSpecUri());
     processValidations(
-        "Errors found validating job specification: ",
-        InputValidator.validateJobSpec(this.jobSpec));
+        "Errors found validating job specification: ", InputValidator.validateJobSpec(jobSpec));
+
+    this.connectionParams = connection;
+    this.pipeline = Pipeline.create(pipelineOptions);
+    FileSystems.setDefaultPipelineOptions(pipelineOptions);
+    this.optionsParams = OptionsParamsMapper.fromPipelineOptions(pipelineOptions);
+    this.jobSpec = jobSpec;
 
     ///////////////////////////////////
     // Refactor job spec
@@ -141,14 +128,14 @@ public class GoogleCloudToNeo4j {
     inputRefactoring.optimizeJobSpec(this.jobSpec);
 
     // Source specific validations
-    for (Source source : jobSpec.getSourceList()) {
+    for (Source source : this.jobSpec.getSourceList()) {
       // get provider implementation for source
       Provider providerImpl = ProviderFactory.of(source.getSourceType());
-      providerImpl.configure(optionsParams, jobSpec);
+      providerImpl.configure(optionsParams, this.jobSpec);
     }
 
     // Output debug log spec
-    LOG.info("Normalized JobSpec: {}", gson.toJson(this.jobSpec));
+    LOG.debug("Normalized JobSpec: {}", gson.toJson(this.jobSpec));
   }
 
   /**
@@ -191,7 +178,7 @@ public class GoogleCloudToNeo4j {
     ////////////////////////////
     // Reset db
     if (jobSpec.getConfig().getResetDb()) {
-      try (Neo4jConnection directConnect = new Neo4jConnection(this.neo4jConnection)) {
+      try (Neo4jConnection directConnect = new Neo4jConnection(this.connectionParams)) {
         directConnect.resetDatabase();
       }
     }
@@ -272,7 +259,8 @@ public class GoogleCloudToNeo4j {
         }
 
         Neo4jRowWriterTransform targetWriterTransform =
-            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, TargetType.node, nodeTarget);
+            new Neo4jRowWriterTransform(
+                jobSpec, connectionParams, optionsParams, TargetType.node, nodeTarget);
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -327,7 +315,7 @@ public class GoogleCloudToNeo4j {
         }
         Neo4jRowWriterTransform targetWriterTransform =
             new Neo4jRowWriterTransform(
-                jobSpec, neo4jConnection, TargetType.edge, relationshipTarget);
+                jobSpec, connectionParams, optionsParams, TargetType.edge, relationshipTarget);
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -372,7 +360,7 @@ public class GoogleCloudToNeo4j {
       // Get targeted execution context
       ActionContext context = new ActionContext();
       context.jobSpec = this.jobSpec;
-      context.neo4jConnectionParams = this.neo4jConnection;
+      context.neo4jConnectionParams = this.connectionParams;
       PreloadAction actionImpl = ActionPreloadFactory.of(action, context);
       List<String> msgs = actionImpl.execute();
       for (String msg : msgs) {
@@ -399,7 +387,7 @@ public class GoogleCloudToNeo4j {
       ActionContext context = new ActionContext();
       context.action = action;
       context.jobSpec = this.jobSpec;
-      context.neo4jConnectionParams = this.neo4jConnection;
+      context.neo4jConnectionParams = this.connectionParams;
 
       // We have chosen a DoFn pattern applied to a single Integer row so that @ProcessElement
       // evaluates only once per invocation.

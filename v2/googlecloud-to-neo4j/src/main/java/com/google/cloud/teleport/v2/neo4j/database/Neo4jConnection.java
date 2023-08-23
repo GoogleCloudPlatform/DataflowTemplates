@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.AuthTokens;
+import org.neo4j.driver.Config;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
 import org.neo4j.driver.Session;
@@ -43,11 +44,18 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
 
   /** Constructor. */
   public Neo4jConnection(ConnectionParams settings) {
+    this(settings, Config::defaultConfig);
+  }
+
+  /** Constructor. */
+  public Neo4jConnection(ConnectionParams settings, Supplier<Config> configSupplier) {
     this(
         settings.database,
         () ->
             GraphDatabase.driver(
-                settings.serverUrl, AuthTokens.basic(settings.username, settings.password)));
+                settings.serverUrl,
+                AuthTokens.basic(settings.username, settings.password),
+                configSupplier.get()));
   }
 
   @VisibleForTesting

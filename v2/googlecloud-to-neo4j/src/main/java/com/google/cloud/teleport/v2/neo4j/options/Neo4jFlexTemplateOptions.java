@@ -76,4 +76,14 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   String getInputFilePattern();
 
   void setInputFilePattern(String value);
+
+  @TemplateParameter.Text(
+      order = 6,
+      optional = true,
+      description = "Import transactions max retry time",
+      helpText = "Specify max retry time in seconds (optional).")
+  @Default.Integer(120)
+  Integer getTransactionMaxRetryTime();
+
+  void setTransactionMaxRetryTime(Integer value);
 }

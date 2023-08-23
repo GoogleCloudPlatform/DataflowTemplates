@@ -34,7 +34,8 @@ public class OptionsParams implements Serializable {
 
   private String readQuery = "";
   private String inputFilePattern = "";
-  private HashMap<String, String> tokenMap = new HashMap<>();
+  private Integer maxTransactionRetryTimeSeconds = 120;
+  private final HashMap<String, String> tokenMap = new HashMap<>();
 
   public OptionsParams() {}
 
@@ -73,5 +74,13 @@ public class OptionsParams implements Serializable {
 
   public Map<String, String> getTokenMap() {
     return tokenMap;
+  }
+
+  public Integer getMaxTransactionRetryTimeSeconds() {
+    return maxTransactionRetryTimeSeconds;
+  }
+
+  public void setMaxTransactionRetryTimeSeconds(Integer maxTransactionRetryTimeSeconds) {
+    this.maxTransactionRetryTimeSeconds = maxTransactionRetryTimeSeconds;
   }
 }
