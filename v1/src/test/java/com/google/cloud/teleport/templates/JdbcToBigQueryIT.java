@@ -253,9 +253,9 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     bigQueryResourceManager.createDataset(REGION);
     TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
 
+    CryptoKey cryptoKey = kmsResourceManager.getOrCreateCryptoKey(KEYRING_ID, CRYPTO_KEY_NAME);
     Function<String, String> encrypt =
         message -> kmsResourceManager.encrypt(KEYRING_ID, CRYPTO_KEY_NAME, message);
-    CryptoKey cryptoKey = kmsResourceManager.getOrCreateCryptoKey(KEYRING_ID, CRYPTO_KEY_NAME);
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
