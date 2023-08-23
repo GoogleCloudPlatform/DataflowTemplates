@@ -54,14 +54,25 @@ import org.slf4j.LoggerFactory;
     name = "GCS_to_Elasticsearch",
     category = TemplateCategory.BATCH,
     displayName = "Cloud Storage to Elasticsearch",
-    description =
-        "A pipeline to ingest csv files from Cloud Storage and writes each line into Elasticsearch"
-            + " as a json document.",
+    description = {
+      "The Cloud Storage to Elasticsearch template is a batch pipeline that reads data from CSV files stored in a Cloud Storage bucket and writes the data into Elasticsearch as JSON documents.",
+      "If the CSV files contain headers, set the <code>containsHeaders</code> template parameter to <code>true</code>.\n"
+          + "Otherwise, create a JSON schema file that describes the data. Specify the Cloud Storage URI of the schema file in the jsonSchemaPath template parameter. "
+          + "The following example shows a JSON schema:\n"
+          + "<code>[{\"name\":\"id\", \"type\":\"text\"}, {\"name\":\"age\", \"type\":\"integer\"}]</code>\n"
+          + "Alternatively, you can provide a user-defined function (UDF) that parses the CSV text and outputs Elasticsearch documents."
+    },
     optionsClass = GCSToElasticsearchOptions.class,
     flexContainerName = "gcs-to-elasticsearch",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-elasticsearch",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The Cloud Storage bucket must exist.",
+      "A Elasticsearch host on a Google Cloud instance or on Elasticsearch Cloud that is accessible from Dataflow must exist.",
+      "A BigQuery table for error output must exist."
+    })
 public class GCSToElasticsearch {
 
   /** The tag for the headers of the CSV if required. */

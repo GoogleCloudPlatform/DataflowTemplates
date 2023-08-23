@@ -51,7 +51,9 @@ import org.apache.beam.sdk.values.TupleTag;
       category = TemplateCategory.LEGACY,
       displayName = "Text Files on Cloud Storage to Datastore [Deprecated]",
       description =
-          "Batch pipeline. Reads from text files stored in Cloud Storage and writes JSON-encoded entities to Datastore.",
+          "The Cloud Storage Text to Datastore template is a batch pipeline that reads from text files stored in "
+              + "Cloud Storage and writes JSON encoded Entities to Datastore. "
+              + "Each line in the input text files must be in the <a href=\"https://cloud.google.com/datastore/docs/reference/rest/v1/Entity\">specified JSON format</a>.",
       optionsClass = TextToDatastoreOptions.class,
       skipOptions = {
         "firestoreWriteProjectId",
@@ -61,13 +63,17 @@ import org.apache.beam.sdk.values.TupleTag;
       },
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-datastore",
-      contactInformation = "https://cloud.google.com/support"),
+      contactInformation = "https://cloud.google.com/support",
+      preview = true,
+      requirements = {"Datastore must be enabled in the destination project."}),
   @Template(
       name = "GCS_Text_to_Firestore",
       category = TemplateCategory.BATCH,
       displayName = "Text Files on Cloud Storage to Firestore (Datastore mode)",
       description =
-          "Batch pipeline. Reads from text files stored in Cloud Storage and writes JSON-encoded entities to Firestore.",
+          "The Cloud Storage Text to Firestore template is a batch pipeline that reads from text files stored in "
+              + "Cloud Storage and writes JSON encoded Entities to Firestore. "
+              + "Each line in the input text files must be in the <a href=\"https://cloud.google.com/datastore/docs/reference/rest/v1/Entity\">specified JSON format</a>.",
       optionsClass = TextToDatastoreOptions.class,
       skipOptions = {
         "datastoreWriteProjectId",
@@ -79,7 +85,8 @@ import org.apache.beam.sdk.values.TupleTag;
       },
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-firestore",
-      contactInformation = "https://cloud.google.com/support")
+      contactInformation = "https://cloud.google.com/support",
+      requirements = {"Firestore must be enabled in the destination project."})
 })
 public class TextToDatastore {
 

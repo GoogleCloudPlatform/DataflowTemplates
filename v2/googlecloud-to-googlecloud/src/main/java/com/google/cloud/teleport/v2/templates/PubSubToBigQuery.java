@@ -84,14 +84,20 @@ import org.slf4j.LoggerFactory;
 @Template(
     name = "PubSub_to_BigQuery_Flex",
     category = TemplateCategory.STREAMING,
-    displayName = "Pub/Sub Subscription to BigQuery",
+    displayName = "Pub/Sub to BigQuery",
     description =
-        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub subscription or topic,"
-            + " transforms them using a JavaScript user-defined function (UDF), and writes them to"
-            + " a pre-existing BigQuery table as BigQuery elements.",
+        "The Pub/Sub to BigQuery template is a streaming pipeline that reads JSON-formatted messages from a Pub/Sub topic or subscription, and writes them to a BigQuery table. "
+            + "You can use the template as a quick solution to move Pub/Sub data to BigQuery. "
+            + "The template reads JSON-formatted messages from Pub/Sub and converts them to BigQuery elements.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The <a href=\"https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage\">`data` field</a> of Pub/Sub messages must use the JSON format, described in this <a href=\"https://developers.google.com/api-client-library/java/google-http-java-client/json\">JSON guide</a>. For example, messages with values in the `data` field formatted as `{\"k1\":\"v1\", \"k2\":\"v2\"}` can be inserted into a BigQuery table with two columns, named `k1` and `k2`, with a string data type.",
+      "The output table must exist prior to running the pipeline. The table schema must match the input JSON objects."
+    })
 public class PubSubToBigQuery {
 
   /** The log to output status messages to. */

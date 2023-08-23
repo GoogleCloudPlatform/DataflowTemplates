@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.PubsubToJms.PubsubToJmsOptions;
+
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -46,8 +48,8 @@ import org.slf4j.LoggerFactory;
     displayName = "Pubsub to JMS",
     description =
         "A streaming pipeline which inserts data "
-            + "from a Pubsub Subscription  and writes to JMS Broker Server(Topic/Queue).",
-    optionsClass = com.google.cloud.teleport.v2.templates.PubsubToJms.PubsubToJmsOptions.class,
+            + "from a Pubsub Subscription and writes to JMS Broker Server Topic or Queue.",
+    optionsClass = PubsubToJmsOptions.class,
     flexContainerName = "pubsub-to-jms",
     contactInformation = "https://cloud.google.com/support")
 public class PubsubToJms {

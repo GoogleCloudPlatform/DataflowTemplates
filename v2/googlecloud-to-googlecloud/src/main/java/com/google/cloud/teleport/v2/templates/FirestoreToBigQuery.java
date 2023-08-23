@@ -57,7 +57,8 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
       "javascriptReloadIntervalMinutes"
     },
     flexContainerName = "firestore-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public class FirestoreToBigQuery {
   public interface FirestoreToBigQueryOptions
       extends PipelineOptions,

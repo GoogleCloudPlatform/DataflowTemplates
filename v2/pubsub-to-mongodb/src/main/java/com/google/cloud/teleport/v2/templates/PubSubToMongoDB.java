@@ -81,14 +81,20 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to MongoDB",
     description =
-        "Streaming pipeline that reads JSON encoded messages from a Pub/Sub subscription,"
-            + " transforms them using a JavaScript user-defined function (UDF), and writes them to"
-            + " a MongoDB as documents.",
+        "The Pub/Sub to MongoDB template is a streaming pipeline that reads JSON-encoded messages from a Pub/Sub subscription and writes them to MongoDB as documents. "
+            + "If required, this pipeline supports additional transforms that can be included using a JavaScript user-defined function (UDF). "
+            + "Any errors occurred due to schema mismatch, malformed JSON, or while executing transforms are recorded in a BigQuery table for unprocessed messages along with input message. "
+            + "If a table for unprocessed records does not exist prior to execution, the pipeline automatically creates this table.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-to-mongodb",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-mongodb",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The Pub/Sub Subscription must exist and the messages must be encoded in a valid JSON format.",
+      "The MongoDB cluster must exist and should be acccessible from the Dataflow worker machines."
+    })
 public class PubSubToMongoDB {
   /**
    * Options supported by {@link PubSubToMongoDB}

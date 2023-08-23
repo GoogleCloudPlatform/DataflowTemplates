@@ -54,13 +54,19 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "MongoDB to BigQuery (CDC)",
     description =
-        "A streaming pipeline which reads data pushed to Pub/Sub from MongoDB Changestream and"
-            + " writes the resulting records to BigQuery.",
+        "The MongoDB to BigQuery CDC (Change Data Capture) template is a streaming pipeline that works together with MongoDB change streams. "
+            + "The pipeline reads the JSON records pushed to Pub/Sub via a MongoDB change stream and writes them to BigQuery as specified by the <code>userOption</code> parameter.",
     optionsClass = Options.class,
     flexContainerName = "mongodb-to-bigquery-cdc",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/mongodb-change-stream-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The target BigQuery dataset must exist.",
+      "The source MongoDB instance must be accessible from the Dataflow worker machines.",
+      "The change stream pushing changes from MongoDB to Pub/Sub should be running."
+    })
 public class MongoDbToBigQueryCdc {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);

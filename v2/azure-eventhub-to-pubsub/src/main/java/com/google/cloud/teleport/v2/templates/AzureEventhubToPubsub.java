@@ -56,7 +56,10 @@ import org.slf4j.LoggerFactory;
     description = "A pipeline to extract from Azure Event hub Server to Cloud Pub/Sub Topic.",
     optionsClass = AzureEventhubToPubsub.AzureEventhubToPubsubOptions.class,
     flexContainerName = "azure-eventhub-to-pubsub",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/azure-eventhub-to-pubsub",
+    preview = true)
 public class AzureEventhubToPubsub {
 
   private static final Logger LOG = LoggerFactory.getLogger(AzureEventhubToPubsub.class);

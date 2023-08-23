@@ -64,12 +64,17 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "BigQuery export to Parquet (via Storage API)",
     description =
-        "A pipeline to export a BigQuery table into Parquet files using the BigQuery Storage API.",
+        "The BigQuery export to Parquet template is a batch pipeline that reads data from a BigQuery table and writes it to a Cloud Storage bucket in Parquet format. "
+            + "This template utilizes the <a href=\"https://cloud.google.com/bigquery/docs/reference/storage\">BigQuery Storage API</a> to export the data.",
     optionsClass = BigQueryToParquetOptions.class,
     flexContainerName = "bigquery-to-parquet",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-parquet",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The input BigQuery table must exist before running the pipeline.",
+      "The output Cloud Storage bucket must exist before running the pipeline."
+    })
 public class BigQueryToParquet {
 
   /* Logger for class. */

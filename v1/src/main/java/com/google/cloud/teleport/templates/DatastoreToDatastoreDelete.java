@@ -44,7 +44,8 @@ import org.apache.beam.sdk.options.ValueProvider;
     category = TemplateCategory.LEGACY,
     displayName = "Bulk Delete Entities in Datastore [Deprecated]",
     description =
-        "A pipeline which reads in Entities (via a GQL query) from Datastore, optionally passes in the JSON encoded Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
+        "A pipeline which reads in Entities (via a GQL query) from Datastore, optionally passes in the JSON encoded "
+            + "Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
     optionsClass = DatastoreToDatastoreDeleteOptions.class,
     skipOptions = {
       "firestoreReadGqlQuery",
@@ -57,13 +58,18 @@ import org.apache.beam.sdk.options.ValueProvider;
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-bulk-delete",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "Datastore must be set up in the project prior to running the template.",
+      "If reading and deleting from separate Datastore instances, the Dataflow <a href=\"https://cloud.google.com/dataflow/docs/concepts/security-and-permissions#worker-service-account\">Worker Service Account</a> must have permission to read from one instance and delete from the other."
+    })
 @Template(
     name = "Firestore_to_Firestore_Delete",
     category = TemplateCategory.UTILITIES,
     displayName = "Bulk Delete Entities in Firestore (Datastore mode)",
     description =
-        "A pipeline which reads in Entities (via a GQL query) from Firestore, optionally passes in the JSON encoded Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
+        "A pipeline which reads in Entities (via a GQL query) from Firestore, optionally passes in the JSON encoded "
+            + "Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
     optionsClass = DatastoreToDatastoreDeleteOptions.class,
     optionsOrder = {
       DatastoreReadOptions.class,
@@ -81,7 +87,11 @@ import org.apache.beam.sdk.options.ValueProvider;
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/firestore-bulk-delete",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "Firestore must be set up in the project prior to running the template.",
+      "If reading and deleting from separate Firestore instances, the Dataflow <a href=\"https://cloud.google.com/dataflow/docs/concepts/security-and-permissions#worker-service-account\">Worker Service Account</a> must have permission to read from one instance and delete from the other."
+    })
 public class DatastoreToDatastoreDelete {
 
   public static <T> ValueProvider<T> selectProvidedInput(

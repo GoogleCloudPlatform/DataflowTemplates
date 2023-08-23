@@ -81,12 +81,21 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
     category = TemplateCategory.BATCH,
     displayName = "Text Files on Cloud Storage to Cloud Spanner",
     description =
-        "A pipeline to import a Cloud Spanner database from a set of Text (CSV) files in Cloud"
-            + " Storage.",
+        "The Cloud Storage Text to Cloud Spanner template is a batch pipeline that reads CSV text files from "
+            + "Cloud Storage and imports them to a Cloud Spanner database.",
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-cloud-spanner",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The target Cloud Spanner database and table must exist.",
+      "You must have read permissions for the Cloud Storage bucket and write permissions for the target Cloud Spanner database.",
+      "The input Cloud Storage path containing the CSV files must exist.",
+      "You must create an import manifest file containing a JSON description of the CSV files, and you must store that manifest file in Cloud Storage.",
+      "If the target Cloud Spanner database already has a schema, any columns specified in the manifest file must have the same data types as their corresponding columns in the target database's schema.",
+      // TODO: convey all the information
+      "The manifest file, encoded in ASCII or UTF-8, must match the following format: ... TODO ..."
+    })
 public class TextImportPipeline {
 
   /** Options for {@link TextImportPipeline}. */

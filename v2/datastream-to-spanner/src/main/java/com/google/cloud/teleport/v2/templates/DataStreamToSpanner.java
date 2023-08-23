@@ -76,14 +76,31 @@ import org.slf4j.LoggerFactory;
     name = "Cloud_Datastream_to_Spanner",
     category = TemplateCategory.STREAMING,
     displayName = "Datastream to Cloud Spanner",
-    description =
-        "Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and"
-            + " writes them to a pre-existing set of tables in Cloud Spanner.",
+    description = {
+      "The Datastream to Cloud Spanner template is a streaming pipeline that reads <a href=\"https://cloud.google.com/datastream/docs\">Datastream</a> events from a Cloud Storage bucket and writes them to a Cloud Spanner database. "
+          + "It is intended for data migration from Datastream sources to Cloud Spanner.\n",
+      "All tables required for migration must exist in the destination Cloud Spanner database prior to template execution. "
+          + "Hence schema migration from a source database to destination Cloud Spanner must be completed prior to data migration. "
+          + "Data can exist in the tables prior to migration. This template does not propagate Datastream schema changes to the Cloud Spanner database.\n",
+      "Data consistency is guaranteed only at the end of migration when all data has been written to Cloud Spanner. "
+          + "To store ordering information for each record written to Cloud Spanner, this template creates an additional table (called a shadow table) for each table in the Cloud Spanner database. "
+          + "This is used to ensure consistency at the end of migration. The shadow tables are not deleted after migration and can be used for validation purposes at the end of migration.\n",
+      "Any errors that occur during operation, such as schema mismatches, malformed JSON files, or errors resulting from executing transforms, are recorded in an error queue. "
+          + "The error queue is a Cloud Storage folder which stores all the Datastream events that had encountered errors along with the error reason in text format. "
+          + "The errors can be transient or permanent and are stored in appropriate Cloud Storage folders in the error queue. "
+          + "The transient errors are retried automatically while the permanent errors are not. "
+          + "In case of permanent errors, you have the option of making corrections to the change events and moving them to the retriable bucket while the template is running."
+    },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-spanner",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-cloud-spanner",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "A Datastream stream in Running or Not started state.",
+      "A Cloud Storage bucket where Datastream events are replicated.",
+      "A Cloud Spanner database with existing tables. These tables can be empty or contain data.",
+    })
 public class DataStreamToSpanner {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpanner.class);

@@ -85,8 +85,12 @@ import org.slf4j.LoggerFactory;
     name = "Cloud_PubSub_to_Datadog",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Datadog",
-    description =
-        "A pipeline that reads from a Pub/Sub subscription and writes to Datadog's Logs API.",
+    description = {
+      "The Pub/Sub to Datadog template is a streaming pipeline that reads messages from a Pub/Sub subscription and writes the message payload to Datadog by using a Datadog endpoint. The most common use case for this template is to export log files to Datadog.\n",
+      "Before writing to Datadog, you can apply a JavaScript user-defined function to the message payload. "
+          + "Any messages that experience processing failures are forwarded to a Pub/Sub unprocessed topic for further troubleshooting and reprocessing.\n",
+      "As an extra layer of protection for your API keys and secrets, you can also pass in a Cloud KMS key along with the base64-encoded API key parameter encrypted with the Cloud KMS key. For additional details about encrypting your API key parameter, see the <a href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud KMS API encryption endpoint</a>."
+    },
     optionsClass = PubSubToDatadogOptions.class,
     optionsOrder = {
       PubsubReadSubscriptionOptions.class,
@@ -96,7 +100,14 @@ import org.slf4j.LoggerFactory;
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-datadog",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The source Pub/Sub subscription must exist prior to running the pipeline.",
+      "The Pub/Sub unprocessed topic must exist prior to running the pipeline.",
+      "The Datadog URL must be accessible from the network of the Dataflow workers.",
+      "The Datadog API key must be generated and available."
+    })
 public class PubSubToDatadog {
 
   /** String/String Coder for FailsafeElement. */

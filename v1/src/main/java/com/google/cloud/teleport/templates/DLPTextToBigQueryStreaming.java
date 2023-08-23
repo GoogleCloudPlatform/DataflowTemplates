@@ -110,12 +110,27 @@ import org.slf4j.LoggerFactory;
     name = "Stream_DLP_GCS_Text_to_BigQuery",
     category = TemplateCategory.STREAMING,
     displayName = "Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP)",
-    description =
-        "An example pipeline that reads CSV files from Cloud Storage, uses Cloud DLP API to mask and tokenize data based on the DLP templates provided and stores output in BigQuery. Note, not all configuration settings are available in this default template. You may need to deploy a custom template to accommodate your specific environment and data needs. More details here: https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp",
+    description = {
+      "The Data Masking/Tokenization from Cloud Storage to BigQuery template uses <a href=\"https://cloud.google.com/dlp/docs\">Sensitive Data Protection</a> and creates a streaming pipeline that does the following steps:\n"
+          + "1. Reads CSV files from a Cloud Storage bucket.\n"
+          + "2. Calls the Cloud Data Loss Prevention API (part of Sensitive Data Protection) for de-identification.\n"
+          + "3. Writes the de-identified data into the specified BigQuery table.",
+      "The template supports using both a Sensitive Data Protection <a href=\"https://cloud.google.com/dlp/docs/creating-templates\">inspection template</a> and a Sensitive Data Protection <a href=\"https://cloud.google.com/dlp/docs/creating-templates-deid\">de-identification template</a>. As a result, the template supports both of the following tasks:\n"
+          + "- Inspect for potentially sensitive information and de-identify the data.\n"
+          + "- De-identify structured data where columns are specified to be de-identified and no inspection is needed.",
+      "Note: This template does not support a regional path for de-identification template location. Only a global path is supported."
+    },
     optionsClass = TokenizePipelineOptions.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/dlp-text-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The input data to tokenize must exist.",
+      "The Sensitive Data Protection templates must exist (for example, DeidentifyTemplate and InspectTemplate). For more details, see <a href=\"https://cloud.google.com/dlp/docs/concepts-templates\">Sensitive Data Protection templates</a>.",
+      "The BigQuery dataset must exist."
+    },
+    hidden = true)
 public class DLPTextToBigQueryStreaming {
 
   public static final Logger LOG = LoggerFactory.getLogger(DLPTextToBigQueryStreaming.class);

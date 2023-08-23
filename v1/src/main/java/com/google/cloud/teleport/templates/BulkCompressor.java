@@ -79,11 +79,21 @@ import org.slf4j.LoggerFactory;
     name = "Bulk_Compress_GCS_Files",
     category = TemplateCategory.UTILITIES,
     displayName = "Bulk Compress Files on Cloud Storage",
-    description = "Batch pipeline. Compresses files on Cloud Storage to a specified location.",
+    description = {
+      "The Bulk Compress Cloud Storage Files template is a batch pipeline that compresses files on Cloud Storage to a specified location. "
+          + "This template can be useful when you need to compress large batches of files as part of a periodic archival process. "
+          + "The supported compression modes are: BZIP2, DEFLATE, GZIP. Files output to the destination location will follow a naming schema of original filename appended with the compression mode extension. The extensions appended will be one of: .bzip2, .deflate, .gz.",
+      "Any errors which occur during the compression process will be output to the failure file in CSV format of filename, error message. "
+          + "If no failures occur while running the pipeline, the error file will still be created but will contain no error records."
+    },
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bulk-compress-cloud-storage",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The compression must be in one of the following formats: `BZIP2`, `DEFLATE`, `GZIP`.",
+      "The output directory must exist prior to running the pipeline."
+    })
 public class BulkCompressor {
 
   /** The logger to output status messages to. */

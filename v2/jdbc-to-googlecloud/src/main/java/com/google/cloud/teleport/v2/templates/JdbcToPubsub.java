@@ -49,23 +49,18 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "JDBC to Pub/Sub",
     description =
-        "A batch pipeline which ingests data from JDBC source and writes to a pre-existing Pub/Sub"
-            + " topic as a JSON string. JDBC connection string, user name and password can be"
-            + " passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If"
-            + " the parameter KMSEncryptionKey is specified, connectionUrl, username, and password"
-            + " should be all in encrypted format.",
-    additionalHelp =
-        "A sample curl command for the KMS API encrypt"
-            + " endpoint: curl -s -X POST"
-            + " \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\""
-            + "  -d \"{\\\"plaintext\\\":\"PasteBase64EncodedString\\\"}\"  -H \"Authorization:"
-            + " Bearer $(gcloud auth application-default print-access-token)\"  -H \"Content-Type:"
-            + " application/json\"",
+        "The Java Database Connectivity (JDBC) to Pub/Sub template is a batch pipeline that ingests data from "
+            + "JDBC source and writes the resulting records to a pre-existing Pub/Sub topic as a JSON string.",
     optionsClass = JdbcToPubsubOptions.class,
     flexContainerName = "jdbc-to-pubsub",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-pubsub",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The JDBC source must exist prior to running the pipeline.",
+      "The Cloud Pub/Sub output topic must exist prior to running the pipeline."
+    })
 public class JdbcToPubsub {
 
   /* Logger for class.*/

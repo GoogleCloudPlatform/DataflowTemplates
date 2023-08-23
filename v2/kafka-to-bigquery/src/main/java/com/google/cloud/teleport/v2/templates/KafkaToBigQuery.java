@@ -94,14 +94,19 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Kafka to BigQuery",
     description =
-        "A streaming pipeline which ingests data in JSON format from Kafka, performs a transform"
-            + " via a user defined JavaScript function, and writes to a pre-existing BigQuery"
-            + " table.",
+        "The Apache Kafka to BigQuery template is a streaming pipeline which ingests text data from Apache Kafka, executes a user-defined function (UDF), and outputs the resulting records to BigQuery. "
+            + "Any errors which occur in the transformation of the data, execution of the UDF, or inserting into the output table are inserted into a separate errors table in BigQuery. "
+            + "If the errors table does not exist prior to execution, then it is created.",
     optionsClass = KafkaToBQOptions.class,
     flexContainerName = "kafka-to-bigquery",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The output BigQuery table must exist.",
+      "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
+      "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
+    })
 public class KafkaToBigQuery {
 
   /* Logger for class. */

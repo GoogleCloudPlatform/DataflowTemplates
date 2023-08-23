@@ -44,13 +44,18 @@ import org.bson.Document;
     category = TemplateCategory.BATCH,
     displayName = "BigQuery to MongoDB",
     description =
-        "A batch pipeline which reads data rows from BigQuery and writes them to MongoDB as"
-            + " documents.",
+        "The BigQuery to MongoDB template is a batch pipeline that reads rows from a BigQuery and writes them to MongoDB as documents. "
+            + "Currently each row is stored as a document.",
     optionsClass = Options.class,
     flexContainerName = "bigquery-to-mongodb",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-mongodb",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The source BigQuery table must exist.",
+      "The target MongoDB instance should be accessible from the Dataflow worker machines."
+    })
 public class BigQueryToMongoDb {
   /**
    * Options supported by {@link BigQueryToMongoDb}

@@ -34,10 +34,9 @@ public @interface Template {
   String displayName();
 
   /** The description of the template. */
-  String description();
+  String[] description();
 
-  /** Additional help information to display on documentations. */
-  String additionalHelp() default "";
+  String[] requirements() default "";
 
   /** Container name to stage (required for Flex templates). */
   String flexContainerName() default "";
@@ -71,4 +70,7 @@ public @interface Template {
 
   /** Contact information for the Template. */
   String contactInformation() default "";
+
+  /** Marker if the template is still in preview / pre-GA. */
+  boolean preview() default false;
 }

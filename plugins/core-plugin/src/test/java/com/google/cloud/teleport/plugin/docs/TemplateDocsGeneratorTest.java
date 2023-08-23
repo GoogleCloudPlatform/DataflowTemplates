@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.plugin;
+package com.google.cloud.teleport.plugin.docs;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -35,8 +35,9 @@ public class TemplateDocsGeneratorTest {
         new TemplateDefinitions(AtoBOk.class, AtoBOk.class.getAnnotation(Template.class));
     ImageSpec imageSpec = definitions.buildSpecModel(false);
     imageSpec.getMetadata().setSourceFilePath("README.md");
+    imageSpec.getMetadata().setFlexTemplate(false);
 
-    String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec, false);
+    String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec);
 
     FileWriter out =
         new FileWriter(
@@ -46,10 +47,13 @@ public class TemplateDocsGeneratorTest {
 
     // Just check if specific pieces are present
     // We should not gatekeep / slow specific formatting down
-    assertThat(markdown).contains("A to B Template");
+    assertThat(markdown).contains("A to B template");
     assertThat(markdown).contains("Streaming Template that sends A to B");
     assertThat(markdown).contains("inputSubscription");
     assertThat(markdown).contains("gcloud dataflow jobs run");
+    assertThat(markdown).contains("export EMPTY=\"\"");
+    assertThat(markdown).contains("export FROM=<from>");
+    assertThat(markdown).contains("export LOGICAL=true");
   }
 
   @Test
@@ -59,19 +63,60 @@ public class TemplateDocsGeneratorTest {
         new TemplateDefinitions(AtoBOk.class, AtoBOk.class.getAnnotation(Template.class));
     ImageSpec imageSpec = definitions.buildSpecModel(false);
     imageSpec.getMetadata().setSourceFilePath("README.md");
-
-    String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec, true);
+    imageSpec.getMetadata().setFlexTemplate(true);
+    String markdown = TemplateDocsGenerator.readmeMarkdown(imageSpec);
 
     FileWriter out =
         new FileWriter("target/README-" + imageSpec.getMetadata().getInternalName() + "-flex.md");
     out.write(markdown);
     out.close();
 
+    // Just check if Flex-specific pieces are present
+    // We should not gatekeep / slow specific formatting down
+    assertThat(markdown).contains("gcloud dataflow flex-template run");
+  }
+
+  @Test
+  public void testSiteMarkdownClassic() throws TemplateException, IOException {
+
+    TemplateDefinitions definitions =
+        new TemplateDefinitions(AtoBOk.class, AtoBOk.class.getAnnotation(Template.class));
+    ImageSpec imageSpec = definitions.buildSpecModel(false);
+    imageSpec.getMetadata().setSourceFilePath("README.md");
+    imageSpec.getMetadata().setFlexTemplate(false);
+
+    String markdown = TemplateDocsGenerator.siteMarkdown(imageSpec);
+
+    FileWriter out =
+        new FileWriter("target/site-" + imageSpec.getMetadata().getInternalName() + "-classic.md");
+    out.write(markdown);
+    out.close();
+
     // Just check if specific pieces are present
     // We should not gatekeep / slow specific formatting down
-    assertThat(markdown).contains("A to B Template");
+    assertThat(markdown).contains("A to B");
     assertThat(markdown).contains("Streaming Template that sends A to B");
     assertThat(markdown).contains("inputSubscription");
+    assertThat(markdown).contains("gcloud dataflow jobs run");
+    assertThat(markdown).contains("Requires the customer to use {{dataflow_name}}");
+  }
+
+  @Test
+  public void testSiteMarkdownFlex() throws TemplateException, IOException {
+
+    TemplateDefinitions definitions =
+        new TemplateDefinitions(AtoBOk.class, AtoBOk.class.getAnnotation(Template.class));
+    ImageSpec imageSpec = definitions.buildSpecModel(false);
+    imageSpec.getMetadata().setSourceFilePath("README.md");
+    imageSpec.getMetadata().setFlexTemplate(true);
+    String markdown = TemplateDocsGenerator.siteMarkdown(imageSpec);
+
+    FileWriter out =
+        new FileWriter("target/site-" + imageSpec.getMetadata().getInternalName() + "-flex.md");
+    out.write(markdown);
+    out.close();
+
+    // Just check if Flex-specific pieces are present
     assertThat(markdown).contains("gcloud dataflow flex-template run");
   }
 }

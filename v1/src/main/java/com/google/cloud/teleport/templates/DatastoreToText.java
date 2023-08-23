@@ -46,7 +46,9 @@ import org.apache.beam.sdk.options.ValueProvider;
     category = TemplateCategory.LEGACY,
     displayName = "Datastore to Text Files on Cloud Storage [Deprecated]",
     description =
-        "Batch pipeline. Reads Datastore entities and writes them to Cloud Storage as text files.",
+        "The Datastore to Cloud Storage Text template is a batch pipeline that reads Datastore entities and writes them "
+            + "to Cloud Storage as text files. You can provide a function to process each entity as a JSON string. "
+            + "If you don't provide such a function, every line in the output file will be a JSON-serialized entity.",
     optionsClass = DatastoreToTextOptions.class,
     skipOptions = {
       "firestoreReadNamespace",
@@ -57,13 +59,16 @@ import org.apache.beam.sdk.options.ValueProvider;
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-to-cloud-storage",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {"Datastore must be set up in the project before running the pipeline."})
 @Template(
     name = "Firestore_to_GCS_Text",
     category = TemplateCategory.BATCH,
     displayName = "Firestore (Datastore mode) to Text Files on Cloud Storage",
     description =
-        "Batch pipeline. Reads Firestore entities and writes them to Cloud Storage as text files.",
+        "The Firestore to Cloud Storage Text template is a batch pipeline that reads Firestore entities and writes them "
+            + "to Cloud Storage as text files. You can provide a function to process each entity as a JSON string. "
+            + "If you don't provide such a function, every line in the output file will be a JSON-serialized entity.",
     optionsClass = DatastoreToTextOptions.class,
     skipOptions = {
       "datastoreReadNamespace",
@@ -74,7 +79,8 @@ import org.apache.beam.sdk.options.ValueProvider;
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/firestore-to-cloud-storage",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {"Firestore must be set up in the project before running the pipeline."})
 public class DatastoreToText {
 
   public static ValueProvider<String> selectProvidedInput(

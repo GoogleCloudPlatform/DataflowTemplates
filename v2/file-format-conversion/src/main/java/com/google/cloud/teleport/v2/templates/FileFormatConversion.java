@@ -59,13 +59,21 @@ import org.slf4j.LoggerFactory;
     name = "File_Format_Conversion",
     category = TemplateCategory.UTILITIES,
     displayName = "Convert file formats between Avro, Parquet & CSV",
-    description = "A pipeline to convert file formats between Avro, Parquet & csv.",
+    description = {
+      "The File Format Conversion template is a batch pipeline that converts files stored on Cloud Storage from one supported format to another.\n",
+      "The following format conversions are supported:\n"
+          + "- CSV to Avro\n"
+          + "- CSV to Parquet\n"
+          + "- Avro to Parquet\n"
+          + "- Parquet to Avro"
+    },
     optionsClass = FileFormatConversionOptions.class,
     optionalOptions = {"deadletterTable"},
     flexContainerName = "file-format-conversion",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/file-format-conversion",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {"The output Cloud Storage bucket must exist before running the pipeline."})
 public class FileFormatConversion {
 
   /** Logger for class. */
