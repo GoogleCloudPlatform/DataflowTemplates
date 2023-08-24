@@ -19,7 +19,6 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,9 +62,8 @@ public class JobSpec implements Serializable {
 
   public List<Source> getSourceList() {
     ArrayList<Source> sourceList = new ArrayList<>();
-    Iterator<String> sourceKeySet = sources.keySet().iterator();
-    while (sourceKeySet.hasNext()) {
-      sourceList.add(sources.get(sourceKeySet.next()));
+    for (String s : sources.keySet()) {
+      sourceList.add(sources.get(s));
     }
     return sourceList;
   }
