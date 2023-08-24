@@ -49,6 +49,7 @@ import org.apache.beam.it.gcp.monitoring.MonitoringClient;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
@@ -107,11 +108,14 @@ public abstract class LoadTestBase {
         }
       };
 
-  @Before
-  @SuppressFBWarnings("ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD")
-  public void setUp() throws IOException {
+  @BeforeClass
+  public static void setUpClass() {
     project = TestProperties.project();
     region = TestProperties.region();
+  }
+
+  @Before
+  public void setUp() throws IOException {
     monitoringClient = MonitoringClient.builder(CREDENTIALS_PROVIDER).build();
     pipelineLauncher = launcher();
     pipelineOperator = new PipelineOperator(pipelineLauncher);
