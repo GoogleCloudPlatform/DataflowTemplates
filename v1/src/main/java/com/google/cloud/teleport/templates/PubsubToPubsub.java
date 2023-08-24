@@ -55,12 +55,17 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Pub/Sub",
     description =
-        "Streaming pipeline. Reads from a Pub/Sub subscription and writes to a Pub/Sub topic. ",
-    additionalHelp = "The template allows filtering specific messages.",
+        "The Pub/Sub to Pub/Sub template is a streaming pipeline that reads messages from a Pub/Sub subscription and "
+            + "writes the messages to another Pub/Sub topic. The pipeline also accepts an optional message attribute key and a value that can be used to filter the messages that should be written to the Pub/Sub topic. You can use this template to copy messages from a Pub/Sub subscription to another Pub/Sub topic with an optional message filter.",
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-pubsub",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The source Pub/Sub subscription must exist prior to execution.",
+      "The source Pub/Sub subscription must be a <a href=\"https://cloud.google.com/pubsub/docs/pull\">pull subscription</a>.",
+      "The destination Pub/Sub topic must exist prior to execution."
+    })
 public class PubsubToPubsub {
 
   /**

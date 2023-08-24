@@ -27,6 +27,7 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -93,18 +94,19 @@ public class TemplateDefinitions {
     ImageSpecMetadata metadata = new ImageSpecMetadata();
     metadata.setInternalName(templateAnnotation.name());
     metadata.setName(templateAnnotation.displayName());
-    metadata.setDescription(templateAnnotation.description());
+    metadata.setDescription(List.of(templateAnnotation.description()));
     metadata.setCategory(
         new ImageSpecCategory(
             templateAnnotation.category().getName(),
             templateAnnotation.category().getDisplayName()));
     metadata.setModule(getClassModule());
     metadata.setDocumentationLink(templateAnnotation.documentation());
-    metadata.setAdditionalHelp(templateAnnotation.additionalHelp());
     metadata.setGoogleReleased(
         (templateAnnotation.documentation() != null
                 && templateAnnotation.documentation().contains("cloud.google.com"))
             || !templateAnnotation.hidden());
+    metadata.setPreview(templateAnnotation.preview());
+    metadata.setRequirements(Arrays.asList(templateAnnotation.requirements()));
 
     if (templateAnnotation.placeholderClass() != null
         && templateAnnotation.placeholderClass() != void.class) {

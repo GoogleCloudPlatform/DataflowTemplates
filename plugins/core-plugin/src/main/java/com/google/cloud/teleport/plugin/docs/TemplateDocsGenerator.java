@@ -13,9 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.plugin;
+package com.google.cloud.teleport.plugin.docs;
 
 import com.google.cloud.teleport.plugin.model.ImageSpec;
+import freemarker.ext.beans.BeansWrapper;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -33,8 +34,7 @@ import org.slf4j.LoggerFactory;
 public class TemplateDocsGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(TemplateDocsGenerator.class);
 
-  public static String readmeMarkdown(ImageSpec imageSpec, boolean flex)
-      throws IOException, TemplateException {
+  public static String readmeMarkdown(ImageSpec imageSpec) throws IOException, TemplateException {
 
     LOG.info(
         "Generating documentation for template {}...", imageSpec.getMetadata().getInternalName());
@@ -47,16 +47,45 @@ public class TemplateDocsGenerator {
 
     Map<String, Object> parameters = new HashMap<>();
     parameters.put("spec", imageSpec);
-    parameters.put("flex", flex);
+    parameters.put("flex", imageSpec.getMetadata().isFlexTemplate());
+    parameters.put("statics", BeansWrapper.getDefaultInstance().getStaticModels());
 
     Template template = freemarkerConfig.getTemplate("README-template.md");
 
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    OutputStreamWriter writer = new OutputStreamWriter(baos);
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        OutputStreamWriter writer = new OutputStreamWriter(baos)) {
 
-    template.process(parameters, writer);
-    writer.flush();
+      template.process(parameters, writer);
+      writer.flush();
 
-    return baos.toString(StandardCharsets.UTF_8);
+      return baos.toString(StandardCharsets.UTF_8);
+    }
+  }
+
+  public static String siteMarkdown(ImageSpec imageSpec) throws IOException, TemplateException {
+
+    LOG.info("Generating site for template {}...", imageSpec.getMetadata().getInternalName());
+
+    Configuration freemarkerConfig = new Configuration(Configuration.VERSION_2_3_32);
+    freemarkerConfig.setDefaultEncoding("UTF-8");
+    freemarkerConfig.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
+    freemarkerConfig.setLogTemplateExceptions(true);
+    freemarkerConfig.setClassForTemplateLoading(TemplateDocsGenerator.class, "/");
+
+    Map<String, Object> parameters = new HashMap<>();
+    parameters.put("spec", imageSpec);
+    parameters.put("flex", imageSpec.getMetadata().isFlexTemplate());
+    parameters.put("statics", BeansWrapper.getDefaultInstance().getStaticModels());
+    parameters.put("base_include", "dataflow");
+
+    Template template = freemarkerConfig.getTemplate("site-template.md");
+
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        OutputStreamWriter writer = new OutputStreamWriter(baos)) {
+      template.process(parameters, writer);
+      writer.flush();
+
+      return baos.toString(StandardCharsets.UTF_8);
+    }
   }
 }

@@ -38,10 +38,19 @@ import org.apache.beam.sdk.options.ValueProvider;
     category = TemplateCategory.BATCH,
     displayName = "SequenceFile Files on Cloud Storage to Cloud Bigtable",
     description =
-        "A pipeline which reads data from SequenceFile in Cloud Storage and writes it to Cloud Bigtable table.",
+        "The Cloud Storage SequenceFile to Bigtable template is a pipeline that reads data from SequenceFiles in a "
+            + "Cloud Storage bucket and writes the data to a Bigtable table. "
+            + "You can use the template to copy data from Cloud Storage to Bigtable.",
     placeholderClass = ImportJob.class,
     optionsClass = ImportJobPlaceholderOptions.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/sequencefile-to-bigtable",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Bigtable table must exist.",
+      "The input SequenceFiles must exist in a Cloud Storage bucket before running the pipeline.",
+      "The input SequenceFiles must have been exported from Bigtable or HBase."
+    })
 public class ImportJobPlaceholder {
 
   /** Options class for the ImportJob pipeline. */

@@ -90,11 +90,10 @@ import org.slf4j.LoggerFactory;
     name = "Cloud_PubSub_to_Redis",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Redis",
-    description =
-        "A streaming pipeline which inserts data from a Pub/Sub " + "and writes them to Redis",
+    description = "A streaming pipeline which inserts data from a Pub/Sub and writes them to Redis",
     optionsClass = PubSubToRedis.PubSubToRedisOptions.class,
     flexContainerName = "pubsub-to-redis",
-    contactInformation = "https://github.com/redis-field-engineering/DataflowTemplates/issues")
+    contactInformation = "https://github.com/GoogleCloudPlatform/DataflowTemplates/issues")
 public class PubSubToRedis {
   /*
    * Options supported by {@link PubSubToRedis}

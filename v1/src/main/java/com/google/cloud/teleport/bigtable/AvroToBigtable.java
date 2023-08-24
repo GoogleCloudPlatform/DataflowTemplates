@@ -55,11 +55,17 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Avro Files on Cloud Storage to Cloud Bigtable",
     description =
-        "A pipeline which reads data from Avro files in Cloud Storage and writes it to Cloud Bigtable table.",
+        "The Cloud Storage Avro to Bigtable template is a pipeline that reads data from Avro files in a Cloud Storage bucket and writes the data to a Bigtable table. "
+            + "You can use the template to copy data from Cloud Storage to Bigtable.",
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-bigtable",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Bigtable table must exist and have the same column families as exported in the Avro files.",
+      "The input Avro files must exist in a Cloud Storage bucket before running the pipeline.",
+      "Bigtable expects a specific <a href=\"https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/src/main/resources/schema/avro/bigtable.avsc\">schema</a> from the input Avro files.",
+    })
 public final class AvroToBigtable {
   private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);
 

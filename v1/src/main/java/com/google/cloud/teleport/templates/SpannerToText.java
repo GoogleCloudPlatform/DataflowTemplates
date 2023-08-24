@@ -69,12 +69,13 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Cloud Spanner to Text Files on Cloud Storage",
     description =
-        "A pipeline which reads in Cloud Spanner table and writes it to Cloud Storage as CSV text"
-            + " files.",
+        "The Cloud Spanner to Cloud Storage Text template is a batch pipeline that reads in data from a Cloud Spanner "
+            + "table, and writes it to Cloud Storage as CSV text files.",
     optionsClass = SpannerToTextOptions.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-cloud-storage",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {"The input Spanner table must exist before running the pipeline."})
 public class SpannerToText {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToText.class);

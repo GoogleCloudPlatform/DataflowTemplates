@@ -31,14 +31,19 @@ import com.google.cloud.teleport.v2.options.PostgreSQLToBigQueryOptions;
     category = TemplateCategory.BATCH,
     displayName = "PostgreSQL to BigQuery",
     description =
-        "A pipeline that reads from PostgreSQL and writes to a BigQuery table. JDBC connection"
-            + " string, user name and password can be passed in directly as plaintext or encrypted"
-            + " using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified,"
-            + " connectionURL, username, and password should be all in encrypted format.",
+        "The PostgreSQL to BigQuery template is a batch pipeline that copies data from a PostgreSQL table into an existing BigQuery table. "
+            + "This pipeline uses JDBC to connect to PostgreSQL. "
+            + "For an extra layer of protection, you can also pass in a Cloud KMS key along with Base64-encoded username, password, and connection string parameters encrypted with the Cloud KMS key. "
+            + "For more information about encrypting your username, password, and connection string parameters, see the <a href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud KMS API encryption endpoint</a>.",
     optionsClass = PostgreSQLToBigQueryOptions.class,
     flexContainerName = "postgresql-to-bigquery",
     skipOptions = {"driverJars", "driverClassName"},
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/postgresql-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The BigQuery table must exist before pipeline execution.",
+      "The BigQuery table must have a compatible schema.",
+      "The PostgreSQL database must be accessible from the subnetwork where Dataflow runs.",
+    })
 public class PostgreSQLToBigQuery extends JdbcToBigQuery {}

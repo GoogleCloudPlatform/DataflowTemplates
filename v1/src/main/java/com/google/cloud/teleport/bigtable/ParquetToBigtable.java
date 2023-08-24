@@ -59,11 +59,17 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Parquet Files on Cloud Storage to Cloud Bigtable",
     description =
-        "A pipeline which reads data from Parquet files in Cloud Storage and writes it to Cloud Bigtable table.",
+        "The Cloud Storage Parquet to Bigtable template is a pipeline that reads data from Parquet files in a Cloud Storage bucket and writes the data to a Bigtable table. "
+            + "You can use the template to copy data from Cloud Storage to Bigtable.",
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/parquet-to-bigtable",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Bigtable table must exist and have the same column families as exported in the Parquet files.",
+      "The input Parquet files must exist in a Cloud Storage bucket before running the pipeline.",
+      "Bigtable expects a specific <a href=\"https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/src/main/resources/schema/avro/bigtable.avsc\">schema</a> from the input Parquet files."
+    })
 public class ParquetToBigtable {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetToBigtable.class);
 

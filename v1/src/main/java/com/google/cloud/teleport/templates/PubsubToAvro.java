@@ -74,13 +74,14 @@ import org.apache.beam.sdk.values.PCollection;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Avro Files on Cloud Storage",
     description =
-        "Streaming pipeline. Reads from a Pub/Sub subscription and outputs windowed Avro files to"
-            + " the specified directory.",
+        "The Pub/Sub to Avro files on Cloud Storage template is a streaming pipeline that reads data from a Pub/Sub "
+            + "topic and writes Avro files into the specified Cloud Storage bucket.",
     optionsClass = Options.class,
     skipOptions = "inputSubscription",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-avro",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {"The input Pub/Sub topic must exist prior to pipeline execution."})
 public class PubsubToAvro {
 
   /**

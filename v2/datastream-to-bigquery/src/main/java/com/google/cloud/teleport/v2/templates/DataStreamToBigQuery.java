@@ -88,14 +88,30 @@ import org.slf4j.LoggerFactory;
     name = "Cloud_Datastream_to_BigQuery",
     category = TemplateCategory.STREAMING,
     displayName = "Datastream to BigQuery",
-    description =
-        "Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and"
-            + " writes them to a pre-existing BigQuery dataset as a set of tables.",
+    description = {
+      "The Datastream to BigQuery template is a streaming pipeline that reads <a href=\"https://cloud.google.com/datastream/docs\">Datastream</a> data and replicates it into BigQuery. "
+          + "The template reads data from Cloud Storage using Pub/Sub notifications and replicates it into a time partitioned BigQuery staging table. "
+          + "Following replication, the template executes a MERGE in BigQuery to upsert all change data capture (CDC) changes into a replica of the source table.\n",
+      "The template handles creating and updating the BigQuery tables managed by the replication. "
+          + "When data definition language (DDL) is required, a callback to Datastream extracts the source table schema and translates it into BigQuery data types. Supported operations include the following:\n"
+          + "- New tables are created as data is inserted.\n"
+          + "- New columns are added to BigQuery tables with null initial values.\n"
+          + "- Dropped columns are ignored in BigQuery and future values are null.\n"
+          + "- Renamed columns are added to BigQuery as new columns.\n"
+          + "- Type changes are not propagated to BigQuery."
+    },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-bigquery",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "A Datastream stream that is ready to or already replicating data.",
+      "<a href=\"https://cloud.google.com/storage/docs/reporting-changes\">Cloud Storage Pub/Sub notifications</a> are enabled for the Datastream data.",
+      "BigQuery destination datasets are created and the Compute Engine Service Account has been granted admin access to them.",
+      "A primary key is necessary in the source table for the destination replica table to be created.",
+      "A MySQL or Oracle source database. PostgreSQL databases are not supported."
+    })
 public class DataStreamToBigQuery {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToBigQuery.class);

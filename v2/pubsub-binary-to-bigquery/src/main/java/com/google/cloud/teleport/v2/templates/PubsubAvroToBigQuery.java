@@ -56,13 +56,19 @@ import org.apache.beam.sdk.values.Row;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub Avro to BigQuery",
     description =
-        "A streaming pipeline which inserts Avro records from a Pub/Sub subscription into a"
-            + " BigQuery table.",
+        "The Pub/Sub Avro to BigQuery template is a streaming pipeline that ingests Avro data from a Pub/Sub "
+            + "subscription into a BigQuery table. Any errors which occur while writing to the BigQuery table are streamed into a Pub/Sub unprocessed topic.",
     optionsClass = PubsubAvroToBigQueryOptions.class,
     flexContainerName = "pubsub-avro-to-bigquery",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-avro-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The input Pub/Sub subscription must exist.",
+      "The schema file for the Avro records must exist on Cloud Storage.",
+      "The unprocessed Pub/Sub topic must exist.",
+      "The output BigQuery dataset must exist."
+    })
 public final class PubsubAvroToBigQuery {
   /**
    * Validates input flags and executes the Dataflow pipeline.

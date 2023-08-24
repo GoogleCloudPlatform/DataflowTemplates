@@ -63,7 +63,8 @@ import org.slf4j.LoggerFactory;
     flexContainerName = "astradb-to-bigquery",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/astradb-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true)
 public class AstraDbToBigQuery {
 
   /** Logger for the class. */

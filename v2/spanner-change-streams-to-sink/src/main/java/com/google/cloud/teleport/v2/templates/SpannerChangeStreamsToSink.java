@@ -63,8 +63,6 @@ import org.slf4j.LoggerFactory;
             + " writes them to a sink.",
     optionsClass = Options.class,
     flexContainerName = "spanner-change-streams-to-sink",
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/spanner-change-streams-to-sink",
     contactInformation = "https://cloud.google.com/support")
 public class SpannerChangeStreamsToSink {
 

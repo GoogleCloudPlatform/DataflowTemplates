@@ -47,11 +47,17 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
     category = TemplateCategory.BATCH,
     displayName = "Avro Files on Cloud Storage to Cloud Spanner",
     description =
-        "A pipeline to import a Cloud Spanner database from a set of Avro files in Cloud Storage.",
+        "The Cloud Storage Avro files to Cloud Spanner template is a batch pipeline that reads Avro files exported from "
+            + "Cloud Spanner stored in Cloud Storage and imports them to a Cloud Spanner database.",
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-cloud-spanner",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The target Cloud Spanner database must exist and must be empty.",
+      "You must have read permissions for the Cloud Storage bucket and write permissions for the target Cloud Spanner database.",
+      "The input Cloud Storage path must exist, and it must include a <a href=\"https://cloud.google.com/spanner/docs/import-non-spanner#create-export-json\">spanner-export.json</a> file that contains a JSON description of files to import."
+    })
 public class ImportPipeline {
 
   /** Options for {@link ImportPipeline}. */

@@ -58,7 +58,15 @@ import org.apache.hadoop.hbase.client.Mutation;
     flexContainerName = "bigquery-to-bigtable",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-bigtable",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The source BigQuery table must exist.",
+      "The Bigtable table must exist.",
+      "The <a href=\"https://cloud.google.com/dataflow/docs/concepts/security-and-permissions#worker-service-account\">worker service account</a>"
+          + " needs the <code>roles/bigquery.datasets.create</code> permission. For"
+          + " more information, see <a href=\"https://cloud.google.com/bigquery/docs/access-control\">Introduction to IAM</a>."
+    })
 public class BigQueryToBigtable {
 
   /**

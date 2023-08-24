@@ -25,8 +25,7 @@ import java.util.Optional;
 public class ImageSpecMetadata {
 
   private String name;
-  private String description;
-  private String additionalHelp;
+  private List<String> description;
   private String mainClass;
   private List<ImageSpecParameter> parameters = new ArrayList<>();
   private Map<String, String> runtimeParameters = new HashMap<>();
@@ -34,25 +33,19 @@ public class ImageSpecMetadata {
   private String internalName;
   private String module;
   private String documentationLink;
+  private List<String> requirements;
   private boolean googleReleased;
+  private boolean preview;
   private boolean udfSupport;
   private boolean flexTemplate;
   private String sourceFilePath;
 
-  public String getDescription() {
+  public List<String> getDescription() {
     return description;
   }
 
-  public void setDescription(String description) {
+  public void setDescription(List<String> description) {
     this.description = description;
-  }
-
-  public String getAdditionalHelp() {
-    return additionalHelp;
-  }
-
-  public void setAdditionalHelp(String additionalHelp) {
-    this.additionalHelp = additionalHelp;
   }
 
   public String getName() {
@@ -111,6 +104,14 @@ public class ImageSpecMetadata {
     this.documentationLink = documentationLink;
   }
 
+  public List<String> getRequirements() {
+    return requirements;
+  }
+
+  public void setRequirements(List<String> requirements) {
+    this.requirements = requirements;
+  }
+
   public String getModule() {
     return module;
   }
@@ -125,6 +126,14 @@ public class ImageSpecMetadata {
 
   public void setGoogleReleased(boolean googleReleased) {
     this.googleReleased = googleReleased;
+  }
+
+  public boolean isPreview() {
+    return preview;
+  }
+
+  public void setPreview(boolean preview) {
+    this.preview = preview;
   }
 
   public boolean isUdfSupport() {

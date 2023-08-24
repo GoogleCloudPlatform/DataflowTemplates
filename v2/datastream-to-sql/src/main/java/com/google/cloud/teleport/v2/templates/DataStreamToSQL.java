@@ -58,12 +58,31 @@ import org.slf4j.LoggerFactory;
     name = "Cloud_Datastream_to_SQL",
     category = TemplateCategory.STREAMING,
     displayName = "Datastream to SQL",
-    description =
-        "Streaming pipeline. Ingests messages from a stream in Cloud Datastream, transforms them,"
-            + " and writes them to a set of pre-defined Postgres tables.",
+    description = {
+      "The Datastream to SQL template is a streaming pipeline that reads <a href=\"https://cloud.google.com/datastream/docs\">Datastream</a> data and replicates it into any MySQL or PostgreSQL database. "
+          + "The template reads data from Cloud Storage using Pub/Sub notifications and replicates this data into SQL replica tables.\n",
+      "The template does not support data definition language (DDL) and expects that all tables already exist in the database. "
+          + "Replication uses Dataflow stateful transforms to filter stale data and ensure consistency in out of order data. "
+          + "For example, if a more recent version of a row has already passed through, a late arriving version of that row is ignored. "
+          + "The data manipulation language (DML) that executes is a best attempt to perfectly replicate source to target data. The DML statements executed follow the following rules:\n",
+      "If a primary key exists, insert and update operations use upsert syntax (ie. <code>INSERT INTO table VALUES (...) ON CONFLICT (...) DO UPDATE</code>).\n"
+          + "If primary keys exist, deletes are replicated as a delete DML.\n"
+          + "If no primary key exists, both insert and update operations are inserted into the table.\n"
+          + "If no primary keys exist, deletes are ignored.\n"
+          + "If you are using the Oracle to Postgres utilities, add <code>ROWID</code> in SQL as the primary key when none exists."
+    },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-sql",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-sql",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "A Datastream stream that is ready to or already replicating data.",
+      "<a href=\"https://cloud.google.com/storage/docs/reporting-changes\">Cloud Storage Pub/Sub notifications</a> are enabled for the Datastream data.",
+      "A PostgreSQL database was seeded with the required schema.",
+      "Network access between Dataflow workers and PostgreSQL is set up."
+    })
 public class DataStreamToSQL {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSQL.class);
