@@ -19,8 +19,8 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,7 +28,7 @@ import java.util.Map;
 public class JobSpec implements Serializable {
 
   // initialize defaults;
-  private final Map<String, Source> sources = new HashMap<>();
+  private final Map<String, Source> sources = new LinkedHashMap<>();
   private final List<Target> targets = new ArrayList<>();
   private Config config = new Config();
   private final List<Action> actions = new ArrayList<>();
