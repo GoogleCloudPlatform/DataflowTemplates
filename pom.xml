@@ -89,6 +89,9 @@
     <integration.tests>
       com.google.cloud.teleport.metadata.TemplateIntegrationTest
     </integration.tests>
+    <load.tests>
+      com.google.cloud.teleport.metadata.TemplateLoadTest
+    </load.tests>
     <direct-runner.tests>
       com.google.cloud.teleport.metadata.DirectRunnerTest
     </direct-runner.tests>
@@ -397,7 +400,7 @@
               </includes>
               <excludedGroups></excludedGroups>
               <groups>
-                com.google.cloud.teleport.metadata.TemplateLoadTest
+                ${load.tests}
               </groups>
               <trimStackTrace>false</trimStackTrace>
             </configuration>
