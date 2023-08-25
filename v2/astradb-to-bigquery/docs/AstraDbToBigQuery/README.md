@@ -1,7 +1,7 @@
 # AstraDB to BigQuery Dataflow Template
 
-The [AstraDbToBigQuery](../../src/main/java/com/google/cloud/teleport/v2/astradb/templates/AstraDbToBigQuery.java) pipeline Reads the data from AstraDb table, Writes the data to BigQuery.
-The AstraDB to BigQuery template is a batch pipeline that reads records from AstarDB and writes them to BigQuery as specified in userOption.
+The [AstraDbToBigQuery](../../src/main/java/com/google/cloud/teleport/v2/astradb/templates/AstraDbToBigQuery.java) pipeline reads the data from AstraDb table and writes the data to BigQuery.
+The AstraDB to BigQuery template is a batch pipeline that reads records from AstraDB and writes them to BigQuery.
 
 If the destination table does not exist in BigQuery the pipeline will create it with the following values:
 - The `Dataset Id` id will be the source Cassandra Keyspace.

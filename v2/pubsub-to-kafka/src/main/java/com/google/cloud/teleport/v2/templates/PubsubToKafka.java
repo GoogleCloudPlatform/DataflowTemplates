@@ -71,7 +71,7 @@ import org.slf4j.LoggerFactory;
     displayName = "Pub/Sub to Kafka",
     description =
         "A streaming pipeline which inserts data from a Pub/Sub Topic and "
-            + "transforms them using a JavaScript user-defined function (UDF)(Optional), "
+            + "transforms them using a JavaScript user-defined function (UDF), "
             + "and writes them to kafka topic",
     optionsClass = PubsubToKafkaOptions.class,
     flexContainerName = "pubsub-to-kafka",

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.plugin.docs;
 
 import com.google.cloud.teleport.plugin.model.ImageSpecParameter;
+import com.google.common.base.MoreObjects;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
@@ -35,6 +36,7 @@ public final class TemplateDocsUtils {
           put("MongoDB", "product_name_mongodb");
           put("Apache Beam", "apache_beam");
           put("Cloud Storage", "storage_name");
+          put("Pub/Sub", "pubsub_name_short");
         }
       };
 
@@ -83,33 +85,70 @@ public final class TemplateDocsUtils {
 
   /**
    * Wrap a string - inserts a line break of the line will become longer than the given length.
-   * Optionally prepad new lines.
+   * Optionally prepad new lines or convert lists to HTML format.
    */
-  public static String wrapText(String text, int lineLength, String prepad) {
-    StringBuilder result = new StringBuilder();
-    StringBuilder line = new StringBuilder();
+  public static String wrapText(String text, int lineLength, String prepad, boolean htmlList) {
+    prepad = MoreObjects.firstNonNull(prepad, "");
 
-    for (String word : text.split("\\s")) {
-      if (line.length() + word.length() > lineLength) {
-        result.append(line).append(System.lineSeparator());
-        line.setLength(0);
-        if (prepad != null) {
-          line.append(prepad);
-        }
-      } else if (line.length() > 0) {
-        line.append(" ");
+    StringBuilder result = new StringBuilder();
+
+    boolean listMode = false;
+
+    for (String textLine : text.split(System.lineSeparator())) {
+      // Every line break is translated to a line break.
+      if (result.length() > 0) {
+        result.append(System.lineSeparator());
       }
-      line.append(word);
+      StringBuilder line = new StringBuilder();
+
+      for (String word : textLine.split("\\s+")) {
+        if (line.length() + word.length() > lineLength) {
+          result.append(line).append(System.lineSeparator());
+          line.setLength(0);
+          line.append(prepad);
+        } else if (line.length() > 0) {
+          line.append(" ");
+        }
+        line.append(word);
+      }
+
+      if (htmlList) {
+        if (line.toString().replaceAll(prepad, "").trim().startsWith("-")) {
+          if (!listMode) {
+            result.append(prepad + "<ul>").append(System.lineSeparator());
+            listMode = true;
+          }
+          String noDash = line.toString().trim().substring(1).trim();
+          result.append(prepad + "  <li>").append(noDash).append("</li>");
+        } else if (listMode) {
+          result.append(prepad + "</ul>").append(System.lineSeparator());
+          result.append(line);
+          listMode = false;
+        } else {
+          listMode = false;
+          result.append(line);
+        }
+      } else {
+        result.append(line);
+      }
     }
 
-    result.append(line);
+    if (listMode) {
+      result.append(System.lineSeparator()).append(prepad + "</ul>");
+    }
     return result.toString();
   }
 
-  /** Replace site tags. */
+  /**
+   * Replace site tags. Examples, defaults and backticks must be printed in the form of {@code
+   * <code>text</code>} in the resulting doc.
+   */
   public static String replaceSiteTags(String text) {
-    return text.replaceAll("\\(Example: (.*?)\\)", "For example, <code>$1</code>.")
-        .replaceAll("For example, \"(.*?)\"", "For example, <code>$1</code>")
-        .replaceAll("Defaults to: (.*?)\\.", "Defaults to: <code>$1</code>.");
+    return text.replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("(?m)\\.? \\(Example: (.*?)\\)", ". For example, <code>$1</code>.")
+        .replaceAll("(?m)For example, \"(.*?)\"", "For example, <code>$1</code>")
+        .replaceAll("(?m)Defaults to: (.*?)\\.", "Defaults to: <code>$1</code>.")
+        .replaceAll("(?m)`(.*?)`", "<code>$1</code>");
   }
 }

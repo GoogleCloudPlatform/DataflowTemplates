@@ -58,13 +58,24 @@ import org.slf4j.LoggerFactory;
     name = "AstraDB_To_BigQuery",
     category = TemplateCategory.BATCH,
     displayName = "AstraDB to BigQuery",
-    description = "A batch pipeline which reads a table from AstraDB and copy it to BigQuery.",
+    description = {
+      "The AstraDB to BigQuery template is a batch pipeline that reads records from AstraDB and writes them to BigQuery.",
+      "If the destination table doesn't exist in BigQuery, the pipeline creates a table with the following values:\n"
+          + "- The `Dataset ID` is inherited from the Cassandra keyspace.\n"
+          + "- The `Table ID` is inherited from the Cassandra table.\n",
+      "The schema of the destination table is inferred from the source Cassandra table.\n"
+          + "- `List` and `Set` will be mapped to BigQuery `REPEATED` fields.\n"
+          + "- `Map` will be mapped to BigQuery `RECORD` fields.\n"
+          + "- All other types are mapped to BigQuery fields with the corresponding types.\n"
+          + "- Cassandra user-defined types (UDTs) and tuple data types are not supported."
+    },
     optionsClass = AstraDbToBigQuery.Options.class,
     flexContainerName = "astradb-to-bigquery",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/astradb-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
-    preview = true)
+    preview = true,
+    requirements = {"AstraDB account with a token"})
 public class AstraDbToBigQuery {
 
   /** Logger for the class. */

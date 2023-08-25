@@ -44,7 +44,7 @@ public class TemplateDefinitionsTest {
 
     assertEquals("A to B", metadata.getName());
     assertEquals(
-        "Streaming Template that sends A to B\n\nBut it can also send B to C",
+        "Streaming Template that sends A to B.\n\nBut it can also send B to C.",
         metadata.getDescription());
     assertEquals("com.google.cloud.teleport.plugin.sample.AtoBOk", metadata.getMainClass());
 

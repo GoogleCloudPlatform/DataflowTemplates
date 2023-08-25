@@ -33,7 +33,9 @@ public interface AstraDbToBigQueryOptions {
         description = "BigQuery output table",
         optional = true,
         helpText =
-            "BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.")
+            "The BigQuery table location to write the output to. "
+                + "The table should be in the format `<project>:<dataset>.<table_name>`. "
+                + "The table's schema must match the input objects.")
     String getOutputTableSpec();
 
     @SuppressWarnings("unused")
@@ -44,9 +46,9 @@ public interface AstraDbToBigQueryOptions {
   interface AstraDbSourceOptions extends PipelineOptions {
     @TemplateParameter.Text(
         order = 1,
-        description = "Astra Token",
-        helpText = "Token value or secret resource Id",
-        example = "AstraCS:abcdefghij...")
+        description = "Astra token",
+        helpText = "Token value or secret resource ID",
+        example = "AstraCS:abcdefghij")
     @Validation.Required
     @SuppressWarnings("unused")
     String getAstraToken();
@@ -56,7 +58,7 @@ public interface AstraDbToBigQueryOptions {
 
     @TemplateParameter.Text(
         order = 2,
-        description = "Database Identifier",
+        description = "Database identifier",
         helpText = "Database unique identifier (uuid)",
         example = "cf7af129-d33a-498f-ad06-d97a6ee6eb7")
     @Validation.Required
@@ -68,9 +70,9 @@ public interface AstraDbToBigQueryOptions {
 
     @TemplateParameter.Text(
         order = 3,
-        description = "Cassandra Keyspace",
+        description = "Cassandra keyspace",
         regexes = {"^[a-zA-Z0-9][a-zA-Z0-9_]{0,47}$"},
-        helpText = "Name of cassandra keyspace inside Astra Database")
+        helpText = "Name of the Cassandra keyspace inside Astra database")
     String getAstraKeyspace();
 
     @SuppressWarnings("unused")
@@ -78,9 +80,9 @@ public interface AstraDbToBigQueryOptions {
 
     @TemplateParameter.Text(
         order = 4,
-        description = "Cassandra Table",
+        description = "Cassandra table",
         regexes = {"^[a-zA-Z][a-zA-Z0-9_]*$"},
-        helpText = "Name of the table inside Cassandra Database",
+        helpText = "Name of the table inside the Cassandra database",
         example = "my_table")
     @SuppressWarnings("unused")
     String getAstraTable();
@@ -92,7 +94,7 @@ public interface AstraDbToBigQueryOptions {
         order = 5,
         optional = true,
         description = "Cassandra CQL Query",
-        helpText = "Query to filter instead of reading whole table")
+        helpText = "Query to filter rows instead of reading the whole table")
     @SuppressWarnings("unused")
     String getAstraQuery();
 
@@ -103,7 +105,8 @@ public interface AstraDbToBigQueryOptions {
         order = 6,
         optional = true,
         description = "Astra Database Region",
-        helpText = "If not provided default is picked, useful with multi-region databases")
+        helpText =
+            "If not provided, a default is chosen, which is useful with multi-region databases")
     @SuppressWarnings("unused")
     String getAstraDatabaseRegion();
 
@@ -114,7 +117,7 @@ public interface AstraDbToBigQueryOptions {
         order = 7,
         optional = true,
         description = "Token range count",
-        helpText = "Minimal number of splits to distribute query")
+        helpText = "The minimal number of splits to distribute the query")
     Integer getMinTokenRangesCount();
 
     @SuppressWarnings("unused")

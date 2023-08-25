@@ -49,13 +49,64 @@ public class TemplateDocsUtilsTest {
 
   @Test
   public void testWrapText() {
-    assertEquals("short line", wrapText("short line", 16, null));
-    assertEquals("somewhat longer\nline", wrapText("somewhat longer line", 16, null));
+    assertEquals("short line", wrapText("short line", 16, null, false));
+    assertEquals("somewhat longer\nline", wrapText("somewhat longer line", 16, null, false));
+  }
+
+  @Test
+  public void testWrapTextListModeNoText() {
+    assertEquals(
+        "short line\n"
+            + "<ul>\n"
+            + "  <li>bzip</li>\n"
+            + "  <li>gzip</li>\n"
+            + "  <li>tar</li>\n"
+            + "</ul>",
+        wrapText("short line\n" + "- bzip\n" + "- gzip\n" + "- tar", 16, null, true));
+  }
+
+  @Test
+  public void testWrapTextListModePostText() {
+    assertEquals(
+        "short line\n"
+            + "<ul>\n"
+            + "  <li>bzip</li>\n"
+            + "  <li>gzip</li>\n"
+            + "  <li>tar</li>\n"
+            + "</ul>\n"
+            + "ended",
+        wrapText("short line\n" + "- bzip\n" + "- gzip\n" + "- tar\n" + "ended", 16, null, true));
+  }
+
+  @Test
+  public void testWrapSiteList() {
+    assertEquals(
+        "The schema of the destination table is inferred from the source Cassandra table.\n"
+            + "<ul>\n"
+            + "  <li><code>List</code> and `Set` will be mapped to BigQuery `REPEATED` fields.</li>\n"
+            + "  <li>`Map` will be mapped to BigQuery `RECORD` fields.</li>\n"
+            + "  <li>All other types are mapped to BigQuery fields with the corresponding types.</li>\n"
+            + "  <li>Cassandra user-defined types (UDTs) and tuple data types are not supported.</li>\n"
+            + "</ul>",
+        wrapText(
+            "The schema of the destination table is inferred from the source Cassandra table.\n"
+                + "- <code>List</code> and `Set` will be mapped to BigQuery `REPEATED` fields.\n"
+                + "- `Map` will be mapped to BigQuery `RECORD` fields.\n"
+                + "- All other types are mapped to BigQuery fields with the corresponding types.\n"
+                + "- Cassandra user-defined types (UDTs) and tuple data types are not supported.",
+            80,
+            null,
+            true));
+  }
+
+  @Test
+  public void testWrapTextExistingBreak() {
+    assertEquals("short\nline", wrapText("short\nline", 16, null, false));
   }
 
   @Test
   public void testWrapTextPrepad() {
-    assertEquals("somewhat longer\n  line", wrapText("somewhat longer line", 16, "  "));
+    assertEquals("somewhat longer\n  line", wrapText("somewhat longer line", 16, "  ", false));
   }
 
   @Test

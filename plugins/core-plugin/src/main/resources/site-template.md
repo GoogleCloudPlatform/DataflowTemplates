@@ -1,5 +1,4 @@
 <#assign TemplateDocsUtils=statics['com.google.cloud.teleport.plugin.docs.TemplateDocsUtils']>
-
 {% extends "${base_include}/_base.html" %}
 {% include "${base_include}/_local_variables.html" %}
 {% include "${base_include}/docs/guides/templates/_provided-templates-vars.html" %}
@@ -19,14 +18,14 @@
 </#if>
 
 <#list spec.metadata.description?split("\n\n") as paragraph>
-<p>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim), 80, "  ")?ensure_ends_with(".")}</p>
+<p>${TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim), 100, "  ", true))}</p>
 </#list>
 
 <h2>Pipeline requirements</h2>
 
 <ul>
 <#list spec.metadata.requirements as requirement>
-  <li>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(requirement), 80, "    ")?ensure_ends_with(".")}</li>
+  <li>${TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(requirement), 100, "    ", true))}</li>
 </#list>
 </ul>
 
@@ -41,7 +40,7 @@
 <#if !parameter.optional!false>
   <tr>
     <td><code>${parameter.name}</code></td>
-    <td>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText?trim)), 120, "      ")?ensure_ends_with(".")}</td>
+    <td>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText?trim)), 120, "      ", true)?ensure_ends_with(".")}</td>
   </tr>
 </#if>
 </#list>
@@ -49,7 +48,7 @@
 <#if parameter.optional!false>
   <tr>
     <td><code>${parameter.name}</code></td>
-    <td>(Optional) ${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText?trim)), 120, "      ")?ensure_ends_with(".")}</td>
+    <td>Optional: ${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText?trim)), 120, "      ", true)?ensure_ends_with(".")}</td>
   </tr>
 </#if>
 </#list>
@@ -73,7 +72,7 @@
   <li><code><var>{{df_region_placeholder}}</var></code>: {{df_region_desc}}</li>
 <#list spec.metadata.parameters as parameter>
 <#if !parameter.optional!false>
-  <li><code><var>${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}</var></code>: ${parameter.label}</li>
+  <li><code><var>${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}</var></code>: the ${parameter.label}</li>
 </#if>
 </#list>
 </ul>

@@ -48,8 +48,8 @@ public class TemplateDocsGeneratorTest {
     // Just check if specific pieces are present
     // We should not gatekeep / slow specific formatting down
     assertThat(markdown).contains("A to B template");
-    assertThat(markdown).contains("Streaming Template that sends A to B");
-    assertThat(markdown).contains("But it can also send B to C");
+    assertThat(markdown).contains("Streaming Template that sends A to B.");
+    assertThat(markdown).contains("But it can also send B to C.");
     assertThat(markdown).contains("inputSubscription");
     assertThat(markdown).contains("gcloud dataflow jobs run");
     assertThat(markdown).contains("export EMPTY=\"\"");

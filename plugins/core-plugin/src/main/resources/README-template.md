@@ -3,7 +3,7 @@
 ${spec.metadata.name} template
 ---
 <#list spec.metadata.description?split("\n\n") as paragraph>
-${TemplateDocsUtils.wrapText(paragraph!?trim, 80, "")?ensure_ends_with(".")}
+${TemplateDocsUtils.wrapText(paragraph!?trim, 80, "", false)?ensure_ends_with(".")}
 
 </#list>
 
