@@ -18,7 +18,7 @@
 {% dynamic include /docs/includes/___info_launch_stage_disclaimer %}
 </#if>
 
-<#list spec.metadata.description as paragraph>
+<#list spec.metadata.description?split("\n") as paragraph>
 <p>${TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim?ensure_ends_with("."))}</p>
 </#list>
 

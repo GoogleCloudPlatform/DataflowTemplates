@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.options.Default;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -94,7 +95,8 @@ public class TemplateDefinitions {
     ImageSpecMetadata metadata = new ImageSpecMetadata();
     metadata.setInternalName(templateAnnotation.name());
     metadata.setName(templateAnnotation.displayName());
-    metadata.setDescription(List.of(templateAnnotation.description()));
+    metadata.setDescription(
+        List.of(templateAnnotation.description()).stream().collect(Collectors.joining("\n")));
     metadata.setCategory(
         new ImageSpecCategory(
             templateAnnotation.category().getName(),

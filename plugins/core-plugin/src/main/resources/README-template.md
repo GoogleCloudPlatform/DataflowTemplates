@@ -2,7 +2,7 @@
 
 ${spec.metadata.name} template
 ---
-<#list spec.metadata.description as paragraph>
+<#list spec.metadata.description?split("\n") as paragraph>
 ${paragraph!?trim?ensure_ends_with(".")}
 
 </#list>

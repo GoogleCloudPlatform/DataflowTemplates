@@ -25,7 +25,7 @@ import java.util.Optional;
 public class ImageSpecMetadata {
 
   private String name;
-  private List<String> description;
+  private String description;
   private String mainClass;
   private List<ImageSpecParameter> parameters = new ArrayList<>();
   private Map<String, String> runtimeParameters = new HashMap<>();
@@ -40,11 +40,11 @@ public class ImageSpecMetadata {
   private boolean flexTemplate;
   private String sourceFilePath;
 
-  public List<String> getDescription() {
+  public String getDescription() {
     return description;
   }
 
-  public void setDescription(List<String> description) {
+  public void setDescription(String description) {
     this.description = description;
   }
 
