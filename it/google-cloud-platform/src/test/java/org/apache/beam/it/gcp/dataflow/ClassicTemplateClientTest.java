@@ -153,7 +153,7 @@ public final class ClassicTemplateClientTest {
             .setSdk("Apache Beam Java")
             .setVersion("2.42.0")
             .setJobType("JOB_TYPE_BATCH")
-            .setRunner("Dataflow Legacy Runner")
+            .setRunner(AbstractPipelineLauncher.LEGACY_RUNNER)
             .setParameters(ImmutableMap.of(PARAM_KEY, PARAM_VALUE))
             .build();
     assertThat(actual).isEqualTo(expected);
