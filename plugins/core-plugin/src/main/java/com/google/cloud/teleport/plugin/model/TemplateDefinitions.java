@@ -96,7 +96,7 @@ public class TemplateDefinitions {
     metadata.setInternalName(templateAnnotation.name());
     metadata.setName(templateAnnotation.displayName());
     metadata.setDescription(
-        List.of(templateAnnotation.description()).stream().collect(Collectors.joining("\n")));
+        List.of(templateAnnotation.description()).stream().collect(Collectors.joining("\n\n")));
     metadata.setCategory(
         new ImageSpecCategory(
             templateAnnotation.category().getName(),

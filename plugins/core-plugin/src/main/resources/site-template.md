@@ -18,15 +18,15 @@
 {% dynamic include /docs/includes/___info_launch_stage_disclaimer %}
 </#if>
 
-<#list spec.metadata.description?split("\n") as paragraph>
-<p>${TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim?ensure_ends_with("."))}</p>
+<#list spec.metadata.description?split("\n\n") as paragraph>
+<p>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim), 80, "  ")?ensure_ends_with(".")}</p>
 </#list>
 
 <h2>Pipeline requirements</h2>
 
 <ul>
 <#list spec.metadata.requirements as requirement>
-  <li>${TemplateDocsUtils.replaceVariableInterpolationNames(requirement)?ensure_ends_with(".")}</li>
+  <li>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(requirement), 80, "    ")?ensure_ends_with(".")}</li>
 </#list>
 </ul>
 
@@ -41,7 +41,7 @@
 <#if !parameter.optional!false>
   <tr>
     <td><code>${parameter.name}</code></td>
-    <td>${TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText)?ensure_ends_with(".")}</td>
+    <td>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText?trim)), 120, "      ")?ensure_ends_with(".")}</td>
   </tr>
 </#if>
 </#list>
@@ -49,7 +49,7 @@
 <#if parameter.optional!false>
   <tr>
     <td><code>${parameter.name}</code></td>
-    <td>(Optional) ${TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText)?ensure_ends_with(".")}</td>
+    <td>(Optional) ${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText?trim)), 120, "      ")?ensure_ends_with(".")}</td>
   </tr>
 </#if>
 </#list>
@@ -89,10 +89,17 @@
     {{df_gcloud_tab_intro}}
 
 <pre class="prettyprint lang-bsh">
-gcloud dataflow <#if flex>flex-template<#else>jobs</#if> run <var>JOB_NAME</var> \
+<#if flex>
+gcloud dataflow flex-template run <var>JOB_NAME</var> \
+    --template-file-gcs-location={{df_template_file_gcs_location}} \
     --project=<var>PROJECT_ID</var> \
     --region=<var>{{df_region_placeholder}}</var> \
-    --template-file-gcs-location={{df_template_file_gcs_location}} \
+<#else>
+gcloud dataflow jobs run <var>JOB_NAME</var> \
+    --gcs-location={{df_template_file_gcs_location}} \
+    --project=<var>PROJECT_ID</var> \
+    --region=<var>{{df_region_placeholder}}</var> \
+</#if>
     --parameters \
 <#list spec.metadata.parameters as parameter>
 <#if !parameter.optional!false>

@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.plugin.docs;
 
+import static com.google.cloud.teleport.plugin.docs.TemplateDocsUtils.replaceSiteTags;
 import static com.google.cloud.teleport.plugin.docs.TemplateDocsUtils.replaceVariableInterpolationNames;
+import static com.google.cloud.teleport.plugin.docs.TemplateDocsUtils.wrapText;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
@@ -41,7 +43,25 @@ public class TemplateDocsUtilsTest {
   @Test
   public void testReplaceVariableInterpolationNamesDouble() {
     assertEquals(
-        "{{gcp_name}} {{dataflow_name}}",
+        "{{gcp_name_short}} {{dataflow_name}}",
         replaceVariableInterpolationNames("Google Cloud Dataflow"));
+  }
+
+  @Test
+  public void testWrapText() {
+    assertEquals("short line", wrapText("short line", 16, null));
+    assertEquals("somewhat longer\nline", wrapText("somewhat longer line", 16, null));
+  }
+
+  @Test
+  public void testWrapTextPrepad() {
+    assertEquals("somewhat longer\n  line", wrapText("somewhat longer line", 16, "  "));
+  }
+
+  @Test
+  public void testReplaceSiteTags() {
+    assertEquals(
+        "This has the project id. For example, <code>project_id</code>.",
+        replaceSiteTags("This has the project id. (Example: project_id)"));
   }
 }

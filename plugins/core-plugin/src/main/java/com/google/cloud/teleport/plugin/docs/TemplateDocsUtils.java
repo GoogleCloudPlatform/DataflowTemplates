@@ -31,7 +31,7 @@ public final class TemplateDocsUtils {
           put("Bigtable", "bigtable_name_short");
           put("Spanner", "spanner_name");
           put("Elasticsearch", "product_name_elasticsearch");
-          put("Google Cloud", "gcp_name");
+          put("Google Cloud", "gcp_name_short");
           put("MongoDB", "product_name_mongodb");
           put("Apache Beam", "apache_beam");
           put("Cloud Storage", "storage_name");
@@ -79,5 +79,37 @@ public final class TemplateDocsUtils {
               "\\b" + replaceEntry.getKey() + "\\b", "{{" + replaceEntry.getValue() + "}}");
     }
     return text;
+  }
+
+  /**
+   * Wrap a string - inserts a line break of the line will become longer than the given length.
+   * Optionally prepad new lines.
+   */
+  public static String wrapText(String text, int lineLength, String prepad) {
+    StringBuilder result = new StringBuilder();
+    StringBuilder line = new StringBuilder();
+
+    for (String word : text.split("\\s")) {
+      if (line.length() + word.length() > lineLength) {
+        result.append(line).append(System.lineSeparator());
+        line.setLength(0);
+        if (prepad != null) {
+          line.append(prepad);
+        }
+      } else if (line.length() > 0) {
+        line.append(" ");
+      }
+      line.append(word);
+    }
+
+    result.append(line);
+    return result.toString();
+  }
+
+  /** Replace site tags. */
+  public static String replaceSiteTags(String text) {
+    return text.replaceAll("\\(Example: (.*?)\\)", "For example, <code>$1</code>.")
+        .replaceAll("For example, \"(.*?)\"", "For example, <code>$1</code>")
+        .replaceAll("Defaults to: (.*?)\\.", "Defaults to: <code>$1</code>.");
   }
 }
