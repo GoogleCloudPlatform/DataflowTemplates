@@ -26,7 +26,7 @@ import org.apache.beam.sdk.options.Validation;
 @Template(
     name = "AtoB",
     displayName = "A to B",
-    description = "Streaming Template that sends A to B",
+    description = {"Streaming Template that sends A to B", "But it can also send B to C"},
     category = TemplateCategory.STREAMING,
     optionsClass = AtoBOptions.class,
     preview = true,
