@@ -1,5 +1,4 @@
 <#assign TemplateDocsUtils=statics['com.google.cloud.teleport.plugin.docs.TemplateDocsUtils']>
-
 {% extends "${base_include}/_base.html" %}
 {% include "${base_include}/_local_variables.html" %}
 {% include "${base_include}/docs/guides/templates/_provided-templates-vars.html" %}
@@ -18,15 +17,15 @@
 {% dynamic include /docs/includes/___info_launch_stage_disclaimer %}
 </#if>
 
-<#list spec.metadata.description?split("\n") as paragraph>
-<p>${TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim?ensure_ends_with("."))}</p>
+<#list spec.metadata.description?split("\n\n") as paragraph>
+<p>${TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim), 100, "  ", true))}</p>
 </#list>
 
 <h2>Pipeline requirements</h2>
 
 <ul>
 <#list spec.metadata.requirements as requirement>
-  <li>${TemplateDocsUtils.replaceVariableInterpolationNames(requirement)?ensure_ends_with(".")}</li>
+  <li>${TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(requirement), 100, "    ", true))}</li>
 </#list>
 </ul>
 
@@ -41,7 +40,7 @@
 <#if !parameter.optional!false>
   <tr>
     <td><code>${parameter.name}</code></td>
-    <td>${TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText)?ensure_ends_with(".")}</td>
+    <td>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText?trim)), 120, "      ", true)?ensure_ends_with(".")}</td>
   </tr>
 </#if>
 </#list>
@@ -49,7 +48,7 @@
 <#if parameter.optional!false>
   <tr>
     <td><code>${parameter.name}</code></td>
-    <td>(Optional) ${TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText)?ensure_ends_with(".")}</td>
+    <td>Optional: ${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(parameter.helpText?trim)), 120, "      ", true)?ensure_ends_with(".")}</td>
   </tr>
 </#if>
 </#list>
@@ -73,7 +72,7 @@
   <li><code><var>{{df_region_placeholder}}</var></code>: {{df_region_desc}}</li>
 <#list spec.metadata.parameters as parameter>
 <#if !parameter.optional!false>
-  <li><code><var>${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}</var></code>: ${parameter.label}</li>
+  <li><code><var>${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}</var></code>: the ${parameter.label}</li>
 </#if>
 </#list>
 </ul>
@@ -89,10 +88,17 @@
     {{df_gcloud_tab_intro}}
 
 <pre class="prettyprint lang-bsh">
-gcloud dataflow <#if flex>flex-template<#else>jobs</#if> run <var>JOB_NAME</var> \
+<#if flex>
+gcloud dataflow flex-template run <var>JOB_NAME</var> \
+    --template-file-gcs-location={{df_template_file_gcs_location}} \
     --project=<var>PROJECT_ID</var> \
     --region=<var>{{df_region_placeholder}}</var> \
-    --template-file-gcs-location={{df_template_file_gcs_location}} \
+<#else>
+gcloud dataflow jobs run <var>JOB_NAME</var> \
+    --gcs-location={{df_template_file_gcs_location}} \
+    --project=<var>PROJECT_ID</var> \
+    --region=<var>{{df_region_placeholder}}</var> \
+</#if>
     --parameters \
 <#list spec.metadata.parameters as parameter>
 <#if !parameter.optional!false>

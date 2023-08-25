@@ -49,7 +49,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
       order = 3,
       optional = true,
       description = "Options JSON",
-      helpText = "Options JSON. Use runtime tokens (optional).",
+      helpText = "Options JSON. Use runtime tokens.",
       example = "{token1:value1,token2:value2}")
   @Default.String("")
   String getOptionsJson();
@@ -60,7 +60,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
       order = 4,
       optional = true,
       description = "Query SQL",
-      helpText = "Override SQL query (optional).")
+      helpText = "Override SQL query.")
   @Default.String("")
   String getReadQuery();
 
@@ -70,7 +70,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
       order = 5,
       optional = true,
       description = "Path to Text File",
-      helpText = "Override text file pattern (optional)",
+      helpText = "Override text file pattern",
       example = "gs://your-bucket/path/*.json")
   @Default.String("")
   String getInputFilePattern();
