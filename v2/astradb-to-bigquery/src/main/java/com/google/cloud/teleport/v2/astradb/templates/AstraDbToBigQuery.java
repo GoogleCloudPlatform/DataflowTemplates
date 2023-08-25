@@ -64,8 +64,8 @@ import org.slf4j.LoggerFactory;
           + "- The `Dataset ID` is inherited from the Cassandra keyspace.\n"
           + "- The `Table ID` is inherited from the Cassandra table.\n",
       "The schema of the destination table is inferred from the source Cassandra table.\n"
-          + "- `List` and `Set` will be mapped to BigQuery `REPEATED` fields.\n"
-          + "- `Map` will be mapped to BigQuery `RECORD` fields.\n"
+          + "- `List` and `Set` are mapped to BigQuery `REPEATED` fields.\n"
+          + "- `Map` are mapped to BigQuery `RECORD` fields.\n"
           + "- All other types are mapped to BigQuery fields with the corresponding types.\n"
           + "- Cassandra user-defined types (UDTs) and tuple data types are not supported."
     },
