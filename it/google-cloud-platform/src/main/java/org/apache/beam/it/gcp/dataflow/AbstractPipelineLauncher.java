@@ -60,6 +60,9 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   private static final Pattern CURRENT_METRICS = Pattern.compile(".*Current.*");
   public static final String LEGACY_RUNNER = "Dataflow Legacy Runner";
   public static final String RUNNER_V2 = "Dataflow Runner V2";
+  public static final String PARAM_RUNNER = "runner";
+  public static final String PARAM_JOB_TYPE = "jobType";
+  public static final String PARAM_JOB_ID = "jobId";
 
   protected final List<String> launchedJobs = new ArrayList<>();
 
@@ -269,9 +272,9 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
     Map<String, String> parameters = new HashMap<>(options.parameters());
     options.environment().forEach((key, val) -> parameters.put(key, val.toString()));
     // attach basic job info to parameters so that these are exported for load tests
-    parameters.put("runner", runner);
-    parameters.put("jobType", job.getType());
-    parameters.put("jobId", job.getId());
+    parameters.put(PARAM_RUNNER, runner);
+    parameters.put(PARAM_JOB_TYPE, job.getType());
+    parameters.put(PARAM_JOB_ID, job.getId());
     builder.setParameters(ImmutableMap.copyOf(parameters));
     if (labels != null && !labels.isEmpty()) {
       // template job
