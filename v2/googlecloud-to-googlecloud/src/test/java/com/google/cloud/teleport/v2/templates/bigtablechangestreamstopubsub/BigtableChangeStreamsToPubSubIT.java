@@ -17,6 +17,10 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,7 +72,6 @@ import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
@@ -92,18 +95,17 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   private BigtableResourceManager bigtableResourceManager;
   private PubsubResourceManager pubsubResourceManager;
 
-  @Parameterized.Parameter(0)
-  public Boolean noDlqRetry;
-
   private final String clusterName = "teleport-c1";
   private String appProfileId;
   private TopicName topicName;
   private SubscriptionName subscriptionName;
   private String srcTable;
 
-  @Parameterized.Parameters(name = "{0}")
+  @Parameterized.Parameter public Boolean noDlqRetry;
+
+  @Parameterized.Parameters(name = "no-dlq-retry-{0}")
   public static List<Boolean> testParameters() {
-    return Lists.asList(true, new Boolean[] {false});
+    return List.of(true, false);
   }
 
   @Test
@@ -235,12 +237,12 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                     try {
                       ObjectMapper om = new ObjectMapper();
                       JsonNode severeError = om.readTree(artifact.contents());
-                      Assert.assertNotNull(severeError);
+                      assertNotNull(severeError);
                       JsonNode errorMessageNode = severeError.get("error_message");
-                      Assert.assertNotNull(errorMessageNode);
-                      Assert.assertTrue(errorMessageNode instanceof TextNode);
+                      assertNotNull(errorMessageNode);
+                      assertTrue(errorMessageNode instanceof TextNode);
                       String messageText = errorMessageNode.asText();
-                      Assert.assertTrue(
+                      assertTrue(
                           "Unexpected message text: " + messageText,
                           StringUtils.contains(
                               messageText, "Request payload size exceeds the limit"));
@@ -306,7 +308,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     }
   }
 
-  private List<ReceivedMessage> getAtLeastOneMessage(LaunchInfo launchInfo) throws IOException {
+  private List<ReceivedMessage> getAtLeastOneMessage(LaunchInfo launchInfo) {
     LOG.info("Pulling 1 message from PubSub");
     PubsubMessagesCheck pubsubCheck =
         PubsubMessagesCheck.builder(pubsubResourceManager, subscriptionName)
@@ -683,15 +685,15 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
         new SpecificDatumReader<>(ChangelogEntryMessage.getClassSchema());
     ChangelogEntryMessage received = reader.read(null, decoder);
 
-    Assert.assertEquals(expected.getRowKey(), received.getRowKey());
-    Assert.assertEquals(expected.getModType(), received.getModType());
-    Assert.assertEquals(expected.getIsGC(), received.getIsGC());
-    Assert.assertTrue(received.getTieBreaker() >= 0);
-    Assert.assertTrue(expected.getCommitTimestamp() - 10000000L <= received.getCommitTimestamp());
+    assertEquals(expected.getRowKey(), received.getRowKey());
+    assertEquals(expected.getModType(), received.getModType());
+    assertEquals(expected.getIsGC(), received.getIsGC());
+    assertTrue(received.getTieBreaker() >= 0);
+    assertTrue(expected.getCommitTimestamp() - 10000000L <= received.getCommitTimestamp());
     assertEqualCharSequences(expected.getColumnFamily(), received.getColumnFamily());
-    Assert.assertEquals(expected.getColumn(), received.getColumn());
-    Assert.assertEquals(expected.getTimestamp(), received.getTimestamp());
-    Assert.assertEquals(expected.getValue(), received.getValue());
+    assertEquals(expected.getColumn(), received.getColumn());
+    assertEquals(expected.getTimestamp(), received.getTimestamp());
+    assertEquals(expected.getValue(), received.getValue());
     assertEqualCharSequences(expected.getSourceInstance(), received.getSourceInstance());
     assertEqualCharSequences(expected.getSourceCluster(), received.getSourceCluster());
     assertEqualCharSequences(expected.getSourceTable(), received.getSourceTable());
@@ -703,25 +705,25 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
           "Values are not the same", Objects.toString(expected), Objects.toString(actual));
     }
     if (expected != null) {
-      Assert.assertEquals(expected.toString(), actual.toString());
+      assertEquals(expected.toString(), actual.toString());
     }
   }
 
   private void validateProtoMessageData(ChangelogEntryProto expected, ByteString data)
       throws IOException {
     ChangelogEntryProto received = ChangelogEntryMessageProto.ChangelogEntryProto.parseFrom(data);
-    Assert.assertEquals(expected.getRowKey(), received.getRowKey());
-    Assert.assertEquals(expected.getModType(), received.getModType());
-    Assert.assertEquals(expected.getIsGC(), received.getIsGC());
-    Assert.assertTrue(received.getTieBreaker() >= 0);
-    Assert.assertTrue(expected.getCommitTimestamp() - 10000000L <= received.getCommitTimestamp());
-    Assert.assertEquals(expected.getColumnFamily(), received.getColumnFamily());
-    Assert.assertEquals(expected.getColumn(), received.getColumn());
-    Assert.assertEquals(expected.getTimestamp(), received.getTimestamp());
-    Assert.assertEquals(expected.getValue(), received.getValue());
-    Assert.assertEquals(expected.getSourceInstance(), received.getSourceInstance());
-    Assert.assertEquals(expected.getSourceCluster(), received.getSourceCluster());
-    Assert.assertEquals(expected.getSourceTable(), received.getSourceTable());
+    assertEquals(expected.getRowKey(), received.getRowKey());
+    assertEquals(expected.getModType(), received.getModType());
+    assertEquals(expected.getIsGC(), received.getIsGC());
+    assertTrue(received.getTieBreaker() >= 0);
+    assertTrue(expected.getCommitTimestamp() - 10000000L <= received.getCommitTimestamp());
+    assertEquals(expected.getColumnFamily(), received.getColumnFamily());
+    assertEquals(expected.getColumn(), received.getColumn());
+    assertEquals(expected.getTimestamp(), received.getTimestamp());
+    assertEquals(expected.getValue(), received.getValue());
+    assertEquals(expected.getSourceInstance(), received.getSourceInstance());
+    assertEquals(expected.getSourceCluster(), received.getSourceCluster());
+    assertEquals(expected.getSourceTable(), received.getSourceTable());
   }
 
   private void validateJsonMessageData(ChangelogEntryText expected, String jsonString)
@@ -729,26 +731,25 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode jsonTree = mapper.readTree(jsonString);
 
-    Assert.assertEquals(expected.getRowKey(), jsonTree.get("rowKey").asText());
-    Assert.assertEquals(expected.getModType().name(), jsonTree.get("modType").asText());
-    Assert.assertEquals(expected.getIsGC(), jsonTree.get("isGC").asBoolean());
-    Assert.assertTrue(jsonTree.get("tieBreaker").asLong() >= 0);
-    Assert.assertTrue(
+    assertEquals(expected.getRowKey(), jsonTree.get("rowKey").asText());
+    assertEquals(expected.getModType().name(), jsonTree.get("modType").asText());
+    assertEquals(expected.getIsGC(), jsonTree.get("isGC").asBoolean());
+    assertTrue(jsonTree.get("tieBreaker").asLong() >= 0);
+    assertTrue(
         expected.getCommitTimestamp() - 10000000L
             <= Long.parseLong(jsonTree.get("commitTimestamp").asText()));
-    Assert.assertEquals(expected.getColumnFamily(), jsonTree.get("columnFamily").asText());
-    Assert.assertEquals(expected.getColumn(), jsonTree.get("column").asText());
-    Assert.assertEquals(
-        expected.getTimestamp(), Long.parseLong(jsonTree.get("timestamp").asText()));
+    assertEquals(expected.getColumnFamily(), jsonTree.get("columnFamily").asText());
+    assertEquals(expected.getColumn(), jsonTree.get("column").asText());
+    assertEquals(expected.getTimestamp(), Long.parseLong(jsonTree.get("timestamp").asText()));
     JsonNode valueNode = jsonTree.get("value");
     if (expected.hasValue()) {
-      Assert.assertEquals(expected.getValue(), valueNode.asText());
+      assertEquals(expected.getValue(), valueNode.asText());
     } else {
-      Assert.assertNull(valueNode);
+      assertNull(valueNode);
     }
-    Assert.assertEquals(expected.getSourceInstance(), jsonTree.get("sourceInstance").asText());
-    Assert.assertEquals(expected.getSourceCluster(), jsonTree.get("sourceCluster").asText());
-    Assert.assertEquals(expected.getSourceTable(), jsonTree.get("sourceTable").asText());
+    assertEquals(expected.getSourceInstance(), jsonTree.get("sourceInstance").asText());
+    assertEquals(expected.getSourceCluster(), jsonTree.get("sourceCluster").asText());
+    assertEquals(expected.getSourceTable(), jsonTree.get("sourceTable").asText());
   }
 
   @NotNull
@@ -770,7 +771,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     appProfileId = generateAppProfileId();
 
-    String suffix = "" + System.nanoTime();
+    String suffix = String.valueOf(System.nanoTime());
     String topicNameToCreate = "topic-" + suffix;
     String subscriptionNameToCreate = "subscription-" + suffix;
     srcTable = "src" + suffix;
