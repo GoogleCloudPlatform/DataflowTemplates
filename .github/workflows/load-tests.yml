@@ -26,7 +26,6 @@ jobs:
       id: variables
       run: echo "hostIP=$(gcloud compute instances list | grep $(hostname) | awk '{print $4; exit}' )" >> $GITHUB_OUTPUT
     - name: Run load tests with Maven
-      # Use spec path if provided
       run: |
           mvn test -PtemplatesLoadTests -Dproject=apache-beam-testing -DartifactBucket=gs://apache-beam-testing-pranavbhandari -DhostIp=${HOST_IP} -DexportProject=cloud-teleport-testing -DexportDataset=performance_tests -DexportTable=template_performance_metrics -fae
       env:
