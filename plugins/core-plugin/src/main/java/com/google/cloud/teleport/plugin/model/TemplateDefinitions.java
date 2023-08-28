@@ -18,6 +18,7 @@ package com.google.cloud.teleport.plugin.model;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameterNameFromMethod;
 
 import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateCreationParameters;
 import com.google.cloud.teleport.metadata.TemplateIgnoreParameter;
@@ -76,6 +77,12 @@ public class TemplateDefinitions {
   }
 
   public boolean isClassic() {
+
+    // Python implies Flex
+    if (templateAnnotation.type() == TemplateType.PYTHON) {
+      return false;
+    }
+
     return templateAnnotation.flexContainerName() == null
         || templateAnnotation.flexContainerName().isEmpty();
   }
@@ -128,6 +135,9 @@ public class TemplateDefinitions {
     Map<Class<?>, Integer> classOrder = new HashMap<>();
 
     Class<?> optionsClass = templateAnnotation.optionsClass();
+    if (optionsClass == void.class) {
+      optionsClass = templateClass;
+    }
 
     if (templateAnnotation.optionsOrder() != null) {
       for (Class<?> options : templateAnnotation.optionsOrder()) {

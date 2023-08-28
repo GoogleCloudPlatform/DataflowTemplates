@@ -91,6 +91,15 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
       required = false)
   protected String baseContainerImage;
 
+  @Parameter(
+      name = "basePythonContainerImage",
+      defaultValue = "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest",
+      required = false)
+  protected String basePythonContainerImage;
+
+  @Parameter(name = "dockerfilePath", defaultValue = "${dockerfilePath}", required = false)
+  protected String dockerfilePath;
+
   @Parameter(defaultValue = "${parameters}", readonly = true, required = true)
   protected String parameters;
 
@@ -146,7 +155,9 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               useRegion,
               artifactRegion,
               gcpTempLocation,
-              baseContainerImage);
+              baseContainerImage,
+              basePythonContainerImage,
+              dockerfilePath);
 
       String useJobName =
           StringUtils.isNotEmpty(jobName)
