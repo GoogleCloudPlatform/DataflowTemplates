@@ -63,8 +63,7 @@ public class SinglePassGraphImportIT extends TemplateTestBase {
   @Test
   public void importsGraphInSinglePassByMergingEdgeAndItsNodes() throws IOException {
     String spec =
-        contentOf(
-            "/testing-specs/verbose-syntax/inline-json-bq-northwind-single-pass-merge-all-jobspec.json");
+        contentOf("/testing-specs/inline-data/northwind-jobspec-single-pass-merge-all.json");
     gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
     gcsClient.createArtifact(
         "neo4j-connection.json",
@@ -159,7 +158,7 @@ public class SinglePassGraphImportIT extends TemplateTestBase {
             // this contains the same order twice
             // append mode for rels, means the rels will be created twice
             // merge mode for rel nodes, means the nodes will be created only once
-            "/testing-specs/verbose-syntax/inline-json-northwind-subset-single-pass-create-edge-merge-nodes-jobspec.json");
+            "/testing-specs/inline-data/northwind-subset-jobspec-single-pass-create-edge-merge-nodes.json");
     gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
     gcsClient.createArtifact(
         "neo4j-connection.json",

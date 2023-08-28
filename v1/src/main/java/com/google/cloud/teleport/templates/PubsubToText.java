@@ -57,15 +57,20 @@ import org.apache.beam.sdk.values.PCollection;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Text Files on Cloud Storage",
     description =
-        "Streaming pipeline. Reads records from Pub/Sub and writes them to Cloud Storage, creating"
-            + " a text file for each five minute window. Note that this pipeline assumes no"
-            + " newlines in the body of the Pub/Sub message and thus each message becomes a single"
-            + " line in the output file.",
+        "The Pub/Sub to Cloud Storage Text template is a streaming pipeline that reads records from Pub/Sub topic and "
+            + "saves them as a series of Cloud Storage files in text format. "
+            + "The template can be used as a quick way to save data in Pub/Sub for future use. "
+            + "By default, the template generates a new file every 5 minutes.",
     optionsClass = Options.class,
     skipOptions = {"inputSubscription"},
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-topic-to-text",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Pub/Sub topic must exist prior to execution.",
+      "The messages published to the topic must be in text format.",
+      "The messages published to the topic must not contain any newlines. Note that each Pub/Sub message is saved as a single line in the output file."
+    })
 public class PubsubToText {
 
   /**

@@ -80,6 +80,7 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
   }
 
   @VisibleForTesting
+  @SuppressWarnings("nullness")
   CassandraResourceManager(
       @Nullable CqlSession cassandraClient, CassandraContainer<?> container, Builder builder) {
     super(container, builder);

@@ -217,7 +217,9 @@ public class GoogleCloudToNeo4j {
       Provider providerImpl = ProviderFactory.of(source.getSourceType());
       providerImpl.configure(optionsParams, jobSpec);
       PCollection<Row> sourceMetadata =
-          pipeline.apply("Source metadata", providerImpl.queryMetadata(source));
+          pipeline.apply(
+              String.format("Metadata for source %s", source.getName()),
+              providerImpl.queryMetadata(source));
       Schema sourceBeamSchema = sourceMetadata.getSchema();
       processingQueue.addToQueue(
           ArtifactType.source, false, source.getName(), defaultActionContext, sourceMetadata);

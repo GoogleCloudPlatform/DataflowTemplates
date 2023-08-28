@@ -131,10 +131,10 @@ export ERROR_WRITE_PATH=<errorWritePath>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
 export DATASTORE_WRITE_ENTITY_KIND=<datastoreWriteEntityKind>
 export DATASTORE_WRITE_NAMESPACE=<datastoreWriteNamespace>
-export DATASTORE_HINT_NUM_WORKERS=500
+export DATASTORE_HINT_NUM_WORKERS="500"
 
 gcloud dataflow jobs run "gcs-text-to-datastore-job" \
   --project "$PROJECT" \
@@ -176,10 +176,10 @@ export ERROR_WRITE_PATH=<errorWritePath>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
 export DATASTORE_WRITE_ENTITY_KIND=<datastoreWriteEntityKind>
 export DATASTORE_WRITE_NAMESPACE=<datastoreWriteNamespace>
-export DATASTORE_HINT_NUM_WORKERS=500
+export DATASTORE_HINT_NUM_WORKERS="500"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

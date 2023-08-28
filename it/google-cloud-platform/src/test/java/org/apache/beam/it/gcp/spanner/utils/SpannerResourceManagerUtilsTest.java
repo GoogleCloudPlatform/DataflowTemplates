@@ -18,6 +18,8 @@
 package org.apache.beam.it.gcp.spanner.utils;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateDatabaseId;
+import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateInstanceId;
 import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
@@ -32,7 +34,7 @@ public final class SpannerResourceManagerUtilsTest {
   public void testGenerateInstanceIdShouldReplaceNonLetterFirstCharWithLetter() {
     String testBaseString = "0-test";
 
-    String actual = SpannerResourceManagerUtils.generateInstanceId(testBaseString);
+    String actual = generateInstanceId(testBaseString);
 
     assertThat(actual).matches("[a-z]-test-\\d{8}-\\d{6}-\\d{6}");
   }
@@ -41,7 +43,7 @@ public final class SpannerResourceManagerUtilsTest {
   public void testGenerateDatabaseIdShouldNotReplaceDigitLastCharWithLetter() {
     String testBaseString = "db_0";
 
-    String actual = SpannerResourceManagerUtils.generateDatabaseId(testBaseString);
+    String actual = generateDatabaseId(testBaseString);
 
     assertThat(actual).matches("db_0_\\d{8}_\\d{6}_\\d{6}");
   }
@@ -50,7 +52,7 @@ public final class SpannerResourceManagerUtilsTest {
   public void testGenerateDatabaseIdShouldReplaceDollarSignWithUnderscore() {
     String testBaseString = "t$db";
 
-    String actual = SpannerResourceManagerUtils.generateDatabaseId(testBaseString);
+    String actual = generateDatabaseId(testBaseString);
 
     assertThat(actual).matches("t_db_\\d{8}_\\d{6}_\\d{6}");
   }
@@ -59,7 +61,7 @@ public final class SpannerResourceManagerUtilsTest {
   public void testGenerateDatabaseIdShouldReplaceDotWithUnderscore() {
     String testBaseString = "test.database";
 
-    String actual = SpannerResourceManagerUtils.generateDatabaseId(testBaseString);
+    String actual = generateDatabaseId(testBaseString);
 
     assertThat(actual).matches("test_da_\\d{8}_\\d{6}_\\d{6}");
   }
@@ -68,7 +70,7 @@ public final class SpannerResourceManagerUtilsTest {
   public void testGenerateDatabaseIdShouldReplaceHyphenWithUnderscore() {
     String testBaseString = "test-database";
 
-    String actual = SpannerResourceManagerUtils.generateDatabaseId(testBaseString);
+    String actual = generateDatabaseId(testBaseString);
 
     assertThat(actual).matches("test_da_\\d{8}_\\d{6}_\\d{6}");
   }
@@ -77,7 +79,7 @@ public final class SpannerResourceManagerUtilsTest {
   public void testGenerateDatabaseIdShouldReplaceNonLetterFirstCharWithLetter() {
     String testBaseString = "0_database";
 
-    String actual = SpannerResourceManagerUtils.generateDatabaseId(testBaseString);
+    String actual = generateDatabaseId(testBaseString);
 
     assertThat(actual).matches("[a-z]_datab_\\d{8}_\\d{6}_\\d{6}");
   }
@@ -86,7 +88,7 @@ public final class SpannerResourceManagerUtilsTest {
   public void testGenerateDatabaseIdShouldReplaceUpperCaseLettersWithLowerCase() {
     String testBaseString = "TDa";
 
-    String actual = SpannerResourceManagerUtils.generateDatabaseId(testBaseString);
+    String actual = generateDatabaseId(testBaseString);
 
     assertThat(actual).matches("tda_\\d{8}_\\d{6}_\\d{6}");
   }
@@ -95,7 +97,7 @@ public final class SpannerResourceManagerUtilsTest {
   public void testGenerateDatabaseIdShouldTrimTrailingUnderscore() {
     String testBaseString = "test_database___";
 
-    String actual = SpannerResourceManagerUtils.generateDatabaseId(testBaseString);
+    String actual = generateDatabaseId(testBaseString);
 
     assertThat(actual).matches("test_da_\\d{8}_\\d{6}_\\d{6}");
   }
@@ -104,8 +106,6 @@ public final class SpannerResourceManagerUtilsTest {
   public void testGenerateDatabaseIdShouldThrowErrorWithEmptyInput() {
     String testBaseString = "";
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> SpannerResourceManagerUtils.generateDatabaseId(testBaseString));
+    assertThrows(IllegalArgumentException.class, () -> generateDatabaseId(testBaseString));
   }
 }

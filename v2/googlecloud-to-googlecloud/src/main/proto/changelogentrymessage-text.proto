@@ -1,0 +1,28 @@
+syntax = "proto2";
+
+package com.google.cloud.teleport.bigtable;
+
+option java_outer_classname = "ChangelogEntryMessageText";
+
+message ChangelogEntryText{
+  required string rowKey = 1;
+  enum ModType {
+    SET_CELL = 0;
+    DELETE_FAMILY = 1;
+    DELETE_CELLS = 2;
+    UNKNOWN = 3;
+  }
+  required ModType modType = 2;
+  required bool isGC = 3;
+  required int32 tieBreaker = 4;
+  required int64 commitTimestamp = 5;
+  required string columnFamily = 6;
+  optional string column = 7;
+  optional int64 timestamp = 8;
+  optional int64 timestampFrom = 9;
+  optional int64 timestampTo = 10;
+  optional string value = 11;
+  required string sourceInstance = 12;
+  required string sourceCluster = 13;
+  required string sourceTable = 14;
+}

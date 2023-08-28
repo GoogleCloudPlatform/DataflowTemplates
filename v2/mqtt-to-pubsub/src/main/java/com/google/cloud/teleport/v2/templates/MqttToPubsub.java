@@ -39,11 +39,21 @@ import org.apache.beam.sdk.transforms.ParDo;
 @Template(
     name = "Mqtt_to_PubSub",
     category = TemplateCategory.STREAMING,
-    displayName = "Mqtt to Pubsub",
-    description = "A pipeline to extract from Mqtt Broker Server to Pubsub Topic.",
+    displayName = "MQTT to Pubsub",
+    description =
+        "The MQTT to Pub/Sub template is a streaming pipeline that reads messages from an MQTT topic and writes them to Pub/Sub. "
+            + "It includes the optional parameters <code>username</code> and <code>password</code> in case authentication is required by the MQTT server.",
     optionsClass = MqttToPubsub.MqttToPubsubOptions.class,
     flexContainerName = "mqtt-to-pubsub",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/mqtt-to-pubsub",
+    preview = true,
+    requirements = {
+      "The Pub/Sub output topic name must exist.",
+      "The MQTT host IP must exist and have the proper network configuration for worker machines to reach the MQTT host.",
+      "The MQTT topic that data is extracted from must have a name."
+    })
 public class MqttToPubsub {
 
   /**

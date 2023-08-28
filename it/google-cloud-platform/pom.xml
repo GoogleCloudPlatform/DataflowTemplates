@@ -128,6 +128,11 @@
             <artifactId>auto-value-annotations</artifactId>
             <version>${autovalue.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>${awaitility.version}</version>
+        </dependency>
         <!-- TODO(pranavbhandari): Remove the following dependencies after BigQueryIOLT is moved to the right directory -->
         <dependency>
             <groupId>org.apache.beam</groupId>

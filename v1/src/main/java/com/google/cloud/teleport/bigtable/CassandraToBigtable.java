@@ -48,11 +48,21 @@ import org.apache.beam.sdk.values.Row;
     name = "Cassandra_To_Cloud_Bigtable",
     category = TemplateCategory.BATCH,
     displayName = "Cassandra to Cloud Bigtable",
-    description = "A pipeline to import a Apache Cassandra table into Cloud Bigtable.",
+    description = {
+      "The Apache Cassandra to Cloud Bigtable template copies a table from Apache Cassandra to Cloud Bigtable. "
+          + "This template requires minimal configuration and replicates the table structure in Cassandra as closely as possible in Cloud Bigtable.",
+      "The Apache Cassandra to Cloud Bigtable template is useful for the following:\n"
+          + "- Migrating Apache Cassandra database when short downtime is acceptable.\n"
+          + "- Periodically replicating Cassandra tables to Cloud Bigtable for global serving."
+    },
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cassandra-to-bigtable",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The target Bigtable table must exist before running the pipeline.",
+      "Network connection between Dataflow workers and Apache Cassandra nodes."
+    })
 final class CassandraToBigtable {
 
   /** TODO - refactor to extend BigtableCommonOptions.WriteOptions. */

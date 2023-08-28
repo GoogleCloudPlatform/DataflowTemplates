@@ -18,6 +18,8 @@
 package org.apache.beam.it.elasticsearch;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.elasticsearch.ElasticsearchUtils.checkValidIndexName;
+import static org.apache.beam.it.elasticsearch.ElasticsearchUtils.generateIndexName;
 import static org.junit.Assert.assertThrows;
 
 import org.apache.commons.lang3.StringUtils;
@@ -39,76 +41,69 @@ public class ElasticsearchUtilsTest {
   @Test
   public void testGenerateIndexNameShouldReplaceBackwardSlash() {
     String testBaseString = "Test\\DB\\Name";
-    String actual = ElasticsearchUtils.generateIndexName(testBaseString);
+    String actual = generateIndexName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateIndexNameShouldReplaceComma() {
     String testBaseString = "Test,DB,Name";
-    String actual = ElasticsearchUtils.generateIndexName(testBaseString);
+    String actual = generateIndexName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateIndexNameShouldReplaceSpace() {
     String testBaseString = "Test DB Name";
-    String actual = ElasticsearchUtils.generateIndexName(testBaseString);
+    String actual = generateIndexName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateIndexNameShouldReplaceDoubleQuotes() {
     String testBaseString = "Test\"DB\"Name";
-    String actual = ElasticsearchUtils.generateIndexName(testBaseString);
+    String actual = generateIndexName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateIndexNameShouldReplaceStar() {
     String testBaseString = "Test*DB*Name";
-    String actual = ElasticsearchUtils.generateIndexName(testBaseString);
+    String actual = generateIndexName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testGenerateIndexNameShouldReplaceNullCharacter() {
     String testBaseString = "Test\0DB\0Name";
-    String actual = ElasticsearchUtils.generateIndexName(testBaseString);
+    String actual = generateIndexName(testBaseString);
     assertThat(actual).matches("test-db-name-\\d{8}-\\d{6}-\\d{6}");
   }
 
   @Test
   public void testCheckValidIndexNameThrowsErrorWhenNameIsTooLong() {
     assertThrows(
-        IllegalArgumentException.class,
-        () -> ElasticsearchUtils.checkValidIndexName(StringUtils.repeat("a", 300)));
+        IllegalArgumentException.class, () -> checkValidIndexName(StringUtils.repeat("a", 300)));
   }
 
   @Test
   public void testCheckValidIndexNameThrowsErrorWhenNameContainsPoundSymbol() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> ElasticsearchUtils.checkValidIndexName("test#collection"));
+    assertThrows(IllegalArgumentException.class, () -> checkValidIndexName("test#collection"));
   }
 
   @Test
   public void testCheckValidIndexNameThrowsErrorWhenNameContainsNull() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> ElasticsearchUtils.checkValidIndexName("test\0collection"));
+    assertThrows(IllegalArgumentException.class, () -> checkValidIndexName("test\0collection"));
   }
 
   @Test
   public void testCheckValidIndexNameThrowsErrorWhenNameBeginsWithUnderscore() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> ElasticsearchUtils.checkValidIndexName("_test-index"));
+    assertThrows(IllegalArgumentException.class, () -> checkValidIndexName("_test-index"));
   }
 
   @Test
   public void testCheckValidIndexNameDoesNotThrowErrorWhenNameIsValid() {
-    ElasticsearchUtils.checkValidIndexName("a_collection-name_valid.Test1");
-    ElasticsearchUtils.checkValidIndexName("123_a_collection-name_valid.Test1");
+    checkValidIndexName("a_collection-name_valid.Test1");
+    checkValidIndexName("123_a_collection-name_valid.Test1");
   }
 }

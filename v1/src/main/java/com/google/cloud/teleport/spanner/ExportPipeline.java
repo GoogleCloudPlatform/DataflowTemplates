@@ -46,12 +46,31 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
     name = "Cloud_Spanner_to_GCS_Avro",
     category = TemplateCategory.BATCH,
     displayName = "Cloud Spanner to Avro Files on Cloud Storage",
-    description =
-        "A pipeline to export a Cloud Spanner database to a set of Avro files in Cloud Storage.",
+    description = {
+      "The Cloud Spanner to Avro Files on Cloud Storage template is a batch pipeline that exports a whole Cloud Spanner database to Cloud Storage in Avro format. "
+          + "Exporting a Cloud Spanner database creates a folder in the bucket you select. The folder contains:\n"
+          + "- A `spanner-export.json` file.\n"
+          + "- A `TableName-manifest.json` file for each table in the database you exported.\n"
+          + "- One or more `TableName.avro-#####-of-#####` files.\n",
+      "For example, exporting a database with two tables, Singers and Albums, creates the following file set:\n"
+          + "- `Albums-manifest.json`\n"
+          + "- `Albums.avro-00000-of-00002`\n"
+          + "- `Albums.avro-00001-of-00002`\n"
+          + "- `Singers-manifest.json`\n"
+          + "- `Singers.avro-00000-of-00003`\n"
+          + "- `Singers.avro-00001-of-00003`\n"
+          + "- `Singers.avro-00002-of-00003`\n"
+          + "- `spanner-export.json`"
+    },
     optionsClass = ExportPipelineOptions.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-avro",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Cloud Spanner database must exist.",
+      "The output Cloud Storage bucket must exist.",
+      "In addition to the Identity and Access Management (IAM) roles necessary to run Dataflow jobs, you must also have the <a href=\"https://cloud.google.com/spanner/docs/export#iam\">appropriate IAM roles</a> for reading your Cloud Spanner data and writing to your Cloud Storage bucket."
+    })
 public class ExportPipeline {
 
   /** Options for Export pipeline. */

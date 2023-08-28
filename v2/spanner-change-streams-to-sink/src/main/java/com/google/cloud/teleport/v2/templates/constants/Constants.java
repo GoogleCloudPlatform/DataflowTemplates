@@ -41,4 +41,10 @@ public class Constants {
 
   // Sink type - kafka.
   public static final String KAFKA_SINK = "kafka";
+
+  // Filtration Mode - none
+  public static final String FILTRATION_MODE_NONE = "none";
+
+  // Filtration Mode - forward_migration
+  public static final String FILTRATION_MODE_FORWARD_MIGRATION = "forward_migration";
 }

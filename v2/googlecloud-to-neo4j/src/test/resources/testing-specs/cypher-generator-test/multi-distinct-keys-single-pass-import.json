@@ -1,0 +1,56 @@
+{
+  "config": {
+    "reset_db": false,
+    "index_all_properties": false,
+    "node_write_batch_size": 5000,
+    "edge_write_batch_size": 1000
+  },
+  "sources": [
+    {
+      "type": "text",
+      "format": "EXCEL",
+      "name": "source_csv",
+      "uri": "gs://some/rels.csv",
+      "delimiter": ",",
+      "ordered_field_names": "source1,source2,target1,target2,timestamp"
+    }
+  ],
+  "targets": [
+    {
+      "edge": {
+        "name": "Edge import",
+        "mode": "merge",
+        "edge_nodes_match_mode": "merge",
+        "source": "source_csv",
+        "transform": {
+          "group": true
+        },
+        "type": "\"LINKS\"",
+        "mappings": {
+          "source": {
+            "label": "\"Source\"",
+            "keys": [
+              {
+                "source1": "src_id1"
+              },
+              {
+                "source2": "src_id2"
+              }
+            ]
+          },
+          "target": {
+            "label": "\"Target\"",
+            "keys": [
+              {
+                "target1": "tgt_id1"
+              },
+              {
+                "target2": "tgt_id2"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

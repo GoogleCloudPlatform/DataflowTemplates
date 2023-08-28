@@ -26,9 +26,11 @@ import org.apache.beam.sdk.options.Validation;
 @Template(
     name = "AtoB",
     displayName = "A to B",
-    description = "Streaming Template that sends A to B",
+    description = {"Streaming Template that sends A to B.", "But it can also send B to C."},
     category = TemplateCategory.STREAMING,
-    optionsClass = AtoBOptions.class)
+    optionsClass = AtoBOptions.class,
+    preview = true,
+    requirements = "Requires the customer to use Dataflow")
 public class AtoBOk {
 
   public interface AtoBOptions {
@@ -70,5 +72,14 @@ public class AtoBOk {
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     String getInputSubscription();
+
+    @TemplateParameter.Text(
+        order = 6,
+        optional = false,
+        description = "String default empty",
+        helpText = "String that defaults to empty",
+        example = "whatever")
+    @Default.String("")
+    String getEmpty();
   }
 }

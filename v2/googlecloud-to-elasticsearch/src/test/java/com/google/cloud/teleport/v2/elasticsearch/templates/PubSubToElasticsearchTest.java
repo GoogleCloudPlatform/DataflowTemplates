@@ -66,7 +66,7 @@ public class PubSubToElasticsearchTest {
   }
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     Map<String, String> testAttributeMap1 =
         new HashMap<String, String>() {
           {

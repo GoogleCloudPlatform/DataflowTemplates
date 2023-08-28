@@ -39,6 +39,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,15 +57,26 @@ import org.slf4j.LoggerFactory;
     name = "PubSub_to_Elasticsearch",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Elasticsearch",
-    description =
-        "A pipeline to read messages from Pub/Sub and writes into an Elasticsearch instance as json"
-            + " documents with optional intermediate transformations using Javascript Udf.",
+    description = {
+      "The Pub/Sub to Elasticsearch template is a streaming pipeline that reads messages from a Pub/Sub subscription, executes a user-defined function (UDF), and writes them to Elasticsearch as documents. "
+          + "The Dataflow template uses Elasticsearch's <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/master/data-streams.html\">data streams</a> feature to store time series data across multiple indices while giving you a single named resource for requests. "
+          + "Data streams are well-suited for logs, metrics, traces, and other continuously generated data stored in Pub/Sub.\n",
+      "The template creates a datastream named <code>logs-gcp.DATASET-NAMESPACE</code>, where:\n"
+          + "- <code>DATASET</code> is the value of the <code>dataset</code> template parameter, or <code>pubsub</code> if not specified.\n"
+          + "- <code>NAMESPACE</code> is the value of the <code>namespace</code> template parameter, or <code>default</code> if not specified."
+    },
     optionsClass = PubSubToElasticsearchOptions.class,
     skipOptions = "index", // Template just ignores what is sent as "index"
     flexContainerName = "pubsub-to-elasticsearch",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-elasticsearch",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The source Pub/Sub subscription must exist and the messages must be encoded in a valid JSON format.",
+      "A publicly reachable Elasticsearch host on a Google Cloud instance or on Elastic Cloud with Elasticsearch version 7.0 or above. See <a href=\"https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-elasticsearch/docs/PubSubToElasticsearch/README.md#google-cloud-integration-for-elastic\">Google Cloud Integration for Elastic</a> for more details.",
+      "A Pub/Sub topic for error output.",
+    })
 public class PubSubToElasticsearch {
 
   /** The tag for the main output of the json transformation. */
@@ -106,7 +118,28 @@ public class PubSubToElasticsearch {
                 pubSubToElasticsearchOptions.getNamespace())
             .getIndex());
 
+    validateOptions(pubSubToElasticsearchOptions);
     run(pubSubToElasticsearchOptions);
+  }
+
+  public static void validateOptions(PubSubToElasticsearchOptions options) {
+    switch (options.getApiKeySource()) {
+      case "PLAINTEXT":
+        return;
+      case "KMS":
+        // validate that the encryption key is provided.
+        if (StringUtils.isEmpty(options.getApiKeyKMSEncryptionKey())) {
+          throw new IllegalArgumentException(
+              "If apiKeySource is set to KMS, apiKeyKMSEncryptionKey should be provided.");
+        }
+        return;
+      case "SECRET_MANAGER":
+        // validate that secretId is provided.
+        if (StringUtils.isEmpty(options.getApiKeySecretId())) {
+          throw new IllegalArgumentException(
+              "If apiKeySource is set to SECRET_MANAGER, apiKeySecretId should be provided.");
+        }
+    }
   }
 
   /**

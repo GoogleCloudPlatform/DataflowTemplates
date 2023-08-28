@@ -110,7 +110,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private String rfcStartDateTime;
   private Integer fileReadConcurrency = 30;
   private Boolean lowercaseSourceColumns = false;
-  private Map<String, String> renameColumns = new HashMap<String, String>();
+  private Map<String, String> renameColumns = new HashMap<>();
   private Boolean hashRowId = false;
   PCollection<String> directories = null;
 
@@ -304,7 +304,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
           Metadata fileMetadata = FileSystems.matchSingleFileSpec(fileName);
           context.output(fileMetadata);
         } catch (IOException e) {
-          LOG.error("GCS Failure retrieving {}: {}", fileName, e);
+          LOG.error("GCS Failure retrieving {}", fileName, e);
           throw e;
         }
       }

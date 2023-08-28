@@ -30,6 +30,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
+import org.neo4j.driver.summary.ResultSummary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,10 +128,9 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     // Every "write" transaction writes a batch of elements to Neo4j.
     // The changes to the database are automatically committed.
     //
-    TransactionWork<Void> transactionWork =
+    TransactionWork<ResultSummary> transactionWork =
         transaction -> {
-          transaction.run(cypher, parametersMap).consume();
-          return null;
+          return transaction.run(cypher, parametersMap).consume();
         };
 
     if (logCypher && !loggingDone) {
@@ -144,7 +144,8 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     }
 
     try {
-      neo4jConnection.writeTransaction(transactionWork, transactionConfig);
+      ResultSummary summary = neo4jConnection.writeTransaction(transactionWork, transactionConfig);
+      LOG.debug("Batch transaction of {} rows completed: {}", unwindList.size(), summary);
     } catch (Exception e) {
       throw new RuntimeException(
           "Error writing " + unwindList.size() + " rows to Neo4j with Cypher: " + cypher, e);

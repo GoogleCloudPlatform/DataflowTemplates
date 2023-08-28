@@ -41,13 +41,24 @@ import org.joda.time.Duration;
     name = "Stream_GCS_Text_to_Cloud_PubSub",
     category = TemplateCategory.STREAMING,
     displayName = "Text Files on Cloud Storage to Pub/Sub",
-    description =
-        "A pipeline that polls every 10 seconds for new text files stored in Cloud Storage and outputs each line to a Pub/Sub topic.",
+    description = {
+      "This template creates a streaming pipeline that continuously polls for new text files uploaded to Cloud Storage, reads each file line by line, and publishes strings to a Pub/Sub topic. "
+          + "The template publishes records in a newline-delimited file containing JSON records or CSV file to a Pub/Sub topic for real-time processing. "
+          + "You can use this template to replay data to Pub/Sub.\n",
+      "The pipeline runs indefinitely and needs to be terminated manually via a <a href=\"https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#cancel\">cancel</a> and not a <a href=\"https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#drain\">drain</a>, due to its use of the <code>Watch</code> transform, which is a <code>SplittableDoFn</code> that does not support draining.\n",
+      "Currently, the polling interval is fixed and set to 10 seconds. This template does not set any timestamp on the individual records, so the event time is equal to the publishing time during execution. "
+          + "If your pipeline relies on an accurate event time for processing, you should not use this pipeline."
+    },
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-pubsub-stream",
-    contactInformation = "https://cloud.google.com/support")
-public class TextToPubsubStream extends TextToPubsub {
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "Input files must be in newline-delimited JSON or CSV format. Records that span multiple lines in the source files can cause issues downstream, because each line within the files is published as a message to Pub/Sub.",
+      "The Pub/Sub topic must exist prior to execution.",
+      "The pipeline runs indefinitely and needs to be terminated manually.",
+    })
+public class TextToPubsubStream {
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);
 
   /**

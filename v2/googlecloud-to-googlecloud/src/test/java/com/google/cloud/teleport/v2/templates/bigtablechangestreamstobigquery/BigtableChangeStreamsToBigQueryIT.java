@@ -17,6 +17,11 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,6 +45,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -57,7 +63,6 @@ import org.apache.beam.it.gcp.bigtable.BigtableTableSpec;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -79,7 +84,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
   private static final String TEST_REGION = "us-central1";
-  private static final String TEST_ZONE = "us-central1-a";
+  private static final String TEST_ZONE = "us-central1-b";
   private BigtableResourceManager bigtableResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
 
@@ -135,21 +140,19 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         .iterateAll()
         .forEach(
             fvl -> {
-              Assert.assertTrue(
+              assertTrue(
                   fvl.get(ChangelogColumn.TIMESTAMP.getBqColumnName()).getTimestampValue()
                       >= timeNowMicros);
-              Assert.assertFalse(
-                  fvl.get(ChangelogColumn.IS_GC.getBqColumnName()).getBooleanValue());
-              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
-              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
-              Assert.assertEquals(
+              assertFalse(fvl.get(ChangelogColumn.IS_GC.getBqColumnName()).getBooleanValue());
+              assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
+              assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
+              assertEquals(
                   SOURCE_CDC_TABLE,
                   fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
-              Assert.assertEquals(
+              assertEquals(
                   bigtableResourceManager.getInstanceId(),
                   fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
-              Assert.assertTrue(
-                  fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
+              assertTrue(fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
             });
   }
 
@@ -190,17 +193,17 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
             .setCell(SOURCE_COLUMN_FAMILY, column, tooEarlyValue);
     bigtableResourceManager.write(earlyMutation);
 
-    Thread.sleep(10000L);
+    TimeUnit.SECONDS.sleep(5);
     long afterFirstMutation = System.currentTimeMillis();
     afterFirstMutation -= (afterFirstMutation % 1000);
-    Thread.sleep(10000L);
+    TimeUnit.SECONDS.sleep(5);
 
     RowMutation toBeReadMutation =
         RowMutation.create(SOURCE_CDC_TABLE, rowkey)
             .setCell(SOURCE_COLUMN_FAMILY, column, valueToBeRead);
     bigtableResourceManager.write(toBeReadMutation);
 
-    Thread.sleep(10000L);
+    TimeUnit.SECONDS.sleep(5);
 
     RowMutation nextToBeReadMutation =
         RowMutation.create(SOURCE_CDC_TABLE, rowkey)
@@ -235,24 +238,22 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         .iterateAll()
         .forEach(
             fvl -> {
-              Assert.assertTrue(
+              assertTrue(
                   toBeReadValues.contains(
                       fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue()));
-              Assert.assertTrue(
+              assertTrue(
                   fvl.get(ChangelogColumn.TIMESTAMP.getBqColumnName()).getTimestampValue()
                       >= timeNowMicros);
-              Assert.assertFalse(
-                  fvl.get(ChangelogColumn.IS_GC.getBqColumnName()).getBooleanValue());
-              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
-              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
-              Assert.assertEquals(
+              assertFalse(fvl.get(ChangelogColumn.IS_GC.getBqColumnName()).getBooleanValue());
+              assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
+              assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
+              assertEquals(
                   SOURCE_CDC_TABLE,
                   fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
-              Assert.assertEquals(
+              assertEquals(
                   bigtableResourceManager.getInstanceId(),
                   fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
-              Assert.assertTrue(
-                  fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
+              assertTrue(fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
 
               toBeReadValues.remove(
                   fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue());
@@ -291,7 +292,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     long beforeMutations = System.currentTimeMillis();
     beforeMutations -= (beforeMutations % 1000);
 
-    Thread.sleep(10000L);
+    TimeUnit.SECONDS.sleep(5);
 
     RowMutation tooLargeMutation =
         RowMutation.create(SOURCE_CDC_TABLE, rowkey)
@@ -303,7 +304,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
             .setCell(SOURCE_COLUMN_FAMILY, column, goodValue);
     bigtableResourceManager.write(smallMutation);
 
-    Thread.sleep(10000L);
+    TimeUnit.SECONDS.sleep(5);
 
     Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
     launchInfo =
@@ -333,67 +334,64 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         .iterateAll()
         .forEach(
             fvl -> {
-              Assert.assertTrue(
+              assertTrue(
                   toBeReadValues.contains(
                       fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue()));
-              Assert.assertTrue(
+              assertTrue(
                   fvl.get(ChangelogColumn.TIMESTAMP.getBqColumnName()).getTimestampValue()
                       >= timeNowMicros);
-              Assert.assertFalse(
-                  fvl.get(ChangelogColumn.IS_GC.getBqColumnName()).getBooleanValue());
-              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
-              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
-              Assert.assertEquals(
+              assertFalse(fvl.get(ChangelogColumn.IS_GC.getBqColumnName()).getBooleanValue());
+              assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
+              assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
+              assertEquals(
                   SOURCE_CDC_TABLE,
                   fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
-              Assert.assertEquals(
+              assertEquals(
                   bigtableResourceManager.getInstanceId(),
                   fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
-              Assert.assertTrue(
-                  fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
+              assertTrue(fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
 
               toBeReadValues.remove(
                   fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue());
             });
 
-    Storage storage = StorageOptions.newBuilder().build().getService();
-
-    long started = System.currentTimeMillis();
-    long waitForFile = Duration.ofMinutes(30).toMillis();
+    Storage storage = StorageOptions.newBuilder().setProjectId(PROJECT).build().getService();
 
     String filterPrefix =
         String.join("/", getClass().getSimpleName(), gcsClient.runId(), "dlq", "severe");
-    BlobListOption listOptions = BlobListOption.prefix(filterPrefix);
+    LOG.info("Looking for files with a prefix: {}", filterPrefix);
 
-    LOG.info("Looking for files with a prefix: " + filterPrefix);
+    await("The failed message was not found in DLQ")
+        .atMost(Duration.ofMinutes(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () -> {
+              Page<Blob> blobs =
+                  storage.list(artifactBucketName, BlobListOption.prefix(filterPrefix));
 
-    boolean found = false;
-    while (!found && System.currentTimeMillis() <= (started + waitForFile)) {
-      Page<Blob> blobs = storage.list(artifactBucketName, listOptions);
+              for (Blob blob : blobs.iterateAll()) {
+                // Ignore temp files
+                if (blob.getName().contains(".temp-beam/")) {
+                  continue;
+                }
 
-      for (Blob blob : blobs.iterateAll()) {
-        byte[] content = storage.readAllBytes(blob.getBlobId());
-        ObjectMapper om = new ObjectMapper();
-        JsonNode severeError = om.readTree(content);
-        Assert.assertNotNull(severeError);
-        JsonNode errorMessageNode = severeError.get("error_message");
-        Assert.assertNotNull(errorMessageNode);
-        Assert.assertTrue(errorMessageNode instanceof TextNode);
-        String messageText = errorMessageNode.asText();
-        Assert.assertTrue(
-            "Unexpected message text: " + messageText,
-            StringUtils.contains(messageText, "Row payload too large. Maximum size 10000000"));
-        found = true;
-      }
+                byte[] content = storage.readAllBytes(blob.getBlobId());
+                ObjectMapper om = new ObjectMapper();
+                JsonNode severeError = om.readTree(content);
+                assertNotNull(severeError);
+                JsonNode errorMessageNode = severeError.get("error_message");
+                assertNotNull(errorMessageNode);
+                assertTrue(errorMessageNode instanceof TextNode);
+                String messageText = errorMessageNode.asText();
+                assertTrue(
+                    "Unexpected message text: " + messageText,
+                    StringUtils.contains(
+                        messageText, "Row payload too large. Maximum size 10000000"));
+                return true;
+              }
 
-      if (!found) {
-        Thread.sleep(1000);
-      }
-    }
-
-    if (!found) {
-      Assert.fail("The failed message was not found in DLQ");
-    }
+              return false;
+            });
   }
 
   @Before

@@ -47,11 +47,17 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
     category = TemplateCategory.BATCH,
     displayName = "Avro Files on Cloud Storage to Cloud Spanner",
     description =
-        "A pipeline to import a Cloud Spanner database from a set of Avro files in Cloud Storage.",
+        "The Cloud Storage Avro files to Cloud Spanner template is a batch pipeline that reads Avro files exported from "
+            + "Cloud Spanner stored in Cloud Storage and imports them to a Cloud Spanner database.",
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-cloud-spanner",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The target Cloud Spanner database must exist and must be empty.",
+      "You must have read permissions for the Cloud Storage bucket and write permissions for the target Cloud Spanner database.",
+      "The input Cloud Storage path must exist, and it must include a <a href=\"https://cloud.google.com/spanner/docs/import-non-spanner#create-export-json\">spanner-export.json</a> file that contains a JSON description of files to import."
+    })
 public class ImportPipeline {
 
   /** Options for {@link ImportPipeline}. */
@@ -101,10 +107,9 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Indexes",
         helpText =
-            "By default the import pipeline is not blocked on index creation, and it may complete"
-                + " with indexes still being created in the background. In testing, it may be"
-                + " useful to set this option to false so that the pipeline waits until indexes are"
-                + " finished.")
+            "By default the import pipeline is not blocked on index creation, and it "
+                + "may complete with indexes still being created in the background. If true, the "
+                + "pipeline waits until indexes are created.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForIndexes();
 
@@ -116,9 +121,8 @@ public class ImportPipeline {
         description = "Wait for Foreign Keys",
         helpText =
             "By default the import pipeline is not blocked on foreign key creation, and it may"
-                + " complete with foreign keys still being created in the background. In testing,"
-                + " it may be useful to set this option to false so that the pipeline waits until"
-                + " foreign keys are finished.")
+                + " complete with foreign keys still being created in the background. If true, the"
+                + " pipeline waits until foreign keys are created.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForForeignKeys();
 
@@ -127,7 +131,7 @@ public class ImportPipeline {
     @TemplateParameter.Boolean(
         order = 7,
         optional = true,
-        description = "Wait for Foreign Keys",
+        description = "Wait for Change Streams",
         helpText =
             "By default the import pipeline is blocked on change stream creation. If false, it may"
                 + " complete with change streams still being created in the background.")

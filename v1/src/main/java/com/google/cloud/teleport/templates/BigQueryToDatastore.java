@@ -42,8 +42,10 @@ import org.apache.beam.sdk.values.TupleTag;
     name = "Cloud_BigQuery_to_Cloud_Datastore",
     category = TemplateCategory.BATCH,
     displayName = "BigQuery to Datastore",
-    description = "A pipeline that reads rows from BigQuery and writes entities to Datastore.",
-    additionalHelp = "Note: Nested and repeated BigQuery columns are currently not supported.",
+    description = {
+      "A pipeline that reads rows from BigQuery and writes entities to Datastore.",
+      "Note: Nested and repeated BigQuery columns are currently not supported."
+    },
     optionsClass = BigQueryToDatastoreOptions.class,
     skipOptions = {
       "firestoreWriteProjectId",
@@ -51,7 +53,8 @@ import org.apache.beam.sdk.values.TupleTag;
       "firestoreWriteNamespace",
       "firestoreHintNumWorkers"
     },
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public class BigQueryToDatastore {
 
   /** Custom PipelineOptions. */

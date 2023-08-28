@@ -119,9 +119,9 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export READ_ID_COLUMN=<readIdColumn>
 export INVALID_OUTPUT_PATH=<invalidOutputPath>
 export OUTPUT_SUFFIX=".tfrecord"
-export TRAINING_PERCENTAGE=1
-export TESTING_PERCENTAGE=0
-export VALIDATION_PERCENTAGE=0
+export TRAINING_PERCENTAGE="1.0"
+export TESTING_PERCENTAGE="0.0"
+export VALIDATION_PERCENTAGE="0.0"
 
 gcloud dataflow jobs run "cloud-bigquery-to-gcs-tensorflow-records-job" \
   --project "$PROJECT" \
@@ -160,9 +160,9 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export READ_ID_COLUMN=<readIdColumn>
 export INVALID_OUTPUT_PATH=<invalidOutputPath>
 export OUTPUT_SUFFIX=".tfrecord"
-export TRAINING_PERCENTAGE=1
-export TESTING_PERCENTAGE=0
-export VALIDATION_PERCENTAGE=0
+export TRAINING_PERCENTAGE="1.0"
+export TESTING_PERCENTAGE="0.0"
+export VALIDATION_PERCENTAGE="0.0"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

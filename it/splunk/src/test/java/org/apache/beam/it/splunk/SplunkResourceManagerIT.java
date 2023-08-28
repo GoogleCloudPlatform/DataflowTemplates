@@ -18,13 +18,14 @@
 
 package org.apache.beam.it.splunk;
 
+import static org.apache.beam.it.splunk.matchers.SplunkAsserts.assertThatSplunkEvents;
+import static org.apache.beam.it.splunk.matchers.SplunkAsserts.splunkEventsToRecords;
 import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.it.splunk.conditions.SplunkEventsCheck;
-import org.apache.beam.it.splunk.matchers.SplunkAsserts;
 import org.apache.beam.it.testcontainers.TestContainersIntegrationTest;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -74,8 +75,8 @@ public class SplunkResourceManagerIT {
     List<SplunkEvent> httpEventsReceived = splunkResourceManager.getEvents(query);
 
     // Assert
-    SplunkAsserts.assertThatSplunkEvents(httpEventsReceived)
-        .hasRecordsUnordered(SplunkAsserts.splunkEventsToRecords(httpEventsSent));
+    assertThatSplunkEvents(httpEventsReceived)
+        .hasRecordsUnordered(splunkEventsToRecords(httpEventsSent));
   }
 
   private static List<SplunkEvent> generateHttpEvents(

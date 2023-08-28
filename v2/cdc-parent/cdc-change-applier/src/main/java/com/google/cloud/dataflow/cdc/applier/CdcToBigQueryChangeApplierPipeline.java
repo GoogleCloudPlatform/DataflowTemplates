@@ -68,7 +68,13 @@ import org.slf4j.LoggerFactory;
     description = "A pipeline to synchronize a Change Data Capture streams to BigQuery.",
     optionsClass = CdcApplierOptions.class,
     flexContainerName = "cdc-agg",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/mysql-change-data-capture-to-bigquery",
+    requirements = {
+      "The Debezium connector must be <a href=\"https://github.com/GoogleCloudPlatform/DataflowTemplates/tree/master/v2/cdc-parent#deploying-the-connector\">deployed</a>.",
+      "The Pub/Sub messages must be serialized in a <a href=\"https://beam.apache.org/releases/javadoc/current/org/apache/beam/sdk/values/Row.html\">Beam Row</a>."
+    })
 public class CdcToBigQueryChangeApplierPipeline {
 
   public static final Integer SECONDS_PER_DAY = 24 * 60 * 60;

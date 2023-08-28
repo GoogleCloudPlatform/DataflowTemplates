@@ -30,41 +30,95 @@ mvn clean package -pl v2/pubsub-binary-to-bigquery -am
 
 ## Template Pipelines
 
-* [Azure Eventhub To Pub/Sub](v2/azure-eventhub-to-pubsub/src/main/java/com/google/cloud/teleport/v2/templates/AzureEventhubToPubsub.java)
-* [BigQuery to Bigtable](v2/bigquery-to-bigtable/src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToBigtable.java)
-* [BigQuery to Datastore](v1/src/main/java/com/google/cloud/teleport/templates/BigQueryToDatastore.java)
-* [BigQuery to TFRecords](v1/src/main/java/com/google/cloud/teleport/templates/BigQueryToTFRecord.java)
-* [Bigtable to GCS Avro](v1/src/main/java/com/google/cloud/teleport/bigtable/BigtableToAvro.java)
-* [Bulk Compressor](v1/src/main/java/com/google/cloud/teleport/templates/BulkCompressor.java)
-* [Bulk Decompressor](v1/src/main/java/com/google/cloud/teleport/templates/BulkDecompressor.java)
-* [Datastore Bulk Delete](v1/src/main/java/com/google/cloud/teleport/templates/DatastoreToDatastoreDelete.java) *
-* [Datastore to BigQuery](v1/src/main/java/com/google/cloud/teleport/templates/DatastoreToBigQuery.java)
-* [Datastore to GCS Text](v1/src/main/java/com/google/cloud/teleport/templates/DatastoreToText.java) *
-* [Datastore to Pub/Sub](v1/src/main/java/com/google/cloud/teleport/templates/DatastoreToPubsub.java) *
-* [Datastore Unique Schema Count](v1/src/main/java/com/google/cloud/teleport/templates/DatastoreSchemasCountToText.java)
-* [DLP Text to BigQuery (Streaming)](v1/src/main/java/com/google/cloud/teleport/templates/DLPTextToBigQueryStreaming.java)
-* [File Format Conversion](v2/file-format-conversion/src/main/java/com/google/cloud/teleport/v2/templates/FileFormatConversion.java)
-* [GCS Avro to Bigtable](v1/src/main/java/com/google/cloud/teleport/bigtable/AvroToBigtable.java)
-* [GCS Avro to Spanner](v1/src/main/java/com/google/cloud/teleport/spanner/ImportPipeline.java)
-* [GCS Text to Spanner](v1/src/main/java/com/google/cloud/teleport/spanner/TextImportPipeline.java)
-* [GCS Text to BigQuery](v1/src/main/java/com/google/cloud/teleport/templates/TextIOToBigQuery.java) *
-* [GCS Text to Datastore](v1/src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
-* [GCS Text to Pub/Sub (Batch)](v1/src/main/java/com/google/cloud/teleport/templates/TextToPubsub.java)
-* [GCS Text to Pub/Sub (Streaming)](v1/src/main/java/com/google/cloud/teleport/templates/TextToPubsubStream.java)
-* [Jdbc to BigQuery](v1/src/main/java/com/google/cloud/teleport/templates/JdbcToBigQuery.java)
-* [Jms to Pubsub](v2/jms-to-pubsub/src/main/java/com/google/cloud/teleport/v2/templates/JmsToPubsub.java)
-* [Pub/Sub to BigQuery](v1/src/main/java/com/google/cloud/teleport/templates/PubSubToBigQuery.java) *
-* [Pub/Sub to Datastore](v1/src/main/java/com/google/cloud/teleport/templates/PubsubToDatastore.java) *
-* [Pub/Sub to GCS Avro](v1/src/main/java/com/google/cloud/teleport/templates/PubsubToAvro.java)
-* [Pub/Sub to GCS Text](v1/src/main/java/com/google/cloud/teleport/templates/PubsubToText.java)
-* [Pub/Sub to Kafka](v2/pubsub-to-kafka/src/main/java/com/google/cloud/teleport/v2/templates/PubsubToKafka.java)
-* [Pub/Sub to Pub/Sub](v1/src/main/java/com/google/cloud/teleport/templates/PubsubToPubsub.java)
-* [Pub/Sub to Splunk](v1/src/main/java/com/google/cloud/teleport/templates/PubSubToSplunk.java) *
-* [Spanner to GCS Avro](v1/src/main/java/com/google/cloud/teleport/spanner/ExportPipeline.java)
-* [Spanner to GCS Text](v1/src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
-* [Word Count](v1/src/main/java/com/google/cloud/teleport/templates/WordCount.java)
-
-\* Supports user-defined functions (UDFs).
+- Get Started
+    - [Word Count](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Word_Count&type=code)
+- Process Data Continuously (stream)
+    - [Azure Eventhub to Pubsub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Azure_Eventhub_to_PubSub&type=code)
+    - [Bigtable Change Streams to HBase Replicator](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Bigtable_Change_Streams_to_HBase&type=code)
+    - [Cloud Bigtable change streams to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Bigtable_Change_Streams_to_BigQuery&type=code)
+    - [Cloud Bigtable change streams to Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Bigtable_Change_Streams_to_Google_Cloud_Storage&type=code)
+    - [Cloud Spanner change streams to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Spanner_Change_Streams_to_BigQuery&type=code)
+    - [Cloud Spanner change streams to Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Spanner_Change_Streams_to_Google_Cloud_Storage&type=code)
+    - [Cloud Spanner change streams to Pub/Sub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Spanner_Change_Streams_to_PubSub&type=code)
+    - [Cloud Storage Text to BigQuery (Stream)](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Stream_GCS_Text_to_BigQuery_Flex&type=code)
+    - [Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP)](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Stream_DLP_GCS_Text_to_BigQuery_Flex&type=code)
+    - [Datastream to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_Datastream_to_BigQuery&type=code)
+    - [Datastream to Cloud Spanner](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_Datastream_to_Spanner&type=code)
+    - [Datastream to SQL](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_Datastream_to_SQL&type=code)
+    - [JMS to Pubsub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Jms_to_PubSub&type=code)
+    - [Kafka to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Kafka_to_BigQuery&type=code)
+    - [Kafka to Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Kafka_to_GCS&type=code)
+    - [Kinesis To Pubsub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Kinesis_To_Pubsub&type=code)
+    - [MongoDB to BigQuery (CDC)](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20MongoDB_to_BigQuery_CDC&type=code)
+    - [Mqtt to Pubsub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Mqtt_to_PubSub&type=code)
+    - [Ordered change stream buffer to Source DB](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Ordered_Changestream_Buffer_to_Sourcedb&type=code)
+    - [Pub/Sub Avro to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_Avro_to_BigQuery&type=code)
+    - [Pub/Sub CDC to Bigquery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_CDC_to_BigQuery&type=code)
+    - [Pub/Sub Proto to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_Proto_to_BigQuery&type=code)
+    - [Pub/Sub Subscription or Topic to Text Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_GCS_Text_Flex&type=code)
+    - [Pub/Sub Subscription to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_to_BigQuery_Flex&type=code)
+    - [Pub/Sub Topic to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_to_BigQuery&type=code)
+    - [Pub/Sub to Avro Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_Avro_Flex&type=code)
+    - [Pub/Sub to Datadog](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_Datadog&type=code)
+    - [Pub/Sub to Elasticsearch](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_to_Elasticsearch&type=code)
+    - [Pub/Sub to JDBC](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Pubsub_to_Jdbc&type=code)
+    - [Pub/Sub to Kafka](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_to_Kafka&type=code)
+    - [Pub/Sub to MongoDB](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_MongoDB&type=code)
+    - [Pub/Sub to Pub/Sub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_Cloud_PubSub&type=code)
+    - [Pub/Sub to Redis](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_Redis&type=code)
+    - [Pub/Sub to Splunk](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_Splunk&type=code)
+    - [Pub/Sub to Text Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_GCS_Text&type=code)
+    - [Pubsub to JMS](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Pubsub_to_Jms&type=code)
+    - [Spanner Change Streams to Sink](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Spanner_Change_Streams_to_Sink&type=code)
+    - [Synchronizing CDC data to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cdc_To_BigQuery_Template&type=code)
+    - [Text Files on Cloud Storage to Pub/Sub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Stream_GCS_Text_to_Cloud_PubSub&type=code)
+- Process Data in Bulk (batch)
+    - [AstraDB to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20AstraDB_To_BigQuery&type=code)
+    - [Avro Files on Cloud Storage to Cloud Bigtable](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Avro_to_Cloud_Bigtable&type=code)
+    - [Avro Files on Cloud Storage to Cloud Spanner](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Avro_to_Cloud_Spanner&type=code)
+    - [BigQuery export to Parquet (via Storage API)](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20BigQuery_to_Parquet&type=code)
+    - [BigQuery to Bigtable](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20BigQuery_to_Bigtable&type=code)
+    - [BigQuery to Datastore](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_BigQuery_to_Cloud_Datastore&type=code)
+    - [BigQuery to Elasticsearch](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20BigQuery_to_Elasticsearch&type=code)
+    - [BigQuery to MongoDB](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20BigQuery_to_MongoDB&type=code)
+    - [BigQuery to TensorFlow Records](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_BigQuery_to_GCS_TensorFlow_Records&type=code)
+    - [Cassandra to Cloud Bigtable](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cassandra_To_Cloud_Bigtable&type=code)
+    - [Cloud Bigtable to Avro Files in Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_Bigtable_to_GCS_Avro&type=code)
+    - [Cloud Bigtable to Parquet Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_Bigtable_to_GCS_Parquet&type=code)
+    - [Cloud Bigtable to SequenceFile Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_Bigtable_to_GCS_SequenceFile&type=code)
+    - [Cloud Spanner to Avro Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_Spanner_to_GCS_Avro&type=code)
+    - [Cloud Spanner to Text Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Spanner_to_GCS_Text&type=code)
+    - [Cloud Storage To Splunk](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_To_Splunk&type=code)
+    - [Cloud Storage to Elasticsearch](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_to_Elasticsearch&type=code)
+    - [Dataplex JDBC Ingestion](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Dataplex_JDBC_Ingestion&type=code)
+    - [Dataplex: Convert Cloud Storage File Format](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Dataplex_File_Format_Conversion&type=code)
+    - [Dataplex: Tier Data from BigQuery to Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Dataplex_BigQuery_to_GCS&type=code)
+    - [Firestore (Datastore mode) to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Firestore_to_BigQuery_Flex&type=code)
+    - [Firestore (Datastore mode) to Text Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Firestore_to_GCS_Text&type=code)
+    - [Google Cloud to Neo4j](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Google_Cloud_to_Neo4j&type=code)
+    - [JDBC to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Jdbc_to_BigQuery&type=code)
+    - [JDBC to BigQuery with BigQuery Storage API support](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Jdbc_to_BigQuery_Flex&type=code)
+    - [JDBC to Pub/Sub](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Jdbc_to_PubSub&type=code)
+    - [MongoDB to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20MongoDB_to_BigQuery&type=code)
+    - [MySQL to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20MySQL_to_BigQuery&type=code)
+    - [Parquet Files on Cloud Storage to Cloud Bigtable](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Parquet_to_Cloud_Bigtable&type=code)
+    - [PostgreSQL to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PostgreSQL_to_BigQuery&type=code)
+    - [SQLServer to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20SQLServer_to_BigQuery&type=code)
+    - [SequenceFile Files on Cloud Storage to Cloud Bigtable](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_SequenceFile_to_Cloud_Bigtable&type=code)
+    - [Text Files on Cloud Storage to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Text_to_BigQuery&type=code)
+    - [Text Files on Cloud Storage to BigQuery with BigQuery Storage API support](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Text_to_BigQuery_Flex&type=code)
+    - [Text Files on Cloud Storage to Cloud Spanner](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Text_to_Cloud_Spanner&type=code)
+    - [Text Files on Cloud Storage to Firestore (Datastore mode)](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Text_to_Firestore&type=code)
+- Utilities
+    - [Bulk Compress Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Bulk_Compress_GCS_Files&type=code)
+    - [Bulk Decompress Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Bulk_Decompress_GCS_Files&type=code)
+    - [Bulk Delete Entities in Firestore (Datastore mode)](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Firestore_to_Firestore_Delete&type=code)
+    - [Convert file formats between Avro, Parquet & CSV](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20File_Format_Conversion&type=code)
+    - [Streaming Data Generator](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Streaming_Data_Generator&type=code)
+- Legacy Templates
+    - [Bulk Delete Entities in Datastore [Deprecated]](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Datastore_to_Datastore_Delete&type=code)
+    - [Datastore to Text Files on Cloud Storage [Deprecated]](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Datastore_to_GCS_Text&type=code)
+    - [Text Files on Cloud Storage to Datastore [Deprecated]](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20GCS_Text_to_Datastore&type=code)
 
 For documentation on each template's usage and parameters, please see the
 official [docs](https://cloud.google.com/dataflow/docs/templates/provided-templates).
@@ -330,15 +384,15 @@ output.
 
 ### UDF Function Specification
 
-| Template              | UDF Input Type | Input Description                               | UDF Output Type | Output Description                                                            |
-|-----------------------|----------------|-------------------------------------------------|-----------------|-------------------------------------------------------------------------------|
-| Datastore Bulk Delete | String         | A JSON string of the entity                     | String          | A JSON string of the entity to delete; filter entities by returning undefined |
-| Datastore to Pub/Sub  | String         | A JSON string of the entity                     | String          | The payload to publish to Pub/Sub                                             |
-| Datastore to GCS Text | String         | A JSON string of the entity                     | String          | A single-line within the output file                                          |
-| GCS Text to BigQuery  | String         | A single-line within the input file             | String          | A JSON string which matches the destination table's schema                    |
-| Pub/Sub to BigQuery   | String         | A string representation of the incoming payload | String          | A JSON string which matches the destination table's schema                    |
-| Pub/Sub to Datastore  | String         | A string representation of the incoming payload | String          | A JSON string of the entity to write to Datastore                             |
-| Pub/Sub to Splunk  | String         | A string representation of the incoming payload | String          | The event data to be sent to Splunk HEC events endpoint. Must be a string or a stringified JSON object |
+| Template              | UDF Input Type | Input Description                               | UDF Output Type | Output Description                                                                                     |
+|-----------------------|----------------|-------------------------------------------------|-----------------|--------------------------------------------------------------------------------------------------------|
+| Datastore Bulk Delete | String         | A JSON string of the entity                     | String          | A JSON string of the entity to delete; filter entities by returning undefined                          |
+| Datastore to Pub/Sub  | String         | A JSON string of the entity                     | String          | The payload to publish to Pub/Sub                                                                      |
+| Datastore to GCS Text | String         | A JSON string of the entity                     | String          | A single-line within the output file                                                                   |
+| GCS Text to BigQuery  | String         | A single-line within the input file             | String          | A JSON string which matches the destination table's schema                                             |
+| Pub/Sub to BigQuery   | String         | A string representation of the incoming payload | String          | A JSON string which matches the destination table's schema                                             |
+| Pub/Sub to Datastore  | String         | A string representation of the incoming payload | String          | A JSON string of the entity to write to Datastore                                                      |
+| Pub/Sub to Splunk     | String         | A string representation of the incoming payload | String          | The event data to be sent to Splunk HEC events endpoint. Must be a string or a stringified JSON object |
 
 ### UDF Examples
 
@@ -402,7 +456,7 @@ To execute the release of multiple templates, we provide a single Maven command 
 stage all templates while running additional validations.
 
 ```shell
-mvn clean package -PtemplatesRelease \
+mvn clean verify -PtemplatesRelease \
   -DprojectId="{projectId}" \
   -DbucketName="{bucketName}" \
   -DlibrariesBucketName="{bucketName}-libraries" \

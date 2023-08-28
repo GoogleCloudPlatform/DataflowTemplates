@@ -40,12 +40,18 @@ import org.apache.beam.sdk.transforms.ParDo;
     category = TemplateCategory.BATCH,
     displayName = "BigQuery to Elasticsearch",
     description =
-        "A pipeline which sends BigQuery records into an Elasticsearch instance as json documents.",
+        "The BigQuery to Elasticsearch template is a batch pipeline that ingests data from a BigQuery table into Elasticsearch as documents. "
+            + "The template can either read the entire table or read specific records using a supplied query.",
     optionsClass = BigQueryToElasticsearchOptions.class,
     flexContainerName = "bigquery-to-elasticsearch",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-elasticsearch",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The source BigQuery table must exist.",
+      "A Elasticsearch host on a Google Cloud instance or on Elastic Cloud with Elasticsearch version 7.0 or above and should be accessible from the Dataflow worker machines.",
+    })
 public class BigQueryToElasticsearch {
   /**
    * Main entry point for pipeline execution.

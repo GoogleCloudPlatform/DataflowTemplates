@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import java.util.Arrays;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
@@ -45,12 +46,36 @@ public class FilterRecordsFnTest {
                     getDataChangeRecord("tx3", "txBy=456"),
                     getDataChangeRecord("tx4", "abc"),
                     getDataChangeRecord("tx5", "txBy=678")))
-            .apply(ParDo.of(new FilterRecordsFn()));
+            .apply(ParDo.of(new FilterRecordsFn(Constants.FILTRATION_MODE_FORWARD_MIGRATION)));
 
     PAssert.that(output)
         .containsInAnyOrder(getDataChangeRecord("tx2", ""), getDataChangeRecord("tx4", "abc"));
     PCollection<Long> count = output.apply(Count.globally());
     PAssert.thatSingleton(count).isEqualTo(2L);
+    pipeline.run();
+  }
+
+  public void noFilteringTest() {
+    PCollection<DataChangeRecord> output =
+        pipeline
+            .apply(
+                Create.of(
+                    getDataChangeRecord("tx1", "txBy=123"),
+                    getDataChangeRecord("tx2", ""),
+                    getDataChangeRecord("tx3", "txBy=456"),
+                    getDataChangeRecord("tx4", "abc"),
+                    getDataChangeRecord("tx5", "txBy=678")))
+            .apply(ParDo.of(new FilterRecordsFn(Constants.FILTRATION_MODE_NONE)));
+
+    PAssert.that(output)
+        .containsInAnyOrder(
+            getDataChangeRecord("tx1", "txBy=123"),
+            getDataChangeRecord("tx2", ""),
+            getDataChangeRecord("tx3", "txBy=456"),
+            getDataChangeRecord("tx4", "abc"),
+            getDataChangeRecord("tx5", "txBy=678"));
+    PCollection<Long> count = output.apply(Count.globally());
+    PAssert.thatSingleton(count).isEqualTo(5L);
     pipeline.run();
   }
 

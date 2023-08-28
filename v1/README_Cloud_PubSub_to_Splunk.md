@@ -145,12 +145,12 @@ export TOKEN_KMSENCRYPTION_KEY=<tokenKMSEncryptionKey>
 export TOKEN_SECRET_ID=<tokenSecretId>
 export TOKEN_SOURCE=<tokenSource>
 export ROOT_CA_CERTIFICATE_PATH=<rootCaCertificatePath>
-export ENABLE_BATCH_LOGS=true
-export ENABLE_GZIP_HTTP_COMPRESSION=true
+export ENABLE_BATCH_LOGS="true"
+export ENABLE_GZIP_HTTP_COMPRESSION="true"
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
 
 gcloud dataflow jobs run "cloud-pubsub-to-splunk-job" \
   --project "$PROJECT" \
@@ -206,12 +206,12 @@ export TOKEN_KMSENCRYPTION_KEY=<tokenKMSEncryptionKey>
 export TOKEN_SECRET_ID=<tokenSecretId>
 export TOKEN_SOURCE=<tokenSource>
 export ROOT_CA_CERTIFICATE_PATH=<rootCaCertificatePath>
-export ENABLE_BATCH_LOGS=true
-export ENABLE_GZIP_HTTP_COMPRESSION=true
+export ENABLE_BATCH_LOGS="true"
+export ENABLE_GZIP_HTTP_COMPRESSION="true"
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

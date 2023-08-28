@@ -27,6 +27,7 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.options.Default;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -93,14 +95,20 @@ public class TemplateDefinitions {
     ImageSpecMetadata metadata = new ImageSpecMetadata();
     metadata.setInternalName(templateAnnotation.name());
     metadata.setName(templateAnnotation.displayName());
-    metadata.setDescription(templateAnnotation.description());
+    metadata.setDescription(
+        List.of(templateAnnotation.description()).stream().collect(Collectors.joining("\n\n")));
+    metadata.setCategory(
+        new ImageSpecCategory(
+            templateAnnotation.category().getName(),
+            templateAnnotation.category().getDisplayName()));
     metadata.setModule(getClassModule());
     metadata.setDocumentationLink(templateAnnotation.documentation());
-    metadata.setAdditionalHelp(templateAnnotation.additionalHelp());
     metadata.setGoogleReleased(
         (templateAnnotation.documentation() != null
                 && templateAnnotation.documentation().contains("cloud.google.com"))
             || !templateAnnotation.hidden());
+    metadata.setPreview(templateAnnotation.preview());
+    metadata.setRequirements(Arrays.asList(templateAnnotation.requirements()));
 
     if (templateAnnotation.placeholderClass() != null
         && templateAnnotation.placeholderClass() != void.class) {
@@ -245,9 +253,9 @@ public class TemplateDefinitions {
       }
     }
 
-    boolean isFlex =
-        templateAnnotation.flexContainerName() == null
-            || templateAnnotation.flexContainerName().isEmpty();
+    boolean isFlex = StringUtils.isNotEmpty(templateAnnotation.flexContainerName());
+    metadata.setFlexTemplate(isFlex);
+
     imageSpec.setDefaultEnvironment(
         Map.of(
             "additionalUserLabels",
@@ -263,8 +271,8 @@ public class TemplateDefinitions {
         metadata.getParameters().stream()
             .anyMatch(
                 parameter ->
-                    parameter.getName().equals("javascriptTextTransformGcsPath")
-                        || parameter.getName().equals("javascriptTextTransformFunctionName")));
+                    parameter.getName().contains("javascriptTextTransformGcsPath")
+                        || parameter.getName().contains("javascriptTextTransformFunctionName")));
 
     return imageSpec;
   }

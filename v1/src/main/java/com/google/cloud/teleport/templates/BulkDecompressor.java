@@ -108,12 +108,20 @@ import org.slf4j.LoggerFactory;
     name = "Bulk_Decompress_GCS_Files",
     category = TemplateCategory.UTILITIES,
     displayName = "Bulk Decompress Files on Cloud Storage",
-    description =
-        "A pipeline which decompresses files on Cloud Storage to a specified location. Supported formats: Bzip2, deflate, and gzip.",
+    description = {
+      "The Bulk Decompress Cloud Storage Files template is a batch pipeline that decompresses files on Cloud Storage to a specified location. "
+          + "This functionality is useful when you want to use compressed data to minimize network bandwidth costs during a migration, but would like to maximize analytical processing speed by operating on uncompressed data after migration. "
+          + "The pipeline automatically handles multiple compression modes during a single run and determines the decompression mode to use based on the file extension (.bzip2, .deflate, .gz, .zip).",
+      "Note: The Bulk Decompress Cloud Storage Files template is intended for single compressed files and not compressed folders."
+    },
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bulk-decompress-cloud-storage",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The files to decompress must be in one of the following formats: Bzip2, Deflate, and Gzip.",
+      "The output directory must exist prior to running the pipeline."
+    })
 public class BulkDecompressor {
 
   /** The logger to output status messages to. */

@@ -46,11 +46,18 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "JMS to Pubsub",
     description =
-        "A streaming pipeline which inserts data "
-            + "from a JMS Broker Server(Topic/Queue) and writes to Pubsub Topic.",
+        "The JMS to Pub/Sub template is a streaming pipeline that reads messages from ActiveMQ JMS Server (Queue/Topic) and writes them to Pub/Sub.",
     optionsClass = com.google.cloud.teleport.v2.templates.JmsToPubsub.JmsToPubsubOptions.class,
     flexContainerName = "jms-to-pubsub",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/jms-to-pubsub",
+    preview = true,
+    requirements = {
+      "The Pub/Sub output topic name must exist.",
+      "The JMS host IP must exist and have the proper network configuration for Dataflow worker VMs to reach the JMS host.",
+      "The JMS topic/queue that data is extracted from must have a name."
+    })
 public class JmsToPubsub {
 
   /**

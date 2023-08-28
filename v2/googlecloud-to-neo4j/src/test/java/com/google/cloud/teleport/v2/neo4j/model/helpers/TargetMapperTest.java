@@ -16,10 +16,10 @@
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
-import java.util.List;
 import java.util.UUID;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -29,8 +29,9 @@ public class TargetMapperTest {
   @Test
   public void setsSpecifiedMatchModeForEdgeTargets() {
     JSONObject object = targetOfType("edge");
-    object.put("mode", "merge");
-    object.put("edge_nodes_match_mode", "merge");
+    JSONObject edgeObject = object.getJSONObject("edge");
+    edgeObject.put("mode", "merge");
+    edgeObject.put("edge_nodes_match_mode", "merge");
 
     Target target = TargetMapper.fromJson(object);
 
@@ -40,8 +41,9 @@ public class TargetMapperTest {
   @Test
   public void setsSpecifiedMatchModeForEdgeTargetsInAppendMode() {
     JSONObject object = targetOfType("edge");
-    object.put("mode", "append");
-    object.put("edge_nodes_match_mode", "merge");
+    JSONObject edgeObject = object.getJSONObject("edge");
+    edgeObject.put("mode", "append");
+    edgeObject.put("edge_nodes_match_mode", "merge");
 
     Target target = TargetMapper.fromJson(object);
 
@@ -76,12 +78,25 @@ public class TargetMapperTest {
     assertThat(target.getEdgeNodesMatchMode()).isNull();
   }
 
+  @Test
+  public void rejectsInvalidTarget() {
+    JSONObject invalidObject = targetOfType("invalid");
+
+    Exception exception =
+        assertThrows(IllegalArgumentException.class, () -> TargetMapper.fromJson(invalidObject));
+    assertThat(exception)
+        .hasMessageThat()
+        .isEqualTo(
+            "Expected target JSON to have top-level \"node\" or \"edge\" field, but found fields: \"invalid\"");
+  }
+
   private static JSONObject targetOfType(String type) {
-    JSONObject object = new JSONObject();
-    object.put("name", UUID.randomUUID().toString());
-    object.put("mode", "merge");
-    object.put("type", type);
-    object.put("mappings", List.of());
-    return object;
+    JSONObject target = new JSONObject();
+    target.put("name", UUID.randomUUID().toString());
+    target.put("mode", "merge");
+    target.put("mappings", new JSONObject());
+    JSONObject topLevelObject = new JSONObject();
+    topLevelObject.put(type, target);
+    return topLevelObject;
   }
 }

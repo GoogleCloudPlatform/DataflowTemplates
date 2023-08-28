@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.cdc.sources;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.concurrent.Semaphore;
@@ -82,18 +83,22 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
   @ProcessElement
   public void process(ProcessContext c) throws IOException {
     ReadableFile file = c.element();
-
-    FileBasedSource<T> source =
-        CompressedSource.from(createSource.apply(file.getMetadata().resourceId().toString()))
-            .withCompression(file.getCompression());
-    try (BoundedSource.BoundedReader<T> reader = source.createReader(c.getPipelineOptions())) {
-      for (boolean more = reader.start(); more; more = reader.advance()) {
-        c.output(reader.getCurrent());
+    ResourceId resourceId = file.getMetadata().resourceId();
+    try {
+      FileBasedSource<T> source =
+          CompressedSource.from(createSource.apply(resourceId.toString()))
+              .withCompression(file.getCompression());
+      try (BoundedSource.BoundedReader<T> reader = source.createReader(c.getPipelineOptions())) {
+        for (boolean more = reader.start(); more; more = reader.advance()) {
+          c.output(reader.getCurrent());
+        }
+      } catch (RuntimeException e) {
+        if (exceptionHandler.apply(file, null, e)) {
+          throw e;
+        }
       }
-    } catch (RuntimeException e) {
-      if (exceptionHandler.apply(file, null, e)) {
-        throw e;
-      }
+    } catch (FileNotFoundException e) {
+      LOG.warn("Ignoring non-existent file {}", resourceId, e);
     }
   }
 

@@ -26,16 +26,18 @@ public class ImageSpecMetadata {
 
   private String name;
   private String description;
-  private String additionalHelp;
   private String mainClass;
   private List<ImageSpecParameter> parameters = new ArrayList<>();
   private Map<String, String> runtimeParameters = new HashMap<>();
+  private ImageSpecCategory category;
   private String internalName;
   private String module;
   private String documentationLink;
+  private List<String> requirements;
   private boolean googleReleased;
+  private boolean preview;
   private boolean udfSupport;
-
+  private boolean flexTemplate;
   private String sourceFilePath;
 
   public String getDescription() {
@@ -44,14 +46,6 @@ public class ImageSpecMetadata {
 
   public void setDescription(String description) {
     this.description = description;
-  }
-
-  public String getAdditionalHelp() {
-    return additionalHelp;
-  }
-
-  public void setAdditionalHelp(String additionalHelp) {
-    this.additionalHelp = additionalHelp;
   }
 
   public String getName() {
@@ -94,12 +88,28 @@ public class ImageSpecMetadata {
     this.internalName = internalName;
   }
 
+  public ImageSpecCategory getCategory() {
+    return category;
+  }
+
+  public void setCategory(ImageSpecCategory category) {
+    this.category = category;
+  }
+
   public String getDocumentationLink() {
     return documentationLink;
   }
 
   public void setDocumentationLink(String documentationLink) {
     this.documentationLink = documentationLink;
+  }
+
+  public List<String> getRequirements() {
+    return requirements;
+  }
+
+  public void setRequirements(List<String> requirements) {
+    this.requirements = requirements;
   }
 
   public String getModule() {
@@ -118,12 +128,28 @@ public class ImageSpecMetadata {
     this.googleReleased = googleReleased;
   }
 
+  public boolean isPreview() {
+    return preview;
+  }
+
+  public void setPreview(boolean preview) {
+    this.preview = preview;
+  }
+
   public boolean isUdfSupport() {
     return udfSupport;
   }
 
   public void setUdfSupport(boolean udfSupport) {
     this.udfSupport = udfSupport;
+  }
+
+  public boolean isFlexTemplate() {
+    return flexTemplate;
+  }
+
+  public void setFlexTemplate(boolean flexTemplate) {
+    this.flexTemplate = flexTemplate;
   }
 
   public String getSourceFilePath() {

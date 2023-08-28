@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.neo4j.database;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -73,11 +72,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   }
 
   /** Write transaction. */
-  public void writeTransaction(
-      TransactionWork<Void> transactionWork, TransactionConfig transactionConfig)
-      throws URISyntaxException {
+  public <T> T writeTransaction(
+      TransactionWork<T> transactionWork, TransactionConfig transactionConfig) {
     try (Session session = getSession()) {
-      session.writeTransaction(transactionWork, transactionConfig);
+      return session.writeTransaction(transactionWork, transactionConfig);
     }
   }
 

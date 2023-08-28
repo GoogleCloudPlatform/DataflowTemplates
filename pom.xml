@@ -52,7 +52,7 @@
     <autovalue.version>1.8.2</autovalue.version>
     <avro.version>1.11.1</avro.version>
     <checkstyle.version>10.7.0</checkstyle.version>
-    <commons-codec.version>1.15</commons-codec.version>
+    <commons-codec.version>1.16.0</commons-codec.version>
     <commons-io.version>2.13.0</commons-io.version>
     <commons-lang3.version>3.12.0</commons-lang3.version>
     <conscrypt.version>2.5.2</conscrypt.version>
@@ -81,14 +81,17 @@
     <!-- Note: File it/src/main/java/com/google/cloud/teleport/it/common/JDBCBaseIT.java -->
     <!-- should be updated when these versions are changed. -->
     <mysql-connector-java.version>8.0.30</mysql-connector-java.version>
-    <postgresql.version>42.2.27</postgresql.version>
-    <ojdbc8.version>19.3.0.0</ojdbc8.version>
-    <mssql-jdbc.version>6.4.0.jre8</mssql-jdbc.version>
+    <postgresql.version>42.6.0</postgresql.version>
+    <ojdbc8.version>23.2.0.0</ojdbc8.version>
+    <mssql-jdbc.version>12.2.0.jre11</mssql-jdbc.version>
     <neo4j-driver.version>4.4.12</neo4j-driver.version>
 
     <integration.tests>
       com.google.cloud.teleport.metadata.TemplateIntegrationTest
     </integration.tests>
+    <load.tests>
+      com.google.cloud.teleport.metadata.TemplateLoadTest
+    </load.tests>
     <direct-runner.tests>
       com.google.cloud.teleport.metadata.DirectRunnerTest
     </direct-runner.tests>
@@ -397,7 +400,7 @@
               </includes>
               <excludedGroups></excludedGroups>
               <groups>
-                com.google.cloud.teleport.metadata.TemplateLoadTest
+                ${load.tests}
               </groups>
               <trimStackTrace>false</trimStackTrace>
             </configuration>
@@ -456,7 +459,7 @@
       <properties>
         <!-- Skip coverage checks, unit tests are skipped -->
         <jacoco.skip>true</jacoco.skip>
-        <!-- Some modules may yield no integration tests -->
+        <!-- Some modules may not have integration tests -->
         <failIfNoTests>false</failIfNoTests>
         <!-- Parallelism settings. Default is 2, set to consider methods -->
         <itParallelismType>classesAndMethods</itParallelismType>

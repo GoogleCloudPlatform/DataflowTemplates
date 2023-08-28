@@ -1,15 +1,16 @@
-${spec.metadata.name} Template
+<#assign TemplateDocsUtils=statics['com.google.cloud.teleport.plugin.docs.TemplateDocsUtils']>
+
+${spec.metadata.name} template
 ---
-${spec.metadata.description!?ensure_ends_with(".")}
+<#list spec.metadata.description?split("\n\n") as paragraph>
+${TemplateDocsUtils.wrapText(paragraph!?trim, 80, "", false)?ensure_ends_with(".")}
+
+</#list>
 
 <#if spec.metadata.googleReleased>
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](<#if spec.metadata.documentationLink?has_content>${spec.metadata.documentationLink}<#else>https://cloud.google.com/dataflow/docs/guides/templates/provided-templates</#if>)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=${spec.metadata.internalName}).
-</#if>
-
-<#if spec.metadata.additionalHelp?has_content>
-${spec.metadata.additionalHelp!?ensure_ends_with(".")}
 </#if>
 
 :bulb: This is a generated documentation based
@@ -143,11 +144,11 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/<#if flex>flex/</#if>${spec.metadata.internalName}"
 
 ### Required
-<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
+<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${TemplateDocsUtils.printDefaultValueVariable(parameter)}
 </#if></#list>
 
 ### Optional
-<#list spec.metadata.parameters as parameter><#if parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
+<#list spec.metadata.parameters as parameter><#if parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${TemplateDocsUtils.printDefaultValueVariable(parameter)}
 </#if></#list>
 
 gcloud dataflow <#if flex>flex-template<#else>jobs</#if> run "${spec.metadata.internalName?lower_case?replace("_", "-")}-job" \
@@ -183,11 +184,11 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
+<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${TemplateDocsUtils.printDefaultValueVariable(parameter)}
 </#if></#list>
 
 ### Optional
-<#list spec.metadata.parameters as parameter><#if parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${(parameter.defaultValue?c)!"<${parameter.name}>"}
+<#list spec.metadata.parameters as parameter><#if parameter.optional!false>export ${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}=${TemplateDocsUtils.printDefaultValueVariable(parameter)}
 </#if></#list>
 
 mvn clean package -PtemplatesRun \

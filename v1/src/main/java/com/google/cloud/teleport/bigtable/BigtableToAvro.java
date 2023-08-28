@@ -60,12 +60,16 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
     category = TemplateCategory.BATCH,
     displayName = "Cloud Bigtable to Avro Files in Cloud Storage",
     description =
-        "A pipeline which reads in Cloud Bigtable table and writes it to Cloud Storage in Avro"
-            + " format.",
+        "The Bigtable to Cloud Storage Avro template is a pipeline that reads data from a Bigtable table and writes it to a Cloud Storage bucket in Avro format. "
+            + "You can use the template to move data from Bigtable to Cloud Storage.",
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-avro",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Bigtable table must exist.",
+      "The output Cloud Storage bucket must exist before running the pipeline."
+    })
 public class BigtableToAvro {
 
   /** Options for the export pipeline. */

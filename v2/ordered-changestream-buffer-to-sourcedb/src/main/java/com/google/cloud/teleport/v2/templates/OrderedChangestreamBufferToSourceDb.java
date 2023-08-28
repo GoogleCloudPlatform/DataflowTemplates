@@ -58,8 +58,6 @@ import org.slf4j.LoggerFactory;
             + " transforms them, and writes them to a Source Database like MySQL.",
     optionsClass = Options.class,
     flexContainerName = "ordered-changestream-buffer-to-sourcedb",
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/ordered-changestream-buffer-to-sourcedb",
     contactInformation = "https://cloud.google.com/support")
 public class OrderedChangestreamBufferToSourceDb {
 

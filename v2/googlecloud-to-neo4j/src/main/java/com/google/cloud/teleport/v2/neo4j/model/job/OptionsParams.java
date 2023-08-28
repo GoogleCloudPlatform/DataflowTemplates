@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +71,7 @@ public class OptionsParams implements Serializable {
     this.inputFilePattern = inputFilePattern;
   }
 
-  public HashMap<String, String> getTokenMap() {
+  public Map<String, String> getTokenMap() {
     return tokenMap;
   }
 }

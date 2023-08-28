@@ -155,7 +155,7 @@ export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
 
 gcloud dataflow jobs run "stream-gcs-text-to-bigquery-job" \
   --project "$PROJECT" \
@@ -198,7 +198,7 @@ export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

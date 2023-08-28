@@ -5,17 +5,6 @@ on:
   # at 00:00 every Saturday.
   - cron: '0 0 * * 6'
   workflow_dispatch:
-    inputs:
-      testPattern:
-        description: 'Tests to run'
-        type: string
-        required: false
-        # run all load tests by default
-        default: '*LT'
-      specPath:
-        description: 'Spec path of template'
-        type: string
-        required: false
 
 permissions: read-all
 
@@ -37,18 +26,9 @@ jobs:
       id: variables
       run: echo "hostIP=$(gcloud compute instances list | grep $(hostname) | awk '{print $4; exit}' )" >> $GITHUB_OUTPUT
     - name: Run load tests with Maven
-      # Use spec path if provided
       run: |
-        if [[ $SPEC_PATH ]]
-        then 
-          mvn test -Dtest=${TEST_PATTERN} -Dproject=apache-beam-testing -DartifactBucket=gs://apache-beam-testing-pranavbhandari -DspecPath=${SPEC_PATH} -DhostIp=${HOST_IP} -DexportProject=cloud-teleport-testing -DexportDataset=performance_tests -DexportTable=template_performance_metrics -Djib.skip=true -DfailIfNoTests=false -DtrimStackTrace=false -fae
-        else
-          mvn test -Dtest=${TEST_PATTERN} -Dproject=apache-beam-testing -DartifactBucket=gs://apache-beam-testing-pranavbhandari -DhostIp=${HOST_IP} -DexportProject=cloud-teleport-testing -DexportDataset=performance_tests -DexportTable=template_performance_metrics -Djib.skip=true -DfailIfNoTests=false -DtrimStackTrace=false -fae
-        fi
+          mvn test -PtemplatesLoadTests -Dproject=apache-beam-testing -DartifactBucket=gs://apache-beam-testing-pranavbhandari -DhostIp=${HOST_IP} -DexportProject=cloud-teleport-testing -DexportDataset=performance_tests -DexportTable=template_performance_metrics -fae
       env:
-        # need to specify default value here since parameters are not available when workflow is triggered on schedule.
-        TEST_PATTERN: ${{ inputs.testPattern || '*LT' }}
-        SPEC_PATH: ${{ inputs.specPath }}
         HOST_IP: ${{ steps.variables.outputs.hostIP }}
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env

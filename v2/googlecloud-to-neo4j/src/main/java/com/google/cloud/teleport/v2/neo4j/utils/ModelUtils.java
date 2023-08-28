@@ -27,9 +27,9 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.model.job.Transform;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -274,20 +274,12 @@ public class ModelUtils {
   public static List<String> getStaticLabels(FragmentType fragmentType, Target target) {
     List<String> labels = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
-      if (m.getFragmentType() != fragmentType) {
+      if (m.getFragmentType() != fragmentType || m.getRole() != RoleType.label) {
         continue;
       }
-      if (m.getLabels().size() > 0) {
-        labels.addAll(m.getLabels());
-      } else if (m.getRole() == RoleType.label) {
-        if (StringUtils.isNotEmpty(m.getConstant())) {
-          labels.add(m.getConstant());
-        }
-        // we cannot index on dynamic labels.  These would need to happen with a pre-transform
-        // action
-        // dynamic labels not handled here
-        // labels.add(prefix+"."+m.field);
-
+      String labelConstantValue = m.getConstant();
+      if (StringUtils.isNotEmpty(labelConstantValue)) {
+        labels.add(labelConstantValue);
       }
     }
     return labels;
@@ -359,7 +351,7 @@ public class ModelUtils {
     return fieldOrConstants;
   }
 
-  public static String replaceVariableTokens(String text, HashMap<String, String> replacements) {
+  public static String replaceVariableTokens(String text, Map<String, String> replacements) {
     Matcher matcher = variablePattern.matcher(text);
     // populate the replacements map ...
     StringBuilder builder = new StringBuilder();

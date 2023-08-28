@@ -46,14 +46,26 @@ import org.slf4j.LoggerFactory;
     name = "Spanner_Change_Streams_to_PubSub",
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Spanner change streams to Pub/Sub",
-    description =
-        "Streaming pipeline. Streams Spanner change stream data records and writes them into a"
-            + " Pub/Sub topic using Dataflow Runner V2.",
+    description = {
+      "The Cloud Spanner change streams to the Pub/Sub template is a streaming pipeline that streams Cloud Spanner data change records and writes them into Pub/Sub topics using Dataflow Runner V2.\n",
+      "To output your data to a new Pub/Sub topic, you need to first create the topic. After creation, Pub/Sub automatically generates and attaches a subscription to the new topic. "
+          + "If you try to output data to a Pub/Sub topic that doesn't exist, the dataflow pipeline throws an exception, and the pipeline gets stuck as it continuously tries to make a connection.\n",
+      "If the necessary Pub/Sub topic already exists, you can output data to that topic.",
+      "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change streams</a>, <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to build change streams Dataflow pipelines</a>, and <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
+    },
     optionsClass = SpannerChangeStreamsToPubSubOptions.class,
     flexContainerName = "spanner-changestreams-to-pubsub",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-pubsub",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Cloud Spanner instance must exist before running the pipeline.",
+      "The Cloud Spanner database must exist prior to running the pipeline.",
+      "The Cloud Spanner metadata instance must exist prior to running the pipeline.",
+      "The Cloud Spanner metadata database must exist prior to running the pipeline.",
+      "The Cloud Spanner change stream must exist prior to running the pipeline.",
+      "The Pub/Sub topic must exist prior to running the pipeline."
+    })
 public class SpannerChangeStreamsToPubSub {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToPubSub.class);
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";

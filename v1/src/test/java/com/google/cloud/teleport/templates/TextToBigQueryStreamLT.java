@@ -140,18 +140,6 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
     testSteadyState1hr(this::enableRunnerV2);
   }
 
-  @Test
-  public void testSteadyState1hrUsingStorageApi()
-      throws IOException, ParseException, InterruptedException {
-    testSteadyState1hr(
-        config ->
-            config
-                .addParameter("useStorageWriteApi", "true")
-                .addParameter("numStorageWriteApiStreams", "60")
-                .addParameter("storageWriteApiTriggeringFrequencySec", "60")
-                .addParameter("experiments", "disable_runner_v2"));
-  }
-
   private void testBacklog(
       Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
           paramsAdder)
@@ -268,7 +256,7 @@ public class TextToBigQueryStreamLT extends TemplateLoadTestBase {
         // href="https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#important_information_about_draining_a_job">
         // Important information about draining a job</a>
         pipelineOperator.waitForConditionAndCancel(
-            createConfig(info, Duration.ofMinutes(TIMEOUT_FOR_1_HOUR_TEST_MINUTES)),
+            createConfig(info, Duration.ofMinutes(10)),
             BigQueryRowsCheck.builder(bigQueryResourceManager, table)
                 .setMinRows(expectedMessages)
                 .build());

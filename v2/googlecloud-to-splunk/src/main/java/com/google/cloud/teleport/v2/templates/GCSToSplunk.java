@@ -74,11 +74,12 @@ import org.slf4j.LoggerFactory;
     name = "GCS_To_Splunk",
     category = TemplateCategory.BATCH,
     displayName = "Cloud Storage To Splunk",
-    description =
-        "A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to Splunk's"
-            + " HTTP Event Collector (HEC).",
-    additionalHelp =
-        "The template creates the Splunk payload as a JSON element using either CSV headers (default), JSON schema or JavaScript UDF. If a Javascript UDF and JSON schema are both inputted as parameters, only the Javascript UDF will be executed.",
+    description = {
+      "A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to Splunk's"
+          + " HTTP Event Collector (HEC).",
+      "The template creates the Splunk payload as a JSON element using either CSV headers (default), JSON schema or JavaScript UDF. "
+          + "If a Javascript UDF and JSON schema are both inputted as parameters, only the Javascript UDF will be executed."
+    },
     optionsClass = GCSToSplunkOptions.class,
     flexContainerName = "gcs-to-splunk",
     contactInformation = "https://cloud.google.com/support")
