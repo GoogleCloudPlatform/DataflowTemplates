@@ -12,6 +12,11 @@ The [BigtableToHBase](src/main/java/com/google/cloud/teleport/v2/templates/Bigta
 
 * Dataflow when strongly provisioned can translate Bigtable input QPS directly to Hbase, the user should configure Hbase so that Hbase can handle that QPS without crashing.
 * Bigtable change streams can handle very large single mutations. Hbase write buffers should be adequately provisioned so as not to cause exceptions when writing in large mutations.
+* **Out of order writes can occur.** As long as `NEW_VERSION_BEHAVIOR = false` is set ([currently the default option]((https://hbase.apache.org/book.html#new.version.behavior))), the likelihood of out of order writes impacting data convergence is quite low. Data divergence can occur in the following scenario. The replicator writes to Hbase as a side-effect in Dataflow. If Dataflow loses communications to a worker, a replication could be duplicated. If the duplicated write occurs for a Deleted cell after a major compaction occurs in Hbase, the duplicated Delete could be written in after the cell's Delete was compacted. Some strategies to deal with this scenario:
+  * Do not write in Deletes.
+  * Disable major compaction.
+  * Set Hbase `NEW_VERSION_BEHAVIOR = false`. A duplicated Put that arrived later will always be masked by a previous Delete.
+  * Set Hbase `KEEP_DELETED_CELLS = true` (see [here](https://hbase.apache.org/book.html#cf.keep.deleted)). Deletes continue to mask puts even after major compaction. With infinite max_versions and TTL, this is effectively the same as disabling major compaction.
 
 ### Notes on Bidirectional Replication
 
