@@ -127,7 +127,7 @@ public final class ChangeEventTypeConvertorTest {
   }
 
   @Test(expected = ChangeEventConvertorException.class)
-  public void cannotConvertNonExistentRequiredField() throws Exception {
+  public void cannotConvertNonExistentRequiredFieldToBoolean() throws Exception {
     JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());
     assertEquals(
@@ -190,6 +190,14 @@ public final class ChangeEventTypeConvertorTest {
   public void cannotConvertRandomStringToLong() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field1", /* requiredField= */ true), new Long(123457));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertNonExistentRequiredFieldToLong() throws Exception {
+    JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());
     assertEquals(
         ChangeEventTypeConvertor.toLong(ce, "field1", /* requiredField= */ true), new Long(123457));
@@ -261,6 +269,15 @@ public final class ChangeEventTypeConvertorTest {
         new Long(123457));
   }
 
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertNonExistentRequiredFieldToDouble() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field1", /* requiredField= */ true),
+        new Long(123457));
+  }
+
   /*
    * Tests for string conversion.  This functions also checks whether long numbers or decimals
    * encoded as JSON strings are numbers can be converted to string.
@@ -275,7 +292,8 @@ public final class ChangeEventTypeConvertorTest {
             + "\"field4\" : \"123456789012345678901234567890.0123456789\","
             + "\"field5\" : 123456789012345678901234567890123456789012345678901234567890,"
             + "\"field6\" : \"123456789012345678901234567890123456789012345678901234567890\","
-            + "\"field7\" : true"
+            + "\"field7\" : true,"
+            + "\"field13\": null"
             + " }";
 
     JsonNode ce = getJsonNode(jsonChangeEvent);
@@ -302,6 +320,14 @@ public final class ChangeEventTypeConvertorTest {
         new String("true"));
   }
 
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertNonExistentRequiredFieldToString() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(
+        ChangeEventTypeConvertor.toString(ce, "field1", /* requiredField= */ true), new String(""));
+  }
+
   /*
    * Tests for numeric string conversion. Tests json with large numbers and decimals encoded as
    * JSON strings and numbers.
@@ -318,7 +344,7 @@ public final class ChangeEventTypeConvertorTest {
             + " \"1233456789034565454223463732234502384848374579495483732758539938558\",\"field10\""
             + " : \"1.2334567890345654542E10\",\"field11\" :"
             + " 123345.678903456545422346373223903495832,\"field12\" :"
-            + " \"123345.678903456545422346373223903495832\" }";
+            + " \"123345.678903456545422346373223903495832\", \"field13\": null }";
     JsonNode ce = getJsonNode(jsonChangeEvent);
 
     assertEquals(
@@ -371,6 +397,8 @@ public final class ChangeEventTypeConvertorTest {
         ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field12", /* requiredField= */ true)
             .toString(),
         new String("123345.678903457"));
+    assertNull(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field13", /* requiredField= */ false));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -392,6 +420,15 @@ public final class ChangeEventTypeConvertorTest {
     assertEquals(
         ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /* requiredField= */ true)
             .toString(),
+        new Long(123457));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertNonExistentRequiredFieldToNumeric() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /* requiredField= */ true),
         new Long(123457));
   }
 
@@ -424,6 +461,15 @@ public final class ChangeEventTypeConvertorTest {
         ChangeEventTypeConvertor.toByteArray(ce, "field4", /* requiredField= */ true),
         ByteArray.copyFrom(new byte[] {-17, -2}));
     assertNull(ChangeEventTypeConvertor.toByteArray(ce, "field5", /* requiredField= */ false));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertNonExistentRequiredFieldToByteArray() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field1", /* requiredField= */ true),
+        new byte[] {-17, -2});
   }
 
   /*
@@ -461,6 +507,15 @@ public final class ChangeEventTypeConvertorTest {
         ChangeEventTypeConvertor.toTimestamp(ce, "field6", /* requiredField= */ true),
         Timestamp.parseTimestamp("2020-12-30T12:12:12.123Z"));
     assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "field7", /* requiredField= */ false));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertNonExistentRequiredFieldToTimestamp() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field1", /* requiredField= */ true),
+        Timestamp.parseTimestamp("2020-12-30T12:12:12.123Z"));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -563,5 +618,14 @@ public final class ChangeEventTypeConvertorTest {
     assertEquals(
         ChangeEventTypeConvertor.toDate(ce, "field1", /* requiredField= */ true),
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertNonExistentRequiredFieldToDate() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(
+        ChangeEventTypeConvertor.toDate(ce, "field1", /* requiredField= */ true),
+        Date.parseDate("2020-12-30"));
   }
 }
