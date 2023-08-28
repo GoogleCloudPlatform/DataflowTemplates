@@ -16,10 +16,14 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.v2.values.SpannerSchema;
+import com.google.cloud.spanner.Type;
 import com.google.gson.JsonParser;
+import java.util.List;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerSchema;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -28,21 +32,23 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class JsonStringToMutationFnTest {
   private static final String TEST_TABLE = "testTable";
-  private static final String SCHEMA = "id:INT64,name:STRING";
-  private static final SpannerSchema SPANNER_SCHEMA = new SpannerSchema(SCHEMA);
   private static final String DATA = "{\"id\": 123, \"name\": \"Bob Marley\"}";
 
   @Test
   public void testParseRow() {
-    JsonStringToMutationFn jsonStringToMutationFn =
-        new JsonStringToMutationFn("", "", "", TEST_TABLE);
+    SpannerSchema.Column idColumn = mock(SpannerSchema.Column.class);
+    SpannerSchema.Column nameColumn = mock(SpannerSchema.Column.class);
+    when(idColumn.getName()).thenReturn("id");
+    when(idColumn.getType()).thenReturn(Type.int64());
+    when(nameColumn.getName()).thenReturn("name");
+    when(nameColumn.getType()).thenReturn(Type.string());
 
+    JsonStringToMutationFn jsonStringToMutationFn = new JsonStringToMutationFn(TEST_TABLE, null);
     Mutation actualMutation =
         jsonStringToMutationFn.parseRow(
             Mutation.newInsertOrUpdateBuilder(TEST_TABLE),
             JsonParser.parseString(DATA).getAsJsonObject(),
-            SPANNER_SCHEMA,
-            SPANNER_SCHEMA.getColumnList());
+            List.of(idColumn, nameColumn));
 
     Mutation expectedMutation =
         Mutation.newInsertOrUpdateBuilder(TEST_TABLE)
