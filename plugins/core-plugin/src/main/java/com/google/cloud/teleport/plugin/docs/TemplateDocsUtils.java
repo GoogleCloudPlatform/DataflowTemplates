@@ -37,6 +37,10 @@ public final class TemplateDocsUtils {
           put("Apache Beam", "apache_beam");
           put("Cloud Storage", "storage_name");
           put("Pub/Sub", "pubsub_name_short");
+          put(
+              "projects/your-project-id/subscriptions/your-subscription-name",
+              "pubsub_subscription_format");
+          put("projects/your-project-id/topics/your-topic-name", "pubsub_topic_format");
         }
       };
 
@@ -146,8 +150,8 @@ public final class TemplateDocsUtils {
   public static String replaceSiteTags(String text) {
     return text.replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
-        .replaceAll("(?m)\\.? \\(Example: (.*?)\\)", ". For example, <code>$1</code>.")
-        .replaceAll("(?m)For example, \"(.*?)\"", "For example, <code>$1</code>")
+        .replaceAll("(?m)\\.? \\(Example: (.*?)\\)", ". For example: <code>$1</code>")
+        .replaceAll("(?m)For example, \"(.*?)\"", "For example: <code>$1</code>")
         .replaceAll("(?m)Defaults to: (.*?)\\.", "Defaults to: <code>$1</code>.")
         .replaceAll("(?m)`(.*?)`", "<code>$1</code>");
   }
