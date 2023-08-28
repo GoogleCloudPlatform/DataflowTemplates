@@ -45,6 +45,7 @@ import org.apache.beam.it.jdbc.JDBCResourceManager.JDBCSchema;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -118,6 +119,8 @@ public class JdbcToBigQueryLT extends TemplateLoadTestBase {
     testBacklog(this::enableRunnerV2);
   }
 
+  // TODO(pranavbhandari): Re-enable this test when templates are updated to Beam 2.50
+  @Ignore("https://github.com/apache/beam/issues/27670")
   @Test
   public void testBacklog10gbUsingStorageApi()
       throws IOException, ParseException, InterruptedException {
