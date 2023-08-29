@@ -8,11 +8,22 @@ The [BigtableToHBase](src/main/java/com/google/cloud/teleport/v2/templates/Bigta
 * Bigtable table with change streams enabled
 * Hbase instance that is accessible from Dataflow
 
-#### Beware
+#### Beware - provision Hbase resources to handle Dataflow traffic
 
 * Dataflow when strongly provisioned can translate Bigtable input QPS directly to Hbase, the user should configure Hbase so that Hbase can handle that QPS without crashing.
+
 * Bigtable change streams can handle very large single mutations. Hbase write buffers should be adequately provisioned so as not to cause exceptions when writing in large mutations.
-* **Out of order writes can occur.** As long as `NEW_VERSION_BEHAVIOR = false` is set ([currently the default option]((https://hbase.apache.org/book.html#new.version.behavior))), the likelihood of out of order writes impacting data convergence is quite low. Data divergence can occur in the following scenario. The replicator writes to Hbase as a side-effect in Dataflow. If Dataflow loses communications to a worker, a replication could be duplicated. If the duplicated write occurs for a Deleted cell after a major compaction occurs in Hbase, the duplicated Delete could be written in after the cell's Delete was compacted. Some strategies to deal with this scenario:
+
+#### Beware - out-of-order writes can occur in some scenarios
+
+The replicator writes to Hbase as a side effect in Dataflow. If Dataflow loses connection to a worker, another worker will be spun up and a change stream mutation could be duplicated. In the following scenario, a duplication could occur:
+  * Dataflow spins up worker A
+  * Worker A replicates a Put
+  * Dataflow loses connection to worker A before the Put is replicated and spins up worker B
+  * Dataflow assigns the Put to worker B, now 2 workers write the same Put
+
+The above scenario is not a problem most times. However, if a major compaction occurs and a cell had a masking Delete, then a delayed Put will be applied to a cell that should've been deleted. This scenario is theoretically possible but extremely unlikely.
+There are some strategies to deal with this scenario:
   * Do not write in Deletes.
   * Disable major compaction.
   * Set Hbase `NEW_VERSION_BEHAVIOR = false`. A duplicated Put that arrived later will always be masked by a previous Delete.
@@ -23,7 +34,7 @@ The [BigtableToHBase](src/main/java/com/google/cloud/teleport/v2/templates/Bigta
 This template can be configured to be used with the [Hbase-Bigtable replicator](https://github.com/googleapis/java-bigtable-hbase/blob/main/hbase-migration-tools/bigtable-hbase-replication/README.md) out of the box.
 To configure, enable `bidirectional replication` settings in the `Running Template` section below.
 
-#### Beware
+#### Beware - multi-master writes are not supported
 
 Divergence could occur if simultaneous writes occur on both Hbase and Bigtable and they get replicated out at the same time. To minimize this risk, only write to one database at a time.
 
