@@ -37,9 +37,7 @@ public final class TemplateDocsUtils {
           put("Apache Beam", "apache_beam");
           put("Cloud Storage", "storage_name");
           put("Pub/Sub", "pubsub_name_short");
-          put(
-              "projects/your-project-id/subscriptions/your-subscription-name",
-              "pubsub_subscription_format");
+          put("projects/your-project-id/subscriptions/your-subscription-name", "pubsub_subscription_format");
           put("projects/your-project-id/topics/your-topic-name", "pubsub_topic_format");
         }
       };

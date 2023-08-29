@@ -18,14 +18,14 @@
 </#if>
 
 <#list spec.metadata.description?split("\n\n") as paragraph>
-<p>${TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim), 100, "  ", true))}</p>
+<p>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim)), 100, "  ", true)}</p>
 </#list>
 
 <h2>Pipeline requirements</h2>
 
 <ul>
 <#list spec.metadata.requirements as requirement>
-  <li>${TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(requirement), 100, "    ", true))}</li>
+  <li>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(requirement)), 100, "    ", true)}</li>
 </#list>
 </ul>
 
