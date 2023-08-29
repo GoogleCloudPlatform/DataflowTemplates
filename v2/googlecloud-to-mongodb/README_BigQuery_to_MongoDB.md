@@ -1,11 +1,14 @@
-BigQuery to MongoDB Template
+
+BigQuery to MongoDB template
 ---
-A batch pipeline which reads data rows from BigQuery and writes them to MongoDB as documents.
+The BigQuery to MongoDB template is a batch pipeline that reads rows from a
+BigQuery and writes them to MongoDB as documents. Currently each row is stored as
+a document.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-mongodb)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=BigQuery_to_MongoDB).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -37,7 +40,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-mongodb/src/main/java/com/google/cloud/teleport/v2/mongodb/templates/BigQueryToMongoDb.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-mongodb/src/main/java/com/google/cloud/teleport/v2/mongodb/templates/BigQueryToMongoDb.java)
 
 ### Templates Plugin
 
@@ -77,6 +80,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -104,10 +108,10 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/BigQuery_to_MongoDB"
 
 ### Required
-export MONGO_DB_URI="mongouri"
-export DATABASE="db"
-export COLLECTION="collection"
-export INPUT_TABLE_SPEC="bqtable"
+export MONGO_DB_URI=mongouri
+export DATABASE=db
+export COLLECTION=collection
+export INPUT_TABLE_SPEC=bqtable
 
 ### Optional
 
@@ -137,10 +141,10 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export MONGO_DB_URI="mongouri"
-export DATABASE="db"
-export COLLECTION="collection"
-export INPUT_TABLE_SPEC="bqtable"
+export MONGO_DB_URI=mongouri
+export DATABASE=db
+export COLLECTION=collection
+export INPUT_TABLE_SPEC=bqtable
 
 ### Optional
 

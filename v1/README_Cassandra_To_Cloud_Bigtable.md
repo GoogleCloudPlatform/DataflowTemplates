@@ -1,11 +1,19 @@
-Cassandra to Cloud Bigtable Template
+
+Cassandra to Cloud Bigtable template
 ---
-A pipeline to import a Apache Cassandra table into Cloud Bigtable.
+The Apache Cassandra to Cloud Bigtable template copies a table from Apache
+Cassandra to Cloud Bigtable. This template requires minimal configuration and
+replicates the table structure in Cassandra as closely as possible in Cloud
+Bigtable.
+
+The Apache Cassandra to Cloud Bigtable template is useful for the following:
+- Migrating Apache Cassandra database when short downtime is acceptable.
+- Periodically replicating Cassandra tables to Cloud Bigtable for global serving.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cassandra-to-bigtable)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cassandra_To_Cloud_Bigtable).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -43,7 +51,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/bigtable/CassandraToBigtable.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/bigtable/CassandraToBigtable.java)
 
 ### Templates Plugin
 
@@ -121,8 +129,8 @@ export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 
 ### Optional
-export CASSANDRA_PORT="9042"
-export DEFAULT_COLUMN_FAMILY="default"
+export CASSANDRA_PORT=9042
+export DEFAULT_COLUMN_FAMILY=default
 export ROW_KEY_SEPARATOR="#"
 export SPLIT_LARGE_ROWS=<splitLargeRows>
 
@@ -166,8 +174,8 @@ export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 
 ### Optional
-export CASSANDRA_PORT="9042"
-export DEFAULT_COLUMN_FAMILY="default"
+export CASSANDRA_PORT=9042
+export DEFAULT_COLUMN_FAMILY=default
 export ROW_KEY_SEPARATOR="#"
 export SPLIT_LARGE_ROWS=<splitLargeRows>
 

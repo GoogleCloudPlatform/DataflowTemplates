@@ -1,11 +1,13 @@
-Dataplex: Convert Cloud Storage File Format Template
+
+Dataplex: Convert Cloud Storage File Format template
 ---
-A pipeline that converts file format of Cloud Storage files, registering metadata for the newly created files in Dataplex.
+A pipeline that converts file format of Cloud Storage files, registering metadata
+for the newly created files in Dataplex.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Dataplex_File_Format_Conversion).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -39,7 +41,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/DataplexFileFormatConversion.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/DataplexFileFormatConversion.java)
 
 ### Templates Plugin
 
@@ -79,6 +81,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -111,8 +114,8 @@ export OUTPUT_FILE_FORMAT=<outputFileFormat>
 export OUTPUT_ASSET=<outputAsset>
 
 ### Optional
-export OUTPUT_FILE_COMPRESSION="SNAPPY"
-export WRITE_DISPOSITION="SKIP"
+export OUTPUT_FILE_COMPRESSION=SNAPPY
+export WRITE_DISPOSITION=SKIP
 export UPDATE_DATAPLEX_METADATA=false
 
 gcloud dataflow flex-template run "dataplex-file-format-conversion-job" \
@@ -148,8 +151,8 @@ export OUTPUT_FILE_FORMAT=<outputFileFormat>
 export OUTPUT_ASSET=<outputAsset>
 
 ### Optional
-export OUTPUT_FILE_COMPRESSION="SNAPPY"
-export WRITE_DISPOSITION="SKIP"
+export OUTPUT_FILE_COMPRESSION=SNAPPY
+export WRITE_DISPOSITION=SKIP
 export UPDATE_DATAPLEX_METADATA=false
 
 mvn clean package -PtemplatesRun \

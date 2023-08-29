@@ -1,11 +1,30 @@
-Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP) Template
+
+Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP) template
 ---
-An example pipeline that reads CSV files from Cloud Storage, uses Cloud DLP API to mask and tokenize data based on the DLP templates provided and stores output in BigQuery. Note, not all configuration settings are available in this default template. You may need to deploy a custom template to accommodate your specific environment and data needs. More details here: https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp.
+The Data Masking/Tokenization from Cloud Storage to BigQuery template uses <a
+href="https://cloud.google.com/dlp/docs">Sensitive Data Protection</a> and
+creates a streaming pipeline that does the following steps:
+1. Reads CSV files from a Cloud Storage bucket.
+2. Calls the Cloud Data Loss Prevention API (part of Sensitive Data Protection)
+for de-identification.
+3. Writes the de-identified data into the specified BigQuery table.
+
+The template supports using both a Sensitive Data Protection <a
+href="https://cloud.google.com/dlp/docs/creating-templates">inspection
+template</a> and a Sensitive Data Protection <a
+href="https://cloud.google.com/dlp/docs/creating-templates-deid">de-identification
+template</a>. As a result, the template supports both of the following tasks:
+- Inspect for potentially sensitive information and de-identify the data.
+- De-identify structured data where columns are specified to be de-identified and
+no inspection is needed.
+
+Note: This template does not support a regional path for de-identification
+template location. Only a global path is supported.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/dlp-text-to-bigquery)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Stream_DLP_GCS_Text_to_BigQuery).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -39,7 +58,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/DLPTextToBigQueryStreaming.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/DLPTextToBigQueryStreaming.java)
 
 ### Templates Plugin
 

@@ -1,11 +1,23 @@
-Bulk Compress Files on Cloud Storage Template
+
+Bulk Compress Files on Cloud Storage template
 ---
-Batch pipeline. Compresses files on Cloud Storage to a specified location.
+The Bulk Compress Cloud Storage Files template is a batch pipeline that
+compresses files on Cloud Storage to a specified location. This template can be
+useful when you need to compress large batches of files as part of a periodic
+archival process. The supported compression modes are: BZIP2, DEFLATE, GZIP.
+Files output to the destination location will follow a naming schema of original
+filename appended with the compression mode extension. The extensions appended
+will be one of: .bzip2, .deflate, .gz.
+
+Any errors which occur during the compression process will be output to the
+failure file in CSV format of filename, error message. If no failures occur while
+running the pipeline, the error file will still be created but will contain no
+error records.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/bulk-compress-cloud-storage)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Bulk_Compress_GCS_Files).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -37,7 +49,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/BulkCompressor.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/BulkCompressor.java)
 
 ### Templates Plugin
 

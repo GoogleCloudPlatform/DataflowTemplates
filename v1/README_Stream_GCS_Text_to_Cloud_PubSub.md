@@ -1,11 +1,28 @@
-Text Files on Cloud Storage to Pub/Sub Template
+
+Text Files on Cloud Storage to Pub/Sub template
 ---
-A pipeline that polls every 10 seconds for new text files stored in Cloud Storage and outputs each line to a Pub/Sub topic.
+This template creates a streaming pipeline that continuously polls for new text
+files uploaded to Cloud Storage, reads each file line by line, and publishes
+strings to a Pub/Sub topic. The template publishes records in a newline-delimited
+file containing JSON records or CSV file to a Pub/Sub topic for real-time
+processing. You can use this template to replay data to Pub/Sub.
+
+The pipeline runs indefinitely and needs to be terminated manually via a <a
+href="https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#cancel">cancel</a>
+and not a <a
+href="https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#drain">drain</a>,
+due to its use of the <code>Watch</code> transform, which is a
+<code>SplittableDoFn</code> that does not support draining.
+
+Currently, the polling interval is fixed and set to 10 seconds. This template
+does not set any timestamp on the individual records, so the event time is equal
+to the publishing time during execution. If your pipeline relies on an accurate
+event time for processing, you should not use this pipeline.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-pubsub-stream)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Stream_GCS_Text_to_Cloud_PubSub).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -35,7 +52,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/TextToPubsubStream.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/TextToPubsubStream.java)
 
 ### Templates Plugin
 
