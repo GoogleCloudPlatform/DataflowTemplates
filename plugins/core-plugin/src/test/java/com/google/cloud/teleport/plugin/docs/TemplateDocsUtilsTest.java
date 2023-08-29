@@ -112,7 +112,7 @@ public class TemplateDocsUtilsTest {
   @Test
   public void testReplaceSiteTags() {
     assertEquals(
-        "This has the project id. For example, <code>project_id</code>.",
+        "This has the project id. For example: <code>project_id</code>",
         replaceSiteTags("This has the project id. (Example: project_id)"));
   }
 }
