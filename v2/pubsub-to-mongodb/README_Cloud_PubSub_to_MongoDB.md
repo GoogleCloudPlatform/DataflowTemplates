@@ -1,11 +1,19 @@
-Pub/Sub to MongoDB Template
+
+Pub/Sub to MongoDB template
 ---
-Streaming pipeline that reads JSON encoded messages from a Pub/Sub subscription, transforms them using a JavaScript user-defined function (UDF), and writes them to a MongoDB as documents.
+The Pub/Sub to MongoDB template is a streaming pipeline that reads JSON-encoded
+messages from a Pub/Sub subscription and writes them to MongoDB as documents. If
+required, this pipeline supports additional transforms that can be included using
+a JavaScript user-defined function (UDF). Any errors occurred due to schema
+mismatch, malformed JSON, or while executing transforms are recorded in a
+BigQuery table for unprocessed messages along with input message. If a table for
+unprocessed records does not exist prior to execution, the pipeline automatically
+creates this table.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-mongodb)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_PubSub_to_MongoDB).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -16,15 +24,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required Parameters
 
 * **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **mongoDBUri** (MongoDB Connection URI): List of Mongo DB nodes separated by comma. (Example: host1:port,host2:port,host3:port).
+* **mongoDBUri** (MongoDB Connection URI): Comma separated list of MongoDB servers. (Example: host1:port,host2:port,host3:port).
 * **database** (MongoDB Database): Database in MongoDB to store the collection. (Example: my-db).
-* **collection** (MongoDB collection): Name of the collection inside MongoDB database to put the documents to. (Example: my-collection).
-* **deadletterTable** (The dead-letter table name to output failed messages to BigQuery): Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
+* **collection** (MongoDB collection): Name of the collection inside MongoDB database to insert the documents. (Example: my-collection).
+* **deadletterTable** (The dead-letter table name to output failed messages to BigQuery): BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
 
 ### Optional Parameters
 
 * **batchSize** (Batch Size): Batch Size used for batch insertion of documents into MongoDB. Defaults to: 1000.
-* **batchSizeBytes** (Batch Size in Bytes): Batch Size in bytes used for batch insertion of documents into MongoDB. Default: 5242880 (5mb).
+* **batchSizeBytes** (Batch Size in Bytes): Batch Size in bytes used for batch insertion of documents into MongoDB. Defaults to: 5242880.
 * **maxConnectionIdleTime** (Max Connection idle time): Maximum idle time allowed in seconds before connection timeout occurs. Defaults to: 60000.
 * **sslEnabled** (SSL Enabled): Indicates whether connection to MongoDB is ssl enabled. Defaults to: true.
 * **ignoreSSLCertificate** (Ignore SSL Certificate): Indicates whether SSL certificate should be ignored. Defaults to: true.
@@ -32,6 +40,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **withSSLInvalidHostNameAllowed** (withSSLInvalidHostNameAllowed): Indicates whether invalid host name is allowed for ssl connection. Defaults to: true.
 * **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
 * **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
+* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
 
 
 ## User-Defined functions (UDFs)
@@ -57,7 +66,7 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/pubsub-to-mongodb/src/main/java/com/google/cloud/teleport/v2/templates/PubSubToMongoDB.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/pubsub-to-mongodb/src/main/java/com/google/cloud/teleport/v2/templates/PubSubToMongoDB.java)
 
 ### Templates Plugin
 
@@ -96,6 +105,7 @@ mvn clean package -PtemplatesStage  \
 -pl v2/pubsub-to-mongodb \
 -am
 ```
+
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -140,6 +150,7 @@ export WITH_ORDERED=true
 export WITH_SSLINVALID_HOST_NAME_ALLOWED=true
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 
 gcloud dataflow flex-template run "cloud-pubsub-to-mongodb-job" \
   --project "$PROJECT" \
@@ -158,7 +169,8 @@ gcloud dataflow flex-template run "cloud-pubsub-to-mongodb-job" \
   --parameters "withOrdered=$WITH_ORDERED" \
   --parameters "withSSLInvalidHostNameAllowed=$WITH_SSLINVALID_HOST_NAME_ALLOWED" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
-  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME"
+  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES"
 ```
 
 For more information about the command, please check:
@@ -193,6 +205,7 @@ export WITH_ORDERED=true
 export WITH_SSLINVALID_HOST_NAME_ALLOWED=true
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -201,7 +214,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-pubsub-to-mongodb-job" \
 -DtemplateName="Cloud_PubSub_to_MongoDB" \
--Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,mongoDBUri=$MONGO_DBURI,database=$DATABASE,collection=$COLLECTION,deadletterTable=$DEADLETTER_TABLE,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxConnectionIdleTime=$MAX_CONNECTION_IDLE_TIME,sslEnabled=$SSL_ENABLED,ignoreSSLCertificate=$IGNORE_SSLCERTIFICATE,withOrdered=$WITH_ORDERED,withSSLInvalidHostNameAllowed=$WITH_SSLINVALID_HOST_NAME_ALLOWED,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+-Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,mongoDBUri=$MONGO_DBURI,database=$DATABASE,collection=$COLLECTION,deadletterTable=$DEADLETTER_TABLE,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxConnectionIdleTime=$MAX_CONNECTION_IDLE_TIME,sslEnabled=$SSL_ENABLED,ignoreSSLCertificate=$IGNORE_SSLCERTIFICATE,withOrdered=$WITH_ORDERED,withSSLInvalidHostNameAllowed=$WITH_SSLINVALID_HOST_NAME_ALLOWED,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
 -pl v2/pubsub-to-mongodb \
 -am
 ```

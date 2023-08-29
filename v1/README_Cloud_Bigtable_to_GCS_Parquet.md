@@ -1,11 +1,14 @@
-Cloud Bigtable to Parquet Files on Cloud Storage Template
+
+Cloud Bigtable to Parquet Files on Cloud Storage template
 ---
-A pipeline which reads in Cloud Bigtable table and writes it to Cloud Storage in Parquet format.
+The Bigtable to Cloud Storage Parquet template is a pipeline that reads data from
+a Bigtable table and writes it to a Cloud Storage bucket in Parquet format. You
+can use the template to move data from Bigtable to Cloud Storage.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-parquet)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Bigtable_to_GCS_Parquet).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -39,7 +42,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/bigtable/BigtableToParquet.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/bigtable/BigtableToParquet.java)
 
 ### Templates Plugin
 
@@ -113,10 +116,10 @@ export BIGTABLE_PROJECT_ID=<bigtableProjectId>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export OUTPUT_DIRECTORY=<outputDirectory>
-export FILENAME_PREFIX="part"
+export FILENAME_PREFIX=part
 
 ### Optional
-export NUM_SHARDS="0"
+export NUM_SHARDS=0
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-parquet-job" \
   --project "$PROJECT" \
@@ -150,10 +153,10 @@ export BIGTABLE_PROJECT_ID=<bigtableProjectId>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export OUTPUT_DIRECTORY=<outputDirectory>
-export FILENAME_PREFIX="part"
+export FILENAME_PREFIX=part
 
 ### Optional
-export NUM_SHARDS="0"
+export NUM_SHARDS=0
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

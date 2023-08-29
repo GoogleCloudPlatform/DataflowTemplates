@@ -1,11 +1,16 @@
-Text Files on Cloud Storage to Firestore (Datastore mode) Template
+
+Text Files on Cloud Storage to Firestore (Datastore mode) template
 ---
-Batch pipeline. Reads from text files stored in Cloud Storage and writes JSON-encoded entities to Firestore.
+The Cloud Storage Text to Firestore template is a batch pipeline that reads from
+text files stored in Cloud Storage and writes JSON encoded Entities to Firestore.
+Each line in the input text files must be in the <a
+href="https://cloud.google.com/datastore/docs/reference/rest/v1/Entity">specified
+JSON format</a>.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-firestore)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Text_to_Firestore).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -51,7 +56,7 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
 
 ### Templates Plugin
 

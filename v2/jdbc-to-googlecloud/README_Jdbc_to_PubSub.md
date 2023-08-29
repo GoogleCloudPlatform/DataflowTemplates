@@ -1,12 +1,14 @@
-JDBC to Pub/Sub Template
+
+JDBC to Pub/Sub template
 ---
-A batch pipeline which ingests data from JDBC source and writes to a pre-existing Pub/Sub topic as a JSON string. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionUrl, username, and password should be all in encrypted format.
+The Java Database Connectivity (JDBC) to Pub/Sub template is a batch pipeline
+that ingests data from JDBC source and writes the resulting records to a
+pre-existing Pub/Sub topic as a JSON string.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-pubsub)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Jdbc_to_PubSub).
-
-A sample curl command for the KMS API encrypt endpoint: curl -s -X POST "https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt"  -d "{\"plaintext\":"PasteBase64EncodedString\"}"  -H "Authorization: Bearer $(gcloud auth application-default print-access-token)"  -H "Content-Type: application/json".
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -45,7 +47,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/jdbc-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/JdbcToPubsub.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/jdbc-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/JdbcToPubsub.java)
 
 ### Templates Plugin
 
@@ -84,6 +86,7 @@ mvn clean package -PtemplatesStage  \
 -pl v2/jdbc-to-googlecloud \
 -am
 ```
+
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:

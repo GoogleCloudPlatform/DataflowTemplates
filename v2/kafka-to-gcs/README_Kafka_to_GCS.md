@@ -1,11 +1,13 @@
-Kafka to Cloud Storage Template
+
+Kafka to Cloud Storage template
 ---
-A streaming pipeline which ingests data from Kafka and writes to a pre-existing Cloud Storage bucket with a variety of file types.
+A streaming pipeline which ingests data from Kafka and writes to a pre-existing
+Cloud Storage bucket with a variety of file types.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Kafka_to_GCS).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -40,7 +42,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/kafka-to-gcs/src/main/java/com/google/cloud/teleport/v2/templates/KafkaToGCS.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/kafka-to-gcs/src/main/java/com/google/cloud/teleport/v2/templates/KafkaToGCS.java)
 
 ### Templates Plugin
 
@@ -80,6 +82,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -109,13 +112,13 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_GCS"
 ### Required
 export BOOTSTRAP_SERVERS=<bootstrapServers>
 export INPUT_TOPICS=<inputTopics>
-export OUTPUT_FILE_FORMAT="TEXT"
+export OUTPUT_FILE_FORMAT=TEXT
 export OUTPUT_DIRECTORY=<outputDirectory>
 export NUM_SHARDS=0
 
 ### Optional
-export WINDOW_DURATION="5m"
-export OUTPUT_FILENAME_PREFIX="output"
+export WINDOW_DURATION=5m
+export OUTPUT_FILENAME_PREFIX=output
 
 gcloud dataflow flex-template run "kafka-to-gcs-job" \
   --project "$PROJECT" \
@@ -148,13 +151,13 @@ export REGION=us-central1
 ### Required
 export BOOTSTRAP_SERVERS=<bootstrapServers>
 export INPUT_TOPICS=<inputTopics>
-export OUTPUT_FILE_FORMAT="TEXT"
+export OUTPUT_FILE_FORMAT=TEXT
 export OUTPUT_DIRECTORY=<outputDirectory>
 export NUM_SHARDS=0
 
 ### Optional
-export WINDOW_DURATION="5m"
-export OUTPUT_FILENAME_PREFIX="output"
+export WINDOW_DURATION=5m
+export OUTPUT_FILENAME_PREFIX=output
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

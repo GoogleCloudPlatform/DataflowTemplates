@@ -1,11 +1,29 @@
-Cloud Spanner change streams to Pub/Sub Template
+
+Cloud Spanner change streams to Pub/Sub template
 ---
-Streaming pipeline. Streams Spanner change stream data records and writes them into a Pub/Sub topic using Dataflow Runner V2.
+The Cloud Spanner change streams to the Pub/Sub template is a streaming pipeline
+that streams Cloud Spanner data change records and writes them into Pub/Sub
+topics using Dataflow Runner V2.
+
+To output your data to a new Pub/Sub topic, you need to first create the topic.
+After creation, Pub/Sub automatically generates and attaches a subscription to
+the new topic. If you try to output data to a Pub/Sub topic that doesn't exist,
+the dataflow pipeline throws an exception, and the pipeline gets stuck as it
+continuously tries to make a connection.
+
+If the necessary Pub/Sub topic already exists, you can output data to that topic.
+
+Learn more about <a
+href="https://cloud.google.com/spanner/docs/change-streams">change streams</a>,
+<a href="https://cloud.google.com/spanner/docs/change-streams/use-dataflow">how
+to build change streams Dataflow pipelines</a>, and <a
+href="https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices">best
+practices</a>.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-pubsub)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Spanner_Change_Streams_to_PubSub).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -48,7 +66,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/SpannerChangeStreamsToPubSub.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/SpannerChangeStreamsToPubSub.java)
 
 ### Templates Plugin
 
@@ -87,6 +105,7 @@ mvn clean package -PtemplatesStage  \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
+
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -128,10 +147,10 @@ export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SPANNER_HOST="https://spanner.googleapis.com"
-export OUTPUT_DATA_FORMAT="JSON"
-export PUBSUB_API="pubsubio"
-export RPC_PRIORITY="HIGH"
+export SPANNER_HOST=https://spanner.googleapis.com
+export OUTPUT_DATA_FORMAT=JSON
+export PUBSUB_API=pubsubio
+export RPC_PRIORITY=HIGH
 
 gcloud dataflow flex-template run "spanner-change-streams-to-pubsub-job" \
   --project "$PROJECT" \
@@ -183,10 +202,10 @@ export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SPANNER_HOST="https://spanner.googleapis.com"
-export OUTPUT_DATA_FORMAT="JSON"
-export PUBSUB_API="pubsubio"
-export RPC_PRIORITY="HIGH"
+export SPANNER_HOST=https://spanner.googleapis.com
+export OUTPUT_DATA_FORMAT=JSON
+export PUBSUB_API=pubsubio
+export RPC_PRIORITY=HIGH
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

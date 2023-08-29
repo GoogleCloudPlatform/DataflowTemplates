@@ -1,11 +1,16 @@
-Pub/Sub Subscription or Topic to Text Files on Cloud Storage Template
+
+Pub/Sub Subscription or Topic to Text Files on Cloud Storage template
 ---
-Streaming pipeline. Reads records from Pub/Sub Subscription or Topic and writes them to Cloud Storage, creating a text file for each five minute window. Note that this pipeline assumes no newlines in the body of the Pub/Sub message and thus each message becomes a single line in the output file.
+The Pub/Sub Topic or Subscription to Cloud Storage Text template is a streaming
+pipeline that reads records from Pub/Sub and saves them as a series of Cloud
+Storage files in text format. The template can be used as a quick way to save
+data in Pub/Sub for future use. By default, the template generates a new file
+every 5 minutes.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-topic-subscription-to-text)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_PubSub_to_GCS_Text_Flex).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -47,7 +52,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/pubsubtotext/PubsubToText.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/pubsubtotext/PubsubToText.java)
 
 ### Templates Plugin
 
@@ -121,16 +126,16 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export INPUT_TOPIC=<inputTopic>
 export INPUT_SUBSCRIPTION=<inputSubscription>
 export USER_TEMP_LOCATION=<userTempLocation>
-export OUTPUT_FILENAME_PREFIX="output"
+export OUTPUT_FILENAME_PREFIX=output
 export OUTPUT_FILENAME_SUFFIX=""
-export OUTPUT_SHARD_TEMPLATE="W-P-SS-of-NN"
+export OUTPUT_SHARD_TEMPLATE=W-P-SS-of-NN
 export NUM_SHARDS=0
-export WINDOW_DURATION="5m"
-export YEAR_PATTERN="YYYY"
-export MONTH_PATTERN="MM"
-export DAY_PATTERN="dd"
-export HOUR_PATTERN="HH"
-export MINUTE_PATTERN="mm"
+export WINDOW_DURATION=5m
+export YEAR_PATTERN=YYYY
+export MONTH_PATTERN=MM
+export DAY_PATTERN=dd
+export HOUR_PATTERN=HH
+export MINUTE_PATTERN=mm
 
 gcloud dataflow flex-template run "cloud-pubsub-to-gcs-text-flex-job" \
   --project "$PROJECT" \
@@ -174,16 +179,16 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 export INPUT_TOPIC=<inputTopic>
 export INPUT_SUBSCRIPTION=<inputSubscription>
 export USER_TEMP_LOCATION=<userTempLocation>
-export OUTPUT_FILENAME_PREFIX="output"
+export OUTPUT_FILENAME_PREFIX=output
 export OUTPUT_FILENAME_SUFFIX=""
-export OUTPUT_SHARD_TEMPLATE="W-P-SS-of-NN"
+export OUTPUT_SHARD_TEMPLATE=W-P-SS-of-NN
 export NUM_SHARDS=0
-export WINDOW_DURATION="5m"
-export YEAR_PATTERN="YYYY"
-export MONTH_PATTERN="MM"
-export DAY_PATTERN="dd"
-export HOUR_PATTERN="HH"
-export MINUTE_PATTERN="mm"
+export WINDOW_DURATION=5m
+export YEAR_PATTERN=YYYY
+export MONTH_PATTERN=MM
+export DAY_PATTERN=dd
+export HOUR_PATTERN=HH
+export MINUTE_PATTERN=mm
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

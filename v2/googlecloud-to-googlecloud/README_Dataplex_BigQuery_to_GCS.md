@@ -1,11 +1,13 @@
-Dataplex: Tier Data from BigQuery to Cloud Storage Template
+
+Dataplex: Tier Data from BigQuery to Cloud Storage template
 ---
-A pipeline that exports all tables from a BigQuery dataset to Cloud Storage, registering metadata for the newly created files in Dataplex.
+A pipeline that exports all tables from a BigQuery dataset to Cloud Storage,
+registering metadata for the newly created files in Dataplex.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Dataplex_BigQuery_to_GCS).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -45,7 +47,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/DataplexBigQueryToGcs.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/DataplexBigQueryToGcs.java)
 
 ### Templates Plugin
 
@@ -85,6 +87,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -119,10 +122,10 @@ export MAX_PARALLEL_BIG_QUERY_METADATA_REQUESTS=5
 ### Optional
 export TABLES=<tables>
 export EXPORT_DATA_MODIFIED_BEFORE_DATE_TIME=<exportDataModifiedBeforeDateTime>
-export FILE_FORMAT="PARQUET"
-export FILE_COMPRESSION="SNAPPY"
+export FILE_FORMAT=PARQUET
+export FILE_COMPRESSION=SNAPPY
 export PARTITION_ID_REG_EXP=<partitionIdRegExp>
-export WRITE_DISPOSITION="SKIP"
+export WRITE_DISPOSITION=SKIP
 export ENFORCE_SAME_PARTITION_KEY=true
 export DELETE_SOURCE_DATA=false
 export UPDATE_DATAPLEX_METADATA=false
@@ -168,10 +171,10 @@ export MAX_PARALLEL_BIG_QUERY_METADATA_REQUESTS=5
 ### Optional
 export TABLES=<tables>
 export EXPORT_DATA_MODIFIED_BEFORE_DATE_TIME=<exportDataModifiedBeforeDateTime>
-export FILE_FORMAT="PARQUET"
-export FILE_COMPRESSION="SNAPPY"
+export FILE_FORMAT=PARQUET
+export FILE_COMPRESSION=SNAPPY
 export PARTITION_ID_REG_EXP=<partitionIdRegExp>
-export WRITE_DISPOSITION="SKIP"
+export WRITE_DISPOSITION=SKIP
 export ENFORCE_SAME_PARTITION_KEY=true
 export DELETE_SOURCE_DATA=false
 export UPDATE_DATAPLEX_METADATA=false

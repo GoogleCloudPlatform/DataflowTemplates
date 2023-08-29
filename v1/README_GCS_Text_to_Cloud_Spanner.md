@@ -1,11 +1,13 @@
-Text Files on Cloud Storage to Cloud Spanner Template
+
+Text Files on Cloud Storage to Cloud Spanner template
 ---
-A pipeline to import a Cloud Spanner database from a set of Text (CSV) files in Cloud Storage.
+The Cloud Storage Text to Cloud Spanner template is a batch pipeline that reads
+CSV text files from Cloud Storage and imports them to a Cloud Spanner database.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-cloud-spanner)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Text_to_Cloud_Spanner).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -48,7 +50,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/spanner/TextImportPipeline.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/spanner/TextImportPipeline.java)
 
 ### Templates Plugin
 
@@ -123,17 +125,17 @@ export DATABASE_ID=<databaseId>
 export IMPORT_MANIFEST=<importManifest>
 
 ### Optional
-export SPANNER_HOST="https://batch-spanner.googleapis.com"
-export COLUMN_DELIMITER=","
-export FIELD_QUALIFIER="\""
-export TRAILING_DELIMITER="true"
+export SPANNER_HOST=https://batch-spanner.googleapis.com
+export COLUMN_DELIMITER=,
+export FIELD_QUALIFIER="
+export TRAILING_DELIMITER=true
 export ESCAPE=<escape>
 export NULL_STRING=<nullString>
 export DATE_FORMAT=<dateFormat>
 export TIMESTAMP_FORMAT=<timestampFormat>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export SPANNER_PRIORITY=<spannerPriority>
-export HANDLE_NEW_LINE="false"
+export HANDLE_NEW_LINE=false
 export INVALID_OUTPUT_PATH=""
 
 gcloud dataflow jobs run "gcs-text-to-cloud-spanner-job" \
@@ -178,17 +180,17 @@ export DATABASE_ID=<databaseId>
 export IMPORT_MANIFEST=<importManifest>
 
 ### Optional
-export SPANNER_HOST="https://batch-spanner.googleapis.com"
-export COLUMN_DELIMITER=","
-export FIELD_QUALIFIER="\""
-export TRAILING_DELIMITER="true"
+export SPANNER_HOST=https://batch-spanner.googleapis.com
+export COLUMN_DELIMITER=,
+export FIELD_QUALIFIER="
+export TRAILING_DELIMITER=true
 export ESCAPE=<escape>
 export NULL_STRING=<nullString>
 export DATE_FORMAT=<dateFormat>
 export TIMESTAMP_FORMAT=<timestampFormat>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export SPANNER_PRIORITY=<spannerPriority>
-export HANDLE_NEW_LINE="false"
+export HANDLE_NEW_LINE=false
 export INVALID_OUTPUT_PATH=""
 
 mvn clean package -PtemplatesRun \

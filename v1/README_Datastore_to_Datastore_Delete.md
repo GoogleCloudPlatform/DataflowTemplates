@@ -1,11 +1,14 @@
-Bulk Delete Entities in Datastore [Deprecated] Template
+
+Bulk Delete Entities in Datastore [Deprecated] template
 ---
-A pipeline which reads in Entities (via a GQL query) from Datastore, optionally passes in the JSON encoded Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.
+A pipeline which reads in Entities (via a GQL query) from Datastore, optionally
+passes in the JSON encoded Entities to a JavaScript UDF, and then deletes all
+matching Entities in the selected target project.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-bulk-delete)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Datastore_to_Datastore_Delete).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -50,7 +53,7 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/DatastoreToDatastoreDelete.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/DatastoreToDatastoreDelete.java)
 
 ### Templates Plugin
 
@@ -128,7 +131,7 @@ export DATASTORE_DELETE_PROJECT_ID=<datastoreDeleteProjectId>
 export DATASTORE_READ_NAMESPACE=<datastoreReadNamespace>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export DATASTORE_HINT_NUM_WORKERS="500"
+export DATASTORE_HINT_NUM_WORKERS=500
 
 gcloud dataflow jobs run "datastore-to-datastore-delete-job" \
   --project "$PROJECT" \
@@ -167,7 +170,7 @@ export DATASTORE_DELETE_PROJECT_ID=<datastoreDeleteProjectId>
 export DATASTORE_READ_NAMESPACE=<datastoreReadNamespace>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export DATASTORE_HINT_NUM_WORKERS="500"
+export DATASTORE_HINT_NUM_WORKERS=500
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

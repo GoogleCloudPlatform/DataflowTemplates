@@ -1,11 +1,16 @@
-Pub/Sub Subscription to BigQuery Template
+
+Pub/Sub Subscription to BigQuery template
 ---
-Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub subscription, transforms them using a JavaScript user-defined function (UDF), and writes them to a pre-existing BigQuery table as BigQuery elements.
+The Pub/Sub Subscription to BigQuery template is a streaming pipeline that reads
+JSON-formatted messages from a Pub/Sub subscription and writes them to a BigQuery
+table. You can use the template as a quick solution to move Pub/Sub data to
+BigQuery. The template reads JSON-formatted messages from Pub/Sub and converts
+them to BigQuery elements.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-subscription-to-bigquery)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_Subscription_to_BigQuery).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -20,10 +25,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional Parameters
 
-* **outputDeadletterTable** (Table for messages failed to reach the output table (i.e., Deadletter table)): Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. It should be in the format of "your-project-id:your-dataset.your-table-name". If it doesn't exist, it will be created during pipeline execution. If not specified, "{outputTableSpec}_error_records" is used instead.
+* **outputDeadletterTable** (Table for messages failed to reach the output table (i.e., Deadletter table)): BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead.
 * **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
 * **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **javascriptFunctionReload** (Enable JavaScript UDF auto-reload feature): If set to true, enables the JavaScript UDF auto-reload feature, which guarantees that updated code is used without the need to restart jobs.
 * **javascriptReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
 
 
@@ -50,7 +54,7 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/PubSubToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/PubSubToBigQuery.java)
 
 ### Templates Plugin
 
@@ -127,8 +131,7 @@ export INPUT_SUBSCRIPTION=<inputSubscription>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
 
 gcloud dataflow jobs run "pubsub-subscription-to-bigquery-job" \
   --project "$PROJECT" \
@@ -139,7 +142,6 @@ gcloud dataflow jobs run "pubsub-subscription-to-bigquery-job" \
   --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
-  --parameters "javascriptFunctionReload=$JAVASCRIPT_FUNCTION_RELOAD" \
   --parameters "javascriptReloadIntervalMinutes=$JAVASCRIPT_RELOAD_INTERVAL_MINUTES"
 ```
 
@@ -166,8 +168,7 @@ export INPUT_SUBSCRIPTION=<inputSubscription>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -176,7 +177,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-subscription-to-bigquery-job" \
 -DtemplateName="PubSub_Subscription_to_BigQuery" \
--Dparameters="outputTableSpec=$OUTPUT_TABLE_SPEC,inputSubscription=$INPUT_SUBSCRIPTION,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptFunctionReload=$JAVASCRIPT_FUNCTION_RELOAD,javascriptReloadIntervalMinutes=$JAVASCRIPT_RELOAD_INTERVAL_MINUTES" \
+-Dparameters="outputTableSpec=$OUTPUT_TABLE_SPEC,inputSubscription=$INPUT_SUBSCRIPTION,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptReloadIntervalMinutes=$JAVASCRIPT_RELOAD_INTERVAL_MINUTES" \
 -pl v1 \
 -am
 ```

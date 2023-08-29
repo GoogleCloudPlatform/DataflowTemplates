@@ -1,11 +1,20 @@
-Cloud Storage Text File to Pub/Sub (Batch) Template
+
+Cloud Storage Text File to Pub/Sub (Batch) template
 ---
-Batch pipeline. Reads records from text files stored in Cloud Storage and publishes them to a Pub/Sub topic.
+This template creates a batch pipeline that reads records from text files stored
+in Cloud Storage and publishes them to a Pub/Sub topic. The template can be used
+to publish records in a newline-delimited file containing JSON records or CSV
+file to a Pub/Sub topic for real-time processing. You can use this template to
+replay data to Pub/Sub.
+
+This template does not set any timestamp on the individual records. The event
+time is equal to the publishing time during execution. If your pipeline relies on
+an accurate event time for processing, you must not use this pipeline.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-pubsub)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Text_to_Cloud_PubSub).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -35,7 +44,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/TextToPubsub.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/TextToPubsub.java)
 
 ### Templates Plugin
 

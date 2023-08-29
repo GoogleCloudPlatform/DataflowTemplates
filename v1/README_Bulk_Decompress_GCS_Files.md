@@ -1,11 +1,22 @@
-Bulk Decompress Files on Cloud Storage Template
+
+Bulk Decompress Files on Cloud Storage template
 ---
-A pipeline which decompresses files on Cloud Storage to a specified location. Supported formats: Bzip2, deflate, and gzip.
+The Bulk Decompress Cloud Storage Files template is a batch pipeline that
+decompresses files on Cloud Storage to a specified location. This functionality
+is useful when you want to use compressed data to minimize network bandwidth
+costs during a migration, but would like to maximize analytical processing speed
+by operating on uncompressed data after migration. The pipeline automatically
+handles multiple compression modes during a single run and determines the
+decompression mode to use based on the file extension (.bzip2, .deflate, .gz,
+.zip).
+
+Note: The Bulk Decompress Cloud Storage Files template is intended for single
+compressed files and not compressed folders.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/bulk-decompress-cloud-storage)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Bulk_Decompress_GCS_Files).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -36,7 +47,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/BulkDecompressor.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/BulkDecompressor.java)
 
 ### Templates Plugin
 
