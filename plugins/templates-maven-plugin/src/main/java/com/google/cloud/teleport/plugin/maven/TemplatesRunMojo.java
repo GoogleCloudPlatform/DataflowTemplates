@@ -97,9 +97,6 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
       required = false)
   protected String basePythonContainerImage;
 
-  @Parameter(name = "dockerfilePath", defaultValue = "${dockerfilePath}", required = false)
-  protected String dockerfilePath;
-
   @Parameter(defaultValue = "${parameters}", readonly = true, required = true)
   protected String parameters;
 
@@ -156,8 +153,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               artifactRegion,
               gcpTempLocation,
               baseContainerImage,
-              basePythonContainerImage,
-              dockerfilePath);
+              basePythonContainerImage);
 
       String useJobName =
           StringUtils.isNotEmpty(jobName)

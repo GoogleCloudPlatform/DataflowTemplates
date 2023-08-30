@@ -34,12 +34,12 @@ public class PythonDockerfileGeneratorTest {
 
   @Test
   public void testGenerateDockerfile() throws IOException, TemplateException {
+    new File(outputFolder.getAbsolutePath() + "/word-count").mkdirs();
     PythonDockerfileGenerator.generateDockerfile("a container image", "word-count", outputFolder);
-    File outputFile = new File(outputFolder.getAbsolutePath() + "/Dockerfile");
+    File outputFile = new File(outputFolder.getAbsolutePath() + "/word-count/Dockerfile");
 
     assertTrue(outputFile.exists());
     String fileContents = Files.toString(outputFile, Charsets.UTF_8);
     assertThat(fileContents).contains("FROM a container image");
-    assertThat(fileContents).contains("COPY word-count");
   }
 }

@@ -48,7 +48,6 @@ public final class PythonDockerfileGenerator {
 
     Map<String, Object> parameters = new HashMap<>();
     parameters.put("baseContainerImage", basePythonContainerImage);
-    parameters.put("containerName", containerName);
 
     Template template = freemarkerConfig.getTemplate("Dockerfile-template");
 
@@ -60,7 +59,7 @@ public final class PythonDockerfileGenerator {
       writer.flush();
 
       Files.write(
-          Path.of(targetDirectory.getPath() + "/Dockerfile"),
+          Path.of(targetDirectory.getPath() + "/" + containerName + "/Dockerfile"),
           baos.toString(StandardCharsets.UTF_8).getBytes());
     } catch (Exception e) {
       LOG.warning("Unable to generate Dockerfile for " + containerName);
