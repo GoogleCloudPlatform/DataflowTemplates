@@ -1,11 +1,14 @@
-MongoDB to BigQuery Template
+
+MongoDB to BigQuery template
 ---
-A batch pipeline which reads data documents from MongoDB and writes them to BigQuery.
+The MongoDB to BigQuery template is a batch pipeline that reads documents from
+MongoDB and writes them to BigQuery as specified by the <code>userOption</code>
+parameter.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/mongodb-to-bigquery)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=MongoDB_to_BigQuery).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -15,18 +18,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **mongoDbUri** (MongoDB Connection URI): URI to connect to MongoDB Atlas. Defaults to: mongouri.
+* **mongoDbUri** (MongoDB Connection URI): MongoDB connection URI in the format `mongodb+srv://:@`. Defaults to: mongouri.
 * **database** (MongoDB database): Database in MongoDB to read the collection from. (Example: my-db).
 * **collection** (MongoDB collection): Name of the collection inside MongoDB database. (Example: my-collection). Defaults to: collection.
-* **userOption** (User option): User option: FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string. Defaults to: NONE.
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects. Defaults to: bqtable.
+* **userOption** (User option): User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string. Defaults to: NONE.
+* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects. Defaults to: bqtable.
 
 ### Optional Parameters
 
 * **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
 * **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **javascriptDocumentTransformGcsPath** (Path to the UDF stored in the GCS bucket.): Enter the gcs path in format gs://<bucket-name>/<js-file>.js . (Example: gs://test-bucket/test.js).
-* **javascriptDocumentTransformFunctionName** (UDF function name stored in the GCS bucket.): Enter the Name of the User defined function . (Example: transform).
+* **javascriptDocumentTransformGcsPath** (JavaScript UDF path in Cloud Storage.): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.js).
+* **javascriptDocumentTransformFunctionName** (The name of the JavaScript function to call as your UDF.): The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'. (Example: transform).
 
 
 
@@ -42,7 +45,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/mongodb-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/mongodb/templates/MongoDbToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/mongodb-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/mongodb/templates/MongoDbToBigQuery.java)
 
 ### Templates Plugin
 
@@ -82,6 +85,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -109,11 +113,11 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/MongoDB_to_BigQuery"
 
 ### Required
-export MONGO_DB_URI="mongouri"
+export MONGO_DB_URI=mongouri
 export DATABASE=<database>
-export COLLECTION="collection"
-export USER_OPTION="NONE"
-export OUTPUT_TABLE_SPEC="bqtable"
+export COLLECTION=collection
+export USER_OPTION=NONE
+export OUTPUT_TABLE_SPEC=bqtable
 
 ### Optional
 export USE_STORAGE_WRITE_API=false
@@ -152,11 +156,11 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export MONGO_DB_URI="mongouri"
+export MONGO_DB_URI=mongouri
 export DATABASE=<database>
-export COLLECTION="collection"
-export USER_OPTION="NONE"
-export OUTPUT_TABLE_SPEC="bqtable"
+export COLLECTION=collection
+export USER_OPTION=NONE
+export OUTPUT_TABLE_SPEC=bqtable
 
 ### Optional
 export USE_STORAGE_WRITE_API=false

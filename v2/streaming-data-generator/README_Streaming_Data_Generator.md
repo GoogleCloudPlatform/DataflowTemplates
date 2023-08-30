@@ -1,11 +1,13 @@
-Streaming Data Generator Template
+
+Streaming Data Generator template
 ---
-A pipeline to publish messages at specified QPS.This template can be used to benchmark performance of streaming pipelines.
+A pipeline to publish messages at specified QPS.This template can be used to
+benchmark performance of streaming pipelines.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/streaming-data-generator)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Streaming_Data_Generator).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -58,7 +60,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/streaming-data-generator/src/main/java/com/google/cloud/teleport/v2/templates/StreamingDataGenerator.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/streaming-data-generator/src/main/java/com/google/cloud/teleport/v2/templates/StreamingDataGenerator.java)
 
 ### Templates Plugin
 
@@ -98,6 +100,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -132,15 +135,15 @@ export SCHEMA_TEMPLATE=<schemaTemplate>
 export SCHEMA_LOCATION=<schemaLocation>
 export TOPIC=<topic>
 export MESSAGES_LIMIT=0
-export OUTPUT_TYPE="JSON"
+export OUTPUT_TYPE=JSON
 export AVRO_SCHEMA_LOCATION=<avroSchemaLocation>
-export SINK_TYPE="PUBSUB"
+export SINK_TYPE=PUBSUB
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
-export WRITE_DISPOSITION="WRITE_APPEND"
+export WRITE_DISPOSITION=WRITE_APPEND
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export WINDOW_DURATION="1m"
+export WINDOW_DURATION=1m
 export OUTPUT_DIRECTORY=<outputDirectory>
-export OUTPUT_FILENAME_PREFIX="output-"
+export OUTPUT_FILENAME_PREFIX=output-
 export NUM_SHARDS=0
 export DRIVER_CLASS_NAME=<driverClassName>
 export CONNECTION_URL=<connectionUrl>
@@ -207,15 +210,15 @@ export SCHEMA_TEMPLATE=<schemaTemplate>
 export SCHEMA_LOCATION=<schemaLocation>
 export TOPIC=<topic>
 export MESSAGES_LIMIT=0
-export OUTPUT_TYPE="JSON"
+export OUTPUT_TYPE=JSON
 export AVRO_SCHEMA_LOCATION=<avroSchemaLocation>
-export SINK_TYPE="PUBSUB"
+export SINK_TYPE=PUBSUB
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
-export WRITE_DISPOSITION="WRITE_APPEND"
+export WRITE_DISPOSITION=WRITE_APPEND
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export WINDOW_DURATION="1m"
+export WINDOW_DURATION=1m
 export OUTPUT_DIRECTORY=<outputDirectory>
-export OUTPUT_FILENAME_PREFIX="output-"
+export OUTPUT_FILENAME_PREFIX=output-
 export NUM_SHARDS=0
 export DRIVER_CLASS_NAME=<driverClassName>
 export CONNECTION_URL=<connectionUrl>

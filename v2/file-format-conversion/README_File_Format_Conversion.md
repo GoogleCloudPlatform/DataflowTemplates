@@ -1,11 +1,19 @@
-Convert file formats between Avro, Parquet & CSV Template
+
+Convert file formats between Avro, Parquet & CSV template
 ---
-A pipeline to convert file formats between Avro, Parquet & csv.
+The File Format Conversion template is a batch pipeline that converts files
+stored on Cloud Storage from one supported format to another.
+
+The following format conversions are supported:
+- CSV to Avro
+- CSV to Parquet
+- Avro to Parquet
+- Parquet to Avro.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/file-format-conversion)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=File_Format_Conversion).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -48,7 +56,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/file-format-conversion/src/main/java/com/google/cloud/teleport/v2/templates/FileFormatConversion.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/file-format-conversion/src/main/java/com/google/cloud/teleport/v2/templates/FileFormatConversion.java)
 
 ### Templates Plugin
 
@@ -126,13 +134,13 @@ export SCHEMA=<schema>
 export CONTAINS_HEADERS=false
 export DEADLETTER_TABLE=<deadletterTable>
 export DELIMITER=<delimiter>
-export CSV_FORMAT="Default"
+export CSV_FORMAT=Default
 export JSON_SCHEMA_PATH=<jsonSchemaPath>
 export LARGE_NUM_FILES=false
-export CSV_FILE_ENCODING="UTF-8"
+export CSV_FILE_ENCODING=UTF-8
 export LOG_DETAILED_CSV_CONVERSION_ERRORS=false
 export NUM_SHARDS=0
-export OUTPUT_FILE_PREFIX="output"
+export OUTPUT_FILE_PREFIX=output
 
 gcloud dataflow flex-template run "file-format-conversion-job" \
   --project "$PROJECT" \
@@ -181,13 +189,13 @@ export SCHEMA=<schema>
 export CONTAINS_HEADERS=false
 export DEADLETTER_TABLE=<deadletterTable>
 export DELIMITER=<delimiter>
-export CSV_FORMAT="Default"
+export CSV_FORMAT=Default
 export JSON_SCHEMA_PATH=<jsonSchemaPath>
 export LARGE_NUM_FILES=false
-export CSV_FILE_ENCODING="UTF-8"
+export CSV_FILE_ENCODING=UTF-8
 export LOG_DETAILED_CSV_CONVERSION_ERRORS=false
 export NUM_SHARDS=0
-export OUTPUT_FILE_PREFIX="output"
+export OUTPUT_FILE_PREFIX=output
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

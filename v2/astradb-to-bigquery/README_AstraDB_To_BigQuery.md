@@ -1,11 +1,24 @@
-AstraDB to BigQuery Template
+
+AstraDB to BigQuery template
 ---
-A batch pipeline which reads a table from AstraDB and copy it to BigQuery.
+The AstraDB to BigQuery template is a batch pipeline that reads records from
+AstraDB and writes them to BigQuery.
+
+If the destination table doesn't exist in BigQuery, the pipeline creates a table
+with the following values:
+- The `Dataset ID` is inherited from the Cassandra keyspace.
+- The `Table ID` is inherited from the Cassandra table.
+
+The schema of the destination table is inferred from the source Cassandra table.
+- `List` and `Set` are mapped to BigQuery `REPEATED` fields.
+- `Map` are mapped to BigQuery `RECORD` fields.
+- All other types are mapped to BigQuery fields with the corresponding types.
+- Cassandra user-defined types (UDTs) and tuple data types are not supported.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/astradb-to-bigquery)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=AstraDB_To_BigQuery).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -15,17 +28,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **astraToken** (Astra Token): Token value or secret resource Id (Example: AstraCS:abcdefghij...).
-* **astraDatabaseId** (Database Identifier): Database unique identifier (uuid) (Example: cf7af129-d33a-498f-ad06-d97a6ee6eb7).
-* **astraKeyspace** (Cassandra Keyspace): Name of cassandra keyspace inside Astra Database.
-* **astraTable** (Cassandra Table): Name of the table inside Cassandra Database (Example: my_table).
+* **astraToken** (Astra token): Token value or secret resource ID (Example: AstraCS:abcdefghij).
+* **astraDatabaseId** (Database identifier): Database unique identifier (uuid) (Example: cf7af129-d33a-498f-ad06-d97a6ee6eb7).
+* **astraKeyspace** (Cassandra keyspace): Name of the Cassandra keyspace inside Astra database.
+* **astraTable** (Cassandra table): Name of the table inside the Cassandra database (Example: my_table).
 
 ### Optional Parameters
 
-* **astraQuery** (Cassandra CQL Query): Query to filter instead of reading whole table.
-* **astraDatabaseRegion** (Astra Database Region): If not provided default is picked, useful with multi-region databases.
-* **minTokenRangesCount** (Token range count): Minimal number of splits to distribute query.
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.
+* **astraQuery** (Cassandra CQL Query): Query to filter rows instead of reading the whole table.
+* **astraDatabaseRegion** (Astra Database Region): If not provided, a default is chosen, which is useful with multi-region databases.
+* **minTokenRangesCount** (Token range count): The minimal number of splits to distribute the query.
+* **outputTableSpec** (BigQuery output table): The BigQuery table location to write the output to. The table should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match the input objects.
 
 
 
@@ -41,7 +54,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/astradb-to-bigquery/src/main/java/com/google/cloud/teleport/v2/astradb/templates/AstraDbToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/astradb-to-bigquery/src/main/java/com/google/cloud/teleport/v2/astradb/templates/AstraDbToBigQuery.java)
 
 ### Templates Plugin
 

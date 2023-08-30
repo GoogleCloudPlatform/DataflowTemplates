@@ -1,11 +1,12 @@
-Bigtable Change Streams to HBase Replicator Template
+
+Bigtable Change Streams to HBase Replicator template
 ---
 A streaming pipeline that replicates Bigtable change stream mutations to HBase.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Bigtable_Change_Streams_to_HBase).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -56,7 +57,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/bigtable-changestreams-to-hbase/src/main/java/com/google/cloud/teleport/v2/templates/BigtableChangeStreamsToHBase.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/bigtable-changestreams-to-hbase/src/main/java/com/google/cloud/teleport/v2/templates/BigtableChangeStreamsToHBase.java)
 
 ### Templates Plugin
 
@@ -132,20 +133,20 @@ export BIGTABLE_READ_TABLE_ID=<bigtableReadTableId>
 
 ### Optional
 export BIDIRECTIONAL_REPLICATION_ENABLED=false
-export CBT_QUALIFIER="BIDIRECTIONAL_REPL_SOURCE_CBT"
+export CBT_QUALIFIER=BIDIRECTIONAL_REPL_SOURCE_CBT
 export DRY_RUN_ENABLED=false
-export HBASE_QUALIFIER="BIDIRECTIONAL_REPL_SOURCE_HBASE"
-export HBASE_ZOOKEEPER_QUORUM_PORT="2181"
+export HBASE_QUALIFIER=BIDIRECTIONAL_REPL_SOURCE_HBASE
+export HBASE_ZOOKEEPER_QUORUM_PORT=2181
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
 export BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID=""
-export BIGTABLE_CHANGE_STREAM_CHARSET="UTF-8"
+export BIGTABLE_CHANGE_STREAM_CHARSET=UTF-8
 export BIGTABLE_CHANGE_STREAM_START_TIMESTAMP=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS=""
 export BIGTABLE_CHANGE_STREAM_NAME=<bigtableChangeStreamName>
 export BIGTABLE_CHANGE_STREAM_RESUME=false
 export BIGTABLE_READ_PROJECT_ID=""
-export BIGTABLE_READ_APP_PROFILE="default"
+export BIGTABLE_READ_APP_PROFILE=default
 export BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS=<bigtableRpcAttemptTimeoutMs>
 export BIGTABLE_RPC_TIMEOUT_MS=<bigtableRpcTimeoutMs>
 export BIGTABLE_ADDITIONAL_RETRY_CODES=<bigtableAdditionalRetryCodes>
@@ -203,20 +204,20 @@ export BIGTABLE_READ_TABLE_ID=<bigtableReadTableId>
 
 ### Optional
 export BIDIRECTIONAL_REPLICATION_ENABLED=false
-export CBT_QUALIFIER="BIDIRECTIONAL_REPL_SOURCE_CBT"
+export CBT_QUALIFIER=BIDIRECTIONAL_REPL_SOURCE_CBT
 export DRY_RUN_ENABLED=false
-export HBASE_QUALIFIER="BIDIRECTIONAL_REPL_SOURCE_HBASE"
-export HBASE_ZOOKEEPER_QUORUM_PORT="2181"
+export HBASE_QUALIFIER=BIDIRECTIONAL_REPL_SOURCE_HBASE
+export HBASE_ZOOKEEPER_QUORUM_PORT=2181
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
 export BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID=""
-export BIGTABLE_CHANGE_STREAM_CHARSET="UTF-8"
+export BIGTABLE_CHANGE_STREAM_CHARSET=UTF-8
 export BIGTABLE_CHANGE_STREAM_START_TIMESTAMP=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS=""
 export BIGTABLE_CHANGE_STREAM_NAME=<bigtableChangeStreamName>
 export BIGTABLE_CHANGE_STREAM_RESUME=false
 export BIGTABLE_READ_PROJECT_ID=""
-export BIGTABLE_READ_APP_PROFILE="default"
+export BIGTABLE_READ_APP_PROFILE=default
 export BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS=<bigtableRpcAttemptTimeoutMs>
 export BIGTABLE_RPC_TIMEOUT_MS=<bigtableRpcTimeoutMs>
 export BIGTABLE_ADDITIONAL_RETRY_CODES=<bigtableAdditionalRetryCodes>

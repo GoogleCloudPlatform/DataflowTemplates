@@ -1,11 +1,13 @@
-JMS to Pubsub Template
+
+JMS to Pubsub template
 ---
-A streaming pipeline which inserts data from a JMS Broker Server(Topic/Queue) and writes to Pubsub Topic.
+The JMS to Pub/Sub template is a streaming pipeline that reads messages from
+ActiveMQ JMS Server (Queue/Topic) and writes them to Pub/Sub.
+
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/jms-to-pubsub)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Jms_to_PubSub).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -39,7 +41,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/jms-to-pubsub/src/main/java/com/google/cloud/teleport/v2/templates/JmsToPubsub.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/jms-to-pubsub/src/main/java/com/google/cloud/teleport/v2/templates/JmsToPubsub.java)
 
 ### Templates Plugin
 
@@ -78,6 +80,7 @@ mvn clean package -PtemplatesStage  \
 -pl v2/jms-to-pubsub \
 -am
 ```
+
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:

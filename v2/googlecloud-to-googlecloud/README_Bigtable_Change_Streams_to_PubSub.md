@@ -1,11 +1,13 @@
-Cloud Bigtable change streams to PubSub Template
+
+Cloud Bigtable change streams to PubSub template
 ---
-Streaming pipeline. Streams Bigtable data change records and writes them into PubSub using Dataflow Runner V2.
+Streaming pipeline. Streams Bigtable data change records and writes them into
+PubSub using Dataflow Runner V2.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Bigtable_Change_Streams_to_PubSub).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -57,7 +59,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/bigtablechangestreamstopubsub/BigtableChangeStreamsToPubSub.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/bigtablechangestreamstopubsub/BigtableChangeStreamsToPubSub.java)
 
 ### Templates Plugin
 
@@ -131,25 +133,25 @@ export BIGTABLE_READ_INSTANCE_ID=<bigtableReadInstanceId>
 export BIGTABLE_READ_TABLE_ID=<bigtableReadTableId>
 
 ### Optional
-export MESSAGE_ENCODING="JSON"
-export MESSAGE_FORMAT="JSON"
-export STRIP_VALUES="false"
+export MESSAGE_ENCODING=JSON
+export MESSAGE_FORMAT=JSON
+export STRIP_VALUES=false
 export DLQ_DIRECTORY=""
-export DLQ_RETRY_MINUTES="10"
-export DLQ_MAX_RETRIES="5"
-export USE_BASE64ROWKEYS="false"
+export DLQ_RETRY_MINUTES=10
+export DLQ_MAX_RETRIES=5
+export USE_BASE64ROWKEYS=false
 export PUB_SUB_PROJECT_ID=""
-export USE_BASE64COLUMN_QUALIFIERS="false"
-export USE_BASE64VALUES="false"
-export DISABLE_DLQ_RETRIES="false"
+export USE_BASE64COLUMN_QUALIFIERS=false
+export USE_BASE64VALUES=false
+export DISABLE_DLQ_RETRIES=false
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
 export BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID=""
-export BIGTABLE_CHANGE_STREAM_CHARSET="UTF-8"
+export BIGTABLE_CHANGE_STREAM_CHARSET=UTF-8
 export BIGTABLE_CHANGE_STREAM_START_TIMESTAMP=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS=""
 export BIGTABLE_CHANGE_STREAM_NAME=<bigtableChangeStreamName>
-export BIGTABLE_CHANGE_STREAM_RESUME="false"
+export BIGTABLE_CHANGE_STREAM_RESUME=false
 export BIGTABLE_READ_PROJECT_ID=""
 
 gcloud dataflow flex-template run "bigtable-change-streams-to-pubsub-job" \
@@ -204,25 +206,25 @@ export BIGTABLE_READ_INSTANCE_ID=<bigtableReadInstanceId>
 export BIGTABLE_READ_TABLE_ID=<bigtableReadTableId>
 
 ### Optional
-export MESSAGE_ENCODING="JSON"
-export MESSAGE_FORMAT="JSON"
-export STRIP_VALUES="false"
+export MESSAGE_ENCODING=JSON
+export MESSAGE_FORMAT=JSON
+export STRIP_VALUES=false
 export DLQ_DIRECTORY=""
-export DLQ_RETRY_MINUTES="10"
-export DLQ_MAX_RETRIES="5"
-export USE_BASE64ROWKEYS="false"
+export DLQ_RETRY_MINUTES=10
+export DLQ_MAX_RETRIES=5
+export USE_BASE64ROWKEYS=false
 export PUB_SUB_PROJECT_ID=""
-export USE_BASE64COLUMN_QUALIFIERS="false"
-export USE_BASE64VALUES="false"
-export DISABLE_DLQ_RETRIES="false"
+export USE_BASE64COLUMN_QUALIFIERS=false
+export USE_BASE64VALUES=false
+export DISABLE_DLQ_RETRIES=false
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
 export BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID=""
-export BIGTABLE_CHANGE_STREAM_CHARSET="UTF-8"
+export BIGTABLE_CHANGE_STREAM_CHARSET=UTF-8
 export BIGTABLE_CHANGE_STREAM_START_TIMESTAMP=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES=""
 export BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS=""
 export BIGTABLE_CHANGE_STREAM_NAME=<bigtableChangeStreamName>
-export BIGTABLE_CHANGE_STREAM_RESUME="false"
+export BIGTABLE_CHANGE_STREAM_RESUME=false
 export BIGTABLE_READ_PROJECT_ID=""
 
 mvn clean package -PtemplatesRun \

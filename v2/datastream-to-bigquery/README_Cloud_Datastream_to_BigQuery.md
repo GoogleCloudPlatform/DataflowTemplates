@@ -1,11 +1,27 @@
-Datastream to BigQuery Template
+
+Datastream to BigQuery template
 ---
-Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and writes them to a pre-existing BigQuery dataset as a set of tables.
+The Datastream to BigQuery template is a streaming pipeline that reads <a
+href="https://cloud.google.com/datastream/docs">Datastream</a> data and
+replicates it into BigQuery. The template reads data from Cloud Storage using
+Pub/Sub notifications and replicates it into a time partitioned BigQuery staging
+table. Following replication, the template executes a MERGE in BigQuery to upsert
+all change data capture (CDC) changes into a replica of the source table.
+
+The template handles creating and updating the BigQuery tables managed by the
+replication. When data definition language (DDL) is required, a callback to
+Datastream extracts the source table schema and translates it into BigQuery data
+types. Supported operations include the following:
+- New tables are created as data is inserted.
+- New columns are added to BigQuery tables with null initial values.
+- Dropped columns are ignored in BigQuery and future values are null.
+- Renamed columns are added to BigQuery as new columns.
+- Type changes are not propagated to BigQuery.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-bigquery)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Datastream_to_BigQuery).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -39,6 +55,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **partitionRetentionDays** (Partition retention days.): The number of days to use for partition retention when running BigQuery merges. Default is 1.
 * **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
 * **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
+* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
 * **pythonTextTransformGcsPath** (Gcs path to python UDF source): The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.py).
 * **pythonRuntimeVersion** (Python UDF Runtime Version): The runtime version to use for this Python UDF.
 * **pythonTextTransformFunctionName** (UDF Python Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
@@ -72,7 +89,7 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/datastream-to-bigquery/src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/datastream-to-bigquery/src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToBigQuery.java)
 
 ### Templates Plugin
 
@@ -141,28 +158,29 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Datastream_
 
 ### Required
 export INPUT_FILE_PATTERN=<inputFilePattern>
-export INPUT_FILE_FORMAT="avro"
+export INPUT_FILE_FORMAT=avro
 export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
-export OUTPUT_STAGING_DATASET_TEMPLATE="{_metadata_dataset}"
-export OUTPUT_DATASET_TEMPLATE="{_metadata_dataset}"
+export OUTPUT_STAGING_DATASET_TEMPLATE={_metadata_dataset}
+export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 
 ### Optional
 export STREAM_NAME=<streamName>
-export RFC_START_DATE_TIME="1970-01-01T00:00:00.00Z"
+export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
 export FILE_READ_CONCURRENCY=10
 export OUTPUT_PROJECT_ID=<outputProjectId>
-export OUTPUT_STAGING_TABLE_NAME_TEMPLATE="{_metadata_table}_log"
-export OUTPUT_TABLE_NAME_TEMPLATE="{_metadata_table}"
-export IGNORE_FIELDS="_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count"
+export OUTPUT_STAGING_TABLE_NAME_TEMPLATE={_metadata_table}_log
+export OUTPUT_TABLE_NAME_TEMPLATE={_metadata_table}
+export IGNORE_FIELDS=_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count
 export MERGE_FREQUENCY_MINUTES=5
 export DLQ_RETRY_MINUTES=10
-export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
+export DATA_STREAM_ROOT_URL=https://datastream.googleapis.com/
 export APPLY_MERGE=true
 export MERGE_CONCURRENCY=30
 export PARTITION_RETENTION_DAYS=1
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 export PYTHON_TEXT_TRANSFORM_GCS_PATH=<pythonTextTransformGcsPath>
 export PYTHON_RUNTIME_VERSION=<pythonRuntimeVersion>
 export PYTHON_TEXT_TRANSFORM_FUNCTION_NAME=<pythonTextTransformFunctionName>
@@ -197,6 +215,7 @@ gcloud dataflow flex-template run "cloud-datastream-to-bigquery-job" \
   --parameters "partitionRetentionDays=$PARTITION_RETENTION_DAYS" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
   --parameters "pythonTextTransformGcsPath=$PYTHON_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "pythonRuntimeVersion=$PYTHON_RUNTIME_VERSION" \
   --parameters "pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME" \
@@ -224,28 +243,29 @@ export REGION=us-central1
 
 ### Required
 export INPUT_FILE_PATTERN=<inputFilePattern>
-export INPUT_FILE_FORMAT="avro"
+export INPUT_FILE_FORMAT=avro
 export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
-export OUTPUT_STAGING_DATASET_TEMPLATE="{_metadata_dataset}"
-export OUTPUT_DATASET_TEMPLATE="{_metadata_dataset}"
+export OUTPUT_STAGING_DATASET_TEMPLATE={_metadata_dataset}
+export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 
 ### Optional
 export STREAM_NAME=<streamName>
-export RFC_START_DATE_TIME="1970-01-01T00:00:00.00Z"
+export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
 export FILE_READ_CONCURRENCY=10
 export OUTPUT_PROJECT_ID=<outputProjectId>
-export OUTPUT_STAGING_TABLE_NAME_TEMPLATE="{_metadata_table}_log"
-export OUTPUT_TABLE_NAME_TEMPLATE="{_metadata_table}"
-export IGNORE_FIELDS="_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count"
+export OUTPUT_STAGING_TABLE_NAME_TEMPLATE={_metadata_table}_log
+export OUTPUT_TABLE_NAME_TEMPLATE={_metadata_table}
+export IGNORE_FIELDS=_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count
 export MERGE_FREQUENCY_MINUTES=5
 export DLQ_RETRY_MINUTES=10
-export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
+export DATA_STREAM_ROOT_URL=https://datastream.googleapis.com/
 export APPLY_MERGE=true
 export MERGE_CONCURRENCY=30
 export PARTITION_RETENTION_DAYS=1
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 export PYTHON_TEXT_TRANSFORM_GCS_PATH=<pythonTextTransformGcsPath>
 export PYTHON_RUNTIME_VERSION=<pythonRuntimeVersion>
 export PYTHON_TEXT_TRANSFORM_FUNCTION_NAME=<pythonTextTransformFunctionName>
@@ -262,7 +282,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-bigquery-job" \
 -DtemplateName="Cloud_Datastream_to_BigQuery" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,outputProjectId=$OUTPUT_PROJECT_ID,outputStagingDatasetTemplate=$OUTPUT_STAGING_DATASET_TEMPLATE,outputStagingTableNameTemplate=$OUTPUT_STAGING_TABLE_NAME_TEMPLATE,outputDatasetTemplate=$OUTPUT_DATASET_TEMPLATE,outputTableNameTemplate=$OUTPUT_TABLE_NAME_TEMPLATE,ignoreFields=$IGNORE_FIELDS,mergeFrequencyMinutes=$MERGE_FREQUENCY_MINUTES,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,applyMerge=$APPLY_MERGE,mergeConcurrency=$MERGE_CONCURRENCY,partitionRetentionDays=$PARTITION_RETENTION_DAYS,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,pythonTextTransformGcsPath=$PYTHON_TEXT_TRANSFORM_GCS_PATH,pythonRuntimeVersion=$PYTHON_RUNTIME_VERSION,pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME,runtimeRetries=$RUNTIME_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,outputProjectId=$OUTPUT_PROJECT_ID,outputStagingDatasetTemplate=$OUTPUT_STAGING_DATASET_TEMPLATE,outputStagingTableNameTemplate=$OUTPUT_STAGING_TABLE_NAME_TEMPLATE,outputDatasetTemplate=$OUTPUT_DATASET_TEMPLATE,outputTableNameTemplate=$OUTPUT_TABLE_NAME_TEMPLATE,ignoreFields=$IGNORE_FIELDS,mergeFrequencyMinutes=$MERGE_FREQUENCY_MINUTES,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,applyMerge=$APPLY_MERGE,mergeConcurrency=$MERGE_CONCURRENCY,partitionRetentionDays=$PARTITION_RETENTION_DAYS,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,pythonTextTransformGcsPath=$PYTHON_TEXT_TRANSFORM_GCS_PATH,pythonRuntimeVersion=$PYTHON_RUNTIME_VERSION,pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME,runtimeRetries=$RUNTIME_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -pl v2/datastream-to-bigquery \
 -am
 ```

@@ -1,11 +1,12 @@
-Google Cloud to Neo4j Template
+
+Google Cloud to Neo4j template
 ---
 Copy data from Google Cloud (BigQuery, Text) into Neo4j.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Google_Cloud_to_Neo4j).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -17,12 +18,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **jobSpecUri** (Path to job configuration file): The path to the job specification file, which contains the configuration for source and target metadata.
 * **neo4jConnectionUri** (Path to Neo4j connection metadata): Path to Neo4j connection metadata JSON file.
-* **optionsJson** (Options JSON): Options JSON. Use runtime tokens. (Example: {token1:value1,token2:value2}).
 
 ### Optional Parameters
 
-* **readQuery** (Query SQL): Override SQL query (optional). Defaults to empty.
-* **inputFilePattern** (Path to Text File): Override text file pattern (optional) (Example: gs://your-bucket/path/*.json). Defaults to empty.
+* **optionsJson** (Options JSON): Options JSON. Use runtime tokens. (Example: {token1:value1,token2:value2}). Defaults to empty.
+* **readQuery** (Query SQL): Override SQL query. Defaults to empty.
+* **inputFilePattern** (Path to Text File): Override text file pattern (Example: gs://your-bucket/path/*.json). Defaults to empty.
 * **disabledAlgorithms** (Disabled algorithms to override jdk.tls.disabledAlgorithms): Comma separated algorithms to disable. If this value is set to "none" then dk.tls.disabledAlgorithms is set to "". Use with care, as the algorithms disabled by default are known to have either vulnerabilities or performance issues. For example: SSLv3, RC4.
 * **extraFilesToStage** (Extra files to stage in the workers): Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker. (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id).
 
@@ -40,7 +41,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-neo4j/src/main/java/com/google/cloud/teleport/v2/neo4j/templates/GoogleCloudToNeo4j.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-neo4j/src/main/java/com/google/cloud/teleport/v2/neo4j/templates/GoogleCloudToNeo4j.java)
 
 ### Templates Plugin
 
@@ -80,6 +81,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -109,9 +111,9 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Google_Cloud_to_N
 ### Required
 export JOB_SPEC_URI=<jobSpecUri>
 export NEO4J_CONNECTION_URI=<neo4jConnectionUri>
-export OPTIONS_JSON=<optionsJson>
 
 ### Optional
+export OPTIONS_JSON=""
 export READ_QUERY=""
 export INPUT_FILE_PATTERN=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
@@ -148,9 +150,9 @@ export REGION=us-central1
 ### Required
 export JOB_SPEC_URI=<jobSpecUri>
 export NEO4J_CONNECTION_URI=<neo4jConnectionUri>
-export OPTIONS_JSON=<optionsJson>
 
 ### Optional
+export OPTIONS_JSON=""
 export READ_QUERY=""
 export INPUT_FILE_PATTERN=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>

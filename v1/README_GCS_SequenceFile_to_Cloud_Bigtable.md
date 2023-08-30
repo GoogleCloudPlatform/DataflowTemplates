@@ -1,11 +1,14 @@
-SequenceFile Files on Cloud Storage to Cloud Bigtable Template
+
+SequenceFile Files on Cloud Storage to Cloud Bigtable template
 ---
-A pipeline which reads data from SequenceFile in Cloud Storage and writes it to Cloud Bigtable table.
+The Cloud Storage SequenceFile to Bigtable template is a pipeline that reads data
+from SequenceFiles in a Cloud Storage bucket and writes the data to a Bigtable
+table. You can use the template to copy data from Cloud Storage to Bigtable.
+
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/sequencefile-to-bigtable)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_SequenceFile_to_Cloud_Bigtable).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -39,7 +42,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/bigtable/beam/sequencefiles/ImportJob.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/bigtable/beam/sequencefiles/ImportJob.java)
 
 ### Templates Plugin
 
@@ -113,7 +116,7 @@ export BIGTABLE_PROJECT=<bigtableProject>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export SOURCE_PATTERN=<sourcePattern>
-export MUTATION_THROTTLE_LATENCY_MS="0"
+export MUTATION_THROTTLE_LATENCY_MS=0
 
 ### Optional
 export BIGTABLE_APP_PROFILE_ID=<bigtableAppProfileId>
@@ -150,7 +153,7 @@ export BIGTABLE_PROJECT=<bigtableProject>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export SOURCE_PATTERN=<sourcePattern>
-export MUTATION_THROTTLE_LATENCY_MS="0"
+export MUTATION_THROTTLE_LATENCY_MS=0
 
 ### Optional
 export BIGTABLE_APP_PROFILE_ID=<bigtableAppProfileId>

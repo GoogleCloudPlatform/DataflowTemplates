@@ -56,7 +56,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(PubSubToBigQuery.class)
 @RunWith(JUnit4.class)
-public final class PubSubToBigQueryIT extends TemplateTestBase {
+public class PubSubToBigQueryIT extends TemplateTestBase {
 
   private PubsubResourceManager pubsubResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
@@ -86,12 +86,12 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPubsubToBigQuery() throws IOException {
+  public void testPubsubToBigQuery() throws IOException, InterruptedException {
     basePubsubToBigQuery(Function.identity()); // no extra parameters
   }
 
   @Test
-  public void testPubsubToBigQueryWithStorageApi() throws IOException {
+  public void testPubsubToBigQueryWithStorageApi() throws IOException, InterruptedException {
     basePubsubToBigQuery(
         b ->
             b.addParameter("useStorageWriteApi", "true")
@@ -105,7 +105,8 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
   }
 
   private void basePubsubToBigQuery(
-      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException, InterruptedException {
     // Arrange
     List<Field> bqSchemaFields =
         Arrays.asList(
@@ -217,7 +218,6 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
       ByteString messageData = ByteString.copyFromUtf8("bad id " + i);
       pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
     }
-
     BigQueryRowsCheck bigQueryRowsCheck =
         BigQueryRowsCheck.builder(bigQueryResourceManager, table)
             .setMinRows(MESSAGES_COUNT)

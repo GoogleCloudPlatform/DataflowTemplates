@@ -1,11 +1,15 @@
-Pub/Sub Avro to BigQuery Template
+
+Pub/Sub Avro to BigQuery template
 ---
-A streaming pipeline which inserts Avro records from a Pub/Sub subscription into a BigQuery table.
+The Pub/Sub Avro to BigQuery template is a streaming pipeline that ingests Avro
+data from a Pub/Sub subscription into a BigQuery table. Any errors which occur
+while writing to the BigQuery table are streamed into a Pub/Sub unprocessed
+topic.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-avro-to-bigquery)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_Avro_to_BigQuery).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -17,7 +21,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **schemaPath** (Cloud Storage path to the Avro schema file): Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.
 * **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.
+* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 * **outputTopic** (Output Pub/Sub topic): The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
 
 ### Optional Parameters
@@ -43,7 +47,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/pubsub-binary-to-bigquery/src/main/java/com/google/cloud/teleport/v2/templates/PubsubAvroToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/pubsub-binary-to-bigquery/src/main/java/com/google/cloud/teleport/v2/templates/PubsubAvroToBigQuery.java)
 
 ### Templates Plugin
 
@@ -83,6 +87,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -116,8 +121,8 @@ export OUTPUT_TABLE_SPEC=<outputTableSpec>
 export OUTPUT_TOPIC=<outputTopic>
 
 ### Optional
-export WRITE_DISPOSITION="WRITE_APPEND"
-export CREATE_DISPOSITION="CREATE_IF_NEEDED"
+export WRITE_DISPOSITION=WRITE_APPEND
+export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
@@ -161,8 +166,8 @@ export OUTPUT_TABLE_SPEC=<outputTableSpec>
 export OUTPUT_TOPIC=<outputTopic>
 
 ### Optional
-export WRITE_DISPOSITION="WRITE_APPEND"
-export CREATE_DISPOSITION="CREATE_IF_NEEDED"
+export WRITE_DISPOSITION=WRITE_APPEND
+export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export NUM_STORAGE_WRITE_API_STREAMS=0

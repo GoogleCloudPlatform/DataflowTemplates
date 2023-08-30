@@ -1,11 +1,15 @@
-Datastore to Text Files on Cloud Storage [Deprecated] Template
+
+Datastore to Text Files on Cloud Storage [Deprecated] template
 ---
-Batch pipeline. Reads Datastore entities and writes them to Cloud Storage as text files.
+The Datastore to Cloud Storage Text template is a batch pipeline that reads
+Datastore entities and writes them to Cloud Storage as text files. You can
+provide a function to process each entity as a JSON string. If you don't provide
+such a function, every line in the output file will be a JSON-serialized entity.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-to-cloud-storage)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Datastore_to_GCS_Text).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -50,7 +54,7 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/DatastoreToText.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/DatastoreToText.java)
 
 ### Templates Plugin
 
@@ -128,7 +132,7 @@ export TEXT_WRITE_PREFIX=<textWritePrefix>
 export DATASTORE_READ_NAMESPACE=<datastoreReadNamespace>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
 
 gcloud dataflow jobs run "datastore-to-gcs-text-job" \
   --project "$PROJECT" \
@@ -167,7 +171,7 @@ export TEXT_WRITE_PREFIX=<textWritePrefix>
 export DATASTORE_READ_NAMESPACE=<datastoreReadNamespace>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

@@ -1,11 +1,13 @@
-Spanner Change Streams to Sink Template
+
+Spanner Change Streams to Sink template
 ---
-Streaming pipeline. Ingests data from Spanner Change Streams, orders them, and writes them to a sink.
+Streaming pipeline. Ingests data from Spanner Change Streams, orders them, and
+writes them to a sink.
+
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/spanner-change-streams-to-sink)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Spanner_Change_Streams_to_Sink).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -34,6 +36,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **pubSubEndpoint** (Endpoint for pubsub): Endpoint for pubsub. Must be provided if sink is pubsub. Defaults to empty.
 * **kafkaClusterFilePath** (Path to GCS file containing Kafka cluster details): This is the path to GCS file containing Kafka cluster details. Must be provided if sink is kafka.
 * **sourceShardsFilePath** (Path to GCS file containing the the Source shard details): Path to GCS file containing connection profile info for source shards. Must be provided if sink is kafka.
+* **filtrationMode** (Filtration mode): Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
 
 
 
@@ -49,7 +52,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/spanner-change-streams-to-sink/src/main/java/com/google/cloud/teleport/v2/templates/SpannerChangeStreamsToSink.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/spanner-change-streams-to-sink/src/main/java/com/google/cloud/teleport/v2/templates/SpannerChangeStreamsToSink.java)
 
 ### Templates Plugin
 
@@ -135,6 +138,7 @@ export PUB_SUB_ERROR_TOPIC_ID=<pubSubErrorTopicId>
 export PUB_SUB_ENDPOINT=""
 export KAFKA_CLUSTER_FILE_PATH=<kafkaClusterFilePath>
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
+export FILTRATION_MODE=forward_migration
 
 gcloud dataflow flex-template run "spanner-change-streams-to-sink-job" \
   --project "$PROJECT" \
@@ -155,7 +159,8 @@ gcloud dataflow flex-template run "spanner-change-streams-to-sink-job" \
   --parameters "pubSubEndpoint=$PUB_SUB_ENDPOINT" \
   --parameters "kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH" \
   --parameters "sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" \
-  --parameters "sessionFilePath=$SESSION_FILE_PATH"
+  --parameters "sessionFilePath=$SESSION_FILE_PATH" \
+  --parameters "filtrationMode=$FILTRATION_MODE"
 ```
 
 For more information about the command, please check:
@@ -192,6 +197,7 @@ export PUB_SUB_ERROR_TOPIC_ID=<pubSubErrorTopicId>
 export PUB_SUB_ENDPOINT=""
 export KAFKA_CLUSTER_FILE_PATH=<kafkaClusterFilePath>
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
+export FILTRATION_MODE=forward_migration
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -200,7 +206,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-sink-job" \
 -DtemplateName="Spanner_Change_Streams_to_Sink" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,incrementInterval=$INCREMENT_INTERVAL,sinkType=$SINK_TYPE,pubSubDataTopicId=$PUB_SUB_DATA_TOPIC_ID,pubSubErrorTopicId=$PUB_SUB_ERROR_TOPIC_ID,pubSubEndpoint=$PUB_SUB_ENDPOINT,kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,incrementInterval=$INCREMENT_INTERVAL,sinkType=$SINK_TYPE,pubSubDataTopicId=$PUB_SUB_DATA_TOPIC_ID,pubSubErrorTopicId=$PUB_SUB_ERROR_TOPIC_ID,pubSubEndpoint=$PUB_SUB_ENDPOINT,kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE" \
 -pl v2/spanner-change-streams-to-sink \
 -am
 ```

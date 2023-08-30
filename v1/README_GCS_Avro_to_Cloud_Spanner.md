@@ -1,11 +1,14 @@
-Avro Files on Cloud Storage to Cloud Spanner Template
+
+Avro Files on Cloud Storage to Cloud Spanner template
 ---
-A pipeline to import a Cloud Spanner database from a set of Avro files in Cloud Storage.
+The Cloud Storage Avro files to Cloud Spanner template is a batch pipeline that
+reads Avro files exported from Cloud Spanner stored in Cloud Storage and imports
+them to a Cloud Spanner database.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-cloud-spanner)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Avro_to_Cloud_Spanner).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -22,9 +25,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Optional Parameters
 
 * **spannerHost** (Cloud Spanner Endpoint to call): The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **waitForIndexes** (Wait for Indexes): By default the import pipeline is not blocked on index creation, and it may complete with indexes still being created in the background. In testing, it may be useful to set this option to false so that the pipeline waits until indexes are finished.
-* **waitForForeignKeys** (Wait for Foreign Keys): By default the import pipeline is not blocked on foreign key creation, and it may complete with foreign keys still being created in the background. In testing, it may be useful to set this option to false so that the pipeline waits until foreign keys are finished.
-* **waitForChangeStreams** (Wait for Foreign Keys): By default the import pipeline is blocked on change stream creation. If false, it may complete with change streams still being created in the background.
+* **waitForIndexes** (Wait for Indexes): By default the import pipeline is not blocked on index creation, and it may complete with indexes still being created in the background. If true, the pipeline waits until indexes are created.
+* **waitForForeignKeys** (Wait for Foreign Keys): By default the import pipeline is not blocked on foreign key creation, and it may complete with foreign keys still being created in the background. If true, the pipeline waits until foreign keys are created.
+* **waitForChangeStreams** (Wait for Change Streams): By default the import pipeline is blocked on change stream creation. If false, it may complete with change streams still being created in the background.
 * **waitForSequences** (Wait for Sequences): By default the import pipeline is blocked on sequence creation. If false, it may complete with sequences still being created in the background.
 * **earlyIndexCreateFlag** (Create Indexes early): Flag to turn off early index creation if there are many indexes. Indexes and Foreign keys are created after dataload. If there are more than 40 DDL statements to be executed after dataload, it is preferable to create the indexes before datalod. This is the flag to turn the feature off. Defaults to: true.
 * **spannerProjectId** (Cloud Spanner Project Id): The project id of the Cloud Spanner instance.
@@ -45,7 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/spanner/ImportPipeline.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/spanner/ImportPipeline.java)
 
 ### Templates Plugin
 
@@ -120,14 +123,14 @@ export DATABASE_ID=<databaseId>
 export INPUT_DIR=<inputDir>
 
 ### Optional
-export SPANNER_HOST="https://batch-spanner.googleapis.com"
-export WAIT_FOR_INDEXES="false"
-export WAIT_FOR_FOREIGN_KEYS="false"
-export WAIT_FOR_CHANGE_STREAMS="true"
-export WAIT_FOR_SEQUENCES="true"
-export EARLY_INDEX_CREATE_FLAG="true"
+export SPANNER_HOST=https://batch-spanner.googleapis.com
+export WAIT_FOR_INDEXES=false
+export WAIT_FOR_FOREIGN_KEYS=false
+export WAIT_FOR_CHANGE_STREAMS=true
+export WAIT_FOR_SEQUENCES=true
+export EARLY_INDEX_CREATE_FLAG=true
 export SPANNER_PROJECT_ID=<spannerProjectId>
-export DDL_CREATION_TIMEOUT_IN_MINUTES="30"
+export DDL_CREATION_TIMEOUT_IN_MINUTES=30
 export SPANNER_PRIORITY=<spannerPriority>
 
 gcloud dataflow jobs run "gcs-avro-to-cloud-spanner-job" \
@@ -169,14 +172,14 @@ export DATABASE_ID=<databaseId>
 export INPUT_DIR=<inputDir>
 
 ### Optional
-export SPANNER_HOST="https://batch-spanner.googleapis.com"
-export WAIT_FOR_INDEXES="false"
-export WAIT_FOR_FOREIGN_KEYS="false"
-export WAIT_FOR_CHANGE_STREAMS="true"
-export WAIT_FOR_SEQUENCES="true"
-export EARLY_INDEX_CREATE_FLAG="true"
+export SPANNER_HOST=https://batch-spanner.googleapis.com
+export WAIT_FOR_INDEXES=false
+export WAIT_FOR_FOREIGN_KEYS=false
+export WAIT_FOR_CHANGE_STREAMS=true
+export WAIT_FOR_SEQUENCES=true
+export EARLY_INDEX_CREATE_FLAG=true
 export SPANNER_PROJECT_ID=<spannerProjectId>
-export DDL_CREATION_TIMEOUT_IN_MINUTES="30"
+export DDL_CREATION_TIMEOUT_IN_MINUTES=30
 export SPANNER_PRIORITY=<spannerPriority>
 
 mvn clean package -PtemplatesRun \

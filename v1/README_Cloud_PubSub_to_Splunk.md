@@ -1,11 +1,29 @@
-Pub/Sub to Splunk Template
+
+Pub/Sub to Splunk template
 ---
-A pipeline that reads from a Pub/Sub subscription and writes to Splunk's HTTP Event Collector (HEC).
+The Pub/Sub to Splunk template is a streaming pipeline that reads messages from a
+Pub/Sub subscription and writes the message payload to Splunk via Splunk's HTTP
+Event Collector (HEC). The most common use case of this template is to export
+logs to Splunk. To see an example of the underlying workflow, see <a
+href="https://cloud.google.com/architecture/deploying-production-ready-log-exports-to-splunk-using-dataflow">Deploying
+production-ready log exports to Splunk using Dataflow</a>.
+
+Before writing to Splunk, you can also apply a JavaScript user-defined function
+to the message payload. Any messages that experience processing failures are
+forwarded to a Pub/Sub unprocessed topic for further troubleshooting and
+reprocessing.
+
+As an extra layer of protection for your HEC token, you can also pass in a Cloud
+KMS key along with the base64-encoded HEC token parameter encrypted with the
+Cloud KMS key. See the <a
+href="https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt">Cloud
+KMS API encryption endpoint</a> for additional details on encrypting your HEC
+token parameter.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-splunk)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_PubSub_to_Splunk).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -17,7 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
 * **url** (Splunk HEC URL.): Splunk Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs. (Example: https://splunk-hec-host:8088).
-* **outputDeadletterTopic** (Output deadletter Pub/Sub topic): The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.
+* **outputDeadletterTopic** (Output deadletter Pub/Sub topic): The Pub/Sub topic to publish deadletter records to. The name should be in the format of `projects/your-project-id/topics/your-topic-name`.
 
 ### Optional Parameters
 
@@ -34,7 +52,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **enableGzipHttpCompression** (Enable compression (gzip content encoding) in HTTP requests sent to Splunk HEC.): Parameter which specifies if HTTP requests sent to Splunk HEC should be GZIP encoded. Defaults to: true.
 * **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
 * **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **javascriptFunctionReload** (Enable JavaScript UDF auto-reload feature): If set to true, enables the JavaScript UDF auto-reload feature, which guarantees that updated code is used without the need to restart jobs.
 * **javascriptReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
 
 
@@ -61,7 +78,7 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/PubSubToSplunk.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/PubSubToSplunk.java)
 
 ### Templates Plugin
 
@@ -145,12 +162,11 @@ export TOKEN_KMSENCRYPTION_KEY=<tokenKMSEncryptionKey>
 export TOKEN_SECRET_ID=<tokenSecretId>
 export TOKEN_SOURCE=<tokenSource>
 export ROOT_CA_CERTIFICATE_PATH=<rootCaCertificatePath>
-export ENABLE_BATCH_LOGS="true"
-export ENABLE_GZIP_HTTP_COMPRESSION="true"
+export ENABLE_BATCH_LOGS=true
+export ENABLE_GZIP_HTTP_COMPRESSION=true
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
 
 gcloud dataflow jobs run "cloud-pubsub-to-splunk-job" \
   --project "$PROJECT" \
@@ -171,7 +187,6 @@ gcloud dataflow jobs run "cloud-pubsub-to-splunk-job" \
   --parameters "enableGzipHttpCompression=$ENABLE_GZIP_HTTP_COMPRESSION" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
-  --parameters "javascriptFunctionReload=$JAVASCRIPT_FUNCTION_RELOAD" \
   --parameters "javascriptReloadIntervalMinutes=$JAVASCRIPT_RELOAD_INTERVAL_MINUTES" \
   --parameters "outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC"
 ```
@@ -206,12 +221,11 @@ export TOKEN_KMSENCRYPTION_KEY=<tokenKMSEncryptionKey>
 export TOKEN_SECRET_ID=<tokenSecretId>
 export TOKEN_SOURCE=<tokenSource>
 export ROOT_CA_CERTIFICATE_PATH=<rootCaCertificatePath>
-export ENABLE_BATCH_LOGS="true"
-export ENABLE_GZIP_HTTP_COMPRESSION="true"
+export ENABLE_BATCH_LOGS=true
+export ENABLE_GZIP_HTTP_COMPRESSION=true
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
+export JAVASCRIPT_RELOAD_INTERVAL_MINUTES=60
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -220,7 +234,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-pubsub-to-splunk-job" \
 -DtemplateName="Cloud_PubSub_to_Splunk" \
--Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,token=$TOKEN,url=$URL,batchCount=$BATCH_COUNT,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,parallelism=$PARALLELISM,includePubsubMessage=$INCLUDE_PUBSUB_MESSAGE,tokenKMSEncryptionKey=$TOKEN_KMSENCRYPTION_KEY,tokenSecretId=$TOKEN_SECRET_ID,tokenSource=$TOKEN_SOURCE,rootCaCertificatePath=$ROOT_CA_CERTIFICATE_PATH,enableBatchLogs=$ENABLE_BATCH_LOGS,enableGzipHttpCompression=$ENABLE_GZIP_HTTP_COMPRESSION,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptFunctionReload=$JAVASCRIPT_FUNCTION_RELOAD,javascriptReloadIntervalMinutes=$JAVASCRIPT_RELOAD_INTERVAL_MINUTES,outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC" \
+-Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,token=$TOKEN,url=$URL,batchCount=$BATCH_COUNT,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,parallelism=$PARALLELISM,includePubsubMessage=$INCLUDE_PUBSUB_MESSAGE,tokenKMSEncryptionKey=$TOKEN_KMSENCRYPTION_KEY,tokenSecretId=$TOKEN_SECRET_ID,tokenSource=$TOKEN_SOURCE,rootCaCertificatePath=$ROOT_CA_CERTIFICATE_PATH,enableBatchLogs=$ENABLE_BATCH_LOGS,enableGzipHttpCompression=$ENABLE_GZIP_HTTP_COMPRESSION,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptReloadIntervalMinutes=$JAVASCRIPT_RELOAD_INTERVAL_MINUTES,outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC" \
 -pl v1 \
 -am
 ```

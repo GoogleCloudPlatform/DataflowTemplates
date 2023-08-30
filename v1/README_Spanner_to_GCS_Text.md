@@ -1,11 +1,14 @@
-Cloud Spanner to Text Files on Cloud Storage Template
+
+Cloud Spanner to Text Files on Cloud Storage template
 ---
-A pipeline which reads in Cloud Spanner table and writes it to Cloud Storage as CSV text files.
+The Cloud Spanner to Cloud Storage Text template is a batch pipeline that reads
+in data from a Cloud Spanner table, and writes it to Cloud Storage as CSV text
+files.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-cloud-storage)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Spanner_to_GCS_Text).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -43,7 +46,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
 
 ### Templates Plugin
 
@@ -122,9 +125,9 @@ export TEXT_WRITE_PREFIX=<textWritePrefix>
 ### Optional
 export CSV_TEMP_DIRECTORY=<csvTempDirectory>
 export SPANNER_PRIORITY=<spannerPriority>
-export SPANNER_HOST="https://batch-spanner.googleapis.com"
+export SPANNER_HOST=https://batch-spanner.googleapis.com
 export SPANNER_SNAPSHOT_TIME=""
-export DATA_BOOST_ENABLED="false"
+export DATA_BOOST_ENABLED=false
 
 gcloud dataflow jobs run "spanner-to-gcs-text-job" \
   --project "$PROJECT" \
@@ -167,9 +170,9 @@ export TEXT_WRITE_PREFIX=<textWritePrefix>
 ### Optional
 export CSV_TEMP_DIRECTORY=<csvTempDirectory>
 export SPANNER_PRIORITY=<spannerPriority>
-export SPANNER_HOST="https://batch-spanner.googleapis.com"
+export SPANNER_HOST=https://batch-spanner.googleapis.com
 export SPANNER_SNAPSHOT_TIME=""
-export DATA_BOOST_ENABLED="false"
+export DATA_BOOST_ENABLED=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
