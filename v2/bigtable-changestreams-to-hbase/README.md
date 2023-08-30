@@ -38,7 +38,7 @@ All the below has to occur **at the same time** for data divergence to occur:
 * The lost worker replicates its Put after the compaction clears away the Delete
 
 There are some strategies to reduce this risk:
-  * Do not write in Deletes
+  * Do not write in Deletes and disable CBT Garbage Collection (GC) mutations by setting `filterGCMutations = True` in the replicator.
   * Disable major compaction in Hbase, eliminates this risk entirely.
   * Set Hbase `NEW_VERSION_BEHAVIOR = false`, then a duplicated Put that arrived later will always be masked by a previous Delete.
   * Set Hbase `KEEP_DELETED_CELLS = true` (see [here](https://hbase.apache.org/book.html#cf.keep.deleted)). Deletes continue to mask puts even after major compaction. With infinite max_versions and TTL, this is effectively the same as disabling major compaction and eliminates this risk entirely.
@@ -89,6 +89,9 @@ export CBT_QUALIFIER=SOURCE_CBT
 export HBASE_QUALIFIER=SOURCE_HBASE
 # Dry run mode is for testing, does not write to Hbase. Disabled by default.
 export DRY_RUN_ENABLED=false
+
+# Optional setting to filter out CBT GC mutations. Disabled by default.
+export FILTER_GC_MUTATIONS=false
 ```
 
 * Stage and run template in Dataflow:
@@ -99,7 +102,7 @@ mvn clean package -am -PtemplatesRun \
   -DbucketName=$GCS_BUCKET_NAME \
   -Dregion=$REGION \
   -DtemplateName="Bigtable_Change_Streams_to_HBase" \
-  -Dparameters="bigtableReadProjectId=$PROJECT,bigtableReadInstanceId=$INSTANCE,bigtableReadTableId=$TABLE,bigtableChangeStreamAppProfile=$APP_PROFILE,hbaseZookeeperQuorumHost=$ZOOKEEPER_QUORUM_HOST,hbaseZookeeperQuorumPort=$ZOOKEEPER_QUORUM_PORT,hbaseRootDir=$HBASE_ROOT_DIR,bidirectionalReplicationEnabled=$BIDIRECTIONAL_REPLICATION,cbtQualifier=$CBT_QUALIFIER,hbaseQualifier=$HBASE_QUALIFIER,dryRunEnabled=$DRY_RUN_ENABLED" \
+  -Dparameters="bigtableReadProjectId=$PROJECT,bigtableReadInstanceId=$INSTANCE,bigtableReadTableId=$TABLE,bigtableChangeStreamAppProfile=$APP_PROFILE,hbaseZookeeperQuorumHost=$ZOOKEEPER_QUORUM_HOST,hbaseZookeeperQuorumPort=$ZOOKEEPER_QUORUM_PORT,hbaseRootDir=$HBASE_ROOT_DIR,bidirectionalReplicationEnabled=$BIDIRECTIONAL_REPLICATION,cbtQualifier=$CBT_QUALIFIER,hbaseQualifier=$HBASE_QUALIFIER,dryRunEnabled=$DRY_RUN_ENABLED,filterGCMutations=$FILTER_GC_MUTATIONS" \
   -pl v2/bigtable-changestreams-to-hbase
 ```
 ### Testing Template
