@@ -465,8 +465,13 @@ mvn clean verify -PtemplatesRelease \
 
 ## More Information
 
-* [Dataflow templates](https://cloud.google.com/dataflow/docs/concepts/dataflow-templates)
-* [Google-provided templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+* [Dataflow Templates](https://cloud.google.com/dataflow/docs/concepts/dataflow-templates) - basic template concepts.
+* [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates) - official documentation for templates provided by Google (the source code is in this repository).
+* Dataflow Cookbook: [Blog](https://cloud.google.com/blog/products/data-analytics/introducing-dataflow-cookbook), [GitHub Repository](https://github.com/GoogleCloudPlatform/dataflow-cookbook) - pipeline examples and practical solutions to common data processing challenges.
 * [Apache Beam](https://beam.apache.org)
   - [Overview](https://beam.apache.org/use/beam-overview/)
   - Quickstart: [Java](https://beam.apache.org/get-started/quickstart-java), [Python](https://beam.apache.org/get-started/quickstart-py), [Go](https://beam.apache.org/get-started/quickstart-go)
+  - [Tour of Beam](https://tour.beam.apache.org/) - an interactive tour with learning topics covering core Beam concepts from simple ones to more advanced ones.
+  - [Beam Playground](https://beam.apache.org/get-started/try-beam-playground/) -  an interactive environment to try out Beam transforms and examples without having to install Apache Beam.
+  - [Beam College](https://beamcollege.dev/) - hands-on training and practical tips, including video recordings of Apache Beam and Dataflow Templates lessons.
+  - [Beam Quest](https://beam.apache.org/blog/beamquest/) - an introductory course into Beam with a completion badge.
