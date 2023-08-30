@@ -500,13 +500,6 @@
     </profile>
   </profiles>
 
-  <repositories>
-    <repository>
-      <id>apache.candidate</id>
-      <url>https://repository.apache.org/content/repositories/orgapachebeam-1355/</url>
-    </repository>
-  </repositories>
-
   <modules>
     <module>metadata</module>
     <module>plugins</module>
