@@ -81,10 +81,16 @@ public class SpannerChangeStreamsToPubSub {
     run(options);
   }
 
-  private static String getProjectId(SpannerChangeStreamsToPubSubOptions options) {
+  private static String getSpannerProjectId(SpannerChangeStreamsToPubSubOptions options) {
     return options.getSpannerProjectId().isEmpty()
         ? options.getProject()
         : options.getSpannerProjectId();
+  }
+
+  private static String getPubsubProjectId(SpannerChangeStreamsToPubSubOptions options) {
+    return options.getPubsubProjectId().isEmpty()
+        ? options.getProject()
+        : options.getPubsubProjectId();
   }
 
   public static PipelineResult run(SpannerChangeStreamsToPubSubOptions options) {
@@ -95,12 +101,13 @@ public class SpannerChangeStreamsToPubSub {
     final Pipeline pipeline = Pipeline.create(options);
     // Get the Spanner project, instance, database, metadata instance, metadata database
     // change stream, pubsub topic, and pubsub api parameters.
-    String projectId = getProjectId(options);
+    String spannerProjectId = getSpannerProjectId(options);
     String instanceId = options.getSpannerInstanceId();
     String databaseId = options.getSpannerDatabase();
     String metadataInstanceId = options.getSpannerMetadataInstanceId();
     String metadataDatabaseId = options.getSpannerMetadataDatabase();
     String changeStreamName = options.getSpannerChangeStreamName();
+    String pubsubProjectId = getPubsubProjectId(options);
     String pubsubTopicName = options.getPubsubTopic();
     String pubsubAPI = options.getPubsubAPI();
 
@@ -134,7 +141,7 @@ public class SpannerChangeStreamsToPubSub {
     SpannerConfig spannerConfig =
         SpannerConfig.create()
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-            .withProjectId(projectId)
+            .withProjectId(spannerProjectId)
             .withInstanceId(instanceId)
             .withDatabaseId(databaseId);
     // Propagate database role for fine-grained access control on change stream.
@@ -158,7 +165,7 @@ public class SpannerChangeStreamsToPubSub {
             "Convert each record to a PubsubMessage",
             FileFormatFactorySpannerChangeStreamsToPubSub.newBuilder()
                 .setOutputDataFormat(options.getOutputDataFormat())
-                .setProjectId(projectId)
+                .setProjectId(pubsubProjectId)
                 .setPubsubAPI(pubsubAPI)
                 .setPubsubTopicName(pubsubTopicName)
                 .build());
