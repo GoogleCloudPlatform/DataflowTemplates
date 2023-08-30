@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.utils;
 import static com.google.common.truth.Truth.assertThat;
 
 import org.apache.avro.Schema;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Supplier;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
