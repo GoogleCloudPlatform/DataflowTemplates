@@ -2,8 +2,8 @@ FROM ${baseContainerImage}
 
 ARG WORKDIR=/template
 RUN mkdir -p $WORKDIR
-COPY ${containerName}/main.py $WORKDIR
-COPY ${containerName}/requirements.txt $WORKDIR
+COPY main.py $WORKDIR
+COPY requirements.txt $WORKDIR
 WORKDIR $WORKDIR
 
 ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt

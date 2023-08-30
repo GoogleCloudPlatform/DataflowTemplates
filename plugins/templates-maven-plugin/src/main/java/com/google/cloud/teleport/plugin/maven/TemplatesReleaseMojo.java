@@ -83,9 +83,6 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       required = false)
   protected String basePythonContainerImage;
 
-  @Parameter(name = "dockerfilePath", defaultValue = "${dockerfilePath}", required = false)
-  protected String dockerfilePath;
-
   public void execute() throws MojoExecutionException {
 
     if (librariesBucketName == null || librariesBucketName.isEmpty()) {
@@ -147,8 +144,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 artifactRegion,
                 gcpTempLocation,
                 baseContainerImage,
-                basePythonContainerImage,
-                dockerfilePath);
+                basePythonContainerImage);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
         LOG.info("Template staged: {}", templatePath);

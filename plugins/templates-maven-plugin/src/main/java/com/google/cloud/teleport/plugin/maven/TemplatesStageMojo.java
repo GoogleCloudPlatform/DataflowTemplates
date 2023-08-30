@@ -109,9 +109,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       required = false)
   protected String basePythonContainerImage;
 
-  @Parameter(name = "dockerfilePath", defaultValue = "${dockerfilePath}", required = false)
-  protected String dockerfilePath;
-
   public TemplatesStageMojo() {}
 
   public TemplatesStageMojo(
@@ -130,8 +127,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String artifactRegion,
       String gcpTempLocation,
       String baseContainerImage,
-      String basePythonContainerImage,
-      String dockerfilePath) {
+      String basePythonContainerImage) {
     this.project = project;
     this.session = session;
     this.outputDirectory = outputDirectory;
@@ -148,7 +144,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     this.gcpTempLocation = gcpTempLocation;
     this.baseContainerImage = baseContainerImage;
     this.basePythonContainerImage = basePythonContainerImage;
-    this.dockerfilePath = dockerfilePath;
   }
 
   public void execute() throws MojoExecutionException {
@@ -470,11 +465,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String templatePath)
       throws IOException, InterruptedException, TemplateException {
 
-    if (dockerfilePath == null) {
+    String dockerfilePath = outputClassesDirectory.getPath() + "/" + containerName + "/Dockerfile";
+    File dockerfile = new File(dockerfilePath);
+    if (!dockerfile.exists()) {
       PythonDockerfileGenerator.generateDockerfile(
           basePythonContainerImage, containerName, outputClassesDirectory);
     }
-    stageUsingDockerfile(imagePath);
+    stageUsingDockerfile(imagePath, containerName);
 
     String[] flexTemplateBuildCmd =
         new String[] {
@@ -511,7 +508,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
-  private void stageUsingDockerfile(String imagePath) throws IOException, InterruptedException {
+  private void stageUsingDockerfile(String imagePath, String containerName)
+      throws IOException, InterruptedException {
     String[] gcloudBuildsCmd =
         new String[] {"gcloud", "builds", "submit", "--tag", imagePath, "--project", projectId};
     LOG.info("Running: {}", String.join(" ", gcloudBuildsCmd));
@@ -521,10 +519,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             .exec(
                 gcloudBuildsCmd,
                 null,
-                new File(
-                    dockerfilePath == null
-                        ? outputClassesDirectory.getAbsolutePath()
-                        : dockerfilePath));
+                new File(outputClassesDirectory.getAbsolutePath() + "/" + containerName));
 
     TemplatePluginUtils.redirectLinesLog(process.getInputStream(), LOG);
     TemplatePluginUtils.redirectLinesLog(process.getErrorStream(), LOG);

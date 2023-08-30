@@ -2,8 +2,8 @@ FROM gcr.io/dataflow-templates-base/python311-template-launcher-base
 
 ARG WORKDIR=/template
 RUN mkdir -p ${WORKDIR}
-COPY word-count-python/main.py /template
-COPY word-count-python/requirements.txt /template
+COPY main.py /template
+COPY requirements.txt /template
 WORKDIR ${WORKDIR}
 
 ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt
