@@ -86,6 +86,7 @@ public class UDFTextTransformer {
     // public InputUDFOptions options;
     public String javascriptTransformPath;
     public String javascriptTransformFnName;
+    public Integer javascriptTransformReloadInterval;
     public String pythonTransformPath;
     public String pythonTransformFnName;
     public Integer pythonTransformRetries;
@@ -100,12 +101,14 @@ public class UDFTextTransformer {
     public InputUDFToTableRow(
         String javascriptTransformPath,
         String javascriptTransformFnName,
+        Integer javascriptTransformReloadInterval,
         String pythonTransformPath,
         String pythonTransformFnName,
         Integer pythonTransformRetries,
         FailsafeElementCoder<InputT, String> coder) {
       this.javascriptTransformPath = javascriptTransformPath;
       this.javascriptTransformFnName = javascriptTransformFnName;
+      this.javascriptTransformReloadInterval = javascriptTransformReloadInterval;
       this.pythonTransformPath = pythonTransformPath;
       this.pythonTransformFnName = pythonTransformFnName;
       this.pythonTransformRetries = pythonTransformRetries;
@@ -135,6 +138,7 @@ public class UDFTextTransformer {
                 FailsafeJavascriptUdf.<InputT>newBuilder()
                     .setFileSystemPath(this.javascriptTransformPath)
                     .setFunctionName(this.javascriptTransformFnName)
+                    .setReloadIntervalMinutes(this.javascriptTransformReloadInterval)
                     .setSuccessTag(udfTempOut)
                     .setFailureTag(udfDeadletterOut)
                     .build());

@@ -292,6 +292,7 @@ public class CsvConvertersTest {
     options.setDelimiter(",");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setJavascriptTextTransformFunctionName("transform");
+    options.setJavascriptTextTransformReloadIntervalMinutes(0);
 
     PCollectionTuple failsafe =
         linesTuple.apply(
@@ -300,6 +301,8 @@ public class CsvConvertersTest {
                 .setDelimiter(options.getDelimiter())
                 .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
                 .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setUdfReloadIntervalMinutes(
+                    options.getJavascriptTextTransformReloadIntervalMinutes())
                 .setJsonSchemaPath(options.getJsonSchemaPath())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)

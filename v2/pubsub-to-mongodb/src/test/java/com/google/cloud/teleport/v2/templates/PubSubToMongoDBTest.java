@@ -176,6 +176,7 @@ public class PubSubToMongoDBTest {
     options.setDeadletterTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transform");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
+    options.setJavascriptTextTransformReloadIntervalMinutes(0);
 
     PCollectionTuple pc =
         pipeline
@@ -185,6 +186,8 @@ public class PubSubToMongoDBTest {
                     .setJavascriptTextTransformFunctionName(
                         options.getJavascriptTextTransformFunctionName())
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
+                    .setJavascriptTextTransformReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .build());
 
     PAssert.that(pc.get(PubSubToMongoDB.TRANSFORM_OUT))

@@ -138,8 +138,8 @@ public abstract class JavascriptTextTransformer {
                   public long expireAfterCreate(
                       JavascriptRuntime runtime, Invocable invocable, long currentTime) {
                     // Do not expire if reload is disabled
-                    if (runtime.reloadIntervalMinutes() <= 0
-                        || runtime.reloadIntervalMinutes() == null) {
+                    if (runtime.reloadIntervalMinutes() == null
+                        || runtime.reloadIntervalMinutes() <= 0) {
                       return Long.MAX_VALUE;
                     }
                     return TimeUnit.MINUTES.toNanos(runtime.reloadIntervalMinutes());
