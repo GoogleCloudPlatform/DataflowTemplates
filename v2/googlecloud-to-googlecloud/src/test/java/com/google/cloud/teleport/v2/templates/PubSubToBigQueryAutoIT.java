@@ -22,8 +22,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.io.IOException;
-
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(PubSubToBigQueryAuto.class)
 @RunWith(JUnit4.class)
