@@ -98,7 +98,7 @@ public class TemplateDefinitions {
     ImageSpec imageSpec = new ImageSpec();
 
     SdkInfo sdkInfo = new SdkInfo();
-    sdkInfo.setLanguage("JAVA");
+    sdkInfo.setLanguage(templateAnnotation.type().toString());
     imageSpec.setSdkInfo(sdkInfo);
 
     ImageSpecMetadata metadata = new ImageSpecMetadata();
