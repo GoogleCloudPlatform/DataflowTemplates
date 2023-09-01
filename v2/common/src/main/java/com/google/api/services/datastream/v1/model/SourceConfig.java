@@ -33,6 +33,9 @@ public final class SourceConfig extends com.google.api.client.json.GenericJson {
   /** Oracle data source configuration. The value may be {@code null}. */
   @com.google.api.client.util.Key private OracleSourceConfig oracleSourceConfig;
 
+  /** PostgreSQL data source configuration. The value may be {@code null}. */
+  @com.google.api.client.util.Key private PostgresqlSourceConfig postgresqlSourceConfig;
+
   /**
    * Required. Source connection profile resoource. Format:
    * `projects/{project}/locations/{location}/connectionProfiles/{name}` The value may be {@code
@@ -75,6 +78,25 @@ public final class SourceConfig extends com.google.api.client.json.GenericJson {
    */
   public SourceConfig setOracleSourceConfig(OracleSourceConfig oracleSourceConfig) {
     this.oracleSourceConfig = oracleSourceConfig;
+    return this;
+  }
+
+  /**
+   * Postgresql data source configuration.
+   *
+   * @return value or {@code null} for none
+   */
+  public PostgresqlSourceConfig getPostgresqlSourceConfig() {
+    return postgresqlSourceConfig;
+  }
+
+  /**
+   * Postgresql data source configuration.
+   *
+   * @param postgresqlSourceConfig postgresqlSourceConfig or {@code null} for none
+   */
+  public SourceConfig setPostgresqlSourceConfig(PostgresqlSourceConfig postgresqlSourceConfig) {
+    this.postgresqlSourceConfig = postgresqlSourceConfig;
     return this;
   }
 
