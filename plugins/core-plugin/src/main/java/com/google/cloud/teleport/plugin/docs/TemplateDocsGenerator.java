@@ -49,6 +49,7 @@ public class TemplateDocsGenerator {
     parameters.put("spec", imageSpec);
     parameters.put("flex", imageSpec.getMetadata().isFlexTemplate());
     parameters.put("statics", BeansWrapper.getDefaultInstance().getStaticModels());
+    parameters.put("language", imageSpec.getSdkInfo().getLanguage());
 
     Template template = freemarkerConfig.getTemplate("README-template.md");
 

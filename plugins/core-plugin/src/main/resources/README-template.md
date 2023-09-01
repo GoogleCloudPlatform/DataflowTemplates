@@ -99,7 +99,9 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="${spec.metadata.internalName}" \
-<#if flex>
+<#if language == 'PYTHON'>
+-pl python \
+<#elseif flex>
 -pl v2/${spec.metadata.module!} \
 <#else>
 -pl v1 \
@@ -199,7 +201,9 @@ mvn clean package -PtemplatesRun \
 -DjobName="${spec.metadata.internalName?lower_case?replace("_", "-")}-job" \
 -DtemplateName="${spec.metadata.internalName}" \
 -Dparameters="<#list spec.metadata.parameters as parameter>${parameter.name}=$${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}<#sep>,</#sep></#list>" \
-<#if flex>
+<#if language == 'PYTHON'>
+-pl python \
+<#elseif flex>
 -pl v2/${spec.metadata.module!} \
 <#else>
 -pl v1 \
