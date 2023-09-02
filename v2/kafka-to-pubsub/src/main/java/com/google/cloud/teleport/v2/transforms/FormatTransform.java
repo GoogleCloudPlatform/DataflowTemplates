@@ -101,7 +101,6 @@ public class FormatTransform {
               JavascriptTextTransformer.FailsafeJavascriptUdf.<KV<String, String>>newBuilder()
                   .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                   .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                  .setFunctionReload(options.getJavascriptTextTransformFunctionReload())
                   .setReloadIntervalMinutes(
                       options.getJavascriptTextTransformReloadIntervalMinutes())
                   .setSuccessTag(KafkaPubsubConstants.UDF_OUT)

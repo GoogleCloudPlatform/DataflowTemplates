@@ -72,17 +72,20 @@ public class PubSubCdcToBigQueryTest {
     // Parameters
     String transformPath = TRANSFORM_FILE_PATH;
     String transformFunction = "transform";
+    Integer reloadInterval = 0;
 
     PubSubCdcToBigQuery.Options options =
         PipelineOptionsFactory.create().as(PubSubCdcToBigQuery.Options.class);
 
     options.setJavascriptTextTransformGcsPath(transformPath);
     options.setJavascriptTextTransformFunctionName(transformFunction);
+    options.setJavascriptTextTransformReloadIntervalMinutes(reloadInterval);
 
     InputUDFToTableRow<String> deadletterHandler =
         new InputUDFToTableRow<String>(
             options.getJavascriptTextTransformGcsPath(),
             options.getJavascriptTextTransformFunctionName(),
+            options.getJavascriptTextTransformReloadIntervalMinutes(),
             options.getPythonTextTransformGcsPath(),
             options.getPythonTextTransformFunctionName(),
             options.getRuntimeRetries(),

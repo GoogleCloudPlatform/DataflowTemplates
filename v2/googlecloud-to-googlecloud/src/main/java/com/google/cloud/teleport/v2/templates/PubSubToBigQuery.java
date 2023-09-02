@@ -368,7 +368,6 @@ public class PubSubToBigQuery {
                   FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
                       .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                       .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                      .setFunctionReload(options.getJavascriptTextTransformFunctionReload())
                       .setReloadIntervalMinutes(
                           options.getJavascriptTextTransformReloadIntervalMinutes())
                       .setSuccessTag(UDF_OUT)

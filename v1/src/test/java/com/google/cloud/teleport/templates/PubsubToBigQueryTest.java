@@ -79,8 +79,7 @@ public class PubsubToBigQueryTest {
 
     options.setJavascriptTextTransformGcsPath(transformPath);
     options.setJavascriptTextTransformFunctionName(transformFunction);
-    options.setJavascriptFunctionReload(functionReload);
-    options.setJavascriptReloadIntervalMinutes(functionReloadInterval);
+    options.setJavascriptTextTransformReloadIntervalMinutes(functionReloadInterval);
 
     // Build pipeline
     PCollectionTuple transformOut =

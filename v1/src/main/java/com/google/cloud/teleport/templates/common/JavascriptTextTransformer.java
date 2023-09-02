@@ -17,6 +17,9 @@ package com.google.cloud.teleport.templates.common;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Expiry;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.values.FailsafeElement;
@@ -28,14 +31,11 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.script.Invocable;
@@ -97,28 +97,18 @@ public abstract class JavascriptTextTransformer {
     void setJavascriptTextTransformFunctionName(
         ValueProvider<String> javascriptTextTransformFunctionName);
 
-    // Support for auto reload UDFs
-    @TemplateParameter.Boolean(
-        order = 12,
-        optional = true,
-        description = "Enable JavaScript UDF auto-reload feature",
-        helpText =
-            "If set to true, enables the JavaScript UDF auto-reload feature, which guarantees that "
-                + "updated code is used without the need to restart jobs.")
-    ValueProvider<Boolean> getJavascriptFunctionReload();
-
-    void setJavascriptFunctionReload(ValueProvider<Boolean> javascriptFunctionReload);
-
+    // Support reloading in UDFs
     @TemplateParameter.Integer(
-        order = 13,
+        order = 12,
         optional = true,
         description = "JavaScript UDF auto-reload interval (minutes)",
         helpText =
             "Define the interval that workers may check for JavaScript UDF changes to reload the files.")
     @Default.Integer(60)
-    ValueProvider<Integer> getJavascriptReloadIntervalMinutes();
+    ValueProvider<Integer> getJavascriptTextTransformReloadIntervalMinutes();
 
-    void setJavascriptReloadIntervalMinutes(ValueProvider<Integer> javascriptReloadIntervalMinutes);
+    void setJavascriptTextTransformReloadIntervalMinutes(
+        ValueProvider<Integer> javascriptReloadIntervalMinutes);
   }
 
   /**
@@ -139,15 +129,39 @@ public abstract class JavascriptTextTransformer {
     public abstract String functionName();
 
     @Nullable
-    public abstract Boolean reloadFunction();
-
-    @Nullable
     public abstract Integer reloadIntervalMinutes();
 
-    private Invocable invocable;
+    private static LoadingCache<JavascriptRuntime, Invocable> cache =
+        Caffeine.newBuilder()
+            .expireAfter(
+                new Expiry<JavascriptRuntime, Invocable>() {
+                  public long expireAfterCreate(
+                      JavascriptRuntime runtime, Invocable invocable, long currentTime) {
+                    // Do not expire if reload is disabled
+                    if (runtime.reloadIntervalMinutes() == null
+                        || runtime.reloadIntervalMinutes() <= 0) {
+                      return Long.MAX_VALUE;
+                    }
+                    return TimeUnit.MINUTES.toNanos(runtime.reloadIntervalMinutes());
+                  }
 
-    private Instant lastRefreshCheck = Instant.now();
-    private Set<String> lastScripts;
+                  public long expireAfterUpdate(
+                      JavascriptRuntime runtime,
+                      Invocable invocable,
+                      long currentTime,
+                      long currentDuration) {
+                    return currentDuration;
+                  }
+
+                  public long expireAfterRead(
+                      JavascriptRuntime runtime,
+                      Invocable invocable,
+                      long currentTime,
+                      long currentDuration) {
+                    return currentDuration;
+                  }
+                })
+            .build(runtime -> buildInvocable(runtime));
 
     /** Builder for {@link JavascriptTextTransformer}. */
     @AutoValue.Builder
@@ -155,8 +169,6 @@ public abstract class JavascriptTextTransformer {
       public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder setFunctionName(@Nullable String functionName);
-
-      public abstract Builder setReloadFunction(@Nullable Boolean value);
 
       public abstract Builder setReloadIntervalMinutes(@Nullable Integer value);
 
@@ -178,33 +190,20 @@ public abstract class JavascriptTextTransformer {
      * @return a Javascript Invocable or null
      */
     @Nullable
-    public Invocable getInvocable() throws ScriptException, IOException {
+    public Invocable getInvocable() {
 
       // return null if no UDF path specified.
       if (Strings.isNullOrEmpty(fileSystemPath())) {
         return null;
       }
+      return cache.get(this);
+    }
 
-      if (invocable == null
-          || (reloadFunction() != null
-              && reloadFunction()
-              && reloadIntervalMinutes() != null
-              && Duration.between(lastRefreshCheck, Instant.now()).toMinutes()
-                  > reloadIntervalMinutes())) {
-
-        // List of all scripts read from the filesystem
-        Collection<String> scripts = getScripts(fileSystemPath());
-
-        // We compare the entire code, and reload invocable if changed
-        Set<String> uniqueCode = new TreeSet<>(scripts);
-        if (!uniqueCode.equals(lastScripts)) {
-          invocable = newInvocable(scripts);
-          lastScripts = uniqueCode;
-        }
-
-        lastRefreshCheck = Instant.now();
-      }
-      return invocable;
+    public static Invocable buildInvocable(JavascriptRuntime runtime)
+        throws IOException, ScriptException {
+      // List of all scripts read from the filesystem
+      Collection<String> scripts = getScripts(runtime.fileSystemPath());
+      return newInvocable(scripts);
     }
 
     /**
@@ -306,8 +305,6 @@ public abstract class JavascriptTextTransformer {
 
     public abstract @Nullable ValueProvider<String> functionName();
 
-    public abstract @Nullable ValueProvider<Boolean> reloadFunction();
-
     public abstract @Nullable ValueProvider<Integer> reloadIntervalMinutes();
 
     /** Builder for {@link TransformTextViaJavascript}. */
@@ -316,8 +313,6 @@ public abstract class JavascriptTextTransformer {
       public abstract Builder setFileSystemPath(@Nullable ValueProvider<String> fileSystemPath);
 
       public abstract Builder setFunctionName(@Nullable ValueProvider<String> functionName);
-
-      public abstract Builder setReloadFunction(@Nullable ValueProvider<Boolean> value);
 
       public abstract Builder setReloadIntervalMinutes(@Nullable ValueProvider<Integer> value);
 
@@ -342,7 +337,6 @@ public abstract class JavascriptTextTransformer {
                         getJavascriptRuntime(
                             fileSystemPath().get(),
                             functionName().get(),
-                            reloadFunction() != null ? reloadFunction().get() : null,
                             reloadIntervalMinutes() != null ? reloadIntervalMinutes().get() : null);
                   }
                 }
@@ -376,8 +370,6 @@ public abstract class JavascriptTextTransformer {
 
     public abstract @Nullable ValueProvider<String> functionName();
 
-    public abstract @Nullable ValueProvider<Boolean> functionReload();
-
     public abstract @Nullable ValueProvider<Integer> reloadIntervalMinutes();
 
     public abstract @Nullable ValueProvider<Boolean> loggingEnabled();
@@ -403,8 +395,6 @@ public abstract class JavascriptTextTransformer {
 
       public abstract Builder<T> setFunctionName(@Nullable ValueProvider<String> functionName);
 
-      public abstract Builder<T> setFunctionReload(@Nullable ValueProvider<Boolean> functionReload);
-
       public abstract Builder<T> setReloadIntervalMinutes(ValueProvider<Integer> value);
 
       public abstract Builder<T> setLoggingEnabled(@Nullable ValueProvider<Boolean> loggingEnabled);
@@ -422,7 +412,7 @@ public abstract class JavascriptTextTransformer {
           "ProcessUdf",
           ParDo.of(
                   new DoFn<FailsafeElement<T, String>, FailsafeElement<T, String>>() {
-                    private JavascriptRuntime javascriptRuntime;
+                    private JavascriptTextTransformer.JavascriptRuntime javascriptRuntime;
                     private boolean loggingEnabled;
 
                     @Setup
@@ -432,7 +422,6 @@ public abstract class JavascriptTextTransformer {
                             getJavascriptRuntime(
                                 fileSystemPath().get(),
                                 functionName().get(),
-                                functionReload() != null ? functionReload().get() : null,
                                 reloadIntervalMinutes() != null
                                     ? reloadIntervalMinutes().get()
                                     : null);
@@ -506,15 +495,11 @@ public abstract class JavascriptTextTransformer {
    *
    * @param fileSystemPath The file path to the JavaScript file to execute.
    * @param functionName The function name which will be invoked within the JavaScript script.
-   * @param reloadFunction If function should be reloaded after initialized.
    * @param reloadIntervalMinutes The interval to check for function changes.
    * @return The {@link JavascriptRuntime} instance.
    */
   private static JavascriptRuntime getJavascriptRuntime(
-      String fileSystemPath,
-      String functionName,
-      Boolean reloadFunction,
-      Integer reloadIntervalMinutes) {
+      String fileSystemPath, String functionName, Integer reloadIntervalMinutes) {
     JavascriptRuntime javascriptRuntime = null;
 
     if (!Strings.isNullOrEmpty(fileSystemPath) && !Strings.isNullOrEmpty(functionName)) {
@@ -522,7 +507,6 @@ public abstract class JavascriptTextTransformer {
           JavascriptRuntime.newBuilder()
               .setFunctionName(functionName)
               .setFileSystemPath(fileSystemPath)
-              .setReloadFunction(reloadFunction)
               .setReloadIntervalMinutes(reloadIntervalMinutes)
               .build();
     }

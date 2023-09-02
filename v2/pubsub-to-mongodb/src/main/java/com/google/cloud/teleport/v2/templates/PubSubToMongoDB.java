@@ -328,8 +328,6 @@ public class PubSubToMongoDB {
                     .setJavascriptTextTransformFunctionName(
                         options.getJavascriptTextTransformFunctionName())
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
-                    .setJavascriptTextTransformFunctionReload(
-                        options.getJavascriptTextTransformFunctionReload())
                     .setJavascriptTextTransformReloadIntervalMinutes(
                         options.getJavascriptTextTransformReloadIntervalMinutes())
                     .build());
@@ -412,9 +410,6 @@ public class PubSubToMongoDB {
     public abstract String javascriptTextTransformFunctionName();
 
     @Nullable
-    public abstract Boolean javascriptTextTransformFunctionReload();
-
-    @Nullable
     public abstract Integer javascriptTextTransformReloadIntervalMinutes();
 
     @Override
@@ -432,7 +427,6 @@ public class PubSubToMongoDB {
             JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
                 .setFileSystemPath(javascriptTextTransformGcsPath())
                 .setFunctionName(javascriptTextTransformFunctionName())
-                .setFunctionReload(javascriptTextTransformFunctionReload())
                 .setReloadIntervalMinutes(javascriptTextTransformReloadIntervalMinutes())
                 .setSuccessTag(TRANSFORM_OUT)
                 .setFailureTag(TRANSFORM_DEADLETTER_OUT)
@@ -453,9 +447,6 @@ public class PubSubToMongoDB {
 
       public abstract Builder setJavascriptTextTransformFunctionName(
           String javascriptTextTransformFunctionName);
-
-      public abstract Builder setJavascriptTextTransformFunctionReload(
-          Boolean javascriptTextTransformFunctionReload);
 
       public abstract Builder setJavascriptTextTransformReloadIntervalMinutes(
           Integer javascriptTextTransformReloadIntervalMinutes);

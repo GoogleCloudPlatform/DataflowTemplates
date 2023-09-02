@@ -212,8 +212,8 @@ public class PubSubToDatadog {
                 FailsafeJavascriptUdf.<String>newBuilder()
                     .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                    .setFunctionReload(options.getJavascriptFunctionReload())
-                    .setReloadIntervalMinutes(options.getJavascriptReloadIntervalMinutes())
+                    .setReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .setLoggingEnabled(ValueProvider.StaticValueProvider.of(true))
                     .setSuccessTag(UDF_OUT)
                     .setFailureTag(UDF_DEADLETTER_OUT)

@@ -182,6 +182,7 @@ public class PubSubToElasticsearchTest {
     options.setErrorOutputTopic("projects/test/topics/test-error-topic");
     options.setJavascriptTextTransformFunctionName("transform");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
+    options.setJavascriptTextTransformReloadIntervalMinutes(0);
     options.setApiKey("key");
 
     PCollectionTuple pc =
@@ -192,6 +193,8 @@ public class PubSubToElasticsearchTest {
                     .setJavascriptTextTransformFunctionName(
                         options.getJavascriptTextTransformFunctionName())
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
+                    .setJavascriptTextTransformReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .build());
 
     PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_OUT))
