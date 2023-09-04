@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToShardedFileSink",
+  "classPath": "/template/spanner-change-streams-to-sharded-file-sink/spanner-change-streams-to-sharded-file-sink-conscrypt.jar:/template/spanner-change-streams-to-sharded-file-sink/*:/template/spanner-change-streams-to-sharded-file-sink/libs/*:/template/spanner-change-streams-to-sharded-file-sink/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"spanner_change_streams_to_sharded_file_sink\"}"
+  }
+}
