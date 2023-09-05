@@ -15,14 +15,16 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import com.google.ads.googleads.v10.services.GoogleAdsRow;
+import com.google.ads.googleads.v14.services.GoogleAdsRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.common.base.Functions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Streams;
 import com.google.protobuf.Descriptors;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;

@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.ads.googleads.lib.utils.FieldMasks;
-import com.google.ads.googleads.v10.services.GoogleAdsRow;
+import com.google.ads.googleads.v14.services.GoogleAdsRow;
 import com.google.cloud.teleport.v2.utils.GoogleAdsUtils;
 import com.google.common.io.BaseEncoding;
 import com.google.gson.Gson;
@@ -32,9 +32,9 @@ import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
 
 /**
- * This transform lifts {@link GoogleAdsRow} nested fields selected fields in the <href
- * a="https://developers.google.com/google-ads/api/docs/query/overview">Google Ads Query Language
- * query</href> up as top-level fields, replacing the path separator with an underscore, and formats
+ * This transform lifts {@link GoogleAdsRow} nested fields selected fields in the <a
+ * href="https://developers.google.com/google-ads/api/docs/query/overview">Google Ads Query Language
+ * query</a> up as top-level fields, replacing the path separator with an underscore, and formats
  * the result as JSON.
  */
 public class GoogleAdsRowToReportRowJsonFn extends DoFn<GoogleAdsRow, String> {
