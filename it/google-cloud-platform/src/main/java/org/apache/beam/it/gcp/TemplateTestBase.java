@@ -465,7 +465,12 @@ public abstract class TemplateTestBase {
           configBuilder.setTimeoutAfter(Duration.ofMinutes(4)).setCheckAfter(Duration.ofSeconds(5));
     }
 
-    return configBuilder.build();
+    return wrapConfiguration(configBuilder).build();
+  }
+
+  /** Entrypoint allowed to override settings. */
+  protected Config.Builder wrapConfiguration(Config.Builder builder) {
+    return builder;
   }
 
   /**
