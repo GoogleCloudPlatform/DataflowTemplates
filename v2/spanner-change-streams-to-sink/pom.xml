@@ -33,7 +33,7 @@
     </description>
 
     <properties>
-        <kafka.version>2.3.0</kafka.version>
+        <kafka.version>2.6.3</kafka.version>
         <pubsub.version>1.123.11</pubsub.version>
     </properties>
 
