@@ -32,7 +32,7 @@
     </description>
 
  <properties>
-    <kafka.version>2.3.0</kafka.version>
+    <kafka.version>2.6.3</kafka.version>
     <junit.version>4.13.2</junit.version>
   </properties>
 
