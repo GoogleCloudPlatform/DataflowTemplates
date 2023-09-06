@@ -45,8 +45,7 @@ public class AutoTemplate {
       TemplateBlock dlqInstance = getDlqInstance(templateClass);
 
       Class<? extends PipelineOptions> newOptionsClass =
-          createNewOptionsClass(
-              orderedBlocks, AutoTemplate.class.getClassLoader(), dlqInstance.getOptionsClass());
+          createNewOptionsClass(orderedBlocks, AutoTemplate.class.getClassLoader(), dlqInstance);
 
       LOG.debug("Created options class {}", newOptionsClass);
 
@@ -206,11 +205,8 @@ public class AutoTemplate {
               + " does not have a @Template annotation, can not use auto template features.");
     }
     Class<?> dlqBlock = annotations.dlqBlock();
-    if (dlqBlock == null) {
-      throw new IllegalStateException(
-          "Class "
-              + templateClass
-              + " does not have a @Template annotation with valid dlqBlock, can not use auto template features.");
+    if (dlqBlock.equals(void.class)) {
+      return null;
     }
 
     Class<? extends TemplateTransform> dlqBlockClass = dlqBlock.asSubclass(TemplateTransform.class);
@@ -263,7 +259,7 @@ public class AutoTemplate {
   }
 
   public static Class<? extends PipelineOptions> createNewOptionsClass(
-      Collection<ExecutionBlock> blocks, ClassLoader loader, Class<?> dlqOptions) {
+      Collection<ExecutionBlock> blocks, ClassLoader loader, TemplateBlock dlqInstance) {
 
     LOG.debug("Creating new options class to implement {}", blocks);
 
@@ -274,8 +270,8 @@ public class AutoTemplate {
       allOptionsClassBuilder =
           allOptionsClassBuilder.implement(executionBlock.blockInstance.getOptionsClass());
     }
-    if (dlqOptions != null) {
-      allOptionsClassBuilder = allOptionsClassBuilder.implement(dlqOptions);
+    if (dlqInstance != null) {
+      allOptionsClassBuilder = allOptionsClassBuilder.implement(dlqInstance.getOptionsClass());
     }
     return allOptionsClassBuilder.make().load(loader).getLoaded();
   }

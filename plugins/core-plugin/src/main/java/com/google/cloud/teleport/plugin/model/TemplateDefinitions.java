@@ -158,7 +158,7 @@ public class TemplateDefinitions {
             AutoTemplate.createNewOptionsClass(
                 executionBlocks,
                 templateClass.getClassLoader(),
-                AutoTemplate.getDlqInstance(templateClass).getOptionsClass());
+                AutoTemplate.getDlqInstance(templateClass));
       } catch (Exception e) {
         throw new RuntimeException("Error parsing template blocks", e);
       }
