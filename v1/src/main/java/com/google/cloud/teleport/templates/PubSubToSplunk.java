@@ -103,7 +103,6 @@ import org.slf4j.LoggerFactory;
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-splunk",
     contactInformation = "https://cloud.google.com/support",
-    preview = true,
     requirements = {
       "The source Pub/Sub subscription must exist prior to running the pipeline.",
       "The Pub/Sub unprocessed topic must exist prior to running the pipeline.",
