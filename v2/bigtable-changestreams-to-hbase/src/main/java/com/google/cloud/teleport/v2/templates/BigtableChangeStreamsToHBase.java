@@ -130,15 +130,6 @@ public class BigtableChangeStreamsToHBase {
     boolean getDryRunEnabled();
 
     void setDryRunEnabled(boolean dryRunEnabled);
-
-    @TemplateParameter.Boolean(
-        optional = true,
-        description = "Filter GC mutations",
-        helpText = "Filters out garbage collection Delete mutations from CBT")
-    @Default.Boolean(false)
-    boolean getFilterGCMutations();
-
-    void setFilterGCMutations(boolean filterGCMutations);
   }
 
   /**
@@ -172,8 +163,7 @@ public class BigtableChangeStreamsToHBase {
                     .withStartTime(startTime))
             .apply(
                 "Convert CDC mutation to HBase mutation",
-                ChangeStreamToRowMutations.convertChangeStream(
-                        pipelineOptions.getFilterGCMutations())
+                ChangeStreamToRowMutations.convertChangeStream()
                     .withBidirectionalReplication(
                         pipelineOptions.getBidirectionalReplicationEnabled(),
                         pipelineOptions.getCbtQualifier(),

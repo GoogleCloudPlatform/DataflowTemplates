@@ -28,7 +28,6 @@ import static com.google.cloud.teleport.v2.templates.utils.TestConstants.value;
 import static com.google.cloud.teleport.v2.templates.utils.TestConstants.value2;
 
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
-import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation.MutationType;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutationBuilder;
 import com.google.cloud.teleport.v2.templates.transforms.ChangeStreamToRowMutations;
 import com.google.cloud.teleport.v2.templates.utils.HashUtils;
@@ -75,7 +74,7 @@ public class ChangeStreamToRowMutationsTest {
                 Create.of(KV.of(ByteString.copyFromUtf8(rowKey), setCellMutation)))
             .apply(
                 "Convert change stream mutations to hbase mutations",
-                ChangeStreamToRowMutations.convertChangeStream(false))
+                ChangeStreamToRowMutations.convertChangeStream())
             .apply("Hash hbase mutation for comparison purposes", new HashHbaseRowMutations());
 
     List<Mutation> expectedMutations =
@@ -105,7 +104,7 @@ public class ChangeStreamToRowMutationsTest {
                 Create.of(KV.of(ByteString.copyFromUtf8(rowKey), deleteCellsMutation)))
             .apply(
                 "Convert change stream mutations to hbase mutations",
-                ChangeStreamToRowMutations.convertChangeStream(false))
+                ChangeStreamToRowMutations.convertChangeStream())
             .apply("Hash hbase mutation for comparison purposes", new HashHbaseRowMutations());
 
     List<Mutation> expectedMutations =
@@ -135,7 +134,7 @@ public class ChangeStreamToRowMutationsTest {
                 Create.of(KV.of(ByteString.copyFromUtf8(rowKey), deleteCellsMutation)))
             .apply(
                 "Convert change stream mutations to hbase mutations",
-                ChangeStreamToRowMutations.convertChangeStream(false))
+                ChangeStreamToRowMutations.convertChangeStream())
             .apply("Hash hbase mutation for comparison purposes", new HashHbaseRowMutations());
 
     List<Mutation> expectedMutations =
@@ -160,7 +159,7 @@ public class ChangeStreamToRowMutationsTest {
                 Create.of(KV.of(ByteString.copyFromUtf8(rowKey), deleteFamilyMutation)))
             .apply(
                 "Convert change stream mutations to hbase mutations",
-                ChangeStreamToRowMutations.convertChangeStream(false))
+                ChangeStreamToRowMutations.convertChangeStream())
             .apply("Hash hbase mutation for comparison purposes", new HashHbaseRowMutations());
 
     // Note that this timestamp is a placeholder and not compared by hash function.
@@ -204,7 +203,7 @@ public class ChangeStreamToRowMutationsTest {
                     KV.of(ByteString.copyFromUtf8(rowKey2), rowMutation2)))
             .apply(
                 "Convert change stream mutations to hbase mutations",
-                ChangeStreamToRowMutations.convertChangeStream(false))
+                ChangeStreamToRowMutations.convertChangeStream())
             .apply("Hash hbase mutation for comparison purposes", new HashHbaseRowMutations());
 
     List<Mutation> rowMutations =
@@ -247,7 +246,7 @@ public class ChangeStreamToRowMutationsTest {
                 Create.of(KV.of(ByteString.copyFromUtf8(rowKey), setCellMutation)))
             .apply(
                 "Convert change stream mutations to hbase mutations",
-                ChangeStreamToRowMutations.convertChangeStream(false)
+                ChangeStreamToRowMutations.convertChangeStream()
                     .withBidirectionalReplication(true, cbtQualifier, hbaseQualifier))
             .apply("Hash hbase mutation for comparison purposes", new HashHbaseRowMutations());
 
@@ -282,7 +281,7 @@ public class ChangeStreamToRowMutationsTest {
                 Create.of(KV.of(ByteString.copyFromUtf8(rowKey), setCellMutation)))
             .apply(
                 "Convert change stream mutations to hbase mutations",
-                ChangeStreamToRowMutations.convertChangeStream(false)
+                ChangeStreamToRowMutations.convertChangeStream()
                     .withBidirectionalReplication(true, cbtQualifier, hbaseQualifier))
             .apply("Hash hbase mutation for comparison purposes", new HashHbaseRowMutations());
 
@@ -313,7 +312,7 @@ public class ChangeStreamToRowMutationsTest {
                     KV.of(ByteString.copyFromUtf8(rowKey2), rowMutation2)))
             .apply(
                 "Convert change stream mutations to hbase mutations",
-                ChangeStreamToRowMutations.convertChangeStream(false)
+                ChangeStreamToRowMutations.convertChangeStream()
                     .withBidirectionalReplication(true, cbtQualifier, hbaseQualifier))
             .apply("Hash hbase mutation for comparison purposes", new HashHbaseRowMutations());
 
@@ -323,52 +322,6 @@ public class ChangeStreamToRowMutationsTest {
                 rowKey, colFamily, colQualifier, value, timeT),
             // Special mutation that denotes origin of replication.
             HbaseUtils.HbaseMutationBuilder.createDelete(rowKey, colFamily, cbtQualifier, 0L));
-
-    PAssert.that(output)
-        .containsInAnyOrder(KV.of(rowKey, HashUtils.hashMutationList(rowMutations)));
-
-    pipeline.run().waitUntilFinish();
-  }
-
-  @Test
-  public void testFiltersGCMutation() throws Exception {
-    // Note that there should never be a garbage collection Put mutation in practice.
-    ChangeStreamMutation garbageCollectionPutMutation =
-        new ChangeStreamMutationBuilder(rowKey, timeT * 3000)
-            .setCell(colFamily, colQualifier, value, timeT * 3000)
-            .setType(MutationType.GARBAGE_COLLECTION)
-            .build();
-
-    ChangeStreamMutation garbageCollectionDeleteMutation =
-        new ChangeStreamMutationBuilder(rowKey, timeT * 2000)
-            .deleteCells(colFamily, colQualifier, 0L, timeT * 2000)
-            .setType(MutationType.GARBAGE_COLLECTION)
-            .build();
-
-    // Put mutation should show since GC mutations would've been filtered out.
-    ChangeStreamMutation putMutation =
-        new ChangeStreamMutationBuilder(rowKey, timeT * 1000)
-            .setCell(colFamily, colQualifier, value2, timeT * 1000)
-            .setType(MutationType.USER)
-            .build();
-
-    PCollection<KV<String, List<String>>> output =
-        pipeline
-            .apply(
-                "Create change stream mutations",
-                Create.of(
-                    KV.of(ByteString.copyFromUtf8(rowKey), putMutation),
-                    KV.of(ByteString.copyFromUtf8(rowKey), garbageCollectionPutMutation),
-                    KV.of(ByteString.copyFromUtf8(rowKey), garbageCollectionDeleteMutation)))
-            .apply(
-                "Convert change stream mutations to hbase mutations",
-                ChangeStreamToRowMutations.convertChangeStream(true))
-            .apply("Hash hbase mutation for comparison purposes", new HashHbaseRowMutations());
-
-    List<Mutation> rowMutations =
-        Arrays.asList(
-            HbaseUtils.HbaseMutationBuilder.createPut(
-                rowKey, colFamily, colQualifier, value2, timeT));
 
     PAssert.that(output)
         .containsInAnyOrder(KV.of(rowKey, HashUtils.hashMutationList(rowMutations)));
