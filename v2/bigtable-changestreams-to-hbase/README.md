@@ -10,14 +10,14 @@ The [BigtableToHBase](src/main/java/com/google/cloud/teleport/v2/templates/Bigta
 
 #### Caveat - provision Hbase resources to handle Dataflow traffic
 
-* Dataflow when strongly provisioned can translate Bigtable input QPS directly to Hbase, the user should configure Hbase so that Hbase can handle that QPS without crashing.
+* Dataflow can translate Bigtable input QPS directly to Hbase, the user should configure Hbase so that Hbase can handle that QPS without crashing. Dataflow QPS is correlated with the number of Dataflow workers and Bigtable-Dataflow-Hbase IO latency.
 
 * Bigtable change streams can handle very large single mutations. Hbase write buffers should be adequately provisioned so as not to cause exceptions when writing in large mutations.
 
 #### Caveat - data divergence can occur in extreme edge case
 
 Data divergence can occur in the following scenario:
-* Dataflow assigns a Put to worker A
+* Dataflow assigns a Put to worker A (All mutations for a row-key will go to the same worker)
 * Dataflow loses connection to worker A
 * Dataflow reassigns the Put to worker B
 * Dataflow assigns a Delete on the Put's cell to worker B
