@@ -88,11 +88,10 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   public void setup() throws IOException {
     bigQueryResourceManager =
         BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
-    BigtableResourceManager.Builder rmBuilder =
+    bigtableResourceManager =
         BigtableResourceManager.builder(testName, PROJECT, credentialsProvider)
-            .maybeUseStaticInstance();
-
-    bigtableResourceManager = rmBuilder.build();
+            .maybeUseStaticInstance()
+            .build();
   }
 
   @After

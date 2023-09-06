@@ -25,7 +25,6 @@ import static org.junit.Assert.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
-import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessage;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageProto;
@@ -48,8 +47,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -65,7 +64,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
-import org.apache.beam.it.gcp.bigtable.BigtableResourceManagerCluster;
+import org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils;
 import org.apache.beam.it.gcp.bigtable.BigtableTableSpec;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
@@ -89,13 +88,13 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToPubSubIT.class);
 
+  public static final String SOURCE_CDC_TABLE = "source";
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
-  private static final String TEST_ZONE = "us-central1-b";
   private BigtableResourceManager bigtableResourceManager;
   private PubsubResourceManager pubsubResourceManager;
 
-  private final String clusterName = "teleport-c1";
+  private String clusterName;
   private String appProfileId;
   private TopicName topicName;
   private SubscriptionName subscriptionName;
@@ -106,6 +105,40 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   @Parameterized.Parameters(name = "no-dlq-retry-{0}")
   public static List<Boolean> testParameters() {
     return List.of(true, false);
+  }
+
+  @Before
+  public void setup() throws IOException {
+    pubsubResourceManager =
+        PubsubResourceManager.builder(
+                removeUnsafeCharacters(testName), PROJECT, credentialsProvider)
+            .build();
+    bigtableResourceManager =
+        BigtableResourceManager.builder(
+                removeUnsafeCharacters(testName), PROJECT, credentialsProvider)
+            .maybeUseStaticInstance()
+            .build();
+
+    appProfileId = generateAppProfileId();
+
+    srcTable = BigtableResourceManagerUtils.generateTableId(SOURCE_CDC_TABLE);
+
+    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
+    cdcTableSpec.setCdcEnabled(true);
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
+    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
+
+    clusterName = bigtableResourceManager.getClusterNames().iterator().next();
+    bigtableResourceManager.createAppProfile(
+        appProfileId, true, Collections.singletonList(clusterName));
+
+    topicName = pubsubResourceManager.createTopic("bigtable-cdc-topic");
+    subscriptionName = pubsubResourceManager.createSubscription(topicName, "bigtable-cdc-sub");
+  }
+
+  @After
+  public void tearDownClass() {
+    ResourceManagerUtils.cleanResources(bigtableResourceManager, pubsubResourceManager);
   }
 
   @Test
@@ -756,50 +789,8 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     return "cdc_app_profile_" + System.nanoTime();
   }
 
-  @Before
-  public void setup() throws IOException {
-    pubsubResourceManager =
-        PubsubResourceManager.builder(
-                removeUnsafeCharacters(testName), PROJECT, credentialsProvider)
-            .build();
-    BigtableResourceManager.Builder rmBuilder =
-        BigtableResourceManager.builder(
-            removeUnsafeCharacters(testName), PROJECT, credentialsProvider);
-
-    bigtableResourceManager = rmBuilder.maybeUseStaticInstance().build();
-
-    appProfileId = generateAppProfileId();
-
-    String suffix = String.valueOf(System.nanoTime());
-    String topicNameToCreate = "topic-" + suffix;
-    String subscriptionNameToCreate = "subscription-" + suffix;
-    srcTable = "src" + suffix;
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
-
-    topicName = pubsubResourceManager.createTopic(topicNameToCreate);
-    subscriptionName =
-        pubsubResourceManager.createSubscription(topicName, subscriptionNameToCreate);
-  }
-
   private String removeUnsafeCharacters(String testName) {
     return testName.replaceAll("[\\[\\]]", "-");
-  }
-
-  @After
-  public void tearDownClass() {
-    ResourceManagerUtils.cleanResources(bigtableResourceManager, pubsubResourceManager);
   }
 
   @Override
