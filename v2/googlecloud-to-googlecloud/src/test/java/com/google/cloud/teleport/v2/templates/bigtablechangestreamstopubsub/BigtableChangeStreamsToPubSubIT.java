@@ -231,8 +231,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(launchInfo),
                 () -> {
-                  List<Artifact> artifacts =
-                      gcsClient.listArtifacts("dlq/severe", Pattern.compile(".*"));
+                  List<Artifact> artifacts = gcsClient.listArtifacts("dlq", Pattern.compile(".*"));
                   for (Artifact artifact : artifacts) {
                     try {
                       ObjectMapper om = new ObjectMapper();
@@ -804,20 +803,18 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   }
 
   @Override
-  protected Config createConfig(LaunchInfo info) {
-    Config.Builder configBuilder =
-        Config.builder().setJobId(info.jobId()).setProject(PROJECT).setRegion(REGION);
+  protected Config.Builder wrapConfiguration(Config.Builder builder) {
 
     // For DirectRunner tests, reduce the max time and the interval, as there is no worker required
     if (System.getProperty("directRunnerTest") != null) {
-      configBuilder =
-          configBuilder
+      builder =
+          builder
               .setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME.minus(Duration.ofMinutes(3)))
               .setCheckAfter(Duration.ofSeconds(5));
     } else {
-      configBuilder.setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME);
+      builder = builder.setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME);
     }
 
-    return configBuilder.build();
+    return builder;
   }
 }

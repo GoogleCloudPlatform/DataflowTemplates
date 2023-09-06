@@ -72,6 +72,7 @@ public class GCSToElasticsearchTest {
 
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setJavascriptTextTransformFunctionName("transform");
+    options.setJavascriptTextTransformReloadIntervalMinutes(0);
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
     options.setApiKey("key");
@@ -96,6 +97,8 @@ public class GCSToElasticsearchTest {
                     .setDelimiter(options.getDelimiter())
                     .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setUdfReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .setJsonSchemaPath(options.getJsonSchemaPath())
                     .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
                     .setLineTag(GCSToElasticsearch.CSV_LINES)

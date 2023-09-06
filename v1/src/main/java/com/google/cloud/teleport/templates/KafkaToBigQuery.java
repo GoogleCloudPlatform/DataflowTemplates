@@ -138,7 +138,7 @@ public class KafkaToBigQuery {
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format "
-                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
+                + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
     ValueProvider<String> getOutputTableSpec();
 
     void setOutputTableSpec(ValueProvider<String> value);
@@ -352,8 +352,8 @@ public class KafkaToBigQuery {
                   FailsafeJavascriptUdf.<KV<String, String>>newBuilder()
                       .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                       .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                      .setFunctionReload(options.getJavascriptFunctionReload())
-                      .setReloadIntervalMinutes(options.getJavascriptReloadIntervalMinutes())
+                      .setReloadIntervalMinutes(
+                          options.getJavascriptTextTransformReloadIntervalMinutes())
                       .setSuccessTag(UDF_OUT)
                       .setFailureTag(UDF_DEADLETTER_OUT)
                       .build());

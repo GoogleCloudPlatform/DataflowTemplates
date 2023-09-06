@@ -686,6 +686,7 @@
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
+        <module>gcs-to-sourcedb</module>
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-googlecloud</module>
         <module>googlecloud-to-mongodb</module>
@@ -711,6 +712,7 @@
         <module>pubsub-to-kafka</module>
         <module>pubsub-to-mongodb</module>
         <module>pubsub-to-redis</module>
+        <module>spanner-change-streams-to-sharded-file-sink</module>
         <module>spanner-change-streams-to-sink</module>
         <module>spanner-common</module>
         <module>sqlserver-to-googlecloud</module>

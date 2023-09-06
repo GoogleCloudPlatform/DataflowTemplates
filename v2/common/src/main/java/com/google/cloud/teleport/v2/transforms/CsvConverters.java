@@ -314,6 +314,9 @@ public class CsvConverters {
     public abstract String udfFunctionName();
 
     @Nullable
+    public abstract Integer udfReloadIntervalMinutes();
+
+    @Nullable
     public abstract String jsonSchemaPath();
 
     @Nullable
@@ -346,6 +349,7 @@ public class CsvConverters {
             FailsafeJavascriptUdf.<String>newBuilder()
                 .setFileSystemPath(udfFileSystemPath())
                 .setFunctionName(udfFunctionName())
+                .setReloadIntervalMinutes(udfReloadIntervalMinutes())
                 .setSuccessTag(udfOutputTag())
                 .setFailureTag(udfDeadletterTag())
                 .build());
@@ -407,6 +411,8 @@ public class CsvConverters {
       public abstract Builder setUdfFileSystemPath(String udfFileSystemPath);
 
       public abstract Builder setUdfFunctionName(String udfFunctionName);
+
+      public abstract Builder setUdfReloadIntervalMinutes(int udfReloadIntervalMinutes);
 
       public abstract Builder setJsonSchemaPath(String jsonSchemaPath);
 

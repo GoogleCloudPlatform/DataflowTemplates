@@ -58,6 +58,9 @@ public abstract class PubSubMessageToJsonDocument
   @Nullable
   public abstract String javascriptTextTransformFunctionName();
 
+  @Nullable
+  public abstract Integer javascriptTextTransformReloadIntervalMinutes();
+
   @Override
   public PCollectionTuple expand(PCollection<PubsubMessage> input) {
 
@@ -73,6 +76,7 @@ public abstract class PubSubMessageToJsonDocument
           JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
               .setFileSystemPath(javascriptTextTransformGcsPath())
               .setFunctionName(javascriptTextTransformFunctionName())
+              .setReloadIntervalMinutes(javascriptTextTransformReloadIntervalMinutes())
               .setSuccessTag(PubSubToElasticsearch.TRANSFORM_OUT)
               .setFailureTag(PubSubToElasticsearch.TRANSFORM_ERROROUTPUT_OUT)
               .build());
@@ -94,6 +98,9 @@ public abstract class PubSubMessageToJsonDocument
 
     public abstract Builder setJavascriptTextTransformFunctionName(
         String javascriptTextTransformFunctionName);
+
+    public abstract Builder setJavascriptTextTransformReloadIntervalMinutes(
+        Integer javascriptTextTransformReloadIntervalMinutes);
 
     public abstract PubSubMessageToJsonDocument build();
   }

@@ -200,7 +200,6 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
                 .addParameter("inputSubscription", subscription.toString())
                 .addParameter("outputTableSpec", toTableSpecLegacy(table))
                 .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
-                .addParameter("javascriptTextTransformFunctionReload", "true")
                 .addParameter("javascriptTextTransformReloadIntervalMinutes", "1")
                 .addParameter("javascriptTextTransformFunctionName", "uppercaseName"));
 
@@ -243,12 +242,16 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
     assertThat(dlqRecords.getValues().iterator().next().toString())
         .contains("Expected json literal but found");
 
-    // modify UDF to test reloading
     gcsClient.createArtifact(
         "udf.js",
         "function uppercaseName(value) {\n"
             + "  const data = JSON.parse(value);\n"
-            + "  data.name = data.name.toLowerCase();\n"
+            + "  let arr = new Array(10000);\n"
+            + "  for (let i = 0; i < 10000; i++) {\n"
+            + "    arr[i] = `a`;\n"
+            + "  }\n"
+            + "  let idx = Math.floor(Math.random() * 10000);\n"
+            + "  data.name = arr[idx] + data.name.toLowerCase();\n"
             + "  return JSON.stringify(data);\n"
             + "}");
 
@@ -275,6 +278,6 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
 
     // Make sure record can be read and UDF changed name to uppercase
     assertThatBigQueryRecords(reloadedRecords)
-        .hasRecordsUnordered(List.of(Map.of("id", 11, "job", testName, "name", "lower: message")));
+        .hasRecordsUnordered(List.of(Map.of("id", 11, "job", testName, "name", "alower: message")));
   }
 }

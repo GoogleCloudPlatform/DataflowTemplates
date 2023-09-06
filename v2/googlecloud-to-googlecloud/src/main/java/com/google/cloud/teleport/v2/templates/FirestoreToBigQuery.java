@@ -53,7 +53,6 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
       "datastoreReadNamespace",
       "datastoreReadGqlQuery",
       "datastoreReadProjectId",
-      "javascriptFunctionReload",
       "javascriptReloadIntervalMinutes"
     },
     flexContainerName = "firestore-to-bigquery",
@@ -70,7 +69,7 @@ public class FirestoreToBigQuery {
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format "
-                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
+                + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String value);
