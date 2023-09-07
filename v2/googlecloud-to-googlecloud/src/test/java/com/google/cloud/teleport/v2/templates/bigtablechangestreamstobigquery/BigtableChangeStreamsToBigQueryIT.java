@@ -77,8 +77,6 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(BigtableChangeStreamsToBigQueryIT.class);
 
-  public static final String SOURCE_CDC_TABLE = "source";
-  public static final String CHANGES_CDC_TABLE = "changes";
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
   private BigtableResourceManager bigtableResourceManager;
@@ -111,8 +109,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     cdcTableSpec.setCdcEnabled(true);
     cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
 
-    String table = BigtableResourceManagerUtils.generateTableId(SOURCE_CDC_TABLE);
-    String cdcTable = BigtableResourceManagerUtils.generateTableId(CHANGES_CDC_TABLE);
+    String table = BigtableResourceManagerUtils.generateTableId("single-mutation");
+    String cdcTable = BigtableResourceManagerUtils.generateTableId("cdc-single-mutation");
     bigtableResourceManager.createTable(table, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
@@ -176,8 +174,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
     cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    String table = BigtableResourceManagerUtils.generateTableId(SOURCE_CDC_TABLE);
-    String cdcTable = BigtableResourceManagerUtils.generateTableId(CHANGES_CDC_TABLE);
+    String table = BigtableResourceManagerUtils.generateTableId("mutations-start");
+    String cdcTable = BigtableResourceManagerUtils.generateTableId("cdc-mutations-start");
     bigtableResourceManager.createTable(table, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
@@ -266,8 +264,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
     cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    String table = BigtableResourceManagerUtils.generateTableId(SOURCE_CDC_TABLE);
-    String cdcTable = BigtableResourceManagerUtils.generateTableId(CHANGES_CDC_TABLE);
+    String table = BigtableResourceManagerUtils.generateTableId("dlq");
+    String cdcTable = BigtableResourceManagerUtils.generateTableId("cdc-dlq");
     bigtableResourceManager.createTable(table, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
