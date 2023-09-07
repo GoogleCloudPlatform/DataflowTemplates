@@ -24,7 +24,7 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -33,6 +33,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,6 +46,7 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(TextToPubsub.class)
 @RunWith(JUnit4.class)
 public class TextToPubsubIT extends TemplateTestBase {
+
   private static final String TEST_ROOT_DIR = TextToPubsubIT.class.getSimpleName();
   private PubsubResourceManager pubsubResourceManager;
 
@@ -62,12 +64,21 @@ public class TextToPubsubIT extends TemplateTestBase {
   @Test
   public void testTextToTopic() throws IOException {
     // Arrange
+    Map<String, String> artifacts =
+        Map.of(
+            "message1-" + testName,
+            RandomStringUtils.randomAlphabetic(1, 2),
+            "message2-" + testName,
+            RandomStringUtils.randomAlphabetic(1, 2),
+            "message3-" + testName,
+            RandomStringUtils.randomAlphabetic(200, 400),
+            "message4-" + testName + "-long-" + RandomStringUtils.randomAlphabetic(100, 200),
+            RandomStringUtils.randomAlphabetic(100, 200));
+    createArtifacts(artifacts);
+
     TopicName outputTopic = pubsubResourceManager.createTopic("topic");
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
-    List<String> expectedArtifacts =
-        List.of("message1-" + testName, "message2-" + testName, "message3-" + testName);
-    createArtifacts(expectedArtifacts);
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("inputFilePattern", getInputFilePattern())
@@ -79,7 +90,7 @@ public class TextToPubsubIT extends TemplateTestBase {
 
     PubsubMessagesCheck pubsubCheck =
         PubsubMessagesCheck.builder(pubsubResourceManager, outputSubscription)
-            .setMinMessages(expectedArtifacts.size())
+            .setMinMessages(artifacts.size())
             .build();
     Result result = pipelineOperator().waitForCondition(createConfig(info), pubsubCheck);
 
@@ -88,12 +99,12 @@ public class TextToPubsubIT extends TemplateTestBase {
             pubsubCheck.getReceivedMessageList().stream()
                 .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
                 .collect(Collectors.toList()))
-        .containsAtLeastElementsIn(expectedArtifacts);
+        .containsAtLeastElementsIn(artifacts.values());
   }
 
-  private void createArtifacts(List<String> expectedArtifacts) {
-    for (String artifact : expectedArtifacts) {
-      gcsClient.createArtifact(artifact, artifact.getBytes());
+  private void createArtifacts(Map<String, String> artifacts) {
+    for (Map.Entry<String, String> artifact : artifacts.entrySet()) {
+      gcsClient.createArtifact(artifact.getKey(), artifact.getValue());
     }
   }
 
