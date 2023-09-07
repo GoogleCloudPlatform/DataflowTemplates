@@ -16,6 +16,7 @@
 package com.google.cloud.bigtable.data.v2.models;
 
 import com.google.api.core.InternalApi;
+import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation.MutationType;
 import com.google.cloud.bigtable.data.v2.models.Range.TimestampRange;
 import com.google.cloud.teleport.v2.templates.utils.TestConstants;
 import com.google.protobuf.ByteString;
@@ -66,6 +67,11 @@ public class ChangeStreamMutationBuilder {
 
   public ChangeStreamMutationBuilder deleteFamily(String colFamily) {
     this.builder.deleteFamily(colFamily);
+    return this;
+  }
+
+  public ChangeStreamMutationBuilder setType(MutationType type) {
+    this.builder.setType(type);
     return this;
   }
 
