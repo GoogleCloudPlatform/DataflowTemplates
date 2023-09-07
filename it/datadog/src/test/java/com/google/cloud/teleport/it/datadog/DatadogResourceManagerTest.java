@@ -18,6 +18,7 @@ package com.google.cloud.teleport.it.datadog;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -72,6 +73,8 @@ public class DatadogResourceManagerTest {
   public void setUp() {
     when(container.getMappedPort(DEFAULT_DATADOG_HEC_INTERNAL_PORT))
         .thenReturn(MAPPED_DATADOG_HEC_INTERNAL_PORT);
+
+    doReturn(container).when(container).withLogConsumer(any());
 
     when(serviceClient.when(any(RequestDefinition.class)))
         .thenReturn(mock(ForwardChainExpectation.class));
