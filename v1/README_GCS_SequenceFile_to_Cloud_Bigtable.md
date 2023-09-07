@@ -22,11 +22,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableInstanceId** (Instance ID): The ID of the Cloud Bigtable instance that contains the table.
 * **bigtableTableId** (Table ID): The ID of the Cloud Bigtable table to import.
 * **sourcePattern** (Source path pattern): Cloud Storage path pattern where data is located. (Example: gs://your-bucket/your-path/prefix*).
-* **mutationThrottleLatencyMs** (Mutation Throttle Latency): Optional Set mutation latency throttling (enables the feature). Value in milliseconds. Defaults to: 0.
 
 ### Optional Parameters
 
 * **bigtableAppProfileId** (Application profile ID): The ID of the Cloud Bigtable application profile to be used for the import.
+* **mutationThrottleLatencyMs** (Mutation Throttle Latency): Optional Set mutation latency throttling (enables the feature). Value in milliseconds. Defaults to: 0.
 
 
 
@@ -116,10 +116,10 @@ export BIGTABLE_PROJECT=<bigtableProject>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export SOURCE_PATTERN=<sourcePattern>
-export MUTATION_THROTTLE_LATENCY_MS=0
 
 ### Optional
 export BIGTABLE_APP_PROFILE_ID=<bigtableAppProfileId>
+export MUTATION_THROTTLE_LATENCY_MS=0
 
 gcloud dataflow jobs run "gcs-sequencefile-to-cloud-bigtable-job" \
   --project "$PROJECT" \
@@ -153,10 +153,10 @@ export BIGTABLE_PROJECT=<bigtableProject>
 export BIGTABLE_INSTANCE_ID=<bigtableInstanceId>
 export BIGTABLE_TABLE_ID=<bigtableTableId>
 export SOURCE_PATTERN=<sourcePattern>
-export MUTATION_THROTTLE_LATENCY_MS=0
 
 ### Optional
 export BIGTABLE_APP_PROFILE_ID=<bigtableAppProfileId>
+export MUTATION_THROTTLE_LATENCY_MS=0
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
