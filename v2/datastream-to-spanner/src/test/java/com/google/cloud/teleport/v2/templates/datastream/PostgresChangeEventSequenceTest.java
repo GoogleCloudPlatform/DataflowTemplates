@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -40,12 +42,26 @@ public final class PostgresChangeEventSequenceTest {
   @Test
   public void canOrderBasedOnLsn() {
     PostgresChangeEventSequence oldEvent =
-        new PostgresChangeEventSequence(eventTimestamp, "16/423");
+        new PostgresChangeEventSequence(eventTimestamp, "16/F755D830");
     PostgresChangeEventSequence newEvent =
-        new PostgresChangeEventSequence(eventTimestamp, "16/1223");
+        new PostgresChangeEventSequence(eventTimestamp, "16/F755D831");
 
     assertTrue(oldEvent.compareTo(newEvent) < 0);
     assertTrue(newEvent.compareTo(oldEvent) > 0);
+  }
+
+  @Test
+  public void testGetPaddedLSN() {
+    PostgresChangeEventSequence sequence = new PostgresChangeEventSequence(123456L, "16/2A50F3");
+    String expectedPaddedLSN = "1602773235";
+    String actualPaddedLSN = sequence.getPaddedLSN();
+    assertEquals(expectedPaddedLSN, actualPaddedLSN);
+  }
+
+  @Test
+  public void testGetPaddedLSNInvalid() {
+    PostgresChangeEventSequence sequence = new PostgresChangeEventSequence(123456L, "16/2A50H3");
+    assertThrows(NumberFormatException.class, sequence::getPaddedLSN);
   }
 
   @Test

@@ -110,7 +110,7 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
       return "";
     }
     String[] parts = lsn.split("/");
-    return parts[0] + String.format("%08d", Integer.parseInt(parts[1]));
+    return parts[0] + String.format("%08d", Long.parseLong(parts[1], 16));
   }
 
   @Override
