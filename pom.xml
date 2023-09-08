@@ -25,8 +25,8 @@
   <name>Google Cloud Dataflow Templates</name>
   <packaging>pom</packaging>
   <description>
-    Unifies all the template libraries under one POM for easier automation and
-    to allow for more reusable and modular dependencies.
+    Cloud Dataflow Google-provided templates for solving in-Cloud data tasks. For more information, please check
+    https://cloud.google.com/dataflow/docs/guides/templates/provided-templates.
   </description>
 
   <properties>

@@ -63,6 +63,8 @@ type MavenFlags interface {
 	RunIntegrationTests() string
 	RunIntegrationSmokeTests() string
 	RunLoadTests() string
+	WorkerMachineType(string) string
+	UseUnifiedWorker() string
 	ThreadCount(int) string
 	IntegrationTestParallelism(int) string
 	StaticBigtableInstance(string) string
@@ -125,6 +127,14 @@ func (*mvnFlags) RunIntegrationSmokeTests() string {
 
 func (*mvnFlags) RunLoadTests() string {
 	return "-PtemplatesLoadTests"
+}
+
+func (*mvnFlags) WorkerMachineType(machineType string) string {
+	return "-DworkerMachineType=" + machineType
+}
+
+func (*mvnFlags) UseUnifiedWorker() string {
+	return "-DunifiedWorker"
 }
 
 func (*mvnFlags) ThreadCount(count int) string {

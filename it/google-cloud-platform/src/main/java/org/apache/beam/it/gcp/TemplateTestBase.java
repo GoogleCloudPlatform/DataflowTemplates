@@ -397,7 +397,7 @@ public abstract class TemplateTestBase {
     }
 
     if (System.getProperty("workerMachineType") != null) {
-      options.addEnvironment("workerMachineType", System.getProperty("workerMachineType"));
+      options.addParameter("workerMachineType", System.getProperty("workerMachineType"));
     }
 
     if (usingDirectRunner) {

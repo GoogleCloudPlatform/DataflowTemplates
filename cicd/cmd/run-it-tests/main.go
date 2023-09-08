@@ -56,6 +56,8 @@ func main() {
 		mvnFlags.SkipShade(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunIntegrationTests(),
+		mvnFlags.WorkerMachineType("t2a-standard-4"),
+		mvnFlags.UseUnifiedWorker(),
 		mvnFlags.ThreadCount(4),
 		mvnFlags.IntegrationTestParallelism(3),
 		mvnFlags.StaticBigtableInstance("teleport"),

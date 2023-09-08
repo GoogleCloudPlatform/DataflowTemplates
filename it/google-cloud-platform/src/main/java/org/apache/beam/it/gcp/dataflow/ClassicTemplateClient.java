@@ -30,6 +30,8 @@ import com.google.auth.Credentials;
 import com.google.auth.http.HttpCredentialsAdapter;
 import dev.failsafe.Failsafe;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,16 +67,20 @@ public final class ClassicTemplateClient extends AbstractPipelineLauncher {
         "Cannot launch a template job without specPath. Please specify specPath and try again!");
     LOG.info("Getting ready to launch {} in {} under {}", options.jobName(), region, project);
     LOG.info("Using the spec at {}", options.specPath());
-    LOG.info("Using parameters:\n{}", formatForLogging(options.parameters()));
+
+    Map<String, String> parameters = buildParameters(options);
+    RuntimeEnvironment runtimeEnvironment = buildEnvironment(options);
+
+    LOG.info("Using parameters:\n{}", formatForLogging(parameters));
 
     @SuppressWarnings("nullness")
     CreateJobFromTemplateRequest parameter =
         new CreateJobFromTemplateRequest()
             .setJobName(options.jobName())
-            .setParameters(options.parameters())
+            .setParameters(parameters)
             .setLocation(region)
             .setGcsPath(options.specPath())
-            .setEnvironment(buildEnvironment(options));
+            .setEnvironment(runtimeEnvironment);
     LOG.info("Sending request:\n{}", formatForLogging(parameter));
 
     Job job =
@@ -99,9 +105,24 @@ public final class ClassicTemplateClient extends AbstractPipelineLauncher {
   }
 
   private RuntimeEnvironment buildEnvironment(LaunchConfig options) {
+    // Create a mutable map out of the given environment.
+    Map<String, Object> environmentMap = new HashMap<>(options.environment());
+
+    // Replace 'workerMachineType' parameter for 'machineType' environment for classic templates.
+    if (options.parameters().containsKey("workerMachineType")) {
+      environmentMap.put("machineType", options.parameters().get("workerMachineType"));
+    }
+
     RuntimeEnvironment environment = new RuntimeEnvironment();
-    environment.putAll(options.environment());
+    environment.putAll(environmentMap);
     return environment;
+  }
+
+  private Map<String, String> buildParameters(LaunchConfig options) {
+    // Remove worker machine type, as it gets passed in the environment for classic templates.
+    Map<String, String> parameters = new HashMap<>(options.parameters());
+    parameters.remove("workerMachineType");
+    return parameters;
   }
 
   /** Builder for {@link ClassicTemplateClient}. */
