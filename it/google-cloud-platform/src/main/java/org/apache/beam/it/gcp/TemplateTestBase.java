@@ -122,7 +122,7 @@ public abstract class TemplateTestBase {
   @Before
   public void setUpBase() throws ExecutionException {
 
-    testId = PipelineUtils.createJobName("test");
+    testId = PipelineUtils.createJobName("test", 10);
 
     TemplateIntegrationTest annotation = null;
     usingDirectRunner = System.getProperty("directRunnerTest") != null;

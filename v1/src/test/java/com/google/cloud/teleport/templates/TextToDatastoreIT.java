@@ -29,7 +29,6 @@ import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
-import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.datastore.DatastoreResourceManager;
@@ -49,8 +48,6 @@ public final class TextToDatastoreIT extends TemplateTestBase {
 
   @Before
   public void setup() {
-    testId = PipelineUtils.createJobName("test");
-
     datastoreResourceManager =
         DatastoreResourceManager.builder(PROJECT, testId, credentials).build();
   }

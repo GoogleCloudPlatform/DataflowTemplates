@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static org.apache.beam.it.common.utils.PipelineUtils.createJobName;
 import static org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -72,8 +71,7 @@ public final class PubSubTopicToBigQueryIT extends TemplateTestBase {
   @Test
   public void testTopicToBigQuery() throws IOException {
     // Arrange
-    String jobName = createJobName(testName);
-    Map<String, Object> message = Map.of("job", jobName, "msg", "message");
+    Map<String, Object> message = Map.of("job", testId, "msg", "message");
     List<Field> bqSchemaFields =
         Arrays.asList(
             Field.of("job", StandardSQLTypeName.STRING),
