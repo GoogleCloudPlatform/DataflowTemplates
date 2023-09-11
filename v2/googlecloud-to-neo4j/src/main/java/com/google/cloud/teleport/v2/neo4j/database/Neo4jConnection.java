@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.database;
 
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
@@ -86,11 +87,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     try {
       String database = !StringUtils.isEmpty(this.database) ? this.database : "neo4j";
       String cypher = "CREATE OR REPLACE DATABASE $db";
-      LOG.info("Executing delete DB cypher: {} against database {}", cypher, database);
+      LOG.info("Executing DB replacement query: {} against database {}", cypher, database);
       executeCypher(cypher, Map.of("db", database));
     } catch (Exception ex) {
-      LOG.error("Error executing reset database using CREATE OR REPLACE", ex);
-      fallbackResetDatabase();
+      fallbackResetDatabase(ex);
     }
   }
 
@@ -138,7 +138,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     return driverSupplier.get();
   }
 
-  private void fallbackResetDatabase() {
+  private void fallbackResetDatabase(Exception initialException) {
     try {
       String ddeCypher = "MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS";
       LOG.info("Executing alternate delete cypher: {}", ddeCypher);
@@ -146,8 +146,12 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       String constraintsDeleteCypher = "CALL apoc.schema.assert({}, {}, true)";
       LOG.info("Dropping indices & constraints with query: {}", constraintsDeleteCypher);
       executeCypher(constraintsDeleteCypher);
-    } catch (Exception dde) {
-      LOG.error("Error executing detach delete", dde);
+    } catch (Exception exception) {
+      exception.addSuppressed(initialException);
+      LOG.error(
+          "Error resetting database: both initial and fallback reset strategies failed", exception);
+      Throwables.throwIfUnchecked(exception);
+      throw new RuntimeException(exception);
     }
   }
 }
