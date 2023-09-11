@@ -548,7 +548,7 @@ public class KafkaIO {
     /**
      * Sets {@link TimestampPolicy} to {@link TimestampPolicyFactory.ProcessingTimePolicy}. This is
      * the default timestamp policy. It assigns processing time to each record. Specifically, this
-     * is the timestamp when the record becomes 'current' in the reader. The watermark aways
+     * is the timestamp when the record becomes 'current' in the reader. The watermark always
      * advances to current time. If server side time (log append time) is enabled in Kafka, {@link
      * #withLogAppendTime()} is recommended over this.
      */

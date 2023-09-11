@@ -33,8 +33,8 @@ import org.slf4j.LoggerFactory;
  * local cache for each worker thread.
  *
  * <p>The key factors addressed are ensuring expiration of cached tables, consistent update behavior
- * to ensure reliabillity, and easy cache reloads. Open Question: Does the class require thread-safe
- * behaviors? Currently it does not since there is no iteration and get/set are not continuous.
+ * to ensure reliability, and easy cache reloads. Open Question: Does the class require thread-safe
+ * behaviors? Currently, it does not since there is no iteration and get/set are not continuous.
  */
 public class BigQueryTableCache extends MappedObjectCache<TableId, Table> {
 
