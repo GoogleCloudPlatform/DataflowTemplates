@@ -151,6 +151,7 @@ public class ChangeStreamToRowMutations {
 
       // Skip element if filter GC flag on and the mutation was of GC type.
       if (filterGCMutations && mutation.getType().equals(GARBAGE_COLLECTION)) {
+        Metrics.counter(ConvertChangeStreamFn.class, "gc_mutations_filtered").inc();
         return;
       }
 
@@ -184,11 +185,11 @@ public class ChangeStreamToRowMutations {
         if (((DeleteCells) lastEntry)
             .getQualifier()
             .equals(ByteString.copyFromUtf8(hbaseQualifierInput))) {
-          Metrics.counter(ConvertChangeStreamFn.class, "mutations_filtered_from_hbase").inc();
+          Metrics.counter(ConvertChangeStreamFn.class, "hbase_mutations_filtered").inc();
           return true;
         }
       }
-      Metrics.counter(ConvertChangeStreamFn.class, "mutations_replicated_from_bigtable").inc();
+      Metrics.counter(ConvertChangeStreamFn.class, "bigtable_mutations_replicated").inc();
       return false;
     }
 
