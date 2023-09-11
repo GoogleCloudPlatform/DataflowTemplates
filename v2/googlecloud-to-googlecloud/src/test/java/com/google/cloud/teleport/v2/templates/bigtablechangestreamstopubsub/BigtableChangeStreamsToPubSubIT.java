@@ -88,7 +88,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToPubSubIT.class);
 
-  public static final String SOURCE_CDC_TABLE = "source";
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
   private BigtableResourceManager bigtableResourceManager;
@@ -121,7 +120,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     appProfileId = generateAppProfileId();
 
-    srcTable = BigtableResourceManagerUtils.generateTableId(SOURCE_CDC_TABLE);
+    srcTable = BigtableResourceManagerUtils.generateTableId(testName);
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
