@@ -114,6 +114,13 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     }
   }
 
+  public void verifyConnectivity() {
+    if (this.driver == null) {
+      this.driver = getDriver();
+    }
+    this.driver.verifyConnectivity();
+  }
+
   @Override
   public void close() {
     if (this.session != null && this.session.isOpen()) {
