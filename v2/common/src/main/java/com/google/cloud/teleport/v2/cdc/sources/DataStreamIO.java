@@ -112,6 +112,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private Boolean lowercaseSourceColumns = false;
   private Map<String, String> renameColumns = new HashMap<>();
   private Boolean hashRowId = false;
+  private Duration directoryWatchDuration = Duration.standardMinutes(10);
   PCollection<String> directories = null;
 
   public DataStreamIO() {}
@@ -159,6 +160,14 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   /** Set the reader to hash Oracle ROWID values into int. */
   public DataStreamIO withHashRowId() {
     this.hashRowId = true;
+    return this;
+  }
+
+  /** Set custom directoryWatchDuration used in Polling Pipeline. Default = 10 minutes */
+  public DataStreamIO withDirectoryWatchDuration(Duration directoryWatchDuration) {
+    if (directoryWatchDuration != null) {
+      this.directoryWatchDuration = directoryWatchDuration;
+    }
     return this;
   }
 
@@ -284,7 +293,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
               FileIO.matchAll()
                   .continuously(
                       Duration.standardSeconds(5),
-                      Growth.afterTimeSinceNewOutput(Duration.standardMinutes(10))))
+                      Growth.afterTimeSinceNewOutput(directoryWatchDuration)))
           .apply("ReadFiles", FileIO.readMatches());
     }
   }
