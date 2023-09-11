@@ -29,7 +29,7 @@ import java.util.TreeMap;
 /**
  * This helper class allows fetching a sorted map containing the columns that make up the (compound)
  * primary key in a @see <a href="http://cassandra.apache.org/">Apache Cassandra</a> table. See
- * method documentation for futher details.
+ * method documentation for further details.
  */
 class CassandraKeyUtils {
 

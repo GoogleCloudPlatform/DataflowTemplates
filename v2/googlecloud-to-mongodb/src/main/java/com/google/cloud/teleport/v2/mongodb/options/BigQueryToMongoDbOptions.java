@@ -25,7 +25,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * executor at the command-line.
  */
 public class BigQueryToMongoDbOptions {
-  /** MongoDB write Options initilization. */
+  /** MongoDB write Options initialization. */
   public interface MongoDbOptions extends PipelineOptions, DataflowPipelineOptions {
 
     @TemplateParameter.Text(
@@ -58,7 +58,7 @@ public class BigQueryToMongoDbOptions {
     void setCollection(String collection);
   }
 
-  /** BigQUery read Options initilization. */
+  /** BigQuery read Options initialization. */
   public interface BigQueryReadOptions extends PipelineOptions, DataflowPipelineOptions {
 
     @TemplateParameter.BigQueryTable(

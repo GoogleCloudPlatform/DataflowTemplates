@@ -114,8 +114,8 @@ public class BigQueryDynamicConverters {
 
   /**
    * Class {@link BigQueryDynamicDestination} Class BigQueryDynamicDestination loads into BigQuery
-   * tables in a dynamic fashion. The desitination table is based on the TableId supplied by
-   * previous steps.
+   * tables in a dynamic fashion. The destination table is based on the TableId supplied by previous
+   * steps.
    */
   public static class BigQueryDynamicDestination
       extends DynamicDestinations<KV<TableId, TableRow>, KV<TableId, TableRow>> {

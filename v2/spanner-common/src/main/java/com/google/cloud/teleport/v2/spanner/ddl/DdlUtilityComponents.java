@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.spanner.ddl;
 
 import com.google.cloud.spanner.Dialect;
 
-/** Cloud Spanner Ddl untility components. */
+/** Cloud Spanner Ddl utility components. */
 class DdlUtilityComponents {
 
   // Private constructor to prevent initializing instance, because this class is only served within
