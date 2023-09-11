@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstogcs;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
-import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.teleport.bigtable.ChangelogEntry;
 import com.google.cloud.teleport.bigtable.ChangelogEntryJson;
@@ -31,7 +31,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -47,13 +46,11 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
-import org.apache.beam.it.gcp.bigtable.BigtableResourceManagerCluster;
 import org.apache.beam.it.gcp.bigtable.BigtableTableSpec;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.awaitility.Awaitility;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -68,13 +65,54 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
 
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
-  private static final String TEST_ZONE = "us-central1-b";
   private BigtableResourceManager bigtableResourceManager;
   private GcsResourceManager gcsResourceManager;
   private String outputPath;
   private String outputPath2;
   private String appProfileId;
   private String srcTable;
+
+  @Before
+  public void setup() throws IOException {
+    gcsResourceManager =
+        GcsResourceManager.builder(
+                TestProperties.artifactBucket(),
+                getClass().getSimpleName(),
+                TestProperties.googleCredentials())
+            .build();
+    bigtableResourceManager =
+        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider)
+            .maybeUseStaticInstance()
+            .build();
+
+    String outputDir = generateSafeDirectoryName();
+    gcsResourceManager.registerTempDir(outputDir);
+
+    outputPath =
+        String.format(
+            "gs://%s/%s",
+            TestProperties.artifactBucket(), gcsResourceManager.getPathForArtifact("output"));
+    outputPath2 =
+        String.format(
+            "gs://%s/%s",
+            TestProperties.artifactBucket(), gcsResourceManager.getPathForArtifact("output2"));
+
+    appProfileId = generateAppProfileId();
+    srcTable = generateTableName();
+
+    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
+    cdcTableSpec.setCdcEnabled(true);
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
+    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
+
+    bigtableResourceManager.createAppProfile(
+        appProfileId, true, bigtableResourceManager.getClusterNames());
+  }
+
+  @After
+  public void tearDownClass() {
+    ResourceManagerUtils.cleanResources(bigtableResourceManager, gcsResourceManager);
+  }
 
   @Test
   public void testSingleMutationChangelogEntryJsonE2E() throws Exception {
@@ -324,7 +362,7 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
 
     var latestPredicate = new LookForBigtableRowAvroRecord(expected);
     validateGCSContents(launchInfo, "output2", latestPredicate);
-    Assert.assertTrue(latestPredicate.getEarliestCommitTime() >= microsCutoff);
+    assertThat(latestPredicate.getEarliestCommitTime()).isAtLeast(microsCutoff);
   }
 
   @Test
@@ -409,11 +447,8 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
 
     var latestPredicate = new LookForBigtableRowAvroRecord(expected);
     validateGCSContents(launchInfo2, "output2", latestPredicate);
-    Assert.assertTrue(latestPredicate.getEarliestCommitTime() > predicate.getLatestCommitTime());
-  }
-
-  private String generateClusterName() {
-    return "teleport-c1";
+    assertThat(latestPredicate.getEarliestCommitTime())
+        .isGreaterThan(predicate.getLatestCommitTime());
   }
 
   private String generateTableName() {
@@ -435,7 +470,7 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
               .addParameter("gcsOutputDirectory", outputPath)
               .addParameter("schemaOutputFormat", "BIGTABLE_ROW"));
     } catch (RuntimeException e) {
-      Assert.assertTrue(e.getMessage().contains("The job failed before launch"));
+      assertThat(e).hasMessageThat().contains("The job failed before launch");
     }
   }
 
@@ -444,8 +479,7 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
   }
 
   private void validateGCSContents(
-      LaunchInfo launchInfo, String outputLocation, Predicate<? super byte[]> checkFile)
-      throws Exception {
+      LaunchInfo launchInfo, String outputLocation, Predicate<? super byte[]> checkFile) {
     pipelineOperator()
         .waitForCondition(
             createConfig(launchInfo),
@@ -468,55 +502,6 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
   @NotNull
   private static String generateAppProfileId() {
     return "cdc_app_profile_" + System.nanoTime();
-  }
-
-  @Before
-  public void setup() throws IOException {
-    gcsResourceManager =
-        GcsResourceManager.builder(
-                TestProperties.artifactBucket(),
-                getClass().getSimpleName(),
-                TestProperties.googleCredentials())
-            .build();
-
-    String outputDir = generateSafeDirectoryName();
-    gcsResourceManager.registerTempDir(outputDir);
-
-    outputPath =
-        String.format(
-            "gs://%s/%s",
-            TestProperties.artifactBucket(), gcsResourceManager.getPathForArtifact("output"));
-    outputPath2 =
-        String.format(
-            "gs://%s/%s",
-            TestProperties.artifactBucket(), gcsResourceManager.getPathForArtifact("output2"));
-
-    BigtableResourceManager.Builder rmBuilder =
-        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider);
-
-    bigtableResourceManager = rmBuilder.maybeUseStaticInstance().build();
-
-    appProfileId = generateAppProfileId();
-    String clusterName = generateClusterName();
-    srcTable = generateTableName();
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(srcTable, cdcTableSpec);
-  }
-
-  @After
-  public void tearDownClass() {
-    ResourceManagerUtils.cleanResources(bigtableResourceManager, gcsResourceManager);
   }
 
   @Override
