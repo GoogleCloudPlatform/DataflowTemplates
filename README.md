@@ -247,6 +247,7 @@ Notes:
   as `-DspecPath=gs://.../path`
 - `-DjobName="{name}"` may be informed if a specific name is desirable (
   optional).
+- If you encounter the error `Template run failed: File too large`, try adding `-DskipShade` to the mvn args.
 
 
 ### Running Integration Tests
