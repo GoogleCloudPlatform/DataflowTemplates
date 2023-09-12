@@ -87,7 +87,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     try {
       String database = !StringUtils.isEmpty(this.database) ? this.database : "neo4j";
       String cypher = "CREATE OR REPLACE DATABASE $db";
-      LOG.info("Executing DB replacement query: {} against database {}", cypher, database);
+      LOG.info(
+          "Executing CREATE OR REPLACE DATABASE Cypher query: {} against database {}",
+          cypher,
+          database);
       executeCypher(cypher, Map.of("db", database));
     } catch (Exception ex) {
       fallbackResetDatabase(ex);
@@ -141,15 +144,19 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   private void fallbackResetDatabase(Exception initialException) {
     try {
       String ddeCypher = "MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS";
-      LOG.info("Executing alternate delete cypher: {}", ddeCypher);
+      LOG.info("Executing alternative delete Cypher query: {}", ddeCypher);
       executeCypher(ddeCypher);
       String constraintsDeleteCypher = "CALL apoc.schema.assert({}, {}, true)";
-      LOG.info("Dropping indices & constraints with query: {}", constraintsDeleteCypher);
+      LOG.info("Dropping indices & constraints with APOC: {}", constraintsDeleteCypher);
       executeCypher(constraintsDeleteCypher);
     } catch (Exception exception) {
       exception.addSuppressed(initialException);
       LOG.error(
-          "Error resetting database: both initial and fallback reset strategies failed", exception);
+          "Error resetting database: "
+              + "make sure the configured Neo4j user is allowed to run 'CREATE OR REPLACE DATABASE'"
+              + " or APOC is installed.\n"
+              + "Alternatively, disable database reset by setting 'reset_db' to false in the job specification.",
+          exception);
       Throwables.throwIfUnchecked(exception);
       throw new RuntimeException(exception);
     }
