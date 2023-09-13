@@ -253,6 +253,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     arguments.add(element("argument", "--project=" + projectId));
     arguments.add(element("argument", "--region=" + region));
 
+    if (System.getProperty("unifiedWorker") != null) {
+      arguments.add(element("argument", "--experiments=use_runner_v2"));
+    }
     if (gcpTempLocation != null) {
       String gcpTempLocationPath = "gs://" + bucketNameOnly(gcpTempLocation) + "/temp/";
       arguments.add(element("argument", "--gcpTempLocation=" + gcpTempLocationPath));

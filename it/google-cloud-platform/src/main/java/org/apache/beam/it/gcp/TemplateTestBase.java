@@ -327,6 +327,7 @@ public abstract class TemplateTestBase {
       "-DgcpTempLocation=" + bucketName,
       "-DstagePrefix=" + prefix,
       "-DtemplateName=" + template.name(),
+      (System.getProperty("unifiedWorker") != null ? "-DunifiedWorker" : "-DlegacyWorker"),
       // Print stacktrace when command fails
       "-e"
     };
