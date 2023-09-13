@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 import static org.awaitility.Awaitility.await;
 
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -94,7 +95,7 @@ public class JdbcToPubsubIT extends JDBCBaseIT {
     List<Map<String, Object>> generatedData = generateData();
     mysqlResourceManager.write(testName, generatedData);
 
-    TopicName outputTopic = pubsubResourceManager.createTopic("topic");
+    TopicName outputTopic = pubsubResourceManager.createTopic("input-" + randomAlphanumeric(8));
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
     LaunchConfig.Builder options =
@@ -154,7 +155,7 @@ public class JdbcToPubsubIT extends JDBCBaseIT {
       values.put(AGE, new Random().nextInt(100));
       values.put(MEMBER, i % 2 == 0 ? "Y" : "N");
       values.put(ENTRY_ADDED, Instant.now().toString());
-      values.put(LONG_DESCRIPTION, RandomStringUtils.randomAlphanumeric(100, 2000));
+      values.put(LONG_DESCRIPTION, randomAlphanumeric(100, 2000));
       data.add(values);
     }
 
