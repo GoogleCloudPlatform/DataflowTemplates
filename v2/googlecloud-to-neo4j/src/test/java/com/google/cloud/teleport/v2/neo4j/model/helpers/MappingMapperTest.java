@@ -20,6 +20,7 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
@@ -49,7 +50,7 @@ public class MappingMapperTest {
 
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
-            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .filter(mapping -> roleIs(mapping, RoleType.key))
             .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
@@ -75,7 +76,7 @@ public class MappingMapperTest {
 
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
-            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .filter(mapping -> roleIs(mapping, RoleType.key))
             .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
@@ -103,7 +104,7 @@ public class MappingMapperTest {
 
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
-            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .filter(mapping -> roleIs(mapping, RoleType.key))
             .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
@@ -129,7 +130,7 @@ public class MappingMapperTest {
 
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
-            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .filter(mapping -> roleIs(mapping, RoleType.key))
             .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
@@ -155,7 +156,7 @@ public class MappingMapperTest {
 
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
-            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .filter(mapping -> roleIs(mapping, RoleType.key))
             .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
@@ -181,7 +182,7 @@ public class MappingMapperTest {
 
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
-            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .filter(mapping -> roleIs(mapping, RoleType.key))
             .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
@@ -209,7 +210,7 @@ public class MappingMapperTest {
 
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
-            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .filter(mapping -> roleIs(mapping, RoleType.key))
             .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
@@ -235,7 +236,7 @@ public class MappingMapperTest {
 
     List<Mapping> result =
         MappingMapper.parseMappings(target, mappings).stream()
-            .filter(mapping -> mapping.getRole() == RoleType.key)
+            .filter(mapping -> roleIs(mapping, RoleType.key))
             .sorted(Comparator.comparing(Mapping::getField))
             .collect(toList());
 
@@ -298,6 +299,70 @@ public class MappingMapperTest {
                 indexedMapping(FragmentType.node, RoleType.label, constantFieldTuple("Buyer"))));
   }
 
+  @Test
+  public void supportsNodeBooleanPropertiesDefinedAsObjectArray() {
+    JSONObject jsonMappings = new JSONObject();
+    jsonMappings.put("label", "Placeholder");
+    jsonMappings.put("keys", "placeholder");
+    JSONArray booleanProps = new JSONArray();
+    booleanProps.put(jsonFieldTuple("boolean_source_field1", "booleanNodeProperty1"));
+    booleanProps.put(jsonFieldTuple("boolean_source_field2", "booleanNodeProperty2"));
+    JSONObject properties = new JSONObject();
+    properties.put("booleans", booleanProps);
+    jsonMappings.put("properties", properties);
+
+    List<Mapping> mappings =
+        MappingMapper.parseMappings(target("my-target", TargetType.node), jsonMappings);
+    List<Mapping> propertyMappings =
+        mappings.stream().filter(mapping -> roleIs(mapping, RoleType.property)).collect(toList());
+
+    assertThat(propertyMappings)
+        .isEqualTo(
+            List.of(
+                typedMapping(
+                    PropertyType.Boolean,
+                    FragmentType.node,
+                    RoleType.property,
+                    fieldTuple("boolean_source_field1", "booleanNodeProperty1")),
+                typedMapping(
+                    PropertyType.Boolean,
+                    FragmentType.node,
+                    RoleType.property,
+                    fieldTuple("boolean_source_field2", "booleanNodeProperty2"))));
+  }
+
+  @Test
+  public void supportsEdgeBooleanPropertiesDefinedAsObjectArray() {
+    JSONObject jsonMappings = new JSONObject();
+    jsonMappings.put("type", "Placeholder");
+    jsonMappings.put("keys", "placeholder");
+    JSONArray booleanProps = new JSONArray();
+    booleanProps.put(jsonFieldTuple("boolean_source_field1", "booleanNodeProperty1"));
+    booleanProps.put(jsonFieldTuple("boolean_source_field2", "booleanNodeProperty2"));
+    JSONObject properties = new JSONObject();
+    properties.put("booleans", booleanProps);
+    jsonMappings.put("properties", properties);
+
+    List<Mapping> mappings =
+        MappingMapper.parseMappings(target("my-target", TargetType.edge), jsonMappings);
+    List<Mapping> propertyMappings =
+        mappings.stream().filter(mapping -> roleIs(mapping, RoleType.property)).collect(toList());
+
+    assertThat(propertyMappings)
+        .isEqualTo(
+            List.of(
+                typedMapping(
+                    PropertyType.Boolean,
+                    FragmentType.rel,
+                    RoleType.property,
+                    fieldTuple("boolean_source_field1", "booleanNodeProperty1")),
+                typedMapping(
+                    PropertyType.Boolean,
+                    FragmentType.rel,
+                    RoleType.property,
+                    fieldTuple("boolean_source_field2", "booleanNodeProperty2"))));
+  }
+
   private static Target target(String name, TargetType type) {
     Target target = new Target();
     target.setName(name);
@@ -326,9 +391,17 @@ public class MappingMapperTest {
   }
 
   private static JSONObject jsonFieldTuple(String field, String property) {
-    JSONObject nodeKeyMapping1 = new JSONObject();
-    nodeKeyMapping1.put(field, property);
-    return nodeKeyMapping1;
+    JSONObject tuple = new JSONObject();
+    tuple.put(field, property);
+    return tuple;
+  }
+
+  private static Mapping typedMapping(
+      PropertyType propertyType, FragmentType fragment, RoleType role, FieldNameTuple tuple) {
+    Mapping mapping = new Mapping(fragment, role, tuple);
+    mapping.setType(propertyType);
+    mapping.setIndexed(false);
+    return mapping;
   }
 
   private static Mapping indexedMapping(
@@ -351,5 +424,9 @@ public class MappingMapperTest {
     fieldNameTuple.setField(field);
     fieldNameTuple.setName(name);
     return fieldNameTuple;
+  }
+
+  private static boolean roleIs(Mapping mapping, RoleType roleType) {
+    return mapping.getRole() == roleType;
   }
 }

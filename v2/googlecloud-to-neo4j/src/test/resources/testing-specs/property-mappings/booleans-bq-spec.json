@@ -1,0 +1,27 @@
+{
+  "source": {
+    "type": "bigquery",
+    "name": "booleans",
+    "query": "SELECT id, truthy FROM $bqtable"
+  },
+  "targets": [
+    {
+      "node": {
+        "name": "Boolean Nodes",
+        "source": "booleans",
+        "mode": "append",
+        "mappings": {
+          "label": "\"Boolean\"",
+          "keys": {
+            "id": "id"
+          },
+          "properties": {
+            "booleans": [{
+              "truthy": "truthy"
+            }]
+          }
+        }
+      }
+    }
+  ]
+}
