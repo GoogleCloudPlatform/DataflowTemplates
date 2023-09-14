@@ -95,9 +95,11 @@ public class JdbcToPubsubIT extends JDBCBaseIT {
     List<Map<String, Object>> generatedData = generateData();
     mysqlResourceManager.write(testName, generatedData);
 
-    TopicName outputTopic = pubsubResourceManager.createTopic("input-" + randomAlphanumeric(8));
+    String uniqueTopicName = "output-" + randomAlphanumeric(8);
+
+    TopicName outputTopic = pubsubResourceManager.createTopic(uniqueTopicName);
     SubscriptionName outputSubscription =
-        pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
+        pubsubResourceManager.createSubscription(outputTopic, uniqueTopicName + "-sub");
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("connectionUrl", mysqlResourceManager.getUri())
