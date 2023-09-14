@@ -45,16 +45,6 @@ public class InputRefactoring {
   }
 
   public void refactorJobSpec(JobSpec jobSpec) {
-
-    // custom query targets do not define any mapping for source fields
-    // other types of targets must define at least one source field mapping
-    if (jobSpec.getAllFieldNames().isEmpty()
-        && jobSpec.getTargets().stream()
-            .noneMatch(target -> target.getType() == TargetType.custom_query)) {
-      LOG.error("Targets not found, synthesizing from source is not currently supported.");
-      throw new RuntimeException("Not currently auto-generating targets.");
-    }
-
     LOG.info("Options params: {}", gson.toJson(optionsParams));
 
     // replace URI and SQL with run-time options
