@@ -399,7 +399,7 @@ public class GoogleCloudToNeo4j {
 
       // We have chosen a DoFn pattern applied to a single Integer row so that @ProcessElement
       // evaluates only once per invocation.
-      // For future actions (ie. logger) that consume upstream data context, we would use a
+      // For future actions (i.e. logger) that consume upstream data context, we would use a
       // Transform pattern
       // The challenge in this case of the Transform pattern is that @FinishBundle could execute
       // many times.
