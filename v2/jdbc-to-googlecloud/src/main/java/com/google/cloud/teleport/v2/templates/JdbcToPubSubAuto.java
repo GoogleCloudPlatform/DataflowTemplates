@@ -20,6 +20,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.auto.AutoTemplate;
 import com.google.cloud.teleport.metadata.auto.Preprocessor;
 import com.google.cloud.teleport.v2.auto.blocks.ReadFromJdbc;
+import com.google.cloud.teleport.v2.auto.blocks.RowToJSONString;
 import com.google.cloud.teleport.v2.auto.blocks.WriteToPubSub;
 import org.apache.beam.sdk.options.PipelineOptions;
 
@@ -30,7 +31,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
     description =
         "The Java Database Connectivity (JDBC) to Pub/Sub template is a batch pipeline that ingests data from "
             + "JDBC source and writes the resulting records to a pre-existing Pub/Sub topic as a JSON string.",
-    blocks = {ReadFromJdbc.class, WriteToPubSub.class},
+    blocks = {ReadFromJdbc.class, RowToJSONString.class, WriteToPubSub.class},
     flexContainerName = "jdbc-to-pubsub-auto",
     contactInformation = "https://cloud.google.com/support")
 public class JdbcToPubSubAuto {
