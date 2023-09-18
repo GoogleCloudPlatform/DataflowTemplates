@@ -95,6 +95,7 @@ mvn clean package -pl v2/pubsub-binary-to-bigquery -am
     - [Dataplex: Tier Data from BigQuery to Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Dataplex_BigQuery_to_GCS&type=code)
     - [Firestore (Datastore mode) to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Firestore_to_BigQuery_Flex&type=code)
     - [Firestore (Datastore mode) to Text Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Firestore_to_GCS_Text&type=code)
+    - [Google Ads to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Google_Ads_to_BigQuery&type=code)
     - [Google Cloud to Neo4j](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Google_Cloud_to_Neo4j&type=code)
     - [JDBC to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Jdbc_to_BigQuery&type=code)
     - [JDBC to BigQuery with BigQuery Storage API support](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Jdbc_to_BigQuery_Flex&type=code)

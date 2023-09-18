@@ -187,7 +187,7 @@ public class SchemaUtils {
   }
 
   /** Handlers proto field to BigQuery field conversion. */
-  private static TableFieldSchema convertProtoFieldDescriptorToBigQueryField(
+  public static TableFieldSchema convertProtoFieldDescriptorToBigQueryField(
       FieldDescriptor fieldDescriptor,
       boolean preserveProtoFieldNames,
       @Nullable FieldDescriptor parent,

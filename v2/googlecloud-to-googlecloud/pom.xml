@@ -84,6 +84,10 @@
   <dependencies>
     <dependency>
       <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-google-ads</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-hadoop-common</artifactId>
     </dependency>
     <dependency>
@@ -104,6 +108,11 @@
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>jdbc-common</artifactId>
       <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api-ads</groupId>
+      <artifactId>google-ads</artifactId>
+      <version>26.0.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
