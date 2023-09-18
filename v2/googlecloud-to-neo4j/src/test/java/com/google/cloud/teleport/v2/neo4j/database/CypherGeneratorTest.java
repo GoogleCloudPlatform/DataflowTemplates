@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.List;
 import org.junit.Test;
 
+// TODO: manually instantiate Target instances instead of deserializing JSON spec
 public class CypherGeneratorTest {
 
   private static final String SPEC_PATH = "src/test/resources/testing-specs/cypher-generator-test";
@@ -107,7 +108,7 @@ public class CypherGeneratorTest {
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     List<String> statements =
-        CypherGenerator.getEdgeNodeConstraintsCypherStatements(relationshipTarget);
+        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget);
 
     assertThat(statements)
         .isEqualTo(
@@ -124,7 +125,7 @@ public class CypherGeneratorTest {
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     List<String> statements =
-        CypherGenerator.getEdgeNodeConstraintsCypherStatements(relationshipTarget);
+        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget);
 
     assertThat(statements)
         .isEqualTo(
@@ -139,7 +140,7 @@ public class CypherGeneratorTest {
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     List<String> statements =
-        CypherGenerator.getEdgeNodeConstraintsCypherStatements(relationshipTarget);
+        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget);
 
     assertThat(statements)
         .isEqualTo(
@@ -157,7 +158,7 @@ public class CypherGeneratorTest {
     Target relationshipTarget = jobSpec.getTargets().iterator().next();
 
     List<String> statements =
-        CypherGenerator.getEdgeNodeConstraintsCypherStatements(relationshipTarget);
+        CypherGenerator.getIndexAndConstraintsCypherStatements(relationshipTarget);
 
     assertThat(statements)
         .isEqualTo(

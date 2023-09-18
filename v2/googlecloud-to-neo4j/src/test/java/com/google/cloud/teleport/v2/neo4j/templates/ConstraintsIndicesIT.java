@@ -100,7 +100,7 @@ public class ConstraintsIndicesIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "SHOW INDEXES YIELD * WHERE owningConstraint IS NULL AND type <> 'LOOKUP' RETURN count(*) AS count")
-                    .setExpectedResult(List.of(Map.of("count", 0)))
+                    .setExpectedResult(List.of(Map.of("count", 0L)))
                     .build());
     assertThatResult(result).meetsConditions();
   }
