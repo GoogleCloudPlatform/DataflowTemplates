@@ -61,9 +61,9 @@ public class ConstraintsIndicesIT extends TemplateTestBase {
   }
 
   @Test
-  public void does_not_create_extra_indices() throws Exception {
+  public void does_not_create_extra_indices_when_importing_nodes() throws Exception {
     gcsClient.createArtifact(
-        "spec.json", contentOf("/testing-specs/constraints-indices/spec.json"));
+        "spec.json", contentOf("/testing-specs/constraints-indices/node-spec.json"));
     gcsClient.createArtifact(
         "neo4j.json",
         String.format(
@@ -95,6 +95,55 @@ public class ConstraintsIndicesIT extends TemplateTestBase {
                             Map.of(
                                 "entityType", "NODE",
                                 "labelsOrTypes", List.of("Person"),
+                                "properties", List.of("id"))))
+                    .build(),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "SHOW INDEXES YIELD * WHERE owningConstraint IS NULL AND type <> 'LOOKUP' RETURN count(*) AS count")
+                    .setExpectedResult(List.of(Map.of("count", 0L)))
+                    .build());
+    assertThatResult(result).meetsConditions();
+  }
+
+  @Test
+  public void does_not_create_extra_indices_when_importing_relationships() throws Exception {
+    gcsClient.createArtifact(
+        "spec.json", contentOf("/testing-specs/constraints-indices/edge-spec.json"));
+    gcsClient.createArtifact(
+        "neo4j.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"));
+    LaunchInfo info = launchTemplate(options);
+
+    assertThatPipeline(info).isRunning();
+    Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(info),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "SHOW CONSTRAINTS YIELD * RETURN entityType, labelsOrTypes, properties ORDER BY entityType ASC")
+                    .setExpectedResult(
+                        List.of(
+                            Map.of(
+                                "entityType", "NODE",
+                                "labelsOrTypes", List.of("Person"),
+                                "properties", List.of("personId")),
+                            Map.of(
+                                "entityType", "RELATIONSHIP",
+                                "labelsOrTypes", List.of("SELF_LINKS_TO"),
                                 "properties", List.of("id"))))
                     .build(),
                 Neo4jQueryCheck.builder(neo4jClient)
