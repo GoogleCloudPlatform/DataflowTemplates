@@ -508,5 +508,6 @@
     <module>structured-logging</module>
     <module>plaintext-logging</module>
     <module>python</module>
+    <module>metrics-collector</module>
   </modules>
 </project>
