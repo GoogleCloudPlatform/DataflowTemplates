@@ -19,13 +19,16 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
+import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -365,6 +368,48 @@ public class InputRefactoringTest {
                 mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"),
                 indexedMapping(
                     FragmentType.rel, RoleType.property, "source_field", "targetProperty")));
+  }
+
+  @Test
+  public void explicitlyMarksNodePropertyMappingsAsIndexableWhenApplicable() {
+    target.setName("applies index-all-properties setting to every property");
+    jobSpec.setConfig(new Config(new JSONObject(Map.of("index_all_properties", true))));
+    addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
+    addMapping(target, mapping(FragmentType.node, RoleType.property, "field1", "prop1"));
+    assertThat(target.getMappings()).hasSize(2);
+
+    refactorer.refactorJobSpec(jobSpec);
+
+    List<Mapping> actualMappings =
+        jobSpec.getTargets().stream()
+            .flatMap(t -> t.getMappings().stream())
+            .collect(Collectors.toList());
+    assertThat(actualMappings)
+        .isEqualTo(
+            List.of(
+                mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"),
+                indexedMapping(FragmentType.node, RoleType.property, "field1", "prop1")));
+  }
+
+  @Test
+  public void explicitlyMarksRelPropertyMappingsAsIndexableWhenApplicable() {
+    target.setName("applies index-all-properties setting to every property");
+    jobSpec.setConfig(new Config(new JSONObject(Map.of("index_all_properties", true))));
+    addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
+    addMapping(target, mapping(FragmentType.rel, RoleType.property, "field1", "prop1"));
+    assertThat(target.getMappings()).hasSize(2);
+
+    refactorer.refactorJobSpec(jobSpec);
+
+    List<Mapping> actualMappings =
+        jobSpec.getTargets().stream()
+            .flatMap(t -> t.getMappings().stream())
+            .collect(Collectors.toList());
+    assertThat(actualMappings)
+        .isEqualTo(
+            List.of(
+                mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"),
+                indexedMapping(FragmentType.rel, RoleType.property, "field1", "prop1")));
   }
 
   private static Mapping uniqueMapping(

@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +81,7 @@ public class InputRefactoring {
         target.setCustomQuery(
             ModelUtils.replaceVariableTokens(customQuery, optionsParams.getTokenMap()));
       }
-      rewriteTarget(target);
+      rewriteTarget(target, jobSpec.getConfig().getIndexAllProperties());
     }
   }
 
@@ -120,48 +119,54 @@ public class InputRefactoring {
     }
   }
 
-  private void rewriteTarget(Target target) {
-    List<Mapping> originalMappings = target.getMappings();
-    Set<String> targetKeyProperties =
-        originalMappings.stream()
-            .filter(
-                mapping ->
-                    (mapping.getFragmentType() == FragmentType.node
-                            || mapping.getFragmentType() == FragmentType.rel)
-                        && mapping.getRole() == RoleType.key)
-            .map(Mapping::getName)
-            .collect(Collectors.toSet());
-    Set<String> uniqueProperties =
-        originalMappings.stream()
-            .filter(Mapping::isUnique)
-            .map(Mapping::getName)
-            .collect(Collectors.toSet());
+  private void rewriteTarget(Target target, boolean indexAllProperties) {
+    List<Mapping> mappings = target.getMappings();
+    Set<String> keys =
+        ModelUtils.filterProperties(
+            target,
+            mapping ->
+                (mapping.getFragmentType() == FragmentType.node
+                        || mapping.getFragmentType() == FragmentType.rel)
+                    && mapping.getRole() == RoleType.key);
+    Set<String> uniques = ModelUtils.filterProperties(target, Mapping::isUnique);
 
-    List<Mapping> updatedMappings = new ArrayList<>(originalMappings.size());
-    for (Mapping originalMapping : originalMappings) {
+    List<Mapping> result = new ArrayList<>(mappings.size());
+    for (Mapping originalMapping : mappings) {
       RoleType role = originalMapping.getRole();
       if (role != RoleType.key && role != RoleType.property) {
-        updatedMappings.add(originalMapping);
+        result.add(originalMapping);
         continue;
       }
       if (role == RoleType.key) {
-        updatedMappings.add(originalMapping);
+        result.add(originalMapping);
         continue;
       }
-      String property = originalMapping.getName();
-      // key implies unique&&mandatory&&indexed
-      if ((originalMapping.isUnique()
-              || originalMapping.isMandatory()
-              || originalMapping.isIndexed())
-          && targetKeyProperties.contains(property)) {
+      if (redundantWithKeyMapping(originalMapping, keys)
+          || redundantWithUniqueMapping(originalMapping, uniques)) {
         continue;
       }
-      // unique implies indexed
-      if (originalMapping.isIndexed() && uniqueProperties.contains(property)) {
-        continue;
+      if (indexAllProperties) {
+        originalMapping.setIndexed(true);
       }
-      updatedMappings.add(originalMapping);
+      result.add(originalMapping);
     }
-    target.setMappings(updatedMappings);
+    target.setMappings(result);
+  }
+
+  // A property mapped as key implies the property is:
+  // - unique
+  // - mandatory (non-null)
+  // - indexed
+  private static boolean redundantWithKeyMapping(Mapping mapping, Set<String> keys) {
+    String property = mapping.getName();
+    return (mapping.isUnique() || mapping.isMandatory() || mapping.isIndexed())
+        && keys.contains(property);
+  }
+
+  // A property mapped as unique implies the property is:
+  // - indexed
+  private static boolean redundantWithUniqueMapping(Mapping mapping, Set<String> uniques) {
+    String property = mapping.getName();
+    return mapping.isIndexed() && uniques.contains(property);
   }
 }
