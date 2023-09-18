@@ -1,0 +1,92 @@
+[
+  {
+    "name": "run_timestamp",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Job Creation Timestamp"
+  },
+  {
+    "name": "job_create_timestamp",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Job Creation Timestamp"
+  },
+  {
+    "name": "sdk",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Apache Beam SDK"
+  },
+  {
+    "name": "version",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Apache Beam SDK version"
+  },
+  {
+    "name": "job_type",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Job type"
+  },
+  {
+    "name": "template_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Name of the template"
+  },
+  {
+    "name": "template_type",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Template type"
+  },
+  {
+    "name": "template_version",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Template version"
+  },
+  {
+    "name": "pipeline_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Name of the pipeline"
+  },
+  {
+    "name": "parameters",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "description": "Pipeline Options",
+    "fields": [
+      {
+        "name": "name",
+        "type": "STRING",
+        "mode": "REQUIRED"
+      },
+      {
+        "name": "value",
+        "type": "STRING",
+        "mode": "REQUIRED"
+      }
+    ]
+  },
+  {
+    "name": "metrics",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "description": "Pipeline metrics",
+    "fields": [
+      {
+        "name": "name",
+        "type": "STRING",
+        "mode": "REQUIRED"
+      },
+      {
+        "name": "value",
+        "type": "STRING",
+        "mode": "REQUIRED"
+      }
+    ]
+  }
+]
