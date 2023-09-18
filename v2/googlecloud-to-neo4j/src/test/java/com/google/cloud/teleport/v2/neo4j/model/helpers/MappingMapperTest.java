@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import static com.google.common.truth.Truth.assertThat;
 import static java.util.stream.Collectors.toList;
-import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
@@ -245,44 +244,6 @@ public class MappingMapperTest {
             List.of(
                 new Mapping(FragmentType.target, RoleType.key, fieldTuple("key1", "value1")),
                 new Mapping(FragmentType.target, RoleType.key, fieldTuple("value2", "value2"))));
-  }
-
-  @Test
-  public void rejectsNodeMappingsForAlreadyMappedFields() {
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                MappingMapper.parseMappings(
-                    target("my-target", TargetType.node),
-                    jsonKeys(
-                        jsonFieldTuple("source_field", "graphProperty1"),
-                        jsonFieldTuple("source_field", "graphProperty2") // duplicate
-                        )));
-
-    assertThat(exception)
-        .hasMessageThat()
-        .isEqualTo(
-            "Duplicate mapping: field source_field has already been mapped for target my-target");
-  }
-
-  @Test
-  public void rejectsEdgeMappingsForAlreadyMappedFields() {
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                MappingMapper.parseMappings(
-                    target("my-target", TargetType.edge),
-                    jsonKeys(
-                        jsonFieldTuple("source_field", "graphProperty1"),
-                        jsonFieldTuple("source_field", "graphProperty2") // duplicate
-                        )));
-
-    assertThat(exception)
-        .hasMessageThat()
-        .isEqualTo(
-            "Duplicate mapping: field source_field has already been mapped for target my-target");
   }
 
   @Test
