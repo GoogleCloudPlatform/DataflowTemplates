@@ -23,7 +23,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **googleAdsClientSecret** (OAuth 2.0 Client Secret for the specified Client ID): See https://developers.google.com/google-ads/api/docs/oauth/overview.
 * **googleAdsRefreshToken** (OAuth 2.0 Refresh Token for the user connecting to the Google Ads API): See https://developers.google.com/google-ads/api/docs/oauth/overview.
 * **googleAdsDeveloperToken** (Google Ads developer token for the user connecting to the Google Ads API): See https://developers.google.com/google-ads/api/docs/get-started/dev-token.
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.
+* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 
 ### Optional Parameters
 
