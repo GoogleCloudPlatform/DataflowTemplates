@@ -133,7 +133,7 @@ public class CypherGenerator {
     return query.toString();
   }
 
-  public static String getLabelsPropertiesListCypherFragment(
+  private static String getLabelsPropertiesListCypherFragment(
       String alias,
       boolean onlyIndexedProperties,
       FragmentType entityType,
@@ -162,7 +162,7 @@ public class CypherGenerator {
     return sb.toString();
   }
 
-  public static String getPropertiesListCypherFragment(
+  private static String getPropertiesListCypherFragment(
       FragmentType entityType,
       boolean onlyIndexedProperties,
       List<RoleType> roleTypes,
@@ -303,7 +303,8 @@ public class CypherGenerator {
     return cyphers;
   }
 
-  public static List<String> getEdgeNodeConstraintsCypherStatements(Target target) {
+  // visible for testing
+  static List<String> getEdgeNodeConstraintsCypherStatements(Target target) {
     List<String> sourceNodeKeyConstraints = generateNodeKeyConstraints(FragmentType.source, target);
     List<String> targetNodeKeyConstraints = generateNodeKeyConstraints(FragmentType.target, target);
     List<String> statements =
@@ -313,7 +314,7 @@ public class CypherGenerator {
     return statements;
   }
 
-  public static String getRelationshipTypePropertiesListFragment(
+  private static String getRelationshipTypePropertiesListFragment(
       String prefix, boolean onlyIndexedProperties, Target target) {
     StringBuilder sb = new StringBuilder();
     List<String> relType =
