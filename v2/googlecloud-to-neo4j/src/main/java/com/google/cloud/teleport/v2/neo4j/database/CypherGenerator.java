@@ -195,20 +195,19 @@ public class CypherGenerator {
     return "";
   }
 
-  public static List<String> getIndexAndConstraintsCypherStatements(
-      TargetType type, Config config, Target target) {
+  public static List<String> getIndexAndConstraintsCypherStatements(Target target) {
+    TargetType type = target.getType();
     switch (type) {
       case node:
-        return getNodeIndexAndConstraintsCypherStatements(config, target);
+        return getNodeIndexAndConstraintsCypherStatements(target);
       case edge:
-        return getRelationshipIndexAndConstraintsCypherStatements(config, target);
+        return getRelationshipIndexAndConstraintsCypherStatements(target);
       default:
         throw new IllegalArgumentException(String.format("unexpected target type: %s", type));
     }
   }
 
-  private static List<String> getNodeIndexAndConstraintsCypherStatements(
-      Config config, Target target) {
+  private static List<String> getNodeIndexAndConstraintsCypherStatements(Target target) {
 
     List<String> cyphers = new ArrayList<>();
     // Model node creation statement

@@ -116,8 +116,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   }
 
   private List<String> generateIndexAndConstraints() {
-    return CypherGenerator.getIndexAndConstraintsCypherStatements(
-        target.getType(), jobSpec.getConfig(), target);
+    return CypherGenerator.getIndexAndConstraintsCypherStatements(target);
   }
 
   private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {
