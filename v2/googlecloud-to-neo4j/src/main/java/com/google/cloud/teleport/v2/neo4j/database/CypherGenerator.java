@@ -256,10 +256,9 @@ public class CypherGenerator {
       Config config, Target target) {
 
     List<String> cyphers = new ArrayList<>();
-    // Model node creation statement
-    //  "UNWIND $rows AS row CREATE(c:Customer { id : row.id, name: row.name, firstName:
-    // row.firstName })
-    // derive labels
+    if (target.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge) {
+      cyphers.addAll(CypherGenerator.getEdgeNodeConstraintsCypherStatements(target));
+    }
     String type = ModelUtils.getStaticType(target);
     List<String> indexedProperties =
         ModelUtils.getIndexedProperties(config.getIndexAllProperties(), FragmentType.rel, target);

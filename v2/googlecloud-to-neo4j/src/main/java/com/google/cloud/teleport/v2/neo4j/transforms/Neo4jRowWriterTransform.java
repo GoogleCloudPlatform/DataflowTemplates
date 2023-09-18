@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.neo4j.transforms;
 import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
-import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
@@ -117,10 +116,6 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   }
 
   private List<String> generateIndexAndConstraints() {
-    if (target.getType() == TargetType.edge
-        && target.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge) {
-      return CypherGenerator.getEdgeNodeConstraintsCypherStatements(target);
-    }
     return CypherGenerator.getIndexAndConstraintsCypherStatements(
         target.getType(), jobSpec.getConfig(), target);
   }
