@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform.readFromKafka;
+import static com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils.configureKafka;
+import static com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils.getKafkaCredentialsFromJson;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.metadata.Template;
@@ -24,6 +26,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
+import com.google.cloud.teleport.v2.kafka.utils.KafkaCommonUtils;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.KafkaToBigQuery.KafkaToBQOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
@@ -34,12 +37,14 @@ import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.Javascr
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.MetadataValidator;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.common.collect.ImmutableMap;
+import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -280,6 +285,22 @@ public class KafkaToBigQuery {
     } else {
       throw new IllegalArgumentException("Please Provide --bootstrapServers");
     }
+
+    // Configure Kafka consumer properties
+    Map<String, Object> kafkaConfig = Map.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    Map<String, String> sslConfig = null;
+    if (options.getKafkaConfigSecretId() != null) {
+      String config = SecretManagerUtils.getSecret(options.getKafkaConfigSecretId());
+      Map<String, Map<String, String>> credentials =
+          getKafkaCredentialsFromJson(JsonParser.parseString(config).getAsJsonObject());
+      kafkaConfig = configureKafka(credentials.get(KafkaCommonUtils.KAFKA_CREDENTIALS));
+      sslConfig = credentials.get(KafkaCommonUtils.SSL_CREDENTIALS);
+    } else {
+      LOG.warn(
+          "No information to retrieve Kafka consumer config was provided. "
+              + "Trying to initiate an unauthorized connection.");
+    }
+
     /*
      * Steps:
      *  1) Read messages in from Kafka
@@ -297,11 +318,7 @@ public class KafkaToBigQuery {
              */
             .apply(
                 "ReadFromKafka",
-                readFromKafka(
-                    bootstrapServers,
-                    topicsList,
-                    ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
-                    null))
+                readFromKafka(bootstrapServers, topicsList, kafkaConfig, sslConfig))
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows

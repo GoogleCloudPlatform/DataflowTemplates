@@ -50,8 +50,6 @@ public class KafkaCommonUtils {
    */
   public static Map<String, Map<String, String>> getKafkaCredentialsFromVault(
       String secretStoreUrl, String token) {
-    Map<String, Map<String, String>> credentialMap = new HashMap<>();
-
     JsonObject credentials = null;
     try {
       HttpClient client = HttpClientBuilder.create().build();
@@ -102,21 +100,25 @@ public class KafkaCommonUtils {
     } catch (IOException e) {
       LOG.error("Failed to retrieve credentials from Vault.", e);
     }
+    return getKafkaCredentialsFromJson(credentials);
+  }
 
-    if (credentials != null) {
+  public static Map<String, Map<String, String>> getKafkaCredentialsFromJson(JsonObject config) {
+    Map<String, Map<String, String>> credentialMap = new HashMap<>();
+    if (config != null) {
       // Username and password for Kafka authorization
       credentialMap.put(KAFKA_CREDENTIALS, new HashMap<>());
 
-      if (credentials.has(USERNAME) && credentials.has(PASSWORD)) {
-        credentialMap.get(KAFKA_CREDENTIALS).put(USERNAME, credentials.get(USERNAME).getAsString());
-        credentialMap.get(KAFKA_CREDENTIALS).put(PASSWORD, credentials.get(PASSWORD).getAsString());
+      if (config.has(USERNAME) && config.has(PASSWORD)) {
+        credentialMap.get(KAFKA_CREDENTIALS).put(USERNAME, config.get(USERNAME).getAsString());
+        credentialMap.get(KAFKA_CREDENTIALS).put(PASSWORD, config.get(PASSWORD).getAsString());
       } else {
         LOG.warn(
             "There are no username and/or password for Kafka in Vault."
                 + "Trying to initiate an unauthorized connection.");
       }
 
-      // SSL truststore, keystore, and password
+      // SSL truststore, keystore, and passwords
       try {
         Map<String, String> sslCredentials = new HashMap<>();
         String[] configNames = {
@@ -128,7 +130,7 @@ public class KafkaCommonUtils {
           SslConfigs.SSL_KEY_PASSWORD_CONFIG
         };
         for (String configName : configNames) {
-          sslCredentials.put(configName, credentials.get(configName).getAsString());
+          sslCredentials.put(configName, config.get(configName).getAsString());
         }
         credentialMap.put(SSL_CREDENTIALS, sslCredentials);
       } catch (NullPointerException e) {

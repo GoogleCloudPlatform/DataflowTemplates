@@ -51,7 +51,7 @@ public class KafkaToBigQueryTest {
 
   /** Tests the {@link KafkaToBigQuery} pipeline end-to-end. */
   @Test
-  public void testKafkaToBigQueryE2E() throws Exception {
+  public void testKafkaToBigQueryE2E() {
     // Test input
     final String key = "{\"id\": \"1001\"}";
     final String badKey = "{\"id\": \"1002\"}";

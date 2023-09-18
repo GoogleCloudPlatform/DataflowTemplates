@@ -45,4 +45,16 @@ public interface KafkaReadOptions extends PipelineOptions {
   String getKafkaReadTopics();
 
   void setKafkaReadTopics(String inputTopics);
+
+  @TemplateParameter.Text(
+      order = 3,
+      optional = true,
+      regexes = {"^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$"},
+      description = "Secret Manager secret containing kafka consumer properties as json.",
+      helpText =
+          "Secret manager secret Id for kafka consumer config JSON. If provided, config is fetched from Secret Manager and used.",
+      example = "projects/project-id/secrets/secret-id/versions/version-id")
+  String getKafkaConfigSecretId();
+
+  void setKafkaConfigSecretId(String secretId);
 }
