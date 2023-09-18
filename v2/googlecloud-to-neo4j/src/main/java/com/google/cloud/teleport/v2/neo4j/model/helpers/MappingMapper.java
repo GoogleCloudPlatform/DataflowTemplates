@@ -59,9 +59,7 @@ public class MappingMapper {
     if (nodeMappingsObject.has("labels")) {
       List<FieldNameTuple> labels = getFieldAndNameTuples(nodeMappingsObject.get("labels"));
       for (FieldNameTuple f : labels) {
-        Mapping mapping = new Mapping(FragmentType.node, RoleType.label, f);
-        mapping.setIndexed(true);
-        mappings.add(mapping);
+        mappings.add(new Mapping(FragmentType.node, RoleType.label, f));
       }
     }
     if (nodeMappingsObject.has("key")) {
@@ -72,9 +70,7 @@ public class MappingMapper {
     if (nodeMappingsObject.has("keys")) {
       List<FieldNameTuple> keys = getFieldAndNameTuples(nodeMappingsObject.get("keys"));
       for (FieldNameTuple f : keys) {
-        Mapping mapping = new Mapping(FragmentType.node, RoleType.key, f);
-        mapping.setIndexed(true);
-        mappings.add(mapping);
+        mappings.add(new Mapping(FragmentType.node, RoleType.key, f));
       }
     }
     if (nodeMappingsObject.has("properties")) {
@@ -197,49 +193,49 @@ public class MappingMapper {
     if (propertyMappings.has("dates")) {
       List<FieldNameTuple> dates = getFieldAndNameTuples(propertyMappings.get("dates"));
       for (FieldNameTuple f : dates) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Date, indexed, uniques));
+        mappings.add(newMapping(fragmentType, f, PropertyType.Date));
       }
     }
     if (propertyMappings.has("doubles")) {
       List<FieldNameTuple> doubles = getFieldAndNameTuples(propertyMappings.get("doubles"));
       for (FieldNameTuple f : doubles) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.BigDecimal, indexed, uniques));
+        mappings.add(newMapping(fragmentType, f, PropertyType.BigDecimal));
       }
     }
     if (propertyMappings.has("longs")) {
       List<FieldNameTuple> longs = getFieldAndNameTuples(propertyMappings.get("longs"));
       for (FieldNameTuple f : longs) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Long, indexed, uniques));
+        mappings.add(newMapping(fragmentType, f, PropertyType.Long));
       }
     }
     if (propertyMappings.has("strings")) {
       List<FieldNameTuple> strings = getFieldAndNameTuples(propertyMappings.get("strings"));
       for (FieldNameTuple f : strings) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.String, indexed, uniques));
+        mappings.add(newMapping(fragmentType, f, PropertyType.String));
       }
     }
     if (propertyMappings.has("points")) {
       List<FieldNameTuple> strings = getFieldAndNameTuples(propertyMappings.get("points"));
       for (FieldNameTuple f : strings) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Point, indexed, uniques));
+        mappings.add(newMapping(fragmentType, f, PropertyType.Point));
       }
     }
     if (propertyMappings.has("floats")) {
       List<FieldNameTuple> floats = getFieldAndNameTuples(propertyMappings.get("floats"));
       for (FieldNameTuple f : floats) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Float, indexed, uniques));
+        mappings.add(newMapping(fragmentType, f, PropertyType.Float));
       }
     }
     if (propertyMappings.has("integers")) {
       List<FieldNameTuple> integers = getFieldAndNameTuples(propertyMappings.get("integers"));
       for (FieldNameTuple f : integers) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Integer, indexed, uniques));
+        mappings.add(newMapping(fragmentType, f, PropertyType.Integer));
       }
     }
     if (propertyMappings.has("booleans")) {
       List<FieldNameTuple> booleans = getFieldAndNameTuples(propertyMappings.get("booleans"));
       for (FieldNameTuple f : booleans) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Boolean, indexed, uniques));
+        mappings.add(newMapping(fragmentType, f, PropertyType.Boolean));
       }
     }
   }
@@ -303,15 +299,9 @@ public class MappingMapper {
   }
 
   private static Mapping newMapping(
-      FragmentType fragmentType,
-      FieldNameTuple tuple,
-      PropertyType propertyType,
-      List<FieldNameTuple> indexed,
-      List<FieldNameTuple> uniques) {
+      FragmentType fragmentType, FieldNameTuple tuple, PropertyType propertyType) {
     Mapping mapping = new Mapping(fragmentType, RoleType.property, tuple);
     mapping.setType(propertyType);
-    mapping.setIndexed(indexed.contains(tuple));
-    mapping.setUnique(uniques.contains(tuple));
     return mapping;
   }
 }

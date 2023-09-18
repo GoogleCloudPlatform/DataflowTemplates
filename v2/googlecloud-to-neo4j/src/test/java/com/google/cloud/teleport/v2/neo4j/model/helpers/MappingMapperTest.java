@@ -256,8 +256,8 @@ public class MappingMapperTest {
     assertThat(mappings)
         .isEqualTo(
             List.of(
-                indexedMapping(FragmentType.node, RoleType.label, constantFieldTuple("Customer")),
-                indexedMapping(FragmentType.node, RoleType.label, constantFieldTuple("Buyer"))));
+                mapping(FragmentType.node, RoleType.label, constantFieldTuple("Customer")),
+                mapping(FragmentType.node, RoleType.label, constantFieldTuple("Buyer"))));
   }
 
   @Test
@@ -331,16 +331,6 @@ public class MappingMapperTest {
     return target;
   }
 
-  private static JSONObject jsonKeys(JSONObject... fieldTuples) {
-    JSONObject mappings = new JSONObject();
-    JSONArray array = new JSONArray();
-    for (JSONObject fieldMapping : fieldTuples) {
-      array.put(fieldMapping);
-    }
-    mappings.put("keys", array);
-    return mappings;
-  }
-
   private static JSONObject jsonLabels(String... labels) {
     JSONObject mappings = new JSONObject();
     JSONArray array = new JSONArray();
@@ -370,6 +360,10 @@ public class MappingMapperTest {
     Mapping mapping = new Mapping(fragment, role, tuple);
     mapping.setIndexed(true);
     return mapping;
+  }
+
+  private static Mapping mapping(FragmentType fragment, RoleType role, FieldNameTuple tuple) {
+    return new Mapping(fragment, role, tuple);
   }
 
   private FieldNameTuple constantFieldTuple(String constant) {
