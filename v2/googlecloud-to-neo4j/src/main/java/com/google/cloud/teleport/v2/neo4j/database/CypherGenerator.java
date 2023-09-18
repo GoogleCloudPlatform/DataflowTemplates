@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
@@ -189,7 +190,7 @@ public class CypherGenerator {
    *     com.google.cloud.teleport.v2.neo4j.model.InputRefactoring}
    * @return a list of Cypher schema statements
    */
-  public static List<String> getIndexAndConstraintsCypherStatements(Target target) {
+  public static Set<String> getIndexAndConstraintsCypherStatements(Target target) {
     TargetType type = target.getType();
     switch (type) {
       case node:
@@ -201,7 +202,7 @@ public class CypherGenerator {
     }
   }
 
-  private static List<String> getNodeIndexAndConstraintsCypherStatements(Target target) {
+  private static Set<String> getNodeIndexAndConstraintsCypherStatements(Target target) {
     List<String> labels = ModelUtils.getStaticLabels(FragmentType.node, target);
     Set<String> keyProperties =
         filterProperties(
@@ -222,7 +223,8 @@ public class CypherGenerator {
             target,
             (mapping) -> isEntityProperty(mapping, FragmentType.node) && mapping.isIndexed());
 
-    List<String> cyphers = new ArrayList<>(getEntityKeyConstraintStatements(labels, keyProperties));
+    Set<String> cyphers =
+        new LinkedHashSet<>(getEntityKeyConstraintStatements(labels, keyProperties));
     for (String uniqueProperty : uniqueProperties) {
       cyphers.add(
           "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
@@ -253,9 +255,9 @@ public class CypherGenerator {
 
   // TODO: no-op if < 5.7 || not EE for some or all
 
-  private static List<String> getRelationshipIndexAndConstraintsCypherStatements(Target target) {
+  private static Set<String> getRelationshipIndexAndConstraintsCypherStatements(Target target) {
 
-    List<String> cyphers = new ArrayList<>();
+    Set<String> cyphers = new LinkedHashSet<>();
     if (target.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge) {
       cyphers.addAll(
           getEntityKeyConstraintStatements(

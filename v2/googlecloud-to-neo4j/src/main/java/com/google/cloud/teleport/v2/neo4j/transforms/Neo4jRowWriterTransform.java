@@ -23,8 +23,8 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -87,7 +87,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   }
 
   private void createIndicesAndConstraints() {
-    List<String> cyphers = generateIndexAndConstraints();
+    Set<String> cyphers = generateIndexAndConstraints();
     if (cyphers.isEmpty()) {
       return;
     }
@@ -115,7 +115,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     return unwindCypher;
   }
 
-  private List<String> generateIndexAndConstraints() {
+  private Set<String> generateIndexAndConstraints() {
     return CypherGenerator.getIndexAndConstraintsCypherStatements(target);
   }
 
