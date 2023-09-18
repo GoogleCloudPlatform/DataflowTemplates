@@ -18,8 +18,8 @@ User can choose appropriate output store based on the command line options: outp
 | BIGQUERY    | project-id.dataset.table                                     |
 | FILE        | /path/to/location <br/>(Supports GCS and Local File Systems) |
 
-In order to store the metrics in bigquery, create the table using schema specified in 
-```scripts/metrics_bigquery_schema.json```.  
+In order to store the metrics in bigquery, create the table using schema specified in
+```scripts/metrics_bigquery_schema.json```.
 
 Sample commands for creating dataset and table are provided in ```scripts/bigquery.json```
 
@@ -53,7 +53,7 @@ $ mvn -pl metrics-collector clean package
 
 ### BIGQUERY OUTPUT STORE</a>
 Bigquery can be used to store the metrics collected by the tool.  In order to store the metrics create the table
-in bigquery using schema specified 
+in bigquery using schema specified
 
 ### <a name="CollectMetrics">COLLECT_METRICS</a>
 Collects the metrics for a given job id and stores the results in the output store.
