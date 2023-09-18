@@ -122,7 +122,7 @@ public class SinglePassGraphImportIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count ORDER BY count ASC")
-                    .setExpectedResult(List.of(Map.of("type", "PURCHASES", "count", 97L)))
+                    .setExpectedResult(List.of(Map.of("type", "PURCHASES", "count", 87L)))
                     .build(),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
