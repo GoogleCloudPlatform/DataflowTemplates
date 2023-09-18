@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,9 +69,11 @@ public class InputRefactoring {
       rewriteAction(action);
     }
 
-    // number and name targets
     int targetNum = 0;
-    for (Target target : jobSpec.getTargets()) {
+    List<Target> activeTargets =
+        jobSpec.getTargets().stream().filter(Target::isActive).collect(Collectors.toList());
+    List<Target> rewrittenTargets = new ArrayList<>(activeTargets.size());
+    for (Target target : activeTargets) {
       targetNum++;
       target.setSequence(targetNum);
       if (StringUtils.isEmpty(target.getName())) {
@@ -82,7 +85,9 @@ public class InputRefactoring {
             ModelUtils.replaceVariableTokens(customQuery, optionsParams.getTokenMap()));
       }
       rewriteTarget(target, jobSpec.getConfig().getIndexAllProperties());
+      rewrittenTargets.add(target);
     }
+    jobSpec.setTargets(rewrittenTargets);
   }
 
   public void optimizeJobSpec(JobSpec jobSpec) {

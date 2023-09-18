@@ -412,6 +412,18 @@ public class InputRefactoringTest {
                 indexedMapping(FragmentType.rel, RoleType.property, "field1", "prop1")));
   }
 
+  @Test
+  public void removesInactiveTargets() {
+    target.setName("inactive target");
+    target.setActive(false);
+    addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
+    assertThat(jobSpec.getTargets()).hasSize(1);
+
+    refactorer.refactorJobSpec(jobSpec);
+
+    assertThat(jobSpec.getTargets()).isEmpty();
+  }
+
   private static Mapping uniqueMapping(
       FragmentType fragmentType, RoleType roleType, String column, String property) {
     Mapping mapping = mapping(fragmentType, roleType, column, property);
