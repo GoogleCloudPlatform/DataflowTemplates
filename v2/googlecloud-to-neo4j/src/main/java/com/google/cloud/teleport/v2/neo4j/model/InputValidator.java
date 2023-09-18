@@ -33,10 +33,14 @@ import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,9 +108,14 @@ public class InputValidator {
       }
     }
 
+    boolean activeTargetFound = false;
     Set<String> targetNames = new HashSet<>();
     // Target validation
     for (Target target : jobSpec.getTargets()) {
+      if (!target.isActive()) {
+        continue;
+      }
+      activeTargetFound = true;
       // Check that all targets have names
       if (StringUtils.isBlank(target.getName())) {
         validationMessages.add("Targets must include a 'name' attribute.");
