@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.List;
 import org.junit.Test;
 
-/** Unit test functions in the cypher generator. */
 public class CypherGeneratorTest {
 
   private static final String SPEC_PATH = "src/test/resources/testing-specs/cypher-generator-test";
