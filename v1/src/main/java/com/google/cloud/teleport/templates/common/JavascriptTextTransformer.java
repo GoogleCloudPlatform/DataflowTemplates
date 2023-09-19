@@ -104,7 +104,7 @@ public abstract class JavascriptTextTransformer {
         description = "JavaScript UDF auto-reload interval (minutes)",
         helpText =
             "Define the interval that workers may check for JavaScript UDF changes to reload the files.")
-    @Default.Integer(60)
+    @Default.Integer(0)
     ValueProvider<Integer> getJavascriptTextTransformReloadIntervalMinutes();
 
     void setJavascriptTextTransformReloadIntervalMinutes(
