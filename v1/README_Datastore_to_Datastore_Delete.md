@@ -27,6 +27,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **datastoreReadNamespace** (Namespace): Namespace of requested Datastore entities. Leave blank to use default namespace.
 * **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
 * **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
+* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
 * **datastoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500.
 
 
@@ -131,6 +132,7 @@ export DATASTORE_DELETE_PROJECT_ID=<datastoreDeleteProjectId>
 export DATASTORE_READ_NAMESPACE=<datastoreReadNamespace>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 export DATASTORE_HINT_NUM_WORKERS=500
 
 gcloud dataflow jobs run "datastore-to-datastore-delete-job" \
@@ -142,6 +144,7 @@ gcloud dataflow jobs run "datastore-to-datastore-delete-job" \
   --parameters "datastoreReadNamespace=$DATASTORE_READ_NAMESPACE" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
   --parameters "datastoreDeleteProjectId=$DATASTORE_DELETE_PROJECT_ID" \
   --parameters "datastoreHintNumWorkers=$DATASTORE_HINT_NUM_WORKERS"
 ```
@@ -170,6 +173,7 @@ export DATASTORE_DELETE_PROJECT_ID=<datastoreDeleteProjectId>
 export DATASTORE_READ_NAMESPACE=<datastoreReadNamespace>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 export DATASTORE_HINT_NUM_WORKERS=500
 
 mvn clean package -PtemplatesRun \
@@ -179,7 +183,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="datastore-to-datastore-delete-job" \
 -DtemplateName="Datastore_to_Datastore_Delete" \
--Dparameters="datastoreReadGqlQuery=$DATASTORE_READ_GQL_QUERY,datastoreReadProjectId=$DATASTORE_READ_PROJECT_ID,datastoreReadNamespace=$DATASTORE_READ_NAMESPACE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,datastoreDeleteProjectId=$DATASTORE_DELETE_PROJECT_ID,datastoreHintNumWorkers=$DATASTORE_HINT_NUM_WORKERS" \
+-Dparameters="datastoreReadGqlQuery=$DATASTORE_READ_GQL_QUERY,datastoreReadProjectId=$DATASTORE_READ_PROJECT_ID,datastoreReadNamespace=$DATASTORE_READ_NAMESPACE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,datastoreDeleteProjectId=$DATASTORE_DELETE_PROJECT_ID,datastoreHintNumWorkers=$DATASTORE_HINT_NUM_WORKERS" \
 -pl v1 \
 -am
 ```
