@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.neo4j.model;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
@@ -41,6 +42,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -292,5 +294,47 @@ public class InputValidator {
       }
     }
     return false;
+  }
+}
+
+class PropertyMapping {
+  private final Set<String> sourceFields = new LinkedHashSet<>();
+  private final Set<String> types = new LinkedHashSet<>();
+  private final String targetName;
+  private final String propertyName;
+
+  public PropertyMapping(String targetName, String propertyName) {
+    this.targetName = targetName;
+    this.propertyName = propertyName;
+  }
+
+  public void add(Mapping mapping) {
+    if (mapping.getRole() != RoleType.key && mapping.getRole() != RoleType.property) {
+      return;
+    }
+    sourceFields.add(mapping.getField());
+    PropertyType type = mapping.getType();
+    if (type != null) {
+      types.add(type.name());
+    }
+  }
+
+  public Stream<String> validate() {
+    List<String> errorMessages = new ArrayList<>();
+    if (sourceFields.size() > 1) {
+      String msg =
+          String.format(
+              "Property %s of target %s is mapped to too many source fields: %s",
+              propertyName, targetName, String.join(", ", sourceFields));
+      errorMessages.add(msg);
+    }
+    if (types.size() > 1) {
+      String msg =
+          String.format(
+              "Property %s of target %s is mapped to too many types: %s",
+              propertyName, targetName, String.join(", ", types));
+      errorMessages.add(msg);
+    }
+    return errorMessages.stream();
   }
 }
