@@ -36,7 +36,7 @@ import org.junit.Test;
 public class MappingMapperTest {
   @Test
   public void parsesMultipleKeyMappingsFromObjectForEdgeSourceNode() {
-    Target target = target("my-target", TargetType.edge);
+    Target target = target(TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONObject sourceKeys = new JSONObject();
@@ -62,7 +62,7 @@ public class MappingMapperTest {
 
   @Test
   public void parsesMultipleKeyMappingsFromObjectArrayForEdgeSourceNode() {
-    Target target = target("my-target", TargetType.edge);
+    Target target = target(TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray sourceKeys = new JSONArray();
@@ -90,7 +90,7 @@ public class MappingMapperTest {
 
   @Test
   public void parsesMultipleKeyMappingsFromStringArrayForEdgeSourceNode() {
-    Target target = target("my-target", TargetType.edge);
+    Target target = target(TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray sourceKeys = new JSONArray();
@@ -116,7 +116,7 @@ public class MappingMapperTest {
 
   @Test
   public void parsesMultipleKeyMappingsFromMixedArrayForEdgeSourceNode() {
-    Target target = target("my-target", TargetType.edge);
+    Target target = target(TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray sourceKeys = new JSONArray();
@@ -142,7 +142,7 @@ public class MappingMapperTest {
 
   @Test
   public void parsesMultipleKeyMappingsFromObjectForEdgeTargetNode() {
-    Target target = target("my-target", TargetType.edge);
+    Target target = target(TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONObject targetKeys = new JSONObject();
@@ -168,7 +168,7 @@ public class MappingMapperTest {
 
   @Test
   public void parsesMultipleKeyMappingsFromObjectArrayForEdgeTargetNode() {
-    Target target = target("my-target", TargetType.edge);
+    Target target = target(TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray targetKeys = new JSONArray();
@@ -196,7 +196,7 @@ public class MappingMapperTest {
 
   @Test
   public void parsesMultipleKeyMappingsFromStringArrayForEdgeTargetNode() {
-    Target target = target("my-target", TargetType.edge);
+    Target target = target(TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray targetKeys = new JSONArray();
@@ -222,7 +222,7 @@ public class MappingMapperTest {
 
   @Test
   public void parsesMultipleKeyMappingsFromMixedArrayForEdgeTargetNode() {
-    Target target = target("my-target", TargetType.edge);
+    Target target = target(TargetType.edge);
     JSONObject mappings = new JSONObject();
     mappings.put("type", "PLACEHOLDER");
     JSONArray targetKeys = new JSONArray();
@@ -250,7 +250,7 @@ public class MappingMapperTest {
   public void allowsMultipleMappingsWithoutFields() {
     List<Mapping> mappings =
         MappingMapper.parseMappings(
-            target("my-target", TargetType.node),
+            target(TargetType.node),
             jsonLabels("\"Customer\"", "\"Buyer\"")); // label mappings don't map to source fields
 
     assertThat(mappings)
@@ -258,6 +258,40 @@ public class MappingMapperTest {
             List.of(
                 mapping(FragmentType.node, RoleType.label, constantFieldTuple("Customer")),
                 mapping(FragmentType.node, RoleType.label, constantFieldTuple("Buyer"))));
+  }
+
+  @Test
+  public void parsesMandatoryMappingArrayOfNodeTarget() {
+    JSONObject jsonMappings = new JSONObject();
+    JSONObject jsonProperties = new JSONObject();
+    JSONArray jsonMandatoryProperties = new JSONArray();
+    JSONObject jsonMandatoryProperty = new JSONObject();
+    jsonMandatoryProperty.put("source_field", "targetProperty");
+    jsonMandatoryProperties.put(jsonMandatoryProperty);
+    jsonProperties.put("mandatory", jsonMandatoryProperties);
+    jsonMappings.put("properties", jsonProperties);
+    List<Mapping> mappings = MappingMapper.parseMappings(target(TargetType.node), jsonMappings);
+
+    assertThat(mappings)
+        .isEqualTo(
+            List.of(
+                mandatoryMapping(FragmentType.node, fieldTuple("source_field", "targetProperty"))));
+  }
+
+  @Test
+  public void parsesMandatoryMappingObjectOfEdgeTarget() {
+    JSONObject jsonMappings = new JSONObject();
+    JSONObject jsonProperties = new JSONObject();
+    JSONObject jsonMandatoryProperties = new JSONObject();
+    jsonMandatoryProperties.put("source_field", "targetProperty");
+    jsonProperties.put("mandatory", jsonMandatoryProperties);
+    jsonMappings.put("properties", jsonProperties);
+    List<Mapping> mappings = MappingMapper.parseMappings(target(TargetType.edge), jsonMappings);
+
+    assertThat(mappings)
+        .isEqualTo(
+            List.of(
+                mandatoryMapping(FragmentType.rel, fieldTuple("source_field", "targetProperty"))));
   }
 
   @Test
@@ -272,8 +306,7 @@ public class MappingMapperTest {
     properties.put("booleans", booleanProps);
     jsonMappings.put("properties", properties);
 
-    List<Mapping> mappings =
-        MappingMapper.parseMappings(target("my-target", TargetType.node), jsonMappings);
+    List<Mapping> mappings = MappingMapper.parseMappings(target(TargetType.node), jsonMappings);
     List<Mapping> propertyMappings =
         mappings.stream().filter(mapping -> roleIs(mapping, RoleType.property)).collect(toList());
 
@@ -304,8 +337,7 @@ public class MappingMapperTest {
     properties.put("booleans", booleanProps);
     jsonMappings.put("properties", properties);
 
-    List<Mapping> mappings =
-        MappingMapper.parseMappings(target("my-target", TargetType.edge), jsonMappings);
+    List<Mapping> mappings = MappingMapper.parseMappings(target(TargetType.edge), jsonMappings);
     List<Mapping> propertyMappings =
         mappings.stream().filter(mapping -> roleIs(mapping, RoleType.property)).collect(toList());
 
@@ -324,9 +356,9 @@ public class MappingMapperTest {
                     fieldTuple("boolean_source_field2", "booleanNodeProperty2"))));
   }
 
-  private static Target target(String name, TargetType type) {
+  private static Target target(TargetType type) {
     Target target = new Target();
-    target.setName(name);
+    target.setName("my-target");
     target.setType(type);
     return target;
   }
@@ -355,10 +387,9 @@ public class MappingMapperTest {
     return mapping;
   }
 
-  private static Mapping indexedMapping(
-      FragmentType fragment, RoleType role, FieldNameTuple tuple) {
-    Mapping mapping = new Mapping(fragment, role, tuple);
-    mapping.setIndexed(true);
+  private static Mapping mandatoryMapping(FragmentType fragment, FieldNameTuple tuple) {
+    Mapping mapping = mapping(fragment, RoleType.property, tuple);
+    mapping.setMandatory(true);
     return mapping;
   }
 

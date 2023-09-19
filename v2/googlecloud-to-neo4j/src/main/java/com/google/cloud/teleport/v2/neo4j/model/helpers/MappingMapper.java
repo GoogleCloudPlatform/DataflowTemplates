@@ -164,12 +164,16 @@ public class MappingMapper {
     List<FieldNameTuple> keys = new ArrayList<>();
     List<FieldNameTuple> uniques = new ArrayList<>();
     List<FieldNameTuple> indexed = new ArrayList<>();
+    List<FieldNameTuple> mandatory = new ArrayList<>();
 
     if (propertyMappings.has("keys")) {
       keys = getFieldAndNameTuples(propertyMappings.get("keys"));
     }
     if (propertyMappings.has("unique")) {
       uniques = getFieldAndNameTuples(propertyMappings.get("unique"));
+    }
+    if (propertyMappings.has("mandatory")) {
+      mandatory = getFieldAndNameTuples(propertyMappings.get("mandatory"));
     }
     if (propertyMappings.has("indexed")) {
       indexed = getFieldAndNameTuples(propertyMappings.get("indexed"));
@@ -182,6 +186,12 @@ public class MappingMapper {
     for (FieldNameTuple f : uniques) {
       Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
       mapping.setUnique(true);
+      mappings.add(mapping);
+    }
+
+    for (FieldNameTuple f : mandatory) {
+      Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
+      mapping.setMandatory(true);
       mappings.add(mapping);
     }
 
