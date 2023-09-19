@@ -19,7 +19,6 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -30,9 +29,7 @@ public class Mapping implements Serializable {
   private RoleType role = RoleType.property;
   private PropertyType type;
   private String name = "";
-  private List<String> labels = new ArrayList<>();
   private String field = "";
-  private String description = "";
   private boolean mandatory = false;
   private boolean unique = false;
   private boolean indexed = false;
@@ -82,24 +79,12 @@ public class Mapping implements Serializable {
     this.name = name;
   }
 
-  public List<String> getLabels() {
-    return labels;
-  }
-
   public String getField() {
     return field;
   }
 
   public void setField(String field) {
     this.field = field;
-  }
-
-  public String getDescription() {
-    return description;
-  }
-
-  public void setDescription(String description) {
-    this.description = description;
   }
 
   public boolean isMandatory() {
@@ -150,26 +135,14 @@ public class Mapping implements Serializable {
         && role == mapping.role
         && type == mapping.type
         && Objects.equals(name, mapping.name)
-        && Objects.equals(labels, mapping.labels)
         && Objects.equals(field, mapping.field)
-        && Objects.equals(description, mapping.description)
         && fragmentType == mapping.fragmentType;
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        constant,
-        role,
-        type,
-        name,
-        labels,
-        field,
-        description,
-        mandatory,
-        unique,
-        indexed,
-        fragmentType);
+        constant, role, type, name, field, mandatory, unique, indexed, fragmentType);
   }
 
   @Override
@@ -185,13 +158,9 @@ public class Mapping implements Serializable {
         + ", name='"
         + name
         + '\''
-        + ", labels="
-        + labels
         + ", field='"
         + field
         + '\''
-        + ", description='"
-        + description
         + '\''
         + ", mandatory="
         + mandatory

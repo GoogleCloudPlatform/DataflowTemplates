@@ -310,9 +310,7 @@ public class ModelUtils {
     List<String> labels = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
       if (m.getFragmentType() == entityType) {
-        if (m.getLabels().size() > 0) {
-          labels.addAll(m.getLabels());
-        } else if (m.getRole() == RoleType.label) {
+        if (m.getRole() == RoleType.label) {
           if (StringUtils.isNotEmpty(m.getConstant())) {
             labels.add(m.getConstant());
           } else {
