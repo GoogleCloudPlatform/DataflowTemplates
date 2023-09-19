@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
@@ -29,7 +30,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -134,13 +137,27 @@ public class InputRefactoring {
                         || mapping.getFragmentType() == FragmentType.rel)
                     && mapping.getRole() == RoleType.key);
     Set<String> uniques = ModelUtils.filterProperties(target, Mapping::isUnique);
-
+    Map<String, PropertyType> propertyTypes =
+        mappings.stream()
+            .filter(mapping -> mapping.getType() != null)
+            .collect(Collectors.toMap(Mapping::getName, Mapping::getType));
+    Set<String> seenProperties = new HashSet<>();
     List<Mapping> result = new ArrayList<>(mappings.size());
     for (Mapping originalMapping : mappings) {
       RoleType role = originalMapping.getRole();
       if (role != RoleType.key && role != RoleType.property) {
         result.add(originalMapping);
         continue;
+      }
+      TargetType targetType = target.getType();
+      FragmentType fragmentType = originalMapping.getFragmentType();
+      if (targetType == TargetType.edge && fragmentType == FragmentType.rel
+          || targetType == TargetType.node && fragmentType == FragmentType.node) {
+        String property = originalMapping.getName();
+        if (!seenProperties.add(property)) {
+          continue;
+        }
+        originalMapping.setType(propertyTypes.get(property));
       }
       if (role == RoleType.key) {
         result.add(originalMapping);

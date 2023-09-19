@@ -18,8 +18,11 @@ package com.google.cloud.teleport.v2.neo4j.model;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Config;
+import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
@@ -60,6 +63,7 @@ public class InputRefactoringTest {
 
   @Test
   public void removesNodeTargetKeyMappingsFieldsFromUniqueMappings() {
+    target.setType(TargetType.node);
     target.setName("key implies unique");
     addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
     addMapping(
@@ -80,6 +84,7 @@ public class InputRefactoringTest {
 
   @Test
   public void removesEdgeTargetKeyMappingsFieldsFromUniqueMappings() {
+    target.setType(TargetType.edge);
     target.setName("key implies unique");
     addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
     addMapping(
@@ -100,6 +105,7 @@ public class InputRefactoringTest {
 
   @Test
   public void removesNodeTargetKeyMappingsFromMandatoryMappings() {
+    target.setType(TargetType.node);
     target.setName("key implies mandatory (non-null)");
     addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
     addMapping(
@@ -120,6 +126,7 @@ public class InputRefactoringTest {
 
   @Test
   public void removesEdgeTargetKeyMappingsFromMandatoryMappings() {
+    target.setType(TargetType.edge);
     target.setName("key implies mandatory (non-null)");
     addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
     addMapping(
@@ -140,6 +147,7 @@ public class InputRefactoringTest {
 
   @Test
   public void removesNodeTargetKeyMappingsFromIndexedMappings() {
+    target.setType(TargetType.node);
     target.setName("key is always indexed");
     addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
     addMapping(
@@ -160,6 +168,7 @@ public class InputRefactoringTest {
 
   @Test
   public void removesEdgeTargetKeyMappingsFromIndexedMappings() {
+    target.setType(TargetType.edge);
     target.setName("key is always indexed");
     addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
     addMapping(
@@ -180,6 +189,7 @@ public class InputRefactoringTest {
 
   @Test
   public void removesNodeTargetUniqueMappingsFromIndexMappings() {
+    target.setType(TargetType.node);
     target.setName("unique is always indexed");
     addMapping(
         target,
@@ -204,6 +214,7 @@ public class InputRefactoringTest {
 
   @Test
   public void removesEdgeTargetUniqueMappingsFromIndexMappings() {
+    target.setType(TargetType.edge);
     target.setName("unique is always indexed");
     addMapping(
         target,
@@ -228,6 +239,7 @@ public class InputRefactoringTest {
 
   @Test
   public void doesNotRemoveEdgeSourceKeyMappingsFromEdgeUniqueMappings() {
+    target.setType(TargetType.edge);
     target.setName("edge source mappings do not overlap with rel unique mappings");
     addMapping(
         target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
@@ -252,6 +264,7 @@ public class InputRefactoringTest {
 
   @Test
   public void doesNotRemoveEdgeSourceKeyMappingsFromEdgeMandatoryMappings() {
+    target.setType(TargetType.edge);
     target.setName("edge source mappings do not overlap with rel mandatory (non-null) mappings");
     addMapping(
         target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
@@ -276,6 +289,7 @@ public class InputRefactoringTest {
 
   @Test
   public void doesNotRemoveEdgeSourceKeyMappingsFromEdgeIndexedMappings() {
+    target.setType(TargetType.edge);
     target.setName("edge source mappings do not overlap with rel mandatory (non-null) mappings");
     addMapping(
         target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
@@ -300,6 +314,7 @@ public class InputRefactoringTest {
 
   @Test
   public void doesNotRemoveEdgeTargetKeyMappingsFromEdgeUniqueMappings() {
+    target.setType(TargetType.edge);
     target.setName("edge target mappings do not overlap with rel unique mappings");
     addMapping(
         target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
@@ -324,6 +339,7 @@ public class InputRefactoringTest {
 
   @Test
   public void doesNotRemoveEdgeTargetKeyMappingsFromEdgeMandatoryMappings() {
+    target.setType(TargetType.edge);
     target.setName("edge target mappings do not overlap with rel mandatory (non-null) mappings");
     addMapping(
         target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
@@ -348,6 +364,7 @@ public class InputRefactoringTest {
 
   @Test
   public void doesNotRemoveEdgeTargetKeyMappingsFromEdgeIndexedMappings() {
+    target.setType(TargetType.edge);
     target.setName("edge target mappings do not overlap with rel mandatory (non-null) mappings");
     addMapping(
         target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
@@ -372,6 +389,7 @@ public class InputRefactoringTest {
 
   @Test
   public void explicitlyMarksNodePropertyMappingsAsIndexableWhenApplicable() {
+    target.setType(TargetType.node);
     target.setName("applies index-all-properties setting to every property");
     jobSpec.setConfig(new Config(new JSONObject(Map.of("index_all_properties", true))));
     addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
@@ -393,6 +411,7 @@ public class InputRefactoringTest {
 
   @Test
   public void explicitlyMarksRelPropertyMappingsAsIndexableWhenApplicable() {
+    target.setType(TargetType.edge);
     target.setName("applies index-all-properties setting to every property");
     jobSpec.setConfig(new Config(new JSONObject(Map.of("index_all_properties", true))));
     addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
@@ -414,6 +433,7 @@ public class InputRefactoringTest {
 
   @Test
   public void removesInactiveTargets() {
+    target.setType(TargetType.edge);
     target.setName("inactive target");
     target.setActive(false);
     addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
@@ -422,6 +442,29 @@ public class InputRefactoringTest {
     refactorer.refactorJobSpec(jobSpec);
 
     assertThat(jobSpec.getTargets()).isEmpty();
+  }
+
+  @Test
+  public void mergesOverlappingTargetMappings() {
+    target.setType(TargetType.node);
+    target.setName("different mappings for same property");
+    addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
+    Mapping mapping =
+        mapping(FragmentType.node, RoleType.property, "source_field", "targetProperty");
+    mapping.setType(PropertyType.Boolean);
+    addMapping(target, mapping);
+    assertThat(target.getMappings()).hasSize(2);
+
+    refactorer.refactorJobSpec(jobSpec);
+
+    assertThat(target.getMappings()).hasSize(1);
+    FieldNameTuple tuple = new FieldNameTuple();
+    tuple.setName("targetProperty");
+    tuple.setField("source_field");
+    Mapping actualMapping = new Mapping(FragmentType.node, RoleType.key, tuple);
+    actualMapping.setType(PropertyType.Boolean);
+    List<Mapping> mappings = jobSpec.getTargets().iterator().next().getMappings();
+    assertThat(mappings).isEqualTo(List.of(actualMapping));
   }
 
   private static Mapping uniqueMapping(
