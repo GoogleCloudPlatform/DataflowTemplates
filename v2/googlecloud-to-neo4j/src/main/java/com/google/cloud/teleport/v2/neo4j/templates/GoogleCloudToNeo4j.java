@@ -256,7 +256,6 @@ public class GoogleCloudToNeo4j {
                 .nullableSourceRows(nullableSourceBeamRows)
                 .target(nodeTarget)
                 .build();
-        PCollection<Row> preInsertBeamRows;
         String nodeStepDescription =
             nodeTarget.getSequence()
                 + ": "
@@ -264,14 +263,9 @@ public class GoogleCloudToNeo4j {
                 + "->"
                 + nodeTarget.getName()
                 + " nodes";
-        if (ModelUtils.targetHasTransforms(nodeTarget)) {
-          preInsertBeamRows =
-              pipeline.apply(
-                  "Query " + nodeStepDescription,
-                  providerImpl.queryTargetBeamRows(targetQuerySpec));
-        } else {
-          preInsertBeamRows = nullableSourceBeamRows;
-        }
+        PCollection<Row> preInsertBeamRows =
+            pipeline.apply(
+                "Query " + nodeStepDescription, providerImpl.queryTargetBeamRows(targetQuerySpec));
 
         Neo4jRowWriterTransform targetWriterTransform =
             new Neo4jRowWriterTransform(jobSpec, neo4jConnection, TargetType.node, nodeTarget);
@@ -405,7 +399,7 @@ public class GoogleCloudToNeo4j {
 
       // We have chosen a DoFn pattern applied to a single Integer row so that @ProcessElement
       // evaluates only once per invocation.
-      // For future actions (ie. logger) that consume upstream data context, we would use a
+      // For future actions (i.e. logger) that consume upstream data context, we would use a
       // Transform pattern
       // The challenge in this case of the Transform pattern is that @FinishBundle could execute
       // many times.

@@ -26,7 +26,10 @@ import static com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils.listFull
 import static com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils.mapToString;
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
+import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.common.collect.ImmutableList;
@@ -173,6 +176,7 @@ public class DataCastingUtilsTest {
             Field.of("name", FieldType.STRING),
             Field.of("salary", FieldType.DOUBLE),
             Field.of("hired", FieldType.BOOLEAN),
+            Field.of("hiredAsString", FieldType.STRING),
             Field.of("hireDate", FieldType.DATETIME));
     DateTime hireDate =
         DateTime.parse("2022-08-15T01:02:03Z", ISODateTimeFormat.dateTimeNoMillis())
@@ -185,21 +189,35 @@ public class DataCastingUtilsTest {
             .withFieldValue("name", "neo4j")
             .withFieldValue("salary", 15.5)
             .withFieldValue("hired", true)
+            .withFieldValue("hiredAsString", "true")
             .withFieldValue("hireDate", hireDate)
             .build();
     Target target = new Target();
     target.setName("neo4j-target");
-    target.setFieldNames(ImmutableList.of("id", "name", "salary", "hired", "hireDate"));
+    target.setFieldNames(
+        ImmutableList.of("id", "name", "salary", "hired", "hiredAsString", "hireDate"));
     target.setMappings(
         ImmutableList.of(
-            new Mapping("id", PropertyType.Long),
-            new Mapping("name", PropertyType.String),
-            new Mapping("salary", PropertyType.BigDecimal),
-            new Mapping("hired", PropertyType.Boolean),
-            new Mapping("hireDate", PropertyType.DateTime)));
+            mapping("id", PropertyType.Long),
+            mapping("name", PropertyType.String),
+            mapping("salary", PropertyType.BigDecimal),
+            mapping("hired", PropertyType.Boolean),
+            mapping(
+                "hiredAsString",
+                PropertyType.Boolean), // source column is string, but target property is boolean
+            mapping("hireDate", PropertyType.DateTime)));
 
     List<Object> convertedList = DataCastingUtils.sourceTextToTargetObjects(row, target);
     assertThat(convertedList)
-        .containsExactly(1L, "neo4j", new BigDecimal(15.5), true, expectedDate);
+        .containsExactly(1L, "neo4j", new BigDecimal("15.5"), true, true, expectedDate);
+  }
+
+  private static Mapping mapping(String field, PropertyType type) {
+    FieldNameTuple tuple = new FieldNameTuple();
+    tuple.setName(field);
+    tuple.setField(field);
+    Mapping mapping = new Mapping(FragmentType.node, RoleType.property, tuple);
+    mapping.setType(type);
+    return mapping;
   }
 }

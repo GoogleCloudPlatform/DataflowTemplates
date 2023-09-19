@@ -48,11 +48,6 @@ public class Mapping implements Serializable {
     this.constant = fieldNameTuple.getConstant();
   }
 
-  public Mapping(String name, PropertyType type) {
-    this.name = name;
-    this.type = type;
-  }
-
   public void setLabels(List<String> labels) {}
 
   public String getConstant() {
