@@ -24,7 +24,6 @@
         "transform": {
           "group": true
         },
-        "active": true,
         "mappings": {
           "type": "\"LINKS\"",
           "source": {
@@ -39,11 +38,11 @@
             },
             "label": "\"Target\""
           },
-          "keys": [
-            {"rel_id_1": "rel_id1"},
-            {"rel_id_2": "rel_id2"}
-          ],
           "properties": {
+            "keys": [
+              {"rel_id_1": "rel_id1"},
+              {"rel_id_2": "rel_id2"}
+            ],
             "indexed": [
               {
                 "timestamp": "ts"

@@ -39,9 +39,11 @@
               "person": "personId"
             }
           },
-          "keys": [
-            {"id": "id"}
-          ]
+          "properties": {
+            "keys": [
+              {"id": "id"}
+            ]
+          }
         }
       }
     }

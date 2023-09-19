@@ -1,6 +1,5 @@
 {
   "config": {
-    "debug": true,
     "reset_db": true,
     "index_all_properties": true,
     "node_write_batch_size": 5000,

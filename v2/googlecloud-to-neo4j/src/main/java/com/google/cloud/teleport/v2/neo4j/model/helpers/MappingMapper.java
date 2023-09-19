@@ -62,17 +62,6 @@ public class MappingMapper {
         mappings.add(new Mapping(FragmentType.node, RoleType.label, f));
       }
     }
-    if (nodeMappingsObject.has("key")) {
-      FieldNameTuple tuple = createFieldNameTuple(nodeMappingsObject.getString("key"));
-      mappings.add(new Mapping(FragmentType.node, RoleType.key, tuple));
-    }
-
-    if (nodeMappingsObject.has("keys")) {
-      List<FieldNameTuple> keys = getFieldAndNameTuples(nodeMappingsObject.get("keys"));
-      for (FieldNameTuple f : keys) {
-        mappings.add(new Mapping(FragmentType.node, RoleType.key, f));
-      }
-    }
     if (nodeMappingsObject.has("properties")) {
       parseProperties(mappings, nodeMappingsObject.getJSONObject("properties"), FragmentType.node);
     }
@@ -93,13 +82,6 @@ public class MappingMapper {
 
     if (edgeMappingsObject.has("target")) {
       parseEdgeNode(mappings, FragmentType.target, edgeMappingsObject);
-    }
-
-    if (edgeMappingsObject.has("keys")) {
-      List<FieldNameTuple> keys = getFieldAndNameTuples(edgeMappingsObject.get("keys"));
-      for (FieldNameTuple f : keys) {
-        mappings.add(new Mapping(FragmentType.rel, RoleType.key, f));
-      }
     }
 
     if (edgeMappingsObject.has("properties")) {
@@ -166,8 +148,11 @@ public class MappingMapper {
     List<FieldNameTuple> indexed = new ArrayList<>();
     List<FieldNameTuple> mandatory = new ArrayList<>();
 
+    if (propertyMappings.has("key")) {
+      keys.addAll(getFieldAndNameTuples(propertyMappings.get("key")));
+    }
     if (propertyMappings.has("keys")) {
-      keys = getFieldAndNameTuples(propertyMappings.get("keys"));
+      keys.addAll(getFieldAndNameTuples(propertyMappings.get("keys")));
     }
     if (propertyMappings.has("unique")) {
       uniques = getFieldAndNameTuples(propertyMappings.get("unique"));

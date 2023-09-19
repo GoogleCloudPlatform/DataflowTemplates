@@ -28,9 +28,11 @@
           "labels": [
             "\"Person\""
           ],
-          "keys": [
-            {"id": "id"}
-          ]
+          "properties": {
+            "keys": [
+              {"id": "id"}
+            ]
+          }
         }
       }
     }

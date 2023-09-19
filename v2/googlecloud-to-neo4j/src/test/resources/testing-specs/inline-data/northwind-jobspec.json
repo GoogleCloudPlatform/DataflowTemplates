@@ -2159,10 +2159,10 @@
         },
         "mappings": {
           "label": "\"Customer\"",
-          "keys": {
-            "customer_id": "customerId"
-          },
           "properties": {
+            "keys": {
+              "customer_id": "customerId"
+            },
             "indexed": [
               {
                 "contact_name": "contactName"
@@ -2197,10 +2197,10 @@
         },
         "mappings": {
           "label": "\"Product\"",
-          "keys": {
-            "product_id": "productId"
-          },
           "properties": {
+            "keys": {
+              "product_id": "productId"
+            },
             "indexed": [
               {
                 "product_name": "productName"

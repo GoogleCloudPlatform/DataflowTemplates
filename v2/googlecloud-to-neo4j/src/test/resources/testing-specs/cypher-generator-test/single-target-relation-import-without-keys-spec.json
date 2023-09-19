@@ -24,7 +24,6 @@
         "transform": {
           "group": true
         },
-        "active": true,
         "mappings": {
           "type": "\"LINKS\"",
           "source": {
