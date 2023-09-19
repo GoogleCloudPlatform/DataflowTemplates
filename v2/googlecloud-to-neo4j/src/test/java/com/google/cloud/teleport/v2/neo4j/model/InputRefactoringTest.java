@@ -66,9 +66,7 @@ public class InputRefactoringTest {
     target.setType(TargetType.node);
     target.setName("key implies unique");
     addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        uniqueMapping(FragmentType.node, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, uniqueMapping(FragmentType.node, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -87,9 +85,7 @@ public class InputRefactoringTest {
     target.setType(TargetType.edge);
     target.setName("key implies unique");
     addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        uniqueMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, uniqueMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -108,9 +104,7 @@ public class InputRefactoringTest {
     target.setType(TargetType.node);
     target.setName("key implies mandatory (non-null)");
     addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        mandatoryMapping(FragmentType.node, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, mandatoryMapping(FragmentType.node, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -129,9 +123,7 @@ public class InputRefactoringTest {
     target.setType(TargetType.edge);
     target.setName("key implies mandatory (non-null)");
     addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        mandatoryMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, mandatoryMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -150,9 +142,7 @@ public class InputRefactoringTest {
     target.setType(TargetType.node);
     target.setName("key is always indexed");
     addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        indexedMapping(FragmentType.node, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, indexedMapping(FragmentType.node, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -171,9 +161,7 @@ public class InputRefactoringTest {
     target.setType(TargetType.edge);
     target.setName("key is always indexed");
     addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        indexedMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, indexedMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -191,12 +179,8 @@ public class InputRefactoringTest {
   public void removesNodeTargetUniqueMappingsFromIndexMappings() {
     target.setType(TargetType.node);
     target.setName("unique is always indexed");
-    addMapping(
-        target,
-        uniqueMapping(FragmentType.node, RoleType.property, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        indexedMapping(FragmentType.node, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, uniqueMapping(FragmentType.node, "source_field", "targetProperty"));
+    addMapping(target, indexedMapping(FragmentType.node, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -206,22 +190,15 @@ public class InputRefactoringTest {
             .flatMap(t -> t.getMappings().stream())
             .collect(Collectors.toList());
     assertThat(actualMappings)
-        .isEqualTo(
-            List.of(
-                uniqueMapping(
-                    FragmentType.node, RoleType.property, "source_field", "targetProperty")));
+        .isEqualTo(List.of(uniqueMapping(FragmentType.node, "source_field", "targetProperty")));
   }
 
   @Test
   public void removesEdgeTargetUniqueMappingsFromIndexMappings() {
     target.setType(TargetType.edge);
     target.setName("unique is always indexed");
-    addMapping(
-        target,
-        uniqueMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        indexedMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, uniqueMapping(FragmentType.rel, "source_field", "targetProperty"));
+    addMapping(target, indexedMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -231,10 +208,7 @@ public class InputRefactoringTest {
             .flatMap(t -> t.getMappings().stream())
             .collect(Collectors.toList());
     assertThat(actualMappings)
-        .isEqualTo(
-            List.of(
-                uniqueMapping(
-                    FragmentType.rel, RoleType.property, "source_field", "targetProperty")));
+        .isEqualTo(List.of(uniqueMapping(FragmentType.rel, "source_field", "targetProperty")));
   }
 
   @Test
@@ -243,9 +217,7 @@ public class InputRefactoringTest {
     target.setName("edge source mappings do not overlap with rel unique mappings");
     addMapping(
         target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        uniqueMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, uniqueMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -258,8 +230,7 @@ public class InputRefactoringTest {
         .isEqualTo(
             List.of(
                 mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"),
-                uniqueMapping(
-                    FragmentType.rel, RoleType.property, "source_field", "targetProperty")));
+                uniqueMapping(FragmentType.rel, "source_field", "targetProperty")));
   }
 
   @Test
@@ -268,9 +239,7 @@ public class InputRefactoringTest {
     target.setName("edge source mappings do not overlap with rel mandatory (non-null) mappings");
     addMapping(
         target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        mandatoryMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, mandatoryMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -283,8 +252,7 @@ public class InputRefactoringTest {
         .isEqualTo(
             List.of(
                 mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"),
-                mandatoryMapping(
-                    FragmentType.rel, RoleType.property, "source_field", "targetProperty")));
+                mandatoryMapping(FragmentType.rel, "source_field", "targetProperty")));
   }
 
   @Test
@@ -293,9 +261,7 @@ public class InputRefactoringTest {
     target.setName("edge source mappings do not overlap with rel mandatory (non-null) mappings");
     addMapping(
         target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        indexedMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, indexedMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -308,8 +274,7 @@ public class InputRefactoringTest {
         .isEqualTo(
             List.of(
                 mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"),
-                indexedMapping(
-                    FragmentType.rel, RoleType.property, "source_field", "targetProperty")));
+                indexedMapping(FragmentType.rel, "source_field", "targetProperty")));
   }
 
   @Test
@@ -318,9 +283,7 @@ public class InputRefactoringTest {
     target.setName("edge target mappings do not overlap with rel unique mappings");
     addMapping(
         target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        uniqueMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, uniqueMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -333,8 +296,7 @@ public class InputRefactoringTest {
         .isEqualTo(
             List.of(
                 mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"),
-                uniqueMapping(
-                    FragmentType.rel, RoleType.property, "source_field", "targetProperty")));
+                uniqueMapping(FragmentType.rel, "source_field", "targetProperty")));
   }
 
   @Test
@@ -343,9 +305,7 @@ public class InputRefactoringTest {
     target.setName("edge target mappings do not overlap with rel mandatory (non-null) mappings");
     addMapping(
         target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        mandatoryMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, mandatoryMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -358,8 +318,7 @@ public class InputRefactoringTest {
         .isEqualTo(
             List.of(
                 mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"),
-                mandatoryMapping(
-                    FragmentType.rel, RoleType.property, "source_field", "targetProperty")));
+                mandatoryMapping(FragmentType.rel, "source_field", "targetProperty")));
   }
 
   @Test
@@ -368,9 +327,7 @@ public class InputRefactoringTest {
     target.setName("edge target mappings do not overlap with rel mandatory (non-null) mappings");
     addMapping(
         target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
-    addMapping(
-        target,
-        indexedMapping(FragmentType.rel, RoleType.property, "source_field", "targetProperty"));
+    addMapping(target, indexedMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
@@ -383,8 +340,7 @@ public class InputRefactoringTest {
         .isEqualTo(
             List.of(
                 mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"),
-                indexedMapping(
-                    FragmentType.rel, RoleType.property, "source_field", "targetProperty")));
+                indexedMapping(FragmentType.rel, "source_field", "targetProperty")));
   }
 
   @Test
@@ -406,7 +362,7 @@ public class InputRefactoringTest {
         .isEqualTo(
             List.of(
                 mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"),
-                indexedMapping(FragmentType.node, RoleType.property, "field1", "prop1")));
+                indexedMapping(FragmentType.node, "field1", "prop1")));
   }
 
   @Test
@@ -428,7 +384,7 @@ public class InputRefactoringTest {
         .isEqualTo(
             List.of(
                 mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"),
-                indexedMapping(FragmentType.rel, RoleType.property, "field1", "prop1")));
+                indexedMapping(FragmentType.rel, "field1", "prop1")));
   }
 
   @Test
@@ -467,23 +423,21 @@ public class InputRefactoringTest {
     assertThat(mappings).isEqualTo(List.of(actualMapping));
   }
 
-  private static Mapping uniqueMapping(
-      FragmentType fragmentType, RoleType roleType, String column, String property) {
-    Mapping mapping = mapping(fragmentType, roleType, column, property);
+  private static Mapping uniqueMapping(FragmentType fragmentType, String column, String property) {
+    Mapping mapping = mapping(fragmentType, RoleType.property, column, property);
     mapping.setUnique(true);
     return mapping;
   }
 
   private static Mapping mandatoryMapping(
-      FragmentType fragmentType, RoleType roleType, String column, String property) {
-    Mapping mapping = mapping(fragmentType, roleType, column, property);
+      FragmentType fragmentType, String column, String property) {
+    Mapping mapping = mapping(fragmentType, RoleType.property, column, property);
     mapping.setMandatory(true);
     return mapping;
   }
 
-  private static Mapping indexedMapping(
-      FragmentType fragmentType, RoleType roleType, String column, String property) {
-    Mapping mapping = mapping(fragmentType, roleType, column, property);
+  private static Mapping indexedMapping(FragmentType fragmentType, String column, String property) {
+    Mapping mapping = mapping(fragmentType, RoleType.property, column, property);
     mapping.setIndexed(true);
     return mapping;
   }
