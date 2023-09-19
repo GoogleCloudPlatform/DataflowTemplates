@@ -61,7 +61,7 @@ public class ConstraintsIndicesIT extends TemplateTestBase {
   }
 
   @Test
-  public void does_not_create_extra_indices_when_importing_nodes() throws Exception {
+  public void doesNotCreateExtraIndicesWhenImportingNodes() throws Exception {
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/constraints-indices/node-spec.json"));
     gcsClient.createArtifact(
@@ -106,7 +106,7 @@ public class ConstraintsIndicesIT extends TemplateTestBase {
   }
 
   @Test
-  public void does_not_create_extra_indices_when_importing_relationships() throws Exception {
+  public void doesNotCreateExtraIndicesWhenImportingRelationships() throws Exception {
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/constraints-indices/edge-spec.json"));
     gcsClient.createArtifact(
