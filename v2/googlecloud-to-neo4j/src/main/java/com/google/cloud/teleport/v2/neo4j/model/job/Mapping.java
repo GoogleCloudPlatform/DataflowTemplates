@@ -172,4 +172,34 @@ public class Mapping implements Serializable {
         + fragmentType
         + '}';
   }
+
+  /**
+   * Merge fuses this mapping with the specified one. This method assumes that both mappings: -
+   * belong to the same target - refer to the same property - are valid within this context: - they
+   * both refer to the same source field - at most one of them defines a property type
+   *
+   * @param otherMapping other mapping to merge with
+   * @return a new merged mapping
+   */
+  public Mapping mergeOverlapping(Mapping otherMapping) {
+    Mapping result = new Mapping();
+    result.role = this.role == RoleType.key ? RoleType.key : otherMapping.role;
+    result.fragmentType = this.fragmentType;
+    result.name = this.name;
+    result.field = this.field;
+    result.constant = this.constant;
+    result.type = this.type != null ? this.type : otherMapping.type;
+
+    if (result.role == RoleType.key) {
+      result.unique = false;
+      result.mandatory = false;
+      result.indexed = false;
+    } else {
+      result.unique = this.unique || otherMapping.unique;
+      result.mandatory = this.mandatory || otherMapping.mandatory;
+      result.indexed = !result.unique && (this.indexed || otherMapping.indexed);
+    }
+
+    return result;
+  }
 }

@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.neo4j.model;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
-import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
@@ -30,11 +29,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -87,7 +84,7 @@ public class InputRefactoring {
         target.setCustomQuery(
             ModelUtils.replaceVariableTokens(customQuery, optionsParams.getTokenMap()));
       }
-      rewriteTarget(target, jobSpec.getConfig().getIndexAllProperties());
+      rewriteTargetMappings(target, jobSpec.getConfig().getIndexAllProperties());
       rewrittenTargets.add(target);
     }
     jobSpec.setTargets(rewrittenTargets);
@@ -127,68 +124,64 @@ public class InputRefactoring {
     }
   }
 
-  private void rewriteTarget(Target target, boolean indexAllProperties) {
+  private void rewriteTargetMappings(Target target, boolean indexAllProperties) {
     List<Mapping> mappings = target.getMappings();
-    Set<String> keys =
-        ModelUtils.filterProperties(
-            target,
-            mapping ->
-                (mapping.getFragmentType() == FragmentType.node
-                        || mapping.getFragmentType() == FragmentType.rel)
-                    && mapping.getRole() == RoleType.key);
-    Set<String> uniques = ModelUtils.filterProperties(target, Mapping::isUnique);
-    Map<String, PropertyType> propertyTypes =
+    Predicate<Mapping> mappingIsRewriteCandidate = mappingIsRewriteCandidate(target);
+    List<Mapping> unprocessedMappings =
         mappings.stream()
-            .filter(mapping -> mapping.getType() != null)
-            .collect(Collectors.toMap(Mapping::getName, Mapping::getType));
-    Set<String> seenProperties = new HashSet<>();
-    List<Mapping> result = new ArrayList<>(mappings.size());
-    for (Mapping originalMapping : mappings) {
-      RoleType role = originalMapping.getRole();
-      if (role != RoleType.key && role != RoleType.property) {
-        result.add(originalMapping);
-        continue;
-      }
-      TargetType targetType = target.getType();
-      FragmentType fragmentType = originalMapping.getFragmentType();
-      if (targetType == TargetType.edge && fragmentType == FragmentType.rel
-          || targetType == TargetType.node && fragmentType == FragmentType.node) {
-        String property = originalMapping.getName();
-        if (!seenProperties.add(property)) {
-          continue;
-        }
-        originalMapping.setType(propertyTypes.get(property));
-      }
-      if (role == RoleType.key) {
-        result.add(originalMapping);
-        continue;
-      }
-      if (redundantWithKeyMapping(originalMapping, keys)
-          || redundantWithUniqueMapping(originalMapping, uniques)) {
-        continue;
-      }
-      if (indexAllProperties) {
-        originalMapping.setIndexed(true);
-      }
-      result.add(originalMapping);
-    }
+            .filter(mappingIsRewriteCandidate.negate())
+            .collect(Collectors.toCollection(ArrayList::new));
+    List<Mapping> rewrittenMappings =
+        mappings.stream()
+            .filter(mappingIsRewriteCandidate)
+            .collect(Collectors.groupingBy(Mapping::getName))
+            .values()
+            .stream()
+            .map(
+                propertyMappings ->
+                    propertyMappings.stream()
+                        .reduce(Mapping::mergeOverlapping)
+                        .map(m -> overwriteIndexed(m, indexAllProperties))
+                        .get())
+            .collect(Collectors.toList());
+
+    List<Mapping> result = new ArrayList<>(unprocessedMappings.size() + rewrittenMappings.size());
+    result.addAll(unprocessedMappings);
+    result.addAll(rewrittenMappings);
     target.setMappings(result);
   }
 
-  // A property mapped as key implies the property is:
-  // - unique
-  // - mandatory (non-null)
-  // - indexed
-  private static boolean redundantWithKeyMapping(Mapping mapping, Set<String> keys) {
-    String property = mapping.getName();
-    return (mapping.isUnique() || mapping.isMandatory() || mapping.isIndexed())
-        && keys.contains(property);
+  private static Predicate<Mapping> mappingIsRewriteCandidate(Target target) {
+    return mapping -> {
+      RoleType role = mapping.getRole();
+      if (role != RoleType.property && role != RoleType.key) {
+        // not much to optimize for labels and types
+        return false;
+      }
+      if (target.getType() == TargetType.node) {
+        // need to inspect node property mappings
+        return true;
+      }
+      // start/end node keys are not looked at atm
+      // only key/properties of the relationship itself are inspected
+      return mapping.getFragmentType() == FragmentType.rel;
+    };
   }
 
-  // A property mapped as unique implies the property is:
-  // - indexed
-  private static boolean redundantWithUniqueMapping(Mapping mapping, Set<String> uniques) {
-    String property = mapping.getName();
-    return mapping.isIndexed() && uniques.contains(property);
+  private static Mapping overwriteIndexed(Mapping mapping, boolean indexAllProperties) {
+    if (mapping.getRole() == RoleType.key) {
+      // key constraints are backed by an index, no index statement needed
+      return mapping;
+    }
+    if (mapping.isUnique()) {
+      // unique constraints are backed by an index, no index statement needed
+      return mapping;
+    }
+    if (mapping.isIndexed()) {
+      // mapping is already indexed, moving on
+      return mapping;
+    }
+    mapping.setIndexed(indexAllProperties);
+    return mapping;
   }
 }

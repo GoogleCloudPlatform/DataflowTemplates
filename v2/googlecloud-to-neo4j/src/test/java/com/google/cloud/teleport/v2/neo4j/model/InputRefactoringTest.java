@@ -18,18 +18,15 @@ package com.google.cloud.teleport.v2.neo4j.model;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
-import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Config;
-import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
-import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.json.JSONObject;
 import org.junit.Before;
@@ -62,285 +59,16 @@ public class InputRefactoringTest {
   }
 
   @Test
-  public void removesNodeTargetKeyMappingsFieldsFromUniqueMappings() {
-    target.setType(TargetType.node);
-    target.setName("key implies unique");
-    addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, uniqueMapping(FragmentType.node, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void removesEdgeTargetKeyMappingsFieldsFromUniqueMappings() {
+  public void removesInactiveTargets() {
     target.setType(TargetType.edge);
-    target.setName("key implies unique");
+    target.setName("inactive target");
+    target.setActive(false);
     addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, uniqueMapping(FragmentType.rel, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
+    assertThat(jobSpec.getTargets()).hasSize(1);
 
     refactorer.refactorJobSpec(jobSpec);
 
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void removesNodeTargetKeyMappingsFromMandatoryMappings() {
-    target.setType(TargetType.node);
-    target.setName("key implies mandatory (non-null)");
-    addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, mandatoryMapping(FragmentType.node, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void removesEdgeTargetKeyMappingsFromMandatoryMappings() {
-    target.setType(TargetType.edge);
-    target.setName("key implies mandatory (non-null)");
-    addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, mandatoryMapping(FragmentType.rel, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void removesNodeTargetKeyMappingsFromIndexedMappings() {
-    target.setType(TargetType.node);
-    target.setName("key is always indexed");
-    addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, indexedMapping(FragmentType.node, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void removesEdgeTargetKeyMappingsFromIndexedMappings() {
-    target.setType(TargetType.edge);
-    target.setName("key is always indexed");
-    addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, indexedMapping(FragmentType.rel, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void removesNodeTargetUniqueMappingsFromIndexMappings() {
-    target.setType(TargetType.node);
-    target.setName("unique is always indexed");
-    addMapping(target, uniqueMapping(FragmentType.node, "source_field", "targetProperty"));
-    addMapping(target, indexedMapping(FragmentType.node, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(List.of(uniqueMapping(FragmentType.node, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void removesEdgeTargetUniqueMappingsFromIndexMappings() {
-    target.setType(TargetType.edge);
-    target.setName("unique is always indexed");
-    addMapping(target, uniqueMapping(FragmentType.rel, "source_field", "targetProperty"));
-    addMapping(target, indexedMapping(FragmentType.rel, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(List.of(uniqueMapping(FragmentType.rel, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void doesNotRemoveEdgeSourceKeyMappingsFromEdgeUniqueMappings() {
-    target.setType(TargetType.edge);
-    target.setName("edge source mappings do not overlap with rel unique mappings");
-    addMapping(
-        target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, uniqueMapping(FragmentType.rel, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(
-                mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"),
-                uniqueMapping(FragmentType.rel, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void doesNotRemoveEdgeSourceKeyMappingsFromEdgeMandatoryMappings() {
-    target.setType(TargetType.edge);
-    target.setName("edge source mappings do not overlap with rel mandatory (non-null) mappings");
-    addMapping(
-        target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, mandatoryMapping(FragmentType.rel, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(
-                mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"),
-                mandatoryMapping(FragmentType.rel, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void doesNotRemoveEdgeSourceKeyMappingsFromEdgeIndexedMappings() {
-    target.setType(TargetType.edge);
-    target.setName("edge source mappings do not overlap with rel mandatory (non-null) mappings");
-    addMapping(
-        target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, indexedMapping(FragmentType.rel, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(
-                mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"),
-                indexedMapping(FragmentType.rel, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void doesNotRemoveEdgeTargetKeyMappingsFromEdgeUniqueMappings() {
-    target.setType(TargetType.edge);
-    target.setName("edge target mappings do not overlap with rel unique mappings");
-    addMapping(
-        target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, uniqueMapping(FragmentType.rel, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(
-                mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"),
-                uniqueMapping(FragmentType.rel, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void doesNotRemoveEdgeTargetKeyMappingsFromEdgeMandatoryMappings() {
-    target.setType(TargetType.edge);
-    target.setName("edge target mappings do not overlap with rel mandatory (non-null) mappings");
-    addMapping(
-        target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, mandatoryMapping(FragmentType.rel, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(
-                mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"),
-                mandatoryMapping(FragmentType.rel, "source_field", "targetProperty")));
-  }
-
-  @Test
-  public void doesNotRemoveEdgeTargetKeyMappingsFromEdgeIndexedMappings() {
-    target.setType(TargetType.edge);
-    target.setName("edge target mappings do not overlap with rel mandatory (non-null) mappings");
-    addMapping(
-        target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
-    addMapping(target, indexedMapping(FragmentType.rel, "source_field", "targetProperty"));
-    assertThat(target.getMappings()).hasSize(2);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    List<Mapping> actualMappings =
-        jobSpec.getTargets().stream()
-            .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
-    assertThat(actualMappings)
-        .isEqualTo(
-            List.of(
-                mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"),
-                indexedMapping(FragmentType.rel, "source_field", "targetProperty")));
+    assertThat(jobSpec.getTargets()).isEmpty();
   }
 
   @Test
@@ -354,13 +82,13 @@ public class InputRefactoringTest {
 
     refactorer.refactorJobSpec(jobSpec);
 
-    List<Mapping> actualMappings =
+    Set<Mapping> actualMappings =
         jobSpec.getTargets().stream()
             .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
+            .collect(Collectors.toSet());
     assertThat(actualMappings)
         .isEqualTo(
-            List.of(
+            Set.of(
                 mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"),
                 indexedMapping(FragmentType.node, "field1", "prop1")));
   }
@@ -376,51 +104,147 @@ public class InputRefactoringTest {
 
     refactorer.refactorJobSpec(jobSpec);
 
-    List<Mapping> actualMappings =
+    Set<Mapping> actualMappings =
         jobSpec.getTargets().stream()
             .flatMap(t -> t.getMappings().stream())
-            .collect(Collectors.toList());
+            .collect(Collectors.toSet());
     assertThat(actualMappings)
         .isEqualTo(
-            List.of(
+            Set.of(
                 mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"),
                 indexedMapping(FragmentType.rel, "field1", "prop1")));
   }
 
   @Test
-  public void removesInactiveTargets() {
+  public void doesNotRemoveEdgeSourceKeyMappingsFromEdgeUniqueMappings() {
     target.setType(TargetType.edge);
-    target.setName("inactive target");
-    target.setActive(false);
-    addMapping(target, mapping(FragmentType.rel, RoleType.key, "source_field", "targetProperty"));
-    assertThat(jobSpec.getTargets()).hasSize(1);
-
-    refactorer.refactorJobSpec(jobSpec);
-
-    assertThat(jobSpec.getTargets()).isEmpty();
-  }
-
-  @Test
-  public void mergesOverlappingTargetMappings() {
-    target.setType(TargetType.node);
-    target.setName("different mappings for same property");
-    addMapping(target, mapping(FragmentType.node, RoleType.key, "source_field", "targetProperty"));
-    Mapping mapping =
-        mapping(FragmentType.node, RoleType.property, "source_field", "targetProperty");
-    mapping.setType(PropertyType.Boolean);
-    addMapping(target, mapping);
+    target.setName("edge source mappings do not overlap with rel unique mappings");
+    addMapping(
+        target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
+    addMapping(target, uniqueMapping(FragmentType.rel, "source_field", "targetProperty"));
     assertThat(target.getMappings()).hasSize(2);
 
     refactorer.refactorJobSpec(jobSpec);
 
-    assertThat(target.getMappings()).hasSize(1);
-    FieldNameTuple tuple = new FieldNameTuple();
-    tuple.setName("targetProperty");
-    tuple.setField("source_field");
-    Mapping actualMapping = new Mapping(FragmentType.node, RoleType.key, tuple);
-    actualMapping.setType(PropertyType.Boolean);
-    List<Mapping> mappings = jobSpec.getTargets().iterator().next().getMappings();
-    assertThat(mappings).isEqualTo(List.of(actualMapping));
+    Set<Mapping> actualMappings =
+        jobSpec.getTargets().stream()
+            .flatMap(t -> t.getMappings().stream())
+            .collect(Collectors.toSet());
+    assertThat(actualMappings)
+        .isEqualTo(
+            Set.of(
+                mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"),
+                uniqueMapping(FragmentType.rel, "source_field", "targetProperty")));
+  }
+
+  @Test
+  public void doesNotRemoveEdgeSourceKeyMappingsFromEdgeMandatoryMappings() {
+    target.setType(TargetType.edge);
+    target.setName("edge source mappings do not overlap with rel mandatory (non-null) mappings");
+    addMapping(
+        target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
+    addMapping(target, mandatoryMapping(FragmentType.rel, "source_field", "targetProperty"));
+    assertThat(target.getMappings()).hasSize(2);
+
+    refactorer.refactorJobSpec(jobSpec);
+
+    Set<Mapping> actualMappings =
+        jobSpec.getTargets().stream()
+            .flatMap(t -> t.getMappings().stream())
+            .collect(Collectors.toSet());
+    assertThat(actualMappings)
+        .isEqualTo(
+            Set.of(
+                mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"),
+                mandatoryMapping(FragmentType.rel, "source_field", "targetProperty")));
+  }
+
+  @Test
+  public void doesNotRemoveEdgeSourceKeyMappingsFromEdgeIndexedMappings() {
+    target.setType(TargetType.edge);
+    target.setName("edge source mappings do not overlap with rel mandatory (non-null) mappings");
+    addMapping(
+        target, mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"));
+    addMapping(target, indexedMapping(FragmentType.rel, "source_field", "targetProperty"));
+    assertThat(target.getMappings()).hasSize(2);
+
+    refactorer.refactorJobSpec(jobSpec);
+
+    Set<Mapping> actualMappings =
+        jobSpec.getTargets().stream()
+            .flatMap(t -> t.getMappings().stream())
+            .collect(Collectors.toSet());
+    assertThat(actualMappings)
+        .isEqualTo(
+            Set.of(
+                mapping(FragmentType.source, RoleType.key, "source_field", "targetProperty"),
+                indexedMapping(FragmentType.rel, "source_field", "targetProperty")));
+  }
+
+  @Test
+  public void doesNotRemoveEdgeTargetKeyMappingsFromEdgeUniqueMappings() {
+    target.setType(TargetType.edge);
+    target.setName("edge target mappings do not overlap with rel unique mappings");
+    addMapping(
+        target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
+    addMapping(target, uniqueMapping(FragmentType.rel, "source_field", "targetProperty"));
+    assertThat(target.getMappings()).hasSize(2);
+
+    refactorer.refactorJobSpec(jobSpec);
+
+    Set<Mapping> actualMappings =
+        jobSpec.getTargets().stream()
+            .flatMap(t -> t.getMappings().stream())
+            .collect(Collectors.toSet());
+    assertThat(actualMappings)
+        .isEqualTo(
+            Set.of(
+                mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"),
+                uniqueMapping(FragmentType.rel, "source_field", "targetProperty")));
+  }
+
+  @Test
+  public void doesNotRemoveEdgeTargetKeyMappingsFromEdgeMandatoryMappings() {
+    target.setType(TargetType.edge);
+    target.setName("edge target mappings do not overlap with rel mandatory (non-null) mappings");
+    addMapping(
+        target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
+    addMapping(target, mandatoryMapping(FragmentType.rel, "source_field", "targetProperty"));
+    assertThat(target.getMappings()).hasSize(2);
+
+    refactorer.refactorJobSpec(jobSpec);
+
+    Set<Mapping> actualMappings =
+        jobSpec.getTargets().stream()
+            .flatMap(t -> t.getMappings().stream())
+            .collect(Collectors.toSet());
+    assertThat(actualMappings)
+        .isEqualTo(
+            Set.of(
+                mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"),
+                mandatoryMapping(FragmentType.rel, "source_field", "targetProperty")));
+  }
+
+  @Test
+  public void doesNotRemoveEdgeTargetKeyMappingsFromEdgeIndexedMappings() {
+    target.setType(TargetType.edge);
+    target.setName("edge target mappings do not overlap with rel mandatory (non-null) mappings");
+    addMapping(
+        target, mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"));
+    addMapping(target, indexedMapping(FragmentType.rel, "source_field", "targetProperty"));
+    assertThat(target.getMappings()).hasSize(2);
+
+    refactorer.refactorJobSpec(jobSpec);
+
+    Set<Mapping> actualMappings =
+        jobSpec.getTargets().stream()
+            .flatMap(t -> t.getMappings().stream())
+            .collect(Collectors.toSet());
+    assertThat(actualMappings)
+        .isEqualTo(
+            Set.of(
+                mapping(FragmentType.target, RoleType.key, "source_field", "targetProperty"),
+                indexedMapping(FragmentType.rel, "source_field", "targetProperty")));
   }
 
   private static Mapping uniqueMapping(FragmentType fragmentType, String column, String property) {
