@@ -28,7 +28,7 @@ import org.apache.beam.it.gcp.dataflow.FlexTemplateClient;
 /** Base class for Template Load Tests. */
 public class TemplateLoadTestBase extends LoadTestBase {
 
-  PipelineLauncher launcher() {
+  public PipelineLauncher launcher() {
     // If there is a TemplateLoadTest annotation, return appropriate dataflow template client
     TemplateLoadTest annotation = getClass().getAnnotation(TemplateLoadTest.class);
     if (annotation == null) {
