@@ -253,6 +253,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (gcpTempLocation != null) {
       String gcpTempLocationPath = "gs://" + bucketNameOnly(gcpTempLocation) + "/temp/";
       arguments.add(element("argument", "--gcpTempLocation=" + gcpTempLocationPath));
+      arguments.add(element("argument", "--tempLocation=" + gcpTempLocationPath));
     }
 
     arguments.add(
