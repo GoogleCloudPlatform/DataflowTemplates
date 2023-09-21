@@ -1,11 +1,12 @@
 
 Google Ads to BigQuery template
 ---
-A pipeline that reads Google Ads reports and writes to BigQuery.
+The Google Ads to BigQuery template is a batch pipeline that reads Google Ads
+reports and writes to BigQuery.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/google-ads-to-bigquery)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Google_Ads_to_BigQuery).
 
 :bulb: This is a generated documentation based
@@ -23,7 +24,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **googleAdsClientSecret** (OAuth 2.0 Client Secret for the specified Client ID): See https://developers.google.com/google-ads/api/docs/oauth/overview.
 * **googleAdsRefreshToken** (OAuth 2.0 Refresh Token for the user connecting to the Google Ads API): See https://developers.google.com/google-ads/api/docs/oauth/overview.
 * **googleAdsDeveloperToken** (Google Ads developer token for the user connecting to the Google Ads API): See https://developers.google.com/google-ads/api/docs/get-started/dev-token.
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.
+* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 
 ### Optional Parameters
 
