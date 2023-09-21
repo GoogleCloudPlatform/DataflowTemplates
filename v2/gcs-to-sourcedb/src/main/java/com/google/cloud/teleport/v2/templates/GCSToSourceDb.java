@@ -126,21 +126,30 @@ public class GCSToSourceDb {
 
     @TemplateParameter.Text(
         order = 6,
-        optional = false,
-        description = "File start timestamp",
-        helpText = "Start time of file for all shards. To be given at first launch of the job.")
+        optional = true,
+        description =
+            "File start timestamp, takes precedence if provided, else value from"
+                + " spanner_to_gcs_metadata is considered, for regular mode.",
+        helpText =
+            "Start time of file for all shards. If not provided, the value is taken from"
+                + " spanner_to_gcs_metadata. If provided, this takes precedence. To be given when"
+                + " running in regular run mode.")
     String getStartTimestamp();
 
     void setStartTimestamp(String value);
 
     @TemplateParameter.Duration(
         order = 7,
-        optional = false,
-        description = "File increment window duration",
+        optional = true,
+        description =
+            "File increment window duration,takes precedence if provided, else value from"
+                + " spanner_to_gcs_metadata is considered, for regular mode.",
         helpText =
             "The window duration/size in which data is written to Cloud Storage. Allowed"
                 + " formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh"
-                + " (for hours, example: 2h).",
+                + " (for hours, example: 2h). If not provided, the value is taken from"
+                + " spanner_to_gcs_metadata. If provided, this takes precedence. To be given when"
+                + " running in regular run mode.",
         example = "5m")
     String getWindowDuration();
 
@@ -182,28 +191,8 @@ public class GCSToSourceDb {
 
     void setMetadataDatabase(String value);
 
-    @TemplateParameter.Integer(
-        order = 12,
-        optional = true,
-        description = "Number of times file lookup needs to be retried. ",
-        helpText = "Number of times file lookup needs to be retried.")
-    @Default.Integer(3)
-    Integer getGCSLookupRetryCount();
-
-    void setGCSLookupRetryCount(Integer value);
-
-    @TemplateParameter.Integer(
-        order = 13,
-        optional = true,
-        description = "Duration in seconds between file lookup retries. ",
-        helpText = "Controls the time between succssive polls GCS file loop retries.")
-    @Default.Integer(3)
-    Integer getGCSLookupRetryInterval();
-
-    void setGCSLookupRetryInterval(Integer value);
-
     @TemplateParameter.Text(
-        order = 14,
+        order = 12,
         optional = true,
         // TODO: enumOptions = {"regular", "reprocess", "deletegcs"},
         description = "This type of run mode. Supported values - regular/reprocess/deletegcs.",
@@ -253,8 +242,6 @@ public class GCSToSourceDb {
             options.getSpannerProjectId(),
             options.getMetadataInstance(),
             options.getMetadataDatabase(),
-            options.getGCSLookupRetryCount(),
-            options.getGCSLookupRetryInterval(),
             options.getRunMode());
 
     LOG.info("The size of  processing context is : " + processingContextMap.size());

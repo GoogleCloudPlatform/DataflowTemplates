@@ -24,6 +24,7 @@ import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
+import com.google.cloud.teleport.v2.templates.common.SpannerToGcsJobMetadata;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,7 +57,8 @@ public class SpannerDao {
   public Map<String, ShardProgress> getShardProgress() {
     Map<String, ShardProgress> shardProgress = new HashMap<>();
     DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
-    String statement = "SELECT shard, start, status from shard_progress where status='REPROCESS";
+    String statement =
+        "SELECT shard, start, status from shard_file_process_progress where status='REPROCESS";
     try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
       ResultSet resultSet = tx.executeQuery(Statement.of(statement));
 
@@ -77,7 +79,7 @@ public class SpannerDao {
   public void writeShardProgress(ShardProgress shardProgress) {
     List<Mutation> mutations = new ArrayList<>();
     mutations.add(
-        Mutation.newInsertOrUpdateBuilder("shard_progress")
+        Mutation.newInsertOrUpdateBuilder("shard_file_process_progress")
             .set("shard")
             .to(shardProgress.getShard())
             .set("start")
@@ -97,14 +99,14 @@ public class SpannerDao {
 
     DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
     String statement =
-        "select * from information_schema.tables where table_name='shard_progress' and"
+        "select * from information_schema.tables where table_name='shard_file_process_progress' and"
             + " table_type='BASE TABLE'";
     try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
       ResultSet resultSet = tx.executeQuery(Statement.of(statement));
       if (!resultSet.next()) {
         DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
         String createTable =
-            "create table shard_progress (shard STRING(MAX) NOT NULL,start TIMESTAMP NOT"
+            "create table shard_file_process_progress (shard STRING(MAX) NOT NULL,start TIMESTAMP NOT"
                 + " NULL,status STRING(MAX) NOT NULL,) PRIMARY KEY(shard)";
         OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
             databaseAdminClient.updateDatabaseDdl(
@@ -123,6 +125,55 @@ public class SpannerDao {
 
       throw new RuntimeException(e);
     }
+  }
+
+  public SpannerToGcsJobMetadata getSpannerToGcsJobMetadata() {
+    DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
+    String statement = "SELECT start_time, duration from spanner_to_gcs_metadata";
+    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
+      ResultSet resultSet = tx.executeQuery(Statement.of(statement));
+
+      if (resultSet.next()) {
+        String startTime = resultSet.getString(0);
+        String duration = resultSet.getString(1);
+
+        SpannerToGcsJobMetadata rec = new SpannerToGcsJobMetadata(startTime, duration);
+        return rec;
+      }
+    } catch (Exception e) {
+      if (e.getMessage().contains("Table not found")) {
+        return null;
+      } else {
+        throw new RuntimeException(
+            "The spanner_to_gcs_metadata table could not be read. " + e.getMessage());
+      }
+    }
+
+    return null;
+  }
+
+  public Timestamp getShardFileCreationProgressTimestamp(String shardId) {
+
+    DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
+    String statementStr =
+        "SELECT created_upto from shard_file_create_progress where shard=@shardId";
+    Statement statement = Statement.newBuilder(statementStr).bind("shardId").to(shardId).build();
+
+    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
+      ResultSet resultSet = tx.executeQuery(statement);
+
+      if (resultSet.next()) {
+
+        Timestamp response = resultSet.getTimestamp(0);
+
+        return response;
+      }
+    } catch (Exception e) {
+
+      throw new RuntimeException("The shard_progress table could not be read. " + e.getMessage());
+    }
+
+    return null;
   }
 
   public void close() {

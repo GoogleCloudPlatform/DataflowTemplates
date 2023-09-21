@@ -32,8 +32,6 @@ public class ProcessingContext implements Serializable {
   private String startTimestamp;
   private Duration windowDuration;
   private String gcsPath;
-  private Integer gcsLookupRetryCount;
-  private Integer gcsLookupRetryInterval;
   private String spannerProjectId;
   private String metadataInstance;
   private String metadataDatabase;
@@ -45,8 +43,6 @@ public class ProcessingContext implements Serializable {
       String startTimestamp,
       Duration windowDuration,
       String gcsPath,
-      Integer gcsLookupRetryCount,
-      Integer gcsLookupRetryInterval,
       String spannerProjectId,
       String metadataInstance,
       String metadataDatabase) {
@@ -56,8 +52,6 @@ public class ProcessingContext implements Serializable {
     this.startTimestamp = startTimestamp;
     this.windowDuration = windowDuration;
     this.gcsPath = gcsPath;
-    this.gcsLookupRetryCount = gcsLookupRetryCount;
-    this.gcsLookupRetryInterval = gcsLookupRetryInterval;
     this.spannerProjectId = spannerProjectId;
     this.metadataInstance = metadataInstance;
     this.metadataDatabase = metadataDatabase;
@@ -91,14 +85,6 @@ public class ProcessingContext implements Serializable {
     return windowDuration;
   }
 
-  public Integer getGCSLookupRetryCount() {
-    return gcsLookupRetryCount;
-  }
-
-  public Integer getGCSLookupRetryInterval() {
-    return gcsLookupRetryInterval;
-  }
-
   public String getSpannerProjectId() {
     return spannerProjectId;
   }
@@ -122,10 +108,6 @@ public class ProcessingContext implements Serializable {
         + startTimestamp
         + " windowDuration: "
         + windowDuration
-        + " gcsLookupRetryCount: "
-        + gcsLookupRetryCount
-        + " gcsLookupRetryInterval: "
-        + gcsLookupRetryInterval
         + " gcsPath: "
         + gcsPath
         + " spannerProjectId: "

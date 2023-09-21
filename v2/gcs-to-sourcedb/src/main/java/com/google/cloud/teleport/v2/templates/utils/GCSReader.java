@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
 import com.google.gson.FieldNamingPolicy;
@@ -39,6 +40,11 @@ import org.slf4j.LoggerFactory;
 public class GCSReader {
 
   private String fileName;
+  private ShardFileCreationTracker shardFileCreationTracker;
+  private Instant currentIntervalEnd;
+  private String shardId;
+  private boolean shouldRetryWhenFileNotFound;
+  private boolean shouldFailWhenFileNotFound;
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSReader.class);
 
@@ -47,7 +53,7 @@ public class GCSReader {
     String fileStartTime = taskContext.getStartTimestamp();
     com.google.cloud.Timestamp startTs = com.google.cloud.Timestamp.parseTimestamp(fileStartTime);
     Instant startInst = new Instant(startTs.toSqlTimestamp());
-    Instant endInst = startInst.plus(taskContext.getWindowDuration());
+    currentIntervalEnd = startInst.plus(taskContext.getWindowDuration());
     String gcsFileName =
         taskContext.getGCSPath()
             + "/"
@@ -55,10 +61,19 @@ public class GCSReader {
             + "/"
             + startInst
             + "-"
-            + endInst
+            + currentIntervalEnd
             + "-pane-0-last-0-of-1.txt";
 
     this.fileName = gcsFileName;
+    this.shardFileCreationTracker =
+        new ShardFileCreationTracker(
+            taskContext.getSpannerProjectId(),
+            taskContext.getMetadataInstance(),
+            taskContext.getMetadataDatabase(),
+            taskContext.getShard().getLogicalShardId());
+    this.shardId = taskContext.getShard().getLogicalShardId();
+    shouldRetryWhenFileNotFound = true;
+    shouldFailWhenFileNotFound = false;
   }
 
   public List<TrimmedShardedDataChangeRecord> getRecords() {
@@ -95,12 +110,66 @@ public class GCSReader {
     } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
       throw new RuntimeException("Failed in processing the record : " + ex);
     } catch (IOException e) {
-      // TODO: add logic to retry or check the progress of the spanner to gcs pipeline
+
       LOG.warn("File not found : " + fileName);
+      if (shouldRetryWhenFileNotFound) {
+        return checkAndReturnIfFileExists();
+      } else {
+        if (shouldFailWhenFileNotFound) {
+          throw new RuntimeException("File  " + fileName + " expected but not found  : " + e);
+        }
+        LOG.warn("File not found : " + fileName + " skipping the file");
+      }
+
     } catch (Exception e) {
       throw new RuntimeException("Failed in GcsReader : " + e);
     }
 
     return changeStreamList;
+  }
+
+  private List<TrimmedShardedDataChangeRecord> checkAndReturnIfFileExists() {
+    try {
+      Timestamp firstPipelineProgress =
+          shardFileCreationTracker.getShardFileCreationProgressTimestamp();
+      Timestamp currentEndTimestamp = Timestamp.parseTimestamp(currentIntervalEnd.toString());
+
+      /*
+      This can be null in case the table is not yet initialized, just retry indefinitely.
+      No one's fault here.*/
+      while (firstPipelineProgress == null) {
+        LOG.info(
+            "No data in shard_file_create_progress for shard {}, will retry in 5 seconds", shardId);
+        Thread.sleep(5000);
+        firstPipelineProgress = shardFileCreationTracker.getShardFileCreationProgressTimestamp();
+      }
+
+      // the Spanner to GCS job needs to catchup - wait and retry
+      while (firstPipelineProgress.compareTo(currentEndTimestamp) < 0) {
+        LOG.info(
+            "Progress for shard {} in shard_file_create_progress is lagging {}, will retry in 5 seconds",
+            shardId,
+            firstPipelineProgress);
+        Thread.sleep(5000);
+        firstPipelineProgress = shardFileCreationTracker.getShardFileCreationProgressTimestamp();
+      }
+
+      shardFileCreationTracker.close();
+
+      if (firstPipelineProgress.compareTo(currentEndTimestamp) > 0) {
+        // the Spanner to GCS job has progressed past the current interval end timestamp
+        // search for file again, if it exists process, else skip the file not found
+        shouldRetryWhenFileNotFound = false;
+        shouldFailWhenFileNotFound = false;
+        return getRecords();
+      } else {
+        // the progress matches exactly,file should exist, if it is not found return error
+        shouldRetryWhenFileNotFound = false;
+        shouldFailWhenFileNotFound = true;
+        return getRecords();
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(" Cannot determine file creation progress for shard : " + shardId);
+    }
   }
 }

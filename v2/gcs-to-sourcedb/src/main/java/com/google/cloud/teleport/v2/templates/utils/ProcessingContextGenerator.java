@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.Shard;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
+import com.google.cloud.teleport.v2.templates.common.SpannerToGcsJobMetadata;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import java.util.HashMap;
 import java.util.List;
@@ -45,8 +46,6 @@ public class ProcessingContextGenerator {
       String spannerProjectId,
       String metadataInstance,
       String metadataDatabase,
-      Integer gcsLookupRetryCount,
-      Integer gcsLookupRetryInterval,
       String runMode) {
 
     LOG.info(" In getProcessingContextForGCS");
@@ -59,10 +58,30 @@ public class ProcessingContextGenerator {
     ShardProgressTracker shardProgressTracker =
         new ShardProgressTracker(spannerProjectId, metadataInstance, metadataDatabase);
     shardProgressTracker.init();
+
     /*
     In regular mode, we process all shards.
     In reprocess mode, we only process shards marked for REPROCESS in shard_progress table.*/
     if ("regular".equals(runMode)) {
+
+      if (startTimestamp == null
+          || startTimestamp.isEmpty()
+          || windowDuration == null
+          || windowDuration.isEmpty()) {
+        // Get the start time and duration from spanner_to_gcs_metadata table
+        try {
+          SpannerToGcsJobMetadata spannerToGcsJobMetadata =
+              SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
+                  spannerProjectId, metadataInstance, metadataDatabase);
+          windowDuration = spannerToGcsJobMetadata.getWindowDuration();
+          startTimestamp = spannerToGcsJobMetadata.getStartTimestamp();
+          LOG.info("The start timestamp  from Spanner to GCS job is : {}", startTimestamp);
+          LOG.info("The window duration from Spanner to GCS job is : {}", windowDuration);
+        } catch (Exception e) {
+          LOG.error("Unable to get data from spanner_to_gcs_metadata");
+          throw new RuntimeException("Unable to get data from spanner_to_gcs_metadata.", e);
+        }
+      }
 
       for (Shard shard : shards) {
         LOG.info(" The sorted shard is: {}", shard);
@@ -76,8 +95,6 @@ public class ProcessingContextGenerator {
                 startTimestamp,
                 duration,
                 gcsInputDirectoryPath,
-                gcsLookupRetryCount,
-                gcsLookupRetryInterval,
                 spannerProjectId,
                 metadataInstance,
                 metadataDatabase);
@@ -107,8 +124,6 @@ public class ProcessingContextGenerator {
                 shardStartTime,
                 duration,
                 gcsInputDirectoryPath,
-                gcsLookupRetryCount,
-                gcsLookupRetryInterval,
                 spannerProjectId,
                 metadataInstance,
                 metadataDatabase);
