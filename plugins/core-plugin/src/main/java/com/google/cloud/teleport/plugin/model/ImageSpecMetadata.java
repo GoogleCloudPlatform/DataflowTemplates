@@ -39,6 +39,7 @@ public class ImageSpecMetadata {
   private boolean udfSupport;
   private boolean flexTemplate;
   private String sourceFilePath;
+  private boolean hidden;
 
   public String getDescription() {
     return description;
@@ -158,6 +159,14 @@ public class ImageSpecMetadata {
 
   public void setSourceFilePath(String sourceFilePath) {
     this.sourceFilePath = sourceFilePath;
+  }
+
+  public boolean isHidden() {
+    return hidden;
+  }
+
+  public void setHidden(boolean hidden) {
+    this.hidden = hidden;
   }
 
   public Optional<ImageSpecParameter> getParameter(String name) {

@@ -135,9 +135,9 @@ public class TemplatesReleaseFinishMojo extends TemplatesBaseMojo {
               ImageSpecMetadata imageSpec =
                   gson.fromJson(new FileReader(path.toFile()), ImageSpecMetadata.class);
 
-              // If the same template is scanned twice in the classpath (which happens for
-              // submodules), just log and ignore.
-              if (!templateNames.add(imageSpec.getInternalName())) {
+              // If the template is hidden, or same template is scanned twice in the classpath
+              // (which happens for submodules), just log and ignore.
+              if (imageSpec.isHidden() || !templateNames.add(imageSpec.getInternalName())) {
                 LOG.info(
                     "Skipping template {} from spec file: {}", imageSpec.getInternalName(), path);
                 return FileVisitResult.CONTINUE;
