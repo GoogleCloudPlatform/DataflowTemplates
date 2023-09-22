@@ -19,6 +19,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
@@ -26,9 +27,13 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToShardedFileSink.Options;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
+import com.google.cloud.teleport.v2.templates.transforms.FileProgressTracker;
 import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.WriterGCS;
+import com.google.cloud.teleport.v2.templates.utils.FileCreationTracker;
+import com.google.cloud.teleport.v2.templates.utils.InformationSchemaReader;
+import com.google.cloud.teleport.v2.templates.utils.JobMetadataUpdater;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -192,6 +197,31 @@ public class SpannerChangeStreamsToShardedFileSink {
     String getGcsOutputDirectory();
 
     void setGcsOutputDirectory(String gcsOutputDirectory);
+
+    @TemplateParameter.Enum(
+        order = 12,
+        optional = true,
+        enumOptions = {@TemplateEnumOption("none"), @TemplateEnumOption("forward_migration")},
+        description = "Filtration mode",
+        helpText =
+            "Mode of Filtration, decides how to drop certain records based on a criteria. Currently"
+                + " supported modes are: none (filter nothing), forward_migration (filter records"
+                + " written via the forward migration pipeline). Defaults to forward_migration.")
+    @Default.String("forward_migration")
+    String getFiltrationMode();
+
+    void setFiltrationMode(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 13,
+        optional = false,
+        description = "Source shard details file path in Cloud Storage",
+        helpText =
+            "Source shard details file path in Cloud Storage that contains connection profile of"
+                + " source shards")
+    String getSourceShardsFilePath();
+
+    void setSourceShardsFilePath(String value);
   }
 
   /**
@@ -232,9 +262,28 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     Ddl ddl = InformationSchemaReader.getInformationSchemaAsDdl(spannerConfig);
 
+    // Capture the window start time and duration config.
+    // This is read by the GCSToSource template to ensure the same config is used in both templates.
+    JobMetadataUpdater.writeStartAndDuration(
+        options.getSpannerProjectId(),
+        options.getMetadataInstance(),
+        options.getMetadataDatabase(),
+        options.getStartTimestamp(),
+        options.getWindowDuration());
+
+    // Initialize the per shard progress with historical value
+    // This makes it easier to fire blind UPDATES later on when
+    // updating per shard file creation progress
+    FileCreationTracker fileCreationTracker =
+        new FileCreationTracker(
+            options.getSpannerProjectId(),
+            options.getMetadataInstance(),
+            options.getMetadataDatabase());
+    fileCreationTracker.init(options.getSourceShardsFilePath());
+
     pipeline
         .apply(getReadChangeStreamDoFn(options, spannerConfig))
-        .apply(ParDo.of(new FilterRecordsFn()))
+        .apply(ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
         .apply(ParDo.of(new PreprocessRecordsFn()))
         .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class))
         .apply(ParDo.of(new AssignShardIdFn(spannerConfig, schema, ddl)))
@@ -246,8 +295,19 @@ public class SpannerChangeStreamsToShardedFileSink {
             WriterGCS.newBuilder()
                 .withGcsOutputDirectory(options.getGcsOutputDirectory())
                 .withTempLocation(options.getTempLocation())
-                .build());
+                .build())
+        .apply(
+            "Creating file tracking window",
+            Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+        .apply(
+            "Tracking file progress ",
+            ParDo.of(
+                new FileProgressTracker(
+                    options.getSpannerProjectId(),
+                    options.getMetadataInstance(),
+                    options.getMetadataDatabase())));
 
+    // TODO: add metrics
     return pipeline.run();
   }
 

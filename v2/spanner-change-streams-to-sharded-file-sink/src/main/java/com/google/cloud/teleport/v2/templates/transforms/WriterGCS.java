@@ -32,15 +32,16 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PDone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Writes the files to GCS per shard. */
 @AutoValue
 public abstract class WriterGCS
-    extends PTransform<PCollection<TrimmedShardedDataChangeRecord>, PDone> {
+    extends PTransform<
+        PCollection<TrimmedShardedDataChangeRecord>, PCollection<KV<String, String>>> {
   private static final Logger LOG = LoggerFactory.getLogger(WriterGCS.class);
 
   public static WriteToGcsBuilder newBuilder() {
@@ -59,23 +60,23 @@ public abstract class WriterGCS
   Hence the numShards is set to 1.
   */
   @Override
-  public PDone expand(PCollection<TrimmedShardedDataChangeRecord> dataChangeRecords) {
-    return PDone.in(
-        dataChangeRecords
-            .apply(
-                "Write rows to output writeDynamic",
-                FileIO.<String, TrimmedShardedDataChangeRecord>writeDynamic()
-                    .by((row) -> row.getShard())
-                    .withDestinationCoder(StringUtf8Coder.of())
-                    .via(Contextful.fn(new DataChangeRecordToJsonTextFn()), TextIO.sink())
-                    .withNaming(PartitionedFileNaming::new)
-                    .to(gcsOutputDirectory())
-                    .withTempDirectory(
-                        FileBasedSink.convertToFileResourceIfPossible(tempLocation())
-                            .getCurrentDirectory()
-                            .toString())
-                    .withNumShards(1))
-            .getPipeline());
+  public PCollection<KV<String, String>> expand(
+      PCollection<TrimmedShardedDataChangeRecord> dataChangeRecords) {
+    return dataChangeRecords
+        .apply(
+            "Write rows to output writeDynamic",
+            FileIO.<String, TrimmedShardedDataChangeRecord>writeDynamic()
+                .by((row) -> row.getShard())
+                .withDestinationCoder(StringUtf8Coder.of())
+                .via(Contextful.fn(new DataChangeRecordToJsonTextFn()), TextIO.sink())
+                .withNaming(PartitionedFileNaming::new)
+                .to(gcsOutputDirectory())
+                .withTempDirectory(
+                    FileBasedSink.convertToFileResourceIfPossible(tempLocation())
+                        .getCurrentDirectory()
+                        .toString())
+                .withNumShards(1))
+        .getPerDestinationOutputFilenames();
   }
 
   @AutoValue.Builder

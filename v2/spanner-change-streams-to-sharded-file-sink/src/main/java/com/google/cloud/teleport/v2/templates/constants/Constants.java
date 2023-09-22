@@ -20,4 +20,10 @@ public class Constants {
 
   // Transaction tag prefix used in the forward migration job.
   public static final String FWD_MIGRATION_TRANSACTION_TAG_PREFIX = "txBy=";
+
+  // Filtration Mode - none
+  public static final String FILTRATION_MODE_NONE = "none";
+
+  // Filtration Mode - forward_migration
+  public static final String FILTRATION_MODE_FORWARD_MIGRATION = "forward_migration";
 }
