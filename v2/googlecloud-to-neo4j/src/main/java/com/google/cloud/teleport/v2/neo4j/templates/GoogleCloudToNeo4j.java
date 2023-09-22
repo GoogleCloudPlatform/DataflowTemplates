@@ -25,6 +25,8 @@ import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadAction;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.InputRefactoring;
 import com.google.cloud.teleport.v2.neo4j.model.InputValidator;
+import com.google.cloud.teleport.v2.neo4j.model.Json;
+import com.google.cloud.teleport.v2.neo4j.model.Json.ParsingResult;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ArtifactType;
@@ -46,8 +48,10 @@ import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
 import com.google.cloud.teleport.v2.neo4j.transforms.Neo4jRowWriterTransform;
 import com.google.cloud.teleport.v2.neo4j.utils.BeamBlock;
+import com.google.cloud.teleport.v2.neo4j.utils.FileSystemUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.ProcessingCoder;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.List;
@@ -141,12 +145,14 @@ public class GoogleCloudToNeo4j {
         "Errors found validating pipeline options: ",
         InputValidator.validateNeo4jPipelineOptions(pipelineOptions));
 
-    this.neo4jConnection = new ConnectionParams(pipelineOptions);
-
-    // Validate connection
-    processValidations(
-        "Errors found validating Neo4j connection: ",
-        InputValidator.validateNeo4jConnection(this.neo4jConnection));
+    String neo4jConnectionJson = readConnectionSettings(pipelineOptions);
+    ParsingResult parsingResult = InputValidator.validateNeo4jConnection(neo4jConnectionJson);
+    if (!parsingResult.isSuccessful()) {
+      processValidations(
+          "Errors found validating Neo4j connection: ",
+          parsingResult.formatErrors("Could not validate connection JSON"));
+    }
+    this.neo4jConnection = Json.map(parsingResult, ConnectionParams.class);
 
     this.jobSpec = JobSpecMapper.fromUri(pipelineOptions.getJobSpecUri());
 
@@ -174,6 +180,19 @@ public class GoogleCloudToNeo4j {
 
     // Output debug log spec
     LOG.debug("Normalized JobSpec: {}", gson.toJson(this.jobSpec));
+  }
+
+  private static String readConnectionSettings(Neo4jFlexTemplateOptions options) {
+    String secretId = options.getNeo4jConnectionSecretId();
+    if (StringUtils.isNotEmpty(secretId)) {
+       return SecretManagerUtils.getSecret(secretId);
+    }
+    String uri = options.getNeo4jConnectionUri();
+    try {
+      return FileSystemUtils.getPathContents(uri);
+    } catch (Exception e) {
+      throw new RuntimeException(String.format("Unable to read Neo4j configuration at URI %s: ", uri), e);
+    }
   }
 
   /**
