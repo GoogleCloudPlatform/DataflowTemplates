@@ -34,7 +34,9 @@ import org.apache.beam.sdk.options.PipelineOptions;
     blocks = {ReadFromPubSub.class, PubsubMessageToTableRow.class, WriteToBigQuery.class},
     dlqBlock = WriteDlqToBigQuery.class,
     flexContainerName = "pubsub-to-bigquery-auto",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    // TODO: replace the original template when we are ready to do it, and remove `hidden`.
+    hidden = true)
 public class PubSubToBigQueryAuto {
 
   public static void main(String[] args) {
