@@ -32,7 +32,9 @@ import org.apache.beam.sdk.options.PipelineOptions;
             + "JDBC source and writes the resulting records to a pre-existing Pub/Sub topic as a JSON string.",
     blocks = {ReadFromJdbc.class, WriteToPubSub.class},
     flexContainerName = "jdbc-to-pubsub-auto",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    // TODO: replace the original template when we are ready to do it, and remove `hidden`.
+    hidden = true)
 public class JdbcToPubSubAuto {
 
   public static void main(String[] args) {

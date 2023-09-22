@@ -38,8 +38,11 @@ import java.nio.file.PathMatcher;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -116,6 +119,8 @@ public class TemplatesReleaseFinishMojo extends TemplatesBaseMojo {
     }
 
     try {
+      Set<String> templateNames = new HashSet<>();
+
       Files.walkFileTree(
           projectFolder.toPath(),
           new SimpleFileVisitor<>() {
@@ -124,26 +129,36 @@ public class TemplatesReleaseFinishMojo extends TemplatesBaseMojo {
             public FileVisitResult visitFile(Path path, BasicFileAttributes attrs)
                 throws FileNotFoundException {
               // Match metadata but not spec metadata, as the latter is only for Flex
-              if (pathMatcher.matches(path) && !specPathMatcher.matches(path)) {
-
-                ImageSpecMetadata imageSpec =
-                    gson.fromJson(new FileReader(path.toFile()), ImageSpecMetadata.class);
-                LOG.info(
-                    "Processing metadata Spec File: {}, template: {}", path, imageSpec.getName());
-
-                TemplatesCategoryJsonTemplate template = new TemplatesCategoryJsonTemplate();
-                template.setName(imageSpec.getInternalName());
-                template.setDisplayName(imageSpec.getName());
-                template.setTemplateType(imageSpec.isFlexTemplate() ? "FLEX" : "LEGACY");
-
-                TemplatesCategoryJson categoryJson =
-                    categories.get(imageSpec.getCategory().getName());
-                if (categoryJson == null) {
-                  throw new IllegalArgumentException(
-                      "Category " + imageSpec.getCategory().getName() + " is invalid.");
-                }
-                categoryJson.getTemplates().add(template);
+              if (!pathMatcher.matches(path) || specPathMatcher.matches(path)) {
+                return FileVisitResult.CONTINUE;
               }
+
+              ImageSpecMetadata imageSpec =
+                  gson.fromJson(new FileReader(path.toFile()), ImageSpecMetadata.class);
+
+              // If the same template is scanned twice in the classpath (which happens for
+              // submodules), just log and ignore.
+              if (!templateNames.add(imageSpec.getInternalName())) {
+                LOG.info(
+                    "Skipping template {} from spec file: {}", imageSpec.getInternalName(), path);
+                return FileVisitResult.CONTINUE;
+              }
+
+              LOG.info(
+                  "Processing metadata Spec File: {}, template: {}", path, imageSpec.getName());
+
+              TemplatesCategoryJsonTemplate template = new TemplatesCategoryJsonTemplate();
+              template.setName(imageSpec.getInternalName());
+              template.setDisplayName(imageSpec.getName());
+              template.setTemplateType(imageSpec.isFlexTemplate() ? "FLEX" : "LEGACY");
+
+              TemplatesCategoryJson categoryJson =
+                  categories.get(imageSpec.getCategory().getName());
+              if (categoryJson == null) {
+                throw new IllegalArgumentException(
+                    "Category " + imageSpec.getCategory().getName() + " is invalid.");
+              }
+              categoryJson.getTemplates().add(template);
 
               return FileVisitResult.CONTINUE;
             }
