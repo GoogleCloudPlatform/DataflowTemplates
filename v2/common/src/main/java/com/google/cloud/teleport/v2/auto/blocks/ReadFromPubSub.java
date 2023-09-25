@@ -15,17 +15,73 @@
  */
 package com.google.cloud.teleport.v2.auto.blocks;
 
+import com.google.auto.service.AutoService;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Outputs;
 import com.google.cloud.teleport.metadata.auto.TemplateTransform;
 import com.google.cloud.teleport.v2.auto.blocks.ReadFromPubSub.ReadFromPubSubOptions;
+
+import java.util.Map;
+
+import com.google.common.collect.ImmutableMap;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.expansion.ExternalTransformRegistrar;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.transforms.ExternalTransformBuilder;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.Row;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-public class ReadFromPubSub implements TemplateTransform<ReadFromPubSubOptions> {
+import static com.google.cloud.teleport.v2.auto.blocks.StandardCoderConverters.pubSubMessageToRow;
+
+@AutoService(ExternalTransformRegistrar.class)
+public class ReadFromPubSub
+    implements TemplateTransform<ReadFromPubSubOptions>, ExternalTransformRegistrar {
+
+  private static final String URN = "blocks:external:org.apache.beam:read_from_pubsub:v1";
+
+  private static class Builder
+      implements ExternalTransformBuilder<
+          Configuration, @NonNull PBegin, @NonNull PCollection<Row>> {
+    @Override
+    public @NonNull PTransform<@NonNull PBegin, @NonNull PCollection<Row>> buildExternal(
+        Configuration config) {
+      return new PTransform<>() {
+        @Override
+        public @NonNull PCollection<Row> expand(@NonNull PBegin input) {
+          return pubSubMessageToRow(underlyingTransform(input, config));
+        }
+      };
+    }
+  }
+
+  public Map<String, Class<? extends ExternalTransformBuilder<?, ?, ?>>> knownBuilders() {
+    return ImmutableMap.of(URN, Builder.class);
+  }
+
+  // TODO(polber) - See if this Config class can be generated programmatically from TransformOptions
+  // Interface
+  public static class Configuration {
+    String inputSubscription = "";
+
+    public void setInputSubscription(String input) {
+      this.inputSubscription = input;
+    }
+
+    public String getInputSubscription() {
+      return this.inputSubscription;
+    }
+
+    public static Configuration fromOptions(ReadFromPubSubOptions options) {
+      Configuration config = new Configuration();
+      config.setInputSubscription(options.getInputSubscription());
+      return config;
+    }
+  }
 
   public interface ReadFromPubSubOptions extends PipelineOptions {
 
@@ -42,10 +98,14 @@ public class ReadFromPubSub implements TemplateTransform<ReadFromPubSubOptions> 
   @Outputs(PubsubMessage.class)
   public PCollection<PubsubMessage> read(Pipeline pipeline, ReadFromPubSubOptions options) {
 
-    return pipeline.apply(
+    return underlyingTransform(pipeline.begin(), Configuration.fromOptions(options));
+  }
+
+  static PCollection<PubsubMessage> underlyingTransform(PBegin input, Configuration config) {
+    return input.apply(
         "ReadPubSubSubscription",
         PubsubIO.readMessagesWithAttributesAndMessageId()
-            .fromSubscription(options.getInputSubscription()));
+            .fromSubscription(config.getInputSubscription()));
   }
 
   @Override
