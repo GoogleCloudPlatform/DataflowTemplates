@@ -437,6 +437,98 @@ public class DdlToAvroSchemaConverterTest {
   }
 
   @Test
+  public void definerRightsView() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.string())
+            .max()
+            .endColumn()
+            .endTable()
+            .createView("Names")
+            .query("SELECT first_name, last_name FROM Users")
+            .security(View.SqlSecurity.DEFINER)
+            .endView()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(2));
+    Schema avroView = null;
+    for (Schema s : result) {
+      if (s.getName().equals("Names")) {
+        avroView = s;
+      }
+    }
+    assertThat(avroView, notNullValue());
+
+    assertThat(avroView.getNamespace(), equalTo("spannertest"));
+    assertThat(avroView.getProp("googleFormatVersion"), equalTo("booleans"));
+    assertThat(avroView.getProp("googleStorage"), equalTo("CloudSpanner"));
+    assertThat(
+        avroView.getProp("spannerViewQuery"), equalTo("SELECT first_name, last_name FROM Users"));
+    assertThat(avroView.getProp("spannerViewSecurity"), equalTo("DEFINER"));
+
+    assertThat(avroView.getName(), equalTo("Names"));
+  }
+
+  @Test
+  public void pgDefinerRightsView() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .pgVarchar()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.pgVarchar())
+            .max()
+            .endColumn()
+            .endTable()
+            .createView("Names")
+            .query("SELECT first_name, last_name FROM Users")
+            .security(View.SqlSecurity.DEFINER)
+            .endView()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(2));
+    Schema avroView = null;
+    for (Schema s : result) {
+      if (s.getName().equals("Names")) {
+        avroView = s;
+      }
+    }
+    assertThat(avroView, notNullValue());
+
+    assertThat(avroView.getNamespace(), equalTo("spannertest"));
+    assertThat(avroView.getProp("googleFormatVersion"), equalTo("booleans"));
+    assertThat(avroView.getProp("googleStorage"), equalTo("CloudSpanner"));
+    assertThat(
+        avroView.getProp("spannerViewQuery"), equalTo("SELECT first_name, last_name FROM Users"));
+    assertThat(avroView.getProp("spannerViewSecurity"), equalTo("DEFINER"));
+
+    assertThat(avroView.getName(), equalTo("Names"));
+  }
+
+  @Test
   public void allTypes() {
     DdlToAvroSchemaConverter converter =
         new DdlToAvroSchemaConverter("spannertest", "booleans", false);

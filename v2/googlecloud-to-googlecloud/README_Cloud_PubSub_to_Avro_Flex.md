@@ -1,11 +1,14 @@
-Pub/Sub to Avro Files on Cloud Storage Template
+
+Pub/Sub to Avro Files on Cloud Storage template
 ---
-Streaming pipeline. Reads from a Pub/Sub subscription and outputs windowed Avro files to the specified directory.
+The Pub/Sub to Avro files on Cloud Storage template is a streaming pipeline that
+reads data from a Pub/Sub topic and writes Avro files into the specified Cloud
+Storage bucket.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-avro)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_PubSub_to_Avro_Flex).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -47,7 +50,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/PubsubToAvro.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/PubsubToAvro.java)
 
 ### Templates Plugin
 
@@ -121,16 +124,16 @@ export AVRO_TEMP_DIRECTORY=<avroTempDirectory>
 ### Optional
 export INPUT_SUBSCRIPTION=<inputSubscription>
 export INPUT_TOPIC=<inputTopic>
-export OUTPUT_FILENAME_PREFIX="output"
+export OUTPUT_FILENAME_PREFIX=output
 export OUTPUT_FILENAME_SUFFIX=""
-export OUTPUT_SHARD_TEMPLATE="W-P-SS-of-NN"
+export OUTPUT_SHARD_TEMPLATE=W-P-SS-of-NN
 export NUM_SHARDS=0
-export WINDOW_DURATION="5m"
-export YEAR_PATTERN="YYYY"
-export MONTH_PATTERN="MM"
-export DAY_PATTERN="dd"
-export HOUR_PATTERN="HH"
-export MINUTE_PATTERN="mm"
+export WINDOW_DURATION=5m
+export YEAR_PATTERN=YYYY
+export MONTH_PATTERN=MM
+export DAY_PATTERN=dd
+export HOUR_PATTERN=HH
+export MINUTE_PATTERN=mm
 
 gcloud dataflow flex-template run "cloud-pubsub-to-avro-flex-job" \
   --project "$PROJECT" \
@@ -174,16 +177,16 @@ export AVRO_TEMP_DIRECTORY=<avroTempDirectory>
 ### Optional
 export INPUT_SUBSCRIPTION=<inputSubscription>
 export INPUT_TOPIC=<inputTopic>
-export OUTPUT_FILENAME_PREFIX="output"
+export OUTPUT_FILENAME_PREFIX=output
 export OUTPUT_FILENAME_SUFFIX=""
-export OUTPUT_SHARD_TEMPLATE="W-P-SS-of-NN"
+export OUTPUT_SHARD_TEMPLATE=W-P-SS-of-NN
 export NUM_SHARDS=0
-export WINDOW_DURATION="5m"
-export YEAR_PATTERN="YYYY"
-export MONTH_PATTERN="MM"
-export DAY_PATTERN="dd"
-export HOUR_PATTERN="HH"
-export MINUTE_PATTERN="mm"
+export WINDOW_DURATION=5m
+export YEAR_PATTERN=YYYY
+export MONTH_PATTERN=MM
+export DAY_PATTERN=dd
+export HOUR_PATTERN=HH
+export MINUTE_PATTERN=mm
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

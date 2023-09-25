@@ -497,6 +497,10 @@ public class TextImportTransformTest {
             .query("SELECT int_col FROM table1")
             .security(com.google.cloud.teleport.spanner.ddl.View.SqlSecurity.INVOKER)
             .endView()
+            .createView("view2")
+            .query("SELECT int_col FROM table2")
+            .security(com.google.cloud.teleport.spanner.ddl.View.SqlSecurity.DEFINER)
+            .endView()
             .build();
     return ddl;
   }
@@ -535,6 +539,10 @@ public class TextImportTransformTest {
             .asc("int_col")
             .end()
             .endTable()
+            .createView("view")
+            .query("SELECT int_col FROM table1")
+            .security(com.google.cloud.teleport.spanner.ddl.View.SqlSecurity.DEFINER)
+            .endView()
             .build();
     return ddl;
   }

@@ -1,11 +1,16 @@
-Text Files on Cloud Storage to Firestore (Datastore mode) Template
+
+Text Files on Cloud Storage to Firestore (Datastore mode) template
 ---
-Batch pipeline. Reads from text files stored in Cloud Storage and writes JSON-encoded entities to Firestore.
+The Cloud Storage Text to Firestore template is a batch pipeline that reads from
+text files stored in Cloud Storage and writes JSON encoded Entities to Firestore.
+Each line in the input text files must be in the <a
+href="https://cloud.google.com/datastore/docs/reference/rest/v1/Entity">specified
+JSON format</a>.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-firestore)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Text_to_Firestore).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -23,6 +28,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
 * **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
+* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
 * **firestoreWriteEntityKind** (Firestore entity kind): Firestore kind under which entities will be written in the output Google Cloud project.
 * **firestoreWriteNamespace** (Namespace of the Firestore entity): Firestore namespace under which entities will be written in the output Google Cloud project.
 * **firestoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Firestore ramp-up throttling step. Defaults to 500 if not specified.
@@ -51,7 +57,7 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
 
 ### Templates Plugin
 
@@ -128,6 +134,7 @@ export ERROR_WRITE_PATH=<errorWritePath>
 ### Optional
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 export FIRESTORE_WRITE_ENTITY_KIND=<firestoreWriteEntityKind>
 export FIRESTORE_WRITE_NAMESPACE=<firestoreWriteNamespace>
 export FIRESTORE_HINT_NUM_WORKERS=<firestoreHintNumWorkers>
@@ -139,6 +146,7 @@ gcloud dataflow jobs run "gcs-text-to-firestore-job" \
   --parameters "textReadPattern=$TEXT_READ_PATTERN" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
   --parameters "firestoreWriteProjectId=$FIRESTORE_WRITE_PROJECT_ID" \
   --parameters "firestoreWriteEntityKind=$FIRESTORE_WRITE_ENTITY_KIND" \
   --parameters "firestoreWriteNamespace=$FIRESTORE_WRITE_NAMESPACE" \
@@ -169,6 +177,7 @@ export ERROR_WRITE_PATH=<errorWritePath>
 ### Optional
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 export FIRESTORE_WRITE_ENTITY_KIND=<firestoreWriteEntityKind>
 export FIRESTORE_WRITE_NAMESPACE=<firestoreWriteNamespace>
 export FIRESTORE_HINT_NUM_WORKERS=<firestoreHintNumWorkers>
@@ -180,7 +189,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-text-to-firestore-job" \
 -DtemplateName="GCS_Text_to_Firestore" \
--Dparameters="textReadPattern=$TEXT_READ_PATTERN,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,firestoreWriteProjectId=$FIRESTORE_WRITE_PROJECT_ID,firestoreWriteEntityKind=$FIRESTORE_WRITE_ENTITY_KIND,firestoreWriteNamespace=$FIRESTORE_WRITE_NAMESPACE,firestoreHintNumWorkers=$FIRESTORE_HINT_NUM_WORKERS,errorWritePath=$ERROR_WRITE_PATH" \
+-Dparameters="textReadPattern=$TEXT_READ_PATTERN,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,firestoreWriteProjectId=$FIRESTORE_WRITE_PROJECT_ID,firestoreWriteEntityKind=$FIRESTORE_WRITE_ENTITY_KIND,firestoreWriteNamespace=$FIRESTORE_WRITE_NAMESPACE,firestoreHintNumWorkers=$FIRESTORE_HINT_NUM_WORKERS,errorWritePath=$ERROR_WRITE_PATH" \
 -pl v1 \
 -am
 ```

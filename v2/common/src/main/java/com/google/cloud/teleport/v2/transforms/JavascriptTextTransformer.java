@@ -15,8 +15,11 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Expiry;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -25,14 +28,12 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.script.Invocable;
@@ -45,6 +46,7 @@ import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -55,9 +57,9 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.CharStreams;
 import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.slf4j.Logger;
@@ -95,25 +97,13 @@ public abstract class JavascriptTextTransformer {
 
     void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
 
-    // Support for auto reload is only needed for Pub/Sub to Splunk for now.
-    // This can be moved to JavascriptTextTransformerOptions to support in other templates.
-    @TemplateParameter.Boolean(
-        order = 3,
-        optional = true,
-        description = "Enable JavaScript UDF auto-reload feature",
-        helpText =
-            "If set to true, enables the JavaScript UDF auto-reload feature, which guarantees that updated code is used without the need to restart jobs.")
-    Boolean getJavascriptTextTransformFunctionReload();
-
-    void setJavascriptTextTransformFunctionReload(Boolean javascriptTextTransformFunctionReload);
-
     @TemplateParameter.Integer(
         order = 4,
         optional = true,
         description = "JavaScript UDF auto-reload interval (minutes)",
         helpText =
             "Define the interval that workers may check for JavaScript UDF changes to reload the files.")
-    @Default.Integer(60)
+    @Default.Integer(0)
     Integer getJavascriptTextTransformReloadIntervalMinutes();
 
     void setJavascriptTextTransformReloadIntervalMinutes(
@@ -138,15 +128,44 @@ public abstract class JavascriptTextTransformer {
     public abstract String functionName();
 
     @Nullable
-    public abstract Boolean reloadFunction();
-
-    @Nullable
     public abstract Integer reloadIntervalMinutes();
 
-    private Invocable invocable;
+    private static final Distribution JAVASCRIPT_RELOAD_LATENCY_MS =
+        Metrics.distribution(JavascriptTextTransformer.class, "javascript_reload_latency_ms");
+
+    private static LoadingCache<JavascriptRuntime, Invocable> cache =
+        Caffeine.newBuilder()
+            .expireAfter(
+                new Expiry<JavascriptRuntime, Invocable>() {
+                  public long expireAfterCreate(
+                      JavascriptRuntime runtime, Invocable invocable, long currentTime) {
+                    // Do not expire if reload is disabled
+                    if (runtime.reloadIntervalMinutes() == null
+                        || runtime.reloadIntervalMinutes() <= 0) {
+                      return Long.MAX_VALUE;
+                    }
+                    return TimeUnit.MINUTES.toNanos(runtime.reloadIntervalMinutes());
+                  }
+
+                  public long expireAfterUpdate(
+                      JavascriptRuntime runtime,
+                      Invocable invocable,
+                      long currentTime,
+                      long currentDuration) {
+                    return currentDuration;
+                  }
+
+                  public long expireAfterRead(
+                      JavascriptRuntime runtime,
+                      Invocable invocable,
+                      long currentTime,
+                      long currentDuration) {
+                    return currentDuration;
+                  }
+                })
+            .build(runtime -> buildInvocable(runtime));
 
     private Instant lastRefreshCheck = Instant.now();
-    private Set<String> lastScripts;
 
     /** Builder for {@link JavascriptTextTransformer}. */
     @AutoValue.Builder
@@ -154,8 +173,6 @@ public abstract class JavascriptTextTransformer {
       public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder setFunctionName(@Nullable String functionName);
-
-      public abstract Builder setReloadFunction(@Nullable Boolean value);
 
       public abstract Builder setReloadIntervalMinutes(@Nullable Integer value);
 
@@ -184,26 +201,7 @@ public abstract class JavascriptTextTransformer {
         return null;
       }
 
-      if (invocable == null
-          || (reloadFunction() != null
-              && reloadFunction()
-              && reloadIntervalMinutes() != null
-              && Duration.between(lastRefreshCheck, Instant.now()).toMinutes()
-                  > reloadIntervalMinutes())) {
-
-        // list of all scripts read from the filesystem
-        Collection<String> scripts = getScripts(fileSystemPath());
-
-        // We compare the entire code, and reload invocable if changed
-        Set<String> uniqueCode = new TreeSet<>(scripts);
-        if (!uniqueCode.equals(lastScripts)) {
-          invocable = newInvocable(scripts);
-          lastScripts = uniqueCode;
-        }
-
-        lastRefreshCheck = Instant.now();
-      }
-      return invocable;
+      return cache.get(this);
     }
 
     /**
@@ -212,11 +210,20 @@ public abstract class JavascriptTextTransformer {
      * @param scripts a collection of javascript scripts encoded with UTF8 to load in
      */
     private static Invocable newInvocable(Collection<String> scripts) throws ScriptException {
+      long startTime = Instant.now().toEpochMilli();
       ScriptEngine engine = getJavaScriptEngine();
       for (String script : scripts) {
         engine.eval(script);
       }
+      JAVASCRIPT_RELOAD_LATENCY_MS.update(Instant.now().toEpochMilli() - startTime);
       return (Invocable) engine;
+    }
+
+    private static Invocable buildInvocable(JavascriptRuntime runtime)
+        throws IOException, ScriptException {
+      // List of all scripts read from the filesystem
+      Collection<String> scripts = getScripts(runtime.fileSystemPath());
+      return newInvocable(scripts);
     }
 
     private static ScriptEngine getJavaScriptEngine() {
@@ -271,7 +278,7 @@ public abstract class JavascriptTextTransformer {
      * Loads into memory scripts from a File System from a given path. Supports any file system that
      * {@link FileSystems} supports.
      *
-     * @return a collection of scripts loaded as UF8 Strings
+     * @return a collection of scripts loaded as UTF8 Strings
      */
     private static Collection<String> getScripts(String path) throws IOException {
       MatchResult result = FileSystems.match(path);
@@ -304,8 +311,6 @@ public abstract class JavascriptTextTransformer {
 
     public abstract @Nullable String functionName();
 
-    public abstract @Nullable Boolean reloadFunction();
-
     public abstract @Nullable Integer reloadIntervalMinutes();
 
     /** Builder for {@link TransformTextViaJavascript}. */
@@ -314,8 +319,6 @@ public abstract class JavascriptTextTransformer {
       public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder setFunctionName(@Nullable String functionName);
-
-      public abstract Builder setReloadFunction(@Nullable Boolean value);
 
       public abstract Builder setReloadIntervalMinutes(@Nullable Integer value);
 
@@ -340,7 +343,6 @@ public abstract class JavascriptTextTransformer {
                         getJavascriptRuntime(
                             fileSystemPath(),
                             functionName(),
-                            reloadFunction() != null ? reloadFunction() : null,
                             reloadIntervalMinutes() != null ? reloadIntervalMinutes() : null);
                   }
                 }
@@ -374,8 +376,6 @@ public abstract class JavascriptTextTransformer {
 
     public abstract @Nullable String functionName();
 
-    public abstract @Nullable Boolean functionReload();
-
     public abstract @Nullable Integer reloadIntervalMinutes();
 
     public abstract @Nullable Boolean loggingEnabled();
@@ -400,8 +400,6 @@ public abstract class JavascriptTextTransformer {
       public abstract Builder<T> setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder<T> setFunctionName(@Nullable String functionName);
-
-      public abstract Builder<T> setFunctionReload(@Nullable Boolean functionReload);
 
       public abstract Builder<T> setReloadIntervalMinutes(Integer value);
 
@@ -430,7 +428,6 @@ public abstract class JavascriptTextTransformer {
                             getJavascriptRuntime(
                                 fileSystemPath(),
                                 functionName(),
-                                functionReload() != null ? functionReload() : null,
                                 reloadIntervalMinutes() != null ? reloadIntervalMinutes() : null);
                       }
 
@@ -488,10 +485,7 @@ public abstract class JavascriptTextTransformer {
    * @return The {@link JavascriptRuntime} instance.
    */
   private static JavascriptRuntime getJavascriptRuntime(
-      String fileSystemPath,
-      String functionName,
-      Boolean reloadFunction,
-      Integer reloadIntervalMinutes) {
+      String fileSystemPath, String functionName, Integer reloadIntervalMinutes) {
     JavascriptRuntime javascriptRuntime = null;
 
     if (!Strings.isNullOrEmpty(fileSystemPath) && !Strings.isNullOrEmpty(functionName)) {
@@ -499,7 +493,6 @@ public abstract class JavascriptTextTransformer {
           JavascriptRuntime.newBuilder()
               .setFunctionName(functionName)
               .setFileSystemPath(fileSystemPath)
-              .setReloadFunction(reloadFunction)
               .setReloadIntervalMinutes(reloadIntervalMinutes)
               .build();
     }

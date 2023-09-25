@@ -50,7 +50,7 @@ public interface TimestampPolicyFactory<KeyT, ValueT> extends Serializable {
 
   /**
    * A {@link TimestampPolicy} that assigns processing time to each record. Specifically, this is
-   * the timestamp when the record becomes 'current' in the reader. The watermark aways advances to
+   * the timestamp when the record becomes 'current' in the reader. The watermark always advances to
    * current time.
    */
   static <K, V> TimestampPolicyFactory<K, V> withProcessingTime() {

@@ -101,16 +101,18 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
     return lsn;
   }
 
-  /**
-   * Postgres LSN values are of the form 16/2A50F3. This function pads the right number with 0s till
-   * 8 digits, removes the slash and joins the left and right to return a hex string.
+  /*
+   * Postgres LSN values are of the form 16/2A50F3.
    */
-  String getPaddedLSN() {
+  Long getParsedLSN(int index) {
     if (lsn == "") {
-      return "";
+      return 0L;
     }
     String[] parts = lsn.split("/");
-    return parts[0] + String.format("%08d", Integer.parseInt(parts[1]));
+    if (parts.length <= index) {
+      return 0L;
+    }
+    return Long.parseLong(parts[index], 16);
   }
 
   @Override
@@ -123,8 +125,13 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
 
     int timestampComparisonResult = this.timestamp.compareTo(other.getTimestamp());
 
-    return (timestampComparisonResult != 0)
-        ? timestampComparisonResult
-        : (this.getPaddedLSN().compareTo(other.getPaddedLSN()));
+    if (timestampComparisonResult != 0) {
+      return timestampComparisonResult;
+    } else {
+      int parsedLeftLSNComparisonResult = this.getParsedLSN(0).compareTo(other.getParsedLSN(0));
+      return parsedLeftLSNComparisonResult != 0
+          ? parsedLeftLSNComparisonResult
+          : this.getParsedLSN(1).compareTo(other.getParsedLSN(1));
+    }
   }
 }

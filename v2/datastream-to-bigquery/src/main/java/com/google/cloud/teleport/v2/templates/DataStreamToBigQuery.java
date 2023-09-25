@@ -425,6 +425,7 @@ public class DataStreamToBigQuery {
         new InputUDFToTableRow<String>(
             options.getJavascriptTextTransformGcsPath(),
             options.getJavascriptTextTransformFunctionName(),
+            options.getJavascriptTextTransformReloadIntervalMinutes(),
             options.getPythonTextTransformGcsPath(),
             options.getPythonTextTransformFunctionName(),
             options.getRuntimeRetries(),

@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -321,7 +321,7 @@ public abstract class PythonTextTransformer implements Serializable {
      * Loads into memory scripts from a File System from a given path. Supports any file system that
      * {@link FileSystems} supports.
      *
-     * @return a collection of scripts loaded as UF8 Strings
+     * @return a collection of scripts loaded as UTF8 Strings
      */
     private static Collection<String> getScripts(String path) throws IOException {
       MatchResult result = FileSystems.match(path);

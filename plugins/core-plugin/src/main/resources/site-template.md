@@ -18,14 +18,14 @@
 </#if>
 
 <#list spec.metadata.description?split("\n\n") as paragraph>
-<p>${TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim), 100, "  ", true))}</p>
+<p>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(paragraph!?trim)), 100, "  ", true)}</p>
 </#list>
 
 <h2>Pipeline requirements</h2>
 
 <ul>
 <#list spec.metadata.requirements as requirement>
-  <li>${TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceVariableInterpolationNames(requirement), 100, "    ", true))}</li>
+  <li>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(requirement)), 100, "    ", true)}</li>
 </#list>
 </ul>
 
@@ -53,6 +53,21 @@
 </#if>
 </#list>
 </table>
+
+<#if spec.metadata.udfSupport>
+<h2>User-defined function</h2>
+
+<<../../../_shared/guides/_template-udf-boilerplate.md>>
+
+<h3>Function specification</h3>
+
+<p>The UDF has the following specification:</p>
+
+<ul>
+  <li><strong>Input</strong>: JSON string.</li>
+  <li><strong>Output</strong>: The output must be a string or a stringified JSON object.</li>
+</ul>
+</#if>
 
 <h2>Run the template</h2>
 <#if flex>
@@ -117,6 +132,22 @@ gcloud dataflow jobs run <var>JOB_NAME</var> \
 
 <pre class="prettyprint lang-json">
 POST {{df_template_launch_uri}}
+<#if flex>
+{
+   "launchParameter": {
+     "jobName": "<var>JOB_NAME</var>",
+     "parameters": {
+  <#list spec.metadata.parameters as parameter>
+  <#if !parameter.optional!false>
+       "${parameter.name}": "<var>${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}</var>",
+  </#if>
+  </#list>
+     },
+     "containerSpecGcsPath": "{{df_template_file_gcs_location_api}}",
+     "environment": { "maxWorkers": "10" }
+  }
+}
+<#else>
 {
    "jobName": "<var>JOB_NAME</var>",
    "parameters": {
@@ -126,8 +157,9 @@ POST {{df_template_launch_uri}}
 </#if>
 </#list>
    },
-   "environment": { "zone": "us-central1-f" }
+   "environment": { "maxWorkers": "10" }
 }
+</#if>
 </pre>
 
     {{user_replaced_values_${spec.metadata.internalName?lower_case}}}

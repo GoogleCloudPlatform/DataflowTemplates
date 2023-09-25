@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -57,8 +57,8 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Splitter;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Throwables;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.slf4j.Logger;
@@ -314,6 +314,9 @@ public class CsvConverters {
     public abstract String udfFunctionName();
 
     @Nullable
+    public abstract Integer udfReloadIntervalMinutes();
+
+    @Nullable
     public abstract String jsonSchemaPath();
 
     @Nullable
@@ -346,6 +349,7 @@ public class CsvConverters {
             FailsafeJavascriptUdf.<String>newBuilder()
                 .setFileSystemPath(udfFileSystemPath())
                 .setFunctionName(udfFunctionName())
+                .setReloadIntervalMinutes(udfReloadIntervalMinutes())
                 .setSuccessTag(udfOutputTag())
                 .setFailureTag(udfDeadletterTag())
                 .build());
@@ -407,6 +411,8 @@ public class CsvConverters {
       public abstract Builder setUdfFileSystemPath(String udfFileSystemPath);
 
       public abstract Builder setUdfFunctionName(String udfFunctionName);
+
+      public abstract Builder setUdfReloadIntervalMinutes(int udfReloadIntervalMinutes);
 
       public abstract Builder setJsonSchemaPath(String jsonSchemaPath);
 

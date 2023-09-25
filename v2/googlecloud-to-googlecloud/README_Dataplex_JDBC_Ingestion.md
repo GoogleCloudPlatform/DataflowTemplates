@@ -1,11 +1,21 @@
-Dataplex JDBC Ingestion Template
+
+Dataplex JDBC Ingestion template
 ---
-A pipeline that reads from a JDBC source and writes to to a Dataplex asset, which can be either a BigQuery dataset or a Cloud Storage bucket. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST "https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt"  -d "{\"plaintext\":\"PasteBase64EncodedString\"}"  -H "Authorization: Bearer $(gcloud auth application-default print-access-token)"  -H "Content-Type: application/json".
+A pipeline that reads from a JDBC source and writes to to a Dataplex asset, which
+can be either a BigQuery dataset or a Cloud Storage bucket. JDBC connection
+string, user name and password can be passed in directly as plaintext or
+encrypted using the Google Cloud KMS API. If the parameter KMSEncryptionKey is
+specified, connectionURL, username, and password should be all in encrypted
+format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST
+"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt"
+-d "{\"plaintext\":\"PasteBase64EncodedString\"}" -H "Authorization: Bearer
+$(gcloud auth application-default print-access-token)" -H "Content-Type:
+application/json".
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Dataplex_JDBC_Ingestion).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -51,7 +61,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/DataplexJdbcIngestion.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/DataplexJdbcIngestion.java)
 
 ### Templates Plugin
 
@@ -90,6 +100,7 @@ mvn clean package -PtemplatesStage  \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
+
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -130,10 +141,10 @@ export CONNECTION_PROPERTIES=<connectionProperties>
 export USERNAME=<username>
 export PASSWORD=<password>
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
-export PARTITIONING_SCHEME="DAILY"
+export PARTITIONING_SCHEME=DAILY
 export PARITION_COLUMN=<paritionColumn>
-export WRITE_DISPOSITION="WRITE_EMPTY"
-export FILE_FORMAT="PARQUET"
+export WRITE_DISPOSITION=WRITE_EMPTY
+export FILE_FORMAT=PARQUET
 export USE_COLUMN_ALIAS=false
 export UPDATE_DATAPLEX_METADATA=false
 export USE_STORAGE_WRITE_API=false
@@ -191,10 +202,10 @@ export CONNECTION_PROPERTIES=<connectionProperties>
 export USERNAME=<username>
 export PASSWORD=<password>
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
-export PARTITIONING_SCHEME="DAILY"
+export PARTITIONING_SCHEME=DAILY
 export PARITION_COLUMN=<paritionColumn>
-export WRITE_DISPOSITION="WRITE_EMPTY"
-export FILE_FORMAT="PARQUET"
+export WRITE_DISPOSITION=WRITE_EMPTY
+export FILE_FORMAT=PARQUET
 export USE_COLUMN_ALIAS=false
 export UPDATE_DATAPLEX_METADATA=false
 export USE_STORAGE_WRITE_API=false

@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.GoogleAdsToBigQuery",
+  "classPath": "/template/google-ads-to-bigquery/*:/template/google-ads-to-bigquery/libs/*:/template/google-ads-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"google-ads-to-bigquery\"}"
+  }
+}

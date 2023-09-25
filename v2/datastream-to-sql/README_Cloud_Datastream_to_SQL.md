@@ -1,11 +1,33 @@
-Datastream to SQL Template
+
+Datastream to SQL template
 ---
-Streaming pipeline. Ingests messages from a stream in Cloud Datastream, transforms them, and writes them to a set of pre-defined Postgres tables.
+The Datastream to SQL template is a streaming pipeline that reads <a
+href="https://cloud.google.com/datastream/docs">Datastream</a> data and
+replicates it into any MySQL or PostgreSQL database. The template reads data from
+Cloud Storage using Pub/Sub notifications and replicates this data into SQL
+replica tables.
+
+The template does not support data definition language (DDL) and expects that all
+tables already exist in the database. Replication uses Dataflow stateful
+transforms to filter stale data and ensure consistency in out of order data. For
+example, if a more recent version of a row has already passed through, a late
+arriving version of that row is ignored. The data manipulation language (DML)
+that executes is a best attempt to perfectly replicate source to target data. The
+DML statements executed follow the following rules:.
+
+If a primary key exists, insert and update operations use upsert syntax (ie.
+<code>INSERT INTO table VALUES (...) ON CONFLICT (...) DO UPDATE</code>).
+If primary keys exist, deletes are replicated as a delete DML.
+If no primary key exists, both insert and update operations are inserted into the
+table.
+If no primary keys exist, deletes are ignored.
+If you are using the Oracle to Postgres utilities, add <code>ROWID</code> in SQL
+as the primary key when none exists.
+
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-sql)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Datastream_to_SQL).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -47,7 +69,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/datastream-to-sql/src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToSQL.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/datastream-to-sql/src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToSQL.java)
 
 ### Templates Plugin
 
@@ -122,13 +144,13 @@ export DATABASE_PASSWORD=<databasePassword>
 
 ### Optional
 export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
-export INPUT_FILE_FORMAT="avro"
+export INPUT_FILE_FORMAT=avro
 export STREAM_NAME=<streamName>
-export RFC_START_DATE_TIME="1970-01-01T00:00:00.00Z"
-export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
-export DATABASE_TYPE="postgres"
-export DATABASE_PORT="5432"
-export DATABASE_NAME="postgres"
+export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
+export DATA_STREAM_ROOT_URL=https://datastream.googleapis.com/
+export DATABASE_TYPE=postgres
+export DATABASE_PORT=5432
+export DATABASE_NAME=postgres
 export SCHEMA_MAP=""
 export CUSTOM_CONNECTION_STRING=""
 
@@ -175,13 +197,13 @@ export DATABASE_PASSWORD=<databasePassword>
 
 ### Optional
 export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
-export INPUT_FILE_FORMAT="avro"
+export INPUT_FILE_FORMAT=avro
 export STREAM_NAME=<streamName>
-export RFC_START_DATE_TIME="1970-01-01T00:00:00.00Z"
-export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
-export DATABASE_TYPE="postgres"
-export DATABASE_PORT="5432"
-export DATABASE_NAME="postgres"
+export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
+export DATA_STREAM_ROOT_URL=https://datastream.googleapis.com/
+export DATABASE_TYPE=postgres
+export DATABASE_PORT=5432
+export DATABASE_NAME=postgres
 export SCHEMA_MAP=""
 export CUSTOM_CONNECTION_STRING=""
 

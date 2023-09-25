@@ -501,6 +501,58 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
+  public void definerRightsView() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Names\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerViewSecurity\" : \"DEFINER\","
+            + "  \"spannerViewQuery\" : \"SELECT first_name, last_name FROM Users\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.views(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE VIEW `Names` SQL SECURITY DEFINER AS SELECT first_name, last_name FROM Users"));
+  }
+
+  @Test
+  public void pgDefinerRightsView() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Names\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerViewSecurity\" : \"DEFINER\","
+            + "  \"spannerViewQuery\" : \"SELECT first_name, last_name FROM Users\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertEquals(ddl.dialect(), Dialect.POSTGRESQL);
+    assertThat(ddl.views(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE VIEW \"Names\" SQL SECURITY DEFINER AS SELECT first_name, last_name FROM"
+                + " Users"));
+  }
+
+  @Test
   public void columnOptions() {
     String avroString =
         "{"

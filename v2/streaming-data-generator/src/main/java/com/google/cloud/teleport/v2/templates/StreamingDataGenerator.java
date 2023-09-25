@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.github.vincentrussell.json.datagenerator.JsonDataGenerator;
 import com.github.vincentrussell.json.datagenerator.JsonDataGeneratorException;
@@ -53,7 +53,7 @@ import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -390,6 +390,49 @@ public class StreamingDataGenerator {
     String getSpannerTableName();
 
     void setSpannerTableName(String spannerTableName);
+
+    @TemplateParameter.Text(
+        order = 26,
+        optional = true,
+        regexes = {"^[1-9][0-9]*$"},
+        description = "Max mutatated cells per batch.",
+        helpText =
+            "Specifies the cell mutation limit (maximum number of mutated cells per batch). Default value is 5000")
+    Long getMaxNumMutations();
+
+    void setMaxNumMutations(Long value);
+
+    @TemplateParameter.Text(
+        order = 27,
+        optional = true,
+        regexes = {"^[1-9][0-9]*$"},
+        description = "Max rows per batch.",
+        helpText =
+            "Specifies the row mutation limit (maximum number of mutated rows per batch). Default value is 1000")
+    Long getMaxNumRows();
+
+    void setMaxNumRows(Long value);
+
+    @TemplateParameter.Text(
+        order = 28,
+        optional = true,
+        regexes = {"^[1-9][0-9]*$"},
+        description = "Max batch size in bytes.",
+        helpText =
+            "Specifies the batch size limit (max number of bytes mutated per batch). Default value is 1MB")
+    Long getBatchSizeBytes();
+
+    void setBatchSizeBytes(Long value);
+
+    @TemplateParameter.Text(
+        order = 29,
+        optional = true,
+        regexes = {"^[1-9][0-9]*$"},
+        description = "Commit deadline in seconds for write requests.",
+        helpText = "Specifies the deadline in seconds for the Commit API call.")
+    Long getCommitDeadlineSeconds();
+
+    void setCommitDeadlineSeconds(Long value);
   }
 
   /** Allowed list of existing schema templates. */

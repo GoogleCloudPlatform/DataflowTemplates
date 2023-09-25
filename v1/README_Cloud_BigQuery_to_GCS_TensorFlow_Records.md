@@ -1,12 +1,18 @@
-BigQuery to TensorFlow Records Template
+
+BigQuery to TensorFlow Records template
 ---
-A pipeline that reads rows from BigQuery and writes them as TFRecords in Cloud Storage.
+The BigQuery to Cloud Storage TFRecords template is a pipeline that reads data
+from a BigQuery query and writes it to a Cloud Storage bucket in TFRecord format.
+You can specify the training, testing, and validation percentage splits. By
+default, the split is 1 or 100% for the training set and 0 or 0% for testing and
+validation sets. When setting the dataset split, the sum of training, testing,
+and validation needs to add up to 1 or 100% (for example, 0.6+0.2+0.2). Dataflow
+automatically determines the optimal number of shards for each output dataset.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-tfrecords)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_BigQuery_to_GCS_TensorFlow_Records).
-
-Note: Nested BigQuery columns are currently not supported and should be unnested within the SQL query.
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -42,7 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/BigQueryToTFRecord.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/BigQueryToTFRecord.java)
 
 ### Templates Plugin
 
@@ -118,10 +124,10 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 ### Optional
 export READ_ID_COLUMN=<readIdColumn>
 export INVALID_OUTPUT_PATH=<invalidOutputPath>
-export OUTPUT_SUFFIX=".tfrecord"
-export TRAINING_PERCENTAGE="1.0"
-export TESTING_PERCENTAGE="0.0"
-export VALIDATION_PERCENTAGE="0.0"
+export OUTPUT_SUFFIX=.tfrecord
+export TRAINING_PERCENTAGE=1.0
+export TESTING_PERCENTAGE=0.0
+export VALIDATION_PERCENTAGE=0.0
 
 gcloud dataflow jobs run "cloud-bigquery-to-gcs-tensorflow-records-job" \
   --project "$PROJECT" \
@@ -159,10 +165,10 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 ### Optional
 export READ_ID_COLUMN=<readIdColumn>
 export INVALID_OUTPUT_PATH=<invalidOutputPath>
-export OUTPUT_SUFFIX=".tfrecord"
-export TRAINING_PERCENTAGE="1.0"
-export TESTING_PERCENTAGE="0.0"
-export VALIDATION_PERCENTAGE="0.0"
+export OUTPUT_SUFFIX=.tfrecord
+export TRAINING_PERCENTAGE=1.0
+export TESTING_PERCENTAGE=0.0
+export VALIDATION_PERCENTAGE=0.0
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

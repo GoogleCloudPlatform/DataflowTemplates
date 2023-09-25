@@ -1,11 +1,27 @@
-Pub/Sub to Datadog Template
+
+Pub/Sub to Datadog template
 ---
-A pipeline that reads from a Pub/Sub subscription and writes to Datadog's Logs API.
+The Pub/Sub to Datadog template is a streaming pipeline that reads messages from
+a Pub/Sub subscription and writes the message payload to Datadog by using a
+Datadog endpoint. The most common use case for this template is to export log
+files to Datadog.
+
+Before writing to Datadog, you can apply a JavaScript user-defined function to
+the message payload. Any messages that experience processing failures are
+forwarded to a Pub/Sub unprocessed topic for further troubleshooting and
+reprocessing.
+
+As an extra layer of protection for your API keys and secrets, you can also pass
+in a Cloud KMS key along with the base64-encoded API key parameter encrypted with
+the Cloud KMS key. For additional details about encrypting your API key
+parameter, see the <a
+href="https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt">Cloud
+KMS API encryption endpoint</a>.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-datadog)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_PubSub_to_Datadog).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -17,7 +33,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **inputSubscription** (Pub/Sub input subscription): Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
 * **url** (Datadog Logs API URL.): Datadog Logs API URL. This should be routable from the VPC in which the pipeline runs. See: https://docs.datadoghq.com/api/latest/logs/#send-logs (Example: https://http-intake.logs.datadoghq.com).
-* **outputDeadletterTopic** (Output deadletter Pub/Sub topic): The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.
+* **outputDeadletterTopic** (Output deadletter Pub/Sub topic): The Pub/Sub topic to publish deadletter records to. The name should be in the format of `projects/your-project-id/topics/your-topic-name`.
 
 ### Optional Parameters
 
@@ -30,8 +46,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **apiKeySource** (Source of the API key passed. One of PLAINTEXT, KMS or SECRET_MANAGER.): Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter must be provided if secret manager is used. If apiKeySource is set to KMS, apiKeyKMSEncryptionKey and encrypted apiKey must be provided. If apiKeySource is set to SECRET_MANAGER, apiKeySecretId must be provided. If apiKeySource is set to PLAINTEXT, apiKey must be provided.
 * **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
 * **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **javascriptFunctionReload** (Enable JavaScript UDF auto-reload feature): If set to true, enables the JavaScript UDF auto-reload feature, which guarantees that updated code is used without the need to restart jobs.
-* **javascriptReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
+* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
 
 
 ## User-Defined functions (UDFs)
@@ -57,7 +72,7 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/PubSubToDatadog.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/PubSubToDatadog.java)
 
 ### Templates Plugin
 
@@ -141,8 +156,7 @@ export API_KEY_SECRET_ID=<apiKeySecretId>
 export API_KEY_SOURCE=<apiKeySource>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 
 gcloud dataflow jobs run "cloud-pubsub-to-datadog-job" \
   --project "$PROJECT" \
@@ -159,8 +173,7 @@ gcloud dataflow jobs run "cloud-pubsub-to-datadog-job" \
   --parameters "apiKeySource=$API_KEY_SOURCE" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
-  --parameters "javascriptFunctionReload=$JAVASCRIPT_FUNCTION_RELOAD" \
-  --parameters "javascriptReloadIntervalMinutes=$JAVASCRIPT_RELOAD_INTERVAL_MINUTES" \
+  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
   --parameters "outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC"
 ```
 
@@ -194,8 +207,7 @@ export API_KEY_SECRET_ID=<apiKeySecretId>
 export API_KEY_SOURCE=<apiKeySource>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -204,7 +216,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-pubsub-to-datadog-job" \
 -DtemplateName="Cloud_PubSub_to_Datadog" \
--Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,apiKey=$API_KEY,url=$URL,batchCount=$BATCH_COUNT,parallelism=$PARALLELISM,includePubsubMessage=$INCLUDE_PUBSUB_MESSAGE,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptFunctionReload=$JAVASCRIPT_FUNCTION_RELOAD,javascriptReloadIntervalMinutes=$JAVASCRIPT_RELOAD_INTERVAL_MINUTES,outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC" \
+-Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,apiKey=$API_KEY,url=$URL,batchCount=$BATCH_COUNT,parallelism=$PARALLELISM,includePubsubMessage=$INCLUDE_PUBSUB_MESSAGE,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,outputDeadletterTopic=$OUTPUT_DEADLETTER_TOPIC" \
 -pl v1 \
 -am
 ```

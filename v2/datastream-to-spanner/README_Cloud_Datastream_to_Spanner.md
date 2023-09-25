@@ -1,11 +1,38 @@
-Datastream to Cloud Spanner Template
+
+Datastream to Cloud Spanner template
 ---
-Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and writes them to a pre-existing set of tables in Cloud Spanner.
+The Datastream to Cloud Spanner template is a streaming pipeline that reads <a
+href="https://cloud.google.com/datastream/docs">Datastream</a> events from a
+Cloud Storage bucket and writes them to a Cloud Spanner database. It is intended
+for data migration from Datastream sources to Cloud Spanner.
+
+All tables required for migration must exist in the destination Cloud Spanner
+database prior to template execution. Hence schema migration from a source
+database to destination Cloud Spanner must be completed prior to data migration.
+Data can exist in the tables prior to migration. This template does not propagate
+Datastream schema changes to the Cloud Spanner database.
+
+Data consistency is guaranteed only at the end of migration when all data has
+been written to Cloud Spanner. To store ordering information for each record
+written to Cloud Spanner, this template creates an additional table (called a
+shadow table) for each table in the Cloud Spanner database. This is used to
+ensure consistency at the end of migration. The shadow tables are not deleted
+after migration and can be used for validation purposes at the end of migration.
+
+Any errors that occur during operation, such as schema mismatches, malformed JSON
+files, or errors resulting from executing transforms, are recorded in an error
+queue. The error queue is a Cloud Storage folder which stores all the Datastream
+events that had encountered errors along with the error reason in text format.
+The errors can be transient or permanent and are stored in appropriate Cloud
+Storage folders in the error queue. The transient errors are retried
+automatically while the permanent errors are not. In case of permanent errors,
+you have the option of making corrections to the change events and moving them to
+the retriable bucket while the template is running.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-cloud-spanner)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Datastream_to_Spanner).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -39,6 +66,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **roundJsonDecimals** (If true, rounds the decimal values in json columns to a number that can be stored without loss of precision.): This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
 * **runMode** (Run mode - currently supported are : regular or retryDLQ): This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
 * **transformationContextFilePath** (Transformation context file path in cloud storage): Transformation context file path in cloud storage used to populate data used in transformations performed during migrations   Eg: The shard id to db name to identify the db from which a row was migrated.
+* **directoryWatchDurationInMinutes** (Directory watch duration in minutes. Default: 10 minutes): The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occuring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
 
 
 
@@ -54,7 +82,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/datastream-to-spanner/src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToSpanner.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/datastream-to-spanner/src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToSpanner.java)
 
 ### Templates Plugin
 
@@ -128,23 +156,24 @@ export DATABASE_ID=<databaseId>
 export STREAM_NAME=<streamName>
 
 ### Optional
-export INPUT_FILE_FORMAT="avro"
+export INPUT_FILE_FORMAT=avro
 export SESSION_FILE_PATH=<sessionFilePath>
 export PROJECT_ID=<projectId>
-export SPANNER_HOST="https://batch-spanner.googleapis.com"
+export SPANNER_HOST=https://batch-spanner.googleapis.com
 export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
-export SHADOW_TABLE_PREFIX="shadow_"
+export SHADOW_TABLE_PREFIX=shadow_
 export SHOULD_CREATE_SHADOW_TABLES=true
-export RFC_START_DATE_TIME="1970-01-01T00:00:00.00Z"
+export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
 export FILE_READ_CONCURRENCY=30
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRY_COUNT=500
-export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
+export DATA_STREAM_ROOT_URL=https://datastream.googleapis.com/
 export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ROUND_JSON_DECIMALS=false
-export RUN_MODE="regular"
+export RUN_MODE=regular
 export TRANSFORMATION_CONTEXT_FILE_PATH=<transformationContextFilePath>
+export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 
 gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --project "$PROJECT" \
@@ -170,7 +199,8 @@ gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --parameters "datastreamSourceType=$DATASTREAM_SOURCE_TYPE" \
   --parameters "roundJsonDecimals=$ROUND_JSON_DECIMALS" \
   --parameters "runMode=$RUN_MODE" \
-  --parameters "transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH"
+  --parameters "transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH" \
+  --parameters "directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES"
 ```
 
 For more information about the command, please check:
@@ -195,23 +225,24 @@ export DATABASE_ID=<databaseId>
 export STREAM_NAME=<streamName>
 
 ### Optional
-export INPUT_FILE_FORMAT="avro"
+export INPUT_FILE_FORMAT=avro
 export SESSION_FILE_PATH=<sessionFilePath>
 export PROJECT_ID=<projectId>
-export SPANNER_HOST="https://batch-spanner.googleapis.com"
+export SPANNER_HOST=https://batch-spanner.googleapis.com
 export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
-export SHADOW_TABLE_PREFIX="shadow_"
+export SHADOW_TABLE_PREFIX=shadow_
 export SHOULD_CREATE_SHADOW_TABLES=true
-export RFC_START_DATE_TIME="1970-01-01T00:00:00.00Z"
+export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
 export FILE_READ_CONCURRENCY=30
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRY_COUNT=500
-export DATA_STREAM_ROOT_URL="https://datastream.googleapis.com/"
+export DATA_STREAM_ROOT_URL=https://datastream.googleapis.com/
 export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ROUND_JSON_DECIMALS=false
-export RUN_MODE="regular"
+export RUN_MODE=regular
 export TRANSFORMATION_CONTEXT_FILE_PATH=<transformationContextFilePath>
+export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -220,7 +251,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-spanner-job" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES" \
 -pl v2/datastream-to-spanner \
 -am
 ```

@@ -29,6 +29,7 @@ public abstract class View implements Serializable {
   /** The access rights used by the view for underlying data, invoker-rights or definer-rights. */
   public enum SqlSecurity {
     INVOKER,
+    DEFINER,
   }
 
   @Nullable

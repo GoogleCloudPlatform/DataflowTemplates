@@ -19,7 +19,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import java.util.Objects;
 import org.apache.avro.reflect.Nullable;
 import org.apache.beam.sdk.coders.DefaultCoder;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects;
 
 /**
  * The {@link FailsafeElement} class holds the current value and original value of a record within a

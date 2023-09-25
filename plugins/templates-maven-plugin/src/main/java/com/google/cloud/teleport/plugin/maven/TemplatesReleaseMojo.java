@@ -77,6 +77,12 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       required = false)
   protected String baseContainerImage;
 
+  @Parameter(
+      name = "basePythonContainerImage",
+      defaultValue = "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest",
+      required = false)
+  protected String basePythonContainerImage;
+
   public void execute() throws MojoExecutionException {
 
     if (librariesBucketName == null || librariesBucketName.isEmpty()) {
@@ -137,7 +143,8 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 useRegion,
                 artifactRegion,
                 gcpTempLocation,
-                baseContainerImage);
+                baseContainerImage,
+                basePythonContainerImage);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
         LOG.info("Template staged: {}", templatePath);

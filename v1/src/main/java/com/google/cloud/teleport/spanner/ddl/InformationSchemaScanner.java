@@ -673,7 +673,7 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         queryStatement =
             Statement.of(
-                "SELECT v.table_name, v.view_definition"
+                "SELECT v.table_name, v.view_definition, v.security_type"
                     + " FROM information_schema.views AS v"
                     + " WHERE v.table_catalog = '' AND v.table_schema = ''");
         preconditionStatement =
@@ -686,7 +686,7 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         queryStatement =
             Statement.of(
-                "SELECT v.table_name, v.view_definition"
+                "SELECT v.table_name, v.view_definition, v.security_type"
                     + " FROM information_schema.views AS v"
                     + " WHERE v.table_schema NOT IN"
                     + " ('information_schema', 'spanner_sys', 'pg_catalog')");
@@ -714,8 +714,13 @@ public class InformationSchemaScanner {
     while (resultSet.next()) {
       String viewName = resultSet.getString(0);
       String viewQuery = resultSet.getString(1);
+      String viewSecurityType = resultSet.getString(2);
       LOG.debug("Schema View {}", viewName);
-      builder.createView(viewName).query(viewQuery).security(View.SqlSecurity.INVOKER).endView();
+      builder
+          .createView(viewName)
+          .query(viewQuery)
+          .security(View.SqlSecurity.valueOf(viewSecurityType))
+          .endView();
     }
   }
 

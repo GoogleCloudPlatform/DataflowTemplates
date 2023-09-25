@@ -19,7 +19,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.common.escape.Escaper;
 import com.google.common.escape.Escapers;
 
-/** Cloud Spanner Ddl untility components. */
+/** Cloud Spanner Ddl utility components. */
 class DdlUtilityComponents {
 
   // Private constructor to prevent initializing instance, because this class is only served within

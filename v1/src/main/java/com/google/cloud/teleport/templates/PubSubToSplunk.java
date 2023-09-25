@@ -58,8 +58,8 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,7 +103,6 @@ import org.slf4j.LoggerFactory;
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-splunk",
     contactInformation = "https://cloud.google.com/support",
-    preview = true,
     requirements = {
       "The source Pub/Sub subscription must exist prior to running the pipeline.",
       "The Pub/Sub unprocessed topic must exist prior to running the pipeline.",
@@ -214,8 +213,8 @@ public class PubSubToSplunk {
                 FailsafeJavascriptUdf.<String>newBuilder()
                     .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                    .setFunctionReload(options.getJavascriptFunctionReload())
-                    .setReloadIntervalMinutes(options.getJavascriptReloadIntervalMinutes())
+                    .setReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .setLoggingEnabled(ValueProvider.StaticValueProvider.of(true))
                     .setSuccessTag(UDF_OUT)
                     .setFailureTag(UDF_DEADLETTER_OUT)

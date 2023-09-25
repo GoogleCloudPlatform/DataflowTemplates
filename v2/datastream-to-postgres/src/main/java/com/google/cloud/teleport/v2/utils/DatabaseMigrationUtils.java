@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -463,8 +463,8 @@ public class DatabaseMigrationUtils implements Serializable {
    * cache for each worker thread.
    *
    * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
-   * behavior to ensure reliabillity, and easy cache reloads. Open Question: Does the class require
-   * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
+   * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
+   * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
    * continuous.
    */
   public static class JdbcTableCache extends MappedObjectCache<List<String>, Map<String, String>> {
@@ -533,8 +533,8 @@ public class DatabaseMigrationUtils implements Serializable {
    * cache for each worker thread.
    *
    * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
-   * behavior to ensure reliabillity, and easy cache reloads. Open Question: Does the class require
-   * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
+   * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
+   * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
    * continuous.
    */
   public static class JdbcPrimaryKeyCache extends MappedObjectCache<List<String>, List<String>> {

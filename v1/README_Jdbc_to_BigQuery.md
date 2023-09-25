@@ -1,12 +1,21 @@
-JDBC to BigQuery Template
+
+JDBC to BigQuery template
 ---
-A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format.
+The JDBC to BigQuery template is a batch pipeline that copies data from a
+relational database table into an existing BigQuery table. This pipeline uses
+JDBC to connect to the relational database. You can use this template to copy
+data from any relational database with available JDBC drivers into BigQuery. For
+an extra layer of protection, you can also pass in a Cloud KMS key along with a
+Base64-encoded username, password, and connection string parameters encrypted
+with the Cloud KMS key. See the <a
+href="https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt">Cloud
+KMS API encryption endpoint</a> for additional details on encrypting your
+username, password, and connection string parameters.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-bigquery)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Jdbc_to_BigQuery).
-
-A sample curl command for the KMS API encrypt endpoint: curl -s -X POST "https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt"  -d "{\"plaintext\":\"PasteBase64EncodedString\"}" -H "Authorization: Bearer $(gcloud auth application-default print-access-token)" -H "Content-Type: application/json".
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -47,7 +56,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/JdbcToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/JdbcToBigQuery.java)
 
 ### Templates Plugin
 
@@ -129,7 +138,7 @@ export CONNECTION_PROPERTIES=<connectionProperties>
 export USERNAME=<username>
 export PASSWORD=<password>
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
-export USE_COLUMN_ALIAS="false"
+export USE_COLUMN_ALIAS=false
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -180,7 +189,7 @@ export CONNECTION_PROPERTIES=<connectionProperties>
 export USERNAME=<username>
 export PASSWORD=<password>
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
-export USE_COLUMN_ALIAS="false"
+export USE_COLUMN_ALIAS=false
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 

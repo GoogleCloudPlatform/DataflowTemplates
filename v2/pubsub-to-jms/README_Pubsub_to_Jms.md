@@ -1,11 +1,13 @@
-Pubsub to JMS Template
+
+Pubsub to JMS template
 ---
-A streaming pipeline which inserts data from a Pubsub Subscription  and writes to JMS Broker Server(Topic/Queue).
+A streaming pipeline which inserts data from a Pubsub Subscription and writes to
+JMS Broker Server Topic or Queue.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Pubsub_to_Jms).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -39,7 +41,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/pubsub-to-jms/src/main/java/com/google/cloud/teleport/v2/templates/PubsubToJms.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/pubsub-to-jms/src/main/java/com/google/cloud/teleport/v2/templates/PubsubToJms.java)
 
 ### Templates Plugin
 

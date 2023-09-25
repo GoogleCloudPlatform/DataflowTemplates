@@ -33,8 +33,10 @@ public final class MetadataUtils {
         TemplateParameter.BigQueryTable.class,
         TemplateParameter.Boolean.class,
         TemplateParameter.DateTime.class,
+        TemplateParameter.Double.class,
         TemplateParameter.Duration.class,
         TemplateParameter.Enum.class,
+        TemplateParameter.Float.class,
         TemplateParameter.GcsReadFile.class,
         TemplateParameter.GcsReadFolder.class,
         TemplateParameter.GcsWriteFile.class,
@@ -164,6 +166,12 @@ public final class MetadataUtils {
       case "Long":
         TemplateParameter.Long longParam = (TemplateParameter.Long) parameterAnnotation;
         return List.of("^[0-9]+$");
+      case "Float":
+        TemplateParameter.Float floatParam = (TemplateParameter.Float) parameterAnnotation;
+        return List.of("^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][-+]?[0-9]+)?$");
+      case "Double":
+        TemplateParameter.Double doubleParam = (TemplateParameter.Double) parameterAnnotation;
+        return List.of("^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][-+]?[0-9]+)?$");
       case "Enum":
         TemplateParameter.Enum enumParam = (TemplateParameter.Enum) parameterAnnotation;
 

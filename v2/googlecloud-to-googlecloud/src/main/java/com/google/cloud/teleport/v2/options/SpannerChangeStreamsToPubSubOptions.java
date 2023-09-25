@@ -175,8 +175,20 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   void setPubsubAPI(String pubsubAPI);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.ProjectId(
       order = 14,
+      optional = true,
+      description = "Pub/Sub Project ID",
+      helpText =
+          "Project of Pub/Sub topic. The default for this parameter is the project "
+              + "where the Dataflow pipeline is running.")
+  @Default.String("")
+  String getPubsubProjectId();
+
+  void setPubsubProjectId(String pubsubProjectId);
+
+  @TemplateParameter.Text(
+      order = 15,
       description = "The output Pub/Sub topic",
       helpText = "The Pub/Sub topic to publish PubsubMessage.")
   @Validation.Required
@@ -185,7 +197,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setPubsubTopic(String pubsubTopic);
 
   @TemplateParameter.Enum(
-      order = 15,
+      order = 16,
       enumOptions = {
         @TemplateEnumOption("LOW"),
         @TemplateEnumOption("MEDIUM"),

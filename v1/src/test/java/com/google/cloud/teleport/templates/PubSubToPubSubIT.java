@@ -34,6 +34,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,6 +47,7 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(PubsubToPubsub.class)
 @RunWith(JUnit4.class)
 public class PubSubToPubSubIT extends TemplateTestBase {
+
   private PubsubResourceManager pubsubResourceManager;
 
   @Before
@@ -70,7 +72,11 @@ public class PubSubToPubSubIT extends TemplateTestBase {
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
 
     List<String> expectedMessages =
-        List.of("message1-" + testName, "message2-" + testName, "message3-" + testName);
+        List.of(
+            "message1-" + testName,
+            "message2-" + testName,
+            "message3-" + testName,
+            "message4-" + testName + "-long-" + RandomStringUtils.randomAlphabetic(1000, 2000));
     publishMessages(inputTopic, expectedMessages);
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)

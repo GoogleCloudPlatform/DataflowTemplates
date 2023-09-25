@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.GCSToSourceDb",
+  "classPath": "/template/gcs-to-sourcedb/gcs-to-sourcedb-conscrypt.jar:/template/gcs-to-sourcedb/*:/template/gcs-to-sourcedb/libs/*:/template/gcs-to-sourcedb/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"gcs_to_sourcedb\"}"
+  }
+}

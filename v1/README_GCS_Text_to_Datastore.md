@@ -1,11 +1,16 @@
-Text Files on Cloud Storage to Datastore [Deprecated] Template
+
+Text Files on Cloud Storage to Datastore [Deprecated] template
 ---
-Batch pipeline. Reads from text files stored in Cloud Storage and writes JSON-encoded entities to Datastore.
+The Cloud Storage Text to Datastore template is a batch pipeline that reads from
+text files stored in Cloud Storage and writes JSON encoded Entities to Datastore.
+Each line in the input text files must be in the <a
+href="https://cloud.google.com/datastore/docs/reference/rest/v1/Entity">specified
+JSON format</a>.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-datastore)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=GCS_Text_to_Datastore).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -23,8 +28,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
 * **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **javascriptFunctionReload** (Enable JavaScript UDF auto-reload feature): If set to true, enables the JavaScript UDF auto-reload feature, which guarantees that updated code is used without the need to restart jobs.
-* **javascriptReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
+* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
 * **datastoreWriteEntityKind** (Datastore entity kind): Datastore kind under which entities will be written in the output Google Cloud project.
 * **datastoreWriteNamespace** (Datastore namespace): Datastore namespace under which entities will be written in the output Google Cloud project.
 * **datastoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500.
@@ -53,7 +57,7 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v1/src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
 
 ### Templates Plugin
 
@@ -130,11 +134,10 @@ export ERROR_WRITE_PATH=<errorWritePath>
 ### Optional
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 export DATASTORE_WRITE_ENTITY_KIND=<datastoreWriteEntityKind>
 export DATASTORE_WRITE_NAMESPACE=<datastoreWriteNamespace>
-export DATASTORE_HINT_NUM_WORKERS="500"
+export DATASTORE_HINT_NUM_WORKERS=500
 
 gcloud dataflow jobs run "gcs-text-to-datastore-job" \
   --project "$PROJECT" \
@@ -143,8 +146,7 @@ gcloud dataflow jobs run "gcs-text-to-datastore-job" \
   --parameters "textReadPattern=$TEXT_READ_PATTERN" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
-  --parameters "javascriptFunctionReload=$JAVASCRIPT_FUNCTION_RELOAD" \
-  --parameters "javascriptReloadIntervalMinutes=$JAVASCRIPT_RELOAD_INTERVAL_MINUTES" \
+  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
   --parameters "datastoreWriteProjectId=$DATASTORE_WRITE_PROJECT_ID" \
   --parameters "datastoreWriteEntityKind=$DATASTORE_WRITE_ENTITY_KIND" \
   --parameters "datastoreWriteNamespace=$DATASTORE_WRITE_NAMESPACE" \
@@ -175,11 +177,10 @@ export ERROR_WRITE_PATH=<errorWritePath>
 ### Optional
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_FUNCTION_RELOAD=<javascriptFunctionReload>
-export JAVASCRIPT_RELOAD_INTERVAL_MINUTES="60"
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
 export DATASTORE_WRITE_ENTITY_KIND=<datastoreWriteEntityKind>
 export DATASTORE_WRITE_NAMESPACE=<datastoreWriteNamespace>
-export DATASTORE_HINT_NUM_WORKERS="500"
+export DATASTORE_HINT_NUM_WORKERS=500
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -188,7 +189,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-text-to-datastore-job" \
 -DtemplateName="GCS_Text_to_Datastore" \
--Dparameters="textReadPattern=$TEXT_READ_PATTERN,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptFunctionReload=$JAVASCRIPT_FUNCTION_RELOAD,javascriptReloadIntervalMinutes=$JAVASCRIPT_RELOAD_INTERVAL_MINUTES,datastoreWriteProjectId=$DATASTORE_WRITE_PROJECT_ID,datastoreWriteEntityKind=$DATASTORE_WRITE_ENTITY_KIND,datastoreWriteNamespace=$DATASTORE_WRITE_NAMESPACE,datastoreHintNumWorkers=$DATASTORE_HINT_NUM_WORKERS,errorWritePath=$ERROR_WRITE_PATH" \
+-Dparameters="textReadPattern=$TEXT_READ_PATTERN,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,datastoreWriteProjectId=$DATASTORE_WRITE_PROJECT_ID,datastoreWriteEntityKind=$DATASTORE_WRITE_ENTITY_KIND,datastoreWriteNamespace=$DATASTORE_WRITE_NAMESPACE,datastoreHintNumWorkers=$DATASTORE_HINT_NUM_WORKERS,errorWritePath=$ERROR_WRITE_PATH" \
 -pl v1 \
 -am
 ```

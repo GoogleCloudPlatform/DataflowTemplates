@@ -141,7 +141,7 @@ public final class TemplateParameter {
     String description() default "";
   }
 
-  /** Template Parameter containing numerical inputs (32 bits). */
+  /** Template Parameter containing integer numerical inputs (32 bits). */
   @Retention(RetentionPolicy.RUNTIME)
   @Target({ElementType.FIELD, ElementType.METHOD})
   public @interface Integer {
@@ -167,10 +167,62 @@ public final class TemplateParameter {
     String example() default "";
   }
 
-  /** Template Parameter containing numerical inputs (64 bits). */
+  /** Template Parameter containing integer numerical inputs (64 bits). */
   @Retention(RetentionPolicy.RUNTIME)
   @Target({ElementType.FIELD, ElementType.METHOD})
   public @interface Long {
+    /** Order of appearance. */
+    int order() default 999;
+
+    /** Name of the parameter. */
+    String name() default "";
+
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
+    /** If parameter is optional. */
+    boolean optional() default false;
+
+    /** Description of the parameter. */
+    String description();
+
+    /** Help text of the parameter. */
+    String helpText();
+
+    /** Example of the parameter. */
+    String example() default "";
+  }
+
+  /** Template Parameter containing floating point numerical inputs (32 bits). */
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target({ElementType.FIELD, ElementType.METHOD})
+  public @interface Float {
+    /** Order of appearance. */
+    int order() default 999;
+
+    /** Name of the parameter. */
+    String name() default "";
+
+    /** Group Name of the parameter. */
+    String groupName() default "";
+
+    /** If parameter is optional. */
+    boolean optional() default false;
+
+    /** Description of the parameter. */
+    String description();
+
+    /** Help text of the parameter. */
+    String helpText();
+
+    /** Example of the parameter. */
+    String example() default "";
+  }
+
+  /** Template Parameter containing floating point numerical inputs (64 bits). */
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target({ElementType.FIELD, ElementType.METHOD})
+  public @interface Double {
     /** Order of appearance. */
     int order() default 999;
 

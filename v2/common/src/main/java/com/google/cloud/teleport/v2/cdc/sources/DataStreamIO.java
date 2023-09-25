@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.cdc.sources;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects.firstNonNull;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects.firstNonNull;
 
 import com.google.api.client.util.DateTime;
 import com.google.api.services.storage.model.Objects;
@@ -61,7 +61,7 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TimestampedValue;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.Lists;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -112,6 +112,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private Boolean lowercaseSourceColumns = false;
   private Map<String, String> renameColumns = new HashMap<>();
   private Boolean hashRowId = false;
+  private Duration directoryWatchDuration = Duration.standardMinutes(10);
   PCollection<String> directories = null;
 
   public DataStreamIO() {}
@@ -159,6 +160,14 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   /** Set the reader to hash Oracle ROWID values into int. */
   public DataStreamIO withHashRowId() {
     this.hashRowId = true;
+    return this;
+  }
+
+  /** Set custom directoryWatchDuration used in Polling Pipeline. Default = 10 minutes */
+  public DataStreamIO withDirectoryWatchDuration(Duration directoryWatchDuration) {
+    if (directoryWatchDuration != null) {
+      this.directoryWatchDuration = directoryWatchDuration;
+    }
     return this;
   }
 
@@ -284,7 +293,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
               FileIO.matchAll()
                   .continuously(
                       Duration.standardSeconds(5),
-                      Growth.afterTimeSinceNewOutput(Duration.standardMinutes(10))))
+                      Growth.afterTimeSinceNewOutput(directoryWatchDuration)))
           .apply("ReadFiles", FileIO.readMatches());
     }
   }

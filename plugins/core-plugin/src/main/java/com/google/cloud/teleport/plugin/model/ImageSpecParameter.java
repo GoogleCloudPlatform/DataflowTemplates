@@ -282,6 +282,32 @@ public class ImageSpecParameter {
         this.setOptional(longParam.optional());
         this.setParamType(ImageSpecParameterType.NUMBER);
         break;
+      case "Float":
+        TemplateParameter.Float floatParam = (TemplateParameter.Float) parameterAnnotation;
+        if (!floatParam.name().isEmpty()) {
+          this.setName(floatParam.name());
+        }
+        processDescriptions(
+            floatParam.groupName(),
+            floatParam.description(),
+            floatParam.helpText(),
+            floatParam.example());
+        this.setOptional(floatParam.optional());
+        this.setParamType(ImageSpecParameterType.NUMBER);
+        break;
+      case "Double":
+        TemplateParameter.Double doubleParam = (TemplateParameter.Double) parameterAnnotation;
+        if (!doubleParam.name().isEmpty()) {
+          this.setName(doubleParam.name());
+        }
+        processDescriptions(
+            doubleParam.groupName(),
+            doubleParam.description(),
+            doubleParam.helpText(),
+            doubleParam.example());
+        this.setOptional(doubleParam.optional());
+        this.setParamType(ImageSpecParameterType.NUMBER);
+        break;
       case "Enum":
         TemplateParameter.Enum enumParam = (TemplateParameter.Enum) parameterAnnotation;
         if (!enumParam.name().isEmpty()) {

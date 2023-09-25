@@ -59,8 +59,15 @@ public @interface Template {
   /** The external class that holds the template code. */
   Class<?> placeholderClass() default void.class;
 
-  /** The interface that holds options/parameters to be passed. */
-  Class<?> optionsClass();
+  /**
+   * The interface that holds options/parameters to be passed. Not mandatory when "blocks" are used
+   * for automatic templates.
+   */
+  Class<?> optionsClass() default void.class;
+
+  Class<?>[] blocks() default void.class;
+
+  Class<?> dlqBlock() default void.class;
 
   /** An array that specifies the orders. */
   Class<?>[] optionsOrder() default void.class;
@@ -70,6 +77,15 @@ public @interface Template {
 
   /** Contact information for the Template. */
   String contactInformation() default "";
+
+  /** Language in which the template is defined. */
+  TemplateType type() default TemplateType.JAVA;
+
+  /** Languages that are supported by templates. */
+  enum TemplateType {
+    JAVA,
+    PYTHON
+  }
 
   /** Marker if the template is still in preview / pre-GA. */
   boolean preview() default false;

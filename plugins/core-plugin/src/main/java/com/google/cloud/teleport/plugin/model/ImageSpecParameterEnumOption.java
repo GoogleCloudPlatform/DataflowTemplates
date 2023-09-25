@@ -20,12 +20,12 @@ import org.apache.commons.lang3.StringUtils;
 /** Enum Options in a template parameter. */
 public class ImageSpecParameterEnumOption {
 
-  private String name;
+  private String value;
   private String label;
   private String description;
 
-  public ImageSpecParameterEnumOption(String name, String label, String description) {
-    this.name = name;
+  public ImageSpecParameterEnumOption(String value, String label, String description) {
+    this.value = value;
     if (StringUtils.isNotEmpty(label)) {
       this.label = label;
     }
@@ -34,12 +34,12 @@ public class ImageSpecParameterEnumOption {
     }
   }
 
-  public String getName() {
-    return name;
+  public String getValue() {
+    return value;
   }
 
-  public void setName(String name) {
-    this.name = name;
+  public void setValue(String value) {
+    this.value = value;
   }
 
   public String getLabel() {

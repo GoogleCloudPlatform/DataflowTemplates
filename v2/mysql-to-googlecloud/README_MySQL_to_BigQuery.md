@@ -1,11 +1,19 @@
-MySQL to BigQuery Template
+
+MySQL to BigQuery template
 ---
-A pipeline that reads from MySQL and writes to a BigQuery table. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API. If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format.
+The MySQL to BigQuery template is a batch pipeline that copies data from a MySQL
+table into an existing BigQuery table. This pipeline uses JDBC to connect to
+MySQL. For an extra layer of protection, you can also pass in a Cloud KMS key
+along with Base64-encoded username, password, and connection string parameters
+encrypted with the Cloud KMS key. For more information about encrypting your
+username, password, and connection string parameters, see the <a
+href="https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt">Cloud
+KMS API encryption endpoint</a>.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/mysql-to-bigquery)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=MySQL_to_BigQuery).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -16,7 +24,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required Parameters
 
 * **connectionURL** (JDBC connection URL string.): Url connection string to connect to the JDBC source. Connection string can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS. (Example: jdbc:mysql://some-host:3306/sampledb).
-* **outputTable** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.
+* **outputTable** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 * **bigQueryLoadingTemporaryDirectory** (Temporary directory for BigQuery loading process): Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
 
 ### Optional Parameters
@@ -52,7 +60,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/mysql-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/MySQLToBigQuery.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/mysql-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/MySQLToBigQuery.java)
 
 ### Templates Plugin
 

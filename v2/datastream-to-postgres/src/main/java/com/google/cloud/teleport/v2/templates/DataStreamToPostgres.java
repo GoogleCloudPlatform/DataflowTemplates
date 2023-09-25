@@ -93,7 +93,7 @@ public class DataStreamToPostgres {
     @Description(
         "The Pub/Sub subscription with DataStream file notifications."
             + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
+            + "`projects/<project-id>/subscriptions/<subscription-name>`.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);

@@ -32,7 +32,7 @@ public class MongoDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 1,
         description = "MongoDB Connection URI",
-        helpText = "URI to connect to MongoDB Atlas.")
+        helpText = "MongoDB connection URI in the format `mongodb+srv://:@`.")
     @Default.String("mongouri")
     String getMongoDbUri();
 
@@ -62,7 +62,7 @@ public class MongoDbToBigQueryOptions {
         enumOptions = {@TemplateEnumOption("FLATTEN"), @TemplateEnumOption("NONE")},
         description = "User option",
         helpText =
-            "User option: FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.")
+            "User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string.")
     @Default.String("NONE")
     String getUserOption();
 
@@ -90,7 +90,7 @@ public class MongoDbToBigQueryOptions {
         order = 1,
         description = "BigQuery output table",
         helpText =
-            "BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.")
+            "BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
     @Default.String("bqtable")
     String getOutputTableSpec();
 
@@ -102,9 +102,10 @@ public class MongoDbToBigQueryOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
         optional = true,
-        description = "Path to the UDF stored in the GCS bucket.",
-        helpText = "Enter the gcs path in format gs://<bucket-name>/<js-file>.js .",
-        example = "gs://test-bucket/test.js")
+        description = "JavaScript UDF path in Cloud Storage.",
+        helpText =
+            "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.",
+        example = "gs://your-bucket/your-transforms/*.js")
     String getJavascriptDocumentTransformGcsPath();
 
     void setJavascriptDocumentTransformGcsPath(String javascriptDocumentTransformGcsPath);
@@ -112,8 +113,9 @@ public class MongoDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 2,
         optional = true,
-        description = "UDF function name stored in the GCS bucket.",
-        helpText = "Enter the Name of the User defined function .",
+        description = "The name of the JavaScript function to call as your UDF.",
+        helpText =
+            "The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'.",
         example = "transform")
     String getJavascriptDocumentTransformFunctionName();
 

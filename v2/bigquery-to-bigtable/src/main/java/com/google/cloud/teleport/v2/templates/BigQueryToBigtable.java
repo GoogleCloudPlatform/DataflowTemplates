@@ -59,7 +59,6 @@ import org.apache.hadoop.hbase.client.Mutation;
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-bigtable",
     contactInformation = "https://cloud.google.com/support",
-    preview = true,
     requirements = {
       "The source BigQuery table must exist.",
       "The Bigtable table must exist.",

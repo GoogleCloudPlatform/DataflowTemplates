@@ -39,6 +39,12 @@
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-core</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+
     <!-- Testing dependencies -->
     <dependency>
       <groupId>com.google.truth</groupId>

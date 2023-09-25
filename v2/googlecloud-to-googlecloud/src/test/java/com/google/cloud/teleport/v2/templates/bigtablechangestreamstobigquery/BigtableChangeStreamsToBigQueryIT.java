@@ -29,7 +29,6 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.api.gax.paging.Page;
 import com.google.cloud.Timestamp;
 import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
@@ -40,10 +39,8 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.mo
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -58,7 +55,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
-import org.apache.beam.it.gcp.bigtable.BigtableResourceManagerCluster;
+import org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils;
 import org.apache.beam.it.gcp.bigtable.BigtableTableSpec;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -80,47 +77,56 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(BigtableChangeStreamsToBigQueryIT.class);
 
-  public static final String SOURCE_CDC_TABLE = "source_cdc_table";
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
-  private static final String TEST_REGION = "us-central1";
-  private static final String TEST_ZONE = "us-central1-b";
   private BigtableResourceManager bigtableResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
 
   private LaunchInfo launchInfo;
 
+  @Before
+  public void setup() throws IOException {
+    bigQueryResourceManager =
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
+    BigtableResourceManager.Builder rmBuilder =
+        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider)
+            .maybeUseStaticInstance();
+
+    bigtableResourceManager = rmBuilder.build();
+  }
+
+  @After
+  public void tearDownClass() {
+    ResourceManagerUtils.cleanResources(bigtableResourceManager, bigQueryResourceManager);
+  }
+
   @Test
   public void testBigtableChangeStreamsToBigQuerySingleMutationE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
-    String clusterName = "cluster-c1";
     String appProfileId = generateAppProfileId();
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
     cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
+
+    String table = BigtableResourceManagerUtils.generateTableId("single-mutation");
+    String cdcTable = BigtableResourceManagerUtils.generateTableId("cdc-single-mutation");
+    bigtableResourceManager.createTable(table, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    bigQueryResourceManager.createDataset(TEST_REGION);
+        appProfileId, true, bigtableResourceManager.getClusterNames());
+    bigQueryResourceManager.createDataset(REGION);
 
     Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
     launchInfo =
         launchTemplate(
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
-                    .addParameter("bigtableReadTableId", SOURCE_CDC_TABLE)
+                    .addParameter("bigtableReadTableId", table)
                     .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                     .addParameter("bigtableChangeStreamAppProfile", appProfileId)
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
-                    .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")));
+                    .addParameter("bigQueryChangelogTableName", cdcTable)));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -129,10 +135,10 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     String value = UUID.randomUUID().toString();
 
     RowMutation rowMutation =
-        RowMutation.create(SOURCE_CDC_TABLE, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, value);
+        RowMutation.create(table, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, value);
     bigtableResourceManager.write(rowMutation);
 
-    String query = newLookForValuesQuery(rowkey, column, value);
+    String query = newLookForValuesQuery(cdcTable, rowkey, column, value);
     waitForQueryToReturnRows(query, 1, true);
 
     TableResult tableResult = bigQueryResourceManager.runQuery(query);
@@ -147,8 +153,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
               assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
               assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
               assertEquals(
-                  SOURCE_CDC_TABLE,
-                  fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
+                  table, fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
               assertEquals(
                   bigtableResourceManager.getInstanceId(),
                   fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
@@ -164,23 +169,18 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   @Test
   public void testBigtableChangeStreamsToBigQueryMutationsStartTimeE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
-    String clusterName = "cluster-c1";
     String appProfileId = generateAppProfileId();
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
     cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
+    String table = BigtableResourceManagerUtils.generateTableId("mutations-start");
+    String cdcTable = BigtableResourceManagerUtils.generateTableId("cdc-mutations-start");
+    bigtableResourceManager.createTable(table, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    bigQueryResourceManager.createDataset(TEST_REGION);
+        appProfileId, true, bigtableResourceManager.getClusterNames());
+    bigQueryResourceManager.createDataset(REGION);
 
     String rowkey = UUID.randomUUID().toString();
     String column = UUID.randomUUID().toString();
@@ -189,8 +189,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     String nextValueToBeRead = UUID.randomUUID().toString();
 
     RowMutation earlyMutation =
-        RowMutation.create(SOURCE_CDC_TABLE, rowkey)
-            .setCell(SOURCE_COLUMN_FAMILY, column, tooEarlyValue);
+        RowMutation.create(table, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, tooEarlyValue);
     bigtableResourceManager.write(earlyMutation);
 
     TimeUnit.SECONDS.sleep(5);
@@ -199,15 +198,13 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     TimeUnit.SECONDS.sleep(5);
 
     RowMutation toBeReadMutation =
-        RowMutation.create(SOURCE_CDC_TABLE, rowkey)
-            .setCell(SOURCE_COLUMN_FAMILY, column, valueToBeRead);
+        RowMutation.create(table, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, valueToBeRead);
     bigtableResourceManager.write(toBeReadMutation);
 
     TimeUnit.SECONDS.sleep(5);
 
     RowMutation nextToBeReadMutation =
-        RowMutation.create(SOURCE_CDC_TABLE, rowkey)
-            .setCell(SOURCE_COLUMN_FAMILY, column, nextValueToBeRead);
+        RowMutation.create(table, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, nextValueToBeRead);
     bigtableResourceManager.write(nextToBeReadMutation);
 
     Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
@@ -215,18 +212,18 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         launchTemplate(
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
-                    .addParameter("bigtableReadTableId", SOURCE_CDC_TABLE)
+                    .addParameter("bigtableReadTableId", table)
                     .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                     .addParameter("bigtableChangeStreamAppProfile", appProfileId)
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
-                    .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
+                    .addParameter("bigQueryChangelogTableName", cdcTable)
                     .addParameter(
                         "bigtableChangeStreamStartTimestamp",
                         Timestamp.of(new Date(afterFirstMutation)).toString())));
 
     assertThatPipeline(launchInfo).isRunning();
 
-    String query = newLookForValuesQuery(rowkey, column, null);
+    String query = newLookForValuesQuery(cdcTable, rowkey, column, null);
     waitForQueryToReturnRows(query, 2, true);
 
     HashSet<String> toBeReadValues = new HashSet<>();
@@ -248,8 +245,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
               assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
               assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
               assertEquals(
-                  SOURCE_CDC_TABLE,
-                  fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
+                  table, fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
               assertEquals(
                   bigtableResourceManager.getInstanceId(),
                   fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
@@ -263,23 +259,18 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   @Test
   public void testBigtableChangeStreamsToBigQueryDeadLetterQueueE2E() throws Exception {
     long timeNowMicros = System.currentTimeMillis() * 1000;
-    String clusterName = "alexeyku-prod-c1";
     String appProfileId = generateAppProfileId();
-
-    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
-
-    bigtableResourceManager.createInstance(clusters);
 
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
     cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-    bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
+    String table = BigtableResourceManagerUtils.generateTableId("dlq");
+    String cdcTable = BigtableResourceManagerUtils.generateTableId("cdc-dlq");
+    bigtableResourceManager.createTable(table, cdcTableSpec);
 
     bigtableResourceManager.createAppProfile(
-        appProfileId, true, Lists.asList(clusterName, new String[] {}));
-
-    bigQueryResourceManager.createDataset(TEST_REGION);
+        appProfileId, true, bigtableResourceManager.getClusterNames());
+    bigQueryResourceManager.createDataset(REGION);
 
     String rowkey = UUID.randomUUID().toString();
     String column = UUID.randomUUID().toString();
@@ -295,13 +286,11 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     TimeUnit.SECONDS.sleep(5);
 
     RowMutation tooLargeMutation =
-        RowMutation.create(SOURCE_CDC_TABLE, rowkey)
-            .setCell(SOURCE_COLUMN_FAMILY, column, tooBigValue);
+        RowMutation.create(table, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, tooBigValue);
     bigtableResourceManager.write(tooLargeMutation);
 
     RowMutation smallMutation =
-        RowMutation.create(SOURCE_CDC_TABLE, rowkey)
-            .setCell(SOURCE_COLUMN_FAMILY, column, goodValue);
+        RowMutation.create(table, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, goodValue);
     bigtableResourceManager.write(smallMutation);
 
     TimeUnit.SECONDS.sleep(5);
@@ -311,11 +300,11 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
         launchTemplate(
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
-                    .addParameter("bigtableReadTableId", SOURCE_CDC_TABLE)
+                    .addParameter("bigtableReadTableId", table)
                     .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                     .addParameter("bigtableChangeStreamAppProfile", appProfileId)
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
-                    .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
+                    .addParameter("bigQueryChangelogTableName", cdcTable)
                     .addParameter("dlqDirectory", getGcsPath("dlq"))
                     .addParameter(
                         "bigtableChangeStreamStartTimestamp",
@@ -323,7 +312,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
     assertThatPipeline(launchInfo).isRunning();
 
-    String query = newLookForValuesQuery(rowkey, column, null);
+    String query = newLookForValuesQuery(cdcTable, rowkey, column, null);
     waitForQueryToReturnRows(query, 1, false);
 
     HashSet<String> toBeReadValues = new HashSet<>();
@@ -344,8 +333,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
               assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
               assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
               assertEquals(
-                  SOURCE_CDC_TABLE,
-                  fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
+                  table, fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
               assertEquals(
                   bigtableResourceManager.getInstanceId(),
                   fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
@@ -394,21 +382,6 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
             });
   }
 
-  @Before
-  public void setup() throws IOException {
-    bigQueryResourceManager =
-        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
-    BigtableResourceManager.Builder rmBuilder =
-        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider);
-
-    bigtableResourceManager = rmBuilder.build();
-  }
-
-  @After
-  public void tearDownClass() {
-    ResourceManagerUtils.cleanResources(bigtableResourceManager, bigQueryResourceManager);
-  }
-
   @NotNull
   private Supplier<Boolean> dataShownUp(String query, int minRows) {
     return () -> {
@@ -453,12 +426,13 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     assertThatResult(result).meetsConditions();
   }
 
-  private String newLookForValuesQuery(String rowkey, String column, String value) {
+  private String newLookForValuesQuery(
+      String cdcTable, String rowkey, String column, String value) {
     return "SELECT * FROM `"
         + bigQueryResourceManager.getDatasetId()
         + "."
-        + SOURCE_CDC_TABLE
-        + "_changes`"
+        + cdcTable
+        + "`"
         + " WHERE "
         + String.format(
             "%s = '%s'", ChangelogColumn.COLUMN_FAMILY.getBqColumnName(), SOURCE_COLUMN_FAMILY)

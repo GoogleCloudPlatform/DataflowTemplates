@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.database;
 
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
@@ -86,11 +87,13 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     try {
       String database = !StringUtils.isEmpty(this.database) ? this.database : "neo4j";
       String cypher = "CREATE OR REPLACE DATABASE $db";
-      LOG.info("Executing delete DB cypher: {} against database {}", cypher, database);
+      LOG.info(
+          "Executing CREATE OR REPLACE DATABASE Cypher query: {} against database {}",
+          cypher,
+          database);
       executeCypher(cypher, Map.of("db", database));
     } catch (Exception ex) {
-      LOG.error("Error executing reset database using CREATE OR REPLACE", ex);
-      fallbackResetDatabase();
+      fallbackResetDatabase(ex);
     }
   }
 
@@ -114,6 +117,13 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     }
   }
 
+  public void verifyConnectivity() {
+    if (this.driver == null) {
+      this.driver = getDriver();
+    }
+    this.driver.verifyConnectivity();
+  }
+
   @Override
   public void close() {
     if (this.session != null && this.session.isOpen()) {
@@ -131,16 +141,24 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     return driverSupplier.get();
   }
 
-  private void fallbackResetDatabase() {
+  private void fallbackResetDatabase(Exception initialException) {
     try {
       String ddeCypher = "MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS";
-      LOG.info("Executing alternate delete cypher: {}", ddeCypher);
+      LOG.info("Executing alternative delete Cypher query: {}", ddeCypher);
       executeCypher(ddeCypher);
       String constraintsDeleteCypher = "CALL apoc.schema.assert({}, {}, true)";
-      LOG.info("Dropping indices & constraints with query: {}", constraintsDeleteCypher);
+      LOG.info("Dropping indices & constraints with APOC: {}", constraintsDeleteCypher);
       executeCypher(constraintsDeleteCypher);
-    } catch (Exception dde) {
-      LOG.error("Error executing detach delete", dde);
+    } catch (Exception exception) {
+      exception.addSuppressed(initialException);
+      LOG.error(
+          "Error resetting database: "
+              + "make sure the configured Neo4j user is allowed to run 'CREATE OR REPLACE DATABASE'"
+              + " or APOC is installed.\n"
+              + "Alternatively, disable database reset by setting 'reset_db' to false in the job specification.",
+          exception);
+      Throwables.throwIfUnchecked(exception);
+      throw new RuntimeException(exception);
     }
   }
 }

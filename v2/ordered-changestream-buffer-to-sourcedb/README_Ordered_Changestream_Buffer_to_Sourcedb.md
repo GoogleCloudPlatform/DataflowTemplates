@@ -1,11 +1,13 @@
-Ordered change stream buffer to Source DB Template
+
+Ordered change stream buffer to Source DB template
 ---
-Streaming pipeline. Reads ordered Spanner change stream message from Pub/SubKafka, transforms them, and writes them to a Source Database like MySQL.
+Streaming pipeline. Reads ordered Spanner change stream message from
+Pub/SubKafka, transforms them, and writes them to a Source Database like MySQL.
+
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/ordered-changestream-buffer-to-sourcedb)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Ordered_Changestream_Buffer_to_Sourcedb).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -42,7 +44,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/ordered-changestream-buffer-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/OrderedChangestreamBufferToSourceDb.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/ordered-changestream-buffer-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/OrderedChangestreamBufferToSourceDb.java)
 
 ### Templates Plugin
 
@@ -82,6 +84,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -113,12 +116,12 @@ export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 export SESSION_FILE_PATH=<sessionFilePath>
 
 ### Optional
-export SOURCE_TYPE="mysql"
-export BUFFER_TYPE="pubsub"
+export SOURCE_TYPE=mysql
+export BUFFER_TYPE=pubsub
 export PUB_SUB_PROJECT_ID=<pubSubProjectId>
 export PUB_SUB_MAX_READ_COUNT=2000
 export KAFKA_CLUSTER_FILE_PATH=<kafkaClusterFilePath>
-export SOURCE_DB_TIMEZONE_OFFSET="+00:00"
+export SOURCE_DB_TIMEZONE_OFFSET=+00:00
 export TIMER_INTERVAL=1
 
 gcloud dataflow flex-template run "ordered-changestream-buffer-to-sourcedb-job" \
@@ -156,12 +159,12 @@ export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 export SESSION_FILE_PATH=<sessionFilePath>
 
 ### Optional
-export SOURCE_TYPE="mysql"
-export BUFFER_TYPE="pubsub"
+export SOURCE_TYPE=mysql
+export BUFFER_TYPE=pubsub
 export PUB_SUB_PROJECT_ID=<pubSubProjectId>
 export PUB_SUB_MAX_READ_COUNT=2000
 export KAFKA_CLUSTER_FILE_PATH=<kafkaClusterFilePath>
-export SOURCE_DB_TIMEZONE_OFFSET="+00:00"
+export SOURCE_DB_TIMEZONE_OFFSET=+00:00
 export TIMER_INTERVAL=1
 
 mvn clean package -PtemplatesRun \

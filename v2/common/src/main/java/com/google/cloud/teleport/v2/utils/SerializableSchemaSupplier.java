@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Objects;
 import org.apache.avro.Schema;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Supplier;
 
 /**
  * A {@link Supplier} for {@link Schema} objects that are needed to process Avro records in Beam

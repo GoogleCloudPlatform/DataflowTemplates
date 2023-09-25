@@ -54,8 +54,8 @@ import org.apache.beam.it.gcp.dataflow.ClassicTemplateClient;
 import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateClient;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.cache.Cache;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.cache.CacheBuilder;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.cache.Cache;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.cache.CacheBuilder;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -122,7 +122,7 @@ public abstract class TemplateTestBase {
   @Before
   public void setUpBase() throws ExecutionException {
 
-    testId = PipelineUtils.createJobName("test");
+    testId = PipelineUtils.createJobName("test", 10);
 
     TemplateIntegrationTest annotation = null;
     usingDirectRunner = System.getProperty("directRunnerTest") != null;
@@ -324,6 +324,7 @@ public abstract class TemplateTestBase {
       "-DprojectId=" + TestProperties.project(),
       "-Dregion=" + TestProperties.region(),
       "-DbucketName=" + bucketName,
+      "-DgcpTempLocation=" + bucketName,
       "-DstagePrefix=" + prefix,
       "-DtemplateName=" + template.name(),
       // Print stacktrace when command fails
@@ -465,7 +466,12 @@ public abstract class TemplateTestBase {
           configBuilder.setTimeoutAfter(Duration.ofMinutes(4)).setCheckAfter(Duration.ofSeconds(5));
     }
 
-    return configBuilder.build();
+    return wrapConfiguration(configBuilder).build();
+  }
+
+  /** Entrypoint allowed to override settings. */
+  protected Config.Builder wrapConfiguration(Config.Builder builder) {
+    return builder;
   }
 
   /**

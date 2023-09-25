@@ -99,29 +99,30 @@ public class DataCastingUtils {
         continue;
       }
 
+      TypeName typeName = type.getTypeName();
       try {
-        if (type.getTypeName().isNumericType()) {
-          if (type.getTypeName() == TypeName.INT16 || type.getTypeName() == TypeName.INT32) {
+        if (typeName.isNumericType()) {
+          if (typeName == TypeName.INT16 || typeName == TypeName.INT32) {
             castVals.add(asInteger(objVal));
-          } else if (type.getTypeName() == TypeName.DECIMAL) {
+          } else if (typeName == TypeName.DECIMAL) {
             castVals.add(asBigDecimal(objVal));
-          } else if (type.getTypeName() == TypeName.FLOAT) {
+          } else if (typeName == TypeName.FLOAT) {
             castVals.add(asFloat(objVal));
-          } else if (type.getTypeName() == TypeName.DOUBLE) {
+          } else if (typeName == TypeName.DOUBLE) {
             castVals.add(asDouble(objVal));
           } else {
             castVals.add(asLong(objVal));
           }
-        } else if (type.getTypeName().isLogicalType()) {
+        } else if (typeName == TypeName.BOOLEAN) {
           castVals.add(asBoolean(objVal));
-        } else if (type.getTypeName().isDateType()) {
+        } else if (typeName.isDateType()) {
           castVals.add(toZonedDateTime(asDateTime(objVal)));
         } else {
           castVals.add(objVal);
         }
       } catch (Exception e) {
         castVals.add(null);
-        LOG.warn("Exception casting {} ({}): {}", fieldName, type.getTypeName().toString(), objVal);
+        LOG.warn("Exception casting {} ({}): {}", fieldName, typeName.toString(), objVal);
       }
     }
 

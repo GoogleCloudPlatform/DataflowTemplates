@@ -54,7 +54,7 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Throwables;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -145,7 +145,7 @@ public class PubSubToMongoDB {
     @TemplateParameter.Text(
         order = 2,
         description = "MongoDB Connection URI",
-        helpText = "List of Mongo DB nodes separated by comma.",
+        helpText = "Comma separated list of MongoDB servers.",
         example = "host1:port,host2:port,host3:port")
     @Validation.Required
     String getMongoDBUri();
@@ -165,7 +165,7 @@ public class PubSubToMongoDB {
     @TemplateParameter.Text(
         order = 4,
         description = "MongoDB collection",
-        helpText = "Name of the collection inside MongoDB database to put the documents to.",
+        helpText = "Name of the collection inside MongoDB database to insert the documents.",
         example = "my-collection")
     @Validation.Required
     String getCollection();
@@ -176,10 +176,9 @@ public class PubSubToMongoDB {
         order = 5,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
-                + " schema, malformed json) are written to this table. If it doesn't exist, it will"
-                + " be created during pipeline execution. If not specified,"
-                + " \"outputTableSpec_error_records\" is used instead.",
+            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
+                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
         example = "your-project-id:your-dataset.your-table-name")
     @Validation.Required
     String getDeadletterTable();
@@ -200,9 +199,7 @@ public class PubSubToMongoDB {
         order = 7,
         optional = true,
         description = "Batch Size in Bytes",
-        helpText =
-            "Batch Size in bytes used for batch insertion of documents into MongoDB. Default:"
-                + " 5242880 (5mb)")
+        helpText = "Batch Size in bytes used for batch insertion of documents into MongoDB.")
     @Default.Long(5242880)
     Long getBatchSizeBytes();
 
@@ -328,8 +325,6 @@ public class PubSubToMongoDB {
                     .setJavascriptTextTransformFunctionName(
                         options.getJavascriptTextTransformFunctionName())
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
-                    .setJavascriptTextTransformFunctionReload(
-                        options.getJavascriptTextTransformFunctionReload())
                     .setJavascriptTextTransformReloadIntervalMinutes(
                         options.getJavascriptTextTransformReloadIntervalMinutes())
                     .build());
@@ -412,9 +407,6 @@ public class PubSubToMongoDB {
     public abstract String javascriptTextTransformFunctionName();
 
     @Nullable
-    public abstract Boolean javascriptTextTransformFunctionReload();
-
-    @Nullable
     public abstract Integer javascriptTextTransformReloadIntervalMinutes();
 
     @Override
@@ -432,7 +424,6 @@ public class PubSubToMongoDB {
             JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
                 .setFileSystemPath(javascriptTextTransformGcsPath())
                 .setFunctionName(javascriptTextTransformFunctionName())
-                .setFunctionReload(javascriptTextTransformFunctionReload())
                 .setReloadIntervalMinutes(javascriptTextTransformReloadIntervalMinutes())
                 .setSuccessTag(TRANSFORM_OUT)
                 .setFailureTag(TRANSFORM_DEADLETTER_OUT)
@@ -453,9 +444,6 @@ public class PubSubToMongoDB {
 
       public abstract Builder setJavascriptTextTransformFunctionName(
           String javascriptTextTransformFunctionName);
-
-      public abstract Builder setJavascriptTextTransformFunctionReload(
-          Boolean javascriptTextTransformFunctionReload);
 
       public abstract Builder setJavascriptTextTransformReloadIntervalMinutes(
           Integer javascriptTextTransformReloadIntervalMinutes);

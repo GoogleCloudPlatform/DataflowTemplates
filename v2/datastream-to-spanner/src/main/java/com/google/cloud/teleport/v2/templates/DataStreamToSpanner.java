@@ -59,6 +59,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -344,6 +345,21 @@ public class DataStreamToSpanner {
     String getTransformationContextFilePath();
 
     void setTransformationContextFilePath(String value);
+
+    @TemplateParameter.Integer(
+        order = 22,
+        optional = true,
+        description = "Directory watch duration in minutes. Default: 10 minutes",
+        helpText =
+            "The Duration for which the pipeline should keep polling a directory in GCS. Datastream"
+                + "output files are arranged in a directory structure which depicts the timestamp "
+                + "of the event grouped by minutes. This parameter should be approximately equal to"
+                + "maximum delay which could occur between event occuring in source database and "
+                + "the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes")
+    @Default.Integer(10)
+    Integer getDirectoryWatchDurationInMinutes();
+
+    void setDirectoryWatchDurationInMinutes(Integer value);
   }
 
   private static void validateSourceType(Options options) {
@@ -492,7 +508,9 @@ public class DataStreamToSpanner {
                       options.getInputFileFormat(),
                       options.getGcsPubSubSubscription(),
                       options.getRfcStartDateTime())
-                  .withFileReadConcurrency(options.getFileReadConcurrency()));
+                  .withFileReadConcurrency(options.getFileReadConcurrency())
+                  .withDirectoryWatchDuration(
+                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
 
       jsonRecords =
           PCollectionList.of(datastreamJsonRecords)

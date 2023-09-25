@@ -1,11 +1,13 @@
-Streaming Data Generator Template
+
+Streaming Data Generator template
 ---
-A pipeline to publish messages at specified QPS.This template can be used to benchmark performance of streaming pipelines.
+A pipeline to publish messages at specified QPS.This template can be used to
+benchmark performance of streaming pipelines.
+
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/streaming-data-generator)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Streaming_Data_Generator).
-
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -43,6 +45,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerInstanceName** (Cloud Spanner instance name.): Cloud Spanner instance name.
 * **spannerDatabaseName** (Cloud Spanner database name.): Cloud Spanner database name.
 * **spannerTableName** (Cloud Spanner table name.): Cloud Spanner table name.
+* **maxNumMutations** (Max mutatated cells per batch.): Specifies the cell mutation limit (maximum number of mutated cells per batch). Default value is 5000.
+* **maxNumRows** (Max rows per batch.): Specifies the row mutation limit (maximum number of mutated rows per batch). Default value is 1000.
+* **batchSizeBytes** (Max batch size in bytes.): Specifies the batch size limit (max number of bytes mutated per batch). Default value is 1MB.
+* **commitDeadlineSeconds** (Commit deadline in seconds for write requests.): Specifies the deadline in seconds for the Commit API call.
 
 
 
@@ -58,7 +64,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=/v2/streaming-data-generator/src/main/java/com/google/cloud/teleport/v2/templates/StreamingDataGenerator.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/streaming-data-generator/src/main/java/com/google/cloud/teleport/v2/templates/StreamingDataGenerator.java)
 
 ### Templates Plugin
 
@@ -98,6 +104,7 @@ mvn clean package -PtemplatesStage  \
 -am
 ```
 
+
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
@@ -132,15 +139,15 @@ export SCHEMA_TEMPLATE=<schemaTemplate>
 export SCHEMA_LOCATION=<schemaLocation>
 export TOPIC=<topic>
 export MESSAGES_LIMIT=0
-export OUTPUT_TYPE="JSON"
+export OUTPUT_TYPE=JSON
 export AVRO_SCHEMA_LOCATION=<avroSchemaLocation>
-export SINK_TYPE="PUBSUB"
+export SINK_TYPE=PUBSUB
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
-export WRITE_DISPOSITION="WRITE_APPEND"
+export WRITE_DISPOSITION=WRITE_APPEND
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export WINDOW_DURATION="1m"
+export WINDOW_DURATION=1m
 export OUTPUT_DIRECTORY=<outputDirectory>
-export OUTPUT_FILENAME_PREFIX="output-"
+export OUTPUT_FILENAME_PREFIX=output-
 export NUM_SHARDS=0
 export DRIVER_CLASS_NAME=<driverClassName>
 export CONNECTION_URL=<connectionUrl>
@@ -152,6 +159,10 @@ export PROJECT_ID=<projectId>
 export SPANNER_INSTANCE_NAME=<spannerInstanceName>
 export SPANNER_DATABASE_NAME=<spannerDatabaseName>
 export SPANNER_TABLE_NAME=<spannerTableName>
+export MAX_NUM_MUTATIONS=<maxNumMutations>
+export MAX_NUM_ROWS=<maxNumRows>
+export BATCH_SIZE_BYTES=<batchSizeBytes>
+export COMMIT_DEADLINE_SECONDS=<commitDeadlineSeconds>
 
 gcloud dataflow flex-template run "streaming-data-generator-job" \
   --project "$PROJECT" \
@@ -181,7 +192,11 @@ gcloud dataflow flex-template run "streaming-data-generator-job" \
   --parameters "projectId=$PROJECT_ID" \
   --parameters "spannerInstanceName=$SPANNER_INSTANCE_NAME" \
   --parameters "spannerDatabaseName=$SPANNER_DATABASE_NAME" \
-  --parameters "spannerTableName=$SPANNER_TABLE_NAME"
+  --parameters "spannerTableName=$SPANNER_TABLE_NAME" \
+  --parameters "maxNumMutations=$MAX_NUM_MUTATIONS" \
+  --parameters "maxNumRows=$MAX_NUM_ROWS" \
+  --parameters "batchSizeBytes=$BATCH_SIZE_BYTES" \
+  --parameters "commitDeadlineSeconds=$COMMIT_DEADLINE_SECONDS"
 ```
 
 For more information about the command, please check:
@@ -207,15 +222,15 @@ export SCHEMA_TEMPLATE=<schemaTemplate>
 export SCHEMA_LOCATION=<schemaLocation>
 export TOPIC=<topic>
 export MESSAGES_LIMIT=0
-export OUTPUT_TYPE="JSON"
+export OUTPUT_TYPE=JSON
 export AVRO_SCHEMA_LOCATION=<avroSchemaLocation>
-export SINK_TYPE="PUBSUB"
+export SINK_TYPE=PUBSUB
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
-export WRITE_DISPOSITION="WRITE_APPEND"
+export WRITE_DISPOSITION=WRITE_APPEND
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export WINDOW_DURATION="1m"
+export WINDOW_DURATION=1m
 export OUTPUT_DIRECTORY=<outputDirectory>
-export OUTPUT_FILENAME_PREFIX="output-"
+export OUTPUT_FILENAME_PREFIX=output-
 export NUM_SHARDS=0
 export DRIVER_CLASS_NAME=<driverClassName>
 export CONNECTION_URL=<connectionUrl>
@@ -227,6 +242,10 @@ export PROJECT_ID=<projectId>
 export SPANNER_INSTANCE_NAME=<spannerInstanceName>
 export SPANNER_DATABASE_NAME=<spannerDatabaseName>
 export SPANNER_TABLE_NAME=<spannerTableName>
+export MAX_NUM_MUTATIONS=<maxNumMutations>
+export MAX_NUM_ROWS=<maxNumRows>
+export BATCH_SIZE_BYTES=<batchSizeBytes>
+export COMMIT_DEADLINE_SECONDS=<commitDeadlineSeconds>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -235,7 +254,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="streaming-data-generator-job" \
 -DtemplateName="Streaming_Data_Generator" \
--Dparameters="qps=$QPS,schemaTemplate=$SCHEMA_TEMPLATE,schemaLocation=$SCHEMA_LOCATION,topic=$TOPIC,messagesLimit=$MESSAGES_LIMIT,outputType=$OUTPUT_TYPE,avroSchemaLocation=$AVRO_SCHEMA_LOCATION,sinkType=$SINK_TYPE,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,windowDuration=$WINDOW_DURATION,outputDirectory=$OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS,driverClassName=$DRIVER_CLASS_NAME,connectionUrl=$CONNECTION_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,statement=$STATEMENT,projectId=$PROJECT_ID,spannerInstanceName=$SPANNER_INSTANCE_NAME,spannerDatabaseName=$SPANNER_DATABASE_NAME,spannerTableName=$SPANNER_TABLE_NAME" \
+-Dparameters="qps=$QPS,schemaTemplate=$SCHEMA_TEMPLATE,schemaLocation=$SCHEMA_LOCATION,topic=$TOPIC,messagesLimit=$MESSAGES_LIMIT,outputType=$OUTPUT_TYPE,avroSchemaLocation=$AVRO_SCHEMA_LOCATION,sinkType=$SINK_TYPE,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,windowDuration=$WINDOW_DURATION,outputDirectory=$OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS,driverClassName=$DRIVER_CLASS_NAME,connectionUrl=$CONNECTION_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,statement=$STATEMENT,projectId=$PROJECT_ID,spannerInstanceName=$SPANNER_INSTANCE_NAME,spannerDatabaseName=$SPANNER_DATABASE_NAME,spannerTableName=$SPANNER_TABLE_NAME,maxNumMutations=$MAX_NUM_MUTATIONS,maxNumRows=$MAX_NUM_ROWS,batchSizeBytes=$BATCH_SIZE_BYTES,commitDeadlineSeconds=$COMMIT_DEADLINE_SECONDS" \
 -pl v2/streaming-data-generator \
 -am
 ```

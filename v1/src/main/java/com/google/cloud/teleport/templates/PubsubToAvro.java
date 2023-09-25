@@ -248,7 +248,7 @@ public class PubsubToAvro {
 
   /**
    * Converts an incoming {@link PubsubMessage} to the {@link AvroPubsubMessageRecord} class by
-   * copying it's fields and the timestamp of the message.
+   * copying its fields and the timestamp of the message.
    */
   static class PubsubMessageToArchiveDoFn extends DoFn<PubsubMessage, AvroPubsubMessageRecord> {
     @ProcessElement

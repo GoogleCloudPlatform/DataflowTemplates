@@ -45,7 +45,7 @@
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.49.0</beam.version>
+    <beam.version>2.50.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->
@@ -135,14 +135,6 @@
         <groupId>org.apache.avro</groupId>
         <artifactId>avro</artifactId>
         <version>${avro.version}</version>
-      </dependency>
-
-      <!-- TODO: remove when Beam 2.49.0 is released -->
-      <!-- https://github.com/apache/beam/pull/26910 -->
-      <dependency>
-        <groupId>com.google.apis</groupId>
-        <artifactId>google-api-services-storage</artifactId>
-        <version>v1-rev20230301-2.0.0</version>
       </dependency>
 
       <!-- If any module uses log4j 2.x, enforce it is patched by default -->
@@ -520,5 +512,6 @@
     <module>v2</module>
     <module>structured-logging</module>
     <module>plaintext-logging</module>
+    <module>python</module>
   </modules>
 </project>
