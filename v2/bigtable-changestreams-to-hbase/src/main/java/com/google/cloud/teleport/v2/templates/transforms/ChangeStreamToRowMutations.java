@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import static com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation.MutationType.GARBAGE_COLLECTION;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
@@ -48,8 +49,8 @@ public class ChangeStreamToRowMutations {
   private static final Logger LOG = LoggerFactory.getLogger(ChangeStreamToRowMutations.class);
 
   /** Creates change stream converter transformer. */
-  public static ConvertChangeStream convertChangeStream() {
-    return new ConvertChangeStream();
+  public static ConvertChangeStream convertChangeStream(boolean filterGCMutationsInput) {
+    return new ConvertChangeStream(filterGCMutationsInput);
   }
 
   /**
@@ -65,6 +66,7 @@ public class ChangeStreamToRowMutations {
     private boolean bidirectionalReplicationEnabled;
     private String cbtQualifier;
     private String hbaseQualifier;
+    private boolean filterGCMutations;
 
     /**
      * Call converter with this function with the necessary params to enable bidirectional
@@ -82,15 +84,21 @@ public class ChangeStreamToRowMutations {
         String cbtQualifierInput,
         String hbaseQualifierInput) {
       return new ConvertChangeStream(
-          bidirectionalReplicationEnabledInput, cbtQualifierInput, hbaseQualifierInput);
+          bidirectionalReplicationEnabledInput,
+          cbtQualifierInput,
+          hbaseQualifierInput,
+          filterGCMutations);
     }
 
-    public ConvertChangeStream() {}
+    public ConvertChangeStream(boolean filterGCMutationsInput) {
+      filterGCMutations = filterGCMutationsInput;
+    }
 
     private ConvertChangeStream(
         boolean bidirectionalReplicationEnabledInput,
         String cbtQualifierInput,
-        String hbaseQualifierInput) {
+        String hbaseQualifierInput,
+        boolean filterGCMutationsInput) {
       if (bidirectionalReplicationEnabledInput) {
         checkArgument(cbtQualifierInput != null, "cbt qualifier cannot be null.");
         checkArgument(hbaseQualifierInput != null, "hbase qualifier cannot be null.");
@@ -98,6 +106,7 @@ public class ChangeStreamToRowMutations {
       bidirectionalReplicationEnabled = bidirectionalReplicationEnabledInput;
       cbtQualifier = cbtQualifierInput;
       hbaseQualifier = hbaseQualifierInput;
+      filterGCMutations = filterGCMutationsInput;
     }
 
     @Override
@@ -106,7 +115,10 @@ public class ChangeStreamToRowMutations {
       return input.apply(
           ParDo.of(
               new ConvertChangeStreamFn(
-                  bidirectionalReplicationEnabled, cbtQualifier, hbaseQualifier)));
+                  bidirectionalReplicationEnabled,
+                  cbtQualifier,
+                  hbaseQualifier,
+                  filterGCMutations)));
     }
   }
 
@@ -120,18 +132,29 @@ public class ChangeStreamToRowMutations {
     private String cbtQualifier;
     private boolean bidirectionalReplicationEnabled;
 
+    private boolean filterGCMutations;
+
     public ConvertChangeStreamFn(
-        boolean bidirectionalReplicationEnabledFlag,
+        boolean bidirectionalReplicationEnabledInput,
         String cbtQualifierInput,
-        String hbaseQualifierInput) {
-      bidirectionalReplicationEnabled = bidirectionalReplicationEnabledFlag;
+        String hbaseQualifierInput,
+        boolean filterGCMutationsInput) {
+      bidirectionalReplicationEnabled = bidirectionalReplicationEnabledInput;
       hbaseQualifier = hbaseQualifierInput;
       cbtQualifier = cbtQualifierInput;
+      filterGCMutations = filterGCMutationsInput;
     }
 
     @ProcessElement
     public void processElement(ProcessContext c) throws Exception {
       ChangeStreamMutation mutation = c.element().getValue();
+
+      // Skip element if filter GC flag on and the mutation was of GC type.
+      if (filterGCMutations && mutation.getType().equals(GARBAGE_COLLECTION)) {
+        Metrics.counter(ConvertChangeStreamFn.class, "gc_mutations_filtered").inc();
+        return;
+      }
+
       // Skip element if it was replicated from HBase.
       if (bidirectionalReplicationEnabled && isHbaseReplicated(mutation, hbaseQualifier)) {
         return;
@@ -162,11 +185,11 @@ public class ChangeStreamToRowMutations {
         if (((DeleteCells) lastEntry)
             .getQualifier()
             .equals(ByteString.copyFromUtf8(hbaseQualifierInput))) {
-          Metrics.counter(ConvertChangeStreamFn.class, "mutations_filtered_from_hbase").inc();
+          Metrics.counter(ConvertChangeStreamFn.class, "hbase_mutations_filtered").inc();
           return true;
         }
       }
-      Metrics.counter(ConvertChangeStreamFn.class, "mutations_replicated_from_bigtable").inc();
+      Metrics.counter(ConvertChangeStreamFn.class, "bigtable_mutations_replicated").inc();
       return false;
     }
 
