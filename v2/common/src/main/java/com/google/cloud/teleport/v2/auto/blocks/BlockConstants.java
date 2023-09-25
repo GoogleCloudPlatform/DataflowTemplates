@@ -15,21 +15,12 @@
  */
 package com.google.cloud.teleport.v2.auto.blocks;
 
-import com.google.api.services.bigquery.model.TableRow;
-import com.google.cloud.teleport.v2.values.FailsafeElement;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
-import org.apache.beam.sdk.values.TupleTag;
-
 public final class BlockConstants {
 
   /** The default suffix for error tables if dead letter table is not specified. */
   public static final String DEFAULT_DEADLETTER_TABLE_SUFFIX = "_error_records";
 
-  public static final TupleTag<FailsafeElement<PubsubMessage, String>> ERROR_TAG_PS =
-      new TupleTag<FailsafeElement<PubsubMessage, String>>();
+  public static final String ERROR_TAG = "errors";
 
-  public static final TupleTag<FailsafeElement<String, String>> ERROR_TAG_STR =
-      new TupleTag<FailsafeElement<String, String>>();
-
-  public static final TupleTag<TableRow> OUTPUT_TAG = new TupleTag<TableRow>();
+  public static final String OUTPUT_TAG = "output";
 }

@@ -15,33 +15,35 @@
  */
 package com.google.cloud.teleport.v2.auto.blocks;
 
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.service.AutoService;
+import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Consumes;
 import com.google.cloud.teleport.metadata.auto.DlqOutputs;
 import com.google.cloud.teleport.metadata.auto.Outputs;
-import com.google.cloud.teleport.metadata.auto.TemplateTransform;
 import com.google.cloud.teleport.v2.auto.blocks.PubsubMessageToTableRow.TransformOptions;
 import com.google.cloud.teleport.v2.auto.dlq.BigQueryDeadletterOptions;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
-
-import com.google.common.collect.ImmutableMap;
+import java.util.Objects;
 import org.apache.beam.sdk.coders.NullableCoder;
+import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.expansion.ExternalTransformRegistrar;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesAndMessageIdCoder;
+import org.apache.beam.sdk.schemas.AutoValueSchema;
+import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
+import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.ExternalTransformBuilder;
 import org.apache.beam.sdk.transforms.Flatten;
-import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
@@ -49,77 +51,67 @@ import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-import static com.google.cloud.teleport.v2.auto.blocks.StandardCoderConverters.RowToPubSubMessage;
-import static com.google.cloud.teleport.v2.auto.blocks.StandardCoderConverters.failsafeElementToRow;
-import static com.google.cloud.teleport.v2.auto.blocks.StandardCoderConverters.tableRowToRow;
-
-@AutoService(ExternalTransformRegistrar.class)
+@AutoService(SchemaTransformProvider.class)
 public class PubsubMessageToTableRow
-    implements TemplateTransform<TransformOptions>, ExternalTransformRegistrar {
+    extends TemplateTransformClass<
+        TransformOptions, PubsubMessageToTableRow.PubsubMessageToTableRowTransformConfiguration> {
 
-  private static final String URN = "blocks:external:org.apache.beam:pubsub_to_bigquery:v1";
+  @DefaultSchema(AutoValueSchema.class)
+  @AutoValue
+  public abstract static class PubsubMessageToTableRowTransformConfiguration extends Configuration {
 
-  private static class Builder
-      implements ExternalTransformBuilder<
-          Configuration, @NonNull PCollection<Row>, @NonNull PCollectionRowTuple> {
-    @Override
-    public @NonNull
-        PTransform<@NonNull PCollection<Row>, @NonNull PCollectionRowTuple> buildExternal(
-            Configuration config) {
-      return new PTransform<>() {
-        @Override
-        public @NonNull PCollectionRowTuple expand(@NonNull PCollection<Row> input) {
-          PCollectionTuple output = underlyingTransform(RowToPubSubMessage(input), config);
+    abstract String getJavascriptTextTransformGcsPath();
 
-          PCollection<Row> tableRows = tableRowToRow(output.get(BlockConstants.OUTPUT_TAG));
+    abstract String getJavascriptTextTransformFunctionName();
 
-          PCollection<FailsafeElement<PubsubMessage, String>> errors = output.get(BlockConstants.ERROR_TAG_PS);
-          PCollection<Row> normalizedErrors = failsafeElementToRow(errors);
+    public void validate() {
+      String invalidConfigMessage = "Invalid PubSubMessageToTableRow configuration: ";
+      if (this.getErrorHandling() != null) {
+        checkArgument(
+            !Strings.isNullOrEmpty(this.getErrorHandling().getOutput()),
+            invalidConfigMessage + "Output must not be empty if error handling specified.");
+      }
+    }
 
-          return PCollectionRowTuple.of("output", tableRows)
-              .and("errors", normalizedErrors);
-//          return tableRows;
-        }
-      };
+    public static PubsubMessageToTableRowTransformConfiguration.Builder builder() {
+      return new AutoValue_PubsubMessageToTableRow_PubsubMessageToTableRowTransformConfiguration
+          .Builder();
+    }
+
+    @AutoValue.Builder
+    public abstract static class Builder extends Configuration.Builder<Builder> {
+
+      public abstract PubsubMessageToTableRowTransformConfiguration.Builder
+          setJavascriptTextTransformGcsPath(String path);
+
+      public abstract PubsubMessageToTableRowTransformConfiguration.Builder
+          setJavascriptTextTransformFunctionName(String name);
+
+      public abstract PubsubMessageToTableRowTransformConfiguration build();
+    }
+
+    public static PubsubMessageToTableRowTransformConfiguration fromOptions(
+        TransformOptions options) {
+      return new AutoValue_PubsubMessageToTableRow_PubsubMessageToTableRowTransformConfiguration
+              .Builder()
+          .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
+          .setJavascriptTextTransformFunctionName(options.getJavascriptTextTransformFunctionName())
+          .build();
     }
   }
 
   @Override
-  public Map<String, Class<? extends ExternalTransformBuilder<?, ?, ?>>> knownBuilders() {
-    return ImmutableMap.of(URN, Builder.class);
+  public @NonNull Class<PubsubMessageToTableRowTransformConfiguration> configurationClass() {
+    return PubsubMessageToTableRowTransformConfiguration.class;
   }
 
-  // TODO(polber) - See if this Config class can be generated programmatically from TransformOptions
-  // Interface
-  public static class Configuration {
-    String javascriptTextTransformGcsPath = "";
-    String javascriptTextTransformFunctionName = "";
-
-    public void setJavascriptTextTransformGcsPath(String path) {
-      this.javascriptTextTransformGcsPath = path;
-    }
-
-    public String getJavascriptTextTransformGcsPath() {
-      return this.javascriptTextTransformGcsPath;
-    }
-
-    public void setJavascriptTextTransformFunctionName(String name) {
-      this.javascriptTextTransformFunctionName = name;
-    }
-
-    public String getJavascriptTextTransformFunctionName() {
-      return this.javascriptTextTransformFunctionName;
-    }
-
-    public static Configuration fromOptions(TransformOptions options) {
-      Configuration config = new Configuration();
-      config.setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath());
-      config.setJavascriptTextTransformFunctionName(
-          options.getJavascriptTextTransformFunctionName());
-      return config;
-    }
+  @Override
+  public @NonNull String identifier() {
+    return "blocks:external:org.apache.beam:pubsub_to_bigquery:v1";
   }
 
   public interface TransformOptions
@@ -156,25 +148,31 @@ public class PubsubMessageToTableRow
           NullableCoder.of(PubsubMessageWithAttributesAndMessageIdCoder.of()),
           NullableCoder.of(StringUtf8Coder.of()));
 
-  @Consumes(PubsubMessage.class)
-  @Outputs(TableRow.class)
+  @Consumes(
+      value = Row.class,
+      types = {RowTypes.PubSubMessageRow.class})
+  @Outputs(
+      value = Row.class,
+      types = {RowTypes.SchemaTableRow.class})
   @DlqOutputs(
-      value = FailsafeElement.class,
-      types = {PubsubMessage.class, String.class})
-  public PCollectionTuple transform(PCollection<PubsubMessage> input, TransformOptions options) {
-    return underlyingTransform(input, Configuration.fromOptions(options));
+      value = Row.class,
+      types = {RowTypes.FailsafePubSubRow.class})
+  public PCollectionRowTuple transform(PCollectionRowTuple input, TransformOptions options) {
+    return transform(input, PubsubMessageToTableRowTransformConfiguration.fromOptions(options));
   }
 
-  static PCollectionTuple underlyingTransform(PCollection<PubsubMessage> input, Configuration config) {
+  public PCollectionRowTuple transform(
+      PCollectionRowTuple input, PubsubMessageToTableRowTransformConfiguration config) {
     PCollectionTuple udfOut =
         input
+            .get(BlockConstants.OUTPUT_TAG)
             // Map the incoming messages into FailsafeElements so we can recover from failures
             // across multiple transforms.
-            .apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()))
+            .apply("MapToRecord", ParDo.of(new PubSubMessageToFailsafeElementFn()))
             .setCoder(FAILSAFE_ELEMENT_CODER)
             .apply(
                 "InvokeUDF",
-                FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
+                JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
                     .setFileSystemPath(config.getJavascriptTextTransformGcsPath())
                     .setFunctionName(config.getJavascriptTextTransformFunctionName())
                     .setSuccessTag(UDF_OUT)
@@ -192,33 +190,36 @@ public class PubsubMessageToTableRow
                     .setFailureTag(TRANSFORM_DEADLETTER_OUT)
                     .build());
 
-    // String dlqTable =
-    //     StringUtils.isEmpty(options.getOutputDeadletterTable())
-    //         ? options.getOutputTableSpec() + BlockConstants.DEFAULT_DEADLETTER_TABLE_SUFFIX
-    //         : options.getOutputDeadletterTable();
-
-    // AutoDLQUtil.writeDLQToBigQueryForPubsubMessage(
-    //     udfOut.get(UDF_DEADLETTER_OUT).setCoder(FAILSAFE_ELEMENT_CODER), dlqTable);
-    // AutoDLQUtil.writeDLQToBigQueryForPubsubMessage(
-    //     jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT).setCoder(FAILSAFE_ELEMENT_CODER),
-    // dlqTable);
-
     PCollectionList<FailsafeElement<PubsubMessage, String>> pcs =
         PCollectionList.of(udfOut.get(UDF_DEADLETTER_OUT).setCoder(FAILSAFE_ELEMENT_CODER))
             .and(jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT).setCoder(FAILSAFE_ELEMENT_CODER));
 
-    // return jsonToTableRowOut.get(TRANSFORM_OUT);
+    PCollection<Row> outputRows =
+        jsonToTableRowOut
+            .get(TRANSFORM_OUT)
+            .apply(
+                MapElements.into(TypeDescriptor.of(Row.class))
+                    .via(RowTypes.SchemaTableRow::TableRowToRow))
+            .setCoder(RowCoder.of(RowTypes.SchemaTableRow.SCHEMA));
 
-    return PCollectionTuple.of(BlockConstants.OUTPUT_TAG, jsonToTableRowOut.get(TRANSFORM_OUT))
-        .and(BlockConstants.ERROR_TAG_PS, pcs.apply(Flatten.pCollections()));
+    PCollection<Row> errors =
+        pcs.apply(Flatten.pCollections())
+            .apply(
+                MapElements.into(TypeDescriptor.of(Row.class))
+                    .via(RowTypes.FailsafePubSubRow::FailsafePubSubRowToRow))
+            .setCoder(RowCoder.of(RowTypes.FailsafePubSubRow.SCHEMA));
+
+    return PCollectionRowTuple.of(BlockConstants.OUTPUT_TAG, outputRows)
+        .and(BlockConstants.ERROR_TAG, errors);
   }
 
-  private static class PubsubMessageToFailsafeElementFn
-      extends DoFn<PubsubMessage, FailsafeElement<PubsubMessage, String>> {
+  private static class PubSubMessageToFailsafeElementFn
+      extends DoFn<Row, FailsafeElement<PubsubMessage, String>> {
 
     @ProcessElement
     public void processElement(ProcessContext context) {
-      PubsubMessage message = context.element();
+      PubsubMessage message =
+          RowTypes.PubSubMessageRow.RowToPubSubMessage(Objects.requireNonNull(context.element()));
       context.output(
           FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8)));
     }
