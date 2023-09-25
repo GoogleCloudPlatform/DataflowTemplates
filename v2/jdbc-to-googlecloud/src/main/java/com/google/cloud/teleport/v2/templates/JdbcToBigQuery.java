@@ -46,11 +46,12 @@ import org.apache.beam.sdk.values.PCollection;
     name = "Jdbc_to_BigQuery_Flex",
     category = TemplateCategory.BATCH,
     displayName = "JDBC to BigQuery with BigQuery Storage API support",
-    description =
-        "The JDBC to BigQuery template is a batch pipeline that copies data from a relational database table into an existing BigQuery table. "
-            + "This pipeline uses JDBC to connect to the relational database. You can use this template to copy data from any relational database with available JDBC drivers into BigQuery. "
-            + "For an extra layer of protection, you can also pass in a Cloud KMS key along with a Base64-encoded username, password, and connection string parameters encrypted with the Cloud KMS key. "
-            + "See the <a href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud KMS API encryption endpoint</a> for additional details on encrypting your username, password, and connection string parameters.",
+    description = {
+      "The JDBC to BigQuery template is a batch pipeline that copies data from a relational database table into an existing BigQuery table. "
+          + "This pipeline uses JDBC to connect to the relational database. You can use this template to copy data from any relational database with available JDBC drivers into BigQuery.",
+      "For an extra layer of protection, you can also pass in a Cloud KMS key along with a Base64-encoded username, password, and connection string parameters encrypted with the Cloud KMS key. "
+          + "See the <a href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud KMS API encryption endpoint</a> for additional details on encrypting your username, password, and connection string parameters."
+    },
     optionsClass = JdbcToBigQueryOptions.class,
     flexContainerName = "jdbc-to-bigquery",
     documentation =

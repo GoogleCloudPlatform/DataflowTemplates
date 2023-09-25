@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
 @Template(
     name = "Jdbc_to_BigQuery",
     category = TemplateCategory.BATCH,
-    displayName = "JDBC to BigQuery",
+    displayName = "JDBC to BigQuery (Legacy)",
     description =
         "The JDBC to BigQuery template is a batch pipeline that copies data from a relational database table into an existing BigQuery table. "
             + "This pipeline uses JDBC to connect to the relational database. You can use this template to copy data from any relational database with available JDBC drivers into BigQuery. "

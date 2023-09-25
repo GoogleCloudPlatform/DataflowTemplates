@@ -27,8 +27,8 @@ public interface JdbcToBigQueryOptions
       optional = false,
       regexes = {"^.+$"},
       groupName = "Source Parameters",
-      description = "Cloud Storage paths for JDBC drivers",
-      helpText = "Comma separate Cloud Storage paths for JDBC drivers.",
+      description = "Comma-separated Cloud Storage path(s) of the JDBC driver(s)",
+      helpText = "The comma-separated list of driver JAR files.",
       example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
   String getDriverJars();
 
@@ -39,8 +39,8 @@ public interface JdbcToBigQueryOptions
       optional = false,
       regexes = {"^.+$"},
       groupName = "Source Parameters",
-      description = "JDBC driver class name.",
-      helpText = "JDBC driver class name to use.",
+      description = "JDBC driver class name",
+      helpText = "The JDBC driver class name.",
       example = "com.mysql.jdbc.Driver")
   String getDriverClassName();
 
@@ -55,8 +55,7 @@ public interface JdbcToBigQueryOptions
       groupName = "Source Parameters",
       description = "JDBC connection URL string.",
       helpText =
-          "Url connection string to connect to the JDBC source. Connection string can be passed in"
-              + " as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.",
+          "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Note the difference between an Oracle non-RAC database connection string (`jdbc:oracle:thin:@some-host:<port>:<sid>`) and an Oracle RAC database connection string (`jdbc:oracle:thin:@//some-host[:<port>]/<service_name>`).",
       example = "jdbc:mysql://some-host:3306/sampledb")
   String getConnectionURL();
 
@@ -83,8 +82,8 @@ public interface JdbcToBigQueryOptions
       groupName = "Source Parameters",
       description = "JDBC connection username.",
       helpText =
-          "User name to be used for the JDBC connection. User name can be passed in as plaintext "
-              + "or as a base64 encoded string encrypted by Google Cloud KMS.")
+          "The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted "
+              + "with a Cloud KMS key.")
   String getUsername();
 
   void setUsername(String username);
@@ -95,8 +94,8 @@ public interface JdbcToBigQueryOptions
       groupName = "Source Parameters",
       description = "JDBC connection password.",
       helpText =
-          "Password to be used for the JDBC connection. Password can be passed in as plaintext "
-              + "or as a base64 encoded string encrypted by Google Cloud KMS.")
+          "The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted "
+              + "with a Cloud KMS key.")
   String getPassword();
 
   void setPassword(String password);
@@ -106,8 +105,8 @@ public interface JdbcToBigQueryOptions
       optional = true,
       regexes = {"^.+$"},
       groupName = "Source Parameters",
-      description = "JDBC source SQL query.",
-      helpText = "Query to be executed on the source to extract the data.",
+      description = "JDBC source SQL query",
+      helpText = "The query to be run on the source to extract the data.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
@@ -121,7 +120,8 @@ public interface JdbcToBigQueryOptions
       description = "BigQuery output table",
       helpText =
           "BigQuery table location to write the output to. The name should be in the format"
-              + " `<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
+              + " `<project>:<dataset>.<table_name>`. The table's schema must match input objects.",
+      example = "<my-project>:<my-dataset>.<my-table>")
   String getOutputTable();
 
   @TemplateParameter.GcsWriteFolder(
@@ -129,7 +129,7 @@ public interface JdbcToBigQueryOptions
       optional = false,
       groupName = "Target Parameters",
       description = "Temporary directory for BigQuery loading process",
-      helpText = "Temporary directory for BigQuery loading process",
+      helpText = "The temporary directory for the BigQuery loading process",
       example = "gs://your-bucket/your-files/temp_dir")
   String getBigQueryLoadingTemporaryDirectory();
 
@@ -141,9 +141,8 @@ public interface JdbcToBigQueryOptions
       groupName = "Source Parameters",
       description = "Google Cloud KMS key",
       helpText =
-          "If this parameter is provided, password, user name and connection string should all be"
-              + " passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See:"
-              + " https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt",
+          "Cloud KMS Encryption Key to decrypt the username, password, and connection string. If Cloud KMS key is "
+              + "passed in, the username, password, and connection string must all be passed in encrypted.",
       example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   String getKMSEncryptionKey();
 

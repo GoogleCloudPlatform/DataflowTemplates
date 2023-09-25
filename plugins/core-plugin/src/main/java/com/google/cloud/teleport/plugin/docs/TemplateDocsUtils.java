@@ -27,16 +27,17 @@ public final class TemplateDocsUtils {
   private static final Map<String, String> VARIABLE_INTERPOLATION_NAMES =
       new LinkedHashMap<>() {
         {
-          put("Dataflow", "dataflow_name");
+          put("Apache Beam", "apache_beam");
           put("BigQuery", "bigquery_name");
           put("Bigtable", "bigtable_name_short");
-          put("Spanner", "spanner_name");
+          put("Cloud Storage", "storage_name");
+          put("Cloud KMS", "kms_name_short");
+          put("Dataflow", "dataflow_name");
           put("Elasticsearch", "product_name_elasticsearch");
           put("Google Cloud", "gcp_name_short");
           put("MongoDB", "product_name_mongodb");
-          put("Apache Beam", "apache_beam");
-          put("Cloud Storage", "storage_name");
           put("Pub/Sub", "pubsub_name_short");
+          put("Spanner", "spanner_name");
           put(
               "projects/your-project-id/subscriptions/your-subscription-name",
               "pubsub_subscription_format");
