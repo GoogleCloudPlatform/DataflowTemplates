@@ -90,10 +90,26 @@ import org.slf4j.LoggerFactory;
     name = "Cloud_PubSub_to_Redis",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Redis",
-    description = "A streaming pipeline which inserts data from a Pub/Sub and writes them to Redis",
+    description = {
+      "The Pub/Sub to Redis template is a streaming pipeline that reads messages from a Pub/Sub subscription and "
+          + "writes the message payload to Redis. The most common use case of this template is to export logs to Redis "
+          + "Enterprise for advanced search-based log analysis in real time.",
+      "Before writing to Redis, you can also apply a JavaScript user-defined function to the message payload. Any "
+          + "messages that experience processing failures are forwarded to a Pub/Sub unprocessed topic for further "
+          + "troubleshooting and reprocessing.",
+      "As an added security, you can enable an SSL connection when setting up your database endpoint connection."
+    },
     optionsClass = PubSubToRedis.PubSubToRedisOptions.class,
     flexContainerName = "pubsub-to-redis",
-    contactInformation = "https://github.com/GoogleCloudPlatform/DataflowTemplates/issues")
+    contactInformation = "https://github.com/GoogleCloudPlatform/DataflowTemplates/issues",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-redis",
+    requirements = {
+      "The source Pub/Sub subscription must exist prior to running the pipeline.",
+      "The Pub/Sub unprocessed topic must exist prior to running the pipeline.",
+      "The Redis database endpoint must be accessible from the Dataflow workers' subnetwork.",
+    },
+    preview = true)
 public class PubSubToRedis {
   /*
    * Options supported by {@link PubSubToRedis}
