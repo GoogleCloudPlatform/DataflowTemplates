@@ -142,10 +142,10 @@ public class PropertyMappingsIT extends TemplateTestBase {
     }
   }
 
-  private void assertBooleansArePersisted(LaunchInfo info) {
+  private void assertBooleansArePersisted(LaunchInfo info) throws IOException {
     assertThatResult(
             pipelineOperator()
-                .waitForCondition(
+                .waitForConditionAndCancel(
                     createConfig(info),
                     Neo4jQueryCheck.builder(neo4jClient)
                         .setQuery(
