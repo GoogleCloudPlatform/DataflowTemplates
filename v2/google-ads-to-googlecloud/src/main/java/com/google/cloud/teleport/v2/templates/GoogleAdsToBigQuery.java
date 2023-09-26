@@ -60,10 +60,19 @@ import org.slf4j.LoggerFactory;
     name = "Google_Ads_to_BigQuery",
     category = TemplateCategory.BATCH,
     displayName = "Google Ads to BigQuery",
-    description = "A pipeline that reads Google Ads reports and writes to BigQuery.",
+    description =
+        "The Google Ads to BigQuery template is a batch pipeline that reads Google Ads reports and writes to BigQuery.",
     optionsClass = GoogleAdsToBigQuery.GoogleAdsToBigQueryOptions.class,
     flexContainerName = "google-ads-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/google-ads-to-bigquery",
+    requirements = {
+      "The Google Ads account IDs to use.",
+      "The Google Ads Query Language query to obtain information.",
+      "OAuth credentials for the Google Ads API."
+    },
+    preview = true)
 public final class GoogleAdsToBigQuery {
   public interface GoogleAdsToBigQueryOptions extends WriteOptions, GoogleAdsOptions {
     @TemplateParameter.Long(
