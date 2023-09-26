@@ -1,5 +1,5 @@
 
-JDBC to BigQuery template
+JDBC to BigQuery (Legacy) template
 ---
 The JDBC to BigQuery template is a batch pipeline that copies data from a
 relational database table into an existing BigQuery table. This pipeline uses

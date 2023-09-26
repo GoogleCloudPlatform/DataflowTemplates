@@ -28,7 +28,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
 * **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
+* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 * **firestoreWriteEntityKind** (Firestore entity kind): Firestore kind under which entities will be written in the output Google Cloud project.
 * **firestoreWriteNamespace** (Namespace of the Firestore entity): Firestore namespace under which entities will be written in the output Google Cloud project.
 * **firestoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Firestore ramp-up throttling step. Defaults to 500 if not specified.
@@ -134,7 +134,7 @@ export ERROR_WRITE_PATH=<errorWritePath>
 ### Optional
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 export FIRESTORE_WRITE_ENTITY_KIND=<firestoreWriteEntityKind>
 export FIRESTORE_WRITE_NAMESPACE=<firestoreWriteNamespace>
 export FIRESTORE_HINT_NUM_WORKERS=<firestoreHintNumWorkers>
@@ -177,7 +177,7 @@ export ERROR_WRITE_PATH=<errorWritePath>
 ### Optional
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 export FIRESTORE_WRITE_ENTITY_KIND=<firestoreWriteEntityKind>
 export FIRESTORE_WRITE_NAMESPACE=<firestoreWriteNamespace>
 export FIRESTORE_HINT_NUM_WORKERS=<firestoreHintNumWorkers>
