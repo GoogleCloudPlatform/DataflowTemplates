@@ -116,6 +116,11 @@
       <artifactId>beam-sdks-java-extensions-avro</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-direct-java</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>common</artifactId>
       <version>${project.version}</version>
