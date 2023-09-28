@@ -214,15 +214,6 @@ public class DataCastingUtilsTest {
         .containsExactly(1L, "neo4j", new BigDecimal("15.5"), true, true, expectedDate);
   }
 
-  private static Mapping mapping(String field, PropertyType type) {
-    FieldNameTuple tuple = new FieldNameTuple();
-    tuple.setName(field);
-    tuple.setField(field);
-    Mapping mapping = new Mapping(FragmentType.node, RoleType.property, tuple);
-    mapping.setType(type);
-    return mapping;
-  }
-
   @Test
   public void testStringConversionToDateAndDateTime() {
     Schema schema =
@@ -241,8 +232,8 @@ public class DataCastingUtilsTest {
     target.setFieldNames(ImmutableList.of("hireDate", "hireDateTime"));
     target.setMappings(
         ImmutableList.of(
-            new Mapping("hireDate", PropertyType.Date),
-            new Mapping("hireDateTime", PropertyType.DateTime)));
+            mapping("hireDate", PropertyType.Date),
+            mapping("hireDateTime", PropertyType.DateTime)));
 
     List<Object> convertedList = DataCastingUtils.sourceTextToTargetObjects(row, target);
 
@@ -251,5 +242,18 @@ public class DataCastingUtilsTest {
             ZonedDateTime.of(LocalDate.of(2022, 8, 15), LocalTime.MIDNIGHT, ZoneId.systemDefault())
                 .withZoneSameInstant(utcZone),
             ZonedDateTime.of(2022, 8, 15, 1, 2, 3, 0, utcZone));
+  }
+
+  private static Mapping mapping(String field, PropertyType type) {
+    Mapping mapping = new Mapping(FragmentType.node, RoleType.property, tuple(field, field));
+    mapping.setType(type);
+    return mapping;
+  }
+
+  private static FieldNameTuple tuple(String name, String field) {
+    FieldNameTuple tuple = new FieldNameTuple();
+    tuple.setName(name);
+    tuple.setField(field);
+    return tuple;
   }
 }
