@@ -47,16 +47,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link SQLServerToBigQuery} Flex template SQLServer_to_BigQuery. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SQLServerToBigQuery.class)
 @RunWith(JUnit4.class)
 public class SQLServerToBigQueryIT extends TemplateTestBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(SQLServerToBigQueryIT.class);
 
   private static final String ROW_ID = "row_id";
   private static final String NAME = "name";
@@ -131,7 +127,7 @@ public class SQLServerToBigQueryIT extends TemplateTestBase {
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
-    PipelineOperator.Result result = pipelineOperator().waitUntilDoneAndFinish(createConfig(info));
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     // Assert
     assertThatResult(result).isLaunchFinished();
