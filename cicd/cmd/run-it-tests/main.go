@@ -55,7 +55,7 @@ func main() {
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),
 		mvnFlags.RunIntegrationTests(),
-		mvnFlags.ThreadCount(4),
+		mvnFlags.ThreadCount(6),
 		mvnFlags.IntegrationTestParallelism(3),
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
