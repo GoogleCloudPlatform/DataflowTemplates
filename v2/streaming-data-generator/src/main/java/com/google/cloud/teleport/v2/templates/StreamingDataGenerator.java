@@ -56,8 +56,6 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The {@link StreamingDataGenerator} is a streaming pipeline which generates messages at a
@@ -88,8 +86,6 @@ import org.slf4j.LoggerFactory;
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/streaming-data-generator",
     contactInformation = "https://cloud.google.com/support")
 public class StreamingDataGenerator {
-
-  private static final Logger logger = LoggerFactory.getLogger(StreamingDataGenerator.class);
 
   /**
    * The {@link StreamingDataGeneratorOptions} class provides the custom execution options passed by

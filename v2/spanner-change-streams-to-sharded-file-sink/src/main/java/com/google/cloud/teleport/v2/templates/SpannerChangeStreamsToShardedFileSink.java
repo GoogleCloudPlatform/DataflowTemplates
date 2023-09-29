@@ -66,7 +66,8 @@ import org.slf4j.LoggerFactory;
     flexContainerName = "spanner-change-streams-to-sharded-file-sink",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/spanner-change-streams-to-sharded-file-sink",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public class SpannerChangeStreamsToShardedFileSink {
 
   private static final Logger LOG =

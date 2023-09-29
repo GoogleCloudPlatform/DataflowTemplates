@@ -96,6 +96,10 @@ public class TemplatesReleaseFinishMojo extends TemplatesBaseMojo {
     }
 
     File projectFolder = project.getParentFile();
+    if (projectFolder == null) {
+      projectFolder = new File(System.getProperty("user.dir"));
+      LOG.warn("Project folder is null. Using current directory instead.");
+    }
     while (projectFolder.getParentFile() != null
         && new File(projectFolder.getParentFile(), "pom.xml").exists()) {
       projectFolder = projectFolder.getParentFile();
@@ -107,7 +111,7 @@ public class TemplatesReleaseFinishMojo extends TemplatesBaseMojo {
         FileSystems.getDefault().getPathMatcher("glob:**/target/*-generated-metadata.json");
     final PathMatcher specPathMatcher =
         FileSystems.getDefault().getPathMatcher("glob:**/target/*-spec-generated-metadata.json");
-    final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     // Using LinkedHashMap to preserve ordering
     Map<String, TemplatesCategoryJson> categories = new LinkedHashMap<>();

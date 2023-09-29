@@ -58,7 +58,8 @@ import org.slf4j.LoggerFactory;
             + " transforms them, and writes them to a Source Database like MySQL.",
     optionsClass = Options.class,
     flexContainerName = "ordered-changestream-buffer-to-sourcedb",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public class OrderedChangestreamBufferToSourceDb {
 
   private static final Logger LOG =

@@ -29,7 +29,7 @@ import com.google.cloud.teleport.v2.options.SQLServerToBigQueryOptions;
 @Template(
     name = "SQLServer_to_BigQuery",
     category = TemplateCategory.BATCH,
-    displayName = "SQLServer to BigQuery",
+    displayName = "SQL Server to BigQuery",
     description =
         "The SQL Server to BigQuery template is a batch pipeline that copies data from a SQL Server table into an existing BigQuery table. "
             + "This pipeline uses JDBC to connect to SQL Server. "
