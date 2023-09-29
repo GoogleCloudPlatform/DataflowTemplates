@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstogcs;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.teleport.bigtable.ChangelogEntry;
@@ -501,7 +502,7 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
 
   @NotNull
   private static String generateAppProfileId() {
-    return "cdc_app_profile_" + System.nanoTime();
+    return "cdc_app_profile_" + randomAlphanumeric(8) + "_" + System.nanoTime();
   }
 
   @Override
