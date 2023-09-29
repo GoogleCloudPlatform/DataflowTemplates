@@ -28,7 +28,8 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
     displayName = "Streaming LLM",
     description = "Execute Large Language Models in Streaming mode using Pub/Sub.",
     flexContainerName = "streaming-llm",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public interface StreamingLLM {
 
   @TemplateParameter.PubsubSubscription(

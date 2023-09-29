@@ -120,7 +120,8 @@ import org.slf4j.LoggerFactory;
 @Template(
     name = "Stream_DLP_GCS_Text_to_BigQuery_Flex",
     category = TemplateCategory.STREAMING,
-    displayName = "Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP)",
+    displayName =
+        "Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP) with BQ Storage Write API support",
     description = {
       "The Data Masking/Tokenization from Cloud Storage to BigQuery template uses <a href=\"https://cloud.google.com/dlp/docs\">Sensitive Data Protection</a> and creates a streaming pipeline that does the following steps:\n"
           + "1. Reads CSV files from a Cloud Storage bucket.\n"

@@ -30,7 +30,8 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
         "Batch pipeline. Reads text from Cloud Storage, tokenizes text lines into individual words,"
             + " and performs frequency count on each of the words.",
     flexContainerName = "word-count-python",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public interface WordCountPython {
 
   @TemplateParameter.GcsReadFile(

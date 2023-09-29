@@ -71,7 +71,8 @@ import org.slf4j.LoggerFactory;
             + " Storage bucket with a variety of file types.",
     optionsClass = KafkaToGCSOptions.class,
     flexContainerName = "kafka-to-gcs",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public class KafkaToGCS {
 
   /* Logger for class. */

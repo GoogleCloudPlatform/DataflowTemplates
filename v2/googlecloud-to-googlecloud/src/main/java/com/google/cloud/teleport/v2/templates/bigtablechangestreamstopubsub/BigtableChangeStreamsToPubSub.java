@@ -86,7 +86,7 @@ import org.slf4j.LoggerFactory;
 @Template(
     name = "Bigtable_Change_Streams_to_PubSub",
     category = TemplateCategory.STREAMING,
-    displayName = "Cloud Bigtable change streams to PubSub",
+    displayName = "Cloud Bigtable Change Streams to PubSub",
     description =
         "Streaming pipeline. Streams Bigtable data change records and writes them into PubSub using Dataflow Runner V2.",
     optionsClass = BigtableChangeStreamsToPubSubOptions.class,

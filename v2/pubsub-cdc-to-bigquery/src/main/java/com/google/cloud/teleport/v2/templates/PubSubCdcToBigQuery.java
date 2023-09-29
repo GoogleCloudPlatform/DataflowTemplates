@@ -104,7 +104,8 @@ import org.slf4j.LoggerFactory;
             + " BigQuery table as BigQuery elements.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-cdc-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public class PubSubCdcToBigQuery {
 
   /** The log to output status messages to. */

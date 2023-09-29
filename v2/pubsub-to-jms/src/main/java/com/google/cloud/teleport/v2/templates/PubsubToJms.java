@@ -51,7 +51,8 @@ import org.slf4j.LoggerFactory;
             + "from a Pubsub Subscription and writes to JMS Broker Server Topic or Queue.",
     optionsClass = PubsubToJmsOptions.class,
     flexContainerName = "pubsub-to-jms",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public class PubsubToJms {
 
   /**

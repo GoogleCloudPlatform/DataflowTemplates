@@ -82,7 +82,8 @@ import org.slf4j.LoggerFactory;
     },
     optionsClass = GCSToSplunkOptions.class,
     flexContainerName = "gcs-to-splunk",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public final class GCSToSplunk {
 
   /** String/String Coder for FailsafeElement. */
