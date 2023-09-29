@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -163,7 +164,7 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
 
   @NotNull
   private static String generateAppProfileId() {
-    return "cdc_app_profile_" + System.nanoTime();
+    return "cdc_app_profile_" + randomAlphanumeric(8) + "_" + System.nanoTime();
   }
 
   @Test
