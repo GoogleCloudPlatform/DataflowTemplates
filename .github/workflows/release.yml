@@ -23,7 +23,7 @@ permissions:
 jobs:
   release:
     name: Create Release
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, it]
     steps:
     - name: Get releaser identity
       run: |
@@ -64,6 +64,37 @@ jobs:
       env:
         RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
         TAG_NAME: ${{ steps.variables.outputs.tagName }}
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Build
+      run: ./cicd/run-build --changed-files="pom.xml"
+    - name: Run Unit Tests
+      run: ./cicd/run-unit-tests --changed-files="pom.xml"
+    - name: Run Integration Smoke Tests
+      run: |
+        ./cicd/run-it-smoke-tests \
+        --changed-files="pom.xml" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
+    - name: Run Integration Tests
+      run: |
+        ./cicd/run-it-tests \
+        --changed-files="pom.xml" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
+    - name: Create artifacts and push
+      run: |
+        mvn verify -PtemplatesRelease \
+        -DprojectId="dataflow-templates" \
+        -DbucketName="dataflow-templates-rc" \
+        -DlibrariesBucketName="dataflow-templates-releases" \
+        -DstagePrefix="${CANDIDATE_NAME}" \
+        -Dmaven.test.skip -e
+      env:
+        CANDIDATE_NAME: ${{ inputs.candidateName }}
     - name: Push changes
       run: |
         git push -u origin --all
