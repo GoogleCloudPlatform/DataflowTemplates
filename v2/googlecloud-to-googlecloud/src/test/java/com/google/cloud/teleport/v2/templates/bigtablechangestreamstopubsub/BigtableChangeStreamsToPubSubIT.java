@@ -754,7 +754,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @NotNull
   private static String generateAppProfileId() {
-    return "cdc_app_profile_" + randomAlphanumeric(8) + "_" + System.nanoTime();
+    return "cdc_app_profile_" + randomAlphanumeric(8).toLowerCase() + "_" + System.nanoTime();
   }
 
   @Before
