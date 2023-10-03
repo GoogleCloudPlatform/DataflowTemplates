@@ -21,8 +21,12 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.dynamic.DynamicType;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -47,7 +51,7 @@ public class AutoTemplate {
       Class<? extends PipelineOptions> newOptionsClass =
           createNewOptionsClass(orderedBlocks, AutoTemplate.class.getClassLoader(), dlqInstance);
 
-      LOG.debug("Created options class {}", newOptionsClass);
+      LOG.info("Created options class {}", newOptionsClass);
 
       PipelineOptions options = PipelineOptionsFactory.fromArgs(args).as(newOptionsClass);
 
@@ -63,7 +67,7 @@ public class AutoTemplate {
       input =
           sourceBlock.blockMethod.invoke(
               sourceBlock.blockInstance,
-              pipeline,
+              pipeline.begin(),
               options.as(sourceBlockInstance.getOptionsClass()));
 
       for (ExecutionBlock executionBlock : orderedBlocks) {
@@ -266,14 +270,60 @@ public class AutoTemplate {
     DynamicType.Builder<PipelineOptions> allOptionsClassBuilder =
         new ByteBuddy().makeInterface(PipelineOptions.class).name("AllOptionsClass");
 
+    Set<String> addedMethods = new HashSet<>();
+
     for (ExecutionBlock executionBlock : blocks) {
       allOptionsClassBuilder =
-          allOptionsClassBuilder.implement(executionBlock.blockInstance.getOptionsClass());
+          addOptionsToClass(
+              allOptionsClassBuilder, executionBlock.blockInstance.getOptionsClass(), addedMethods);
     }
     if (dlqInstance != null) {
-      allOptionsClassBuilder = allOptionsClassBuilder.implement(dlqInstance.getOptionsClass());
+      allOptionsClassBuilder =
+          addOptionsToClass(allOptionsClassBuilder, dlqInstance.getOptionsClass(), addedMethods);
     }
+
+    LOG.info("Creating class for methods {}", addedMethods);
     return allOptionsClassBuilder.make().load(loader).getLoaded();
+  }
+
+  private static DynamicType.Builder<PipelineOptions> addOptionsToClass(
+      DynamicType.Builder<PipelineOptions> allOptionsClassBuilder,
+      Class<?> optionsClass,
+      Set<String> addedMethods) {
+
+    for (Method method : optionsClass.getDeclaredMethods()) {
+      // Only inherit setters and getters, which is what the interface for option needs.
+      if (!method.getName().startsWith("get")) {
+        continue;
+      }
+      // Prevent duplications.
+      if (!addedMethods.add(method.getName())) {
+        continue;
+      }
+
+      MethodDescription.ForLoadedMethod loadedMethods =
+          new MethodDescription.ForLoadedMethod(method);
+      allOptionsClassBuilder =
+          allOptionsClassBuilder
+              .defineMethod(
+                  loadedMethods.getName(),
+                  loadedMethods.getReturnType(),
+                  loadedMethods.getModifiers() | Visibility.PUBLIC.getMask())
+              .withParameters(loadedMethods.getParameters().asTypeList())
+              .withoutCode()
+              .annotateMethod(loadedMethods.getDeclaredAnnotations());
+
+      allOptionsClassBuilder =
+          allOptionsClassBuilder
+              .defineMethod(
+                  loadedMethods.getName().replace("get", "set"),
+                  void.class,
+                  loadedMethods.getModifiers() | Visibility.PUBLIC.getMask())
+              .withParameters(loadedMethods.getReturnType())
+              .withoutCode();
+    }
+
+    return allOptionsClassBuilder;
   }
 
   public static class ExecutionBlock {

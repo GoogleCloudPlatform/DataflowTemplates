@@ -15,21 +15,16 @@
  */
 package com.google.cloud.teleport.v2.auto.blocks;
 
-import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
-
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.service.AutoService;
-import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Consumes;
 import com.google.cloud.teleport.metadata.auto.DlqOutputs;
 import com.google.cloud.teleport.metadata.auto.Outputs;
-import com.google.cloud.teleport.v2.auto.blocks.PubsubMessageToTableRow.TransformOptions;
-import com.google.cloud.teleport.v2.auto.dlq.BigQueryDeadletterOptions;
+import com.google.cloud.teleport.v2.auto.schema.TemplateOptionSchema;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -38,7 +33,8 @@ import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesAndMessageIdCoder;
-import org.apache.beam.sdk.schemas.AutoValueSchema;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -52,56 +48,59 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptor;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 @AutoService(SchemaTransformProvider.class)
 public class PubsubMessageToTableRow
     extends TemplateTransformClass<
-        TransformOptions, PubsubMessageToTableRow.PubsubMessageToTableRowTransformConfiguration> {
+        PubsubMessageToTableRow.PubsubMessageToTableRowTransformConfiguration,
+        PubsubMessageToTableRow.PubsubMessageToTableRowTransformConfiguration> {
 
-  @DefaultSchema(AutoValueSchema.class)
-  @AutoValue
-  public abstract static class PubsubMessageToTableRowTransformConfiguration extends Configuration {
+  @DefaultSchema(TemplateOptionSchema.class)
+  public interface PubsubMessageToTableRowTransformConfiguration extends PipelineOptions {
 
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        optional = true,
+        description = "Cloud Storage path to Javascript UDF source",
+        helpText =
+            "The Cloud Storage path pattern for the JavaScript code containing your user-defined "
+                + "functions.",
+        example = "gs://your-bucket/your-function.js")
     abstract String getJavascriptTextTransformGcsPath();
 
+    void setJavascriptTextTransformGcsPath(String value);
+
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        regexes = {"[a-zA-Z0-9_]+"},
+        description = "UDF Javascript Function Name",
+        helpText =
+            "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores.",
+        example = "'transform' or 'transform_udf1'")
     abstract String getJavascriptTextTransformFunctionName();
 
-    public void validate() {
-      String invalidConfigMessage = "Invalid PubSubMessageToTableRow configuration: ";
-      if (this.getErrorHandling() != null) {
-        checkArgument(
-            !Strings.isNullOrEmpty(this.getErrorHandling().getOutput()),
-            invalidConfigMessage + "Output must not be empty if error handling specified.");
-      }
-    }
+    void setJavascriptTextTransformFunctionName(String value);
 
-    public static PubsubMessageToTableRowTransformConfiguration.Builder builder() {
-      return new AutoValue_PubsubMessageToTableRow_PubsubMessageToTableRowTransformConfiguration
-          .Builder();
-    }
+    @TemplateParameter.Integer(
+        order = 4,
+        optional = true,
+        description = "JavaScript UDF auto-reload interval (minutes)",
+        helpText =
+            "Define the interval that workers may check for JavaScript UDF changes to reload the files.")
+    @Default.Integer(0)
+    abstract Integer getJavascriptTextTransformReloadIntervalMinutes();
 
-    @AutoValue.Builder
-    public abstract static class Builder extends Configuration.Builder<Builder> {
+    void setJavascriptTextTransformReloadIntervalMinutes(Integer value);
 
-      public abstract PubsubMessageToTableRowTransformConfiguration.Builder
-          setJavascriptTextTransformGcsPath(String path);
-
-      public abstract PubsubMessageToTableRowTransformConfiguration.Builder
-          setJavascriptTextTransformFunctionName(String name);
-
-      public abstract PubsubMessageToTableRowTransformConfiguration build();
-    }
-
-    public static PubsubMessageToTableRowTransformConfiguration fromOptions(
-        TransformOptions options) {
-      return new AutoValue_PubsubMessageToTableRow_PubsubMessageToTableRowTransformConfiguration
-              .Builder()
-          .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
-          .setJavascriptTextTransformFunctionName(options.getJavascriptTextTransformFunctionName())
-          .build();
-    }
+    //    public void validate() {
+    //      String invalidConfigMessage = "Invalid PubSubMessageToTableRow configuration: ";
+    //      if (this.getErrorHandling() != null) {
+    //        checkArgument(
+    //            !Strings.isNullOrEmpty(this.getErrorHandling().getOutput()),
+    //            invalidConfigMessage + "Output must not be empty if error handling specified.");
+    //      }
   }
 
   @Override
@@ -112,20 +111,6 @@ public class PubsubMessageToTableRow
   @Override
   public @NonNull String identifier() {
     return "blocks:external:org.apache.beam:pubsub_to_bigquery:v1";
-  }
-
-  public interface TransformOptions
-      extends JavascriptTextTransformerOptions, BigQueryDeadletterOptions {
-
-    @TemplateParameter.BigQueryTable(
-        order = 1,
-        description = "BigQuery output table",
-        helpText =
-            "BigQuery table location to write the output to. The table's schema must match the "
-                + "input JSON objects.")
-    String getOutputTableSpec();
-
-    void setOutputTableSpec(String tableSpec);
   }
 
   /** The tag for the main output for the UDF. */
@@ -157,10 +142,6 @@ public class PubsubMessageToTableRow
   @DlqOutputs(
       value = Row.class,
       types = {RowTypes.FailsafePubSubRow.class})
-  public PCollectionRowTuple transform(PCollectionRowTuple input, TransformOptions options) {
-    return transform(input, PubsubMessageToTableRowTransformConfiguration.fromOptions(options));
-  }
-
   public PCollectionRowTuple transform(
       PCollectionRowTuple input, PubsubMessageToTableRowTransformConfiguration config) {
     PCollectionTuple udfOut =
@@ -226,7 +207,7 @@ public class PubsubMessageToTableRow
   }
 
   @Override
-  public Class<TransformOptions> getOptionsClass() {
-    return TransformOptions.class;
+  public Class<PubsubMessageToTableRowTransformConfiguration> getOptionsClass() {
+    return PubsubMessageToTableRowTransformConfiguration.class;
   }
 }

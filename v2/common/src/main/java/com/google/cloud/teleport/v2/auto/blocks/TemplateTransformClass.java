@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.RowCoder;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.annotations.SchemaFieldDescription;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
@@ -32,7 +33,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 
-abstract class TemplateTransformClass<X, Y extends TemplateTransformClass.Configuration>
+abstract class TemplateTransformClass<X, Y extends PipelineOptions>
     extends TypedSchemaTransformProvider<Y> implements TemplateTransform<X> {
   protected static final String INPUT_ROW_TAG = "input";
   protected static final String OUTPUT_ROW_TAG = "output";
@@ -43,7 +44,7 @@ abstract class TemplateTransformClass<X, Y extends TemplateTransformClass.Config
     return List.of(OUTPUT_ROW_TAG, ERROR_ROW_TAG);
   }
 
-  public abstract static class Configuration {
+  public abstract static class Configuration implements PipelineOptions {
     abstract void validate();
 
     @SchemaFieldDescription("This option specifies whether and where to output unwritable rows.")
@@ -72,7 +73,6 @@ abstract class TemplateTransformClass<X, Y extends TemplateTransformClass.Config
           TemplateTransformClass.Configuration.ErrorHandling errorHandling);
     }
   }
-  ;
 
   public abstract PCollectionRowTuple transform(PCollectionRowTuple input, Y config);
 
@@ -85,7 +85,7 @@ abstract class TemplateTransformClass<X, Y extends TemplateTransformClass.Config
     private final Y configuration;
 
     private TemplateSchemaTransform(Y configuration) {
-      configuration.validate();
+      //      configuration.validate();
       this.configuration = configuration;
     }
 
@@ -99,11 +99,12 @@ abstract class TemplateTransformClass<X, Y extends TemplateTransformClass.Config
       PCollection<Row> rows = output.get(BlockConstants.OUTPUT_TAG);
 
       PCollectionRowTuple outputRowTuple = PCollectionRowTuple.of(OUTPUT_ROW_TAG, rows);
-      if (configuration.getErrorHandling() != null) {
-        PCollection<Row> errors = output.get(BlockConstants.ERROR_TAG);
-        errors.setCoder(RowCoder.of(errors.getSchema()));
-        outputRowTuple = outputRowTuple.and(configuration.getErrorHandling().getOutput(), errors);
-      }
+      //      if (configuration.getErrorHandling() != null) {
+      //        PCollection<Row> errors = output.get(BlockConstants.ERROR_TAG);
+      //        errors.setCoder(RowCoder.of(errors.getSchema()));
+      //        outputRowTuple = outputRowTuple.and(configuration.getErrorHandling().getOutput(),
+      // errors);
+      //      }
 
       return outputRowTuple;
     }
@@ -115,12 +116,12 @@ abstract class TemplateTransformClass<X, Y extends TemplateTransformClass.Config
   }
 }
 
-abstract class TemplateReadTransform<X, Y extends TemplateTransformClass.Configuration>
+abstract class TemplateReadTransform<X, Y extends PipelineOptions>
     extends TemplateTransformClass<X, Y> {
-  public abstract PCollectionRowTuple transform(PBegin input, Y config);
+  public abstract PCollectionRowTuple read(PBegin input, Y config);
 
   public PCollectionRowTuple transform(PCollectionRowTuple input, Y config) {
-    return this.transform(input.getPipeline().begin(), config);
+    return this.read(input.getPipeline().begin(), config);
   }
 
   @Override
@@ -129,7 +130,7 @@ abstract class TemplateReadTransform<X, Y extends TemplateTransformClass.Configu
 
       @Override
       public PCollectionRowTuple expand(PCollectionRowTuple input) {
-        PCollectionRowTuple output = transform(input.getPipeline().begin(), configuration);
+        PCollectionRowTuple output = read(input.getPipeline().begin(), configuration);
         PCollection<Row> rows = output.get(BlockConstants.OUTPUT_TAG);
         return PCollectionRowTuple.of(OUTPUT_ROW_TAG, rows.setCoder(RowCoder.of(rows.getSchema())));
       }
@@ -137,7 +138,7 @@ abstract class TemplateReadTransform<X, Y extends TemplateTransformClass.Configu
   }
 }
 
-abstract class TemplateWriteTransform<X, Y extends TemplateTransformClass.Configuration>
+abstract class TemplateWriteTransform<X, Y extends PipelineOptions>
     extends TemplateTransformClass<X, Y> {
   @Override
   public List<String> inputCollectionNames() {
@@ -158,7 +159,7 @@ abstract class TemplateWriteTransform<X, Y extends TemplateTransformClass.Config
     private final Y configuration;
 
     private TemplateSchemaTransform(Y configuration) {
-      configuration.validate();
+      //      configuration.validate();
       this.configuration = configuration;
     }
 
@@ -176,11 +177,12 @@ abstract class TemplateWriteTransform<X, Y extends TemplateTransformClass.Config
               .setRowSchema(Schema.of());
 
       PCollectionRowTuple outputRowTuple = PCollectionRowTuple.of(OUTPUT_ROW_TAG, rows);
-      if (configuration.getErrorHandling() != null) {
-        PCollection<Row> errors = output.get(BlockConstants.ERROR_TAG);
-        errors.setCoder(RowCoder.of(errors.getSchema()));
-        outputRowTuple = outputRowTuple.and(configuration.getErrorHandling().getOutput(), errors);
-      }
+      //      if (configuration.getErrorHandling() != null) {
+      //        PCollection<Row> errors = output.get(BlockConstants.ERROR_TAG);
+      //        errors.setCoder(RowCoder.of(errors.getSchema()));
+      //        outputRowTuple = outputRowTuple.and(configuration.getErrorHandling().getOutput(),
+      // errors);
+      //      }
 
       return outputRowTuple;
     }

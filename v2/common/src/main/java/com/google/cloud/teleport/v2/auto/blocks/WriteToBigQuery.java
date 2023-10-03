@@ -15,24 +15,14 @@
  */
 package com.google.cloud.teleport.v2.auto.blocks;
 
-import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
-import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
-
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.service.AutoService;
-import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Consumes;
 import com.google.cloud.teleport.metadata.auto.Outputs;
-import com.google.cloud.teleport.v2.auto.blocks.WriteToBigQuery.SinkOptions;
-import com.google.cloud.teleport.v2.auto.dlq.AutoDLQUtil;
-import com.google.cloud.teleport.v2.auto.dlq.BigQueryDeadletterOptions;
+import com.google.cloud.teleport.v2.auto.schema.TemplateOptionSchema;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
-import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
-import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
-import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
@@ -49,8 +39,8 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.schemas.annotations.SchemaFieldDescription;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
@@ -59,58 +49,49 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptor;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
-import org.apache.commons.lang3.StringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 @AutoService(SchemaTransformProvider.class)
 public class WriteToBigQuery
     extends TemplateWriteTransform<
-        SinkOptions, WriteToBigQuery.WriteToBigQueryTransformConfiguration> {
+        WriteToBigQuery.WriteToBigQueryTransformConfiguration,
+        WriteToBigQuery.WriteToBigQueryTransformConfiguration> {
 
-  @DefaultSchema(AutoValueSchema.class)
-  @AutoValue
-  public abstract static class WriteToBigQueryTransformConfiguration extends Configuration {
+  @DefaultSchema(TemplateOptionSchema.class)
+  public interface WriteToBigQueryTransformConfiguration extends PipelineOptions {
 
     @SchemaFieldDescription(
         "BigQuery table location to write the output to. The table's schema must match the "
             + "input JSON objects.")
+    @TemplateParameter.BigQueryTable(
+        order = 1,
+        optional = true,
+        description = "BigQuery output table",
+        helpText =
+            "BigQuery table location to write the output to. The table's schema must match the "
+                + "input JSON objects.")
     @Nullable
-    abstract String getOutputTableSpec();
+    public abstract String getOutputTableSpec();
+
+    void setOutputTableSpec(String value);
 
     @SchemaFieldDescription("Enable BigQuery StorageWriteAPI.")
-    abstract Boolean getUseStorageWriteApi();
+    @TemplateParameter.Boolean(
+        order = 1,
+        optional = true,
+        description = "Use BigQuery Storage Write API",
+        helpText =
+            "If enabled (set to true) the pipeline will use Storage Write API when writing the data"
+                + " to BigQuery (see"
+                + " https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api)."
+                + " If this is enabled and at-least-once semantics (useStorageWriteApiAtLeastOnce)"
+                + " option is off then \"Number of streams for BigQuery Storage Write API\" and"
+                + " \"Triggering frequency in seconds for BigQuery Storage Write API\" must be"
+                + " provided.")
+    @Default.Boolean(false)
+    public abstract Boolean getUseStorageWriteApi();
 
-    public void validate() {
-      String invalidConfigMessage = "Invalid BigQuery Storage Write configuration: ";
-      if (this.getErrorHandling() != null) {
-        checkArgument(
-            !Strings.isNullOrEmpty(this.getErrorHandling().getOutput()),
-            invalidConfigMessage + "Output must not be empty if error handling specified.");
-      }
-    }
-
-    public static WriteToBigQueryTransformConfiguration.Builder builder() {
-      return new AutoValue_WriteToBigQuery_WriteToBigQueryTransformConfiguration.Builder();
-    }
-
-    @AutoValue.Builder
-    public abstract static class Builder extends Configuration.Builder<Builder> {
-      public abstract WriteToBigQueryTransformConfiguration.Builder setOutputTableSpec(
-          String input);
-
-      public abstract WriteToBigQueryTransformConfiguration.Builder setUseStorageWriteApi(
-          Boolean input);
-
-      public abstract WriteToBigQueryTransformConfiguration build();
-    }
-
-    public static WriteToBigQueryTransformConfiguration fromOptions(SinkOptions options) {
-      return new AutoValue_WriteToBigQuery_WriteToBigQueryTransformConfiguration.Builder()
-          .setOutputTableSpec(options.getOutputTableSpec())
-          .setUseStorageWriteApi(options.getUseStorageWriteApi())
-          .build();
-    }
+    void setUseStorageWriteApi(Boolean value);
   }
 
   @Override
@@ -120,34 +101,6 @@ public class WriteToBigQuery
 
   public @NonNull String identifier() {
     return "blocks:external:org.apache.beam:write_to_bigquery:v1";
-  }
-
-  public interface SinkOptions
-      extends PipelineOptions,
-          WriteOptions,
-          BigQueryDeadletterOptions,
-          BigQueryStorageApiStreamingOptions,
-          BigQueryStorageApiBatchOptions {
-
-    @TemplateParameter.BigQueryTable(
-        order = 1,
-        optional = true,
-        description = "BigQuery output table",
-        helpText =
-            "BigQuery table location to write the output to. The table's schema must match the "
-                + "input JSON objects.")
-    String getOutputTableSpec();
-
-    void setOutputTableSpec(String input);
-
-    @TemplateParameter.Text(
-        order = 2,
-        optional = true,
-        description = "GCS Path to JSON file containing BigQuery table schema.",
-        helpText = "sample text")
-    String getBigQuerySchemaPath();
-
-    void setBigQuerySchemaPath(String bigQuerySchemaPath);
   }
 
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
@@ -161,10 +114,6 @@ public class WriteToBigQuery
   @Outputs(
       value = Row.class,
       types = {RowTypes.FailsafeStringRow.class})
-  public PCollectionRowTuple writeTableRows(PCollectionRowTuple input, SinkOptions options) {
-    return transform(input, WriteToBigQueryTransformConfiguration.fromOptions(options));
-  }
-
   public PCollectionRowTuple transform(
       PCollectionRowTuple input, WriteToBigQueryTransformConfiguration config) {
     WriteResult writeResult =
@@ -206,7 +155,8 @@ public class WriteToBigQuery
   }
 
   @Consumes(GenericRecord.class)
-  public void writeGenericRecords(PCollection<GenericRecord> input, SinkOptions options) {
+  public void writeGenericRecords(
+      PCollection<GenericRecord> input, WriteToBigQueryTransformConfiguration options) {
     WriteResult writeResult =
         input.apply(
             "WriteTableRows",
@@ -217,44 +167,47 @@ public class WriteToBigQuery
                 .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
                 .to(options.getOutputTableSpec()));
 
-    handleFailures(writeResult, options);
+    //    handleFailures(writeResult, options);
   }
 
-  @Consumes(String.class)
-  @Outputs(
-      value = FailsafeElement.class,
-      types = {String.class, String.class})
-  public void writeJson(PCollection<String> input, SinkOptions options) {
-    WriteResult writeResult =
-        input.apply(
-            "WriteTableRows",
-            BigQueryIO.<String>write()
-                .to(options.getOutputTableSpec())
-                .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
-                .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
-                .withExtendedErrorInfo()
-                .withFormatFunction(BigQueryConverters::convertJsonToTableRow)
-                .withJsonSchema(getGcsFileAsString(options.getBigQuerySchemaPath())));
+  //  @Consumes(String.class)
+  //  @Outputs(
+  //      value = FailsafeElement.class,
+  //      types = {String.class, String.class})
+  //  public void writeJson(PCollection<String> input, WriteToBigQueryTransformConfiguration
+  // options) {
+  //    WriteResult writeResult =
+  //        input.apply(
+  //            "WriteTableRows",
+  //            BigQueryIO.<String>write()
+  //                .to(options.getOutputTableSpec())
+  //                .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
+  //
+  // .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
+  //                .withExtendedErrorInfo()
+  //                .withFormatFunction(BigQueryConverters::convertJsonToTableRow)
+  //                .withJsonSchema(getGcsFileAsString(options.getBigQuerySchemaPath())));
+  //
+  //    // handleFailures(writeResult, options);
+  //  }
 
-    handleFailures(writeResult, options);
-  }
-
-  private void handleFailures(WriteResult writeResult, SinkOptions options) {
-    PCollection<FailsafeElement<String, String>> failedInserts =
-        BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
-            .apply(
-                "WrapInsertionErrors",
-                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                    .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
-            .setCoder(FAILSAFE_ELEMENT_CODER);
-
-    String dlqTable =
-        StringUtils.isEmpty(options.getOutputDeadletterTable())
-            ? options.getOutputTableSpec() + BlockConstants.DEFAULT_DEADLETTER_TABLE_SUFFIX
-            : options.getOutputDeadletterTable();
-
-    AutoDLQUtil.writeDLQToBigQueryForString(failedInserts, dlqTable);
-  }
+  //  private void handleFailures(
+  //      WriteResult writeResult, WriteToBigQueryTransformConfiguration options) {
+  //    PCollection<FailsafeElement<String, String>> failedInserts =
+  //        BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
+  //            .apply(
+  //                "WrapInsertionErrors",
+  //                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+  //                    .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
+  //            .setCoder(FAILSAFE_ELEMENT_CODER);
+  //
+  //    String dlqTable =
+  //        StringUtils.isEmpty(options.getOutputDeadletterTable())
+  //            ? options.getOutputTableSpec() + BlockConstants.DEFAULT_DEADLETTER_TABLE_SUFFIX
+  //            : options.getOutputDeadletterTable();
+  //
+  //    AutoDLQUtil.writeDLQToBigQueryForString(failedInserts, dlqTable);
+  //  }
 
   static FailsafeElement<String, String> wrapBigQueryInsertError(BigQueryInsertError insertError) {
 
@@ -275,7 +228,7 @@ public class WriteToBigQuery
   }
 
   @Override
-  public Class<SinkOptions> getOptionsClass() {
-    return SinkOptions.class;
+  public Class<WriteToBigQueryTransformConfiguration> getOptionsClass() {
+    return WriteToBigQueryTransformConfiguration.class;
   }
 }
