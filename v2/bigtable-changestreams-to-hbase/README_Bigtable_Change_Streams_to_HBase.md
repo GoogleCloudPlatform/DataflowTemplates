@@ -27,6 +27,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bidirectionalReplicationEnabled** (Bidirectional replication): Whether bidirectional replication between hbase and bigtable is enabled, adds additional logic to filter out hbase-replicated mutations. Defaults to: false.
 * **cbtQualifier** (Source CBT qualifier): Bidirectional replication source CBT qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_CBT.
 * **dryRunEnabled** (Dry run): When dry run is enabled, pipeline will not write to Hbase. Defaults to: false.
+* **filterGCMutations** (Filter GC mutations): Filters out garbage collection Delete mutations from CBT. Defaults to: false.
 * **hbaseQualifier** (Source Hbase qualifier): Bidirectional replication source Hbase qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_HBASE.
 * **hbaseZookeeperQuorumPort** (Zookeeper quorum port): Zookeeper quorum port, corresponds to hbase.zookeeper.quorum port. Defaults to: 2181.
 * **bigtableChangeStreamMetadataInstanceId** (Cloud Bigtable change streams metadata instance ID): The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.
@@ -135,6 +136,7 @@ export BIGTABLE_READ_TABLE_ID=<bigtableReadTableId>
 export BIDIRECTIONAL_REPLICATION_ENABLED=false
 export CBT_QUALIFIER=BIDIRECTIONAL_REPL_SOURCE_CBT
 export DRY_RUN_ENABLED=false
+export FILTER_GCMUTATIONS=false
 export HBASE_QUALIFIER=BIDIRECTIONAL_REPL_SOURCE_HBASE
 export HBASE_ZOOKEEPER_QUORUM_PORT=2181
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
@@ -158,6 +160,7 @@ gcloud dataflow flex-template run "bigtable-change-streams-to-hbase-job" \
   --parameters "bidirectionalReplicationEnabled=$BIDIRECTIONAL_REPLICATION_ENABLED" \
   --parameters "cbtQualifier=$CBT_QUALIFIER" \
   --parameters "dryRunEnabled=$DRY_RUN_ENABLED" \
+  --parameters "filterGCMutations=$FILTER_GCMUTATIONS" \
   --parameters "hbaseQualifier=$HBASE_QUALIFIER" \
   --parameters "hbaseRootDir=$HBASE_ROOT_DIR" \
   --parameters "hbaseZookeeperQuorumHost=$HBASE_ZOOKEEPER_QUORUM_HOST" \
@@ -206,6 +209,7 @@ export BIGTABLE_READ_TABLE_ID=<bigtableReadTableId>
 export BIDIRECTIONAL_REPLICATION_ENABLED=false
 export CBT_QUALIFIER=BIDIRECTIONAL_REPL_SOURCE_CBT
 export DRY_RUN_ENABLED=false
+export FILTER_GCMUTATIONS=false
 export HBASE_QUALIFIER=BIDIRECTIONAL_REPL_SOURCE_HBASE
 export HBASE_ZOOKEEPER_QUORUM_PORT=2181
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
@@ -229,7 +233,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigtable-change-streams-to-hbase-job" \
 -DtemplateName="Bigtable_Change_Streams_to_HBase" \
--Dparameters="bidirectionalReplicationEnabled=$BIDIRECTIONAL_REPLICATION_ENABLED,cbtQualifier=$CBT_QUALIFIER,dryRunEnabled=$DRY_RUN_ENABLED,hbaseQualifier=$HBASE_QUALIFIER,hbaseRootDir=$HBASE_ROOT_DIR,hbaseZookeeperQuorumHost=$HBASE_ZOOKEEPER_QUORUM_HOST,hbaseZookeeperQuorumPort=$HBASE_ZOOKEEPER_QUORUM_PORT,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID,bigtableReadAppProfile=$BIGTABLE_READ_APP_PROFILE,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES" \
+-Dparameters="bidirectionalReplicationEnabled=$BIDIRECTIONAL_REPLICATION_ENABLED,cbtQualifier=$CBT_QUALIFIER,dryRunEnabled=$DRY_RUN_ENABLED,filterGCMutations=$FILTER_GCMUTATIONS,hbaseQualifier=$HBASE_QUALIFIER,hbaseRootDir=$HBASE_ROOT_DIR,hbaseZookeeperQuorumHost=$HBASE_ZOOKEEPER_QUORUM_HOST,hbaseZookeeperQuorumPort=$HBASE_ZOOKEEPER_QUORUM_PORT,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID,bigtableReadAppProfile=$BIGTABLE_READ_APP_PROFILE,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES" \
 -pl v2/bigtable-changestreams-to-hbase \
 -am
 ```

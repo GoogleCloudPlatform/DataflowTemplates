@@ -19,8 +19,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **sourceShardsFilePath** (Source shard details file path in Cloud Storage): Source shard details file path in Cloud Storage that contains connection profile of source shards.
 * **sessionFilePath** (Session File Path in Cloud Storage): Session file path in Cloud Storage that contains mapping information from HarbourBridge.
-* **startTimestamp** (File start timestamp): Start time of file for all shards. To be given at first launch of the job.
-* **windowDuration** (File increment window duration): The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m).
 * **GCSInputDirectoryPath** (GCS input directory path): Path from where to read the change stream files.
 * **spannerProjectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
 * **metadataInstance** (Cloud Spanner Instance to store the shard progress when reading from gcs): This is the instance to store the shard progress of the files processed.
@@ -31,8 +29,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **sourceType** (Destination source type): This is the type of source databse.Currently only mysql is supported. Defaults to: mysql.
 * **sourceDbTimezoneOffset** (SourceDB timezone offset): This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
 * **timerInterval** (Duration in seconds between calls to stateful timer processing. ): Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1.
-* **GCSLookupRetryCount** (Number of times file lookup needs to be retried. ): Number of times file lookup needs to be retried. Defaults to: 3.
-* **GCSLookupRetryInterval** (Duration in seconds between file lookup retries. ): Controls the time between succssive polls GCS file loop retries. Defaults to: 3.
+* **startTimestamp** (File start timestamp, takes precedence if provided, else value from spanner_to_gcs_metadata is considered, for regular mode.): Start time of file for all shards. If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode.
+* **windowDuration** (File increment window duration,takes precedence if provided, else value from spanner_to_gcs_metadata is considered, for regular mode.): The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode. (Example: 5m).
 * **runMode** (This type of run mode. Supported values - regular/reprocess/deletegcs.): Regular writes to source db, reprocess erred shards or delete the gcs files. Defaults to: regular.
 
 
@@ -119,8 +117,6 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/GCS_to_Sourcedb"
 ### Required
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 export SESSION_FILE_PATH=<sessionFilePath>
-export START_TIMESTAMP=<startTimestamp>
-export WINDOW_DURATION=<windowDuration>
 export GCSINPUT_DIRECTORY_PATH=<GCSInputDirectoryPath>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export METADATA_INSTANCE=<metadataInstance>
@@ -130,8 +126,8 @@ export METADATA_DATABASE=<metadataDatabase>
 export SOURCE_TYPE=mysql
 export SOURCE_DB_TIMEZONE_OFFSET=+00:00
 export TIMER_INTERVAL=1
-export GCSLOOKUP_RETRY_COUNT=3
-export GCSLOOKUP_RETRY_INTERVAL=3
+export START_TIMESTAMP=<startTimestamp>
+export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
 
 gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
@@ -149,8 +145,6 @@ gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
   --parameters "spannerProjectId=$SPANNER_PROJECT_ID" \
   --parameters "metadataInstance=$METADATA_INSTANCE" \
   --parameters "metadataDatabase=$METADATA_DATABASE" \
-  --parameters "GCSLookupRetryCount=$GCSLOOKUP_RETRY_COUNT" \
-  --parameters "GCSLookupRetryInterval=$GCSLOOKUP_RETRY_INTERVAL" \
   --parameters "runMode=$RUN_MODE"
 ```
 
@@ -172,8 +166,6 @@ export REGION=us-central1
 ### Required
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 export SESSION_FILE_PATH=<sessionFilePath>
-export START_TIMESTAMP=<startTimestamp>
-export WINDOW_DURATION=<windowDuration>
 export GCSINPUT_DIRECTORY_PATH=<GCSInputDirectoryPath>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export METADATA_INSTANCE=<metadataInstance>
@@ -183,8 +175,8 @@ export METADATA_DATABASE=<metadataDatabase>
 export SOURCE_TYPE=mysql
 export SOURCE_DB_TIMEZONE_OFFSET=+00:00
 export TIMER_INTERVAL=1
-export GCSLOOKUP_RETRY_COUNT=3
-export GCSLOOKUP_RETRY_INTERVAL=3
+export START_TIMESTAMP=<startTimestamp>
+export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
 
 mvn clean package -PtemplatesRun \
@@ -194,7 +186,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-to-sourcedb-job" \
 -DtemplateName="GCS_to_Sourcedb" \
--Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerInterval=$TIMER_INTERVAL,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,GCSLookupRetryCount=$GCSLOOKUP_RETRY_COUNT,GCSLookupRetryInterval=$GCSLOOKUP_RETRY_INTERVAL,runMode=$RUN_MODE" \
+-Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerInterval=$TIMER_INTERVAL,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE" \
 -pl v2/gcs-to-sourcedb \
 -am
 ```

@@ -85,6 +85,8 @@ import org.slf4j.LoggerFactory;
       "bigtableRpcAttemptTimeoutMs",
       "bigtableRpcTimeoutMs"
     },
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-bigtable-change-streams-to-bigquery",
     flexContainerName = "bigtable-changestreams-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
 public final class BigtableChangeStreamsToBigQuery {

@@ -1,11 +1,21 @@
 
 Pub/Sub to Redis template
 ---
-A streaming pipeline which inserts data from a Pub/Sub and writes them to Redis.
+The Pub/Sub to Redis template is a streaming pipeline that reads messages from a
+Pub/Sub subscription and writes the message payload to Redis. The most common use
+case of this template is to export logs to Redis Enterprise for advanced
+search-based log analysis in real time.
+
+Before writing to Redis, you can apply a JavaScript user-defined function to the
+message payload. Any messages that experience processing failures are forwarded
+to a Pub/Sub unprocessed topic for further troubleshooting and reprocessing.
+
+For added security, enable an SSL connection when setting up your database
+endpoint connection.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-redis)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_PubSub_to_Redis).
 
 :bulb: This is a generated documentation based
@@ -25,11 +35,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **sslEnabled** (Redis ssl enabled): Redis database ssl parameter. Defaults to: false.
 * **redisSinkType** (Redis sink to write): Supported Redis sinks are STRING_SINK, HASH_SINK, STREAMS_SINK and LOGGING_SINK (Example: STRING_SINK). Defaults to: STRING_SINK.
-* **connectionTimeout** (Redis connection timeout in ms): Redis connection timeout in ms. (Example: 2000). Defaults to: 2000.
+* **connectionTimeout** (Redis connection timeout in milliseconds): Redis connection timeout in milliseconds. (Example: 2000). Defaults to: 2000.
 * **ttl** (Hash key expiration time in sec (ttl)): Key expiration time in sec (ttl, default for HASH_SINK is -1 i.e. no expiration).
 * **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
 * **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 60.
+* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 
 
 ## User-Defined functions (UDFs)
@@ -135,7 +145,7 @@ export CONNECTION_TIMEOUT=2000
 export TTL=-1
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 
 gcloud dataflow flex-template run "cloud-pubsub-to-redis-job" \
   --project "$PROJECT" \
@@ -182,7 +192,7 @@ export CONNECTION_TIMEOUT=2000
 export TTL=-1
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=60
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

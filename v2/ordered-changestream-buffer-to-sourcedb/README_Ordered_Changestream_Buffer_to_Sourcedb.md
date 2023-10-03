@@ -1,8 +1,8 @@
 
 Ordered change stream buffer to Source DB template
 ---
-Streaming pipeline. Reads ordered Spanner change stream message from
-Pub/SubKafka, transforms them, and writes them to a Source Database like MySQL.
+Streaming pipeline. Reads ordered Spanner change stream message from Pub/Sub to
+Kafka, transforms them, and writes them to a Source Database like MySQL.
 
 
 :memo: This is a Google-provided template! Please

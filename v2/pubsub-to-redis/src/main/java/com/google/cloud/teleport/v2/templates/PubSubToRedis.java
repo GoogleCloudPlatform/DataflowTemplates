@@ -94,10 +94,10 @@ import org.slf4j.LoggerFactory;
       "The Pub/Sub to Redis template is a streaming pipeline that reads messages from a Pub/Sub subscription and "
           + "writes the message payload to Redis. The most common use case of this template is to export logs to Redis "
           + "Enterprise for advanced search-based log analysis in real time.",
-      "Before writing to Redis, you can also apply a JavaScript user-defined function to the message payload. Any "
+      "Before writing to Redis, you can apply a JavaScript user-defined function to the message payload. Any "
           + "messages that experience processing failures are forwarded to a Pub/Sub unprocessed topic for further "
           + "troubleshooting and reprocessing.",
-      "As an added security, you can enable an SSL connection when setting up your database endpoint connection."
+      "For added security, enable an SSL connection when setting up your database endpoint connection."
     },
     optionsClass = PubSubToRedis.PubSubToRedisOptions.class,
     flexContainerName = "pubsub-to-redis",
@@ -206,8 +206,8 @@ public class PubSubToRedis {
     @TemplateParameter.Integer(
         order = 7,
         optional = true,
-        description = "Redis connection timeout in ms",
-        helpText = "Redis connection timeout in ms.",
+        description = "Redis connection timeout in milliseconds",
+        helpText = "Redis connection timeout in milliseconds.",
         example = "2000")
     @Default.Integer(2000)
     int getConnectionTimeout();
