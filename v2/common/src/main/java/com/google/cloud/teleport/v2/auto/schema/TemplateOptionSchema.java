@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.auto.schema;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -107,9 +108,18 @@ public class TemplateOptionSchema extends GetterBasedSchemaProvider {
 
   @Override
   public SchemaUserTypeCreator schemaTypeCreator(Class<?> targetClass, Schema schema) {
-    return params ->
-        PipelineOptionsFactory.fromArgs(
-            Stream.of(params).map(String::valueOf).toArray(String[]::new));
+    return params -> {
+      List<FieldValueTypeInformation> fieldValueTypeInformations =
+          AbstractGetterTypeSupplier.INSTANCE.get(targetClass);
+
+      List<String> args = new ArrayList<>();
+      for (int i = 0; i < fieldValueTypeInformations.size(); i++) {
+        if (params[i] != null) {
+          args.add("--" + fieldValueTypeInformations.get(i).getName() + "=" + params[i].toString());
+        }
+      }
+      return PipelineOptionsFactory.fromArgs(args.toArray(new String[args.size()]));
+    };
   }
 
   @Override
