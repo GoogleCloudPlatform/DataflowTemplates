@@ -13,9 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.auto.blocks;
+package com.google.cloud.teleport.v2.auto.schema;
 
-import static com.google.cloud.teleport.v2.auto.blocks.RowTypes.PubSubMessageRow.PubSubMessageToRow;
+import static com.google.cloud.teleport.v2.auto.schema.RowTypes.PubSubMessageRow.PubSubMessageToRow;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,9 +24,16 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesAndMessageIdCoder;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TypeDescriptor;
 
 public interface RowTypes extends Serializable {
 
@@ -78,6 +85,20 @@ public interface RowTypes extends Serializable {
             Schema.Field.of("error_message", Schema.FieldType.STRING),
             Schema.Field.of("stacktrace", Schema.FieldType.STRING));
 
+    public static class MapToRow extends PTransform<PCollection<FailsafeElement<PubsubMessage, String>>, PCollection<Row>> {
+
+      @Override
+      public PCollection<Row> expand(PCollection<FailsafeElement<PubsubMessage, String>> input) {
+        return input.apply(MapElements.into(TypeDescriptor.of(Row.class))
+                .via(RowTypes.FailsafePubSubRow::FailsafePubSubRowToRow))
+            .setCoder(RowCoder.of(SCHEMA));
+      }
+
+      public static FailsafePubSubRow.MapToRow of() {
+        return new FailsafePubSubRow.MapToRow();
+      }
+    }
+
     public static Row FailsafePubSubRowToRow(
         FailsafeElement<PubsubMessage, String> failsafeElement) {
       Row pubsubRow = PubSubMessageToRow(failsafeElement.getOriginalPayload());
@@ -124,6 +145,30 @@ public interface RowTypes extends Serializable {
             .addNullableStringField("message")
             .addMapField("attributes", Schema.FieldType.STRING, Schema.FieldType.STRING)
             .build();
+
+    public static class MapToRow extends PTransform<PCollection<PubsubMessage>, PCollection<Row>> {
+
+      @Override
+      public PCollection<Row> expand(PCollection<PubsubMessage> input) {
+        return input.apply(MapElements.into(TypeDescriptor.of(Row.class))
+            .via(RowTypes.PubSubMessageRow::PubSubMessageToRow))
+            .setCoder(RowCoder.of(RowTypes.PubSubMessageRow.SCHEMA));
+      }
+
+      public static MapToRow of() {
+        return new MapToRow();
+      }
+    }
+
+    public static class MapToPubSubMessage extends PTransform<PCollection<Row>, PCollection<PubsubMessage>> {
+
+      @Override
+      public PCollection<PubsubMessage> expand(PCollection<Row> input) {
+        return input.apply(MapElements.into(TypeDescriptor.of(PubsubMessage.class))
+                .via(RowTypes.PubSubMessageRow::RowToPubSubMessage))
+            .setCoder(PubsubMessageWithAttributesAndMessageIdCoder.of());
+      }
+    }
 
     public static Row PubSubMessageToRow(PubsubMessage message) {
       String messageId = message.getMessageId();

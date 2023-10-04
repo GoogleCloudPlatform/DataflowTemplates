@@ -21,20 +21,22 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Consumes;
 import com.google.cloud.teleport.metadata.auto.DlqOutputs;
 import com.google.cloud.teleport.metadata.auto.Outputs;
+import com.google.cloud.teleport.v2.auto.schema.RowTypes;
 import com.google.cloud.teleport.v2.auto.schema.TemplateOptionSchema;
+import com.google.cloud.teleport.v2.auto.schema.TemplateTransformClass;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesAndMessageIdCoder;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -49,25 +51,24 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 @AutoService(SchemaTransformProvider.class)
 public class PubsubMessageToTableRow
-    extends TemplateTransformClass<
-        PubsubMessageToTableRow.PubsubMessageToTableRowTransformConfiguration,
-        PubsubMessageToTableRow.PubsubMessageToTableRowTransformConfiguration> {
+    extends TemplateTransformClass<PubsubMessageToTableRow.TransformOptions> {
 
   @DefaultSchema(TemplateOptionSchema.class)
-  public interface PubsubMessageToTableRowTransformConfiguration extends PipelineOptions {
+  public interface TransformOptions extends TemplateBlockOptions {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
         optional = true,
-        description = "Cloud Storage path to Javascript UDF source",
+        description = "Cloud Storage path to Javascript UDF source.",
         helpText =
             "The Cloud Storage path pattern for the JavaScript code containing your user-defined "
                 + "functions.",
         example = "gs://your-bucket/your-function.js")
-    abstract String getJavascriptTextTransformGcsPath();
+    String getJavascriptTextTransformGcsPath();
 
     void setJavascriptTextTransformGcsPath(String value);
 
@@ -79,33 +80,21 @@ public class PubsubMessageToTableRow
         helpText =
             "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores.",
         example = "'transform' or 'transform_udf1'")
-    abstract String getJavascriptTextTransformFunctionName();
+    String getJavascriptTextTransformFunctionName();
 
     void setJavascriptTextTransformFunctionName(String value);
 
     @TemplateParameter.Integer(
-        order = 4,
+        order = 3,
         optional = true,
-        description = "JavaScript UDF auto-reload interval (minutes)",
+        description = "JavaScript UDF auto-reload interval (minutes).",
         helpText =
             "Define the interval that workers may check for JavaScript UDF changes to reload the files.")
     @Default.Integer(0)
-    abstract Integer getJavascriptTextTransformReloadIntervalMinutes();
+    @Nullable
+    Integer getJavascriptTextTransformReloadIntervalMinutes();
 
     void setJavascriptTextTransformReloadIntervalMinutes(Integer value);
-
-    //    public void validate() {
-    //      String invalidConfigMessage = "Invalid PubSubMessageToTableRow configuration: ";
-    //      if (this.getErrorHandling() != null) {
-    //        checkArgument(
-    //            !Strings.isNullOrEmpty(this.getErrorHandling().getOutput()),
-    //            invalidConfigMessage + "Output must not be empty if error handling specified.");
-    //      }
-  }
-
-  @Override
-  public @NonNull Class<PubsubMessageToTableRowTransformConfiguration> configurationClass() {
-    return PubsubMessageToTableRowTransformConfiguration.class;
   }
 
   @Override
@@ -133,17 +122,10 @@ public class PubsubMessageToTableRow
           NullableCoder.of(PubsubMessageWithAttributesAndMessageIdCoder.of()),
           NullableCoder.of(StringUtf8Coder.of()));
 
-  @Consumes(
-      value = Row.class,
-      types = {RowTypes.PubSubMessageRow.class})
-  @Outputs(
-      value = Row.class,
-      types = {RowTypes.SchemaTableRow.class})
-  @DlqOutputs(
-      value = Row.class,
-      types = {RowTypes.FailsafePubSubRow.class})
-  public PCollectionRowTuple transform(
-      PCollectionRowTuple input, PubsubMessageToTableRowTransformConfiguration config) {
+  @Consumes(RowTypes.PubSubMessageRow.class)
+  @Outputs(RowTypes.SchemaTableRow.class)
+  @DlqOutputs(RowTypes.FailsafePubSubRow.class)
+  public PCollectionRowTuple transform(PCollectionRowTuple input, TransformOptions options) {
     PCollectionTuple udfOut =
         input
             .get(BlockConstants.OUTPUT_TAG)
@@ -154,11 +136,12 @@ public class PubsubMessageToTableRow
             .apply(
                 "InvokeUDF",
                 JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
-                    .setFileSystemPath(config.getJavascriptTextTransformGcsPath())
-                    .setFunctionName(config.getJavascriptTextTransformFunctionName())
+                    .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                    .setFunctionName(options.getJavascriptTextTransformFunctionName())
                     .setSuccessTag(UDF_OUT)
                     .setFailureTag(UDF_DEADLETTER_OUT)
                     .build());
+
 
     PCollectionTuple jsonToTableRowOut =
         udfOut
@@ -185,10 +168,7 @@ public class PubsubMessageToTableRow
 
     PCollection<Row> errors =
         pcs.apply(Flatten.pCollections())
-            .apply(
-                MapElements.into(TypeDescriptor.of(Row.class))
-                    .via(RowTypes.FailsafePubSubRow::FailsafePubSubRowToRow))
-            .setCoder(RowCoder.of(RowTypes.FailsafePubSubRow.SCHEMA));
+            .apply(RowTypes.FailsafePubSubRow.MapToRow.of());
 
     return PCollectionRowTuple.of(BlockConstants.OUTPUT_TAG, outputRows)
         .and(BlockConstants.ERROR_TAG, errors);
@@ -207,7 +187,7 @@ public class PubsubMessageToTableRow
   }
 
   @Override
-  public Class<PubsubMessageToTableRowTransformConfiguration> getOptionsClass() {
-    return PubsubMessageToTableRowTransformConfiguration.class;
+  public Class<TransformOptions> getOptionsClass() {
+    return TransformOptions.class;
   }
 }
