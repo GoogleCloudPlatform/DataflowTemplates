@@ -51,11 +51,22 @@ public class MqttToPubsubTest {
   }
 
   @Test
-  public void testValidation() {
+  public void testValidationFail() {
     MqttToPubsub.MqttToPubsubOptions options =
         PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
     options.setUsername("test");
     options.setPassword("");
     assertThrows(IllegalArgumentException.class, () -> MqttToPubsub.validate(options));
+  }
+
+  @Test
+  public void testValidationSuccess() {
+    MqttToPubsub.MqttToPubsubOptions options =
+        PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
+    options.setUsername("test");
+    options.setPassword("test");
+
+    // Expected to not throw an exception:
+    MqttToPubsub.validate(options);
   }
 }
