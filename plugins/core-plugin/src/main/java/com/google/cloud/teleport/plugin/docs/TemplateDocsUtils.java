@@ -24,26 +24,25 @@ import org.apache.commons.lang3.StringUtils;
 /** Utility methods that can be used to generate docs / called statically from Freemarker. */
 public final class TemplateDocsUtils {
 
-  private static final Map<String, String> VARIABLE_INTERPOLATION_NAMES =
-      new LinkedHashMap<>() {
-        {
-          put("Apache Beam", "apache_beam");
-          put("BigQuery", "bigquery_name");
-          put("Bigtable", "bigtable_name_short");
-          put("Cloud Storage", "storage_name");
-          put("Cloud KMS", "kms_name_short");
-          put("Dataflow", "dataflow_name");
-          put("Elasticsearch", "product_name_elasticsearch");
-          put("Google Cloud", "gcp_name_short");
-          put("MongoDB", "product_name_mongodb");
-          put("Pub/Sub", "pubsub_name_short");
-          put("Spanner", "spanner_name");
-          put(
-              "projects/your-project-id/subscriptions/your-subscription-name",
-              "pubsub_subscription_format");
-          put("projects/your-project-id/topics/your-topic-name", "pubsub_topic_format");
-        }
-      };
+  private static final Map<String, String> INTERPOLATION = new LinkedHashMap<>();
+
+  static {
+    INTERPOLATION.put("Apache Beam", "apache_beam");
+    INTERPOLATION.put("BigQuery", "bigquery_name");
+    INTERPOLATION.put("Bigtable", "bigtable_name_short");
+    INTERPOLATION.put("Cloud Storage", "storage_name");
+    INTERPOLATION.put("Cloud KMS", "kms_name_short");
+    INTERPOLATION.put("Dataflow", "dataflow_name");
+    INTERPOLATION.put("Elasticsearch", "product_name_elasticsearch");
+    INTERPOLATION.put("Google Cloud", "gcp_name_short");
+    INTERPOLATION.put("MongoDB", "product_name_mongodb");
+    INTERPOLATION.put("Pub/Sub", "pubsub_name_short");
+    INTERPOLATION.put("Spanner", "spanner_name");
+    INTERPOLATION.put(
+        "projects/your-project-id/subscriptions/your-subscription-name",
+        "pubsub_subscription_format");
+    INTERPOLATION.put("projects/your-project-id/topics/your-topic-name", "pubsub_topic_format");
+  }
 
   /**
    * Prints the right side of a variable to set to a shell variable. The main idea is to make
@@ -74,12 +73,9 @@ public final class TemplateDocsUtils {
     }
   }
 
-  /**
-   * Replace entries in the keys of {@link #VARIABLE_INTERPOLATION_NAMES} for its corresponding
-   * value.
-   */
+  /** Replace entries in the keys of {@link #INTERPOLATION} for its corresponding value. */
   public static String replaceVariableInterpolationNames(String text) {
-    for (Map.Entry<String, String> replaceEntry : VARIABLE_INTERPOLATION_NAMES.entrySet()) {
+    for (Map.Entry<String, String> replaceEntry : INTERPOLATION.entrySet()) {
       // Replace only full word boundaries (\b)
       text =
           text.replaceAll(

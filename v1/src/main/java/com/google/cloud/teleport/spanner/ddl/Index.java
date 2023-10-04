@@ -66,7 +66,7 @@ public abstract class Index implements Serializable {
         prettyPrintPg(appendable);
         break;
       default:
-        throw new IllegalArgumentException(String.format("Unrecognized dialect: ", dialect()));
+        throw new IllegalArgumentException(String.format("Unrecognized dialect: %s", dialect()));
     }
   }
 
