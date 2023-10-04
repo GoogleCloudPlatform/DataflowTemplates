@@ -69,8 +69,8 @@ public class MqttToPubsub {
 
   public static void validate(MqttToPubsubOptions options) {
     if (options != null) {
-        if ((options.getUsername() != null && !options.getUsername().isEmpty())
-            && (options.getPassword() == null || options.getPassword().isBlank())) {
+      if ((options.getUsername() != null && !options.getUsername().isEmpty())
+          && (options.getPassword() == null || options.getPassword().isBlank())) {
         throw new IllegalArgumentException(
             "While username is provided, password is required for authentication");
       }
