@@ -135,6 +135,15 @@ public abstract class MergeInfo implements Serializable {
     return false;
   }
 
+  @Override
+  public int hashCode() {
+    int result = 17;
+    result = 31 * result + this.getProjectId().hashCode();
+    result = 31 * result + this.getStagingTable().hashCode();
+    result = 31 * result + this.getReplicaTable().hashCode();
+    return result;
+  }
+
   private BigQueryTableCache getTableCache() {
     if (this.tableCache == null) {
       setUpTableCache();

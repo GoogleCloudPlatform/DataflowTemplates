@@ -183,7 +183,7 @@ public abstract class PythonTextTransformer implements Serializable {
         FileWriter writer = new FileWriter(functionName());
         if (scripts.size() == 0) {
           throw new IllegalArgumentException(
-              String.format("Python UDF Transform: file {} not valid.", fileSystemPath()));
+              String.format("Python UDF Transform: file %s not valid.", fileSystemPath()));
         }
         for (String str : scripts) {
           writer.write(str + System.lineSeparator());

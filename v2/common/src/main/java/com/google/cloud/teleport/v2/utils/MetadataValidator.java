@@ -53,7 +53,7 @@ public class MetadataValidator {
         LOG.info(
             "Validation regex for method {} ({}) not specified.",
             method.getName(),
-            parameterAnnotation.getClass().getSimpleName());
+            parameterAnnotation.annotationType().getSimpleName());
         continue;
       }
 
@@ -70,7 +70,7 @@ public class MetadataValidator {
             LOG.warn(
                 "Parameter {} ({}) not matching the expected format: {}",
                 MetadataUtils.getParameterNameFromMethod(method.getName()),
-                parameterAnnotation.getClass().getSimpleName(),
+                parameterAnnotation.annotationType().getSimpleName(),
                 regex);
           }
 
@@ -78,7 +78,7 @@ public class MetadataValidator {
           LOG.warn(
               "Error validating method {} ({})",
               method.getName(),
-              parameterAnnotation.getClass().getSimpleName());
+              parameterAnnotation.annotationType().getSimpleName());
         }
       }
     }

@@ -235,7 +235,7 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
         case ARRAY:
           throw new DataException("Array types are not supported.");
         default:
-          throw new DataException(String.format("Unsupported data type: {}", t));
+          throw new DataException(String.format("Unsupported data type: %s", t));
       }
       if (f.schema().name() != null && !f.schema().name().isEmpty()) {
         FieldType fieldType = beamField.getType();
@@ -289,7 +289,7 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
           throw new DataException("Array types are not supported.");
         default:
           throw new DataException(
-              String.format("Unsupported data type: {}", f.getType().getTypeName()));
+              String.format("Unsupported data type: %s", f.getType().getTypeName()));
       }
     }
     return rowBuilder.build();
