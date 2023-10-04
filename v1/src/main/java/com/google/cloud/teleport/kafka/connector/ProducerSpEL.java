@@ -84,8 +84,7 @@ class ProducerSpEL {
   private static void ensureTransactionsSupport() {
     checkArgument(
         supportsTransactions(),
-        "This version of Kafka client library does not support transactions. ",
-        "Please used version 0.11 or later.");
+        "This version of Kafka client library does not support transactions. Please used version 0.11 or later.");
   }
 
   private static void invoke(Method method, Object obj, Object... args) {
