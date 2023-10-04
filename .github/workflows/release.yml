@@ -92,7 +92,7 @@ jobs:
         -DbucketName="dataflow-templates-rc" \
         -DlibrariesBucketName="dataflow-templates-releases" \
         -DstagePrefix="${CANDIDATE_NAME}" \
-        -Dmaven.test.skip -e
+        -Dmaven.test.skip -T8 -e
       env:
         CANDIDATE_NAME: ${{ inputs.candidateName }}
     - name: Push changes
