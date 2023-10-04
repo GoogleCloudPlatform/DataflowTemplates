@@ -23,16 +23,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerProjectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
 * **metadataInstance** (Cloud Spanner Instance to store metadata when reading from changestreams): This is the instance to store the metadata used by the connector to control the consumption of the change stream API data.
 * **metadataDatabase** (Cloud Spanner Database to store metadata when reading from changestreams): This is the database to store the metadata used by the connector to control the consumption of the change stream API data.
-* **sessionFilePath** (Session File Path in Cloud Storage): Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 * **gcsOutputDirectory** (Output file directory in Cloud Storage): The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path/).
-* **sourceShardsFilePath** (Source shard details file path in Cloud Storage): Source shard details file path in Cloud Storage that contains connection profile of source shards.
+* **sourceShardsFilePath** (Source shard details file path in Cloud Storage): Source shard details file path in Cloud Storage that contains connection profile of source shards. Atleast one shard information is expected.
 
 ### Optional Parameters
 
 * **startTimestamp** (Changes are read from the given timestamp): Read changes from the given timestamp. Defaults to empty.
 * **endTimestamp** (Changes are read until the given timestamp): Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
+* **sessionFilePath** (Session File Path in Cloud Storage, needed for sharded reverse replication): Session file path in Cloud Storage that contains mapping information from HarbourBridge. Needed when doing sharded reverse replication.
 * **windowDuration** (Window duration): The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 10s.
 * **filtrationMode** (Filtration mode): Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
+* **metadataTableSuffix** (Metadata table suffix): Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed.
 
 
 
@@ -122,15 +123,16 @@ export DATABASE_ID=<databaseId>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export METADATA_INSTANCE=<metadataInstance>
 export METADATA_DATABASE=<metadataDatabase>
-export SESSION_FILE_PATH=<sessionFilePath>
 export GCS_OUTPUT_DIRECTORY=<gcsOutputDirectory>
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 
 ### Optional
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
+export SESSION_FILE_PATH=<sessionFilePath>
 export WINDOW_DURATION=10s
 export FILTRATION_MODE=forward_migration
+export METADATA_TABLE_SUFFIX=<metadataTableSuffix>
 
 gcloud dataflow flex-template run "spanner-change-streams-to-sharded-file-sink-job" \
   --project "$PROJECT" \
@@ -148,7 +150,9 @@ gcloud dataflow flex-template run "spanner-change-streams-to-sharded-file-sink-j
   --parameters "windowDuration=$WINDOW_DURATION" \
   --parameters "gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY" \
   --parameters "filtrationMode=$FILTRATION_MODE" \
-  --parameters "sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH"
+  --parameters "sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" \
+  --parameters "metadataTableSuffix=$METADATA_TABLE_SUFFIX" \
+  --parameters "filtrationMode=$FILTRATION_MODE" \
 ```
 
 For more information about the command, please check:
@@ -173,15 +177,16 @@ export DATABASE_ID=<databaseId>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export METADATA_INSTANCE=<metadataInstance>
 export METADATA_DATABASE=<metadataDatabase>
-export SESSION_FILE_PATH=<sessionFilePath>
 export GCS_OUTPUT_DIRECTORY=<gcsOutputDirectory>
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 
 ### Optional
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
+export SESSION_FILE_PATH=<sessionFilePath>
 export WINDOW_DURATION=10s
 export FILTRATION_MODE=forward_migration
+export METADATA_TABLE_SUFFIX=<metadataTableSuffix>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -190,7 +195,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-sharded-file-sink-job" \
 -DtemplateName="Spanner_Change_Streams_to_Sharded_File_Sink" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,sessionFilePath=$SESSION_FILE_PATH,windowDuration=$WINDOW_DURATION,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,filtrationMode=$FILTRATION_MODE,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,sessionFilePath=$SESSION_FILE_PATH,windowDuration=$WINDOW_DURATION,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,filtrationMode=$FILTRATION_MODE,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,metadataTableSuffix=$METADATA_TABLE_SUFFIX \
 -pl v2/spanner-change-streams-to-sharded-file-sink \
 -am
 ```

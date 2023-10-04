@@ -26,4 +26,10 @@ public class Constants {
 
   // Filtration Mode - forward_migration
   public static final String FILTRATION_MODE_FORWARD_MIGRATION = "forward_migration";
+
+  // Sharding Mode - single_shard
+  public static final String SHARDING_MODE_SINGLE_SHARD = "single_shard";
+
+  // Sharding Mode - multi_shard
+  public static final String SHARDING_MODE_MULTI_SHARD = "multi_shard";
 }

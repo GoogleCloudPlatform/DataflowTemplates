@@ -23,9 +23,12 @@ import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToShardedFileSink.Options;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
 import com.google.cloud.teleport.v2.templates.transforms.FileProgressTracker;
 import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
@@ -35,6 +38,8 @@ import com.google.cloud.teleport.v2.templates.utils.FileCreationTracker;
 import com.google.cloud.teleport.v2.templates.utils.InformationSchemaReader;
 import com.google.cloud.teleport.v2.templates.utils.JobMetadataUpdater;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
+import java.util.List;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.SerializableCoder;
@@ -164,11 +169,11 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     @TemplateParameter.GcsReadFile(
         order = 9,
-        optional = false,
-        description = "Session File Path in Cloud Storage",
+        optional = true,
+        description = "Session File Path in Cloud Storage, needed for sharded reverse replication",
         helpText =
             "Session file path in Cloud Storage that contains mapping information from"
-                + " HarbourBridge")
+                + " HarbourBridge. Needed when doing sharded reverse replciation.")
     String getSessionFilePath();
 
     void setSessionFilePath(String value);
@@ -219,10 +224,23 @@ public class SpannerChangeStreamsToShardedFileSink {
         description = "Source shard details file path in Cloud Storage",
         helpText =
             "Source shard details file path in Cloud Storage that contains connection profile of"
-                + " source shards")
+                + " source shards. Atleast one shard information is expected.")
     String getSourceShardsFilePath();
 
     void setSourceShardsFilePath(String value);
+
+    @TemplateParameter.Text(
+        order = 14,
+        optional = true,
+        description = "Metadata table suffix",
+        helpText =
+            "Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata"
+                + " tables.Useful when doing multiple runs.Only alpha numeric and underscores"
+                + " are allowed.")
+    @Default.String("")
+    String getMetadataTableSuffix();
+
+    void setMetadataTableSuffix(String value);
   }
 
   /**
@@ -252,7 +270,15 @@ public class SpannerChangeStreamsToShardedFileSink {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    Schema schema = SessionFileReader.read(options.getSessionFilePath());
+    List<Shard> shards = ShardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
+    if (shards == null || shards.isEmpty()) {
+      throw new RuntimeException("The source shards file cannot be empty");
+    }
+
+    String shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+    if (shards.size() > 1) {
+      shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
+    }
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =
@@ -261,8 +287,23 @@ public class SpannerChangeStreamsToShardedFileSink {
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
 
-    Ddl ddl = InformationSchemaReader.getInformationSchemaAsDdl(spannerConfig);
+    Schema schema = null;
+    Ddl ddl = null;
+    if (shardingMode.equals(Constants.SHARDING_MODE_MULTI_SHARD)) {
+      schema = SessionFileReader.read(options.getSessionFilePath());
+      ddl = InformationSchemaReader.getInformationSchemaAsDdl(spannerConfig);
+    }
 
+    String tableSuffix = "";
+    if (options.getMetadataTableSuffix() != null && !options.getMetadataTableSuffix().isEmpty()) {
+
+      tableSuffix = options.getMetadataTableSuffix();
+      if (!Pattern.compile("[a-zA-Z0-9_]+").matcher(tableSuffix).matches()) {
+        throw new RuntimeException(
+            "Only alpha numeric and underscores allowed in metadataTableSuffix, however found : "
+                + tableSuffix);
+      }
+    }
     // Capture the window start time and duration config.
     // This is read by the GCSToSource template to ensure the same config is used in both templates.
     JobMetadataUpdater.writeStartAndDuration(
@@ -270,7 +311,8 @@ public class SpannerChangeStreamsToShardedFileSink {
         options.getMetadataInstance(),
         options.getMetadataDatabase(),
         options.getStartTimestamp(),
-        options.getWindowDuration());
+        options.getWindowDuration(),
+        tableSuffix);
 
     // Initialize the per shard progress with historical value
     // This makes it easier to fire blind UPDATES later on when
@@ -279,15 +321,19 @@ public class SpannerChangeStreamsToShardedFileSink {
         new FileCreationTracker(
             options.getSpannerProjectId(),
             options.getMetadataInstance(),
-            options.getMetadataDatabase());
-    fileCreationTracker.init(options.getSourceShardsFilePath());
+            options.getMetadataDatabase(),
+            tableSuffix);
+    fileCreationTracker.init(shards);
 
     pipeline
         .apply(getReadChangeStreamDoFn(options, spannerConfig))
         .apply(ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
         .apply(ParDo.of(new PreprocessRecordsFn()))
         .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class))
-        .apply(ParDo.of(new AssignShardIdFn(spannerConfig, schema, ddl)))
+        .apply(
+            ParDo.of(
+                new AssignShardIdFn(
+                    spannerConfig, schema, ddl, shardingMode, shards.get(0).getLogicalShardId())))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
@@ -306,9 +352,8 @@ public class SpannerChangeStreamsToShardedFileSink {
                 new FileProgressTracker(
                     options.getSpannerProjectId(),
                     options.getMetadataInstance(),
-                    options.getMetadataDatabase())));
-
-    // TODO: add metrics
+                    options.getMetadataDatabase(),
+                    tableSuffix)));
     return pipeline.run();
   }
 

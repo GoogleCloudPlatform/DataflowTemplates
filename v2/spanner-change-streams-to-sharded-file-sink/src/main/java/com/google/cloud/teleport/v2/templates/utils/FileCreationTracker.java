@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import java.util.List;
 
 /** Tracks the shard file creation progress. */
@@ -25,12 +24,15 @@ public class FileCreationTracker {
   private SpannerDao spannerDao;
 
   public FileCreationTracker(
-      String spannerProjectId, String metadataInstance, String metadataDatabase) {
-    this.spannerDao = new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase);
+      String spannerProjectId,
+      String metadataInstance,
+      String metadataDatabase,
+      String tableSuffix) {
+    this.spannerDao =
+        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
   }
 
-  public void init(String shardFileLocation) {
-    List<Shard> shards = ShardFileReader.getOrderedShardDetails(shardFileLocation);
+  public void init(List<Shard> shards) {
     spannerDao.initShardProgress(shards);
   }
 

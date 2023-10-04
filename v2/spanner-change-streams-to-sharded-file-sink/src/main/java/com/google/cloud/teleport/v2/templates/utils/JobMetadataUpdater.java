@@ -27,8 +27,10 @@ public class JobMetadataUpdater {
       String metadataInstance,
       String metadataDatabase,
       String startString,
-      String duration) {
-    SpannerDao spannerDao = new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase);
+      String duration,
+      String tableSuffix) {
+    SpannerDao spannerDao =
+        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
     Duration size = DurationUtils.parseDuration(duration);
     Instant timestamp = Instant.parse(startString);
     // fixed windows start with nearest value divisible by duration

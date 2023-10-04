@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -46,7 +47,7 @@ public class AssignShardIdFnTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
-  public void basicTest() {
+  public void basicTestMultiShard() {
     TrimmedShardedDataChangeRecord record1 = getTrimmedDataChangeRecord("shard1");
     TrimmedShardedDataChangeRecord record2 = getTrimmedDataChangeRecord("shard2");
     List<TrimmedShardedDataChangeRecord> records = Arrays.asList(record1, record2);
@@ -55,10 +56,39 @@ public class AssignShardIdFnTest {
             .apply(
                 Create.of(records)
                     .withCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
-            .apply(ParDo.of(new AssignShardIdFn(null, getSchemaObject(), null)));
+            .apply(
+                ParDo.of(
+                    new AssignShardIdFn(
+                        null,
+                        getSchemaObject(),
+                        null,
+                        Constants.SHARDING_MODE_MULTI_SHARD,
+                        "test")));
 
     record1.setShard("shard1");
     record2.setShard("shard2");
+
+    PAssert.that(output).containsInAnyOrder(record1, record2);
+    pipeline.run();
+  }
+
+  @Test
+  public void basicTestSingleShard() {
+    TrimmedShardedDataChangeRecord record1 = getTrimmedDataChangeRecord("shard1");
+    TrimmedShardedDataChangeRecord record2 = getTrimmedDataChangeRecord("shard2");
+    List<TrimmedShardedDataChangeRecord> records = Arrays.asList(record1, record2);
+    PCollection<TrimmedShardedDataChangeRecord> output =
+        pipeline
+            .apply(
+                Create.of(records)
+                    .withCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
+            .apply(
+                ParDo.of(
+                    new AssignShardIdFn(
+                        null, null, null, Constants.SHARDING_MODE_SINGLE_SHARD, "test")));
+
+    record1.setShard("test");
+    record2.setShard("test");
 
     PAssert.that(output).containsInAnyOrder(record1, record2);
     pipeline.run();

@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.changestream.DataChangeRecordTypeConvertor;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.common.collect.ImmutableList;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -60,10 +61,17 @@ public class AssignShardIdFn
   // Jackson Object mapper.
   private transient ObjectMapper mapper;
 
-  public AssignShardIdFn(SpannerConfig spannerConfig, Schema schema, Ddl ddl) {
+  private final String shardingMode;
+
+  private final String shardName;
+
+  public AssignShardIdFn(
+      SpannerConfig spannerConfig, Schema schema, Ddl ddl, String shardingMode, String shardName) {
     this.spannerConfig = spannerConfig;
     this.schema = schema;
     this.ddl = ddl;
+    this.shardingMode = shardingMode;
+    this.shardName = shardName;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -89,6 +97,11 @@ public class AssignShardIdFn
     TrimmedShardedDataChangeRecord record = new TrimmedShardedDataChangeRecord(c.element());
 
     try {
+      if (shardingMode.equals(Constants.SHARDING_MODE_SINGLE_SHARD)) {
+        record.setShard(shardName);
+        c.output(record);
+        return;
+      }
       String shardIdColumn = getShardIdColumnForTableName(record.getTableName());
 
       String keysJsonStr = record.getMods().get(0).getKeysJson();
