@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.common;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.io.Serializable;
 import org.joda.time.Duration;
 
@@ -35,6 +36,7 @@ public class ProcessingContext implements Serializable {
   private String spannerProjectId;
   private String metadataInstance;
   private String metadataDatabase;
+  private String tableSuffix;
 
   public ProcessingContext(
       Shard shard,
@@ -45,7 +47,8 @@ public class ProcessingContext implements Serializable {
       String gcsPath,
       String spannerProjectId,
       String metadataInstance,
-      String metadataDatabase) {
+      String metadataDatabase,
+      String tableSuffix) {
     this.shard = shard;
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -55,6 +58,7 @@ public class ProcessingContext implements Serializable {
     this.spannerProjectId = spannerProjectId;
     this.metadataInstance = metadataInstance;
     this.metadataDatabase = metadataDatabase;
+    this.tableSuffix = tableSuffix;
   }
 
   public Shard getShard() {
@@ -97,6 +101,10 @@ public class ProcessingContext implements Serializable {
     return metadataDatabase;
   }
 
+  public String getTableSuffix() {
+    return tableSuffix;
+  }
+
   @Override
   public String toString() {
 
@@ -116,6 +124,8 @@ public class ProcessingContext implements Serializable {
         + metadataInstance
         + " metadataDatabase: "
         + metadataDatabase
+        + " tableSuffix: "
+        + tableSuffix
         + "}";
   }
 
@@ -128,6 +138,15 @@ public class ProcessingContext implements Serializable {
       return false;
     }
     final ProcessingContext other = (ProcessingContext) o;
-    return this.getShard().equals(other.getShard());
+    return this.getShard().equals(other.getShard())
+        && this.getSchema().equals(other.getSchema())
+        && this.getSourceDbTimezoneOffset().equals(other.getSourceDbTimezoneOffset())
+        && this.getStartTimestamp().equals(other.getStartTimestamp())
+        && this.getGCSPath().equals(other.getGCSPath())
+        && this.getWindowDuration().equals(other.getWindowDuration())
+        && this.getSpannerProjectId().equals(other.getSpannerProjectId())
+        && this.getMetadataInstance().equals(other.getMetadataInstance())
+        && this.getMetadataDatabase().equals(other.getMetadataDatabase())
+        && this.getTableSuffix().equals(other.getTableSuffix());
   }
 }

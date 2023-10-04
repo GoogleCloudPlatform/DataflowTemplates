@@ -29,13 +29,16 @@ public class ShardProgressTracker {
   private SpannerDao spannerDao;
 
   public ShardProgressTracker(
-      String spannerProjectId, String metadataInstance, String metadataDatabase) {
+      String spannerProjectId,
+      String metadataInstance,
+      String metadataDatabase,
+      String tableSuffix) {
 
-    this.spannerDao = new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase);
+    this.spannerDao =
+        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
   }
 
   public void init() {
-    // TODO:: add PostgreSQL dialect handling
     spannerDao.checkAndcreateShardProgressTable();
   }
 

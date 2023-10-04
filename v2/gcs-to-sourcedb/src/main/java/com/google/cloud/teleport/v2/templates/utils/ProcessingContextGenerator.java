@@ -16,9 +16,10 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
-import com.google.cloud.teleport.v2.templates.common.Shard;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
 import com.google.cloud.teleport.v2.templates.common.SpannerToGcsJobMetadata;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
@@ -46,18 +47,27 @@ public class ProcessingContextGenerator {
       String spannerProjectId,
       String metadataInstance,
       String metadataDatabase,
-      String runMode) {
+      String runMode,
+      String tableSuffix) {
 
     LOG.info(" In getProcessingContextForGCS");
 
-    List<Shard> shards = InputFileReader.getOrderedShardDetails(sourceShardsFilePath, sourceType);
+    if (!"mysql".equals(sourceType)) {
+      LOG.error("Only mysql source type is supported.");
+      throw new RuntimeException(
+          "Input sourceType value : "
+              + sourceType
+              + " is unsupported. Supported values are : mysql");
+    }
+
+    List<Shard> shards = ShardFileReader.getOrderedShardDetails(sourceShardsFilePath);
     Schema schema = SessionFileReader.read(sessionFilePath);
 
-    Map<String, ProcessingContext> response = new HashMap<>();
-
     ShardProgressTracker shardProgressTracker =
-        new ShardProgressTracker(spannerProjectId, metadataInstance, metadataDatabase);
+        new ShardProgressTracker(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
     shardProgressTracker.init();
+
+    Map<String, ProcessingContext> response = new HashMap<>();
 
     /*
     In regular mode, we process all shards.
@@ -72,7 +82,7 @@ public class ProcessingContextGenerator {
         try {
           SpannerToGcsJobMetadata spannerToGcsJobMetadata =
               SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
-                  spannerProjectId, metadataInstance, metadataDatabase);
+                  spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
           windowDuration = spannerToGcsJobMetadata.getWindowDuration();
           startTimestamp = spannerToGcsJobMetadata.getStartTimestamp();
           LOG.info("The start timestamp  from Spanner to GCS job is : {}", startTimestamp);
@@ -97,7 +107,8 @@ public class ProcessingContextGenerator {
                 gcsInputDirectoryPath,
                 spannerProjectId,
                 metadataInstance,
-                metadataDatabase);
+                metadataDatabase,
+                tableSuffix);
         response.put(shard.getLogicalShardId(), taskContext);
       }
     } else if ("reprocess".equals(runMode)) {
@@ -126,7 +137,8 @@ public class ProcessingContextGenerator {
                 gcsInputDirectoryPath,
                 spannerProjectId,
                 metadataInstance,
-                metadataDatabase);
+                metadataDatabase,
+                tableSuffix);
         response.put(shard.getLogicalShardId(), taskContext);
       }
     }

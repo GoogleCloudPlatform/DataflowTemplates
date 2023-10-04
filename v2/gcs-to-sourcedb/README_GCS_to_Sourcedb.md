@@ -31,7 +31,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **timerInterval** (Duration in seconds between calls to stateful timer processing. ): Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1.
 * **startTimestamp** (File start timestamp, takes precedence if provided, else value from spanner_to_gcs_metadata is considered, for regular mode.): Start time of file for all shards. If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode.
 * **windowDuration** (File increment window duration,takes precedence if provided, else value from spanner_to_gcs_metadata is considered, for regular mode.): The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode. (Example: 5m).
-* **runMode** (This type of run mode. Supported values - regular/reprocess/deletegcs.): Regular writes to source db, reprocess erred shards or delete the gcs files. Defaults to: regular.
+* **runMode** (This type of run mode. Supported values - regular/reprocess.): Regular writes to source db, reprocess erred shards. Defaults to: regular.
+* **metadataTableSuffix** (Metadata table suffix): Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed.
 
 
 
@@ -129,6 +130,7 @@ export TIMER_INTERVAL=1
 export START_TIMESTAMP=<startTimestamp>
 export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
+export METADATA_TABLE_SUFFIX=<metadataTableSuffix>
 
 gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
   --project "$PROJECT" \
@@ -145,7 +147,8 @@ gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
   --parameters "spannerProjectId=$SPANNER_PROJECT_ID" \
   --parameters "metadataInstance=$METADATA_INSTANCE" \
   --parameters "metadataDatabase=$METADATA_DATABASE" \
-  --parameters "runMode=$RUN_MODE"
+  --parameters "runMode=$RUN_MODE" \
+  --parameters "metadataTableSuffix=$METADATA_TABLE_SUFFIX"
 ```
 
 For more information about the command, please check:
@@ -178,6 +181,7 @@ export TIMER_INTERVAL=1
 export START_TIMESTAMP=<startTimestamp>
 export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
+export METADATA_TABLE_SUFFIX=<metadataTableSuffix>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -186,7 +190,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-to-sourcedb-job" \
 -DtemplateName="GCS_to_Sourcedb" \
--Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerInterval=$TIMER_INTERVAL,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE" \
+-Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerInterval=$TIMER_INTERVAL,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE,metadataTableSuffix=$METADATA_TABLE_SUFFIX" \
 -pl v2/gcs-to-sourcedb \
 -am
 ```

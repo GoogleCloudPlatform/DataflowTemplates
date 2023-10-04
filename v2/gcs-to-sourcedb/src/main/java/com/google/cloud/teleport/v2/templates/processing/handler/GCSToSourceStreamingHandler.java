@@ -98,7 +98,8 @@ public class GCSToSourceStreamingHandler {
         new ShardProgressTracker(
             taskContext.getSpannerProjectId(),
             taskContext.getMetadataInstance(),
-            taskContext.getMetadataDatabase());
+            taskContext.getMetadataDatabase(),
+            taskContext.getTableSuffix());
     String fileStartTime = taskContext.getStartTimestamp();
     com.google.cloud.Timestamp startTs = com.google.cloud.Timestamp.parseTimestamp(fileStartTime);
 

@@ -13,13 +13,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils;
+package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import com.google.cloud.teleport.v2.templates.common.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
@@ -27,12 +27,11 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public final class InputFileReaderTest {
+public final class ShardFileReaderTest {
 
   @Test
   public void shardFileReading() {
-    List<Shard> shards =
-        InputFileReader.getOrderedShardDetails("src/test/resources/shard.json", "mysql");
+    List<Shard> shards = ShardFileReader.getOrderedShardDetails("src/test/resources/shard.json");
     List<Shard> expectedShards =
         Arrays.asList(
             new Shard("shardA", "hostShardA", "3306", "test", "test", "test"),
@@ -42,24 +41,12 @@ public final class InputFileReaderTest {
   }
 
   @Test
-  public void shardFileReadingSourceTypeException() {
-    RuntimeException thrown =
-        assertThrows(
-            RuntimeException.class,
-            () ->
-                InputFileReader.getOrderedShardDetails(
-                    "src/test/resources/shard.json", "somejunk"));
-    assertTrue(thrown.getMessage().contains("Supported values are : mysql"));
-  }
-
-  @Test
   public void shardFileReadingFileNotExists() {
     RuntimeException thrown =
         assertThrows(
             RuntimeException.class,
             () ->
-                InputFileReader.getOrderedShardDetails(
-                    "src/test/resources/somemissingfile.json", "mysql"));
+                ShardFileReader.getOrderedShardDetails("src/test/resources/somemissingfile.json"));
     assertTrue(thrown.getMessage().contains("Failed to read shard input file"));
   }
 }

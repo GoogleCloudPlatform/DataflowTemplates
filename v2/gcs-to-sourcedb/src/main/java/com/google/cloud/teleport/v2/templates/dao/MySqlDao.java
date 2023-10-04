@@ -21,6 +21,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.commons.dbcp2.ConnectionFactory;
 import org.apache.commons.dbcp2.DriverManagerConnectionFactory;
 import org.apache.commons.dbcp2.PoolableConnectionFactory;
@@ -38,6 +39,7 @@ public class MySqlDao implements Serializable {
   private PoolingDriver driver = null;
   private String poolName = "";
   private String fullPoolName = "";
+  private String shardId = "";
 
   public MySqlDao(String sqlUrl, String sqlUser, String sqlPasswd, String shardId) {
     sqlUrl = sqlUrl + "?rewriteBatchedStatements=true";
@@ -65,7 +67,8 @@ public class MySqlDao implements Serializable {
     } catch (SQLException e) {
       LOG.error("There was an error: " + e.getMessage());
     }
-    this.poolName = "buffer-to-source-" + shardId;
+    this.shardId = shardId;
+    this.poolName = "gcs-to-source-" + shardId;
     this.fullPoolName = "jdbc:apache:commons:dbcp:" + this.poolName;
     driver.registerPool(this.poolName, connectionPool);
   }
@@ -88,6 +91,8 @@ public class MySqlDao implements Serializable {
       } catch (com.mysql.cj.jdbc.exceptions.CommunicationsException e) {
         // TODO: retry handling is configurable with retry count
         LOG.warn("Connection exception while executing SQL, will retry : " + e.getMessage());
+        // gives indication that the shard is being retried
+        Metrics.counter(MySqlDao.class, "mySQL_retry_" + shardId).inc();
       } finally {
 
         if (statement != null) {

@@ -20,6 +20,8 @@ import com.google.cloud.teleport.v2.templates.processing.handler.GCSToSourceStre
 import org.apache.beam.sdk.coders.BooleanCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
 import org.apache.beam.sdk.state.TimeDomain;
@@ -42,6 +44,9 @@ import org.slf4j.LoggerFactory;
 public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Void> {
   private static final Logger LOG = LoggerFactory.getLogger(GcsToSourceStreamer.class);
   private int incrementIntervalInSeconds = 1;
+
+  private static final Counter num_shards =
+      Metrics.counter(GcsToSourceStreamer.class, "num_shards");
 
   public GcsToSourceStreamer(int incrementIntervalInSeconds) {
     this.incrementIntervalInSeconds = incrementIntervalInSeconds;
@@ -96,6 +101,7 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
     if (storedStartTime == null) {
       startString.write(element.getValue().getStartTimestamp());
     }
+    num_shards.inc();
   }
 
   @OnTimer("timer")

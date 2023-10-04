@@ -45,9 +45,13 @@ public class InputRecordProcessor {
     try {
       boolean capturedlagMetric = false;
       long replicationLag = 0L;
-      Counter numRecProcessedMetric =
-          Metrics.counter(shardId, "numberOfRecordsProcessed_" + shardId);
-      Distribution lagMetric = Metrics.distribution(shardId, "replicationLagInSeconds_" + shardId);
+      Counter numRecProcessedMetric = Metrics.counter(shardId, "records_processed_" + shardId);
+      Counter numRecReadFromGcsMetric =
+          Metrics.counter(shardId, "records_read_from_gcs_" + shardId);
+      // gives indication that records were read from GCS
+      numRecReadFromGcsMetric.inc(recordList.size());
+      Distribution lagMetric =
+          Metrics.distribution(shardId, "replication_lag_in_seconds_" + shardId);
 
       List<String> dmlBatch = new ArrayList<>();
       for (TrimmedShardedDataChangeRecord chrec : recordList) {

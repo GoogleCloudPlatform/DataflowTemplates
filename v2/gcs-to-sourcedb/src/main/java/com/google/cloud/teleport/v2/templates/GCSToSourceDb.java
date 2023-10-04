@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.transforms.GcsToSourceStreamer;
 import com.google.cloud.teleport.v2.templates.utils.ProcessingContextGenerator;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -192,16 +193,29 @@ public class GCSToSourceDb {
 
     void setMetadataDatabase(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Enum(
         order = 12,
         optional = true,
-        // TODO: enumOptions = {"regular", "reprocess", "deletegcs"},
-        description = "This type of run mode. Supported values - regular/reprocess/deletegcs.",
-        helpText = "Regular writes to source db, reprocess erred shards or delete the gcs files")
+        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("reprocess")},
+        description = "This type of run mode. Supported values - regular/reprocess.",
+        helpText = "Regular writes to source db, reprocess erred shards")
     @Default.String("regular")
     String getRunMode();
 
     void setRunMode(String value);
+
+    @TemplateParameter.Text(
+        order = 13,
+        optional = true,
+        description = "Metadata table suffix",
+        helpText =
+            "Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata"
+                + " tables.Useful when doing multiple runs.Only alpha numeric and underscores are"
+                + " allowed.")
+    @Default.String("")
+    String getMetadataTableSuffix();
+
+    void setMetadataTableSuffix(String value);
   }
 
   /**
@@ -230,6 +244,16 @@ public class GCSToSourceDb {
   public static PipelineResult run(Options options) {
 
     Pipeline pipeline = Pipeline.create(options);
+    String tableSuffix = "";
+    if (options.getMetadataTableSuffix() != null && !options.getMetadataTableSuffix().isEmpty()) {
+      tableSuffix = options.getMetadataTableSuffix();
+      if (!Pattern.compile("[a-zA-Z0-9_]+").matcher(tableSuffix).matches()) {
+        throw new RuntimeException(
+            "Only alpha numeric and underscores allowed in metadataTableSuffix, however found : "
+                + tableSuffix);
+      }
+    }
+
     Map<String, ProcessingContext> processingContextMap = null;
     processingContextMap =
         ProcessingContextGenerator.getProcessingContextForGCS(
@@ -243,17 +267,19 @@ public class GCSToSourceDb {
             options.getSpannerProjectId(),
             options.getMetadataInstance(),
             options.getMetadataDatabase(),
-            options.getRunMode());
+            options.getRunMode(),
+            tableSuffix);
 
     LOG.info("The size of  processing context is : " + processingContextMap.size());
-    // TODO: get start time and interval from metadata database, add deletegcs mode handling
+    // TODO: add deletegcs mode handling
     pipeline
         .apply(
+            "Create Context",
             Create.of(processingContextMap)
                 .withCoder(
                     KvCoder.of(
                         StringUtf8Coder.of(), SerializableCoder.of(ProcessingContext.class))))
-        .apply(ParDo.of(new GcsToSourceStreamer(options.getTimerInterval())));
+        .apply("Write to source", ParDo.of(new GcsToSourceStreamer(options.getTimerInterval())));
 
     return pipeline.run();
   }

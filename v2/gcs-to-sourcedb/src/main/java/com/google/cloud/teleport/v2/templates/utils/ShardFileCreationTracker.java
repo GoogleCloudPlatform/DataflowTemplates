@@ -28,9 +28,14 @@ public class ShardFileCreationTracker {
   private String shardId;
 
   public ShardFileCreationTracker(
-      String spannerProjectId, String metadataInstance, String metadataDatabase, String shardId) {
+      String spannerProjectId,
+      String metadataInstance,
+      String metadataDatabase,
+      String shardId,
+      String tableSuffix) {
 
-    this.spannerDao = new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase);
+    this.spannerDao =
+        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
     this.shardId = shardId;
   }
 

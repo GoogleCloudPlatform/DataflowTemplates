@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +71,8 @@ public class GCSReader {
             taskContext.getSpannerProjectId(),
             taskContext.getMetadataInstance(),
             taskContext.getMetadataDatabase(),
-            taskContext.getShard().getLogicalShardId());
+            taskContext.getShard().getLogicalShardId(),
+            taskContext.getTableSuffix());
     this.shardId = taskContext.getShard().getLogicalShardId();
     shouldRetryWhenFileNotFound = true;
     shouldFailWhenFileNotFound = false;
@@ -107,6 +109,8 @@ public class GCSReader {
               .thenComparing(TrimmedShardedDataChangeRecord::getServerTransactionId)
               .thenComparing(TrimmedShardedDataChangeRecord::getRecordSequence));
 
+      Metrics.counter(shardId, "file_read_" + shardId).inc();
+
     } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
       throw new RuntimeException("Failed in processing the record : " + ex);
     } catch (IOException e) {
@@ -116,6 +120,7 @@ public class GCSReader {
         return checkAndReturnIfFileExists();
       } else {
         if (shouldFailWhenFileNotFound) {
+          Metrics.counter(GCSReader.class, "file_not_found_errors_" + shardId).inc();
           throw new RuntimeException("File  " + fileName + " expected but not found  : " + e);
         }
         LOG.warn("File not found : " + fileName + " skipping the file");
@@ -142,16 +147,19 @@ public class GCSReader {
             "No data in shard_file_create_progress for shard {}, will retry in 5 seconds", shardId);
         Thread.sleep(5000);
         firstPipelineProgress = shardFileCreationTracker.getShardFileCreationProgressTimestamp();
+        Metrics.counter(GCSReader.class, "metadata_file_create_init_retry_" + shardId).inc();
       }
 
       // the Spanner to GCS job needs to catchup - wait and retry
       while (firstPipelineProgress.compareTo(currentEndTimestamp) < 0) {
         LOG.info(
-            "Progress for shard {} in shard_file_create_progress is lagging {}, will retry in 5 seconds",
+            "Progress for shard {} in shard_file_create_progress is lagging {}, will retry in 5"
+                + " seconds",
             shardId,
             firstPipelineProgress);
         Thread.sleep(5000);
         firstPipelineProgress = shardFileCreationTracker.getShardFileCreationProgressTimestamp();
+        Metrics.counter(GCSReader.class, "metadata_file_create_lag_retry_" + shardId).inc();
       }
 
       shardFileCreationTracker.close();
