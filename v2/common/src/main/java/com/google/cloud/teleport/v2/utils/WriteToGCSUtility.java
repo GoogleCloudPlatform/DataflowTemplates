@@ -47,13 +47,11 @@ public class WriteToGCSUtility {
    * @return status Boolean value indicating valid/invalid status
    */
   public static boolean isValidFileFormat(String fileFormat) {
-    boolean status = true;
     try {
-      FILE_SUFFIX_MAP.get(FileFormat.valueOf(fileFormat));
-    } catch (Exception e) {
-      status = false;
+      return FILE_SUFFIX_MAP.containsKey(FileFormat.valueOf(fileFormat));
+    } catch (IllegalArgumentException e) {
+      return false;
     }
-    return status;
   }
 
   /** Set Enum FileFormat for all supported file formats. */
