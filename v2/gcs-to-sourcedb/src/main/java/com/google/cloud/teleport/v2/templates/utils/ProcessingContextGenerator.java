@@ -113,6 +113,18 @@ public class ProcessingContextGenerator {
       }
     } else if ("reprocess".equals(runMode)) {
       Map<String, ShardProgress> shardProgressList = shardProgressTracker.getShardProgress();
+      if (windowDuration == null || windowDuration.isEmpty()) {
+        try {
+          SpannerToGcsJobMetadata spannerToGcsJobMetadata =
+              SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
+                  spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+          windowDuration = spannerToGcsJobMetadata.getWindowDuration();
+          LOG.info("The window duration from Spanner to GCS job is : {}", windowDuration);
+        } catch (Exception e) {
+          LOG.error("Unable to get data from spanner_to_gcs_metadata");
+          throw new RuntimeException("Unable to get data from spanner_to_gcs_metadata.", e);
+        }
+      }
 
       for (Shard shard : shards) {
         LOG.info(" The sorted shard is: {}", shard);

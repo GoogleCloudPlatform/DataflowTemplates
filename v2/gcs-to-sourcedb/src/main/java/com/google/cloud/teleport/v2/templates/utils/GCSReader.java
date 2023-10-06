@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.channels.Channels;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -89,7 +90,8 @@ public class GCSReader {
     try (InputStream stream =
         Channels.newInputStream(FileSystems.open(FileSystems.matchNewResource(fileName, false)))) {
 
-      BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+      BufferedReader reader =
+          new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
       ObjectWriter ow = new ObjectMapper().writer();
       while (reader.ready()) {
         String line = reader.readLine();
