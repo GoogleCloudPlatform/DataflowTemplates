@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.common;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.io.Serializable;
+import java.util.Objects;
 import org.joda.time.Duration;
 
 /**
@@ -148,5 +149,20 @@ public class ProcessingContext implements Serializable {
         && this.getMetadataInstance().equals(other.getMetadataInstance())
         && this.getMetadataDatabase().equals(other.getMetadataDatabase())
         && this.getTableSuffix().equals(other.getTableSuffix());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        getShard(),
+        getSchema(),
+        getSourceDbTimezoneOffset(),
+        getStartTimestamp(),
+        getGCSPath(),
+        getWindowDuration(),
+        getSpannerProjectId(),
+        getMetadataInstance(),
+        getMetadataDatabase(),
+        getTableSuffix());
   }
 }

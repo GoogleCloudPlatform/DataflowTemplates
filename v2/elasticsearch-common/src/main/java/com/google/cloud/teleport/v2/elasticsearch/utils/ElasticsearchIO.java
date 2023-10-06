@@ -565,7 +565,7 @@ public class ElasticsearchIO {
     public Read withQuery(String query) {
       checkArgument(query != null, "query can not be null");
       checkArgument(!query.isEmpty(), "query can not be empty");
-      return withQuery(query);
+      return builder().setQuery(query).build();
     }
 
     /**

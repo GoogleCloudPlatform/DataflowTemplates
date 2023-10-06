@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 /** Target (node/edge) metadata. */
-public class Target implements Serializable, Comparable {
+public class Target implements Serializable, Comparable<Target> {
 
   private String source = "";
   private String name = "";
@@ -46,10 +46,10 @@ public class Target implements Serializable, Comparable {
   public Target() {}
 
   @Override
-  public int compareTo(Object o) {
-    if (this.type == ((Target) o).type) {
+  public int compareTo(Target o) {
+    if (this.type == o.type) {
       return 0;
-    } else if (this.type == TargetType.edge && ((Target) o).type == TargetType.node) {
+    } else if (this.type == TargetType.edge && o.type == TargetType.node) {
       return 1;
     } else {
       return -1;

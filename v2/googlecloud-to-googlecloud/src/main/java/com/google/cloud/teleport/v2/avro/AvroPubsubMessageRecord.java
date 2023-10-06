@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.avro;
 
 import com.google.common.base.MoreObjects;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.beam.sdk.coders.AvroCoder;
@@ -86,7 +87,7 @@ public class AvroPubsubMessageRecord {
 
   @Override
   public int hashCode() {
-    return Objects.hash(message, attributes, timestamp);
+    return Objects.hash(Arrays.hashCode(message), attributes, timestamp);
   }
 
   @Override

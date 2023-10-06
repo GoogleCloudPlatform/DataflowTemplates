@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /** SpannerColumnType object to store Source column type. */
 public class SpannerColumnType implements Serializable {
@@ -53,5 +54,10 @@ public class SpannerColumnType implements Serializable {
     }
     final SpannerColumnType other = (SpannerColumnType) o;
     return this.name.equals(other.name) && this.isArray.equals(other.isArray);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, isArray);
   }
 }

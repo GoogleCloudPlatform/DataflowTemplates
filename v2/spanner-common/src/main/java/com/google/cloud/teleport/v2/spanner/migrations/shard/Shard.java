@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.shard;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Shard implements Serializable {
 
@@ -120,5 +121,10 @@ public class Shard implements Serializable {
         && this.port.equals(other.port)
         && this.user.equals(other.user)
         && this.dbName.equals(other.dbName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(logicalShardId, host, port, user, dbName);
   }
 }

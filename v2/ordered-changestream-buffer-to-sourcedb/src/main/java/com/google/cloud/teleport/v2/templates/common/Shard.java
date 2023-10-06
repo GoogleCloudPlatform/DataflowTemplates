@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.common;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Shard implements Serializable {
 
@@ -116,5 +117,10 @@ public class Shard implements Serializable {
     }
     final Shard other = (Shard) o;
     return this.logicalShardId.equals(other.logicalShardId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(logicalShardId);
   }
 }

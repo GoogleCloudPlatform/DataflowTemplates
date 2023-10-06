@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.Objects;
 
 /** NameAndCols object to store Spanner table name and column name mapping information. */
 public class NameAndCols implements Serializable {
@@ -54,5 +55,10 @@ public class NameAndCols implements Serializable {
     }
     final NameAndCols other = (NameAndCols) o;
     return this.name.equals(other.name) && this.cols.equals(other.cols);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, cols);
   }
 }

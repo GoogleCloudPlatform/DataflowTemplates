@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /** SyntheticPKey object column information for synthetically added PKs. */
 public class SyntheticPKey implements Serializable {
@@ -55,5 +56,10 @@ public class SyntheticPKey implements Serializable {
     }
     final SyntheticPKey other = (SyntheticPKey) o;
     return this.colId.equals(other.colId) && this.sequence == other.sequence;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(colId, sequence);
   }
 }

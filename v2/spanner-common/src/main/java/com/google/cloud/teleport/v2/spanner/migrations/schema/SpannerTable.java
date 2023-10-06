@@ -97,7 +97,7 @@ public class SpannerTable implements Serializable {
     }
     return String.format(
         "{ 'name': '%s', colIds': '%s', 'colDefs': '%s','primaryKeys': '%s', shardIdColumn: '%s' }",
-        name, colIds, colDefs, pvalues, shardIdColumn);
+        name, Arrays.toString(colIds), colDefs, pvalues, shardIdColumn);
   }
 
   @Override
@@ -114,5 +114,11 @@ public class SpannerTable implements Serializable {
         && this.colDefs.equals(other.colDefs)
         && Arrays.equals(this.primaryKeys, other.primaryKeys)
         && Objects.equals(this.shardIdColumn, other.shardIdColumn);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        name, Arrays.hashCode(colIds), colDefs, Arrays.hashCode(primaryKeys), shardIdColumn);
   }
 }

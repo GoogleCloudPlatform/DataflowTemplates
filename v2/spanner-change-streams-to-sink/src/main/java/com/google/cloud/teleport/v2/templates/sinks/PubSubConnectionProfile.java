@@ -76,4 +76,9 @@ public class PubSubConnectionProfile implements Serializable {
         && Objects.equals(errorTopicId, that.errorTopicId)
         && Objects.equals(endpoint, that.endpoint);
   }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(projectId, dataTopicId, errorTopicId, endpoint);
+  }
 }
