@@ -15,21 +15,20 @@
  */
 package com.google.cloud.teleport.templates.python;
 
-import com.google.cloud.teleport.metadata.Template;
-import com.google.cloud.teleport.metadata.Template.TemplateType;
-import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 
 /** Placeholder template class for WordCount in Python. */
-@Template(
-    name = "Streaming_LLM",
-    category = TemplateCategory.STREAMING,
-    type = TemplateType.PYTHON,
-    displayName = "Streaming LLM",
-    description = "Execute Large Language Models in Streaming mode using Pub/Sub.",
-    flexContainerName = "streaming-llm",
-    contactInformation = "https://cloud.google.com/support",
-    hidden = true)
+// TODO(pranavbhandari): Re-enable template annotations for python templates after permission issues
+// are fixed.
+/*@Template(
+name = "Streaming_LLM",
+category = TemplateCategory.STREAMING,
+type = TemplateType.PYTHON,
+displayName = "Streaming LLM",
+description = "Execute Large Language Models in Streaming mode using Pub/Sub.",
+flexContainerName = "streaming-llm",
+contactInformation = "https://cloud.google.com/support",
+hidden = true)*/
 public interface StreamingLLM {
 
   @TemplateParameter.PubsubSubscription(

@@ -15,23 +15,22 @@
  */
 package com.google.cloud.teleport.templates.python;
 
-import com.google.cloud.teleport.metadata.Template;
-import com.google.cloud.teleport.metadata.Template.TemplateType;
-import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 
 /** Placeholder template class for WordCount in Python. */
-@Template(
-    name = "Word_Count_Python",
-    category = TemplateCategory.GET_STARTED,
-    type = TemplateType.PYTHON,
-    displayName = "Word Count (Python)",
-    description =
-        "Batch pipeline. Reads text from Cloud Storage, tokenizes text lines into individual words,"
-            + " and performs frequency count on each of the words.",
-    flexContainerName = "word-count-python",
-    contactInformation = "https://cloud.google.com/support",
-    hidden = true)
+// TODO(pranavbhandari): Re-enable template annotations for python templates after permission issues
+// are fixed.
+/*@Template(
+name = "Word_Count_Python",
+category = TemplateCategory.GET_STARTED,
+type = TemplateType.PYTHON,
+displayName = "Word Count (Python)",
+description =
+    "Batch pipeline. Reads text from Cloud Storage, tokenizes text lines into individual words,"
+        + " and performs frequency count on each of the words.",
+flexContainerName = "word-count-python",
+contactInformation = "https://cloud.google.com/support",
+hidden = true)*/
 public interface WordCountPython {
 
   @TemplateParameter.GcsReadFile(
