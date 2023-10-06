@@ -264,7 +264,7 @@ public class DataCastingUtils {
     }
     DateTime val;
     if (o instanceof DateTime) {
-      val = ((DateTime) o).toDateTime();
+      val = ((DateTime) o);
     } else if (o instanceof Instant) {
       val = ((Instant) o).toDateTime();
     } else if (o instanceof java.time.Instant) {

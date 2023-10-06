@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Objects;
 
 /** SourceColumnType object to store Source column type. */
 public class SourceColumnType implements Serializable {
@@ -50,7 +51,8 @@ public class SourceColumnType implements Serializable {
 
   public String toString() {
     return String.format(
-        "{ 'name': '%s' , 'mods' :  '%s', 'arrayBounds' :  '%s' }", name, mods, arrayBounds);
+        "{ 'name': '%s' , 'mods' :  '%s', 'arrayBounds' :  '%s' }",
+        name, Arrays.toString(mods), Arrays.toString(arrayBounds));
   }
 
   @Override
@@ -65,5 +67,10 @@ public class SourceColumnType implements Serializable {
     return this.name.equals(other.name)
         && Arrays.equals(this.mods, other.mods)
         && Arrays.equals(this.arrayBounds, other.arrayBounds);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, Arrays.hashCode(mods), Arrays.hashCode(arrayBounds));
   }
 }

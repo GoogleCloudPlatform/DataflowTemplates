@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * SourceColumnDefinition object to store Spanner table name and column name mapping information.
@@ -55,5 +56,10 @@ public class SourceColumnDefinition implements Serializable {
     }
     final SourceColumnDefinition other = (SourceColumnDefinition) o;
     return this.name.equals(other.name) && this.type.equals(other.type);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, type);
   }
 }

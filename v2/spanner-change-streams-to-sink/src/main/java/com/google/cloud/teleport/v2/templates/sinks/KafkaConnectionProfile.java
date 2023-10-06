@@ -67,4 +67,9 @@ public class KafkaConnectionProfile implements Serializable {
         && Objects.equals(errorTopic, that.errorTopic)
         && Objects.equals(bootstrapServer, that.bootstrapServer);
   }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(dataTopic, errorTopic, bootstrapServer);
+  }
 }

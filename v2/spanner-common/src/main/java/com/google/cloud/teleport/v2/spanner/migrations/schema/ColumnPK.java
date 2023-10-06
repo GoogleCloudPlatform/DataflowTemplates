@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /** ColumnPK object to store table PK for both Spanner and Source. */
 public class ColumnPK implements Serializable {
@@ -53,5 +54,10 @@ public class ColumnPK implements Serializable {
     }
     final ColumnPK other = (ColumnPK) o;
     return this.colId.equals(other.colId) && this.order == other.order;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(colId, order);
   }
 }

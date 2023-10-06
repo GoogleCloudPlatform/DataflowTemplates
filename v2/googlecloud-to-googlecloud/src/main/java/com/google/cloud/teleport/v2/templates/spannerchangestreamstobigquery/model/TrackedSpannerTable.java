@@ -96,8 +96,12 @@ public final class TrackedSpannerTable implements Serializable {
     TrackedSpannerTable that = (TrackedSpannerTable) o;
     return Objects.equals(tableName, that.tableName)
         && Objects.equals(pkColumns, that.pkColumns)
-        && Objects.equals(nonPkColumns, that.nonPkColumns)
-        && Objects.equals(pkColumns, that.pkColumns);
+        && Objects.equals(nonPkColumns, that.nonPkColumns);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tableName, pkColumns, nonPkColumns);
   }
 
   @Override

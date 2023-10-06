@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /** SourceTable object to store Source table name and column name mapping information. */
@@ -98,7 +99,7 @@ public class SourceTable implements Serializable {
     }
     return String.format(
         "{ 'name': '%s', 'schema': '%s', 'colIds': '%s', 'colDefs': '%s','primaryKeys': '%s' }",
-        name, schema, colIds, colDefs, pvalues);
+        name, schema, Arrays.toString(colIds), colDefs, pvalues);
   }
 
   @Override
@@ -115,5 +116,11 @@ public class SourceTable implements Serializable {
         && Arrays.equals(this.colIds, other.colIds)
         && this.colDefs.equals(other.colDefs)
         && Arrays.equals(this.primaryKeys, other.primaryKeys);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        name, schema, Arrays.hashCode(colIds), colDefs, Arrays.hashCode(primaryKeys));
   }
 }

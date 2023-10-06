@@ -124,4 +124,9 @@ public class Shard implements Serializable {
         && Objects.equals(user, that.user)
         && Objects.equals(password, that.password);
   }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(logicalShardId, host, port, dbName, user, password);
+  }
 }

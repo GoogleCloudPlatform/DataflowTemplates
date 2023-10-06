@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.kafka.KafkaConnectionProfile;
 import com.google.cloud.teleport.v2.templates.pubsub.PubSubConsumerProfile;
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Each worker task context shard detail, the source connection profile and depending on the buffer
@@ -114,5 +115,10 @@ public class ProcessingContext implements Serializable {
     }
     final ProcessingContext other = (ProcessingContext) o;
     return this.getShard().equals(other.getShard());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getShard());
   }
 }
