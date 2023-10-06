@@ -86,15 +86,10 @@
     <mssql-jdbc.version>12.2.0.jre11</mssql-jdbc.version>
     <neo4j-driver.version>4.4.12</neo4j-driver.version>
 
-    <integration.tests>
-      com.google.cloud.teleport.metadata.TemplateIntegrationTest
-    </integration.tests>
-    <load.tests>
-      com.google.cloud.teleport.metadata.TemplateLoadTest
-    </load.tests>
-    <direct-runner.tests>
-      com.google.cloud.teleport.metadata.DirectRunnerTest
-    </direct-runner.tests>
+    <!-- Test categories -->
+    <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
+    <load.tests>com.google.cloud.teleport.metadata.TemplateLoadTest</load.tests>
+    <direct-runner.tests>com.google.cloud.teleport.metadata.DirectRunnerTest</direct-runner.tests>
     <excluded.spanner.tests></excluded.spanner.tests>
 
     <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
