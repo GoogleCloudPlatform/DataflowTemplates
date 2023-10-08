@@ -95,6 +95,7 @@ public class ImportJobPlaceholder {
     @TemplateParameter.Integer(
         order = 6,
         description = "Mutation Throttle Latency",
+        optional = true,
         helpText =
             "Optional Set mutation latency throttling (enables the feature). Value in milliseconds.")
     @Integer(0)
