@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.utils;
 
 import com.google.api.services.bigquery.model.TableRow;
+import java.sql.Array;
 import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -25,6 +26,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,52 +74,62 @@ public class JdbcConverters {
           continue;
         }
 
-        /*
-         * DATE:      EPOCH MILLISECONDS -> yyyy-MM-dd
-         * DATETIME:  EPOCH MICROSECONDS -> yyyy-MM-dd HH:mm:ss.SSSSSS
-         * TIMESTAMP: EPOCH MICROSECONDS -> yyyy-MM-dd HH:mm:ss.SSSSSSXXX
-         *
-         * MySQL drivers have ColumnTypeName in all caps and postgres in small case
-         */
-        switch (metaData.getColumnTypeName(i).toLowerCase()) {
-          case "date":
-            outputTableRow.set(
-                getColumnRef(metaData, i),
-                DATE_FORMATTER.format(resultSet.getDate(i).toLocalDate()));
-            break;
-          case "datetime":
-            Object timeObject = resultSet.getObject(i);
+        // Arrays have to be handled differently, as circular reference can stack overflow on
+        // Postgres
+        if (metaData.getColumnClassName(i) != null
+            && metaData.getColumnClassName(i).equals("java.sql.Array")) {
+          Array array = resultSet.getArray(i);
+          List<Object> textList = Arrays.asList((Object[]) array.getArray());
+          outputTableRow.set(getColumnRef(metaData, i), textList);
+        } else {
 
-            if (timeObject instanceof TemporalAccessor) {
+          /*
+           * DATE:      EPOCH MILLISECONDS -> yyyy-MM-dd
+           * DATETIME:  EPOCH MICROSECONDS -> yyyy-MM-dd HH:mm:ss.SSSSSS
+           * TIMESTAMP: EPOCH MICROSECONDS -> yyyy-MM-dd HH:mm:ss.SSSSSSXXX
+           *
+           * MySQL drivers have ColumnTypeName in all caps and postgres in small case
+           */
+          switch (metaData.getColumnTypeName(i).toLowerCase()) {
+            case "date":
               outputTableRow.set(
                   getColumnRef(metaData, i),
-                  DATETIME_FORMATTER.format((TemporalAccessor) timeObject));
-            } else {
+                  DATE_FORMATTER.format(resultSet.getDate(i).toLocalDate()));
+              break;
+            case "datetime":
+              Object timeObject = resultSet.getObject(i);
+
+              if (timeObject instanceof TemporalAccessor) {
+                outputTableRow.set(
+                    getColumnRef(metaData, i),
+                    DATETIME_FORMATTER.format((TemporalAccessor) timeObject));
+              } else {
+                Timestamp ts = resultSet.getTimestamp(i);
+                // getTimestamp() returns timestamps in the default (JVM) time zone by default:
+                OffsetDateTime odt = ts.toInstant().atZone(DEFAULT_TIME_ZONE_ID).toOffsetDateTime();
+                outputTableRow.set(getColumnRef(metaData, i), TIMESTAMP_FORMATTER.format(odt));
+              }
+              break;
+            case "timestamp":
               Timestamp ts = resultSet.getTimestamp(i);
               // getTimestamp() returns timestamps in the default (JVM) time zone by default:
               OffsetDateTime odt = ts.toInstant().atZone(DEFAULT_TIME_ZONE_ID).toOffsetDateTime();
               outputTableRow.set(getColumnRef(metaData, i), TIMESTAMP_FORMATTER.format(odt));
-            }
-            break;
-          case "timestamp":
-            Timestamp ts = resultSet.getTimestamp(i);
-            // getTimestamp() returns timestamps in the default (JVM) time zone by default:
-            OffsetDateTime odt = ts.toInstant().atZone(DEFAULT_TIME_ZONE_ID).toOffsetDateTime();
-            outputTableRow.set(getColumnRef(metaData, i), TIMESTAMP_FORMATTER.format(odt));
-            break;
-          case "clob":
-            Clob clobObject = resultSet.getClob(i);
-            if (clobObject.length() > Integer.MAX_VALUE) {
-              LOG.warn(
-                  "The Clob value size {} in column {} exceeds 2GB and will be truncated.",
-                  clobObject.length(),
-                  getColumnRef(metaData, i));
-            }
-            outputTableRow.set(
-                getColumnRef(metaData, i), clobObject.getSubString(1, (int) clobObject.length()));
-            break;
-          default:
-            outputTableRow.set(getColumnRef(metaData, i), resultSet.getObject(i));
+              break;
+            case "clob":
+              Clob clobObject = resultSet.getClob(i);
+              if (clobObject.length() > Integer.MAX_VALUE) {
+                LOG.warn(
+                    "The Clob value size {} in column {} exceeds 2GB and will be truncated.",
+                    clobObject.length(),
+                    getColumnRef(metaData, i));
+              }
+              outputTableRow.set(
+                  getColumnRef(metaData, i), clobObject.getSubString(1, (int) clobObject.length()));
+              break;
+            default:
+              outputTableRow.set(getColumnRef(metaData, i), resultSet.getObject(i));
+          }
         }
       }
 

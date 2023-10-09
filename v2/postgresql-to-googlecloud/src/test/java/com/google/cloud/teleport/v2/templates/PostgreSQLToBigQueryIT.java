@@ -61,6 +61,8 @@ public class PostgreSQLToBigQueryIT extends TemplateTestBase {
   private static final String MEMBER = "member";
   private static final String IS_MEMBER = "is_member";
   private static final String ENTRY_ADDED = "entry_added";
+  private static final String COMMENTS = "comments";
+  private static final String PRICES = "prices";
 
   private PostgresResourceManager postgresResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
@@ -87,11 +89,13 @@ public class PostgreSQLToBigQueryIT extends TemplateTestBase {
     columns.put(AGE, "INTEGER");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(COMMENTS, "TEXT[]");
+    columns.put(PRICES, "INTEGER[]");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Arrange
     List<Map<String, Object>> jdbcData =
-        getJdbcData(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED));
+        getJdbcData(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED, COMMENTS, PRICES));
     postgresResourceManager.createTable(testName, schema);
     postgresResourceManager.write(testName, jdbcData);
 
@@ -101,7 +105,13 @@ public class PostgreSQLToBigQueryIT extends TemplateTestBase {
             Field.of(FULL_NAME, StandardSQLTypeName.STRING),
             Field.of(AGE, StandardSQLTypeName.FLOAT64),
             Field.of(IS_MEMBER, StandardSQLTypeName.STRING),
-            Field.of(ENTRY_ADDED, StandardSQLTypeName.STRING));
+            Field.of(ENTRY_ADDED, StandardSQLTypeName.STRING),
+            Field.newBuilder(COMMENTS, StandardSQLTypeName.STRING)
+                .setMode(Field.Mode.REPEATED)
+                .build(),
+            Field.newBuilder(PRICES, StandardSQLTypeName.NUMERIC)
+                .setMode(Field.Mode.REPEATED)
+                .build());
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryResourceManager.createDataset(REGION);
@@ -113,7 +123,7 @@ public class PostgreSQLToBigQueryIT extends TemplateTestBase {
             .addParameter("outputTable", toTableSpecLegacy(table))
             .addParameter(
                 "query",
-                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED, COMMENTS, PRICES FROM "
                     + testName)
             .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
             .addParameter("username", postgresResourceManager.getUsername())
@@ -135,6 +145,18 @@ public class PostgreSQLToBigQueryIT extends TemplateTestBase {
         row -> {
           row.put("full_name", row.remove("name"));
           row.put("is_member", row.remove("member"));
+
+          // Convert ARRAY['a', 'b'] to list form for comparison
+          String[] commentsParts = row.get("comments").toString().split("'");
+          row.put("comments", Arrays.asList(commentsParts[1], commentsParts[3]));
+
+          // Convert ARRAY[x, y] to list form for comparison
+          String[] pricesParts =
+              row.get("prices").toString().replace("ARRAY[", "").replace("]", "").split(",");
+          row.put(
+              "prices",
+              Arrays.asList(
+                  Integer.valueOf(pricesParts[0].trim()), Integer.valueOf(pricesParts[1].trim())));
         });
     assertThatBigQueryRecords(bigQueryResourceManager.readTable(testName))
         .hasRecordsUnorderedCaseInsensitiveColumns(jdbcData);
@@ -155,6 +177,20 @@ public class PostgreSQLToBigQueryIT extends TemplateTestBase {
       values.put(columns.get(2), new Random().nextInt(100));
       values.put(columns.get(3), i % 2 == 0 ? "Y" : "N");
       values.put(columns.get(4), Instant.now().toString());
+      values.put(
+          columns.get(5),
+          "ARRAY['"
+              + RandomStringUtils.randomAlphabetic(10)
+              + "', '"
+              + RandomStringUtils.randomAlphabetic(10)
+              + "']");
+      values.put(
+          columns.get(6),
+          "ARRAY["
+              + RandomStringUtils.randomNumeric(6)
+              + ", "
+              + RandomStringUtils.randomNumeric(6)
+              + "]");
       data.add(values);
     }
 
