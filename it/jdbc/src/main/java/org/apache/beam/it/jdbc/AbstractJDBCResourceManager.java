@@ -196,7 +196,8 @@ public abstract class AbstractJDBCResourceManager<T extends JdbcDatabaseContaine
             valueList.add(null);
           } else if (NumberUtils.isCreatable(value.toString())
               || "true".equalsIgnoreCase(value.toString())
-              || "false".equalsIgnoreCase(value.toString())) {
+              || "false".equalsIgnoreCase(value.toString())
+              || value.toString().startsWith("ARRAY[")) {
             valueList.add(String.valueOf(value));
           } else {
             valueList.add("'" + value + "'");
