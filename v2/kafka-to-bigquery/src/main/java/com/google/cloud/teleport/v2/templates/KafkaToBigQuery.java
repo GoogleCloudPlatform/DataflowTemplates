@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform.readFromKafka;
-
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -24,8 +22,11 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
+import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
+import com.google.cloud.teleport.v2.options.BigQueryCommonOptions;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.KafkaToBigQuery.KafkaToBQOptions;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteKafkaMessageErrors;
@@ -37,9 +38,16 @@ import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.DecoderFactory;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -52,8 +60,10 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
+import org.apache.beam.sdk.schemas.transforms.Convert;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -63,8 +73,12 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,18 +156,8 @@ public class KafkaToBigQuery {
   public interface KafkaToBQOptions
       extends KafkaReadOptions,
           JavascriptTextTransformerOptions,
+          BigQueryCommonOptions.WriteOptions,
           BigQueryStorageApiStreamingOptions {
-
-    @TemplateParameter.BigQueryTable(
-        order = 1,
-        description = "BigQuery output table",
-        helpText =
-            "BigQuery table location to write the output to. The name should be in the format "
-                + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
-    @Required
-    String getOutputTableSpec();
-
-    void setOutputTableSpec(String outputTableSpec);
 
     /**
      * Get bootstrap server across releases.
@@ -217,6 +221,30 @@ public class KafkaToBigQuery {
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String outputDeadletterTable);
+
+    @TemplateParameter.Enum(
+        order = 5,
+        enumOptions = {
+          @TemplateParameter.TemplateEnumOption("AVRO"),
+          @TemplateParameter.TemplateEnumOption("JSON")
+        },
+        optional = true,
+        description = "The message format",
+        helpText = "The message format. Can be AVRO or JSON.")
+    @Default.String("JSON")
+    String getMessageFormat();
+
+    void setMessageFormat(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 6,
+        optional = true,
+        description = "Cloud Storage path to the Avro schema file",
+        helpText = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.")
+    @Required
+    String getAvroSchemaPath();
+
+    void setAvroSchemaPath(String schemaPath);
   }
 
   /**
@@ -290,23 +318,47 @@ public class KafkaToBigQuery {
      *  4) Write failed records out to BigQuery
      */
 
-    PCollectionTuple convertedTableRows =
-        pipeline
-            /*
-             * Step #1: Read messages in from Kafka
-             */
-            .apply(
-                "ReadFromKafka",
-                readFromKafka(
-                    bootstrapServers,
-                    topicsList,
-                    ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
-                    null))
+    Map<String, Object> kafkaConfig =
+        ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-            /*
-             * Step #2: Transform the Kafka Messages into TableRows
-             */
-            .apply("ConvertMessageToTableRow", new MessageToTableRow(options));
+    PCollectionTuple convertedTableRows;
+    if (options.getMessageFormat() == null || options.getMessageFormat().equals("JSON")) {
+      convertedTableRows =
+          pipeline
+              /*
+               * Step #1: Read messages in from Kafka
+               */
+              .apply(
+                  "ReadFromKafka",
+                  KafkaTransform.readStringFromKafka(
+                      bootstrapServers, topicsList, kafkaConfig, null))
+
+              /*
+               * Step #2: Transform the Kafka Messages into TableRows
+               */
+              .apply("ConvertMessageToTableRow", new StringMessageToTableRow(options));
+    } else if (options.getMessageFormat().equals("AVRO")) {
+
+      Schema schema = SchemaUtils.getAvroSchema(options.getAvroSchemaPath());
+
+      convertedTableRows =
+          pipeline
+              /*
+               * Step #1: Read messages in from Kafka
+               */
+              .apply(
+                  "ReadFromKafka",
+                  KafkaTransform.readAvroFromKafka(
+                      bootstrapServers, topicsList, kafkaConfig, schema, null))
+
+              /*
+               * Step #2: Transform the Kafka Messages into TableRows
+               */
+              .apply("ConvertMessageToTableRow", new AvroMessageToTableRow(schema, options));
+
+    } else {
+      throw new IllegalArgumentException("Invalid format specified: " + options.getMessageFormat());
+    }
 
     /*
      * Step #3: Write the successful records out to BigQuery
@@ -369,11 +421,11 @@ public class KafkaToBigQuery {
   }
 
   /**
-   * The {@link MessageToTableRow} class is a {@link PTransform} which transforms incoming Kafka
-   * Message objects into {@link TableRow} objects for insertion into BigQuery while applying a UDF
-   * to the input. The executions of the UDF and transformation to {@link TableRow} objects is done
-   * in a fail-safe way by wrapping the element with it's original payload inside the {@link
-   * FailsafeElement} class. The {@link MessageToTableRow} transform will output a {@link
+   * The {@link StringMessageToTableRow} class is a {@link PTransform} which transforms incoming
+   * Kafka Message objects into {@link TableRow} objects for insertion into BigQuery while applying
+   * a UDF to the input. The executions of the UDF and transformation to {@link TableRow} objects is
+   * done in a fail-safe way by wrapping the element with it's original payload inside the {@link
+   * FailsafeElement} class. The {@link StringMessageToTableRow} transform will output a {@link
    * PCollectionTuple} which contains all output and dead-letter {@link PCollection}.
    *
    * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
@@ -389,12 +441,12 @@ public class KafkaToBigQuery {
    *       records which couldn't be converted to table rows.
    * </ul>
    */
-  static class MessageToTableRow
+  static class StringMessageToTableRow
       extends PTransform<PCollection<KV<String, String>>, PCollectionTuple> {
 
     private final KafkaToBQOptions options;
 
-    MessageToTableRow(KafkaToBQOptions options) {
+    StringMessageToTableRow(KafkaToBQOptions options) {
       this.options = options;
     }
 
@@ -405,7 +457,7 @@ public class KafkaToBigQuery {
           input
               // Map the incoming messages into FailsafeElements so we can recover from failures
               // across multiple transforms.
-              .apply("MapToRecord", ParDo.of(new MessageToFailsafeElementFn()))
+              .apply("MapToRecord", ParDo.of(new StringMessageToFailsafeElementFn()))
               .apply(
                   "InvokeUDF",
                   FailsafeJavascriptUdf.<KV<String, String>>newBuilder()
@@ -436,17 +488,86 @@ public class KafkaToBigQuery {
     }
   }
 
+  static class AvroMessageToTableRow
+      extends PTransform<PCollection<KV<byte[], GenericRecord>>, PCollectionTuple> {
+
+    private final Schema avroSchema;
+    private final KafkaToBQOptions options;
+
+    AvroMessageToTableRow(Schema avroSchema, KafkaToBQOptions options) {
+      this.avroSchema = avroSchema;
+      this.options = options;
+    }
+
+    @Override
+    public PCollectionTuple expand(PCollection<KV<byte[], GenericRecord>> input) {
+
+      // if it has UDF, convert from GenericAvro to JSON and apply UDF
+      if (StringUtils.isNotEmpty(options.getJavascriptTextTransformGcsPath())
+          && StringUtils.isNotEmpty(options.getJavascriptTextTransformFunctionName())) {
+
+        return new StringMessageToTableRow(options)
+            .expand(
+                input.apply(
+                    "ConvertToJson",
+                    MapElements.into(
+                            TypeDescriptors.kvs(
+                                TypeDescriptors.strings(), TypeDescriptors.strings()))
+                        .via(
+                            kv ->
+                                KV.of(
+                                    new String(kv.getKey(), StandardCharsets.UTF_8),
+                                    Objects.requireNonNull(kv.getValue()).toString()))));
+      }
+
+      PCollectionTuple out =
+          input
+              // Map the incoming messages into FailsafeElements so we can recover from failures
+              // across multiple transforms.
+              .apply("MapToRecord", ParDo.of(new AvroMessageToFailsafeElementFn()))
+              .apply(Convert.toRows())
+              .apply(
+                  "AvroToTableRow",
+                  FailsafeAvroToTableRow.<KV<byte[], GenericRecord>>newBuilder()
+                      .setSuccessTag(TRANSFORM_OUT)
+                      .setFailureTag(TRANSFORM_DEADLETTER_OUT)
+                      .build());
+
+      // Re-wrap the PCollections so we can return a single PCollectionTuple
+      return PCollectionTuple.of(UDF_OUT, udfOut.get(UDF_OUT))
+          .and(UDF_DEADLETTER_OUT, udfOut.get(UDF_DEADLETTER_OUT))
+          .and(TRANSFORM_OUT, jsonToTableRowOut.get(TRANSFORM_OUT))
+          .and(TRANSFORM_DEADLETTER_OUT, jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT));
+    }
+  }
+
   /**
-   * The {@link MessageToFailsafeElementFn} wraps an Kafka Message with the {@link FailsafeElement}
-   * class so errors can be recovered from and the original message can be output to a error records
-   * table.
+   * The {@link StringMessageToFailsafeElementFn} wraps a Kafka Message with the {@link
+   * FailsafeElement} class so errors can be recovered from and the original message can be output
+   * to an error records table.
    */
-  static class MessageToFailsafeElementFn
+  static class StringMessageToFailsafeElementFn
       extends DoFn<KV<String, String>, FailsafeElement<KV<String, String>, String>> {
 
     @ProcessElement
     public void processElement(ProcessContext context) {
       KV<String, String> message = context.element();
+      context.output(FailsafeElement.of(message, message.getValue()));
+    }
+  }
+
+  /**
+   * The {@link AvroMessageToFailsafeElementFn} wraps a Kafka Message with the {@link
+   * FailsafeElement} class so errors can be recovered from and the original message can be output
+   * to an error records table.
+   */
+  static class AvroMessageToFailsafeElementFn
+      extends DoFn<
+          KV<byte[], GenericRecord>, FailsafeElement<KV<byte[], GenericRecord>, GenericRecord>> {
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      KV<byte[], GenericRecord> message = context.element();
       context.output(FailsafeElement.of(message, message.getValue()));
     }
   }

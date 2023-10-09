@@ -20,28 +20,36 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
+
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
 /** Different transformations over the processed data in the pipeline. */
 public class KafkaTransform {
 
   /**
-   * Configures Kafka consumer.
+   * Configures Kafka consumer that reads String.
    *
    * @param bootstrapServers Kafka servers to read from
    * @param topicsList Kafka topics to read from
    * @param config configuration for the Kafka consumer
    * @return PCollection of Kafka Key & Value Pair deserialized in string format
    */
-  public static PTransform<PBegin, PCollection<KV<String, String>>> readFromKafka(
+  public static PTransform<PBegin, PCollection<KV<String, String>>> readStringFromKafka(
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
@@ -54,6 +62,35 @@ public class KafkaTransform {
                 StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
             .withValueDeserializerAndCoder(
                 StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
+            .withConsumerConfigUpdates(config);
+    if (sslConfig != null) {
+      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new SslConsumerFactoryFn(sslConfig));
+    }
+    return kafkaRecords.withoutMetadata();
+  }
+
+  /**
+   * Configures Kafka consumer that reads Avro GenericRecord.
+   *
+   * @param bootstrapServers Kafka servers to read from
+   * @param topicsList Kafka topics to read from
+   * @param config configuration for the Kafka consumer
+   * @return PCollection of Kafka Key & Value Pair deserialized in string format
+   */
+  public static PTransform<PBegin, PCollection<KV<byte[], GenericRecord>>> readAvroFromKafka(
+      String bootstrapServers,
+      List<String> topicsList,
+      Map<String, Object> config,
+      Schema avroSchema,
+      @Nullable Map<String, String> sslConfig) {
+    KafkaIO.Read<byte[], GenericRecord> kafkaRecords =
+        KafkaIO.<byte[], GenericRecord>read()
+            .withBootstrapServers(bootstrapServers)
+            .withTopics(topicsList)
+            .withKeyDeserializerAndCoder(
+                ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
+            .withValueDeserializerAndCoder(
+                (Class) KafkaAvroDeserializer.class, NullableCoder.of(AvroCoder.of(avroSchema)))
             .withConsumerConfigUpdates(config);
     if (sslConfig != null) {
       kafkaRecords = kafkaRecords.withConsumerFactoryFn(new SslConsumerFactoryFn(sslConfig));

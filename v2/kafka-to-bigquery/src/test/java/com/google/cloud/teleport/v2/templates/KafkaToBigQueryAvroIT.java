@@ -26,11 +26,26 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
+import java.net.URL;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+
+import com.google.common.io.Resources;
+import com.google.protobuf.ByteString;
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.avro.io.Encoder;
+import org.apache.avro.io.EncoderFactory;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -44,6 +59,7 @@ import org.apache.beam.it.kafka.KafkaResourceManager;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
@@ -58,12 +74,13 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(KafkaToBigQuery.class)
 @RunWith(JUnit4.class)
-public final class KafkaToBigQueryIT extends TemplateTestBase {
+public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableResourceManager.class);
 
   private KafkaResourceManager kafkaResourceManager;
   private BigQueryResourceManager bigQueryClient;
+  private org.apache.avro.Schema avroSchema;
 
   @Before
   public void setup() throws IOException {
@@ -72,6 +89,10 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
 
     kafkaResourceManager =
         KafkaResourceManager.builder(testName).setHost(TestProperties.hostIp()).build();
+
+    URL avroSchemaResource = Resources.getResource("KafkaToBigQueryAvroIT/avro_schema.avsc");
+    gcsClient.uploadArtifact("schema.avsc", avroSchemaResource.getPath());
+    avroSchema = new org.apache.avro.Schema.Parser().parse(avroSchemaResource.openStream());
   }
 
   @After
@@ -80,22 +101,22 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void testKafkaToBigQuery() throws IOException {
-    baseKafkaToBigQuery(Function.identity()); // no extra parameters
+  public void testKafkaToBigQueryAvro() throws IOException {
+    baseKafkaToBigQueryAvro(Function.identity()); // no extra parameters
   }
 
   @Test
-  public void testKafkaToBigQueryWithExistingDLQ() throws IOException {
+  public void testKafkaToBigQueryAvroWithExistingDLQ() throws IOException {
     TableId deadletterTableId =
         bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
 
-    baseKafkaToBigQuery(
+    baseKafkaToBigQueryAvro(
         b -> b.addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
   }
 
   @Test
-  public void testKafkaToBigQueryWithStorageApi() throws IOException {
-    baseKafkaToBigQuery(
+  public void testKafkaToBigQueryAvroWithStorageApi() throws IOException {
+    baseKafkaToBigQueryAvro(
         b ->
             b.addParameter("useStorageWriteApi", "true")
                 .addParameter("numStorageWriteApiStreams", "3")
@@ -103,11 +124,11 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void testKafkaToBigQueryWithStorageApiExistingDLQ() throws IOException {
+  public void testKafkaToBigQueryAvroWithStorageApiExistingDLQ() throws IOException {
     TableId deadletterTableId =
         bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
 
-    baseKafkaToBigQuery(
+    baseKafkaToBigQueryAvro(
         b ->
             b.addParameter("useStorageWriteApi", "true")
                 .addParameter("numStorageWriteApiStreams", "3")
@@ -147,8 +168,8 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
     return dlqSchema;
   }
 
-  public void baseKafkaToBigQuery(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
-      throws IOException {
+  public void baseKafkaToBigQueryAvro(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
     String topicName = kafkaResourceManager.createTopic(testName, 5);
 
@@ -156,7 +177,8 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
     Schema bqSchema =
         Schema.of(
             Field.of("id", StandardSQLTypeName.INT64),
-            Field.of("name", StandardSQLTypeName.STRING));
+            Field.of("name", StandardSQLTypeName.STRING),
+            Field.of("value", StandardSQLTypeName.NUMERIC));
 
     TableId tableId = bigQueryClient.createTable(bqTable, bqSchema);
     TableId deadletterTableId = TableId.of(tableId.getDataset(), tableId.getTable() + "_dlq");
@@ -169,20 +191,25 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
                     kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
                 .addParameter("inputTopics", topicName)
                 .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
-                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
+                .addParameter("messageFormat", "AVRO")
+                .addParameter("avroSchemaPath", getGcsPath("schema.avsc")));
 
     // Act
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
-    KafkaProducer<String, String> kafkaProducer =
-        kafkaResourceManager.buildProducer(new StringSerializer(), new StringSerializer());
+    KafkaProducer<String, byte[]> kafkaProducer =
+        kafkaResourceManager.buildProducer(new StringSerializer(), new ByteArraySerializer());
 
     for (int i = 1; i <= 10; i++) {
-      publish(kafkaProducer, topicName, i + "1", "{\"id\": " + i + "1, \"name\": \"Dataflow\"}");
-      publish(kafkaProducer, topicName, i + "2", "{\"id\": " + i + "2, \"name\": \"Pub/Sub\"}");
-      // Invalid schema
-      publish(
-          kafkaProducer, topicName, i + "3", "{\"id\": " + i + "3, \"description\": \"Pub/Sub\"}");
+      ByteString dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 10.5);
+      publish(kafkaProducer, topicName, i + "1", dataflow);
+
+      ByteString pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", 0);
+      publish(kafkaProducer, topicName, i + "2", pubsub);
+
+      ByteString invalid = ByteString.copyFrom(new byte[8]);
+      publish(kafkaProducer, topicName, i + "3", invalid);
 
       try {
         TimeUnit.SECONDS.sleep(3);
@@ -206,14 +233,16 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
     TableResult tableRows = bigQueryClient.readTable(bqTable);
     assertThatBigQueryRecords(tableRows)
         .hasRecordsUnordered(
-            List.of(Map.of("id", 11, "name", "Dataflow"), Map.of("id", 12, "name", "Pub/Sub")));
+            List.of(
+                Map.of("id", 11, "name", "Dataflow", "value", 10.5),
+                Map.of("id", 12, "name", "Pub/Sub")));
   }
 
   private void publish(
-      KafkaProducer<String, String> producer, String topicName, String key, String value) {
+      KafkaProducer<String, byte[]> producer, String topicName, String key, ByteString value) {
     try {
       RecordMetadata recordMetadata =
-          producer.send(new ProducerRecord<>(topicName, key, value)).get();
+          producer.send(new ProducerRecord<>(topicName, key, value.toByteArray())).get();
       LOG.info(
           "Published record {}, partition {} - offset: {}",
           recordMetadata.topic(),
@@ -222,5 +251,28 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
     } catch (Exception e) {
       throw new RuntimeException("Error publishing record to Kafka", e);
     }
+  }
+
+  private ByteString createRecord(int id, String name, double value) throws IOException {
+    GenericRecord record =
+        new GenericRecordBuilder(avroSchema)
+            .set("id", id)
+            .set("name", name)
+            .set(
+                "decimal",
+                ByteBuffer.wrap(
+                    new BigDecimal(value, MathContext.DECIMAL32)
+                        .setScale(17, RoundingMode.HALF_UP)
+                        .unscaledValue()
+                        .toByteArray()))
+            .build();
+
+    GenericDatumWriter<GenericRecord> writer = new GenericDatumWriter<>(avroSchema);
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    Encoder encoder = EncoderFactory.get().binaryEncoder(output, null);
+    writer.write(record, encoder);
+    encoder.flush();
+
+    return ByteString.copyFrom(output.toByteArray());
   }
 }

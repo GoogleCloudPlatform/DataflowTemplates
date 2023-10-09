@@ -1,0 +1,23 @@
+{
+    "type": "record",
+    "name": "AvroKafkaRecord",
+    "fields": [
+        {
+            "name": "id",
+            "type": "int"
+        },
+        {
+            "name": "name",
+            "type": "string"
+        },
+        {
+            "name" : "value",
+            "type" : {
+                    "type": "bytes",
+                    "logicalType": "decimal",
+                    "precision": 30,
+                    "scale": 17
+                }
+        }
+    ]
+}
