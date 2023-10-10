@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerToBigQueryOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
@@ -31,7 +33,18 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
-/** Template to write data from Spanner table into BigQuery table. */
+/** Template to read data from a Spanner table and write into a BigQuery table. */
+@Template(
+    name = "Cloud_Spanner_to_BigQuery_Flex",
+    category = TemplateCategory.BATCH,
+    displayName = "Spanner to BigQuery",
+    description =
+        "The Spanner to BigQuery template is a batch pipeline that reads data from a Spanner table, and writes them to a BigQuery table.",
+    optionsClass = SpannerToBigQueryOptions.class,
+    flexContainerName = "spanner-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/spanner-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public final class SpannerToBigQuery {
 
   public static void main(String[] args) {
