@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToBigQueryOptions;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.OptionsUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -78,30 +79,79 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Spanner change streams to BigQuery",
     description = {
-      "The Cloud Spanner change streams to BigQuery template is a streaming pipeline that streams Cloud Spanner data change records and writes them into BigQuery tables using Dataflow Runner V2.\n",
-      "All change stream watched columns are included in each BigQuery table row, regardless of whether they are modified by a Cloud Spanner transaction. "
-          + "Columns not watched are not included in the BigQuery row. Any Cloud Spanner change less than the Dataflow watermark are either successfully applied to the BigQuery tables or are stored in the dead-letter queue for retry. BigQuery rows are inserted out of order compared to the original Cloud Spanner commit timestamp ordering.\n",
-      "If the necessary BigQuery tables don't exist, the pipeline creates them. Otherwise, existing BigQuery tables are used. "
-          + "The schema of existing BigQuery tables must contain the corresponding tracked columns of the Cloud Spanner tables and any additional metadata columns that are not ignored explicitly by the ignoreFields option. "
-          + "See the description of the metadata fields in the following list. Each new BigQuery row includes all columns watched by the change stream from its corresponding row in your Cloud Spanner table at the change record's timestamp.\n",
-      "The following metadata fields are added to BigQuery tables. For more details about these fields, see Data change records in \"Change streams partitions, records, and queries.\"\n"
-          + "- _metadata_spanner_mod_type: The modification type (insert, update, or delete) of the Cloud Spanner transaction. Extracted from change stream data change record.\n"
-          + "- _metadata_spanner_table_name: The Cloud Spanner table name. Note this field is not the metadata table name of the connector.\n"
-          + "- _metadata_spanner_commit_timestamp: The Spanner commit timestamp, which is the time when a change is committed. Extracted from change stream data change record.\n"
-          + "- _metadata_spanner_server_transaction_id: A globally unique string that represents the Spanner transaction in which the change was committed. Only use this value in the context of processing change stream records. It isn't correlated with the transaction ID in Spanner's API. Extracted from change stream data change record.\n"
-          + "- _metadata_spanner_record_sequence: The sequence number for the record within the Spanner transaction. Sequence numbers are guaranteed to be unique and monotonically increasing (but not necessarily contiguous) within a transaction. Extracted from change stream data change record.\n"
-          + "- _metadata_spanner_is_last_record_in_transaction_in_partition: Indicates whether the record is the last record for a Spanner transaction in the current partition. Extracted from change stream data change record.\n"
-          + "- _metadata_spanner_number_of_records_in_transaction: The number of data change records that are part of the Spanner transaction across all change stream partitions. Extracted from change stream data change record.\n"
-          + "- _metadata_spanner_number_of_partitions_in_transaction: The number of partitions that return data change records for the Spanner transaction. Extracted from change stream data change record.\n"
-          + "- _metadata_big_query_commit_timestamp: The commit timestamp of when the row is inserted into BigQuery.\n",
+      "The Cloud Spanner change streams to BigQuery template is a streaming pipeline that streams"
+          + " Cloud Spanner data change records and writes them into BigQuery tables using Dataflow"
+          + " Runner V2.\n",
+      "All change stream watched columns are included in each BigQuery table row, regardless of"
+          + " whether they are modified by a Cloud Spanner transaction. Columns not watched are not"
+          + " included in the BigQuery row. Any Cloud Spanner change less than the Dataflow"
+          + " watermark are either successfully applied to the BigQuery tables or are stored in the"
+          + " dead-letter queue for retry. BigQuery rows are inserted out of order compared to the"
+          + " original Cloud Spanner commit timestamp ordering.\n",
+      "If the necessary BigQuery tables don't exist, the pipeline creates them. Otherwise, existing"
+          + " BigQuery tables are used. The schema of existing BigQuery tables must contain the"
+          + " corresponding tracked columns of the Cloud Spanner tables and any additional metadata"
+          + " columns that are not ignored explicitly by the ignoreFields option. See the"
+          + " description of the metadata fields in the following list. Each new BigQuery row"
+          + " includes all columns watched by the change stream from its corresponding row in your"
+          + " Cloud Spanner table at the change record's timestamp.\n",
+      "The following metadata fields are added to BigQuery tables. For more details about these"
+          + " fields, see Data change records in \"Change streams partitions, records, and"
+          + " queries.\"\n"
+          + "- _metadata_spanner_mod_type: The modification type (insert, update, or delete) of the"
+          + " Cloud Spanner transaction. Extracted from change stream data change record.\n"
+          + "- _metadata_spanner_table_name: The Cloud Spanner table name. Note this field is not"
+          + " the metadata table name of the connector.\n"
+          + "- _metadata_spanner_commit_timestamp: The Spanner commit timestamp, which is the time"
+          + " when a change is committed. Extracted from change stream data change record.\n"
+          + "- _metadata_spanner_server_transaction_id: A globally unique string that represents"
+          + " the Spanner transaction in which the change was committed. Only use this value in the"
+          + " context of processing change stream records. It isn't correlated with the transaction"
+          + " ID in Spanner's API. Extracted from change stream data change record.\n"
+          + "- _metadata_spanner_record_sequence: The sequence number for the record within the"
+          + " Spanner transaction. Sequence numbers are guaranteed to be unique and monotonically"
+          + " increasing (but not necessarily contiguous) within a transaction. Extracted from"
+          + " change stream data change record.\n"
+          + "- _metadata_spanner_is_last_record_in_transaction_in_partition: Indicates whether the"
+          + " record is the last record for a Spanner transaction in the current partition."
+          + " Extracted from change stream data change record.\n"
+          + "- _metadata_spanner_number_of_records_in_transaction: The number of data change"
+          + " records that are part of the Spanner transaction across all change stream partitions."
+          + " Extracted from change stream data change record.\n"
+          + "- _metadata_spanner_number_of_partitions_in_transaction: The number of partitions that"
+          + " return data change records for the Spanner transaction. Extracted from change stream"
+          + " data change record.\n"
+          + "- _metadata_big_query_commit_timestamp: The commit timestamp of when the row is"
+          + " inserted into BigQuery.\n",
       "Notes:\n"
-          + "- This template does not propagate schema changes from Cloud Spanner to BigQuery. Because performing a schema change in Cloud Spanner is likely going to break the pipeline, you might need to recreate the pipeline after the schema change.\n"
-          + "- For OLD_AND_NEW_VALUES and NEW_VALUES value capture types, when the data change record contains an UPDATE change, the template needs to do a stale read to Cloud Spanner at the commit timestamp of the data change record to retrieve the unchanged but watched columns. Make sure to configure your database 'version_retention_period' properly for the stale read. For the NEW_ROW value capture type, the template is more efficient, because the data change record captures the full new row including columns that are not updated in UPDATEs, and the template does not need to do a stale read.\n"
-          + "- You can minimize network latency and network transport costs by running the Dataflow job from the same region as your Cloud Spanner instance or BigQuery tables. If you use sources, sinks, staging file locations, or temporary file locations that are located outside of your job's region, your data might be sent across regions. See more about Dataflow regional endpoints.\n"
-          + "- This template supports all valid Cloud Spanner data types, but if the BigQuery type is more precise than the Cloud Spanner type, precision loss might occur during the transformation. Specifically:\n"
-          + "  - For Cloud Spanner JSON type, the order of the members of an object is lexicographically ordered, but there is no such guarantee for BigQuery JSON type.\n"
-          + "  - Cloud Spanner supports nanoseconds TIMESTAMP type, BigQuery only supports microseconds TIMESTAMP type.\n",
-      "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change streams</a>, <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to build change streams Dataflow pipelines</a>, and <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
+          + "- This template does not propagate schema changes from Cloud Spanner to BigQuery."
+          + " Because performing a schema change in Cloud Spanner is likely going to break the"
+          + " pipeline, you might need to recreate the pipeline after the schema change.\n"
+          + "- For OLD_AND_NEW_VALUES and NEW_VALUES value capture types, when the data change"
+          + " record contains an UPDATE change, the template needs to do a stale read to Cloud"
+          + " Spanner at the commit timestamp of the data change record to retrieve the unchanged"
+          + " but watched columns. Make sure to configure your database 'version_retention_period'"
+          + " properly for the stale read. For the NEW_ROW value capture type, the template is more"
+          + " efficient, because the data change record captures the full new row including columns"
+          + " that are not updated in UPDATEs, and the template does not need to do a stale read.\n"
+          + "- You can minimize network latency and network transport costs by running the Dataflow"
+          + " job from the same region as your Cloud Spanner instance or BigQuery tables. If you"
+          + " use sources, sinks, staging file locations, or temporary file locations that are"
+          + " located outside of your job's region, your data might be sent across regions. See"
+          + " more about Dataflow regional endpoints.\n"
+          + "- This template supports all valid Cloud Spanner data types, but if the BigQuery type"
+          + " is more precise than the Cloud Spanner type, precision loss might occur during the"
+          + " transformation. Specifically:\n"
+          + "  - For Cloud Spanner JSON type, the order of the members of an object is"
+          + " lexicographically ordered, but there is no such guarantee for BigQuery JSON type.\n"
+          + "  - Cloud Spanner supports nanoseconds TIMESTAMP type, BigQuery only supports"
+          + " microseconds TIMESTAMP type.\n",
+      "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change"
+          + " streams</a>, <a"
+          + " href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to"
+          + " build change streams Dataflow pipelines</a>, and <a"
+          + " href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best"
+          + " practices</a>."
     },
     optionsClass = SpannerChangeStreamsToBigQueryOptions.class,
     flexContainerName = "spanner-changestreams-to-bigquery",
@@ -190,7 +240,7 @@ public final class SpannerChangeStreamsToBigQuery {
      */
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
-    String spannerProjectId = getSpannerProjectId(options);
+    String spannerProjectId = OptionsUtils.getSpannerProjectId(options);
 
     String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
     String tempDlqDirectory = dlqManager.getRetryDlqDirectory() + "tmp/";
@@ -307,6 +357,11 @@ public final class SpannerChangeStreamsToBigQuery {
 
     PCollectionTuple tableRowTuple =
         failsafeModJson.apply("Mod JSON To TableRow", failsafeModJsonToTableRow);
+    // If users pass in the full BigQuery dataset ID (projectId.datasetName), extract the dataset
+    // name for the setBigQueryDataset parameter.
+    List<String> results = OptionsUtils.processBigQueryProjectAndDataset(options);
+    String bigqueryProject = results.get(0);
+    String bigqueryDataset = results.get(1);
 
     BigQueryDynamicDestinations.BigQueryDynamicDestinationsOptions
         bigQueryDynamicDestinationsOptions =
@@ -314,8 +369,8 @@ public final class SpannerChangeStreamsToBigQuery {
                 .setSpannerConfig(spannerConfig)
                 .setChangeStreamName(options.getSpannerChangeStreamName())
                 .setIgnoreFields(ignoreFields)
-                .setBigQueryProject(getBigQueryProjectId(options))
-                .setBigQueryDataset(options.getBigQueryDataset())
+                .setBigQueryProject(bigqueryProject)
+                .setBigQueryDataset(bigqueryDataset)
                 .setBigQueryTableTemplate(options.getBigQueryChangelogTableNameTemplate())
                 .build();
     WriteResult writeResult =
@@ -389,18 +444,6 @@ public final class SpannerChangeStreamsToBigQuery {
 
     LOG.info("Dead letter queue directory: {}", dlqDirectory);
     return DeadLetterQueueManager.create(dlqDirectory, DLQ_MAX_RETRIES);
-  }
-
-  private static String getSpannerProjectId(SpannerChangeStreamsToBigQueryOptions options) {
-    return options.getSpannerProjectId().isEmpty()
-        ? options.getProject()
-        : options.getSpannerProjectId();
-  }
-
-  private static String getBigQueryProjectId(SpannerChangeStreamsToBigQueryOptions options) {
-    return options.getBigQueryProjectId().isEmpty()
-        ? options.getProject()
-        : options.getBigQueryProjectId();
   }
 
   /**

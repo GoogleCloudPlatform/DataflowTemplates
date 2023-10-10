@@ -171,7 +171,9 @@ public interface SpannerChangeStreamsToBigQueryOptions
   @TemplateParameter.Text(
       order = 13,
       description = "BigQuery dataset",
-      helpText = "The BigQuery dataset for change streams output.")
+      helpText =
+          "The BigQuery dataset for change streams output. Both the dataSetName and the full"
+              + " dataSetId (i.e. bigQueryProjectId.dataSetName) are acceptable.")
   @Validation.Required
   String getBigQueryDataset();
 
