@@ -95,7 +95,6 @@ public class GCSReader {
       ObjectWriter ow = new ObjectMapper().writer();
       while (reader.ready()) {
         String line = reader.readLine();
-        LOG.info("Read line , {}", line);
         TrimmedShardedDataChangeRecord chrec =
             new GsonBuilder()
                 .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
