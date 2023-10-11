@@ -73,8 +73,10 @@ public interface SpannerToBigQueryOptions
 
   @TemplateParameter.GcsReadFile(
       order = 6,
+      optional = true,
       description = "Cloud Storage path to BigQuery JSON schema",
-      helpText = "The Cloud Storage path for the BigQuery JSON schema.",
+      helpText =
+          "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is not set, or set to CREATE_IF_NEEDED, this parameter must be specified.",
       example = "gs://your-bucket/your-schema.json")
   String getBigQuerySchemaPath();
 

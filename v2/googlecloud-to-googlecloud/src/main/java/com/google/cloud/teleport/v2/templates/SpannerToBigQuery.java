@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
+import static org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition.CREATE_NEVER;
 
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -77,6 +78,14 @@ public final class SpannerToBigQuery {
   }
 
   private static Write<String> writeToBigQuery(SpannerToBigQueryOptions options) {
+    if (CreateDisposition.valueOf(options.getCreateDisposition()) == CREATE_NEVER) {
+      return BigQueryIO.<String>write()
+          .to(options.getOutputTableSpec())
+          .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
+          .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
+          .withExtendedErrorInfo()
+          .withFormatFunction(BigQueryConverters::convertJsonToTableRow);
+    }
     return BigQueryIO.<String>write()
         .to(options.getOutputTableSpec())
         .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
