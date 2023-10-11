@@ -104,6 +104,66 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
     List<Mutation> expectedData = generateTableRows(testName);
     spannerClient.write(expectedData);
 
+    String dataset = bigQueryClient.createDataset(REGION);
+    String table = String.format("%s:%s.test-table", PROJECT, dataset);
+
+    // Act
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerInstanceId", spannerClient.getInstanceId())
+            .addParameter("spannerDatabaseId", spannerClient.getDatabaseId())
+            .addParameter("spannerTableId", testName)
+            .addParameter("sqlQuery", "select * from " + testName)
+            .addParameter("outputTableSpec", table)
+            .addParameter("bigQuerySchemaPath", getGcsPath("input/bq-schema.json"));
+
+    // Act
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    TableResult records = bigQueryClient.readTable("test-table");
+
+    List<Map<String, Object>> expectedRecords = new ArrayList<>();
+    expectedData.forEach(
+        mutation -> {
+          Map<String, Object> expectedRecord =
+              mutation.asMap().entrySet().stream()
+                  .collect(
+                      Collectors.toMap(
+                          e -> e.getKey(),
+                          // Only checking for int64 and string here. If adding another type, this
+                          // will need to be fixed.
+                          e ->
+                              e.getValue().getType() == Type.int64()
+                                  ? e.getValue().getInt64()
+                                  : e.getValue().getString()));
+          expectedRecords.add(expectedRecord);
+        });
+
+    assertThatBigQueryRecords(records).hasRecordsUnordered(expectedRecords);
+  }
+
+  @Test
+  public void testSpannerToBigQueryNoSchemaFile() throws IOException {
+    // Arrange
+    String createTableStatement =
+        String.format(
+            "CREATE TABLE `%s` (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  FirstName String(1024),\n"
+                + "  LastName String(1024),\n"
+                + ") PRIMARY KEY(Id)",
+            testName);
+    spannerClient.executeDdlStatement(createTableStatement);
+
+    List<Mutation> expectedData = generateTableRows(testName);
+    spannerClient.write(expectedData);
+
     List<Field> bqSchemaFields =
         Arrays.asList(
             Field.of("Id", StandardSQLTypeName.INT64),
@@ -120,7 +180,7 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
             .addParameter("spannerDatabaseId", spannerClient.getDatabaseId())
             .addParameter("spannerTableId", testName)
             .addParameter("sqlQuery", "select * from " + testName)
-            .addParameter("bigQuerySchemaPath", getGcsPath("input/bq-schema.json"))
+            .addParameter("createDisposition", "CREATE_NEVER")
             .addParameter("outputTableSpec", toTableSpecLegacy(table));
 
     // Act
@@ -151,7 +211,6 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
           expectedRecords.add(expectedRecord);
         });
 
-    // Make sure record can be read and UDF changed name to uppercase
     assertThatBigQueryRecords(records).hasRecordsUnordered(expectedRecords);
   }
 

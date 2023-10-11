@@ -21,12 +21,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerDatabaseId** (Spanner database ID): The Spanner database to read from.
 * **spannerTableId** (Spanner table name): The Spanner table to read from.
 * **sqlQuery** (Spanner query): Query used to read Spanner table.
-* **bigQuerySchemaPath** (Cloud Storage path to BigQuery JSON schema): The Cloud Storage path for the BigQuery JSON schema. (Example: gs://your-bucket/your-schema.json).
 * **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 
 ### Optional Parameters
 
 * **spannerRpcPriority** (Priority for Spanner RPC invocations): The priority of Spanner job. Must be one of the following: [HIGH, MEDIUM, LOW]. Default is HIGH.
+* **bigQuerySchemaPath** (Cloud Storage path to BigQuery JSON schema): The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is not set, or set to CREATE_IF_NEEDED, this parameter must be specified. (Example: gs://your-bucket/your-schema.json).
 * **writeDisposition** (Write Disposition to use for BigQuery): BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
 * **createDisposition** (Create Disposition to use for BigQuery): BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED.
 * **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
@@ -118,11 +118,11 @@ export SPANNER_INSTANCE_ID=<spannerInstanceId>
 export SPANNER_DATABASE_ID=<spannerDatabaseId>
 export SPANNER_TABLE_ID=<spannerTableId>
 export SQL_QUERY=<sqlQuery>
-export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
 export SPANNER_RPC_PRIORITY=<spannerRpcPriority>
+export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export WRITE_DISPOSITION=WRITE_APPEND
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export USE_STORAGE_WRITE_API=false
@@ -165,11 +165,11 @@ export SPANNER_INSTANCE_ID=<spannerInstanceId>
 export SPANNER_DATABASE_ID=<spannerDatabaseId>
 export SPANNER_TABLE_ID=<spannerTableId>
 export SQL_QUERY=<sqlQuery>
-export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
 export SPANNER_RPC_PRIORITY=<spannerRpcPriority>
+export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export WRITE_DISPOSITION=WRITE_APPEND
 export CREATE_DISPOSITION=CREATE_IF_NEEDED
 export USE_STORAGE_WRITE_API=false
