@@ -36,7 +36,7 @@
 
     <properties>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
-        <jib.maven.version>2.6.0</jib.maven.version>
+        <jib.maven.version>3.4.0</jib.maven.version>
         <opencensus.version>0.31.0</opencensus.version>
         <protoc.version>3.21.12</protoc.version>
 
