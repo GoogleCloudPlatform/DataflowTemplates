@@ -146,7 +146,7 @@ public class TemplateSpecsGenerator {
                 + containerName
                 + "/classes:/template/"
                 + containerName
-                + "/classpath:/template/"
+                + "/classpath/*:/template/"
                 + containerName
                 + "/resources\",\n"
                 + "  \"defaultParameterValues\": {\n"
