@@ -160,7 +160,5 @@ jobs:
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
-        --lt-exportDataset="performance_tests"
-        --lt-exportTable="template_performance_metrics"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
