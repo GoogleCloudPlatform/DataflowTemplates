@@ -146,6 +146,8 @@ public class TemplateSpecsGenerator {
                 + containerName
                 + "/classes:/template/"
                 + containerName
+                + "/classpath:/template/"
+                + containerName
                 + "/resources\",\n"
                 + "  \"defaultParameterValues\": {\n"
                 + "    \"labels\": \"{\\\"goog-dataflow-provided-template-type\\\":\\\"flex\\\","
