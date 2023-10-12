@@ -110,6 +110,7 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
     // Act
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
             .addParameter("spannerInstanceId", spannerClient.getInstanceId())
             .addParameter("spannerDatabaseId", spannerClient.getDatabaseId())
             .addParameter("spannerTableId", testName)
@@ -176,6 +177,7 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
     // Act
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
             .addParameter("spannerInstanceId", spannerClient.getInstanceId())
             .addParameter("spannerDatabaseId", spannerClient.getDatabaseId())
             .addParameter("spannerTableId", testName)

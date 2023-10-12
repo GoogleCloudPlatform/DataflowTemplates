@@ -25,6 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional Parameters
 
+* **spannerProjectId** (Spanner Project ID): The project where the Spanner instance to read from is located. The default for this parameter is the project where the Dataflow pipeline is running.
 * **spannerRpcPriority** (Priority for Spanner RPC invocations): The priority of Spanner job. Must be one of the following: [HIGH, MEDIUM, LOW]. Default is HIGH.
 * **bigQuerySchemaPath** (Cloud Storage path to BigQuery JSON schema): The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is not set, or set to CREATE_IF_NEEDED, this parameter must be specified. (Example: gs://your-bucket/your-schema.json).
 * **writeDisposition** (Write Disposition to use for BigQuery): BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
@@ -121,6 +122,7 @@ export SQL_QUERY=<sqlQuery>
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
+export SPANNER_PROJECT_ID=""
 export SPANNER_RPC_PRIORITY=<spannerRpcPriority>
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export WRITE_DISPOSITION=WRITE_APPEND
@@ -132,6 +134,7 @@ gcloud dataflow flex-template run "cloud-spanner-to-bigquery-flex-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "spannerProjectId=$SPANNER_PROJECT_ID" \
   --parameters "spannerInstanceId=$SPANNER_INSTANCE_ID" \
   --parameters "spannerDatabaseId=$SPANNER_DATABASE_ID" \
   --parameters "spannerTableId=$SPANNER_TABLE_ID" \
@@ -168,6 +171,7 @@ export SQL_QUERY=<sqlQuery>
 export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
+export SPANNER_PROJECT_ID=""
 export SPANNER_RPC_PRIORITY=<spannerRpcPriority>
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export WRITE_DISPOSITION=WRITE_APPEND
@@ -182,7 +186,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-spanner-to-bigquery-flex-job" \
 -DtemplateName="Cloud_Spanner_to_BigQuery_Flex" \
--Dparameters="spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabaseId=$SPANNER_DATABASE_ID,spannerTableId=$SPANNER_TABLE_ID,spannerRpcPriority=$SPANNER_RPC_PRIORITY,sqlQuery=$SQL_QUERY,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
+-Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabaseId=$SPANNER_DATABASE_ID,spannerTableId=$SPANNER_TABLE_ID,spannerRpcPriority=$SPANNER_RPC_PRIORITY,sqlQuery=$SQL_QUERY,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,createDisposition=$CREATE_DISPOSITION,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
