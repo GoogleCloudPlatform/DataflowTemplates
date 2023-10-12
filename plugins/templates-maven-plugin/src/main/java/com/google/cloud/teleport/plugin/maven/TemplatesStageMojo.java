@@ -446,7 +446,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                   "paths",
                   element(
                       "path",
-                      element("from", "target/classes"),
+                      element("from", targetDirectory + "/classes"),
                       element("includes", commandSpecFileName),
                       element("into", "/template/" + containerName + "/resources")))));
 
