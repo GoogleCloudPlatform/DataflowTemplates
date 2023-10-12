@@ -386,6 +386,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           metadataFile,
           appRoot,
           commandSpec,
+          commandSpecFile.getName(),
           templatePath);
     } else if (definition.getTemplateAnnotation().type() == TemplateType.PYTHON) {
       stageFlexPythonTemplate(
@@ -407,6 +408,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       File metadataFile,
       String appRoot,
       String commandSpec,
+      String commandSpecFileName,
       String templatePath)
       throws MojoExecutionException, IOException, InterruptedException {
     Plugin plugin =
@@ -445,7 +447,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                   element(
                       "path",
                       element("from", "target/classes"),
-                      element("includes", "*-generated-command-spec.json"),
+                      element("includes", commandSpecFileName),
                       element("into", "/template/" + containerName + "/resources")))));
 
       elements.add(element("containerizingMode", "packaged"));
