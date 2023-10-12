@@ -432,21 +432,21 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             // Point to the command spec
             element("environment", element("DATAFLOW_JAVA_COMMAND_SPEC", commandSpec))));
 
-    String containerName = definition.getTemplateAnnotation().flexContainerName();
-    elements.add(
-        element(
-            "extraDirectories",
-            element(
-                "paths",
-                element(
-                    "path",
-                    element("from", "target/classes"),
-                    element("includes", "*-generated-command-spec.json"),
-                    element("into", "/template/" + containerName + "/resources")))));
-
     // Only use shaded JAR and exclude libraries if shade was not disabled
     if (System.getProperty("skipShade") == null
         || System.getProperty("skipShade").equalsIgnoreCase("false")) {
+
+      String containerName = definition.getTemplateAnnotation().flexContainerName();
+      elements.add(
+          element(
+              "extraDirectories",
+              element(
+                  "paths",
+                  element(
+                      "path",
+                      element("from", "target/classes"),
+                      element("includes", "*-generated-command-spec.json"),
+                      element("into", "/template/" + containerName + "/resources")))));
 
       elements.add(element("containerizingMode", "packaged"));
       elements.add(
