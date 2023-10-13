@@ -61,6 +61,10 @@ public final class SpannerToBigQuery {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
+            .withProjectId(
+                options.getSpannerProjectId().isEmpty()
+                    ? options.getProject()
+                    : options.getSpannerProjectId())
             .withDatabaseId(options.getSpannerDatabaseId())
             .withInstanceId(options.getSpannerInstanceId())
             .withRpcPriority(options.getSpannerRpcPriority());
