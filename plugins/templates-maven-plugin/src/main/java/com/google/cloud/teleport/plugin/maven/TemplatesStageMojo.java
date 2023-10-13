@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.plugin.maven;
 
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
+import static org.twdata.maven.mojoexecutor.MojoExecutor.attribute;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.configuration;
+import static org.twdata.maven.mojoexecutor.MojoExecutor.dependency;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.element;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.executeMojo;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.executionEnvironment;
@@ -44,6 +46,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.BuildPluginManager;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -383,6 +386,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           metadataFile,
           appRoot,
           commandSpec,
+          commandSpecFile.getName(),
           templatePath);
     } else if (definition.getTemplateAnnotation().type() == TemplateType.PYTHON) {
       stageFlexPythonTemplate(
@@ -404,23 +408,74 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       File metadataFile,
       String appRoot,
       String commandSpec,
+      String commandSpecFileName,
       String templatePath)
       throws MojoExecutionException, IOException, InterruptedException {
+    Plugin plugin =
+        plugin(
+            "com.google.cloud.tools",
+            "jib-maven-plugin",
+            null,
+            List.of(
+                dependency("com.google.cloud.tools", "jib-layer-filter-extension-maven", "0.3.0")));
+    List<Element> elements = new ArrayList<>();
+
+    // Base image to use
+    elements.add(element("from", element("image", baseContainerImage)));
+
+    // Target image to stage
+    elements.add(element("to", element("image", imagePath)));
+    elements.add(
+        element(
+            "container",
+            element("appRoot", appRoot),
+            // Keep the original entrypoint
+            element("entrypoint", "INHERIT"),
+            // Point to the command spec
+            element("environment", element("DATAFLOW_JAVA_COMMAND_SPEC", commandSpec))));
+
+    // Only use shaded JAR and exclude libraries if shade was not disabled
+    if (System.getProperty("skipShade") == null
+        || System.getProperty("skipShade").equalsIgnoreCase("false")) {
+
+      String containerName = definition.getTemplateAnnotation().flexContainerName();
+      elements.add(
+          element(
+              "extraDirectories",
+              element(
+                  "paths",
+                  element(
+                      "path",
+                      element("from", targetDirectory + "/classes"),
+                      element("includes", commandSpecFileName),
+                      element("into", "/template/" + containerName + "/resources")))));
+
+      elements.add(element("containerizingMode", "packaged"));
+      elements.add(
+          element(
+              "pluginExtensions",
+              element(
+                  "pluginExtension",
+                  element(
+                      "implementation",
+                      "com.google.cloud.tools.jib.maven.extension.layerfilter.JibLayerFilterExtension"),
+                  element(
+                      "configuration",
+                      attribute(
+                          "implementation",
+                          "com.google.cloud.tools.jib.maven.extension.layerfilter.Configuration"),
+                      element(
+                          "filters",
+                          element("filter", element("glob", "**/libs/*.jar")),
+                          element(
+                              "filter",
+                              element("glob", "**/libs/conscrypt-openjdk-uber-*.jar"),
+                              element("toLayer", "conscrypt")))))));
+    }
     executeMojo(
-        plugin("com.google.cloud.tools", "jib-maven-plugin"),
+        plugin,
         goal("build"),
-        configuration(
-            // Base image to use
-            element("from", element("image", baseContainerImage)),
-            // Target image to stage
-            element("to", element("image", imagePath)),
-            element(
-                "container",
-                element("appRoot", appRoot),
-                // Keep the original entrypoint
-                element("entrypoint", "INHERIT"),
-                // Point to the command spec
-                element("environment", element("DATAFLOW_JAVA_COMMAND_SPEC", commandSpec)))),
+        configuration(elements.toArray(new Element[elements.size()])),
         executionEnvironment(project, session, pluginManager));
 
     String[] flexTemplateBuildCmd =
