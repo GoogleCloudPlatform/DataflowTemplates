@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Google Cloud Teleport transforms that process data within Google Cloud. */
+/** Google Cloud Teleport transforms that process data for Dataplex. */
 package com.google.cloud.teleport.v2.transforms;
