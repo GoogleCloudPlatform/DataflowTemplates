@@ -19,9 +19,9 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader.Filter;
+import com.google.cloud.teleport.v2.utils.DataplexWriteDisposition.WriteDispositionException;
+import com.google.cloud.teleport.v2.utils.DataplexWriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
-import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionException;
-import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import java.io.IOException;

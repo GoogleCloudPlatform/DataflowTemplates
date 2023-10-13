@@ -13,10 +13,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.values;
+package com.google.cloud.teleport.v2.utils;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.values.BigQueryTable;
+import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import java.util.Collections;
 import org.apache.avro.Schema;
 import org.apache.beam.sdk.testing.NeedsRunner;

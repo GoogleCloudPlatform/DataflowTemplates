@@ -42,8 +42,8 @@ public class JdbcIngestionWriteDisposition {
   }
 
   /**
-   * Thrown if {@link JdbcIngestionWriteDisposition.WriteDispositionOptions} is set to {@code
-   * WRITE_EMPTY} and a target file exists.
+   * Thrown if {@link WriteDispositionOptions} is set to {@code WRITE_EMPTY} and a target file
+   * exists.
    */
   public static class WriteDispositionException extends RuntimeException {
 

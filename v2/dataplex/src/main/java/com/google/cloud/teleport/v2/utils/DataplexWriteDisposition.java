@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.utils;
 
 /** Exposes WriteDispositionOptions and WriteDispositionException. */
-public class WriteDisposition {
+public class DataplexWriteDisposition {
 
   /** Provides the possible WriteDispositionOptions when writing to GCS and target file exists. */
   public enum WriteDispositionOptions {
@@ -36,8 +36,8 @@ public class WriteDisposition {
   }
 
   /**
-   * Thrown if {@link com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions
-   * WriteDispositionOptions} is set to {@code FAIL} and a target file exists.
+   * Thrown if {@link WriteDispositionOptions WriteDispositionOptions} is set to {@code FAIL} and a
+   * target file exists.
    */
   public static class WriteDispositionException extends RuntimeException {
     public WriteDispositionException(String message) {

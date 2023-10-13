@@ -679,6 +679,7 @@
         <module>bigquery-to-parquet</module>
         <module>cdc-parent</module>
         <module>common</module>
+        <module>dataplex</module>
         <module>datastream-to-bigquery</module>
         <module>datastream-to-mongodb</module>
         <module>datastream-to-postgres</module>

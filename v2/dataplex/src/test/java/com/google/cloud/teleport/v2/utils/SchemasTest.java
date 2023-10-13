@@ -184,7 +184,7 @@ public class SchemasTest {
   @Test
   public void testRenameAvroField() {
     Schema originalSchema =
-        new Schema.Parser()
+        new Parser()
             .parse(
                 "{\"type\":\"record\",\"name\":\"__root__\",\"fields\":"
                     + "[{\"name\":\"ts\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]},"

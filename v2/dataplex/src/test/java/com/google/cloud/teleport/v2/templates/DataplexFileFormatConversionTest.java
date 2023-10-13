@@ -39,8 +39,8 @@ import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.Input
 import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.ParquetConverters;
 import com.google.cloud.teleport.v2.utils.DataplexUtils;
+import com.google.cloud.teleport.v2.utils.DataplexWriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
-import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.cloud.teleport.v2.values.DataplexEnums;
 import com.google.cloud.teleport.v2.values.DataplexEnums.CompressionFormat;
