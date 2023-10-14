@@ -17,6 +17,7 @@ package com.google.cloud.teleport.templates.common;
 
 import static com.google.cloud.teleport.templates.common.SpannerConverters.getTimestampBound;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -34,6 +35,8 @@ import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.templates.common.SpannerConverters.StructValidator;
+import com.google.cloud.teleport.templates.common.SpannerConverters.VectorSearchStructValidator;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.channels.ReadableByteChannel;
@@ -67,6 +70,11 @@ public class SpannerConverterTest implements Serializable {
 
   private SpannerConverters.StructCsvPrinter structCsvPrinter =
       new SpannerConverters.StructCsvPrinter();
+
+  private final SpannerConverters.StructJSONPrinter structJSONPrinter =
+      new SpannerConverters.StructJSONPrinter();
+
+  private StructValidator vectorSearchStructValidator = new VectorSearchStructValidator();
 
   /** Unit test for export transform. */
   @Test
@@ -307,7 +315,7 @@ public class SpannerConverterTest implements Serializable {
   }
 
   @Test
-  public void testStrintArrayWithEmptyString() {
+  public void testStringArrayWithEmptyString() {
     assertEquals(
         "\"[\"\"\"\"]\"",
         structCsvPrinter.print(
@@ -379,5 +387,249 @@ public class SpannerConverterTest implements Serializable {
                     Value.pgNumericArray(
                         Collections.singletonList("-25398514232141142.0014578090")))
                 .build()));
+  }
+
+  @Test
+  public void testNullWithJSONPrinter() {
+    assertEquals(
+        "{}",
+        structJSONPrinter.print(Struct.newBuilder().set("col").to(Value.string(null)).build()));
+  }
+
+  @Test
+  public void testInt64WithJSONPrinter() {
+    assertEquals(
+        "{\"col\":\"1\"}",
+        structJSONPrinter.print(Struct.newBuilder().set("col").to(Value.int64(1)).build()));
+  }
+
+  @Test
+  public void testFloatWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":\"0.1\"}",
+        structJSONPrinter.print(Struct.newBuilder().set("col").to(Value.float64(0.1)).build()));
+  }
+
+  @Test
+  public void testBytesWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":\"dGVzdA==\"}",
+        structJSONPrinter.print(
+            Struct.newBuilder().set("col").to(Value.bytes(ByteArray.copyFrom("test"))).build()));
+  }
+
+  @Test
+  public void testJsonWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[{\"allow_list\": [\"even\"], \"namespace\": \"class\"}]}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.json("[{\"allow_list\": [\"even\"], \"namespace\": \"class\"}]"))
+                .build()));
+  }
+
+  @Test
+  public void testDateWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":\"2018-03-26\"}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.date(Date.fromYearMonthDay(2018, 3, 26)))
+                .build()));
+  }
+
+  @Test
+  public void testTimestampWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":\"1970-01-01T00:00:00Z\"}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.timestamp(Timestamp.ofTimeMicroseconds(0)))
+                .build()));
+  }
+
+  @Test
+  public void testPgNumericWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":\"-25398514232141142.0014578090\"}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.pgNumeric("-25398514232141142.0014578090"))
+                .build()));
+  }
+
+  @Test
+  public void testBooleanArrayWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[\"true\"]}",
+        structJSONPrinter.print(
+            Struct.newBuilder().set("col").to(Value.boolArray(new boolean[] {true})).build()));
+  }
+
+  @Test
+  public void testStringArrayWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[\"test\"]}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.stringArray(Collections.singletonList("test")))
+                .build()));
+  }
+
+  @Test
+  public void testStringArrayWithNullWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[null]}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.stringArray(Collections.singletonList(null)))
+                .build()));
+  }
+
+  @Test
+  public void testStringArrayWithEmptyStringWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[\"\"]}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.stringArray(Collections.singletonList("")))
+                .build()));
+  }
+
+  @Test
+  public void testInt64ArrayWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[\"1\"]}",
+        structJSONPrinter.print(
+            Struct.newBuilder().set("col").to(Value.int64Array(new long[] {1})).build()));
+  }
+
+  @Test
+  public void testFloatArrayWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[\"0.1\"]}",
+        structJSONPrinter.print(
+            Struct.newBuilder().set("col").to(Value.float64Array(new double[] {0.1})).build()));
+  }
+
+  @Test
+  public void testDateArrayWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[\"2018-03-26\"]}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.dateArray(Collections.singletonList(Date.fromYearMonthDay(2018, 3, 26))))
+                .build()));
+  }
+
+  @Test
+  public void testTimestampArrayWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[\"1970-01-01T00:00:00Z\"]}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(
+                    Value.timestampArray(
+                        Collections.singletonList(Timestamp.ofTimeMicroseconds(0))))
+                .build()));
+  }
+
+  @Test
+  public void testBytesArrayWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[\"dGVzdA==\"]}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.bytesArray(Collections.singletonList(ByteArray.copyFrom("test"))))
+                .build()));
+  }
+
+  @Test
+  public void testPgNumericArrayWithJSONPrinter() {
+    assertEquals(
+        "{\"col\":[\"-25398514232141142.0014578090\"]}",
+        structJSONPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(
+                    Value.pgNumericArray(
+                        Collections.singletonList("-25398514232141142.0014578090")))
+                .build()));
+  }
+
+  @Test
+  public void testVectorSearchValidator() {
+    vectorSearchStructValidator.validate(
+        Struct.newBuilder()
+            .set("id")
+            .to(Value.int64(323232))
+            .set("embedding")
+            .to(Value.float64Array(new double[] {3223, 232}))
+            .build());
+  }
+
+  @Test
+  public void testVectorSearchValidatorWithRestricts() {
+    vectorSearchStructValidator.validate(
+        Struct.newBuilder()
+            .set("id")
+            .to(Value.int64(323232))
+            .set("restricts")
+            .to(Value.json("[{\"allow_list\": [\"even\"], \"namespace\": \"class\"}]"))
+            .set("embedding")
+            .to(Value.float64Array(new double[] {3223, 232}))
+            .build());
+  }
+
+  @Test
+  public void testVectorSearchValidatorIDError() {
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            vectorSearchStructValidator.validate(
+                Struct.newBuilder()
+                    .set("embedding")
+                    .to(Value.float64Array(new double[] {3223, 232}))
+                    .build()));
+  }
+
+  @Test
+  public void testVectorSearchValidatorEmbeddingError() {
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            vectorSearchStructValidator.validate(
+                Struct.newBuilder().set("id").to(Value.int64(323232)).build()));
+  }
+
+  @Test
+  public void testPrepareColumnExpressionWithAlias() {
+    assertEquals(
+        "column1 AS alias1,column2 AS alias2,column3",
+        SpannerConverters.prepareColumnExpression("column1:alias1,column2:alias2, column3"));
+  }
+
+  @Test
+  public void testPrepareColumnExpression() {
+    assertEquals(
+        "column1,column2,column3",
+        SpannerConverters.prepareColumnExpression("column1, column2 , column3"));
+  }
+
+  @Test
+  public void testPrepareColumnExpressionError() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SpannerConverters.prepareColumnExpression("column1,,column2"));
   }
 }
