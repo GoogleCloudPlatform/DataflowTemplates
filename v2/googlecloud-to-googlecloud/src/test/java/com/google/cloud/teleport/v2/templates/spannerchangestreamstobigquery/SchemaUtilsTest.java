@@ -69,8 +69,8 @@ import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
-import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerUtils;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -137,7 +137,8 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+        new SpannerChangeStreamsUtils(
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -171,7 +172,7 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
+        new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -205,7 +206,8 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+        new SpannerChangeStreamsUtils(
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -239,7 +241,7 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
+        new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -342,7 +344,8 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+        new SpannerChangeStreamsUtils(
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -389,7 +392,8 @@ public class SchemaUtilsTest {
     // spotless:on
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+        new SpannerChangeStreamsUtils(
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -435,7 +439,7 @@ public class SchemaUtilsTest {
     // spotless:on
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
+        new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -517,7 +521,7 @@ public class SchemaUtilsTest {
       if (typeName.equals("ARRAY") || typeName.equals("JSON")) {
         continue;
       }
-      SpannerUtils.appendToSpannerKey(spannerColumn, keysJsonObject, keyBuilder);
+      SpannerChangeStreamsUtils.appendToSpannerKey(spannerColumn, keysJsonObject, keyBuilder);
     }
 
     assertThat(keyBuilder.build().toString())

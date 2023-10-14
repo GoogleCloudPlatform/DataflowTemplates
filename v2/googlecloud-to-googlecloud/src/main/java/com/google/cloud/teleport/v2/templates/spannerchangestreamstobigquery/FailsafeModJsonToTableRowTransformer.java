@@ -35,8 +35,8 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.mod
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
-import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableSet;
 import io.grpc.CallOptions;
@@ -162,7 +162,8 @@ public final class FailsafeModJsonToTableRowTransformer {
         Dialect dialect = getDialect(spannerConfig);
         spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
         spannerTableByName =
-            new SpannerUtils(spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
+            new SpannerChangeStreamsUtils(
+                    spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
                 .getSpannerTableByName();
         setUpCallContextConfigurator();
         seenException = false;
@@ -263,7 +264,7 @@ public final class FailsafeModJsonToTableRowTransformer {
         for (TrackedSpannerColumn spannerColumn : spannerTable.getPkColumns()) {
           String spannerColumnName = spannerColumn.getName();
           if (keysJsonObject.has(spannerColumnName)) {
-            SpannerUtils.appendToSpannerKey(spannerColumn, keysJsonObject, keyBuilder);
+            SpannerChangeStreamsUtils.appendToSpannerKey(spannerColumn, keysJsonObject, keyBuilder);
           } else {
             throw new IllegalArgumentException(
                 "Cannot find value for key column " + spannerColumnName);
