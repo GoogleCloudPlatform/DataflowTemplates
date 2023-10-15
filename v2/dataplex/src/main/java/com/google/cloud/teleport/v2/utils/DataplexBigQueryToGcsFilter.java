@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.utils;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
-import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionException;
+import com.google.cloud.teleport.v2.utils.DataplexWriteDisposition.WriteDispositionException;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.common.base.Splitter;
