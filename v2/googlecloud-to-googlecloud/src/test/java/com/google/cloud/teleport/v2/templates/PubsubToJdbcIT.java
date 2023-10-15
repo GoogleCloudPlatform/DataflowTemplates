@@ -125,10 +125,7 @@ public final class PubsubToJdbcIT extends JDBCBaseIT {
         pipelineOperator()
             .waitForConditionsAndFinish(
                 createConfig(info),
-                () -> {
-                  List<Map<String, Object>> records = jdbcResourceManager.readTable(testName);
-                  return records.size() >= MESSAGES_COUNT;
-                },
+                () -> jdbcResourceManager.getRowCount(testName) >= MESSAGES_COUNT,
                 dlqCheck);
 
     // Assert
