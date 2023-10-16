@@ -26,8 +26,8 @@ import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
-import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerUtils;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
@@ -58,7 +58,7 @@ public final class BigQueryDynamicDestinations
     try (SpannerAccessor spannerAccessor =
         SpannerAccessor.getOrCreate(bigQueryDynamicDestinationsOptions.getSpannerConfig())) {
       Map<String, TrackedSpannerTable> spannerTableByName =
-          new SpannerUtils(
+          new SpannerChangeStreamsUtils(
                   spannerAccessor.getDatabaseClient(),
                   bigQueryDynamicDestinationsOptions.getChangeStreamName(),
                   dialect)

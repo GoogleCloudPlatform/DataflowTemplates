@@ -38,12 +38,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Class {@link SpannerUtils} provides methods that retrieve schema information from Spanner. Note
- * all the models returned in the methods of these class are tracked by the change stream.
+ * Class {@link SpannerChangeStreamsUtils} provides methods that retrieve schema information from
+ * Spanner. Note all the models returned in the methods of these class are tracked by the change
+ * stream.
  */
-public class SpannerUtils {
+public class SpannerChangeStreamsUtils {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerUtils.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsUtils.class);
 
   private static final String INFORMATION_SCHEMA_TABLE_NAME = "TABLE_NAME";
   private static final String INFORMATION_SCHEMA_POSTGRES_TABLE_NAME = "table_name";
@@ -62,7 +63,8 @@ public class SpannerUtils {
   private String changeStreamName;
   private Dialect dialect;
 
-  public SpannerUtils(DatabaseClient databaseClient, String changeStreamName, Dialect dialect) {
+  public SpannerChangeStreamsUtils(
+      DatabaseClient databaseClient, String changeStreamName, Dialect dialect) {
     this.databaseClient = databaseClient;
     this.changeStreamName = changeStreamName;
     this.dialect = dialect;

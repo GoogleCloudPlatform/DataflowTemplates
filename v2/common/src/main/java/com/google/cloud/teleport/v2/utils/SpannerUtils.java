@@ -15,16 +15,24 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
+import com.google.cloud.ByteArray;
+import com.google.cloud.Date;
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Statement;
+import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.v2.values.SpannerSchema;
 import com.google.common.base.Strings;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.util.List;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.util.StreamUtils;
@@ -35,6 +43,101 @@ import org.slf4j.LoggerFactory;
 public class SpannerUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerUtils.class);
+
+  /**
+   * Converts a Spanner Struct to a Json Object.
+   *
+   * @param struct The {@link Struct} object to convert.
+   * @return JsonObject representation of Spanner Struct.
+   */
+  public static JsonObject convertStructToJson(Struct struct) {
+    JsonObject jsonObject = new JsonObject();
+    List<Type.StructField> structFields = struct.getType().getStructFields();
+
+    for (Type.StructField field : structFields) {
+      switch (field.getType().getCode()) {
+        case BOOL:
+          jsonObject.addProperty(field.getName(), struct.getBoolean(field.getName()));
+          break;
+        case INT64:
+          jsonObject.addProperty(field.getName(), struct.getLong(field.getName()));
+          break;
+        case FLOAT64:
+          jsonObject.addProperty(field.getName(), struct.getDouble(field.getName()));
+          break;
+        case STRING:
+        case PG_NUMERIC:
+          jsonObject.addProperty(field.getName(), struct.getString(field.getName()));
+          break;
+        case BYTES:
+          jsonObject.addProperty(field.getName(), struct.getBytes(field.getName()).toStringUtf8());
+          break;
+        case DATE:
+          jsonObject.addProperty(field.getName(), struct.getDate(field.getName()).toString());
+          break;
+        case TIMESTAMP:
+          jsonObject.addProperty(field.getName(), struct.getTimestamp(field.getName()).toString());
+          break;
+        case ARRAY:
+          jsonObject.add(field.getName(), convertArrayToJsonArray(struct, field.getName()));
+          break;
+        case STRUCT:
+          jsonObject.add(field.getName(), convertStructToJson(struct.getStruct(field.getName())));
+          break;
+        default:
+          throw new RuntimeException("Unsupported type: " + field.getType());
+      }
+    }
+    return jsonObject;
+  }
+
+  /**
+   * Converts an array from a struct to a json array.
+   *
+   * @param struct The {@link Struct} object to get array from.
+   * @param columnName The name of column where the array is.
+   * @return JSONArray representation of the {@link Struct} array.
+   */
+  private static JsonArray convertArrayToJsonArray(Struct struct, String columnName) {
+    Type.Code code = struct.getColumnType(columnName).getArrayElementType().getCode();
+    JsonArray jsonArray = new JsonArray();
+    switch (code) {
+      case BOOL:
+        struct.getBooleanList(columnName).forEach(jsonArray::add);
+        break;
+      case INT64:
+        struct.getLongList(columnName).forEach(jsonArray::add);
+        break;
+      case FLOAT64:
+        struct.getDoubleList(columnName).forEach(jsonArray::add);
+        break;
+      case STRING:
+      case PG_NUMERIC:
+        struct.getStringList(columnName).forEach(jsonArray::add);
+        break;
+      case BYTES:
+        struct.getBytesList(columnName).stream()
+            .map(ByteArray::toStringUtf8)
+            .forEach(jsonArray::add);
+        break;
+      case DATE:
+        struct.getDateList(columnName).stream().map(Date::toString).forEach(jsonArray::add);
+        break;
+      case TIMESTAMP:
+        struct.getTimestampList(columnName).stream()
+            .map(Timestamp::toString)
+            .forEach(jsonArray::add);
+        break;
+      case STRUCT:
+        struct.getStructList(columnName).stream()
+            .map(SpannerUtils::convertStructToJson)
+            .forEach(jsonArray::add);
+        break;
+      default:
+        throw new RuntimeException("Unsupported type: " + code);
+    }
+    return jsonArray;
+  }
 
   /**
    * Helper method to read schema file and convert content to SpannerSchema object.
