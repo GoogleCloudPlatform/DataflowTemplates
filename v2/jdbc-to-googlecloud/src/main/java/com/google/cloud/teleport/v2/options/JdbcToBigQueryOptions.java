@@ -229,4 +229,18 @@ public interface JdbcToBigQueryOptions
   Long getUpperBound();
 
   void setUpperBound(Long lowerBound);
+
+  @TemplateParameter.Integer(
+      order = 18,
+      optional = true,
+      groupName = "Source Parameters",
+      description = "Fetch Size",
+      // TODO: remove the "Not used for partitioned reads" once
+      // https://github.com/apache/beam/pull/28999 is released.
+      helpText =
+          "The number of rows to be fetched from database at a time. Not used for partitioned reads.")
+  @Default.Integer(50000)
+  Integer getFetchSize();
+
+  void setFetchSize(Integer fetchSize);
 }

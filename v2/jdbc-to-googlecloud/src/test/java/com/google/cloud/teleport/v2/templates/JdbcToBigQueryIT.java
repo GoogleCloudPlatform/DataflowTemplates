@@ -325,6 +325,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
                 .addParameter("password", encrypt.apply(jdbcResourceManager.getPassword()))
                 .addParameter("KMSEncryptionKey", cryptoKey.getName())
                 .addParameter("useColumnAlias", "true")
+                .addParameter("fetchSize", "100000")
                 .addParameter("connectionProperties", "characterEncoding=UTF-8")
                 .addParameter("disabledAlgorithms", "SSLv3, GCM"));
 

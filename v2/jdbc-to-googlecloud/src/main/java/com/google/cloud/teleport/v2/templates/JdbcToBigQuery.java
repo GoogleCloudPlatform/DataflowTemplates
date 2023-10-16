@@ -139,17 +139,26 @@ public class JdbcToBigQuery {
         readIO =
             readIO.withLowerBound(options.getLowerBound()).withUpperBound(options.getUpperBound());
       }
+
+      if (options.getFetchSize() != null && options.getFetchSize() > 0) {
+        // TODO: uncomment this line once https://github.com/apache/beam/pull/28999 is released.
+        // readIO = readIO.withFetchSize(options.getFetchSize());
+      }
+
       rows = pipeline.apply("Read from JDBC with Partitions", readIO);
     } else {
-      rows =
-          pipeline.apply(
-              "Read from JdbcIO",
-              JdbcIO.<TableRow>read()
-                  .withDataSourceConfiguration(dataSourceConfiguration)
-                  .withQuery(options.getQuery())
-                  .withCoder(TableRowJsonCoder.of())
-                  .withRowMapper(
-                      JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())));
+      JdbcIO.Read<TableRow> readIO =
+          JdbcIO.<TableRow>read()
+              .withDataSourceConfiguration(dataSourceConfiguration)
+              .withQuery(options.getQuery())
+              .withCoder(TableRowJsonCoder.of())
+              .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
+
+      if (options.getFetchSize() != null && options.getFetchSize() > 0) {
+        readIO = readIO.withFetchSize(options.getFetchSize());
+      }
+
+      rows = pipeline.apply("Read from JdbcIO", readIO);
     }
 
     /*
