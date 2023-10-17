@@ -64,7 +64,7 @@
     <mockito.version>4.11.0</mockito.version>
     <log4j-2.version>2.17.2</log4j-2.version>
     <jettison.version>1.5.4</jettison.version>
-    <json.version>20230227</json.version>
+    <json.version>20231013</json.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>1.7.36</slf4j.version>
