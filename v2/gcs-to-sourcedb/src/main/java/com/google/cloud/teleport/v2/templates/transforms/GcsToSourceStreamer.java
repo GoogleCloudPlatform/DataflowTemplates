@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
+import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import com.google.cloud.teleport.v2.templates.processing.handler.GCSToSourceStreamingHandler;
 import org.apache.beam.sdk.coders.BooleanCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
@@ -44,12 +45,38 @@ import org.slf4j.LoggerFactory;
 public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Void> {
   private static final Logger LOG = LoggerFactory.getLogger(GcsToSourceStreamer.class);
   private int incrementIntervalInSeconds = 1;
+  private SpannerDao spannerDao;
+  private String spannerProjectId;
+  private String spannerInstance;
+  private String spannerDatabase;
+  private String tableSuffix;
 
   private static final Counter num_shards =
       Metrics.counter(GcsToSourceStreamer.class, "num_shards");
 
-  public GcsToSourceStreamer(int incrementIntervalInSeconds) {
+  public GcsToSourceStreamer(
+      int incrementIntervalInSeconds,
+      String spannerProjectId,
+      String spannerInstance,
+      String spannerDatabase,
+      String tableSuffix) {
     this.incrementIntervalInSeconds = incrementIntervalInSeconds;
+    this.spannerProjectId = spannerProjectId;
+    this.spannerInstance = spannerInstance;
+    this.spannerDatabase = spannerDatabase;
+    this.tableSuffix = tableSuffix;
+  }
+
+  /** Setup function connects to Cloud Spanner. */
+  @Setup
+  public void setup() {
+    spannerDao = new SpannerDao(spannerProjectId, spannerInstance, spannerDatabase, tableSuffix);
+  }
+
+  /** Teardown function disconnects from the Cloud Spanner. */
+  @Teardown
+  public void teardown() {
+    spannerDao.close();
   }
 
   @SuppressWarnings("unused")
@@ -121,7 +148,7 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
       try {
         taskContext.setStartTimestamp(startString.read());
 
-        GCSToSourceStreamingHandler.process(taskContext);
+        GCSToSourceStreamingHandler.process(taskContext, spannerDao);
         Instant nextTimer =
             Instant.now().plus(Duration.standardSeconds(incrementIntervalInSeconds));
         timer.set(nextTimer);

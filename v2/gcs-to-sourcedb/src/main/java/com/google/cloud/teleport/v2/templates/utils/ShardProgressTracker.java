@@ -38,6 +38,10 @@ public class ShardProgressTracker {
         new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
   }
 
+  public ShardProgressTracker(SpannerDao spannerDao) {
+    this.spannerDao = spannerDao;
+  }
+
   public void init() {
     spannerDao.checkAndcreateShardProgressTable();
   }

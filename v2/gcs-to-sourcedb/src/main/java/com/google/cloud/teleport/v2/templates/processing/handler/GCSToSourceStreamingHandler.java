@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.templates.common.ShardProgress;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.dao.DaoFactory;
 import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
+import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import com.google.cloud.teleport.v2.templates.utils.GCSReader;
 import com.google.cloud.teleport.v2.templates.utils.ShardProgressTracker;
 import java.time.Instant;
@@ -33,9 +34,9 @@ public class GCSToSourceStreamingHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceStreamingHandler.class);
 
-  public static void process(ProcessingContext taskContext) {
+  public static void process(ProcessingContext taskContext, SpannerDao spannerDao) {
     String shardId = taskContext.getShard().getLogicalShardId();
-    GCSReader inputFileReader = new GCSReader(taskContext);
+    GCSReader inputFileReader = new GCSReader(taskContext, spannerDao);
 
     try {
       Instant readStartTime = Instant.now();
@@ -50,7 +51,7 @@ public class GCSToSourceStreamingHandler {
               + ChronoUnit.MILLIS.between(readStartTime, readEndTime)
               + " milliseconds");
       if (records.isEmpty()) {
-        markShardSuccess(taskContext);
+        markShardSuccess(taskContext, spannerDao);
         return;
       }
 
@@ -71,7 +72,7 @@ public class GCSToSourceStreamingHandler {
 
       InputRecordProcessor.processRecords(
           records, taskContext.getSchema(), dao, shardId, taskContext.getSourceDbTimezoneOffset());
-      markShardSuccess(taskContext);
+      markShardSuccess(taskContext, spannerDao);
       dao.cleanup();
       LOG.info(
           "Shard " + shardId + ": Successfully processed batch of " + records.size() + " records.");
@@ -84,22 +85,18 @@ public class GCSToSourceStreamingHandler {
       as per the configuration
       If writing to DLQ topic also fails - write to logs
       */
-      markShardFailure(taskContext);
+      markShardFailure(taskContext, spannerDao);
       throw new RuntimeException("Failure when processing records: " + e.getMessage());
     }
   }
 
-  private static void markShardSuccess(ProcessingContext taskContext) {
-    markShardProgress(taskContext, "SUCCESS");
+  private static void markShardSuccess(ProcessingContext taskContext, SpannerDao spannerDao) {
+    markShardProgress(taskContext, "SUCCESS", spannerDao);
   }
 
-  private static void markShardProgress(ProcessingContext taskContext, String status) {
-    ShardProgressTracker shardProgressTracker =
-        new ShardProgressTracker(
-            taskContext.getSpannerProjectId(),
-            taskContext.getMetadataInstance(),
-            taskContext.getMetadataDatabase(),
-            taskContext.getTableSuffix());
+  private static void markShardProgress(
+      ProcessingContext taskContext, String status, SpannerDao spannerDao) {
+    ShardProgressTracker shardProgressTracker = new ShardProgressTracker(spannerDao);
     String fileStartTime = taskContext.getStartTimestamp();
     com.google.cloud.Timestamp startTs = com.google.cloud.Timestamp.parseTimestamp(fileStartTime);
 
@@ -107,11 +104,9 @@ public class GCSToSourceStreamingHandler {
         new ShardProgress(taskContext.getShard().getLogicalShardId(), startTs, status);
 
     shardProgressTracker.writeShardProgress(shardProgress);
-
-    shardProgressTracker.close();
   }
 
-  private static void markShardFailure(ProcessingContext taskContext) {
-    markShardProgress(taskContext, "ERROR");
+  private static void markShardFailure(ProcessingContext taskContext, SpannerDao spannerDao) {
+    markShardProgress(taskContext, "ERROR", spannerDao);
   }
 }

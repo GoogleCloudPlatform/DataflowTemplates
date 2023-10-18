@@ -104,11 +104,7 @@ public class ProcessingContextGenerator {
                 sourceDbTimezoneOffset,
                 startTimestamp,
                 duration,
-                gcsInputDirectoryPath,
-                spannerProjectId,
-                metadataInstance,
-                metadataDatabase,
-                tableSuffix);
+                gcsInputDirectoryPath);
         response.put(shard.getLogicalShardId(), taskContext);
       }
     } else if ("reprocess".equals(runMode)) {
@@ -146,11 +142,7 @@ public class ProcessingContextGenerator {
                 sourceDbTimezoneOffset,
                 shardStartTime,
                 duration,
-                gcsInputDirectoryPath,
-                spannerProjectId,
-                metadataInstance,
-                metadataDatabase,
-                tableSuffix);
+                gcsInputDirectoryPath);
         response.put(shard.getLogicalShardId(), taskContext);
       }
     }

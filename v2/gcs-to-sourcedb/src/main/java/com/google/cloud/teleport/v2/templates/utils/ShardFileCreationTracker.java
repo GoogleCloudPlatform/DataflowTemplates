@@ -39,6 +39,12 @@ public class ShardFileCreationTracker {
     this.shardId = shardId;
   }
 
+  public ShardFileCreationTracker(SpannerDao spannerDao, String shardId) {
+
+    this.spannerDao = spannerDao;
+    this.shardId = shardId;
+  }
+
   public Timestamp getShardFileCreationProgressTimestamp() {
     Timestamp response = spannerDao.getShardFileCreationProgressTimestamp(shardId);
     return response;

@@ -279,7 +279,15 @@ public class GCSToSourceDb {
                 .withCoder(
                     KvCoder.of(
                         StringUtf8Coder.of(), SerializableCoder.of(ProcessingContext.class))))
-        .apply("Write to source", ParDo.of(new GcsToSourceStreamer(options.getTimerInterval())));
+        .apply(
+            "Write to source",
+            ParDo.of(
+                new GcsToSourceStreamer(
+                    options.getTimerInterval(),
+                    options.getSpannerProjectId(),
+                    options.getMetadataInstance(),
+                    options.getMetadataDatabase(),
+                    tableSuffix)));
 
     return pipeline.run();
   }

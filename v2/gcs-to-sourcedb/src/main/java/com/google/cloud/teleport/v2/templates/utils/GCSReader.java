@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import java.io.BufferedReader;
@@ -50,7 +51,7 @@ public class GCSReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSReader.class);
 
-  public GCSReader(ProcessingContext taskContext) {
+  public GCSReader(ProcessingContext taskContext, SpannerDao spannerDao) {
 
     String fileStartTime = taskContext.getStartTimestamp();
     com.google.cloud.Timestamp startTs = com.google.cloud.Timestamp.parseTimestamp(fileStartTime);
@@ -68,12 +69,7 @@ public class GCSReader {
 
     this.fileName = gcsFileName;
     this.shardFileCreationTracker =
-        new ShardFileCreationTracker(
-            taskContext.getSpannerProjectId(),
-            taskContext.getMetadataInstance(),
-            taskContext.getMetadataDatabase(),
-            taskContext.getShard().getLogicalShardId(),
-            taskContext.getTableSuffix());
+        new ShardFileCreationTracker(spannerDao, taskContext.getShard().getLogicalShardId());
     this.shardId = taskContext.getShard().getLogicalShardId();
     shouldRetryWhenFileNotFound = true;
     shouldFailWhenFileNotFound = false;
@@ -162,8 +158,6 @@ public class GCSReader {
         firstPipelineProgress = shardFileCreationTracker.getShardFileCreationProgressTimestamp();
         Metrics.counter(GCSReader.class, "metadata_file_create_lag_retry_" + shardId).inc();
       }
-
-      shardFileCreationTracker.close();
 
       if (firstPipelineProgress.compareTo(currentEndTimestamp) > 0) {
         // the Spanner to GCS job has progressed past the current interval end timestamp

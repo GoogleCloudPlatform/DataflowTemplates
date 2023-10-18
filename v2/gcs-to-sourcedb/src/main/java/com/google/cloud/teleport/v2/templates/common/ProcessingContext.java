@@ -21,10 +21,7 @@ import java.io.Serializable;
 import java.util.Objects;
 import org.joda.time.Duration;
 
-/**
- * Each worker task context shard detail, the source connection profile and depending on the buffer
- * read from, either the PubSub project id or the KafkaConnectionProfile.
- */
+/** Each worker task context. */
 public class ProcessingContext implements Serializable {
 
   private Shard shard;
@@ -34,10 +31,6 @@ public class ProcessingContext implements Serializable {
   private String startTimestamp;
   private Duration windowDuration;
   private String gcsPath;
-  private String spannerProjectId;
-  private String metadataInstance;
-  private String metadataDatabase;
-  private String tableSuffix;
 
   public ProcessingContext(
       Shard shard,
@@ -45,21 +38,13 @@ public class ProcessingContext implements Serializable {
       String sourceDbTimezoneOffset,
       String startTimestamp,
       Duration windowDuration,
-      String gcsPath,
-      String spannerProjectId,
-      String metadataInstance,
-      String metadataDatabase,
-      String tableSuffix) {
+      String gcsPath) {
     this.shard = shard;
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.startTimestamp = startTimestamp;
     this.windowDuration = windowDuration;
     this.gcsPath = gcsPath;
-    this.spannerProjectId = spannerProjectId;
-    this.metadataInstance = metadataInstance;
-    this.metadataDatabase = metadataDatabase;
-    this.tableSuffix = tableSuffix;
   }
 
   public Shard getShard() {
@@ -90,22 +75,6 @@ public class ProcessingContext implements Serializable {
     return windowDuration;
   }
 
-  public String getSpannerProjectId() {
-    return spannerProjectId;
-  }
-
-  public String getMetadataInstance() {
-    return metadataInstance;
-  }
-
-  public String getMetadataDatabase() {
-    return metadataDatabase;
-  }
-
-  public String getTableSuffix() {
-    return tableSuffix;
-  }
-
   @Override
   public String toString() {
 
@@ -119,14 +88,6 @@ public class ProcessingContext implements Serializable {
         + windowDuration
         + " gcsPath: "
         + gcsPath
-        + " spannerProjectId: "
-        + spannerProjectId
-        + " metadataInstance: "
-        + metadataInstance
-        + " metadataDatabase: "
-        + metadataDatabase
-        + " tableSuffix: "
-        + tableSuffix
         + "}";
   }
 
@@ -144,11 +105,7 @@ public class ProcessingContext implements Serializable {
         && this.getSourceDbTimezoneOffset().equals(other.getSourceDbTimezoneOffset())
         && this.getStartTimestamp().equals(other.getStartTimestamp())
         && this.getGCSPath().equals(other.getGCSPath())
-        && this.getWindowDuration().equals(other.getWindowDuration())
-        && this.getSpannerProjectId().equals(other.getSpannerProjectId())
-        && this.getMetadataInstance().equals(other.getMetadataInstance())
-        && this.getMetadataDatabase().equals(other.getMetadataDatabase())
-        && this.getTableSuffix().equals(other.getTableSuffix());
+        && this.getWindowDuration().equals(other.getWindowDuration());
   }
 
   @Override
@@ -159,10 +116,6 @@ public class ProcessingContext implements Serializable {
         getSourceDbTimezoneOffset(),
         getStartTimestamp(),
         getGCSPath(),
-        getWindowDuration(),
-        getSpannerProjectId(),
-        getMetadataInstance(),
-        getMetadataDatabase(),
-        getTableSuffix());
+        getWindowDuration());
   }
 }
