@@ -22,7 +22,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.parquet.ParquetIO;

@@ -32,6 +32,7 @@ func main() {
 	err := workflows.MvnCleanVerify().Run(
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.IncludeDependents(),
+		mvnFlags.ForceUpdates(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),

@@ -51,6 +51,7 @@ const (
 type MavenFlags interface {
 	IncludeDependencies() string
 	IncludeDependents() string
+	ForceUpdates() string
 	SkipCheckstyle() string
 	SkipDependencyAnalysis() string
 	SkipJib() string
@@ -77,6 +78,10 @@ func (*mvnFlags) IncludeDependencies() string {
 
 func (*mvnFlags) IncludeDependents() string {
 	return "-amd"
+}
+
+func (*mvnFlags) ForceUpdates() string {
+	return "-U"
 }
 
 func (*mvnFlags) SkipCheckstyle() string {

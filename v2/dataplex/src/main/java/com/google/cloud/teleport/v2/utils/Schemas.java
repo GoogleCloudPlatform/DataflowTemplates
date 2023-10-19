@@ -37,8 +37,8 @@ import org.apache.avro.SchemaBuilder.RecordBuilder;
 import org.apache.avro.SchemaBuilder.TypeBuilder;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.generic.GenericDatumReader;
+import org.apache.beam.sdk.extensions.avro.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.io.jdbc.SchemaUtil;
-import org.apache.beam.sdk.schemas.utils.AvroUtils;
 
 /** Utility methods for Dataplex and Avro schemas. */
 public final class Schemas {

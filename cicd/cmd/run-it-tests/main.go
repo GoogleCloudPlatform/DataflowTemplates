@@ -34,6 +34,7 @@ func main() {
 	err := workflows.MvnCleanInstall().Run(
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.IncludeDependents(),
+		mvnFlags.ForceUpdates(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
@@ -50,6 +51,7 @@ func main() {
 	err = workflows.MvnVerify().Run(
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.IncludeDependents(),
+		mvnFlags.ForceUpdates(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
