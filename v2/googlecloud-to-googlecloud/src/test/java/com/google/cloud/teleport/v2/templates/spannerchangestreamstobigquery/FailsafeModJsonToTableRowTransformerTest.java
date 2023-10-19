@@ -139,7 +139,6 @@ public final class FailsafeModJsonToTableRowTransformerTest {
     spannerDatabaseName = createSpannerDatabase(SPANNER_SERVER);
     insertCommitTimestamp = insertRow(spannerDatabaseName);
     updateCommitTimestamp = updateRow(spannerDatabaseName);
-    failsafeModJsonToTableRow = getFailsafeModJsonToTableRow(spannerDatabaseName);
   }
 
   @AfterClass
@@ -156,7 +155,22 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ModType.INSERT,
         ValueCaptureType.OLD_AND_NEW_VALUES,
         getKeysJson(),
-        getNewValuesJson(insertCommitTimestamp));
+        getNewValuesJson(insertCommitTimestamp),
+        false);
+  }
+
+  // Test the case where a TableRow can be constructed from an INSERT Mod when storage write API is
+  // enabled.
+  @Test
+  public void testFailsafeModJsonToTableRowInsertStorageWriteApiEnabled() throws Exception {
+    validateBigQueryRow(
+        spannerDatabaseName,
+        insertCommitTimestamp,
+        ModType.INSERT,
+        ValueCaptureType.OLD_AND_NEW_VALUES,
+        getKeysJson(),
+        getNewValuesJson(insertCommitTimestamp),
+        true);
   }
 
   // Test the case where a TableRow can be constructed from an INSERT Mod
@@ -169,7 +183,22 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ModType.INSERT,
         ValueCaptureType.NEW_ROW,
         getKeysJson(),
-        getNewValuesJson(insertCommitTimestamp));
+        getNewValuesJson(insertCommitTimestamp),
+        false);
+  }
+
+  // Test the case where a TableRow can be constructed from an INSERT Mod
+  // with value capture type as NEW_ROW when storage write API is enabled.
+  @Test
+  public void testFailsafeModJsonToTableRowInsertNewRowStorageWriteApiEnabled() throws Exception {
+    validateBigQueryRow(
+        spannerDatabaseName,
+        insertCommitTimestamp,
+        ModType.INSERT,
+        ValueCaptureType.NEW_ROW,
+        getKeysJson(),
+        getNewValuesJson(insertCommitTimestamp),
+        true);
   }
 
   // Test the case where a TableRow can be constructed from a UPDATE Mod.
@@ -183,7 +212,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ModType.UPDATE,
         ValueCaptureType.OLD_AND_NEW_VALUES,
         getKeysJson(),
-        updateNewValuesJson);
+        updateNewValuesJson,
+        false);
   }
 
   // Test the case where a TableRow can be constructed from a UPDATE Mod
@@ -196,7 +226,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ModType.UPDATE,
         ValueCaptureType.NEW_ROW,
         getKeysJson(),
-        getNewValuesJson(updateCommitTimestamp));
+        getNewValuesJson(updateCommitTimestamp),
+        false);
   }
 
   // Test the case where a TableRow can be constructed from a DELETE Mod.
@@ -211,7 +242,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ModType.DELETE,
         ValueCaptureType.OLD_AND_NEW_VALUES,
         getKeysJson(),
-        "");
+        "",
+        false);
   }
 
   // Test the case where a TableRow can be constructed from a DELETE Mod
@@ -227,7 +259,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ModType.DELETE,
         ValueCaptureType.NEW_ROW,
         getKeysJson(),
-        "");
+        "",
+        false);
   }
 
   // Test the case where the snapshot read to Spanner fails and we can capture the failures from
@@ -270,6 +303,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
                       }
                     }))
             .setCoder(SpannerChangeStreamsToBigQuery.FAILSAFE_ELEMENT_CODER);
+    failsafeModJsonToTableRow = getFailsafeModJsonToTableRow(spannerDatabaseName, false);
     PCollectionTuple out = input.apply("Mod JSON To TableRow", failsafeModJsonToTableRow);
     PAssert.that(out.get(failsafeModJsonToTableRow.transformOut)).empty();
     String expectedPayload =
@@ -312,7 +346,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
       ModType modType,
       ValueCaptureType valueCaptureType,
       String keysJson,
-      String newValuesJson)
+      String newValuesJson,
+      Boolean useStorageWriteApi)
       throws Exception {
     Mod mod =
         new Mod(
@@ -330,7 +365,12 @@ public final class FailsafeModJsonToTableRowTransformerTest {
 
     TableRow expectedTableRow = new TableRow();
     BigQueryUtils.setMetadataFiledsOfTableRow(
-        TEST_SPANNER_TABLE, mod, mod.toJson(), commitTimestamp, expectedTableRow);
+        TEST_SPANNER_TABLE,
+        mod,
+        mod.toJson(),
+        commitTimestamp,
+        expectedTableRow,
+        useStorageWriteApi);
     expectedTableRow.set(BOOLEAN_PK_COL, BOOLEAN_RAW_VAL);
     expectedTableRow.set(BYTES_PK_COL, BYTES_RAW_VAL.toBase64());
     expectedTableRow.set(DATE_PK_COL, DATE_RAW_VAL.toString());
@@ -387,6 +427,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
                       }
                     }))
             .setCoder(SpannerChangeStreamsToBigQuery.FAILSAFE_ELEMENT_CODER);
+    failsafeModJsonToTableRow =
+        getFailsafeModJsonToTableRow(spannerDatabaseName, useStorageWriteApi);
     PCollectionTuple out = input.apply("Mod JSON To TableRow", failsafeModJsonToTableRow);
     PAssert.that(
             out.get(failsafeModJsonToTableRow.transformOut)
@@ -405,13 +447,14 @@ public final class FailsafeModJsonToTableRowTransformerTest {
   }
 
   private static FailsafeModJsonToTableRow getFailsafeModJsonToTableRow(
-      String spannerDatabaseName) {
+      String spannerDatabaseName, Boolean useStorageWriteApi) {
     FailsafeModJsonToTableRowOptions failsafeModJsonToTableRowOptions =
         FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
             .setSpannerConfig(SPANNER_SERVER.getSpannerConfig(spannerDatabaseName))
             .setSpannerChangeStream(TEST_SPANNER_CHANGE_STREAM)
             .setCoder(SpannerChangeStreamsToBigQuery.FAILSAFE_ELEMENT_CODER)
             .setIgnoreFields(ImmutableSet.of())
+            .setUseStorageWriteApi(useStorageWriteApi)
             .build();
     return new FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRow(
         failsafeModJsonToTableRowOptions);

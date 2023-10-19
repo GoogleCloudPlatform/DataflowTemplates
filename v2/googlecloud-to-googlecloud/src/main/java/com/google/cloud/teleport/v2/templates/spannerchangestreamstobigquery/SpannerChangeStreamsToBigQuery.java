@@ -350,6 +350,7 @@ public final class SpannerChangeStreamsToBigQuery {
                 .setSpannerChangeStream(options.getSpannerChangeStreamName())
                 .setIgnoreFields(ignoreFields)
                 .setCoder(FAILSAFE_ELEMENT_CODER)
+                .setUseStorageWriteApi(options.getUseStorageWriteApi())
                 .build();
     FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRow failsafeModJsonToTableRow =
         new FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRow(
@@ -372,6 +373,7 @@ public final class SpannerChangeStreamsToBigQuery {
                 .setBigQueryProject(bigqueryProject)
                 .setBigQueryDataset(bigqueryDataset)
                 .setBigQueryTableTemplate(options.getBigQueryChangelogTableNameTemplate())
+                .setUseStorageWriteApi(options.getUseStorageWriteApi())
                 .build();
     WriteResult writeResult =
         tableRowTuple

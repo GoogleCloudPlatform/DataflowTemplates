@@ -64,7 +64,8 @@ public class BigQueryUtils {
       Mod mod,
       String modJsonString,
       Timestamp spannerCommitTimestamp,
-      TableRow tableRow) {
+      TableRow tableRow,
+      Boolean useStorageWriteApi) {
     tableRow.set(BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON, modJsonString);
     tableRow.set(BQ_CHANGELOG_FIELD_NAME_MOD_TYPE, mod.getModType().name());
     tableRow.set(BQ_CHANGELOG_FIELD_NAME_TABLE_NAME, spannerTableName);
@@ -81,6 +82,8 @@ public class BigQueryUtils {
     tableRow.set(
         BQ_CHANGELOG_FIELD_NAME_NUMBER_OF_PARTITIONS_IN_TRANSACTION,
         mod.getNumberOfPartitionsInTransaction());
-    tableRow.set(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_BIGQUERY_COMMIT_TIMESTAMP, "AUTO");
+    if (!useStorageWriteApi) {
+      tableRow.set(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_BIGQUERY_COMMIT_TIMESTAMP, "AUTO");
+    }
   }
 }

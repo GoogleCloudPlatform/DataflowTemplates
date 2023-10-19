@@ -104,7 +104,8 @@ public final class FailsafeModJsonToTableRowTransformer {
                           failsafeModJsonToTableRowOptions.getSpannerChangeStream(),
                           failsafeModJsonToTableRowOptions.getIgnoreFields(),
                           transformOut,
-                          transformDeadLetterOut))
+                          transformDeadLetterOut,
+                          failsafeModJsonToTableRowOptions.getUseStorageWriteApi()))
                   .withOutputTags(transformOut, TupleTagList.of(transformDeadLetterOut)));
       out.get(transformDeadLetterOut).setCoder(failsafeModJsonToTableRowOptions.getCoder());
       return out;
@@ -126,18 +127,21 @@ public final class FailsafeModJsonToTableRowTransformer {
       public TupleTag<FailsafeElement<String, String>> transformDeadLetterOut;
       private transient CallContextConfigurator callContextConfigurator;
       private transient boolean seenException;
+      private Boolean useStorageWriteApi;
 
       public FailsafeModJsonToTableRowFn(
           SpannerConfig spannerConfig,
           String spannerChangeStream,
           ImmutableSet<String> ignoreFields,
           TupleTag<TableRow> transformOut,
-          TupleTag<FailsafeElement<String, String>> transformDeadLetterOut) {
+          TupleTag<FailsafeElement<String, String>> transformDeadLetterOut,
+          Boolean useStorageWriteApi) {
         this.spannerConfig = spannerConfig;
         this.spannerChangeStream = spannerChangeStream;
         this.transformOut = transformOut;
         this.transformDeadLetterOut = transformDeadLetterOut;
         this.ignoreFields = ignoreFields;
+        this.useStorageWriteApi = useStorageWriteApi;
       }
 
       private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
@@ -189,7 +193,8 @@ public final class FailsafeModJsonToTableRowTransformer {
         } catch (Exception e) {
           if (!seenException) {
             LOG.error(
-                "Caught exception when processing element , storing into dead letter queue {}", e);
+                "Caught exception when processing element , storing into dead letter queue. "
+                    + e.getMessage());
             seenException = true;
           }
           context.output(
@@ -218,7 +223,12 @@ public final class FailsafeModJsonToTableRowTransformer {
         // Set metadata fields of the tableRow.
         TableRow tableRow = new TableRow();
         BigQueryUtils.setMetadataFiledsOfTableRow(
-            spannerTableName, mod, modJsonString, spannerCommitTimestamp, tableRow);
+            spannerTableName,
+            mod,
+            modJsonString,
+            spannerCommitTimestamp,
+            tableRow,
+            useStorageWriteApi);
         JSONObject keysJsonObject = new JSONObject(mod.getKeysJson());
         // Set Spanner key columns of the tableRow.
         for (TrackedSpannerColumn spannerColumn : spannerTable.getPkColumns()) {
@@ -360,6 +370,8 @@ public final class FailsafeModJsonToTableRowTransformer {
 
     public abstract FailsafeElementCoder<String, String> getCoder();
 
+    public abstract Boolean getUseStorageWriteApi();
+
     static Builder builder() {
       return new AutoValue_FailsafeModJsonToTableRowTransformer_FailsafeModJsonToTableRowOptions
           .Builder();
@@ -374,6 +386,8 @@ public final class FailsafeModJsonToTableRowTransformer {
       abstract Builder setIgnoreFields(ImmutableSet<String> ignoreFields);
 
       abstract Builder setCoder(FailsafeElementCoder<String, String> coder);
+
+      abstract Builder setUseStorageWriteApi(Boolean useStorageWriteApi);
 
       abstract FailsafeModJsonToTableRowOptions build();
     }
