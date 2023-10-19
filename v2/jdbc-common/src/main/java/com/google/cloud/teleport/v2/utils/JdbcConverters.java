@@ -54,7 +54,7 @@ public class JdbcConverters {
     private static final DateTimeFormatter DATETIME_FORMATTER =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
     private static final DateTimeFormatter TIMESTAMP_FORMATTER =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSXXX");
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
 
     private Boolean useColumnAlias;
 
