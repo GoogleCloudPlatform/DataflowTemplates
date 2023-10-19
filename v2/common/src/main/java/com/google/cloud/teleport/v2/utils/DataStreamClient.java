@@ -416,7 +416,7 @@ public class DataStreamClient implements Serializable {
 
     List<PostgresqlSchema> postgresqlSchemas = new ArrayList<PostgresqlSchema>();
     postgresqlSchemas.add(
-        new PostgresqlSchema().setSchema(schemaName).setOracleTables(postgresqlTables));
+        new PostgresqlSchema().setSchema(schemaName).setPostgresqlTables(postgresqlTables));
 
     PostgresqlRdbms rdbms = new PostgresqlRdbms().setPostgresqlSchemas(postgresqlSchemas);
 
