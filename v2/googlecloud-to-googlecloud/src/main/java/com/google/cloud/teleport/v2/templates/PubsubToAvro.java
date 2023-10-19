@@ -26,7 +26,7 @@ import com.google.cloud.teleport.v2.options.WindowedFilenamePolicyOptions;
 import com.google.cloud.teleport.v2.templates.PubsubToAvro.Options;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;

@@ -116,124 +116,129 @@ public class BigtableUtils implements Serializable {
     java.util.List<com.google.cloud.teleport.bigtable.BigtableCell> cells = new ArrayList<>();
 
     // row_key
-    cells.add(
-        com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-            .setFamily(this.bigtableRowColumnFamilyName)
-            .setQualifier(ChangelogColumns.ROW_KEY.getColumnNameAsByteBuffer(this.charsetObj))
-            .setTimestamp(DEFAULT_TIMESTAMP)
-            .setValue(entry.getRowKey())
-            .build());
+    com.google.cloud.teleport.bigtable.BigtableCell rowKeyCell =
+        new com.google.cloud.teleport.bigtable.BigtableCell();
+    rowKeyCell.setFamily(this.bigtableRowColumnFamilyName);
+    rowKeyCell.setQualifier(ChangelogColumns.ROW_KEY.getColumnNameAsByteBuffer(this.charsetObj));
+    rowKeyCell.setTimestamp(DEFAULT_TIMESTAMP);
+    rowKeyCell.setValue(entry.getRowKey());
+    cells.add(rowKeyCell);
 
     // mod_type
-    cells.add(
-        com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-            .setFamily(this.bigtableRowColumnFamilyName)
-            .setQualifier(ChangelogColumns.MOD_TYPE.getColumnNameAsByteBuffer(this.charsetObj))
-            .setTimestamp(DEFAULT_TIMESTAMP)
-            .setValue(getByteBufferFromString(entry.getModType().toString()))
-            .build());
+    com.google.cloud.teleport.bigtable.BigtableCell modTypeCell =
+        new com.google.cloud.teleport.bigtable.BigtableCell();
+    modTypeCell.setFamily(this.bigtableRowColumnFamilyName);
+    modTypeCell.setQualifier(ChangelogColumns.MOD_TYPE.getColumnNameAsByteBuffer(this.charsetObj));
+    modTypeCell.setTimestamp(DEFAULT_TIMESTAMP);
+    modTypeCell.setValue(getByteBufferFromString(entry.getModType().toString()));
+    cells.add(modTypeCell);
 
     // is_gc
-    cells.add(
-        com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-            .setFamily(this.bigtableRowColumnFamilyName)
-            .setQualifier(ChangelogColumns.IS_GC.getColumnNameAsByteBuffer(this.charsetObj))
-            .setTimestamp(DEFAULT_TIMESTAMP)
-            .setValue(getByteBufferFromString(Boolean.toString(entry.getIsGC())))
-            .build());
+    com.google.cloud.teleport.bigtable.BigtableCell isGcCell =
+        new com.google.cloud.teleport.bigtable.BigtableCell();
+    isGcCell.setFamily(this.bigtableRowColumnFamilyName);
+    isGcCell.setQualifier(ChangelogColumns.IS_GC.getColumnNameAsByteBuffer(this.charsetObj));
+    isGcCell.setTimestamp(DEFAULT_TIMESTAMP);
+    isGcCell.setValue(getByteBufferFromString(Boolean.toString(entry.getIsGC())));
+    cells.add(isGcCell);
 
     // tiebreaker
-    cells.add(
-        com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-            .setFamily(this.bigtableRowColumnFamilyName)
-            .setQualifier(ChangelogColumns.TIEBREAKER.getColumnNameAsByteBuffer(this.charsetObj))
-            .setTimestamp(DEFAULT_TIMESTAMP)
-            .setValue(getByteBufferFromString(String.valueOf(entry.getTieBreaker())))
-            .build());
+    com.google.cloud.teleport.bigtable.BigtableCell tiebreakerCell =
+        new com.google.cloud.teleport.bigtable.BigtableCell();
+    tiebreakerCell.setFamily(this.bigtableRowColumnFamilyName);
+    tiebreakerCell.setQualifier(
+        ChangelogColumns.TIEBREAKER.getColumnNameAsByteBuffer(this.charsetObj));
+    tiebreakerCell.setTimestamp(DEFAULT_TIMESTAMP);
+    tiebreakerCell.setValue(getByteBufferFromString(String.valueOf(entry.getTieBreaker())));
+    cells.add(tiebreakerCell);
 
     // commit_timestamp
-    cells.add(
-        com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-            .setFamily(this.bigtableRowColumnFamilyName)
-            .setQualifier(
-                ChangelogColumns.COMMIT_TIMESTAMP.getColumnNameAsByteBuffer(this.charsetObj))
-            .setTimestamp(DEFAULT_TIMESTAMP)
-            .setValue(getByteBufferFromString(String.valueOf(entry.getCommitTimestamp())))
-            .build());
+    com.google.cloud.teleport.bigtable.BigtableCell commitTimestampCell =
+        new com.google.cloud.teleport.bigtable.BigtableCell();
+    commitTimestampCell.setFamily(this.bigtableRowColumnFamilyName);
+    commitTimestampCell.setQualifier(
+        ChangelogColumns.COMMIT_TIMESTAMP.getColumnNameAsByteBuffer(this.charsetObj));
+    commitTimestampCell.setTimestamp(DEFAULT_TIMESTAMP);
+    commitTimestampCell.setValue(
+        getByteBufferFromString(String.valueOf(entry.getCommitTimestamp())));
+    cells.add(commitTimestampCell);
 
     // column_family
-    cells.add(
-        com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-            .setFamily(this.bigtableRowColumnFamilyName)
-            .setQualifier(ChangelogColumns.COLUMN_FAMILY.getColumnNameAsByteBuffer(this.charsetObj))
-            .setTimestamp(DEFAULT_TIMESTAMP)
-            .setValue(getByteBufferFromString(String.valueOf(entry.getColumnFamily())))
-            .build());
+    com.google.cloud.teleport.bigtable.BigtableCell columnFamilyCell =
+        new com.google.cloud.teleport.bigtable.BigtableCell();
+    columnFamilyCell.setFamily(this.bigtableRowColumnFamilyName);
+    columnFamilyCell.setQualifier(
+        ChangelogColumns.COLUMN_FAMILY.getColumnNameAsByteBuffer(this.charsetObj));
+    columnFamilyCell.setTimestamp(DEFAULT_TIMESTAMP);
+    columnFamilyCell.setValue(getByteBufferFromString(String.valueOf(entry.getColumnFamily())));
+    cells.add(columnFamilyCell);
 
     // low_watermark
-    cells.add(
-        com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-            .setFamily(this.bigtableRowColumnFamilyName)
-            .setQualifier(ChangelogColumns.LOW_WATERMARK.getColumnNameAsByteBuffer(this.charsetObj))
-            .setTimestamp(DEFAULT_TIMESTAMP)
-            .setValue(getByteBufferFromString(String.valueOf(entry.getLowWatermark())))
-            .build());
+    com.google.cloud.teleport.bigtable.BigtableCell lowWatermarkCell =
+        new com.google.cloud.teleport.bigtable.BigtableCell();
+    lowWatermarkCell.setFamily(this.bigtableRowColumnFamilyName);
+    lowWatermarkCell.setQualifier(
+        ChangelogColumns.LOW_WATERMARK.getColumnNameAsByteBuffer(this.charsetObj));
+    lowWatermarkCell.setTimestamp(DEFAULT_TIMESTAMP);
+    lowWatermarkCell.setValue(getByteBufferFromString(String.valueOf(entry.getLowWatermark())));
+    cells.add(lowWatermarkCell);
 
     if (entry.getColumn() != null) {
       // column
-      cells.add(
-          com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-              .setFamily(this.bigtableRowColumnFamilyName)
-              .setQualifier(ChangelogColumns.COLUMN.getColumnNameAsByteBuffer(this.charsetObj))
-              .setTimestamp(DEFAULT_TIMESTAMP)
-              .setValue(entry.getColumn())
-              .build());
+      com.google.cloud.teleport.bigtable.BigtableCell columnCell =
+          new com.google.cloud.teleport.bigtable.BigtableCell();
+      columnCell.setFamily(this.bigtableRowColumnFamilyName);
+      columnCell.setQualifier(ChangelogColumns.COLUMN.getColumnNameAsByteBuffer(this.charsetObj));
+      columnCell.setTimestamp(DEFAULT_TIMESTAMP);
+      columnCell.setValue(entry.getColumn());
+      cells.add(columnCell);
     }
 
     if (entry.getTimestamp() != null) {
       // timestamp
-      cells.add(
-          com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-              .setFamily(this.bigtableRowColumnFamilyName)
-              .setQualifier(ChangelogColumns.TIMESTAMP.getColumnNameAsByteBuffer(this.charsetObj))
-              .setTimestamp(DEFAULT_TIMESTAMP)
-              .setValue(getByteBufferFromString(String.valueOf(entry.getTimestamp())))
-              .build());
+      com.google.cloud.teleport.bigtable.BigtableCell timestampCell =
+          new com.google.cloud.teleport.bigtable.BigtableCell();
+      timestampCell.setFamily(this.bigtableRowColumnFamilyName);
+      timestampCell.setQualifier(
+          ChangelogColumns.TIMESTAMP.getColumnNameAsByteBuffer(this.charsetObj));
+      timestampCell.setTimestamp(DEFAULT_TIMESTAMP);
+      timestampCell.setValue(getByteBufferFromString(String.valueOf(entry.getTimestamp())));
+      cells.add(timestampCell);
     }
 
     if (entry.getTimestampFrom() != null) {
       // timestamp_from
-      cells.add(
-          com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-              .setFamily(this.bigtableRowColumnFamilyName)
-              .setQualifier(
-                  ChangelogColumns.TIMESTAMP_FROM.getColumnNameAsByteBuffer(this.charsetObj))
-              .setTimestamp(DEFAULT_TIMESTAMP)
-              .setValue(getByteBufferFromString(String.valueOf(entry.getTimestampFrom())))
-              .build());
+      com.google.cloud.teleport.bigtable.BigtableCell timestampFromCell =
+          new com.google.cloud.teleport.bigtable.BigtableCell();
+      timestampFromCell.setFamily(this.bigtableRowColumnFamilyName);
+      timestampFromCell.setQualifier(
+          ChangelogColumns.TIMESTAMP_FROM.getColumnNameAsByteBuffer(this.charsetObj));
+      timestampFromCell.setTimestamp(DEFAULT_TIMESTAMP);
+      timestampFromCell.setValue(getByteBufferFromString(String.valueOf(entry.getTimestampFrom())));
+      cells.add(timestampFromCell);
     }
 
     if (entry.getTimestampTo() != null) {
       // timestamp_to
-      cells.add(
-          com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-              .setFamily(this.bigtableRowColumnFamilyName)
-              .setQualifier(
-                  ChangelogColumns.TIMESTAMP_TO.getColumnNameAsByteBuffer(this.charsetObj))
-              .setTimestamp(DEFAULT_TIMESTAMP)
-              .setValue(getByteBufferFromString(String.valueOf(entry.getTimestampTo())))
-              .build());
+      com.google.cloud.teleport.bigtable.BigtableCell timestampToCell =
+          new com.google.cloud.teleport.bigtable.BigtableCell();
+      timestampToCell.setFamily(this.bigtableRowColumnFamilyName);
+      timestampToCell.setQualifier(
+          ChangelogColumns.TIMESTAMP_TO.getColumnNameAsByteBuffer(this.charsetObj));
+      timestampToCell.setTimestamp(DEFAULT_TIMESTAMP);
+      timestampToCell.setValue(getByteBufferFromString(String.valueOf(entry.getTimestampTo())));
+      cells.add(timestampToCell);
     }
 
     if (entry.getValue() != null) {
       // value
-      cells.add(
-          com.google.cloud.teleport.bigtable.BigtableCell.newBuilder()
-              .setFamily(this.bigtableRowColumnFamilyName)
-              .setQualifier(ChangelogColumns.VALUE.getColumnNameAsByteBuffer(this.charsetObj))
-              .setTimestamp(DEFAULT_TIMESTAMP)
-              .setValue(entry.getValue())
-              .build());
+      com.google.cloud.teleport.bigtable.BigtableCell valueCell =
+          new com.google.cloud.teleport.bigtable.BigtableCell();
+      valueCell.setFamily(this.bigtableRowColumnFamilyName);
+      valueCell.setQualifier(ChangelogColumns.VALUE.getColumnNameAsByteBuffer(this.charsetObj));
+      valueCell.setTimestamp(DEFAULT_TIMESTAMP);
+      valueCell.setValue(entry.getValue());
+      cells.add(valueCell);
     }
 
     return new BigtableRow(
@@ -297,14 +302,13 @@ public class BigtableUtils implements Serializable {
         mutation.getCommitTimestamp().toEpochMilli() * 1000
             + mutation.getCommitTimestamp().getNano() / 1000;
 
-    com.google.cloud.teleport.bigtable.ChangelogEntry.Builder changelogEntry =
-        ChangelogEntry.newBuilder()
-            .setRowKey(mutation.getRowKey().asReadOnlyByteBuffer())
-            .setModType(getModType(mutationEntry))
-            .setIsGC(mutation.getType() == MutationType.GARBAGE_COLLECTION)
-            .setTieBreaker(mutation.getTieBreaker())
-            .setCommitTimestamp(commitMicros)
-            .setLowWatermark(0); // TODO: Low watermark is not available yet
+    ChangelogEntry changelogEntry = new ChangelogEntry();
+    changelogEntry.setRowKey(mutation.getRowKey().asReadOnlyByteBuffer());
+    changelogEntry.setModType(getModType(mutationEntry));
+    changelogEntry.setIsGC(mutation.getType() == MutationType.GARBAGE_COLLECTION);
+    changelogEntry.setTieBreaker(mutation.getTieBreaker());
+    changelogEntry.setCommitTimestamp(commitMicros);
+    changelogEntry.setLowWatermark(0); // TODO: Low watermark is not available yet
 
     if (mutationEntry instanceof SetCell) {
       setCellEntryProperties(mutationEntry, changelogEntry);
@@ -316,42 +320,37 @@ public class BigtableUtils implements Serializable {
       // Unknown ModType, logging a warning
       LOG.warn("Unknown ChangelogEntry ModType, not setting properties in ChangelogEntry.");
     }
-    return changelogEntry.build();
+    return changelogEntry;
   }
 
-  private void setCellEntryProperties(Entry mutationEntry, ChangelogEntry.Builder changelogEntry) {
+  private void setCellEntryProperties(Entry mutationEntry, ChangelogEntry changelogEntry) {
     SetCell cell = (SetCell) mutationEntry;
-    changelogEntry
-        .setColumnFamily(cell.getFamilyName())
-        .setColumn(cell.getQualifier().asReadOnlyByteBuffer())
-        .setTimestamp(cell.getTimestamp())
-        .setValue(cell.getValue().asReadOnlyByteBuffer())
-        .setTimestampFrom(null)
-        .setTimestampTo(null);
+    changelogEntry.setColumnFamily(cell.getFamilyName());
+    changelogEntry.setColumn(cell.getQualifier().asReadOnlyByteBuffer());
+    changelogEntry.setTimestamp(cell.getTimestamp());
+    changelogEntry.setValue(cell.getValue().asReadOnlyByteBuffer());
+    changelogEntry.setTimestampFrom(null);
+    changelogEntry.setTimestampTo(null);
   }
 
-  private void setDeleteCellEntryProperties(
-      Entry mutationEntry, ChangelogEntry.Builder changelogEntry) {
+  private void setDeleteCellEntryProperties(Entry mutationEntry, ChangelogEntry changelogEntry) {
     DeleteCells cell = (DeleteCells) mutationEntry;
-    changelogEntry
-        .setColumnFamily(cell.getFamilyName())
-        .setColumn(cell.getQualifier().asReadOnlyByteBuffer())
-        .setTimestamp(null)
-        .setValue(null)
-        .setTimestampFrom(cell.getTimestampRange().getStart())
-        .setTimestampTo(cell.getTimestampRange().getEnd());
+    changelogEntry.setColumnFamily(cell.getFamilyName());
+    changelogEntry.setColumn(cell.getQualifier().asReadOnlyByteBuffer());
+    changelogEntry.setTimestamp(null);
+    changelogEntry.setValue(null);
+    changelogEntry.setTimestampFrom(cell.getTimestampRange().getStart());
+    changelogEntry.setTimestampTo(cell.getTimestampRange().getEnd());
   }
 
-  private void setDeleteFamilyEntryProperties(
-      Entry mutationEntry, ChangelogEntry.Builder changelogEntry) {
+  private void setDeleteFamilyEntryProperties(Entry mutationEntry, ChangelogEntry changelogEntry) {
     DeleteFamily cell = (DeleteFamily) mutationEntry;
-    changelogEntry
-        .setColumnFamily(cell.getFamilyName())
-        .setColumn(null)
-        .setTimestamp(null)
-        .setValue(null)
-        .setTimestampFrom(null)
-        .setTimestampTo(null);
+    changelogEntry.setColumnFamily(cell.getFamilyName());
+    changelogEntry.setColumn(null);
+    changelogEntry.setTimestamp(null);
+    changelogEntry.setValue(null);
+    changelogEntry.setTimestampFrom(null);
+    changelogEntry.setTimestampTo(null);
   }
 
   private com.google.cloud.teleport.bigtable.ModType getModType(Entry entry) {

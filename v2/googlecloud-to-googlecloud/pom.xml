@@ -87,6 +87,11 @@
       <artifactId>beam-sdks-java-io-hadoop-common</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.apache.avro</groupId>
+      <artifactId>avro</artifactId>
+      <version>${avro.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-extensions-avro</artifactId>
     </dependency>
@@ -196,6 +201,11 @@
     </dependency>
 
     <!-- Test Dependencies -->
+    <dependency>
+      <groupId>com.google.api</groupId>
+      <artifactId>gax-grpc</artifactId>
+      <classifier>testlib</classifier>
+    </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
       <artifactId>it-google-cloud-platform</artifactId>
