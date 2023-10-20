@@ -66,12 +66,12 @@ import org.slf4j.LoggerFactory;
     optionsClass = SpannerToVectorEmbeddingJsonOptions.class,
     description = {
       "The Cloud Spanner to Vector Embeddings on Cloud Storage template is a batch pipeline that exports vector embeddings data from Cloud Spanner's table to Cloud Storage in JSON format. "
-          + "Vector embeddings are exported to a Cloud Storage folder specified by the user via parameter setting along with other template parameters."
+          + "Vector embeddings are exported to a Cloud Storage folder specified by the user in the template parameters."
           + " The Cloud Storage folder will contain the list of exported `.json` files representing vector embeddings in a format supported by Vertex AI Vector Search Index.\n",
-      "Please check <a href=\"https://cloud.google.com/vertex-ai/docs/vector-search/setup/format-structure#json\">Vector Search Format Structure</a> for additional details."
+      "Check <a href=\"https://cloud.google.com/vertex-ai/docs/vector-search/setup/format-structure#json\">Vector Search Format Structure</a> for additional details."
     },
-    // ToDo: Update the documentation
-    documentation = "https://cloud.google.com/dataflow/docs/guides/templates/provided-templates",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided-templates/cloud-spanner-to-vertex-vector-search",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The Cloud Spanner database must exist.",
@@ -88,7 +88,7 @@ public class SpannerVectorEmbeddingExport {
     @TemplateParameter.ProjectId(
         order = 10,
         description = "Cloud Spanner Project Id",
-        helpText = "The project id of the Cloud Spanner instance.")
+        helpText = "The project ID of the Cloud Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
@@ -96,9 +96,9 @@ public class SpannerVectorEmbeddingExport {
     @TemplateParameter.Text(
         order = 20,
         regexes = {"[a-z][a-z0-9\\-]*[a-z0-9]"},
-        description = "Cloud Spanner instance id",
+        description = "Cloud Spanner instance ID",
         helpText =
-            "The instance id of the Cloud Spanner from which you want to export the vector embeddings.")
+            "The instance ID of the Cloud Spanner from which you want to export the vector embeddings.")
     ValueProvider<String> getSpannerInstanceId();
 
     void setSpannerInstanceId(ValueProvider<String> spannerInstanceId);
@@ -106,9 +106,9 @@ public class SpannerVectorEmbeddingExport {
     @TemplateParameter.Text(
         order = 30,
         regexes = {"[a-z][a-z0-9_\\-]*[a-z0-9]"},
-        description = "Cloud Spanner database id",
+        description = "Cloud Spanner database ID",
         helpText =
-            "The database id of the Cloud Spanner from which you want to export the vector embeddings.")
+            "The database ID of the Cloud Spanner from which you want to export the vector embeddings.")
     ValueProvider<String> getSpannerDatabaseId();
 
     void setSpannerDatabaseId(ValueProvider<String> spannerDatabaseId);
@@ -127,10 +127,12 @@ public class SpannerVectorEmbeddingExport {
         description = "Columns to Export from Spanner Table",
         helpText =
             "Comma separated list of columns which are required for Vertex AI Vector Search Index."
-                + " The `id` & `embedding` are required columns for Vertex Vector Search. "
-                + " If the column names don't precisely align with the Vertex AI Vector Search Index input structure, you can establish column mappings using aliases."
-                + " For e.g. if you have columns id and my_embedding i.e. the id column matches what vertex expects but the embedding column is named differently,"
-                + " you can specify the following `id, my_embedding:embedding`.")
+                + " The `id` & `embedding` are required columns for Vertex Vector Search."
+                + " If the column names don't precisely align with the Vertex AI Vector Search Index input structure,"
+                + " you can establish column mappings using aliases. If you have the columns that don't match the"
+                + " format expected by Vertex, you can use the notation `from:to`. For example, if the columns are"
+                + " `id` and `my_embedding`, in which `id` matches what Vertex expects but the embedding column is named differently,"
+                + " `id, my_embedding:embedding` should be specified.")
     ValueProvider<String> getSpannerColumnsToExport();
 
     void setSpannerColumnsToExport(ValueProvider<String> value);

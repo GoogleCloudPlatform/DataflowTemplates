@@ -67,8 +67,8 @@
   <li><strong>Input</strong>: JSON string.</li>
   <li><strong>Output</strong>: The output must be a string or a stringified JSON object.</li>
 </ul>
-</#if>
 
+</#if>
 <h2>Run the template</h2>
 <#if flex>
 {% dynamic setvar df_template_type "flex" %}
@@ -98,7 +98,7 @@
     {% include "${base_include}/docs/guides/templates/_provided-templates-using-console.html" %}
   </section>
   <section>
-    <h3>gcloud</h3>
+    <h3>{{gcloud_name_short}}</h3>
     {% dynamic setvar df_tab_name "gcloud" %}
     {{df_gcloud_tab_intro}}
 
