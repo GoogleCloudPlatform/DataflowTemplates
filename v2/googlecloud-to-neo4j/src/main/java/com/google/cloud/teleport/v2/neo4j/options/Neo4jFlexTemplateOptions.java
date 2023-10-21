@@ -28,7 +28,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
 
   @TemplateParameter.GcsReadFile(
       order = 1,
-      description = "Path to job configuration file",
+      description = "Path to the job specification file",
       helpText =
           "The path to the job specification file, which contains the configuration for source and target metadata.")
   @Validation.Required
@@ -38,8 +38,8 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
 
   @TemplateParameter.GcsReadFile(
       order = 2,
-      description = "Path to Neo4j connection metadata",
-      helpText = "Path to Neo4j connection metadata JSON file.")
+      description = "Path to the Neo4j connection metadata",
+      helpText = "The path to Neo4j connection metadata JSON file.")
   @Validation.Required
   String getNeo4jConnectionUri();
 

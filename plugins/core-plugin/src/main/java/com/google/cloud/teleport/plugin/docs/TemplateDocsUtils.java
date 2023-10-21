@@ -34,10 +34,12 @@ public final class TemplateDocsUtils {
     INTERPOLATION.put("Cloud KMS", "kms_name_short");
     INTERPOLATION.put("Dataflow", "dataflow_name");
     INTERPOLATION.put("Elasticsearch", "product_name_elasticsearch");
-    INTERPOLATION.put("Identity and Access Management", "iam_name");
+    INTERPOLATION.put("Google Cloud Storage", "storage_name_short");
     INTERPOLATION.put("Google Cloud", "gcp_name_short");
+    INTERPOLATION.put("Identity and Access Management", "iam_name");
     INTERPOLATION.put("MongoDB", "product_name_mongodb");
     INTERPOLATION.put("Pub/Sub", "pubsub_name_short");
+    INTERPOLATION.put("Secret Manager", "secret_manager_name");
     INTERPOLATION.put("Spanner", "spanner_name");
     INTERPOLATION.put(
         "projects/your-project-id/subscriptions/your-subscription-name",

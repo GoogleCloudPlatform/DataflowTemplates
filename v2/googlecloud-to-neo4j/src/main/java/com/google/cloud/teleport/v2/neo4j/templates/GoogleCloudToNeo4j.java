@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.templates;
 
 import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.Template.AdditionalDocumentationBlock;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.neo4j.actions.ActionDoFnFactory;
@@ -79,10 +80,34 @@ import org.slf4j.LoggerFactory;
     name = "Google_Cloud_to_Neo4j",
     category = TemplateCategory.BATCH,
     displayName = "Google Cloud to Neo4j",
-    description = "Copy data from Google Cloud (BigQuery, Text) into Neo4j.",
+    description =
+        "The Google Cloud to Neo4j template lets you import a dataset into a Neo4j database through a Dataflow job, "
+            + "sourcing data from CSV files hosted in Google Cloud Storage buckets. It also lets you to manipulate and transform the data "
+            + "at various steps of the import. You can use the template for both first-time imports and incremental imports.",
     optionsClass = Neo4jFlexTemplateOptions.class,
     flexContainerName = "googlecloud-to-neo4j",
-    contactInformation = "https://support.neo4j.com/")
+    contactInformation = "https://support.neo4j.com/",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/google-cloud-to-neo4j",
+    requirements = {
+      "A running Neo4j instance",
+      "A Google Cloud Storage bucket",
+      "A dataset to import, in the form of CSV files",
+      "A job specification file to use"
+    },
+    additionalDocumentation = {
+      @AdditionalDocumentationBlock(
+          name = "Create a job specification file",
+          content = {
+            "The job specification file consists of a JSON object with the following sections:\n"
+                + "- `config` - global flags affecting how the import is performed.\n"
+                + "- `sources` - data source definitions (relational).\n"
+                + "- `targets` - data target definitions (graph: nodes/relationships).\n"
+                + "- `actions` - pre/post-load actions.\n"
+                + "For more information, see <a href=\"https://neo4j.com/docs/dataflow-google-cloud/job-specification/\" class=\"external\">Create a job specification file</a> in the Neo4j documentation."
+          })
+    },
+    preview = true)
 public class GoogleCloudToNeo4j {
 
   private static final Logger LOG = LoggerFactory.getLogger(GoogleCloudToNeo4j.class);
