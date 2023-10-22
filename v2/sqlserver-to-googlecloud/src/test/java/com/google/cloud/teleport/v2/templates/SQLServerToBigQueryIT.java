@@ -25,13 +25,18 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.TimeZone;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator;
@@ -58,9 +63,11 @@ public class SQLServerToBigQueryIT extends TemplateTestBase {
   private static final String NAME = "name";
   private static final String FULL_NAME = "full_name";
   private static final String AGE = "age";
+  private static final String CREATED_AT = "created_at";
   private static final String MEMBER = "member";
   private static final String IS_MEMBER = "is_member";
   private static final String ENTRY_ADDED = "entry_added";
+  private static final DateFormat DATE_FORMAT_INSERT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
   private MSSQLResourceManager msSqlResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
@@ -86,13 +93,14 @@ public class SQLServerToBigQueryIT extends TemplateTestBase {
     columns.put(ROW_ID, "NUMERIC NOT NULL");
     columns.put(NAME, "VARCHAR(200)");
     columns.put(AGE, "NUMERIC");
+    columns.put(CREATED_AT, "DATETIME");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Arrange
     List<Map<String, Object>> jdbcData =
-        getJdbcData(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED));
+        getJdbcData(List.of(ROW_ID, NAME, AGE, CREATED_AT, MEMBER, ENTRY_ADDED));
     msSqlResourceManager.createTable(testName, schema);
     msSqlResourceManager.write(testName, jdbcData);
 
@@ -101,6 +109,7 @@ public class SQLServerToBigQueryIT extends TemplateTestBase {
             Field.of(ROW_ID, StandardSQLTypeName.INT64),
             Field.of(FULL_NAME, StandardSQLTypeName.STRING),
             Field.of(AGE, StandardSQLTypeName.FLOAT64),
+            Field.of(CREATED_AT, StandardSQLTypeName.TIMESTAMP),
             Field.of(IS_MEMBER, StandardSQLTypeName.STRING),
             Field.of(ENTRY_ADDED, StandardSQLTypeName.STRING));
     Schema bqSchema = Schema.of(bqSchemaFields);
@@ -114,7 +123,7 @@ public class SQLServerToBigQueryIT extends TemplateTestBase {
             .addParameter("outputTable", toTableSpecLegacy(table))
             .addParameter(
                 "query",
-                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, CREATED_AT, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
                     + testName)
             .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
             .addParameter("username", msSqlResourceManager.getUsername())
@@ -132,10 +141,20 @@ public class SQLServerToBigQueryIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
+    DateFormat dateFormatCompare = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+    dateFormatCompare.setTimeZone(TimeZone.getTimeZone("UTC"));
+
     jdbcData.forEach(
         row -> {
           row.put("full_name", row.remove("name"));
           row.put("is_member", row.remove("member"));
+
+          try {
+            Date createdAt = DATE_FORMAT_INSERT.parse(row.get("created_at").toString());
+            row.put("created_at", dateFormatCompare.format(createdAt));
+          } catch (ParseException e) {
+            throw new RuntimeException(e);
+          }
         });
     assertThatBigQueryRecords(bigQueryResourceManager.readTable(testName))
         .hasRecordsUnorderedCaseInsensitiveColumns(jdbcData);
@@ -154,8 +173,9 @@ public class SQLServerToBigQueryIT extends TemplateTestBase {
       values.put(columns.get(0), i);
       values.put(columns.get(1), RandomStringUtils.randomAlphabetic(10));
       values.put(columns.get(2), new Random().nextInt(100));
-      values.put(columns.get(3), i % 2 == 0 ? "Y" : "N");
-      values.put(columns.get(4), Instant.now().toString());
+      values.put(columns.get(3), DATE_FORMAT_INSERT.format(new Date()));
+      values.put(columns.get(4), i % 2 == 0 ? "Y" : "N");
+      values.put(columns.get(5), Instant.now().toString());
       data.add(values);
     }
 
