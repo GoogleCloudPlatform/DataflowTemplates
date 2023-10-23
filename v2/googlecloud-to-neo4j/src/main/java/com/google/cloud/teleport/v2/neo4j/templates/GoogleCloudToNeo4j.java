@@ -240,6 +240,8 @@ public class GoogleCloudToNeo4j {
                 .setRowSchema(sourceBeamSchema);
       }
 
+      String sourceName = source.getName();
+
       ////////////////////////////
       // Optimization: if we're not mixing nodes and edges, then run in parallel
       // For relationship updates, max workers should be max 2.  This parameter is job configurable.
@@ -247,7 +249,8 @@ public class GoogleCloudToNeo4j {
       ////////////////////////////
       // No optimization possible so write nodes then edges.
       // Write node targets
-      List<Target> nodeTargets = jobSpec.getActiveNodeTargetsBySource(source.getName());
+      List<Target> nodeTargets =
+          jobSpec.getActiveTargetsBySourceAndType(sourceName, TargetType.node);
       for (Target nodeTarget : nodeTargets) {
         TargetQuerySpec targetQuerySpec =
             new TargetQuerySpecBuilder()
@@ -268,7 +271,7 @@ public class GoogleCloudToNeo4j {
                 "Query " + nodeStepDescription, providerImpl.queryTargetBeamRows(targetQuerySpec));
 
         Neo4jRowWriterTransform targetWriterTransform =
-            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, TargetType.node, nodeTarget);
+            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, nodeTarget);
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -296,7 +299,7 @@ public class GoogleCloudToNeo4j {
       ////////////////////////////
       // Write relationship targets
       List<Target> relationshipTargets =
-          jobSpec.getActiveRelationshipTargetsBySource(source.getName());
+          jobSpec.getActiveTargetsBySourceAndType(sourceName, TargetType.edge);
       for (Target relationshipTarget : relationshipTargets) {
         TargetQuerySpec targetQuerySpec =
             new TargetQuerySpecBuilder()
@@ -322,8 +325,7 @@ public class GoogleCloudToNeo4j {
           preInsertBeamRows = nullableSourceBeamRows;
         }
         Neo4jRowWriterTransform targetWriterTransform =
-            new Neo4jRowWriterTransform(
-                jobSpec, neo4jConnection, TargetType.edge, relationshipTarget);
+            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, relationshipTarget);
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -351,6 +353,47 @@ public class GoogleCloudToNeo4j {
             relationshipTarget.getName(),
             blockingReturn,
             preInsertBeamRows);
+      }
+      ////////////////////////////
+      // Custom query targets
+      List<Target> customQueryTargets =
+          jobSpec.getActiveTargetsBySourceAndType(sourceName, TargetType.custom_query);
+      for (Target customQueryTarget : customQueryTargets) {
+        String customQueryStepDescription =
+            customQueryTarget.getSequence()
+                + ": "
+                + source.getName()
+                + "->"
+                + customQueryTarget.getName()
+                + " (custom query)";
+        Neo4jRowWriterTransform targetWriterTransform =
+            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, customQueryTarget);
+
+        PCollection<Row> blockingReturn =
+            nullableSourceBeamRows
+                .apply(
+                    "** Unblocking "
+                        + customQueryStepDescription
+                        + "(after "
+                        + customQueryTarget.getExecuteAfter()
+                        + "."
+                        + customQueryTarget.getExecuteAfterName()
+                        + ")",
+                    Wait.on(
+                        processingQueue.waitOnCollection(
+                            customQueryTarget.getExecuteAfter(),
+                            customQueryTarget.getExecuteAfterName(),
+                            customQueryStepDescription)))
+                .setCoder(nullableSourceBeamRows.getCoder())
+                .apply("Writing " + customQueryStepDescription, targetWriterTransform)
+                .setCoder(nullableSourceBeamRows.getCoder());
+
+        processingQueue.addToQueue(
+            ArtifactType.custom_query,
+            false,
+            customQueryTarget.getName(),
+            blockingReturn,
+            nullableSourceBeamRows);
       }
     }
 
@@ -387,6 +430,8 @@ public class GoogleCloudToNeo4j {
         artifactType = ArtifactType.node;
       } else if (action.executeAfter == ActionExecuteAfter.edge) {
         artifactType = ArtifactType.edge;
+      } else if (action.executeAfter == ActionExecuteAfter.custom_query) {
+        artifactType = ArtifactType.custom_query;
       }
       LOG.info("Registering action: {}", action.name);
       // Get targeted execution context

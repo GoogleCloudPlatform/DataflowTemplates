@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model;
 
+import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
@@ -44,13 +45,6 @@ public class InputRefactoring {
   }
 
   public void refactorJobSpec(JobSpec jobSpec) {
-
-    // targets defined but no field names defined.
-    if (jobSpec.getAllFieldNames().isEmpty()) {
-      LOG.error("Targets not found, synthesizing from source is not currently supported.");
-      throw new RuntimeException("Not currently auto-generating targets.");
-    }
-
     LOG.info("Options params: {}", gson.toJson(optionsParams));
 
     // replace URI and SQL with run-time options
@@ -69,6 +63,11 @@ public class InputRefactoring {
       target.setSequence(targetNum);
       if (StringUtils.isEmpty(target.getName())) {
         target.setName("Target " + targetNum);
+      }
+      if (target.getType() == TargetType.custom_query) {
+        String customQuery = target.getCustomQuery();
+        target.setCustomQuery(
+            ModelUtils.replaceVariableTokens(customQuery, optionsParams.getTokenMap()));
       }
     }
   }

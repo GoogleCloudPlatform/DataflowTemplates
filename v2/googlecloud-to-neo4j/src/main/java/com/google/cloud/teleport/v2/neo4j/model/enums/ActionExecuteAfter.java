@@ -18,23 +18,25 @@ package com.google.cloud.teleport.v2.neo4j.model.enums;
 /**
  * Allows creation of run-time dependencies.
  *
- * <p>These are execution stages: start, sources, nodes, edges, loads, preloads
+ * <p>These are execution stages: start, sources, nodes, edges, custom_queries, loads, preloads
  *
  * <p>These refer to specific items when qualified with a name:
  *
- * <p>source, node, edge,
+ * <p>source, node, edge, custom_query
  *
  * <p>Currently: async==start==preloads
  */
 public enum ActionExecuteAfter {
   start, // after initialization
-  sources, // after sources
+  sources,
   nodes,
   edges,
+  custom_queries,
   source,
   node,
   edge,
-  action, // after action
+  custom_query,
+  action,
   async,
   loads,
   preloads

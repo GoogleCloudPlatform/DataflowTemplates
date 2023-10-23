@@ -1,0 +1,48 @@
+{
+  "config": {
+    "custom_query_batch_size": 2,
+    "custom_query_parallelism": 1
+  },
+  "source": {
+    "type": "text",
+    "format": "EXCEL",
+    "name": "inline orders",
+    "data": [
+      ["ALFKI", "6", "28"],
+      ["ALFKI", "6", "39"]
+    ],
+    "ordered_field_names": "customer_id,seller_id,product_id"
+  },
+  "actions": [
+    {
+      "name": "Unique Seller",
+      "type": "cypher",
+      "options": [{
+        "cypher": "CREATE CONSTRAINT unique_seller FOR (s:Seller) REQUIRE s.id IS NODE KEY"
+      }]
+    },
+    {
+      "name": "Unique Customer",
+      "type": "cypher",
+      "options": [{
+        "cypher": "CREATE CONSTRAINT unique_customer FOR (c:Customer) REQUIRE c.id IS NODE KEY"
+      }]
+    },
+    {
+      "name": "Unique Sold Product",
+      "type": "cypher",
+      "options": [{
+        "cypher": "CREATE CONSTRAINT unique_sold_product FOR ()-[s:SOLD]->() REQUIRE s.productId IS RELATIONSHIP KEY"
+      }]
+    }
+  ],
+  "targets": [
+    {
+      "custom_query": {
+        "name": "(:Customer)<-[:SOLD]-(:Seller) Nodes",
+        "source": "inline orders",
+        "query": "UNWIND $rows AS row MERGE (seller:Seller {id: row.seller_id}) MERGE (customer:Customer {id: row.customer_id}) MERGE (seller)-[:SOLD {productId: row.product_id}]->(customer)"
+      }
+    }
+  ]
+}

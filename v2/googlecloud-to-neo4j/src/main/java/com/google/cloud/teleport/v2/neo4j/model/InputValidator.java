@@ -137,66 +137,19 @@ public class InputValidator {
           }
         }
       }
-      if (target.getType() == TargetType.edge) {
-        for (Mapping mapping : target.getMappings()) {
-          if (mapping.getFragmentType() == FragmentType.node) {
-            validationMessages.add(
-                "Invalid fragment type "
-                    + mapping.getFragmentType()
-                    + " for node mapping: "
-                    + mapping.getName());
-          }
-          if (mapping.getFragmentType() == FragmentType.target
-              || mapping.getFragmentType() == FragmentType.source) {
-            if (mapping.getRole() != RoleType.key && mapping.getRole() != RoleType.label) {
-              validationMessages.add(
-                  "Invalid role "
-                      + mapping.getRole()
-                      + " on relationship: "
-                      + mapping.getFragmentType());
-            }
-          }
-        }
-
-        // relationship validation checks..
-        if (StringUtils.isBlank(
-            ModelUtils.getFirstFieldOrConstant(
-                target, FragmentType.source, Arrays.asList(RoleType.key)))) {
-          validationMessages.add(
-              "Could not find target key field for relationship: " + target.getName());
-        }
-        if (StringUtils.isBlank(
-            ModelUtils.getFirstFieldOrConstant(
-                target, FragmentType.target, Arrays.asList(RoleType.key)))) {
-          validationMessages.add(
-              "Could not find target key field for relationship: " + target.getName());
-        }
-        if (StringUtils.isBlank(
-            ModelUtils.getFirstFieldOrConstant(
-                target, FragmentType.rel, Arrays.asList(RoleType.type)))) {
-          validationMessages.add("Could not find relationship type: " + target.getName());
-        }
-      } else if (target.getType() == TargetType.node) {
-        for (Mapping mapping : target.getMappings()) {
-          if (mapping.getFragmentType() != FragmentType.node) {
-            validationMessages.add(
-                "Invalid fragment type "
-                    + mapping.getFragmentType()
-                    + " for node mapping: "
-                    + mapping.getName());
-          }
-        }
-        if (StringUtils.isBlank(
-            ModelUtils.getFirstFieldOrConstant(
-                target, FragmentType.node, Arrays.asList(RoleType.label)))) {
-          LOG.info("Invalid target: {}", gson.toJson(target));
-          validationMessages.add("Missing label in node: " + target.getName());
-        }
-        if (StringUtils.isBlank(
-            ModelUtils.getFirstFieldOrConstant(
-                target, FragmentType.node, Arrays.asList(RoleType.key)))) {
-          validationMessages.add("Missing key field in node: " + target.getName());
-        }
+      TargetType targetType = target.getType();
+      switch (targetType) {
+        case node:
+          validateNodeTarget(target, validationMessages);
+          break;
+        case edge:
+          validateEdgeTarget(target, validationMessages);
+          break;
+        case custom_query:
+          validateCustomTarget(target, validationMessages);
+          break;
+        default:
+          throw new IllegalArgumentException(String.format("Unknown target type: %s", targetType));
       }
       // check that calculated fields are used
       if (target.getTransform() != null && !target.getTransform().getAggregations().isEmpty()) {
@@ -244,7 +197,83 @@ public class InputValidator {
     return validationMessages;
   }
 
-  public static boolean fieldIsMapped(Target target, String fieldName) {
+  private static void validateNodeTarget(Target target, List<String> validationMessages) {
+    for (Mapping mapping : target.getMappings()) {
+      if (mapping.getFragmentType() != FragmentType.node) {
+        validationMessages.add(
+            "Invalid fragment type "
+                + mapping.getFragmentType()
+                + " for node mapping: "
+                + mapping.getName());
+      }
+    }
+    if (StringUtils.isBlank(
+        ModelUtils.getFirstFieldOrConstant(
+            target, FragmentType.node, Arrays.asList(RoleType.label)))) {
+      LOG.info("Invalid target: {}", gson.toJson(target));
+      validationMessages.add("Missing label in node: " + target.getName());
+    }
+    if (StringUtils.isBlank(
+        ModelUtils.getFirstFieldOrConstant(
+            target, FragmentType.node, Arrays.asList(RoleType.key)))) {
+      validationMessages.add("Missing key field in node: " + target.getName());
+    }
+  }
+
+  private static void validateEdgeTarget(Target target, List<String> validationMessages) {
+    for (Mapping mapping : target.getMappings()) {
+      if (mapping.getFragmentType() == FragmentType.node) {
+        validationMessages.add(
+            "Invalid fragment type "
+                + mapping.getFragmentType()
+                + " for node mapping: "
+                + mapping.getName());
+      }
+      if (mapping.getFragmentType() == FragmentType.target
+          || mapping.getFragmentType() == FragmentType.source) {
+        if (mapping.getRole() != RoleType.key && mapping.getRole() != RoleType.label) {
+          validationMessages.add(
+              "Invalid role "
+                  + mapping.getRole()
+                  + " on relationship: "
+                  + mapping.getFragmentType());
+        }
+      }
+    }
+
+    // relationship validation checks..
+    if (StringUtils.isBlank(
+        ModelUtils.getFirstFieldOrConstant(
+            target, FragmentType.source, Arrays.asList(RoleType.key)))) {
+      validationMessages.add(
+          "Could not find target key field for relationship: " + target.getName());
+    }
+    if (StringUtils.isBlank(
+        ModelUtils.getFirstFieldOrConstant(
+            target, FragmentType.target, Arrays.asList(RoleType.key)))) {
+      validationMessages.add(
+          "Could not find target key field for relationship: " + target.getName());
+    }
+    if (StringUtils.isBlank(
+        ModelUtils.getFirstFieldOrConstant(
+            target, FragmentType.rel, Arrays.asList(RoleType.type)))) {
+      validationMessages.add("Could not find relationship type: " + target.getName());
+    }
+  }
+
+  private static void validateCustomTarget(Target target, List<String> validationMessages) {
+    if (StringUtils.isBlank(target.getCustomQuery())) {
+      validationMessages.add("Custom target must define a query");
+    }
+    if (!target.getMappings().isEmpty()) {
+      validationMessages.add("Custom target must not define any mapping");
+    }
+    if (!target.getTransform().isDefault()) {
+      validationMessages.add("Custom target must not define any transform");
+    }
+  }
+
+  private static boolean fieldIsMapped(Target target, String fieldName) {
     if (fieldName == null) {
       return false;
     }

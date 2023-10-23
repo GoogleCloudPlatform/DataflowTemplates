@@ -1,0 +1,60 @@
+{
+  "config": {
+    "custom_query_batch_size": 2,
+    "custom_query_parallelism": 1
+  },
+  "sources": [{
+    "type": "text",
+    "format": "EXCEL",
+    "name": "inline products",
+    "data": [
+      ["28"],
+      ["39"]
+    ],
+    "ordered_field_names": "product_id"
+  },
+  {
+    "type": "text",
+    "format": "EXCEL",
+    "name": "inline orders",
+    "data": [
+      ["ALFKI", "28"],
+      ["ALFKI", "39"]
+    ],
+    "ordered_field_names": "customer_id,product_id"
+  }],
+  "actions": [
+    {
+      "name": "Unique Customer",
+      "type": "cypher",
+      "options": [{
+        "cypher": "CREATE CONSTRAINT unique_customer FOR (c:Customer) REQUIRE c.id IS NODE KEY"
+      }]
+    },
+    {
+      "name": "Unique Product",
+      "type": "cypher",
+      "options": [{
+        "cypher": "CREATE CONSTRAINT unique_product FOR (p:Product) REQUIRE p.id IS NODE KEY"
+      }]
+    }
+  ],
+  "targets": [
+    {
+      "custom_query": {
+        "name": "(:Product)",
+        "source": "inline products",
+        "query": "UNWIND $rows AS row MERGE (:Product {id: row.product_id})"
+      }
+    },
+    {
+      "custom_query": {
+        "execute_after": "custom_query",
+        "execute_after_name": "(:Product)",
+        "name": "(:Customer)-[:PURCHASED]->(:Product)",
+        "source": "inline orders",
+        "query": "UNWIND $rows AS row MATCH (p:Product {id: row.product_id}) MERGE (c:Customer {id: row.customer_id}) MERGE (c)-[:PURCHASED]->(p)"
+      }
+    }
+  ]
+}

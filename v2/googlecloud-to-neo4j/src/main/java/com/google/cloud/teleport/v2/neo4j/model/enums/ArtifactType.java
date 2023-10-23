@@ -20,5 +20,6 @@ public enum ArtifactType {
   action,
   source,
   node,
-  edge
+  edge,
+  custom_query
 }

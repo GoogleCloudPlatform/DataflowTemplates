@@ -22,8 +22,11 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import com.google.cloud.teleport.v2.neo4j.model.job.Transform;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -34,24 +37,69 @@ public class TargetMapper {
     Target target = new Target();
     if (targetObj.has("node")) {
       target.setType(TargetType.node);
-      parseMappingsObject(target, targetObj.getJSONObject("node"));
-    } else if (targetObj.has("edge")) {
-      target.setType(TargetType.edge);
-      parseMappingsObject(target, targetObj.getJSONObject("edge"));
-    } else {
-      String error =
-          String.format(
-              "Expected target JSON to have top-level \"node\" or \"edge\" field, but found fields: \"%s\"",
-              String.join("\", \"", targetObj.keySet()));
-      throw new IllegalArgumentException(error);
+      parseNodeMappingsObject(target, targetObj.getJSONObject("node"));
+      return target;
     }
-    return target;
+    if (targetObj.has("edge")) {
+      target.setType(TargetType.edge);
+      parseEdgeMappingsObject(target, targetObj.getJSONObject("edge"));
+      return target;
+    }
+    if (targetObj.has("custom_query")) {
+      target.setType(TargetType.custom_query);
+      parseCustomQueryMappingsObject(target, targetObj.getJSONObject("custom_query"));
+      return target;
+    }
+    String error =
+        String.format(
+            "Expected target JSON to have one of: \"%s\" as top-level field, but only found fields: \"%s\"",
+            Arrays.stream(TargetType.values())
+                .map(TargetType::name)
+                .collect(Collectors.joining("\", \"")),
+            String.join("\", \"", targetObj.keySet()));
+    throw new IllegalArgumentException(error);
   }
 
-  private static void parseMappingsObject(Target target, JSONObject targetObj) {
-    parseHeader(target, targetObj);
-    List<Mapping> mappings =
-        MappingMapper.parseMappings(target, targetObj.getJSONObject("mappings"));
+  private static void parseNodeMappingsObject(Target target, JSONObject json) {
+    parseCommonHeader(target, json);
+    parseAggregations(target, json);
+    target.setExecuteAfter(
+        !json.has("execute_after")
+            ? ActionExecuteAfter.sources
+            : ActionExecuteAfter.valueOf(json.getString("execute_after")));
+    target.setSaveMode(SaveMode.valueOf(json.getString("mode")));
+    addMappings(target, json.getJSONObject("mappings"));
+  }
+
+  private static void parseEdgeMappingsObject(Target target, JSONObject json) {
+    parseCommonHeader(target, json);
+    parseAggregations(target, json);
+    target.setExecuteAfter(
+        !json.has("execute_after")
+            ? ActionExecuteAfter.nodes
+            : ActionExecuteAfter.valueOf(json.getString("execute_after")));
+    target.setSaveMode(SaveMode.valueOf(json.getString("mode")));
+    target.setEdgeNodesMatchMode(
+        !json.has("edge_nodes_match_mode")
+            ? EdgeNodesMatchMode.match
+            : EdgeNodesMatchMode.valueOf(json.getString("edge_nodes_match_mode")));
+    addMappings(target, json.getJSONObject("mappings"));
+  }
+
+  private static void parseCustomQueryMappingsObject(Target target, JSONObject json) {
+    parseCommonHeader(target, json);
+    target.setExecuteAfter(
+        !json.has("execute_after")
+            ? ActionExecuteAfter.edges
+            : ActionExecuteAfter.valueOf(json.getString("execute_after")));
+    if (json.has("execute_after_name")) {
+      target.setExecuteAfterName(json.getString("execute_after_name"));
+    }
+    target.setCustomQuery(json.getString("query"));
+  }
+
+  private static void addMappings(Target target, JSONObject jsonMappings) {
+    List<Mapping> mappings = MappingMapper.parseMappings(target, jsonMappings);
     for (Mapping mapping : mappings) {
       addMapping(target, mapping);
     }
@@ -65,51 +113,36 @@ public class TargetMapper {
     }
   }
 
-  private static void parseHeader(Target target, JSONObject targetObj) {
-    target.setName(targetObj.getString("name"));
-    target.setActive(!targetObj.has("active") || targetObj.getBoolean("active"));
-    target.setSaveMode(SaveMode.valueOf(targetObj.getString("mode")));
-    if (target.getType() == TargetType.edge) {
-      target.setEdgeNodesMatchMode(
-          !targetObj.has("edge_nodes_match_mode")
-              ? EdgeNodesMatchMode.match
-              : EdgeNodesMatchMode.valueOf(targetObj.getString("edge_nodes_match_mode")));
-    }
-    target.setSaveMode(SaveMode.valueOf(targetObj.getString("mode")));
-    target.setSource(targetObj.has("source") ? targetObj.getString("source") : "");
-    if (targetObj.has("execute_after")) {
-      target.setExecuteAfter(ActionExecuteAfter.valueOf(targetObj.getString("execute_after")));
-    } else {
-      if (target.getType() == TargetType.node) {
-        // this will not wait for anything...
-        target.setExecuteAfter(ActionExecuteAfter.sources);
-      } else if (target.getType() == TargetType.edge) {
-        target.setExecuteAfter(ActionExecuteAfter.nodes);
-      }
-    }
+  private static void parseCommonHeader(Target target, JSONObject json) {
+    target.setName(json.getString("name"));
+    target.setActive(!json.has("active") || json.getBoolean("active"));
+    target.setSource(json.has("source") ? json.getString("source") : "");
     target.setExecuteAfterName(
-        targetObj.has("execute_after_name") ? targetObj.getString("execute_after_name") : "");
+        json.has("execute_after_name") ? json.getString("execute_after_name") : "");
+  }
 
-    if (targetObj.has("transform")) {
-      JSONObject queryObj = targetObj.getJSONObject("transform");
-      if (queryObj.has("aggregations")) {
-        List<Aggregation> aggregations = new ArrayList<>();
-        JSONArray aggregationsArray = queryObj.getJSONArray("aggregations");
-        for (int i = 0; i < aggregationsArray.length(); i++) {
-          JSONObject aggregationObj = aggregationsArray.getJSONObject(i);
-          Aggregation agg = new Aggregation();
-          agg.setExpression(aggregationObj.getString("expr"));
-          agg.setField(aggregationObj.getString("field"));
-          aggregations.add(agg);
-        }
-        target.getTransform().setAggregations(aggregations);
-      }
-      target.getTransform().setGroup(queryObj.has("group") && queryObj.getBoolean("group"));
-      target
-          .getTransform()
-          .setOrderBy(queryObj.has("order_by") ? queryObj.getString("order_by") : "");
-      target.getTransform().setLimit(queryObj.has("limit") ? queryObj.getInt("limit") : -1);
-      target.getTransform().setWhere(queryObj.has("where") ? queryObj.getString("where") : "");
+  private static void parseAggregations(Target target, JSONObject json) {
+    if (!json.has("transform")) {
+      return;
     }
+    JSONObject jsonTransform = json.getJSONObject("transform");
+    Transform transform = target.getTransform();
+    transform.setGroup(jsonTransform.has("group") && jsonTransform.getBoolean("group"));
+    transform.setOrderBy(jsonTransform.has("order_by") ? jsonTransform.getString("order_by") : "");
+    transform.setLimit(jsonTransform.has("limit") ? jsonTransform.getInt("limit") : -1);
+    transform.setWhere(jsonTransform.has("where") ? jsonTransform.getString("where") : "");
+    if (!jsonTransform.has("aggregations")) {
+      return;
+    }
+    List<Aggregation> aggregations = new ArrayList<>();
+    JSONArray aggregationsArray = jsonTransform.getJSONArray("aggregations");
+    for (int i = 0; i < aggregationsArray.length(); i++) {
+      JSONObject aggregationObj = aggregationsArray.getJSONObject(i);
+      Aggregation agg = new Aggregation();
+      agg.setExpression(aggregationObj.getString("expr"));
+      agg.setField(aggregationObj.getString("field"));
+      aggregations.add(agg);
+    }
+    transform.setAggregations(aggregations);
   }
 }

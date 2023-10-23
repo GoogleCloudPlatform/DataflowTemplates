@@ -26,8 +26,10 @@ public class Config implements Serializable {
 
   private Integer nodeParallelism = 5;
   private Integer edgeParallelism = 1;
+  private Integer customQueryParallelism = 1;
   private Integer nodeBatchSize = 5000;
   private Integer edgeBatchSize = 1000;
+  private Integer customQueryBatchSize = 1000;
 
   public Config() {}
 
@@ -41,6 +43,10 @@ public class Config implements Serializable {
         jsonObject.has("edge_write_parallelism")
             ? jsonObject.getInt("edge_write_parallelism")
             : edgeParallelism;
+    customQueryParallelism =
+        jsonObject.has("custom_query_parallelism")
+            ? jsonObject.getInt("custom_query_parallelism")
+            : customQueryParallelism;
     nodeBatchSize =
         jsonObject.has("node_write_batch_size")
             ? jsonObject.getInt("node_write_batch_size")
@@ -48,6 +54,10 @@ public class Config implements Serializable {
     edgeBatchSize =
         jsonObject.has("edge_write_batch_size")
             ? jsonObject.getInt("edge_write_batch_size")
+            : edgeBatchSize;
+    customQueryBatchSize =
+        jsonObject.has("custom_query_batch_size")
+            ? jsonObject.getInt("custom_query_batch_size")
             : edgeBatchSize;
     indexAllProperties =
         jsonObject.has("index_all_properties")
@@ -71,11 +81,19 @@ public class Config implements Serializable {
     return edgeParallelism;
   }
 
+  public Integer getCustomQueryParallelism() {
+    return customQueryParallelism;
+  }
+
   public Integer getNodeBatchSize() {
     return nodeBatchSize;
   }
 
   public Integer getEdgeBatchSize() {
     return edgeBatchSize;
+  }
+
+  public Integer getCustomQueryBatchSize() {
+    return customQueryBatchSize;
   }
 }
