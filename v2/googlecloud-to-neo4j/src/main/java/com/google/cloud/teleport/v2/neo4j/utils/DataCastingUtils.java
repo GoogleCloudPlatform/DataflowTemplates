@@ -68,8 +68,8 @@ public class DataCastingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(DataCastingUtils.class);
 
   private static final DateTimeFormatter jsDateTimeFormatter =
-      DateTimeFormat.forPattern("YYYY-MM-DD HH:mm:ssZ");
-  private static final DateTimeFormatter jsDateFormatter = DateTimeFormat.forPattern("YYYY-MM-DD");
+      DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ssZ");
+  private static final DateTimeFormatter jsDateFormatter = DateTimeFormat.forPattern("YYYY-MM-dd");
 
   public static List<Object> sourceTextToTargetObjects(Row row, Target target) {
     Schema targetSchema = BeamUtils.toBeamSchema(target);
