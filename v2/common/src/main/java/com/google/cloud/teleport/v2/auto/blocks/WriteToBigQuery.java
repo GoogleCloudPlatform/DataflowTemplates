@@ -15,10 +15,13 @@
  */
 package com.google.cloud.teleport.v2.auto.blocks;
 
+import static com.google.cloud.teleport.v2.auto.blocks.StandardCoderConverters.rowToTableRow;
 import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
 
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.api.services.bigquery.model.TableSchema;
+import com.google.auto.service.AutoService;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Consumes;
 import com.google.cloud.teleport.metadata.auto.Outputs;
@@ -34,23 +37,103 @@ import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
+import java.util.Map;
+
+import com.google.common.collect.ImmutableMap;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.expansion.ExternalTransformRegistrar;
 import org.apache.beam.sdk.extensions.gcp.util.Transport;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryStorageApiInsertError;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ExternalTransformBuilder;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.commons.lang3.StringUtils;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.slf4j.LoggerFactory;
 
-public class WriteToBigQuery implements TemplateTransform<SinkOptions> {
+@AutoService(ExternalTransformRegistrar.class)
+public class WriteToBigQuery implements TemplateTransform<SinkOptions>, ExternalTransformRegistrar {
+
+  private static final String URN = "blocks:external:org.apache.beam:write_to_bigquery:v1";
+
+  private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(WriteToBigQuery.class);
+
+  public String identifier() {
+    return URN;
+  }
+
+  private static class Builder
+      implements ExternalTransformBuilder<
+          Configuration, @NonNull PCollectionRowTuple, @NonNull PCollection<Row>> {
+    @Override
+    public @NonNull PTransform<@NonNull PCollectionRowTuple, @NonNull PCollection<Row>> buildExternal(
+        Configuration config) {
+      return new PTransform<>() {
+        @Override
+        public @NonNull PCollection<Row> expand(@NonNull PCollectionRowTuple input) {
+          PCollection<TableRow> tableRowPCollection = rowToTableRow(input.get("output"));
+          return underlyingTransform(PCollectionTuple.of(BlockConstants.OUTPUT_TAG, tableRowPCollection), config).get("post_write");
+        }
+      };
+    }
+  }
+
+  public Map<String, Class<? extends ExternalTransformBuilder<?, ?, ?>>> knownBuilders() {
+    return ImmutableMap.of(identifier(), Builder.class);
+  }
+
+  // TODO(polber) - See if this Config class can be generated programmatically from TransformOptions
+  // Interface
+  public static class Configuration {
+
+    String outputTableSpec = "";
+    Boolean useStorageWriteApi = false;
+
+    public void setOutputTableSpec(String input) {
+      this.outputTableSpec = input;
+    }
+
+    public String getOutputTableSpec() {
+      return this.outputTableSpec;
+    }
+
+    public void setUseStorageWriteApi(Boolean input) {
+      this.useStorageWriteApi = input;
+    }
+
+    public Boolean getUseStorageWriteApi() {
+      return this.useStorageWriteApi;
+    }
+
+    public static Configuration fromOptions(SinkOptions options) {
+      Configuration config = new Configuration();
+      config.setOutputTableSpec(options.getOutputTableSpec());
+      config.setUseStorageWriteApi(options.getUseStorageWriteApi());
+      return config;
+    }
+  }
 
   public interface SinkOptions
       extends PipelineOptions,
@@ -90,6 +173,15 @@ public class WriteToBigQuery implements TemplateTransform<SinkOptions> {
       value = FailsafeElement.class,
       types = {String.class, String.class})
   public PCollectionTuple writeTableRows(PCollectionTuple input, SinkOptions options) {
+    return underlyingTransform(input, Configuration.fromOptions(options));
+  }
+
+  private static class NoOutputDoFn<T> extends DoFn<T, Row> {
+    @ProcessElement
+    public void process(ProcessContext c) {}
+  }
+
+  public static PCollectionTuple underlyingTransform(PCollectionTuple input, Configuration config) {
     WriteResult writeResult =
         input
             .get(BlockConstants.OUTPUT_TAG)
@@ -101,8 +193,10 @@ public class WriteToBigQuery implements TemplateTransform<SinkOptions> {
                     .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                     .withExtendedErrorInfo()
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
-                    .to(options.getOutputTableSpec()));
+                    .to(config.getOutputTableSpec()));
 
+    BigQueryOptions options = input.getPipeline().getOptions().as(BigQueryOptions.class);
+    options.setUseStorageWriteApi(config.getUseStorageWriteApi());
     PCollection<FailsafeElement<String, String>> failedInserts =
         BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
             .apply(
@@ -111,7 +205,14 @@ public class WriteToBigQuery implements TemplateTransform<SinkOptions> {
                     .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
-    return PCollectionTuple.of(BlockConstants.ERROR_TAG_STR, failedInserts);
+    PCollection<Row> postWrite =
+        writeResult
+            .getFailedInsertsWithErr()
+            .apply("post-write", ParDo.of(new NoOutputDoFn<>()))
+            .setRowSchema(Schema.of());
+
+    return PCollectionTuple.of(BlockConstants.ERROR_TAG_STR, failedInserts)
+        .and("post_write", postWrite);
     // handleFailures(writeResult, options);
   }
 
