@@ -357,7 +357,7 @@ public final class SplunkConverters {
                           // or has other exceptions. In this case, we will
                           // simply capture the entire input as an 'event' and
                           // not worry about capturing any specific properties
-                          // (for e.g Timestamp etc).
+                          // (for example Timestamp).
                           // We also do not want to LOG this as we might be running
                           // a pipeline to simply log text entries to Splunk and
                           // this is expected behavior.

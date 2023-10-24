@@ -78,8 +78,8 @@ public class ExportPipeline {
     @TemplateParameter.Text(
         order = 1,
         regexes = {"[a-z][a-z0-9\\-]*[a-z0-9]"},
-        description = "Cloud Spanner instance id",
-        helpText = "The instance id of the Cloud Spanner database that you want to export.")
+        description = "Cloud Spanner instance ID",
+        helpText = "The instance ID of the Cloud Spanner database that you want to export.")
     ValueProvider<String> getInstanceId();
 
     void setInstanceId(ValueProvider<String> value);
@@ -87,8 +87,8 @@ public class ExportPipeline {
     @TemplateParameter.Text(
         order = 2,
         regexes = {"[a-z][a-z0-9_\\-]*[a-z0-9]"},
-        description = "Cloud Spanner database id",
-        helpText = "The database id of the Cloud Spanner database that you want to export.")
+        description = "Cloud Spanner database ID",
+        helpText = "The database ID of the Cloud Spanner database that you want to export.")
     ValueProvider<String> getDatabaseId();
 
     void setDatabaseId(ValueProvider<String> value);
@@ -162,7 +162,7 @@ public class ExportPipeline {
         order = 8,
         optional = true,
         description = "Cloud Spanner Project Id",
-        helpText = "The project id of the Cloud Spanner instance.")
+        helpText = "The project ID of the Cloud Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);

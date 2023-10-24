@@ -104,8 +104,8 @@ public class TextImportPipeline {
     @TemplateParameter.Text(
         order = 1,
         regexes = {"^[a-z0-9\\-]+$"},
-        description = "Cloud Spanner instance id",
-        helpText = "The instance id of the Cloud Spanner database that you want to import to.")
+        description = "Cloud Spanner instance ID",
+        helpText = "The instance ID of the Cloud Spanner database that you want to import to.")
     ValueProvider<String> getInstanceId();
 
     void setInstanceId(ValueProvider<String> value);
@@ -113,9 +113,9 @@ public class TextImportPipeline {
     @TemplateParameter.Text(
         order = 2,
         regexes = {"^[a-z_0-9\\-]+$"},
-        description = "Cloud Spanner database id",
+        description = "Cloud Spanner database ID",
         helpText =
-            "The database id of the Cloud Spanner database that you want to import into (must"
+            "The database ID of the Cloud Spanner database that you want to import into (must"
                 + " already exist, and with the destination tables created).")
     ValueProvider<String> getDatabaseId();
 
@@ -244,7 +244,7 @@ public class TextImportPipeline {
         order = 13,
         optional = true,
         description = "Cloud Spanner Project Id",
-        helpText = "The project id of the Cloud Spanner instance.")
+        helpText = "The project ID of the Cloud Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
