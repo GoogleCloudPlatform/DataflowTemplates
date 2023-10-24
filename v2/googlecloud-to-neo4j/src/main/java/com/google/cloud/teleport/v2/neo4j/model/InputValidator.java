@@ -148,13 +148,16 @@ public class InputValidator {
           }
         }
       }
+
+      Map<String, PropertyMapping> propertyMappings =
+          new LinkedHashMap<>(target.getMappings().size());
       TargetType targetType = target.getType();
       switch (targetType) {
         case node:
-          validateNodeTarget(target, validationMessages);
+          validateNodeTarget(target, propertyMappings, validationMessages);
           break;
         case edge:
-          validateEdgeTarget(target, validationMessages);
+          validateEdgeTarget(target, propertyMappings, validationMessages);
           break;
         case custom_query:
           validateCustomTarget(target, validationMessages);
@@ -171,6 +174,14 @@ public class InputValidator {
           }
         }
       }
+      List<String> propertyMappingErrorMessages =
+          propertyMappings.values().stream()
+              .flatMap(PropertyMapping::validate)
+              .collect(Collectors.toList());
+      validationMessages.addAll(propertyMappingErrorMessages);
+    }
+    if (!activeTargetFound) {
+      validationMessages.add("The job spec must define at least 1 active target, none found");
     }
 
     Set<String> actionNames = new HashSet<>();
@@ -208,8 +219,12 @@ public class InputValidator {
     return validationMessages;
   }
 
-  private static void validateNodeTarget(Target target, List<String> validationMessages) {
+  private static void validateNodeTarget(
+      Target target,
+      Map<String, PropertyMapping> propertyMappings,
+      List<String> validationMessages) {
     for (Mapping mapping : target.getMappings()) {
+      String property = mapping.getName();
       if (mapping.getFragmentType() != FragmentType.node) {
         validationMessages.add(
             "Invalid fragment type "
@@ -217,21 +232,25 @@ public class InputValidator {
                 + " for node mapping: "
                 + mapping.getName());
       }
+      propertyMappings
+          .computeIfAbsent(property, (prop) -> new PropertyMapping(target.getName(), prop))
+          .add(mapping);
     }
     if (StringUtils.isBlank(
-        ModelUtils.getFirstFieldOrConstant(
-            target, FragmentType.node, Arrays.asList(RoleType.label)))) {
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.node, List.of(RoleType.label)))) {
       LOG.info("Invalid target: {}", gson.toJson(target));
       validationMessages.add("Missing label in node: " + target.getName());
     }
     if (StringUtils.isBlank(
-        ModelUtils.getFirstFieldOrConstant(
-            target, FragmentType.node, Arrays.asList(RoleType.key)))) {
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.node, List.of(RoleType.key)))) {
       validationMessages.add("Missing key field in node: " + target.getName());
     }
   }
 
-  private static void validateEdgeTarget(Target target, List<String> validationMessages) {
+  private static void validateEdgeTarget(
+      Target target,
+      Map<String, PropertyMapping> propertyMappings,
+      List<String> validationMessages) {
     for (Mapping mapping : target.getMappings()) {
       if (mapping.getFragmentType() == FragmentType.node) {
         validationMessages.add(
@@ -250,6 +269,9 @@ public class InputValidator {
                   + mapping.getFragmentType());
         }
       }
+      propertyMappings
+          .computeIfAbsent(mapping.getName(), (prop) -> new PropertyMapping(target.getName(), prop))
+          .add(mapping);
     }
 
     // relationship validation checks..
