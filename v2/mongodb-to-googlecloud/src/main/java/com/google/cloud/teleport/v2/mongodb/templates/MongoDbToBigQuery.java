@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.mongodb.templates;
 
+import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.metadata.Template;
@@ -101,11 +103,14 @@ public class MongoDbToBigQuery {
 
     TableSchema bigquerySchema;
 
+    // Get MongoDbUri plain text or base64 encrypted with a specific KMS encryption key
+    String mongoDbUri = maybeDecrypt(options.getMongoDbUri(), options.getKMSEncryptionKey()).get();
+
     if (options.getJavascriptDocumentTransformFunctionName() != null
         && options.getJavascriptDocumentTransformGcsPath() != null) {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchemaForUDF(
-              options.getMongoDbUri(),
+              mongoDbUri,
               options.getDatabase(),
               options.getCollection(),
               options.getJavascriptDocumentTransformGcsPath(),
@@ -114,17 +119,14 @@ public class MongoDbToBigQuery {
     } else {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchema(
-              options.getMongoDbUri(),
-              options.getDatabase(),
-              options.getCollection(),
-              options.getUserOption());
+              mongoDbUri, options.getDatabase(), options.getCollection(), options.getUserOption());
     }
 
     pipeline
         .apply(
             "Read Documents",
             MongoDbIO.read()
-                .withUri(options.getMongoDbUri())
+                .withUri(mongoDbUri)
                 .withDatabase(options.getDatabase())
                 .withCollection(options.getCollection()))
         .apply(
