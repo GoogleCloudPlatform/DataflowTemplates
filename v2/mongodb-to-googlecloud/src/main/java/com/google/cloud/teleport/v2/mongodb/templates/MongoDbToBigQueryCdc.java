@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.mongodb.templates;
 
+import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.metadata.Template;
@@ -112,12 +114,15 @@ public class MongoDbToBigQueryCdc {
     String inputOption = options.getInputTopic();
 
     TableSchema bigquerySchema;
+    
+    // Get MongoDbUri
+    String mongoDbUri = maybeDecrypt(options.getMongoDbUri(), options.getKMSEncryptionKey()).get();
 
     if (options.getJavascriptDocumentTransformFunctionName() != null
         && options.getJavascriptDocumentTransformGcsPath() != null) {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchemaForUDF(
-              options.getMongoDbUri(),
+              mongoDbUri,
               options.getDatabase(),
               options.getCollection(),
               options.getJavascriptDocumentTransformGcsPath(),
@@ -126,7 +131,7 @@ public class MongoDbToBigQueryCdc {
     } else {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchema(
-              options.getMongoDbUri(),
+              mongoDbUri,
               options.getDatabase(),
               options.getCollection(),
               options.getUserOption());
