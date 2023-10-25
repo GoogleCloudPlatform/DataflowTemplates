@@ -28,6 +28,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional Parameters
 
+* **databaseConnectionURLSecretId** : If used, the pipeline with read the mongoDbUri from a secret manager path and retrieve the connection on run time. The pipeline service account needs access to Secret Manager to retrieve the MongDB connection URI.
 * **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). If this is enabled and at-least-once semantics (useStorageWriteApiAtLeastOnce) option is off then "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API" must be provided. Defaults to: false.
 * **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
 * **numStorageWriteApiStreams** (Number of streams for BigQuery Storage Write API): Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
@@ -118,6 +119,7 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/MongoDB_to_BigQue
 
 ### Required
 export MONGO_DB_URI=mongouri
+export PATH_SECRET=secret_path
 export DATABASE=<database>
 export COLLECTION=collection
 export USER_OPTION=NONE
@@ -137,6 +139,7 @@ gcloud dataflow flex-template run "mongodb-to-bigquery-cdc-job" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "mongoDbUri=$MONGO_DB_URI" \
+  --parameters "databaseConnectionURLSecretId=$MONGO_DB_URI" \
   --parameters "database=$DATABASE" \
   --parameters "collection=$COLLECTION" \
   --parameters "userOption=$USER_OPTION" \
@@ -167,6 +170,7 @@ export REGION=us-central1
 
 ### Required
 export MONGO_DB_URI=mongouri
+export PATH_SECRET=secret_path
 export DATABASE=<database>
 export COLLECTION=collection
 export USER_OPTION=NONE
@@ -188,7 +192,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mongodb-to-bigquery-cdc-job" \
 -DtemplateName="MongoDB_to_BigQuery_CDC" \
--Dparameters="mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC,inputTopic=$INPUT_TOPIC,outputTableSpec=$OUTPUT_TABLE_SPEC,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
+-Dparameters="mongoDbUri=$MONGO_DB_URI,databaseConnectionURLSecretId=$PATH_SECRET,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC,inputTopic=$INPUT_TOPIC,outputTableSpec=$OUTPUT_TABLE_SPEC,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
 -pl v2/mongodb-to-googlecloud \
 -am
 ```
