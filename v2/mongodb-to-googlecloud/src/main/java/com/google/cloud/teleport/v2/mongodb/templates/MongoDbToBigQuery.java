@@ -119,10 +119,7 @@ public class MongoDbToBigQuery {
     } else {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchema(
-              mongoDbUri,
-              options.getDatabase(),
-              options.getCollection(),
-              options.getUserOption());
+              mongoDbUri, options.getDatabase(), options.getCollection(), options.getUserOption());
     }
 
     pipeline

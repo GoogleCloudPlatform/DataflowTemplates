@@ -68,17 +68,18 @@ public class MongoDbToBigQueryOptions {
 
     void setUserOption(String userOption);
 
-     @TemplateParameter.KmsEncryptionKey(
-      order = 5,
-      optional = true,
-      description = "Google Cloud KMS key",
-      helpText =
-          "Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is "
-              + "passed in, the mongodb uri connection string must all be passed in encrypted.",
-      example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
-  String getKMSEncryptionKey();
+    @TemplateParameter.KmsEncryptionKey(
+        order = 5,
+        optional = true,
+        description = "Google Cloud KMS key",
+        helpText =
+            "Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is "
+                + "passed in, the mongodb uri connection string must all be passed in encrypted.",
+        example =
+            "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
+    String getKMSEncryptionKey();
 
-  void setKMSEncryptionKey(String keyName);
+    void setKMSEncryptionKey(String keyName);
   }
 
   /** Options for reading from PubSub. */

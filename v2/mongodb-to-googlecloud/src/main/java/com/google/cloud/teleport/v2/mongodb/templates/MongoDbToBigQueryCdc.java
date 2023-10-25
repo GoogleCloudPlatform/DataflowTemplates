@@ -114,7 +114,7 @@ public class MongoDbToBigQueryCdc {
     String inputOption = options.getInputTopic();
 
     TableSchema bigquerySchema;
-    
+
     // Get MongoDbUri
     String mongoDbUri = maybeDecrypt(options.getMongoDbUri(), options.getKMSEncryptionKey()).get();
 
@@ -131,10 +131,7 @@ public class MongoDbToBigQueryCdc {
     } else {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchema(
-              mongoDbUri,
-              options.getDatabase(),
-              options.getCollection(),
-              options.getUserOption());
+              mongoDbUri, options.getDatabase(), options.getCollection(), options.getUserOption());
     }
 
     pipeline
