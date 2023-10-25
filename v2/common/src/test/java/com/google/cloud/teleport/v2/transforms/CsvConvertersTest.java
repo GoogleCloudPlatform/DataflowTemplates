@@ -562,8 +562,8 @@ public class CsvConvertersTest {
 
   /**
    * Tests {@link CsvConverters.StringToGenericRecordFn} throws an exception if incorrect header
-   * information is provided. (for e.g. if a Csv file containing headers is passed and hasHeaders is
-   * set to false.)
+   * information is provided. (for example, if a Csv file containing headers is passed and
+   * hasHeaders is set to false.)
    */
   @Test(expected = RuntimeException.class)
   public void testIncorrectHeaderInformation() {

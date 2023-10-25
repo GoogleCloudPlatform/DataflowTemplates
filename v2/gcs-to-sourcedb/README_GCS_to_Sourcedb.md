@@ -22,7 +22,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **GCSInputDirectoryPath** (GCS input directory path): Path from where to read the change stream files.
 * **spannerProjectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
 * **metadataInstance** (Cloud Spanner Instance to store the shard progress when reading from gcs): This is the instance to store the shard progress of the files processed.
-* **metadataDatabase** (Cloud Spanner Database to store the shard progress when reading from gcs): This is the database to store  the shard progress of the files processed..
+* **metadataDatabase** (Cloud Spanner Database to store the shard progress when reading from gcs): This is the database to store the shard progress of the files processed.
 
 ### Optional Parameters
 
@@ -32,7 +32,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **startTimestamp** (File start timestamp, takes precedence if provided, else value from spanner_to_gcs_metadata is considered, for regular mode.): Start time of file for all shards. If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode.
 * **windowDuration** (File increment window duration,takes precedence if provided, else value from spanner_to_gcs_metadata is considered, for regular mode.): The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode. (Example: 5m).
 * **runMode** (This type of run mode. Supported values - regular/reprocess.): Regular writes to source db, reprocess erred shards. Defaults to: regular.
-* **metadataTableSuffix** (Metadata table suffix): Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed.
+* **metadataTableSuffix** (Metadata table suffix): Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed. Defaults to empty.
 
 
 
@@ -130,7 +130,7 @@ export TIMER_INTERVAL=1
 export START_TIMESTAMP=<startTimestamp>
 export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
-export METADATA_TABLE_SUFFIX=<metadataTableSuffix>
+export METADATA_TABLE_SUFFIX=""
 
 gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
   --project "$PROJECT" \
@@ -181,7 +181,7 @@ export TIMER_INTERVAL=1
 export START_TIMESTAMP=<startTimestamp>
 export WINDOW_DURATION=<windowDuration>
 export RUN_MODE=regular
-export METADATA_TABLE_SUFFIX=<metadataTableSuffix>
+export METADATA_TABLE_SUFFIX=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \

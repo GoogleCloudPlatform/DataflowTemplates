@@ -34,6 +34,7 @@ public final class TemplateDocsUtils {
     INTERPOLATION.put("Cloud KMS", "kms_name_short");
     INTERPOLATION.put("Dataflow", "dataflow_name");
     INTERPOLATION.put("Elasticsearch", "product_name_elasticsearch");
+    INTERPOLATION.put("Identity and Access Management", "iam_name");
     INTERPOLATION.put("Google Cloud", "gcp_name_short");
     INTERPOLATION.put("MongoDB", "product_name_mongodb");
     INTERPOLATION.put("Pub/Sub", "pubsub_name_short");
@@ -41,6 +42,7 @@ public final class TemplateDocsUtils {
     INTERPOLATION.put(
         "projects/your-project-id/subscriptions/your-subscription-name",
         "pubsub_subscription_format");
+    INTERPOLATION.put("Vertex AI", "vertex_ai_name");
     INTERPOLATION.put("projects/your-project-id/topics/your-topic-name", "pubsub_topic_format");
   }
 

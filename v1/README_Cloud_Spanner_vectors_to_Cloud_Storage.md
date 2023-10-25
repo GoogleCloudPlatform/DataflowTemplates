@@ -4,18 +4,17 @@ Cloud Spanner vectors to Cloud Storage for Vertex Vector Search template
 The Cloud Spanner to Vector Embeddings on Cloud Storage template is a batch
 pipeline that exports vector embeddings data from Cloud Spanner's table to Cloud
 Storage in JSON format. Vector embeddings are exported to a Cloud Storage folder
-specified by the user via parameter setting along with other template parameters.
-The Cloud Storage folder will contain the list of exported `.json` files
-representing vector embeddings in a format supported by Vertex AI Vector Search
-Index.
+specified by the user in the template parameters. The Cloud Storage folder will
+contain the list of exported `.json` files representing vector embeddings in a
+format supported by Vertex AI Vector Search Index.
 
-Please check <a
+Check <a
 href="https://cloud.google.com/vertex-ai/docs/vector-search/setup/format-structure#json">Vector
 Search Format Structure</a> for additional details.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates/cloud-spanner-to-vertex-vector-search)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Spanner_vectors_to_Cloud_Storage).
 
 :bulb: This is a generated documentation based
@@ -26,11 +25,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **spannerProjectId** (Cloud Spanner Project Id): The project id of the Cloud Spanner instance.
-* **spannerInstanceId** (Cloud Spanner instance id): The instance id of the Cloud Spanner from which you want to export the vector embeddings.
-* **spannerDatabaseId** (Cloud Spanner database id): The database id of the Cloud Spanner from which you want to export the vector embeddings.
+* **spannerProjectId** (Cloud Spanner Project Id): The project ID of the Cloud Spanner instance.
+* **spannerInstanceId** (Cloud Spanner instance ID): The instance ID of the Cloud Spanner from which you want to export the vector embeddings.
+* **spannerDatabaseId** (Cloud Spanner database ID): The database ID of the Cloud Spanner from which you want to export the vector embeddings.
 * **spannerTable** (Spanner Table): Spanner Table to read from.
-* **spannerColumnsToExport** (Columns to Export from Spanner Table): Comma separated list of columns which are required for Vertex AI Vector Search Index. The `id` & `embedding` are required columns for Vertex Vector Search.  If the column names don't precisely align with the Vertex AI Vector Search Index input structure, you can establish column mappings using aliases. For e.g. if you have columns id and my_embedding i.e. the id column matches what vertex expects but the embedding column is named differently, you can specify the following `id, my_embedding:embedding`.
+* **spannerColumnsToExport** (Columns to Export from Spanner Table): Comma separated list of columns which are required for Vertex AI Vector Search Index. The `id` & `embedding` are required columns for Vertex Vector Search. If the column names don't precisely align with the Vertex AI Vector Search Index input structure, you can establish column mappings using aliases. If you have the columns that don't match the format expected by Vertex, you can use the notation `from:to`. For example, if the columns are `id` and `my_embedding`, in which `id` matches what Vertex expects but the embedding column is named differently, `id, my_embedding:embedding` should be specified.
 * **gcsOutputFolder** (Output files folder in Cloud Storage): The Cloud Storage folder for writing output files. Must end with a slash. (Example: gs://your-bucket/folder1/).
 * **gcsOutputFilePrefix** (Output files prefix in Cloud Storage): The filename prefix for writing output files. (Example: vector-embeddings).
 
