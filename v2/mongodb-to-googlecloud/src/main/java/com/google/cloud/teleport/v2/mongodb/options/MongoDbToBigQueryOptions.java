@@ -71,11 +71,10 @@ public class MongoDbToBigQueryOptions {
      @TemplateParameter.KmsEncryptionKey(
       order = 5,
       optional = true,
-      groupName = "Source Parameters",
       description = "Google Cloud KMS key",
       helpText =
-          "Cloud KMS Encryption Key to decrypt the username, password, and connection string. If Cloud KMS key is "
-              + "passed in, the username, password, and connection string must all be passed in encrypted.",
+          "Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is "
+              + "passed in, the mongodb uri connection string must all be passed in encrypted.",
       example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   String getKMSEncryptionKey();
 
