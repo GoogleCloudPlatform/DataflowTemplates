@@ -20,6 +20,8 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
+import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.gson.Gson;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -225,6 +227,23 @@ public class MongoDbUtils implements Serializable {
                 })
             .collect(Collectors.toList());
     return scripts;
+  }
+
+  /**
+   * Get the database connection URL from the Secret Manager.
+   *
+   * @param secretId The id of the secret.
+   * @return The database connection URL.
+   * @param secretId
+   * @return
+   * @throws IOException
+   */
+  public static String getDatabaseConnectionURL(String secretId) throws IOException {
+    try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
+      AccessSecretVersionResponse response = client.accessSecretVersion(secretId);
+
+      return response.getPayload().getData().toStringUtf8();
+    }
   }
 
   @Nullable

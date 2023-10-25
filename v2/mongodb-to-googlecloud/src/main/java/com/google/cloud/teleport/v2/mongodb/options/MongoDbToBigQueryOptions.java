@@ -67,6 +67,15 @@ public class MongoDbToBigQueryOptions {
     String getUserOption();
 
     void setUserOption(String userOption);
+
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        description = "Get Full database connection from Secret Manager. If you use this parameter, the mongoDbUri is ignored",
+        helpText = "projects/<your-project-number>/secrets/mongodb/versions/2")
+    String getDatabaseConnectionURLSecretId();
+    
+    void setDatabaseConnectionURLSecretId(String databaseConnectionURLSecretId);
   }
 
   /** Options for reading from PubSub. */

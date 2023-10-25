@@ -44,6 +44,10 @@
             <artifactId>common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-secretmanager</artifactId>            
+        </dependency>
 
         <!-- Test Dependencies -->
         <dependency>

@@ -112,12 +112,19 @@ public class MongoDbToBigQueryCdc {
     String inputOption = options.getInputTopic();
 
     TableSchema bigquerySchema;
+    
+    // Get MongoDbUri
+    String mongoDbUri = options.getMongoDbUri();
+    // If we receive configuration of URL Secret, use the secret to retrieve the ConnectionURL
+    if (options.getDatabaseConnectionURLSecretId() != null) {
+      mongoDbUri = MongoDbUtils.getDatabaseConnectionURL(options.getDatabaseConnectionURLSecretId());
+    }
 
     if (options.getJavascriptDocumentTransformFunctionName() != null
         && options.getJavascriptDocumentTransformGcsPath() != null) {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchemaForUDF(
-              options.getMongoDbUri(),
+              mongoDbUri,
               options.getDatabase(),
               options.getCollection(),
               options.getJavascriptDocumentTransformGcsPath(),
@@ -126,7 +133,7 @@ public class MongoDbToBigQueryCdc {
     } else {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchema(
-              options.getMongoDbUri(),
+              mongoDbUri,
               options.getDatabase(),
               options.getCollection(),
               options.getUserOption());

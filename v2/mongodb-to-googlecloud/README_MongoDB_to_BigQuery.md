@@ -26,6 +26,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional Parameters
 
+* **databaseConnectionURLSecretId** : If used, the pipeline with read the mongoDbUri from a secret manager path and retrieve the connection on run time. The pipeline service account needs access to Secret Manager to retrieve the MongDB connection URI.
 * **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false.
 * **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
 * **javascriptDocumentTransformGcsPath** (JavaScript UDF path in Cloud Storage.): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.js).
@@ -117,6 +118,7 @@ export MONGO_DB_URI=mongouri
 export DATABASE=<database>
 export COLLECTION=collection
 export USER_OPTION=NONE
+export PATH_SECRET=secret_path
 export OUTPUT_TABLE_SPEC=bqtable
 
 ### Optional
@@ -130,6 +132,7 @@ gcloud dataflow flex-template run "mongodb-to-bigquery-job" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "mongoDbUri=$MONGO_DB_URI" \
+  --parameters "databaseConnectionURLSecretId=$MONGO_DB_URI" \
   --parameters "database=$DATABASE" \
   --parameters "collection=$COLLECTION" \
   --parameters "userOption=$USER_OPTION" \
@@ -157,6 +160,7 @@ export REGION=us-central1
 
 ### Required
 export MONGO_DB_URI=mongouri
+export PATH_SECRET=secret_path
 export DATABASE=<database>
 export COLLECTION=collection
 export USER_OPTION=NONE
@@ -175,7 +179,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mongodb-to-bigquery-job" \
 -DtemplateName="MongoDB_to_BigQuery" \
--Dparameters="mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,outputTableSpec=$OUTPUT_TABLE_SPEC,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
+-Dparameters="mongoDbUri=$MONGO_DB_URI,databaseConnectionURLSecretId=$PATH_SECRET,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,outputTableSpec=$OUTPUT_TABLE_SPEC,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
 -pl v2/mongodb-to-googlecloud \
 -am
 ```
