@@ -1,6 +1,5 @@
 {
   "config": {
-    "debug": true,
     "reset_db": true,
     "index_all_properties": true,
     "node_write_batch_size": 5000,
@@ -20,7 +19,6 @@
       "node": {
         "source": "1k orders",
         "name": "Customer",
-        "active": true,
         "mode": "merge",
         "transform": {
           "group": true
@@ -29,11 +27,10 @@
           "labels": [
             "\"Customer\""
           ],
-          "keys": [
-            {"customer_id": "Customer Id"}
-          ],
           "properties": {
-            "unique": [],
+            "keys": [
+              {"customer_id": "Customer Id"}
+            ],
             "indexed": [
               {"contact_name": "Contact Name"},
               {"company_name": "Company Name"}
@@ -46,7 +43,6 @@
       "node": {
         "source": "1k orders",
         "name": "Products",
-        "active": true,
         "mode": "merge",
         "transform": {
           "aggregations": [
@@ -63,15 +59,14 @@
           "order_by": "product_name ASC",
           "limit": -1
         },
-        "automap": false,
         "mappings": {
           "labels": [
             "\"Product\""
           ],
-          "keys": [
-            "product_id"
-          ],
           "properties": {
+            "keys": [
+              "product_id"
+            ],
             "indexed": [
               "contact_name",
               "company_name"
@@ -92,7 +87,6 @@
         "source": "1k orders",
         "name": "Purchase Edges",
         "mode": "merge",
-        "active": true,
         "transform": {
           "aggregations": [
             {

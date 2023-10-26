@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.neo4j.model;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
@@ -33,10 +34,15 @@ import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,9 +110,14 @@ public class InputValidator {
       }
     }
 
+    boolean activeTargetFound = false;
     Set<String> targetNames = new HashSet<>();
     // Target validation
     for (Target target : jobSpec.getTargets()) {
+      if (!target.isActive()) {
+        continue;
+      }
+      activeTargetFound = true;
       // Check that all targets have names
       if (StringUtils.isBlank(target.getName())) {
         validationMessages.add("Targets must include a 'name' attribute.");
@@ -137,13 +148,16 @@ public class InputValidator {
           }
         }
       }
+
+      Map<String, PropertyMapping> propertyMappings =
+          new LinkedHashMap<>(target.getMappings().size());
       TargetType targetType = target.getType();
       switch (targetType) {
         case node:
-          validateNodeTarget(target, validationMessages);
+          validateNodeTarget(target, propertyMappings, validationMessages);
           break;
         case edge:
-          validateEdgeTarget(target, validationMessages);
+          validateEdgeTarget(target, propertyMappings, validationMessages);
           break;
         case custom_query:
           validateCustomTarget(target, validationMessages);
@@ -160,6 +174,14 @@ public class InputValidator {
           }
         }
       }
+      List<String> propertyMappingErrorMessages =
+          propertyMappings.values().stream()
+              .flatMap(PropertyMapping::validate)
+              .collect(Collectors.toList());
+      validationMessages.addAll(propertyMappingErrorMessages);
+    }
+    if (!activeTargetFound) {
+      validationMessages.add("The job spec must define at least 1 active target, none found");
     }
 
     Set<String> actionNames = new HashSet<>();
@@ -197,8 +219,12 @@ public class InputValidator {
     return validationMessages;
   }
 
-  private static void validateNodeTarget(Target target, List<String> validationMessages) {
+  private static void validateNodeTarget(
+      Target target,
+      Map<String, PropertyMapping> propertyMappings,
+      List<String> validationMessages) {
     for (Mapping mapping : target.getMappings()) {
+      String property = mapping.getName();
       if (mapping.getFragmentType() != FragmentType.node) {
         validationMessages.add(
             "Invalid fragment type "
@@ -206,21 +232,25 @@ public class InputValidator {
                 + " for node mapping: "
                 + mapping.getName());
       }
+      propertyMappings
+          .computeIfAbsent(property, (prop) -> new PropertyMapping(target.getName(), prop))
+          .add(mapping);
     }
     if (StringUtils.isBlank(
-        ModelUtils.getFirstFieldOrConstant(
-            target, FragmentType.node, Arrays.asList(RoleType.label)))) {
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.node, List.of(RoleType.label)))) {
       LOG.info("Invalid target: {}", gson.toJson(target));
       validationMessages.add("Missing label in node: " + target.getName());
     }
     if (StringUtils.isBlank(
-        ModelUtils.getFirstFieldOrConstant(
-            target, FragmentType.node, Arrays.asList(RoleType.key)))) {
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.node, List.of(RoleType.key)))) {
       validationMessages.add("Missing key field in node: " + target.getName());
     }
   }
 
-  private static void validateEdgeTarget(Target target, List<String> validationMessages) {
+  private static void validateEdgeTarget(
+      Target target,
+      Map<String, PropertyMapping> propertyMappings,
+      List<String> validationMessages) {
     for (Mapping mapping : target.getMappings()) {
       if (mapping.getFragmentType() == FragmentType.node) {
         validationMessages.add(
@@ -239,6 +269,9 @@ public class InputValidator {
                   + mapping.getFragmentType());
         }
       }
+      propertyMappings
+          .computeIfAbsent(mapping.getName(), (prop) -> new PropertyMapping(target.getName(), prop))
+          .add(mapping);
     }
 
     // relationship validation checks..
@@ -283,5 +316,47 @@ public class InputValidator {
       }
     }
     return false;
+  }
+}
+
+class PropertyMapping {
+  private final Set<String> sourceFields = new LinkedHashSet<>();
+  private final Set<String> types = new LinkedHashSet<>();
+  private final String targetName;
+  private final String propertyName;
+
+  public PropertyMapping(String targetName, String propertyName) {
+    this.targetName = targetName;
+    this.propertyName = propertyName;
+  }
+
+  public void add(Mapping mapping) {
+    if (mapping.getRole() != RoleType.key && mapping.getRole() != RoleType.property) {
+      return;
+    }
+    sourceFields.add(mapping.getField());
+    PropertyType type = mapping.getType();
+    if (type != null) {
+      types.add(type.name());
+    }
+  }
+
+  public Stream<String> validate() {
+    List<String> errorMessages = new ArrayList<>();
+    if (sourceFields.size() > 1) {
+      String msg =
+          String.format(
+              "Property %s of target %s is mapped to too many source fields: %s",
+              propertyName, targetName, String.join(", ", sourceFields));
+      errorMessages.add(msg);
+    }
+    if (types.size() > 1) {
+      String msg =
+          String.format(
+              "Property %s of target %s is mapped to too many types: %s",
+              propertyName, targetName, String.join(", ", types));
+      errorMessages.add(msg);
+    }
+    return errorMessages.stream();
   }
 }

@@ -18,14 +18,13 @@ package com.google.cloud.teleport.v2.neo4j.transforms;
 import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
-import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -88,7 +87,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   }
 
   private void createIndicesAndConstraints() {
-    List<String> cyphers = generateIndexAndConstraints();
+    Set<String> cyphers = generateIndexAndConstraints();
     if (cyphers.isEmpty()) {
       return;
     }
@@ -116,13 +115,8 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     return unwindCypher;
   }
 
-  private List<String> generateIndexAndConstraints() {
-    if (target.getType() == TargetType.edge
-        && target.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge) {
-      return CypherGenerator.getEdgeNodeConstraintsCypherStatements(target);
-    }
-    return CypherGenerator.getIndexAndConstraintsCypherStatements(
-        target.getType(), jobSpec.getConfig(), target);
+  private Set<String> generateIndexAndConstraints() {
+    return CypherGenerator.getIndexAndConstraintsCypherStatements(target);
   }
 
   private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {

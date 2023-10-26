@@ -28,11 +28,14 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Transform;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -307,9 +310,7 @@ public class ModelUtils {
     List<String> labels = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
       if (m.getFragmentType() == entityType) {
-        if (m.getLabels().size() > 0) {
-          labels.addAll(m.getLabels());
-        } else if (m.getRole() == RoleType.label) {
+        if (m.getRole() == RoleType.label) {
           if (StringUtils.isNotEmpty(m.getConstant())) {
             labels.add(m.getConstant());
           } else {
@@ -373,55 +374,10 @@ public class ModelUtils {
     return replacedText;
   }
 
-  public static List<String> getIndexedProperties(
-      boolean indexAllProperties, FragmentType entityType, Target target) {
-    List<String> indexedProperties = new ArrayList<>();
-    for (Mapping m : target.getMappings()) {
-
-      if (m.getFragmentType() == entityType) {
-        if (m.getRole() == RoleType.key || m.isIndexed() || indexAllProperties) {
-          indexedProperties.add(m.getName());
-        }
-      }
-    }
-    return indexedProperties;
-  }
-
-  public static List<String> getUniqueProperties(FragmentType entityType, Target target) {
-    List<String> uniqueProperties = new ArrayList<>();
-    for (Mapping m : target.getMappings()) {
-
-      if (m.getFragmentType() == entityType) {
-        if (m.isUnique() || m.getRole() == RoleType.key) {
-          uniqueProperties.add(m.getName());
-        }
-      }
-    }
-    return uniqueProperties;
-  }
-
-  public static List<String> getRequiredProperties(FragmentType entityType, Target target) {
-    List<String> mandatoryProperties = new ArrayList<>();
-    for (Mapping m : target.getMappings()) {
-
-      if (m.getFragmentType() == entityType) {
-        if (m.isMandatory()) {
-          mandatoryProperties.add(m.getName());
-        }
-      }
-    }
-    return mandatoryProperties;
-  }
-
-  public static List<String> getEntityKeyProperties(FragmentType entityType, Target target) {
-    List<String> nodeKeyProperties = new ArrayList<>();
-    for (Mapping m : target.getMappings()) {
-      if (m.getFragmentType() == entityType) {
-        if (m.getRole() == RoleType.key) {
-          nodeKeyProperties.add(m.getName());
-        }
-      }
-    }
-    return nodeKeyProperties;
+  public static Set<String> filterProperties(Target target, Predicate<Mapping> mappingPredicate) {
+    return target.getMappings().stream()
+        .filter(mappingPredicate)
+        .map(Mapping::getName)
+        .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 }

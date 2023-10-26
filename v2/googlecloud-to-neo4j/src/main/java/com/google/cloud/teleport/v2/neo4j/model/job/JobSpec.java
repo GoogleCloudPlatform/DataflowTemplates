@@ -28,7 +28,7 @@ public class JobSpec implements Serializable {
 
   // initialize defaults;
   private final Map<String, Source> sources = new LinkedHashMap<>();
-  private final List<Target> targets = new ArrayList<>();
+  private List<Target> targets = new ArrayList<>();
   private Config config = new Config();
   private final List<Action> actions = new ArrayList<>();
 
@@ -88,6 +88,10 @@ public class JobSpec implements Serializable {
 
   public List<Target> getTargets() {
     return targets;
+  }
+
+  public void setTargets(List<Target> targets) {
+    this.targets = targets;
   }
 
   public Config getConfig() {

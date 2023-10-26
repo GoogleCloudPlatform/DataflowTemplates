@@ -12,10 +12,10 @@
         "mode": "append",
         "mappings": {
           "label": "\"Boolean\"",
-          "keys": {
-            "id": "id"
-          },
           "properties": {
+            "keys": {
+              "id": "id"
+            },
             "booleans": [{
               "truthy": "truthy"
             }]

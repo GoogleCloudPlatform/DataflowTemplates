@@ -84,7 +84,7 @@
             }
           },
           "properties": {
-            "keys": {
+            "longs": {
               "order_id": "orderId"
             }
           }
