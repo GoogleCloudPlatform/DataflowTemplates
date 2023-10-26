@@ -201,6 +201,18 @@ public class BulkCompressor {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
+    String outputFilenameSuffix;
+    // Determine the extension to the output filename.
+    if (options.getOutputFilenameSuffix() != null
+        && options.getOutputFilenameSuffix().isAccessible()
+        && options.getOutputFilenameSuffix().get() != null) {
+      // Use suffix parameter. Example: demo.txt -> demo.txt.foo
+      outputFilenameSuffix = options.getOutputFilenameSuffix().get();
+    } else {
+      // Use compression extension. Example: demo.txt -> demo.txt.gz
+     outputFilenameSuffix = options.getCompression().get().getSuggestedSuffix();
+    }
+
     /*
      * Steps:
      *   1) Find all files matching the input pattern
@@ -212,7 +224,7 @@ public class BulkCompressor {
             .apply("Match File(s)", FileIO.match().filepattern(options.getInputFilePattern()))
             .apply(
                 "Compress File(s)",
-                ParDo.of(new Compressor(options.getOutputDirectory(), options.getCompression()))
+                ParDo.of(new Compressor(options.getOutputDirectory(), options.getCompression(), outputFilenameSuffix))
                     .withOutputTags(COMPRESSOR_MAIN_OUT, TupleTagList.of(DEADLETTER_TAG)));
 
     compressOut
@@ -241,29 +253,19 @@ public class BulkCompressor {
 
     private final ValueProvider<String> destinationLocation;
     private final ValueProvider<Compression> compressionValue;
+    private final String outputFilenameSuffix;
 
-    Compressor(ValueProvider<String> destinationLocation, ValueProvider<Compression> compression) {
+    Compressor(ValueProvider<String> destinationLocation, ValueProvider<Compression> compression, String outputFilenameSuffix) {
       this.destinationLocation = destinationLocation;
       this.compressionValue = compression;
+      this.outputFilenameSuffix = outputFilenameSuffix;
     }
 
     @ProcessElement
     public void processElement(ProcessContext context) {
       ResourceId inputFile = context.element().resourceId();
       Compression compression = compressionValue.get();
-      Options options = context.getPipelineOptions().as(Options.class);
-      String outputFilename;
-
-      // Add the extension to the output filename.
-      if (options.getOutputFilenameSuffix() != null
-          && options.getOutputFilenameSuffix().isAccessible()
-          && options.getOutputFilenameSuffix().get() != null) {
-        // Use suffix parameter. Example: demo.txt -> demo.txt.foo
-        outputFilename = inputFile.getFilename() + options.getOutputFilenameSuffix().get();
-      } else {
-        // Use compression extension. Example: demo.txt -> demo.txt.gz
-        outputFilename = inputFile.getFilename() + compression.getSuggestedSuffix();
-      }
+      String outputFilename = inputFile.getFilename() + outputFilenameSuffix;
 
       // Resolve the necessary resources to perform the transfer
       ResourceId outputDir = FileSystems.matchNewResource(destinationLocation.get(), true);
