@@ -93,7 +93,8 @@ echo '{
             "paramType":"TEXT",
             "isOptional":true
         },
-        {"name":"outputDeadletterTable",
+        {
+            "name":"outputDeadletterTable",
             "label":"Deadletter Queue Table",
             "helpText":"DLQ Table Ref: PROJECT:dataset.dlq",
             "paramType":"TEXT"
