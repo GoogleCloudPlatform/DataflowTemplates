@@ -34,6 +34,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional Parameters
 
+* **outputFilenameSuffix** (Output filename suffix): Output filename suffix of the files to write. Defaults to .bzip2, .deflate or .gz depending on the compression algorithm.
 
 
 
@@ -125,6 +126,7 @@ export OUTPUT_FAILURE_FILE=<outputFailureFile>
 export COMPRESSION=<compression>
 
 ### Optional
+export OUTPUT_FILENAME_SUFFIX=<outputFilenameSuffix>
 
 gcloud dataflow jobs run "bulk-compress-gcs-files-job" \
   --project "$PROJECT" \
@@ -133,7 +135,8 @@ gcloud dataflow jobs run "bulk-compress-gcs-files-job" \
   --parameters "inputFilePattern=$INPUT_FILE_PATTERN" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
   --parameters "outputFailureFile=$OUTPUT_FAILURE_FILE" \
-  --parameters "compression=$COMPRESSION"
+  --parameters "compression=$COMPRESSION" \
+  --parameters "outputFilenameSuffix=$OUTPUT_FILENAME_SUFFIX"
 ```
 
 For more information about the command, please check:
@@ -158,6 +161,7 @@ export OUTPUT_FAILURE_FILE=<outputFailureFile>
 export COMPRESSION=<compression>
 
 ### Optional
+export OUTPUT_FILENAME_SUFFIX=<outputFilenameSuffix>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -166,7 +170,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bulk-compress-gcs-files-job" \
 -DtemplateName="Bulk_Compress_GCS_Files" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,outputDirectory=$OUTPUT_DIRECTORY,outputFailureFile=$OUTPUT_FAILURE_FILE,compression=$COMPRESSION" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,outputDirectory=$OUTPUT_DIRECTORY,outputFailureFile=$OUTPUT_FAILURE_FILE,compression=$COMPRESSION,outputFilenameSuffix=$OUTPUT_FILENAME_SUFFIX" \
 -pl v1 \
 -am
 ```

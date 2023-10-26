@@ -53,7 +53,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@link BulkCompressor} is a batch pipeline that compresses files on matched by an input file
  * pattern and outputs them to a specified file location. This pipeline can be useful when you need
- * to compress large batches of files as part of a perodic archival process. The supported
+ * to compress large batches of files as part of a periodic archival process. The supported
  * compression modes are: <code>BZIP2</code>, <code>DEFLATE</code>, <code>GZIP</code>. Files output
  * to the destination location will follow a naming schema of original filename appended with the
  * compression mode extension. The extensions appended will be one of: <code>.bzip2</code>, <code>
@@ -159,6 +159,18 @@ public class BulkCompressor {
     ValueProvider<Compression> getCompression();
 
     void setCompression(ValueProvider<Compression> value);
+
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        regexes = {"^[A-Za-z_0-9.]*"},
+        description = "Output filename suffix",
+        helpText =
+            "Output filename suffix of the files to write. Defaults to .bzip2, .deflate or .gz depending on the compression algorithm.")
+    @Required
+    ValueProvider<String> getOutputFilenameSuffix();
+
+    void setOutputFilenameSuffix(ValueProvider<String> value);
   }
 
   /**
@@ -239,9 +251,19 @@ public class BulkCompressor {
     public void processElement(ProcessContext context) {
       ResourceId inputFile = context.element().resourceId();
       Compression compression = compressionValue.get();
+      Options options = context.getPipelineOptions().as(Options.class);
+      String outputFilename;
 
-      // Add the compression extension to the output filename. Example: demo.txt -> demo.txt.gz
-      String outputFilename = inputFile.getFilename() + compression.getSuggestedSuffix();
+      // Add the extension to the output filename.
+      if (options.getOutputFilenameSuffix() != null
+          && options.getOutputFilenameSuffix().isAccessible()
+          && options.getOutputFilenameSuffix().get() != null) {
+        // Use suffix parameter. Example: demo.txt -> demo.txt.foo
+        outputFilename = inputFile.getFilename() + options.getOutputFilenameSuffix().get();
+      } else {
+        // Use compression extension. Example: demo.txt -> demo.txt.gz
+        outputFilename = inputFile.getFilename() + compression.getSuggestedSuffix();
+      }
 
       // Resolve the necessary resources to perform the transfer
       ResourceId outputDir = FileSystems.matchNewResource(destinationLocation.get(), true);
