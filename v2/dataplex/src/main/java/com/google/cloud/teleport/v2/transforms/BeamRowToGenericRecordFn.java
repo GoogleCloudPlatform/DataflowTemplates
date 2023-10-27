@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.cloud.teleport.v2.utils.SerializableSchemaSupplier;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.beam.sdk.schemas.utils.AvroUtils;
+import org.apache.beam.sdk.extensions.avro.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
 
