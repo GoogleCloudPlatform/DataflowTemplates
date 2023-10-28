@@ -164,6 +164,7 @@ public class BigQueryConverters {
   public interface BigQueryReadOptions extends PipelineOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
+        optional = true,
         description = "BigQuery source table",
         helpText = "BigQuery source table spec.",
         example = "bigquery-project:dataset.input_table")
