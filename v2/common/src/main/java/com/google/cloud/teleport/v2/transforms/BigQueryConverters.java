@@ -207,10 +207,10 @@ public class BigQueryConverters {
     void setUseLegacySql(Boolean useLegacySql);
 
     @TemplateParameter.Text(
-        order = 4,
+        order = 5,
         optional = true,
         regexes = {"[a-zA-Z0-9-]+"},
-        description = "BigQuery geographic location where the query job  will be executed.",
+        description = "BigQuery geographic location where the query job will be executed.",
         helpText =
             "Needed when reading from an authorized view without underlying table's permission.",
         example = "US")
