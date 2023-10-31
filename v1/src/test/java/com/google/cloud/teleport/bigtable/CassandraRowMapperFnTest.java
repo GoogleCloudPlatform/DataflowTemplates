@@ -53,7 +53,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -64,6 +64,7 @@ import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.values.Row;
 import org.apache.commons.codec.binary.Hex;
 import org.joda.time.DateTime;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -73,7 +74,8 @@ import org.scassandra.http.client.PrimingRequest;
 
 /** Tests {@link CassandraRowMapperFn}. */
 public class CassandraRowMapperFnTest extends CassandraBaseTest {
-
+  private Cluster cluster;
+  private Session session;
   private CassandraRowMapperFn cassandraRowMapper;
 
   private void primeWithType(Object val, CqlType type) {
@@ -87,22 +89,24 @@ public class CassandraRowMapperFnTest extends CassandraBaseTest {
   }
 
   private ResultSet getResultSet() {
-    Cluster cluster =
-        Cluster.builder().addContactPoint("localhost").withPort(scassandra.getBinaryPort()).build();
-    Session session = cluster.connect();
     return session.execute("select * from testing");
   }
 
   @Before
   public void setupMapper() {
-    Cluster cluster =
+    cluster =
         Cluster.builder().addContactPoint("localhost").withPort(scassandra.getBinaryPort()).build();
-    Session session = cluster.connect();
+    session = cluster.connect();
     cassandraRowMapper =
         new CassandraRowMapperFn(
             session,
             ValueProvider.StaticValueProvider.of(""),
             ValueProvider.StaticValueProvider.of("testing"));
+  }
+
+  @After
+  public void teardownMapper() {
+    session.close();
   }
 
   @Test
@@ -388,7 +392,7 @@ public class CassandraRowMapperFnTest extends CassandraBaseTest {
 
   @Test
   public void testSetColumn() {
-    Set<Integer> value = new HashSet<>();
+    Set<Integer> value = new LinkedHashSet<>();
     value.add(1);
     value.add(2);
 
