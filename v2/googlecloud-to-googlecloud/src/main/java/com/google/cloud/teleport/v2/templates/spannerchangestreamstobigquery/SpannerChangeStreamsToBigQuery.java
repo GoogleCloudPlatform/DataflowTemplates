@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToBigQueryOptions;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.ModColumnType;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.OptionsUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -35,6 +36,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -444,7 +446,7 @@ public final class SpannerChangeStreamsToBigQuery {
             ? tempLocation + "dlq/"
             : options.getDeadLetterQueueDirectory();
 
-    LOG.info("Dead letter queue directory: {}", dlqDirectory);
+    LOG.info("Dead letter queue directory: {}" + dlqDirectory);
     return DeadLetterQueueManager.create(dlqDirectory, DLQ_MAX_RETRIES);
   }
 
@@ -485,6 +487,7 @@ public final class SpannerChangeStreamsToBigQuery {
                 input.isLastRecordInTransactionInPartition(),
                 input.getRecordSequence(),
                 input.getTableName(),
+                input.getRowType().stream().map(ModColumnType::new).collect(Collectors.toList()),
                 input.getModType(),
                 input.getValueCaptureType(),
                 input.getNumberOfRecordsInTransaction(),

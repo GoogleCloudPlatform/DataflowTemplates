@@ -94,17 +94,24 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRow;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRow.FailsafeModJsonToTableRowFn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRowOptions;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.ModColumnType;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.TypeCode;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ValueCaptureType;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestStream;
@@ -156,7 +163,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ValueCaptureType.OLD_AND_NEW_VALUES,
         getKeysJson(),
         getNewValuesJson(insertCommitTimestamp),
-        false);
+        false,
+        getRowType(false));
   }
 
   // Test the case where a TableRow can be constructed from an INSERT Mod when storage write API is
@@ -170,7 +178,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ValueCaptureType.OLD_AND_NEW_VALUES,
         getKeysJson(),
         getNewValuesJson(insertCommitTimestamp),
-        true);
+        true,
+        getRowType(false));
   }
 
   // Test the case where a TableRow can be constructed from an INSERT Mod
@@ -184,7 +193,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ValueCaptureType.NEW_ROW,
         getKeysJson(),
         getNewValuesJson(insertCommitTimestamp),
-        false);
+        false,
+        getRowType(false));
   }
 
   // Test the case where a TableRow can be constructed from an INSERT Mod
@@ -198,7 +208,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ValueCaptureType.NEW_ROW,
         getKeysJson(),
         getNewValuesJson(insertCommitTimestamp),
-        true);
+        true,
+        getRowType(false));
   }
 
   // Test the case where a TableRow can be constructed from a UPDATE Mod.
@@ -213,7 +224,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ValueCaptureType.OLD_AND_NEW_VALUES,
         getKeysJson(),
         updateNewValuesJson,
-        false);
+        false,
+        getRowType(false));
   }
 
   // Test the case where a TableRow can be constructed from a UPDATE Mod
@@ -227,7 +239,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ValueCaptureType.NEW_ROW,
         getKeysJson(),
         getNewValuesJson(updateCommitTimestamp),
-        false);
+        false,
+        getRowType(false));
   }
 
   // Test the case where a TableRow can be constructed from a DELETE Mod.
@@ -243,7 +256,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ValueCaptureType.OLD_AND_NEW_VALUES,
         getKeysJson(),
         "",
-        false);
+        false,
+        getRowType(true));
   }
 
   // Test the case where a TableRow can be constructed from a DELETE Mod
@@ -260,7 +274,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         ValueCaptureType.NEW_ROW,
         getKeysJson(),
         "",
-        false);
+        false,
+        getRowType(true));
   }
 
   // Test the case where the snapshot read to Spanner fails and we can capture the failures from
@@ -271,6 +286,9 @@ public final class FailsafeModJsonToTableRowTransformerTest {
     fakePkColJsonNode.put("fakePkCol", true);
     ObjectNode fakeNonPkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
     fakeNonPkColJsonNode.put("fakeNonPkCol", true);
+    List<ModColumnType> rowTypes = new ArrayList<>();
+    rowTypes.add(new ModColumnType("fakePkCol", new TypeCode("BOOL"), true, 1));
+    rowTypes.add(new ModColumnType("fakeNonPkCol", new TypeCode("BOOL"), false, 2));
     Mod mod =
         new Mod(
             fakePkColJsonNode.toString(),
@@ -280,6 +298,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             true,
             "00000001",
             TEST_SPANNER_TABLE,
+            rowTypes,
             ModType.INSERT,
             ValueCaptureType.OLD_AND_NEW_VALUES,
             1L,
@@ -311,8 +330,9 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             + "\"newValuesJson\":\"{\\\"fakeNonPkCol\\\":true}\","
             + "\"commitTimestampSeconds\":1650908264,\"commitTimestampNanos\":925679000,"
             + "\"serverTransactionId\":\"1\",\"isLastRecordInTransactionInPartition\":true,"
-            + "\"recordSequence\":\"00000001\",\"tableName\":\"AllTypes\",\"modType\":\"INSERT\","
-            + "\"valueCaptureType\":\"OLD_AND_NEW_VALUES\","
+            + "\"recordSequence\":\"00000001\",\"tableName\":\"AllTypes\","
+            + "\"rowType\":[{\"name\":\"fakePkCol\",\"type\":{\"code\":\"BOOL\"},\"isPrimaryKey\":true,\"ordinalPosition\":1},{\"name\":\"fakeNonPkCol\",\"type\":{\"code\":\"BOOL\"},\"isPrimaryKey\":false,\"ordinalPosition\":2}],"
+            + "\"modType\":\"INSERT\",\"valueCaptureType\":\"OLD_AND_NEW_VALUES\","
             + "\"numberOfRecordsInTransaction\":1,\"numberOfPartitionsInTransaction\":1}";
     PAssert.that(
             out.get(failsafeModJsonToTableRow.transformDeadLetterOut)
@@ -347,7 +367,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
       ValueCaptureType valueCaptureType,
       String keysJson,
       String newValuesJson,
-      Boolean useStorageWriteApi)
+      Boolean useStorageWriteApi,
+      List<ModColumnType> rowTypes)
       throws Exception {
     Mod mod =
         new Mod(
@@ -358,6 +379,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             true,
             "00000001",
             TEST_SPANNER_TABLE,
+            rowTypes,
             modType,
             valueCaptureType,
             1L,
@@ -467,32 +489,58 @@ public final class FailsafeModJsonToTableRowTransformerTest {
     // spotless:off
     mutations.add(
         Mutation.newInsertBuilder(TEST_SPANNER_TABLE)
-            .set(BOOLEAN_PK_COL).to(BOOLEAN_VAL)
-            .set(BYTES_PK_COL).to(BYTES_VAL)
-            .set(DATE_PK_COL).to(DATE_VAL)
-            .set(FLOAT64_PK_COL).to(FLOAT64_VAL)
-            .set(INT64_PK_COL).to(INT64_VAL)
-            .set(NUMERIC_PK_COL).to(NUMERIC_VAL)
-            .set(STRING_PK_COL).to(STRING_VAL)
-            .set(TIMESTAMP_PK_COL).to(TIMESTAMP_VAL)
-            .set(BOOLEAN_ARRAY_COL).to(BOOLEAN_NULLABLE_ARRAY_VAL)
-            .set(BYTES_ARRAY_COL).to(BYTES_NULLABLE_ARRAY_VAL)
-            .set(DATE_ARRAY_COL).to(DATE_NULLABLE_ARRAY_VAL)
-            .set(FLOAT64_ARRAY_COL).to(FLOAT64_NULLABLE_ARRAY_VAL)
-            .set(INT64_ARRAY_COL).to(INT64_NULLABLE_ARRAY_VAL)
-            .set(NUMERIC_ARRAY_COL).to(NUMERIC_NULLABLE_ARRAY_VAL)
-            .set(JSON_ARRAY_COL).to(JSON_NULLABLE_ARRAY_VAL)
-            .set(STRING_ARRAY_COL).to(STRING_NULLABLE_ARRAY_VAL)
-            .set(TIMESTAMP_ARRAY_COL).to(TIMESTAMP_NULLABLE_ARRAY_VAL)
-            .set(BOOLEAN_COL).to(BOOLEAN_VAL)
-            .set(BYTES_COL).to(BYTES_VAL)
-            .set(DATE_COL).to(DATE_VAL)
-            .set(FLOAT64_COL).to(FLOAT64_VAL)
-            .set(INT64_COL).to(INT64_VAL)
-            .set(JSON_COL).to(JSON_VAL)
-            .set(NUMERIC_COL).to(NUMERIC_VAL)
-            .set(STRING_COL).to(STRING_VAL)
-            .set(TIMESTAMP_COL).to(Value.COMMIT_TIMESTAMP)
+            .set(BOOLEAN_PK_COL)
+            .to(BOOLEAN_VAL)
+            .set(BYTES_PK_COL)
+            .to(BYTES_VAL)
+            .set(DATE_PK_COL)
+            .to(DATE_VAL)
+            .set(FLOAT64_PK_COL)
+            .to(FLOAT64_VAL)
+            .set(INT64_PK_COL)
+            .to(INT64_VAL)
+            .set(NUMERIC_PK_COL)
+            .to(NUMERIC_VAL)
+            .set(STRING_PK_COL)
+            .to(STRING_VAL)
+            .set(TIMESTAMP_PK_COL)
+            .to(TIMESTAMP_VAL)
+            .set(BOOLEAN_ARRAY_COL)
+            .to(BOOLEAN_NULLABLE_ARRAY_VAL)
+            .set(BYTES_ARRAY_COL)
+            .to(BYTES_NULLABLE_ARRAY_VAL)
+            .set(DATE_ARRAY_COL)
+            .to(DATE_NULLABLE_ARRAY_VAL)
+            .set(FLOAT64_ARRAY_COL)
+            .to(FLOAT64_NULLABLE_ARRAY_VAL)
+            .set(INT64_ARRAY_COL)
+            .to(INT64_NULLABLE_ARRAY_VAL)
+            .set(NUMERIC_ARRAY_COL)
+            .to(NUMERIC_NULLABLE_ARRAY_VAL)
+            .set(JSON_ARRAY_COL)
+            .to(JSON_NULLABLE_ARRAY_VAL)
+            .set(STRING_ARRAY_COL)
+            .to(STRING_NULLABLE_ARRAY_VAL)
+            .set(TIMESTAMP_ARRAY_COL)
+            .to(TIMESTAMP_NULLABLE_ARRAY_VAL)
+            .set(BOOLEAN_COL)
+            .to(BOOLEAN_VAL)
+            .set(BYTES_COL)
+            .to(BYTES_VAL)
+            .set(DATE_COL)
+            .to(DATE_VAL)
+            .set(FLOAT64_COL)
+            .to(FLOAT64_VAL)
+            .set(INT64_COL)
+            .to(INT64_VAL)
+            .set(JSON_COL)
+            .to(JSON_VAL)
+            .set(NUMERIC_COL)
+            .to(NUMERIC_VAL)
+            .set(STRING_COL)
+            .to(STRING_VAL)
+            .set(TIMESTAMP_COL)
+            .to(Value.COMMIT_TIMESTAMP)
             .build());
     // spotless:on
     SPANNER_SERVER.getDbClient(spannerDatabaseName).write(mutations);
@@ -592,5 +640,91 @@ public final class FailsafeModJsonToTableRowTransformerTest {
     jsonNode.put(STRING_COL, STRING_RAW_VAL);
     jsonNode.put(TIMESTAMP_COL, commitTimestamp.toString());
     return jsonNode.toString();
+  }
+
+  private List<ModColumnType> getRowType(Boolean deleteModType) {
+    List<ModColumnType> rowTypes = new ArrayList<>();
+    rowTypes.add(new ModColumnType(BOOLEAN_PK_COL, new TypeCode("BOOLEAN"), true, 1));
+    rowTypes.add(new ModColumnType(BYTES_PK_COL, new TypeCode("BYTES"), true, 2));
+    rowTypes.add(new ModColumnType(DATE_PK_COL, new TypeCode("DATE"), true, 3));
+    rowTypes.add(new ModColumnType(FLOAT64_PK_COL, new TypeCode("FLOAT64"), true, 4));
+    rowTypes.add(new ModColumnType(INT64_PK_COL, new TypeCode("INT64"), true, 5));
+    rowTypes.add(new ModColumnType(NUMERIC_PK_COL, new TypeCode("NUMERIC"), true, 6));
+    rowTypes.add(new ModColumnType(STRING_PK_COL, new TypeCode("STRING"), true, 7));
+    rowTypes.add(new ModColumnType(TIMESTAMP_PK_COL, new TypeCode("TIMESTAMP"), true, 8));
+    if (!deleteModType) {
+      rowTypes.add(new ModColumnType(BOOLEAN_ARRAY_COL, new TypeCode("ARRAY"), false, 9));
+      rowTypes.add(new ModColumnType(BYTES_ARRAY_COL, new TypeCode("ARRAY"), false, 10));
+      rowTypes.add(new ModColumnType(DATE_ARRAY_COL, new TypeCode("ARRAY"), false, 11));
+      rowTypes.add(new ModColumnType(FLOAT64_ARRAY_COL, new TypeCode("ARRAY"), false, 12));
+      rowTypes.add(new ModColumnType(INT64_ARRAY_COL, new TypeCode("ARRAY"), false, 13));
+      rowTypes.add(new ModColumnType(JSON_ARRAY_COL, new TypeCode("ARRAY"), false, 14));
+      rowTypes.add(new ModColumnType(NUMERIC_ARRAY_COL, new TypeCode("ARRAY"), false, 15));
+      rowTypes.add(new ModColumnType(STRING_ARRAY_COL, new TypeCode("ARRAY"), false, 16));
+      rowTypes.add(new ModColumnType(TIMESTAMP_ARRAY_COL, new TypeCode("ARRAY"), false, 17));
+      rowTypes.add(new ModColumnType(BOOLEAN_COL, new TypeCode("BOOLEAN"), false, 18));
+      rowTypes.add(new ModColumnType(BYTES_COL, new TypeCode("BYTES"), false, 19));
+      rowTypes.add(new ModColumnType(DATE_COL, new TypeCode("DATE"), false, 20));
+      rowTypes.add(new ModColumnType(FLOAT64_COL, new TypeCode("FLOAT64"), false, 21));
+      rowTypes.add(new ModColumnType(INT64_COL, new TypeCode("INT64"), false, 22));
+      rowTypes.add(new ModColumnType(NUMERIC_COL, new TypeCode("NUMERIC"), false, 23));
+      rowTypes.add(new ModColumnType(STRING_COL, new TypeCode("STRING"), false, 24));
+      rowTypes.add(new ModColumnType(TIMESTAMP_COL, new TypeCode("TIMESTAMP"), false, 25));
+    }
+    return rowTypes;
+  }
+
+  @Test
+  public void testDetectAndPropagateSchemaChanges() throws Exception {
+    Map<String, TrackedSpannerTable> spannerTableByName = new HashMap();
+    ObjectNode fakePkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
+    fakePkColJsonNode.put("fakePkCol", true);
+    ObjectNode fakeNonPkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
+    fakeNonPkColJsonNode.put("fakeNonPkCol", true);
+    List<ModColumnType> rowTypes = new ArrayList<>();
+    rowTypes.add(new ModColumnType("fakePkCol", new TypeCode("BOOL"), true, 1));
+    rowTypes.add(new ModColumnType("fakeNonPkCol", new TypeCode("BOOL"), false, 2));
+    Mod mod =
+        new Mod(
+            fakePkColJsonNode.toString(),
+            fakeNonPkColJsonNode.toString(),
+            Timestamp.ofTimeSecondsAndNanos(1650908264L, 925679000),
+            "1",
+            true,
+            "00000001",
+            TEST_SPANNER_TABLE,
+            rowTypes,
+            ModType.INSERT,
+            ValueCaptureType.OLD_AND_NEW_VALUES,
+            1L,
+            1L);
+    failsafeModJsonToTableRow = getFailsafeModJsonToTableRow(spannerDatabaseName, false);
+    FailsafeModJsonToTableRowOptions failsafeModJsonToTableRowOptions =
+        FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
+            .setSpannerConfig(SPANNER_SERVER.getSpannerConfig(spannerDatabaseName))
+            .setSpannerChangeStream(TEST_SPANNER_CHANGE_STREAM)
+            .setCoder(SpannerChangeStreamsToBigQuery.FAILSAFE_ELEMENT_CODER)
+            .setIgnoreFields(ImmutableSet.of())
+            .setUseStorageWriteApi(false)
+            .build();
+    FailsafeModJsonToTableRowFn failsafeModJsonToTableRowFn =
+        new FailsafeModJsonToTableRowFn(
+            failsafeModJsonToTableRowOptions.getSpannerConfig(),
+            failsafeModJsonToTableRowOptions.getSpannerChangeStream(),
+            failsafeModJsonToTableRowOptions.getIgnoreFields(),
+            failsafeModJsonToTableRow.transformOut,
+            failsafeModJsonToTableRow.transformDeadLetterOut,
+            failsafeModJsonToTableRowOptions.getUseStorageWriteApi());
+    failsafeModJsonToTableRowFn.detectAndPropagateSchemaChanges(mod);
+    assert failsafeModJsonToTableRowFn.getSpannerTableByName().containsKey(TEST_SPANNER_TABLE);
+    List<TrackedSpannerColumn> pkCols =
+        failsafeModJsonToTableRowFn.getSpannerTableByName().get(TEST_SPANNER_TABLE).getPkColumns();
+    List<TrackedSpannerColumn> nonPkCols =
+        failsafeModJsonToTableRowFn
+            .getSpannerTableByName()
+            .get(TEST_SPANNER_TABLE)
+            .getNonPkColumns();
+    assert !pkCols.get(pkCols.size() - 1).getName().equals("fakePkCol");
+    assert nonPkCols.get(nonPkCols.size() - 1).getName().equals("fakeNonPkCol");
   }
 }

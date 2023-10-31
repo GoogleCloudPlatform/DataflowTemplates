@@ -32,6 +32,7 @@ import com.google.cloud.spanner.SpannerOptions.CallContextConfigurator;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.ModColumnType;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
@@ -45,6 +46,7 @@ import io.grpc.MethodDescriptor;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -194,7 +196,7 @@ public final class FailsafeModJsonToTableRowTransformer {
           if (!seenException) {
             LOG.error(
                 "Caught exception when processing element , storing into dead letter queue. "
-                    + e.getMessage());
+                    + Throwables.getStackTraceAsString(e));
             seenException = true;
           }
           context.output(
@@ -203,6 +205,10 @@ public final class FailsafeModJsonToTableRowTransformer {
                   .setErrorMessage(e.getMessage())
                   .setStacktrace(Throwables.getStackTraceAsString(e)));
         }
+      }
+
+      public Map<String, TrackedSpannerTable> getSpannerTableByName() {
+        return spannerTableByName;
       }
 
       private TableRow modJsonStringToTableRow(String modJsonString) throws Exception {
@@ -215,6 +221,13 @@ public final class FailsafeModJsonToTableRowTransformer {
 
         Mod mod = Mod.fromJson(modObjectNode.toString());
         String spannerTableName = mod.getTableName();
+        // Detect schema updates (newly added tables/columns) from mod and propagate changes into
+        // SpannerTableByName.
+        // Not able to get schema update from DELETE mods as they have empty newValuesJson.
+        if (mod.getModType() != ModType.DELETE) {
+          detectAndPropagateSchemaChanges(mod);
+        }
+
         TrackedSpannerTable spannerTable = spannerTableByName.get(spannerTableName);
         com.google.cloud.Timestamp spannerCommitTimestamp =
             com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
@@ -318,6 +331,51 @@ public final class FailsafeModJsonToTableRowTransformer {
         }
 
         return tableRow;
+      }
+
+      public void detectAndPropagateSchemaChanges(Mod mod) {
+        JSONObject keysJsonObject = new JSONObject(mod.getKeysJson());
+        JSONObject newValuesJsonObject =
+            mod.getNewValuesJson() == ""
+                ? new JSONObject("{}")
+                : new JSONObject(mod.getNewValuesJson());
+        String spannerTableName = mod.getTableName();
+        Map<String, ModColumnType> modColumnTypeMap = mod.rowTypeAsMap();
+        // Create a new table for spannerTableName if it's not in spannerTableByName.
+        if (!spannerTableByName.containsKey(spannerTableName)) {
+          // Set PK columns for new table.
+          List<TrackedSpannerColumn> pkColumns = new ArrayList<>();
+          for (String pkColumnName : keysJsonObject.keySet()) {
+            ModColumnType spannerColumn = modColumnTypeMap.get(pkColumnName);
+
+            TrackedSpannerColumn spannerColumnObj =
+                TrackedSpannerColumn.create(
+                    pkColumnName,
+                    SpannerChangeStreamsUtils.informationSchemaGoogleSQLTypeToSpannerType(
+                        spannerColumn.getType().getCode()),
+                    -1,
+                    (int) spannerColumn.getOrdinalPosition());
+            pkColumns.add(spannerColumnObj);
+          }
+
+          // Create an empty list of non-pk columnsa
+          List<TrackedSpannerColumn> nonPkColumns = new ArrayList<>();
+          // Introduce the new table into spannerTableByName.
+          TrackedSpannerTable spannerTableObj =
+              new TrackedSpannerTable(spannerTableName, pkColumns, nonPkColumns);
+          spannerTableByName.put(spannerTableName, spannerTableObj);
+        }
+
+        // Populate nonPkColumns from Mod to TrackedSpannerTable
+        TrackedSpannerTable spannerTable = spannerTableByName.get(spannerTableName);
+        Map<String, TrackedSpannerColumn> nonPkColumnsMap =
+            spannerTable.getNonPkColumns().stream()
+                .collect(Collectors.toMap(TrackedSpannerColumn::getName, column -> column));
+        for (String nonPkColumnName : newValuesJsonObject.keySet()) {
+          if (!nonPkColumnsMap.containsKey(nonPkColumnName)) {
+            spannerTable.addTrackedSpannerNonPkColumn(modColumnTypeMap.get(nonPkColumnName));
+          }
+        }
       }
 
       // Do a Spanner read to retrieve full row. The schema change is currently not supported. so we
