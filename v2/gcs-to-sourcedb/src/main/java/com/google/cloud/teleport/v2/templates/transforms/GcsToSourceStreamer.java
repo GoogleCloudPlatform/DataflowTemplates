@@ -36,6 +36,7 @@ import org.apache.beam.sdk.transforms.DoFn.OnTimerContext;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.values.KV;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -159,7 +160,10 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
         startString.write(endInst.toString());
 
       } catch (Exception e) {
-        LOG.error("The exception while processing shardId: " + shardId + " is: " + e);
+        LOG.error(
+            "The exception while processing shardId: {} is {} ",
+            shardId,
+            ExceptionUtils.getStackTrace(e));
         stopProcessing.write(true);
       }
     }

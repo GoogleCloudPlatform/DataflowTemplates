@@ -109,7 +109,7 @@ public class GCSReader {
       Metrics.counter(shardId, "file_read_" + shardId).inc();
 
     } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
-      throw new RuntimeException("Failed in processing the record : " + ex);
+      throw new RuntimeException("Failed in processing the record ", ex);
     } catch (IOException e) {
 
       LOG.warn("File not found : " + fileName);
@@ -124,7 +124,7 @@ public class GCSReader {
       }
 
     } catch (Exception e) {
-      throw new RuntimeException("Failed in GcsReader : " + e);
+      throw new RuntimeException("Failed in GcsReader ", e);
     }
 
     return changeStreamList;

@@ -63,7 +63,8 @@ public class AssignShardIdFnTest {
                         getSchemaObject(),
                         null,
                         Constants.SHARDING_MODE_MULTI_SHARD,
-                        "test")));
+                        "test",
+                        "skip")));
 
     record1.setShard("shard1");
     record2.setShard("shard2");
@@ -85,7 +86,7 @@ public class AssignShardIdFnTest {
             .apply(
                 ParDo.of(
                     new AssignShardIdFn(
-                        null, null, null, Constants.SHARDING_MODE_SINGLE_SHARD, "test")));
+                        null, null, null, Constants.SHARDING_MODE_SINGLE_SHARD, "test", "skip")));
 
     record1.setShard("test");
     record2.setShard("test");

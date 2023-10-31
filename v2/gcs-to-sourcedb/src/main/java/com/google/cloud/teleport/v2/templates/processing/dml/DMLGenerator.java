@@ -45,8 +45,22 @@ public class DMLGenerator {
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset) {
 
+    if (schema.getSpannerToID().get(spannerTableName) == null) {
+      LOG.warn(
+          "The spanner table {} was not found in session file, dropping the record",
+          spannerTableName);
+      return "";
+    }
+
     String spannerTableId = schema.getSpannerToID().get(spannerTableName).getName();
     SpannerTable spannerTable = schema.getSpSchema().get(spannerTableId);
+
+    if (spannerTable == null) {
+      LOG.warn(
+          "The spanner table {} was not found in session file, dropping the record",
+          spannerTableName);
+      return "";
+    }
 
     SourceTable sourceTable = schema.getSrcSchema().get(spannerTableId);
     if (sourceTable == null) {

@@ -173,7 +173,7 @@ public class SpannerChangeStreamsToShardedFileSink {
         description = "Session File Path in Cloud Storage, needed for sharded reverse replication",
         helpText =
             "Session file path in Cloud Storage that contains mapping information from"
-                + " HarbourBridge. Needed when doing sharded reverse replciation.")
+                + " HarbourBridge. Needed when doing sharded reverse replication.")
     String getSessionFilePath();
 
     void setSessionFilePath(String value);
@@ -241,6 +241,18 @@ public class SpannerChangeStreamsToShardedFileSink {
     String getMetadataTableSuffix();
 
     void setMetadataTableSuffix(String value);
+
+    @TemplateParameter.Text(
+        order = 15,
+        optional = true,
+        description = "Directory name for holding skipped records",
+        helpText =
+            "Records skipped from reverse replication are written to this directory. Default"
+                + " directory name is skip.")
+    @Default.String("skip")
+    String getSkipDirectoryName();
+
+    void setSkipDirectoryName(String value);
   }
 
   /**
@@ -333,7 +345,12 @@ public class SpannerChangeStreamsToShardedFileSink {
         .apply(
             ParDo.of(
                 new AssignShardIdFn(
-                    spannerConfig, schema, ddl, shardingMode, shards.get(0).getLogicalShardId())))
+                    spannerConfig,
+                    schema,
+                    ddl,
+                    shardingMode,
+                    shards.get(0).getLogicalShardId(),
+                    options.getSkipDirectoryName())))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))

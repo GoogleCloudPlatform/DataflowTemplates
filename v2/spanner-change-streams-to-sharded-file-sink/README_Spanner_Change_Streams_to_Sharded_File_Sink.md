@@ -34,6 +34,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **windowDuration** (Window duration): The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 10s.
 * **filtrationMode** (Filtration mode): Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
 * **metadataTableSuffix** (Metadata table suffix): Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed. Defaults to empty.
+* **skipDirectoryName** (Directory name for holding skipped records): Records skipped from reverse replication are written to this directory. Defaults to: skip.
 
 
 
@@ -133,6 +134,7 @@ export SESSION_FILE_PATH=<sessionFilePath>
 export WINDOW_DURATION=10s
 export FILTRATION_MODE=forward_migration
 export METADATA_TABLE_SUFFIX=""
+export SKIP_DIRECTORY_NAME=skip
 
 gcloud dataflow flex-template run "spanner-change-streams-to-sharded-file-sink-job" \
   --project "$PROJECT" \
@@ -151,7 +153,8 @@ gcloud dataflow flex-template run "spanner-change-streams-to-sharded-file-sink-j
   --parameters "gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY" \
   --parameters "filtrationMode=$FILTRATION_MODE" \
   --parameters "sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" \
-  --parameters "metadataTableSuffix=$METADATA_TABLE_SUFFIX"
+  --parameters "metadataTableSuffix=$METADATA_TABLE_SUFFIX" \
+  --parameters "skipDirectoryName=$SKIP_DIRECTORY_NAME"
 ```
 
 For more information about the command, please check:
@@ -186,6 +189,7 @@ export SESSION_FILE_PATH=<sessionFilePath>
 export WINDOW_DURATION=10s
 export FILTRATION_MODE=forward_migration
 export METADATA_TABLE_SUFFIX=""
+export SKIP_DIRECTORY_NAME=skip
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -194,7 +198,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-sharded-file-sink-job" \
 -DtemplateName="Spanner_Change_Streams_to_Sharded_File_Sink" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,sessionFilePath=$SESSION_FILE_PATH,windowDuration=$WINDOW_DURATION,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,filtrationMode=$FILTRATION_MODE,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,metadataTableSuffix=$METADATA_TABLE_SUFFIX" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,sessionFilePath=$SESSION_FILE_PATH,windowDuration=$WINDOW_DURATION,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,filtrationMode=$FILTRATION_MODE,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,metadataTableSuffix=$METADATA_TABLE_SUFFIX,skipDirectoryName=$SKIP_DIRECTORY_NAME" \
 -pl v2/spanner-change-streams-to-sharded-file-sink \
 -am
 ```

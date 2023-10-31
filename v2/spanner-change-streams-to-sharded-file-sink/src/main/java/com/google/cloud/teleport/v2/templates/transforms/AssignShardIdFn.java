@@ -65,13 +65,21 @@ public class AssignShardIdFn
 
   private final String shardName;
 
+  private final String skipDirName;
+
   public AssignShardIdFn(
-      SpannerConfig spannerConfig, Schema schema, Ddl ddl, String shardingMode, String shardName) {
+      SpannerConfig spannerConfig,
+      Schema schema,
+      Ddl ddl,
+      String shardingMode,
+      String shardName,
+      String skipDirName) {
     this.spannerConfig = spannerConfig;
     this.schema = schema;
     this.ddl = ddl;
     this.shardingMode = shardingMode;
     this.shardName = shardName;
+    this.skipDirName = skipDirName;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -103,6 +111,17 @@ public class AssignShardIdFn
         return;
       }
       String shardIdColumn = getShardIdColumnForTableName(record.getTableName());
+
+      if (shardIdColumn.isEmpty()) {
+        LOG.warn(
+            "Writing record {} to skipped directory name {} since table not present in the session"
+                + " file.",
+            record,
+            skipDirName);
+        record.setShard(skipDirName);
+        c.output(record);
+        return;
+      }
 
       String keysJsonStr = record.getMods().get(0).getKeysJson();
       JsonNode keysJson = mapper.readTree(keysJsonStr);
@@ -141,13 +160,15 @@ public class AssignShardIdFn
 
   private String getShardIdColumnForTableName(String tableName) throws IllegalArgumentException {
     if (!schema.getSpannerToID().containsKey(tableName)) {
-      throw new IllegalArgumentException(
-          "Table " + tableName + " found in change record but not found in session file.");
+      LOG.warn(
+          "Table {} found in change record but not found in session file. Skipping record",
+          tableName);
+      return "";
     }
     String tableId = schema.getSpannerToID().get(tableName).getName();
     if (!schema.getSpSchema().containsKey(tableId)) {
-      throw new IllegalArgumentException(
-          "Table " + tableId + " not found in session file. Please provide a valid session file.");
+      LOG.warn("Table {} not found in session file. Skipping record.", tableId);
+      return "";
     }
     SpannerTable spTable = schema.getSpSchema().get(tableId);
     String shardColId = spTable.getShardIdColumn();

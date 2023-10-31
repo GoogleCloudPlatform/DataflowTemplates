@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,7 +98,11 @@ public class InputRecordProcessor {
       lagMetric.update(replicationLag); // update the lag metric
 
     } catch (Exception e) {
-      throw new RuntimeException("Failed to process records: " + e.getMessage());
+      LOG.error(
+          "The exception while processing shardId: {} is {} ",
+          shardId,
+          ExceptionUtils.getStackTrace(e));
+      throw new RuntimeException("Failed to process records: ", e);
     }
   }
 }
