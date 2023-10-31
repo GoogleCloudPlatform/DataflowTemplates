@@ -33,7 +33,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-/** Unit tests for {@link JsonStringToQueryMapperTest}. */
+/** Unit tests for {@link JsonStringToQueryMapper}. */
 @RunWith(JUnit4.class)
 public class JsonStringToQueryMapperTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();

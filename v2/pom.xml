@@ -72,28 +72,6 @@
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-            <exclusions>
-                <exclusion>
-                  <groupId>junit</groupId>
-                  <artifactId>junit</artifactId>
-                </exclusion>
-                <exclusion>
-                  <groupId>io.grpc</groupId>
-                  <artifactId>grpc-netty-shaded</artifactId>
-                </exclusion>
-                <exclusion>
-                  <groupId>io.grpc</groupId>
-                  <artifactId>grpc-core</artifactId>
-                </exclusion>
-                <exclusion>
-                  <groupId>io.grpc</groupId>
-                  <artifactId>grpc-api</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-sdks-java-io-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -107,6 +85,7 @@
             <!-- Direct runner included for local development and testing. -->
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-direct-java</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Test -->
