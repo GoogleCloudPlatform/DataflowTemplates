@@ -78,8 +78,16 @@ public @interface Template {
   /** Contact information for the Template. */
   String contactInformation() default "";
 
+  AdditionalDocumentationBlock[] additionalDocumentation() default {};
+
   /** Language in which the template is defined. */
   TemplateType type() default TemplateType.JAVA;
+
+  public @interface AdditionalDocumentationBlock {
+    String name();
+
+    String[] content() default "";
+  }
 
   /** Languages that are supported by templates. */
   enum TemplateType {

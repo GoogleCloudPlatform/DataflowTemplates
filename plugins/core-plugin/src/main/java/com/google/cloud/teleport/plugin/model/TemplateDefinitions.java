@@ -119,6 +119,14 @@ public class TemplateDefinitions {
     metadata.setPreview(templateAnnotation.preview());
     metadata.setRequirements(Arrays.asList(templateAnnotation.requirements()));
 
+    metadata.setAdditionalDocumentation(
+        Arrays.stream(templateAnnotation.additionalDocumentation())
+            .map(
+                block ->
+                    new ImageSpecAdditionalDocumentation(
+                        block.name(), Arrays.asList(block.content())))
+            .collect(Collectors.toList()));
+
     if (templateAnnotation.placeholderClass() != null
         && templateAnnotation.placeholderClass() != void.class) {
       metadata.setMainClass(templateAnnotation.placeholderClass().getName());

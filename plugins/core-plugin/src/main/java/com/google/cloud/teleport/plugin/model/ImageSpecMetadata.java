@@ -34,6 +34,7 @@ public class ImageSpecMetadata {
   private String module;
   private String documentationLink;
   private List<String> requirements;
+  private List<ImageSpecAdditionalDocumentation> additionalDocumentation;
   private boolean googleReleased;
   private boolean preview;
   private boolean udfSupport;
@@ -111,6 +112,15 @@ public class ImageSpecMetadata {
 
   public void setRequirements(List<String> requirements) {
     this.requirements = requirements;
+  }
+
+  public List<ImageSpecAdditionalDocumentation> getAdditionalDocumentation() {
+    return additionalDocumentation;
+  }
+
+  public void setAdditionalDocumentation(
+      List<ImageSpecAdditionalDocumentation> additionalDocumentation) {
+    this.additionalDocumentation = additionalDocumentation;
   }
 
   public String getModule() {

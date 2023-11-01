@@ -29,6 +29,16 @@
 </#list>
 </ul>
 
+<#if spec.metadata.additionalDocumentation?has_content>
+<#list spec.metadata.additionalDocumentation as docBlock>
+  <h2>${docBlock.name}</h2>
+  <ul>
+  <#list docBlock.content as docParagraph>
+    <li>${TemplateDocsUtils.wrapText(TemplateDocsUtils.replaceSiteTags(TemplateDocsUtils.replaceVariableInterpolationNames(docParagraph)), 100, "    ", true)}</li>
+  </#list>
+</#list>
+</#if>
+
 <h2>Template parameters</h2>
   {% dynamic setvar df_tab_name "param_table" %}
 <table>

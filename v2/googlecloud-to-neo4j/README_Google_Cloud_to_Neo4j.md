@@ -1,11 +1,15 @@
 
 Google Cloud to Neo4j template
 ---
-Copy data from Google Cloud (BigQuery, Text) into Neo4j.
+The Google Cloud to Neo4j template allows to import a dataset into a Neo4j
+database through a Dataflow job, sourcing data from CSV files hosted in Google
+Cloud Storage buckets. It also allows to manipulate and transform the data at
+various steps of the import. You can use the template for both first-time and
+incremental imports.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/googlecloud-to-neo4j)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Google_Cloud_to_Neo4j).
 
 :bulb: This is a generated documentation based
