@@ -1,5 +1,5 @@
 
-Cloud Bigtable change streams to BigQuery template
+Cloud Bigtable Change Streams to BigQuery template
 ---
 Streaming pipeline. Streams Bigtable data change records and writes them into
 BigQuery using Dataflow Runner V2.
