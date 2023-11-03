@@ -80,7 +80,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cdc_To_BigQuery_Template" \
--pl v2/cdc-agg \
+-pl v2/cdc-parent/cdc-change-applier \
 -am
 ```
 
@@ -178,6 +178,6 @@ mvn clean package -PtemplatesRun \
 -DjobName="cdc-to-bigquery-template-job" \
 -DtemplateName="Cdc_To_BigQuery_Template" \
 -Dparameters="inputTopics=$INPUT_TOPICS,inputSubscriptions=$INPUT_SUBSCRIPTIONS,changeLogDataset=$CHANGE_LOG_DATASET,replicaDataset=$REPLICA_DATASET,updateFrequencySecs=$UPDATE_FREQUENCY_SECS,useSingleTopic=$USE_SINGLE_TOPIC,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
--pl v2/cdc-agg \
+-pl v2/cdc-parent/cdc-change-applier \
 -am
 ```

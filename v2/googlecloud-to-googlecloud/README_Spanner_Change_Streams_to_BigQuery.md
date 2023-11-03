@@ -103,7 +103,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerMetadataInstanceId** (Spanner metadata instance ID): The Spanner instance to use for the change streams connector metadata table.
 * **spannerMetadataDatabase** (Spanner metadata database): The Spanner database to use for the change streams connector metadata table. For change streams tracking all tables in a database, we recommend putting the metadata table in a separate database.
 * **spannerChangeStreamName** (Spanner change stream): The name of the Spanner change stream to read from.
-* **bigQueryDataset** (BigQuery dataset): The BigQuery dataset for change streams output.
+* **bigQueryDataset** (BigQuery dataset): The BigQuery dataset for change streams output. Both the dataSetName and the full dataSetId (i.e. bigQueryProjectId.dataSetName) are acceptable.
 
 ### Optional Parameters
 

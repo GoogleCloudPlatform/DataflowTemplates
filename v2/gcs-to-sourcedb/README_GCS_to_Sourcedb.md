@@ -22,7 +22,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **GCSInputDirectoryPath** (GCS input directory path): Path from where to read the change stream files.
 * **spannerProjectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
 * **metadataInstance** (Cloud Spanner Instance to store the shard progress when reading from gcs): This is the instance to store the shard progress of the files processed.
-* **metadataDatabase** (Cloud Spanner Database to store the shard progress when reading from gcs): This is the database to store the shard progress of the files processed.
+* **metadataDatabase** (Cloud Spanner Database to store the shard progress when reading from gcs): This is the database to store  the shard progress of the files processed..
 
 ### Optional Parameters
 

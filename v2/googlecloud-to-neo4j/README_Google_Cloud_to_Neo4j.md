@@ -1,15 +1,15 @@
 
 Google Cloud to Neo4j template
 ---
-The Google Cloud to Neo4j template allows to import a dataset into a Neo4j
+The Google Cloud to Neo4j template lets you import a dataset into a Neo4j
 database through a Dataflow job, sourcing data from CSV files hosted in Google
-Cloud Storage buckets. It also allows to manipulate and transform the data at
-various steps of the import. You can use the template for both first-time and
-incremental imports.
+Cloud Storage buckets. It also lets you to manipulate and transform the data at
+various steps of the import. You can use the template for both first-time imports
+and incremental imports.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/googlecloud-to-neo4j)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/google-cloud-to-neo4j)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Google_Cloud_to_Neo4j).
 
 :bulb: This is a generated documentation based
@@ -20,15 +20,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **jobSpecUri** (Path to job configuration file): The path to the job specification file, which contains the configuration for source and target metadata.
-* **neo4jConnectionUri** (Path to Neo4j connection metadata): Path to Neo4j connection metadata JSON file.
+* **jobSpecUri** (Path to the job specification file): The path to the job specification file, which contains the configuration for source and target metadata.
+* **neo4jConnectionUri** (Path to the Neo4j connection metadata): The path to Neo4j connection metadata JSON file.
 
 ### Optional Parameters
 
 * **optionsJson** (Options JSON): Options JSON. Use runtime tokens. (Example: {token1:value1,token2:value2}). Defaults to empty.
 * **readQuery** (Query SQL): Override SQL query. Defaults to empty.
 * **inputFilePattern** (Path to Text File): Override text file pattern (Example: gs://your-bucket/path/*.json). Defaults to empty.
-* **disabledAlgorithms** (Disabled algorithms to override jdk.tls.disabledAlgorithms): Comma separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, as the algorithms disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4).
+* **disabledAlgorithms** (Disabled algorithms to override jdk.tls.disabledAlgorithms): Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4).
 * **extraFilesToStage** (Extra files to stage in the workers): Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id).
 
 

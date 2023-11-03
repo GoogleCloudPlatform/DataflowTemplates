@@ -1,5 +1,5 @@
 
-Cloud Bigtable change streams to PubSub template
+Cloud Bigtable Change Streams to PubSub template
 ---
 Streaming pipeline. Streams Bigtable data change records and writes them into
 PubSub using Dataflow Runner V2.

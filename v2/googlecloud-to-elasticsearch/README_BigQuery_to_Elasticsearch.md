@@ -18,17 +18,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **inputTableSpec** (BigQuery source table): BigQuery source table spec. (Example: bigquery-project:dataset.input_table).
 * **connectionUrl** (Elasticsearch URL or CloudID if using Elastic Cloud): Elasticsearch URL in the format https://hostname:[port] or specify CloudID if using Elastic Cloud (Example: https://elasticsearch-host:9200).
 * **apiKey** (Base64 Encoded API Key for access without requiring basic authentication): Base64 Encoded API Key for access without requiring basic authentication. Refer to: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 * **index** (Elasticsearch index): The index toward which the requests will be issued (Example: my-index).
 
 ### Optional Parameters
 
+* **inputTableSpec** (BigQuery source table): BigQuery source table spec. (Example: bigquery-project:dataset.input_table).
 * **outputDeadletterTable** (The dead-letter table name to output failed messages to BigQuery): Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. (Example: your-project-id:your-dataset.your-table-name).
 * **query** (Input SQL query.): Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table).
-* **queryLocation** (BigQuery geographic location where the query job  will be executed.): Needed when reading from an authorized view without underlying table's permission. (Example: US).
 * **useLegacySql** (Set to true to use legacy SQL): Set to true to use legacy SQL (only applicable if supplying query). Defaults to: false.
+* **queryLocation** (BigQuery geographic location where the query job will be executed.): Needed when reading from an authorized view without underlying table's permission. (Example: US).
 * **elasticsearchUsername** (Username for Elasticsearch endpoint): Username for Elasticsearch endpoint. Overrides ApiKey option if specified.
 * **elasticsearchPassword** (Password for Elasticsearch endpoint): Password for Elasticsearch endpoint. Overrides ApiKey option if specified.
 * **batchSize** (Batch Size): Batch Size used for batch insertion of messages into Elasticsearch. Defaults to: 1000.
@@ -147,16 +147,16 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/BigQuery_to_Elasticsearch"
 
 ### Required
-export INPUT_TABLE_SPEC=<inputTableSpec>
 export CONNECTION_URL=<connectionUrl>
 export API_KEY=<apiKey>
 export INDEX=<index>
 
 ### Optional
+export INPUT_TABLE_SPEC=<inputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export QUERY=<query>
-export QUERY_LOCATION=<queryLocation>
 export USE_LEGACY_SQL=false
+export QUERY_LOCATION=<queryLocation>
 export ELASTICSEARCH_USERNAME=<elasticsearchUsername>
 export ELASTICSEARCH_PASSWORD=<elasticsearchPassword>
 export BATCH_SIZE=1000
@@ -190,8 +190,8 @@ gcloud dataflow flex-template run "bigquery-to-elasticsearch-job" \
   --parameters "inputTableSpec=$INPUT_TABLE_SPEC" \
   --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
   --parameters "query=$QUERY" \
-  --parameters "queryLocation=$QUERY_LOCATION" \
   --parameters "useLegacySql=$USE_LEGACY_SQL" \
+  --parameters "queryLocation=$QUERY_LOCATION" \
   --parameters "connectionUrl=$CONNECTION_URL" \
   --parameters "apiKey=$API_KEY" \
   --parameters "elasticsearchUsername=$ELASTICSEARCH_USERNAME" \
@@ -238,16 +238,16 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export INPUT_TABLE_SPEC=<inputTableSpec>
 export CONNECTION_URL=<connectionUrl>
 export API_KEY=<apiKey>
 export INDEX=<index>
 
 ### Optional
+export INPUT_TABLE_SPEC=<inputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export QUERY=<query>
-export QUERY_LOCATION=<queryLocation>
 export USE_LEGACY_SQL=false
+export QUERY_LOCATION=<queryLocation>
 export ELASTICSEARCH_USERNAME=<elasticsearchUsername>
 export ELASTICSEARCH_PASSWORD=<elasticsearchPassword>
 export BATCH_SIZE=1000
@@ -281,7 +281,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigquery-to-elasticsearch-job" \
 -DtemplateName="BigQuery_to_Elasticsearch" \
--Dparameters="inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,queryLocation=$QUERY_LOCATION,useLegacySql=$USE_LEGACY_SQL,connectionUrl=$CONNECTION_URL,apiKey=$API_KEY,elasticsearchUsername=$ELASTICSEARCH_USERNAME,elasticsearchPassword=$ELASTICSEARCH_PASSWORD,index=$INDEX,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxRetryAttempts=$MAX_RETRY_ATTEMPTS,maxRetryDuration=$MAX_RETRY_DURATION,propertyAsIndex=$PROPERTY_AS_INDEX,javaScriptIndexFnGcsPath=$JAVA_SCRIPT_INDEX_FN_GCS_PATH,javaScriptIndexFnName=$JAVA_SCRIPT_INDEX_FN_NAME,propertyAsId=$PROPERTY_AS_ID,javaScriptIdFnGcsPath=$JAVA_SCRIPT_ID_FN_GCS_PATH,javaScriptIdFnName=$JAVA_SCRIPT_ID_FN_NAME,javaScriptTypeFnGcsPath=$JAVA_SCRIPT_TYPE_FN_GCS_PATH,javaScriptTypeFnName=$JAVA_SCRIPT_TYPE_FN_NAME,javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH,javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME,usePartialUpdate=$USE_PARTIAL_UPDATE,bulkInsertMethod=$BULK_INSERT_METHOD,trustSelfSignedCerts=$TRUST_SELF_SIGNED_CERTS,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
+-Dparameters="inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,connectionUrl=$CONNECTION_URL,apiKey=$API_KEY,elasticsearchUsername=$ELASTICSEARCH_USERNAME,elasticsearchPassword=$ELASTICSEARCH_PASSWORD,index=$INDEX,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxRetryAttempts=$MAX_RETRY_ATTEMPTS,maxRetryDuration=$MAX_RETRY_DURATION,propertyAsIndex=$PROPERTY_AS_INDEX,javaScriptIndexFnGcsPath=$JAVA_SCRIPT_INDEX_FN_GCS_PATH,javaScriptIndexFnName=$JAVA_SCRIPT_INDEX_FN_NAME,propertyAsId=$PROPERTY_AS_ID,javaScriptIdFnGcsPath=$JAVA_SCRIPT_ID_FN_GCS_PATH,javaScriptIdFnName=$JAVA_SCRIPT_ID_FN_NAME,javaScriptTypeFnGcsPath=$JAVA_SCRIPT_TYPE_FN_GCS_PATH,javaScriptTypeFnName=$JAVA_SCRIPT_TYPE_FN_NAME,javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH,javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME,usePartialUpdate=$USE_PARTIAL_UPDATE,bulkInsertMethod=$BULK_INSERT_METHOD,trustSelfSignedCerts=$TRUST_SELF_SIGNED_CERTS,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
 -pl v2/googlecloud-to-elasticsearch \
 -am
 ```

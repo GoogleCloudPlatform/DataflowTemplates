@@ -41,7 +41,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/DataplexFileFormatConversion.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/dataplex/src/main/java/com/google/cloud/teleport/v2/templates/DataplexFileFormatConversion.java)
 
 ### Templates Plugin
 
@@ -77,7 +77,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Dataplex_File_Format_Conversion" \
--pl v2/googlecloud-to-googlecloud \
+-pl v2/dataplex \
 -am
 ```
 
@@ -163,6 +163,6 @@ mvn clean package -PtemplatesRun \
 -DjobName="dataplex-file-format-conversion-job" \
 -DtemplateName="Dataplex_File_Format_Conversion" \
 -Dparameters="inputAssetOrEntitiesList=$INPUT_ASSET_OR_ENTITIES_LIST,outputFileFormat=$OUTPUT_FILE_FORMAT,outputFileCompression=$OUTPUT_FILE_COMPRESSION,outputAsset=$OUTPUT_ASSET,writeDisposition=$WRITE_DISPOSITION,updateDataplexMetadata=$UPDATE_DATAPLEX_METADATA" \
--pl v2/googlecloud-to-googlecloud \
+-pl v2/dataplex \
 -am
 ```
