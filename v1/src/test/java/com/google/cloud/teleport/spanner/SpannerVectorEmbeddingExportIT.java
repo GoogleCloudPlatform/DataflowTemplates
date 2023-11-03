@@ -85,7 +85,7 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
 
   @Test
   public void testSpannerToGCSJSON() throws IOException {
-    String tableName = testName + "_Documents";
+    String tableName = "testSpannerToGCSJSON_Documents" + RandomStringUtils.randomNumeric(5);
     String createDocumentsTableStatement =
         String.format(
             "CREATE TABLE `%s` (\n"
@@ -131,7 +131,9 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
   @Test
   public void testPostgresSpannerToGCSJSON() throws IOException {
     // converting to lowercase for PG
-    String tableName = StringUtils.lowerCase(testName + "_Documents");
+    String tableName =
+        StringUtils.lowerCase(
+            "testPostgresSpannerToGCSJSON_Documents" + RandomStringUtils.randomNumeric(5));
     String createDocumentsTableStatement =
         String.format(
             "CREATE TABLE %s (\n"
