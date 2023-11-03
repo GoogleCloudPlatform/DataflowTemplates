@@ -67,7 +67,6 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
     return List.of(true, false);
   }
 
-
   @Before
   public void setup() throws IOException {
     // Set up resource managers
