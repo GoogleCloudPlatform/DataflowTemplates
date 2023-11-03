@@ -29,13 +29,12 @@
   <artifactId>cdc-parent</artifactId>
   <inceptionYear>2019</inceptionYear>
   <packaging>pom</packaging>
+
   <properties>
     <debezium.version>0.9.5.Final</debezium.version>
-    <data-catalog.version>0.35.0</data-catalog.version>
-
     <licenseHeaderFile>../../JAVA_LICENSE_HEADER</licenseHeaderFile>
-
   </properties>
+
   <licenses>
     <license>
       <name>The Apache Software License, Version 2.0</name>
@@ -101,12 +100,6 @@
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.version}</version>
         <scope>compile</scope>
-      </dependency>
-      <!-- TODO(bvolpato): remove hardcoded version -->
-      <dependency>
-        <groupId>com.google.api.grpc</groupId>
-        <artifactId>grpc-google-cloud-datacatalog-v1beta1</artifactId>
-        <version>${data-catalog.version}</version>
       </dependency>
 
       <!-- Use specific versions of the driver, matching Debezium -->
