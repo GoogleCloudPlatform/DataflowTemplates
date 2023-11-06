@@ -47,18 +47,25 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
 
 /** Integration test for {@link SpannerVectorEmbeddingExportIT Spanner to GCS JSON} template. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SpannerVectorEmbeddingExport.class)
-@RunWith(JUnit4.class)
+@RunWith(Parameterized.class)
 public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
 
   private static final int MESSAGES_COUNT = 100;
 
   private SpannerResourceManager googleSqlResourceManager;
   private SpannerResourceManager postgresResourceManager;
+
+  @Parameterized.Parameter public Boolean dataBoostEnabled;
+
+  @Parameterized.Parameters(name = "data-boost-{0}")
+  public static List<Boolean> testParameters() {
+    return List.of(true, false);
+  }
 
   @Before
   public void setup() throws IOException {
@@ -78,7 +85,7 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
 
   @Test
   public void testSpannerToGCSJSON() throws IOException {
-    String tableName = testName + "_Documents";
+    String tableName = "testSpannerToGCSJSON_Documents" + RandomStringUtils.randomNumeric(5);
     String createDocumentsTableStatement =
         String.format(
             "CREATE TABLE `%s` (\n"
@@ -99,6 +106,7 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
             .addParameter("spannerDatabaseId", googleSqlResourceManager.getDatabaseId())
             .addParameter("spannerTable", tableName)
             .addParameter("spannerColumnsToExport", "id,embedding: embedding, restricts")
+            .addParameter("spannerDataBoostEnabled", Boolean.toString(dataBoostEnabled))
             .addParameter("gcsOutputFilePrefix", "vectors-")
             .addParameter("gcsOutputFolder", getGcsPath("output/"));
 
@@ -123,7 +131,9 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
   @Test
   public void testPostgresSpannerToGCSJSON() throws IOException {
     // converting to lowercase for PG
-    String tableName = StringUtils.lowerCase(testName + "_Documents");
+    String tableName =
+        StringUtils.lowerCase(
+            "testPostgresSpannerToGCSJSON_Documents" + RandomStringUtils.randomNumeric(5));
     String createDocumentsTableStatement =
         String.format(
             "CREATE TABLE %s (\n"
@@ -144,6 +154,7 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
             .addParameter("spannerDatabaseId", postgresResourceManager.getDatabaseId())
             .addParameter("spannerTable", tableName)
             .addParameter("spannerColumnsToExport", "id,embedding: embedding, restricts")
+            .addParameter("spannerDataBoostEnabled", Boolean.toString(dataBoostEnabled))
             .addParameter("gcsOutputFilePrefix", "vectors-")
             .addParameter("gcsOutputFolder", getGcsPath("output/"));
 
