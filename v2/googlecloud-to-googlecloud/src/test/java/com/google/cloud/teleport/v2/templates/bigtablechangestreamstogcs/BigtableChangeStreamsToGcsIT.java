@@ -453,7 +453,7 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
   }
 
   private String generateTableName() {
-    return "table" + System.nanoTime();
+    return "table_" + randomAlphanumeric(8).toLowerCase() + "_" + System.nanoTime();
   }
 
   @Test

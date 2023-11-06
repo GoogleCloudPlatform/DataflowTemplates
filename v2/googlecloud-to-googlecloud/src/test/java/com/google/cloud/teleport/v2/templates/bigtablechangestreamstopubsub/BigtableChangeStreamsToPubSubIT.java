@@ -771,10 +771,10 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     appProfileId = generateAppProfileId();
 
-    String suffix = String.valueOf(System.nanoTime());
+    String suffix = randomAlphanumeric(8).toLowerCase() + "_" + System.nanoTime();
     String topicNameToCreate = "topic-" + suffix;
     String subscriptionNameToCreate = "subscription-" + suffix;
-    srcTable = "src" + suffix;
+    srcTable = "src_" + suffix;
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
     clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
