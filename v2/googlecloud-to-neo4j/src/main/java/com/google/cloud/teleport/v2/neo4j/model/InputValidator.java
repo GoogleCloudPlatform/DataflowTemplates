@@ -17,9 +17,11 @@ package com.google.cloud.teleport.v2.neo4j.model;
 
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
@@ -32,7 +34,6 @@ import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -274,23 +275,26 @@ public class InputValidator {
           .add(mapping);
     }
 
-    // relationship validation checks..
     if (StringUtils.isBlank(
-        ModelUtils.getFirstFieldOrConstant(
-            target, FragmentType.source, Arrays.asList(RoleType.key)))) {
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.source, List.of(RoleType.key)))) {
       validationMessages.add(
           "Could not find target key field for relationship: " + target.getName());
     }
     if (StringUtils.isBlank(
-        ModelUtils.getFirstFieldOrConstant(
-            target, FragmentType.target, Arrays.asList(RoleType.key)))) {
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.target, List.of(RoleType.key)))) {
       validationMessages.add(
           "Could not find target key field for relationship: " + target.getName());
     }
     if (StringUtils.isBlank(
-        ModelUtils.getFirstFieldOrConstant(
-            target, FragmentType.rel, Arrays.asList(RoleType.type)))) {
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.rel, List.of(RoleType.type)))) {
       validationMessages.add("Could not find relationship type: " + target.getName());
+    }
+    if (target.getSaveMode() == SaveMode.merge
+        && target.getEdgeNodesMatchMode() == EdgeNodesSaveMode.create) {
+      validationMessages.add(
+          "Edge target "
+              + target.getName()
+              + " uses incompatible save modes: either change the target's save mode to create or the edge node mode to match or merge");
     }
   }
 

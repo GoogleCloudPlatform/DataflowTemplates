@@ -19,7 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
-import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.util.UUID;
@@ -59,7 +59,7 @@ public class TargetMapperTest {
 
     Target target = TargetMapper.fromJson(object);
 
-    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesMatchMode.merge);
+    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesSaveMode.merge);
   }
 
   @Test
@@ -71,7 +71,7 @@ public class TargetMapperTest {
 
     Target target = TargetMapper.fromJson(object);
 
-    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesMatchMode.merge);
+    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesSaveMode.merge);
   }
 
   @Test
@@ -87,13 +87,23 @@ public class TargetMapperTest {
   }
 
   @Test
-  public void setsDefaultMatchModeForEdgeTargets() {
+  public void setsDefaultNodeMatchModeForEdgeTargetsToMerge() {
     JSONObject object = jsonTargetOfType("edge");
     object.getJSONObject("edge").put("mode", "merge");
 
     Target target = TargetMapper.fromJson(object);
 
-    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesMatchMode.match);
+    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesSaveMode.match);
+  }
+
+  @Test
+  public void setsDefaultNodeMatchModeForEdgeTargetsToCreate() {
+    JSONObject object = jsonTargetOfType("edge");
+    object.getJSONObject("edge").put("mode", "append");
+
+    Target target = TargetMapper.fromJson(object);
+
+    assertThat(target.getEdgeNodesMatchMode()).isEqualTo(EdgeNodesSaveMode.create);
   }
 
   @Test

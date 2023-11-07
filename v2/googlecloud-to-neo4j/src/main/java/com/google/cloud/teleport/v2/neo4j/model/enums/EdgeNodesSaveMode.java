@@ -15,7 +15,20 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.enums;
 
-public enum EdgeNodesMatchMode {
+public enum EdgeNodesSaveMode {
+  create,
   match,
-  merge
+  merge;
+
+  public static EdgeNodesSaveMode defaultFor(SaveMode mode) {
+    if (mode == SaveMode.merge) {
+      return match;
+    }
+    if (mode == SaveMode.append) {
+      return create;
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            "Cannot determine default edge node save mode: unsupported save mode %s", mode.name()));
+  }
 }
