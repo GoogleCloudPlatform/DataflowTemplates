@@ -765,7 +765,7 @@ public final class CSVRecordToMutationTest {
         CSVParser.parse(
                 "123,a string,'another string',1.23,True,2018-12-31T23:59:59Z,1567637083"
                     + ",aGk=,-439.25335679,'{\"a\": null, \"b\": [true, false, 14.234"
-                    + ", \"dsafaaf\"]}',1910-01-01",
+                    + ", \"dsafaaf\"]}',1910-01-01,2017-10-28T12:59:59Z",
                 csvFormat.withQuote('\'').withTrailingDelimiter(true))
             .getRecords()
             .get(0);
@@ -818,6 +818,8 @@ public final class CSVRecordToMutationTest {
                 .to("{\"a\": null, \"b\": [true, false, 14.234, \"dsafaaf\"]}")
                 .set("date_col")
                 .to(Value.date(Date.parseDate("1910-01-01")))
+                .set("commit_timestamp_col")
+                .to(Value.timestamp(Timestamp.parseTimestamp("2017-10-28T12:59:59Z")))
                 .build());
 
     pipeline.run();
@@ -1120,6 +1122,9 @@ public final class CSVRecordToMutationTest {
             .endColumn()
             .column("date_col")
             .pgDate()
+            .endColumn()
+            .column("commit_timestamp_col")
+            .pgSpannerCommitTimestamp()
             .endColumn()
             .primaryKey()
             .asc("int_col")

@@ -101,6 +101,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
           break;
         case TIMESTAMP:
         case PG_TIMESTAMPTZ:
+        case PG_SPANNER_COMMIT_TIMESTAMP:
           builder
               .set(column.name())
               .to(readTimestamp(record, avroType, logicalType, fieldName).orElse(null));
@@ -171,6 +172,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                 break;
               case TIMESTAMP:
               case PG_TIMESTAMPTZ:
+              case PG_SPANNER_COMMIT_TIMESTAMP:
                 builder
                     .set(column.name())
                     .toTimestampArray(

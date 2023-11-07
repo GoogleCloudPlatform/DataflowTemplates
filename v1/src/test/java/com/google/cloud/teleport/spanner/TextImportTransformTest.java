@@ -381,12 +381,12 @@ public class TextImportTransformTest {
                   + " [{\"column_name\": \"int_col\", \"type_name\": \"bigint\"},"
                   + " {\"column_name\":\"str_10_col\", \"type_name\": \"character varying(10)\"},"
                   + " {\"column_name\":\"float_col\", \"type_name\": \"double precision\"},"
-                  + " {\"column_name\":\"bool_col\", \"type_name\": \"boolean\"},"
-                  + " {\"column_name\": \"byte_col\", \"type_name\": \"bytea\"},"
-                  + " {\"column_name\": \"timestamp_col\","
-                  + " \"type_name\":\"timestamp with time zone\"},"
-                  + " {\"column_name\": \"numeric_col\", \"type_name\": \"numeric\"},"
-                  + " {\"column_name\": \"date_col\", \"type_name\": \"date\"}]}]}",
+                  + " {\"column_name\":\"bool_col\", \"type_name\": \"boolean\"}, {\"column_name\":"
+                  + " \"byte_col\", \"type_name\": \"bytea\"}, {\"column_name\": \"timestamp_col\","
+                  + " \"type_name\":\"timestamp with time zone\"}, {\"column_name\":"
+                  + " \"numeric_col\", \"type_name\": \"numeric\"}, {\"column_name\": \"date_col\","
+                  + " \"type_name\": \"date\"}, {\"column_name\": \"commit_timestamp_col\","
+                  + " \"type_name\": \"spanner.commit_timestamp\"}]}]}",
               f11.toString());
       writer.write(jsonString, 0, jsonString.length());
     }
@@ -535,6 +535,9 @@ public class TextImportTransformTest {
             .column("date_col")
             .pgDate()
             .endColumn()
+            .column("commit_timestamp_col")
+            .pgSpannerCommitTimestamp()
+            .endColumn()
             .primaryKey()
             .asc("int_col")
             .end()
@@ -571,6 +574,9 @@ public class TextImportTransformTest {
         ResolveDataFiles.parseSpannerDataType("NUMERIC", Dialect.GOOGLE_STANDARD_SQL));
     assertEquals(
         Code.JSON, ResolveDataFiles.parseSpannerDataType("JSON", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.PG_SPANNER_COMMIT_TIMESTAMP,
+        ResolveDataFiles.parseSpannerDataType("spanner.commit_timestamp", Dialect.POSTGRESQL));
     assertThrows(
         IllegalArgumentException.class,
         () -> ResolveDataFiles.parseSpannerDataType("unknown", Dialect.GOOGLE_STANDARD_SQL));

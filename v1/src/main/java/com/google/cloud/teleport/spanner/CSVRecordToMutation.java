@@ -224,6 +224,7 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
           break;
         case TIMESTAMP:
         case PG_TIMESTAMPTZ:
+        case PG_SPANNER_COMMIT_TIMESTAMP:
           if (isNullValue) {
             columnValue = Value.timestamp(null);
           } else {

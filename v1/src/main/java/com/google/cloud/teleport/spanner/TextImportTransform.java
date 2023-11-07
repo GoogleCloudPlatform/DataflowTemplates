@@ -502,6 +502,9 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.PG_TEXT;
       } else if (columnType.equalsIgnoreCase("date") && dialect == Dialect.POSTGRESQL) {
         return Code.PG_DATE;
+      } else if (columnType.equalsIgnoreCase("spanner.commit_timestamp")
+          && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_SPANNER_COMMIT_TIMESTAMP;
       } else {
         throw new IllegalArgumentException(
             "Unrecognized or unsupported column data type: " + columnType);

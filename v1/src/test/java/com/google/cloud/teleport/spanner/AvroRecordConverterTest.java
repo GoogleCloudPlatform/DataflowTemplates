@@ -685,6 +685,100 @@ public class AvroRecordConverterTest {
   }
 
   @Test
+  public void pgParseTimestamp() {
+    String colName = "timestamp";
+    String expectedTimestampValue = "2019-02-13T01:00:00Z";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder.name("record").column(colName).type(Type.pgTimestamptz()).endColumn();
+
+    // string to Timestamp
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING))
+            .set(colName, new Utf8(expectedTimestampValue))
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(
+        Timestamp.parseTimestamp(expectedTimestampValue),
+        mutation.asMap().get(colName).getTimestamp());
+
+    // Longs as microsecond Timestamps.
+    Timestamp timestamp = Timestamp.parseTimestamp(expectedTimestampValue);
+    Long timestampMicrosecond = timestamp.getSeconds() * 1000000L + timestamp.getNanos() / 1000;
+    avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, LONG))
+            .set(colName, timestampMicrosecond)
+            .build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(timestamp, mutation.asMap().get(colName).getTimestamp());
+
+    // With logical type
+    Schema schema = createAvroSchema(colName, LONG, TIMESTAMP_MICROS_LOGICAL_TYPE);
+    avroRecord = new GenericRecordBuilder(schema).set(colName, timestampMicrosecond).build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(timestamp, mutation.asMap().get(colName).getTimestamp());
+
+    // Longs as millisecond Timestamps.
+    schema = createAvroSchema(colName, LONG, TIMESTAMP_MILLIS_LOGICAL_TYPE);
+    Long timestampMilliSecond = timestamp.getSeconds() * 1000 + timestamp.getNanos() / 1000000L;
+    avroRecord = new GenericRecordBuilder(schema).set(colName, timestampMilliSecond).build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(timestamp, mutation.asMap().get(colName).getTimestamp());
+
+    // Other types throw exception.
+    schema = createAvroSchema(colName, DOUBLE);
+    final GenericRecord avroRecord1 = new GenericRecordBuilder(schema).set(colName, 1.1).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+  }
+
+  @Test
+  public void pgSpannerCommitTimestamp() {
+    String colName = "timestamp";
+    String expectedTimestampValue = "2019-02-13T01:00:00Z";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder.name("record").column(colName).type(Type.pgSpannerCommitTimestamp()).endColumn();
+
+    // string to Timestamp
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING))
+            .set(colName, new Utf8(expectedTimestampValue))
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(
+        Timestamp.parseTimestamp(expectedTimestampValue),
+        mutation.asMap().get(colName).getTimestamp());
+
+    // Longs as microsecond Timestamps.
+    Timestamp timestamp = Timestamp.parseTimestamp(expectedTimestampValue);
+    Long timestampMicrosecond = timestamp.getSeconds() * 1000000L + timestamp.getNanos() / 1000;
+    avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, LONG))
+            .set(colName, timestampMicrosecond)
+            .build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(timestamp, mutation.asMap().get(colName).getTimestamp());
+
+    // With logical type
+    Schema schema = createAvroSchema(colName, LONG, TIMESTAMP_MICROS_LOGICAL_TYPE);
+    avroRecord = new GenericRecordBuilder(schema).set(colName, timestampMicrosecond).build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(timestamp, mutation.asMap().get(colName).getTimestamp());
+
+    // Longs as millisecond Timestamps.
+    schema = createAvroSchema(colName, LONG, TIMESTAMP_MILLIS_LOGICAL_TYPE);
+    Long timestampMilliSecond = timestamp.getSeconds() * 1000 + timestamp.getNanos() / 1000000L;
+    avroRecord = new GenericRecordBuilder(schema).set(colName, timestampMilliSecond).build();
+    mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(timestamp, mutation.asMap().get(colName).getTimestamp());
+
+    // Other types throw exception.
+    schema = createAvroSchema(colName, DOUBLE);
+    final GenericRecord avroRecord1 = new GenericRecordBuilder(schema).set(colName, 1.1).build();
+    assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+  }
+
+  @Test
   public void dateArray() {
     String colName = "arrayofdate";
     Schema schema = createArrayAvroSchema(colName, STRING);
