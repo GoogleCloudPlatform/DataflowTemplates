@@ -201,8 +201,12 @@ public interface DataplexJdbcIngestionOptions
       helpText =
           "The partition column on which the partition is based. The column type must be of"
               + " timestamp/date format.")
+  @SuppressWarnings(
+      "SpellCheckingInspection") // can not fix typo in the name as it affects parameters
   String getParitionColumn();
 
+  @SuppressWarnings(
+      "SpellCheckingInspection") // can not fix typo in the name as it affects parameters
   void setParitionColumn(String partitionColumn);
 
   @TemplateParameter.Enum(

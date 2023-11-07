@@ -103,14 +103,14 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
         // TODO(pabloem, dhercher): Use a Beam standard transform once possible
         // TODO(pabloem, dhercher): Add a _metadata attribute to track whether a row comes from DLQ.
         TupleTag<String> fileContents = new TupleTag<String>();
-        TupleTag<Metadata> fileMetadatas = new TupleTag<Metadata>();
+        TupleTag<Metadata> fileMetadata = new TupleTag<Metadata>();
         PCollectionTuple results =
             input.apply(
-                ParDo.of(new MoveAndConsumeFn(fileContents, fileMetadatas))
-                    .withOutputTags(fileContents, TupleTagList.of(fileMetadatas)));
+                ParDo.of(new MoveAndConsumeFn(fileContents, fileMetadata))
+                    .withOutputTags(fileContents, TupleTagList.of(fileMetadata)));
 
         results
-            .get(fileMetadatas)
+            .get(fileMetadata)
             .setCoder(MetadataCoder.of())
             .apply("ReshuffleFiles", Reshuffle.viaRandomKey())
             .apply(ParDo.of(new RemoveFiles()));
@@ -148,7 +148,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
     }
   }
 
-  // TODO(pabloen): Switch over to use FileIO after BEAM-10246
+  // TODO(pabloem): Switch over to use FileIO after BEAM-10246
   private static class MoveAndConsumeFn extends DoFn<Metadata, String> {
 
     private final Counter reconsumedElements =

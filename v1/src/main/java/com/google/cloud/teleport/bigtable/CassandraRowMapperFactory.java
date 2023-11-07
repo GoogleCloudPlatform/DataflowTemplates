@@ -22,7 +22,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 
 /**
  * The CassandraRowMapperFactory is a factory method used to inject the {@link CassandraRowMapperFn}
- * into the CassandaIO.
+ * into the CassandraIO.
  *
  * @see CassandraRowMapperFn
  */

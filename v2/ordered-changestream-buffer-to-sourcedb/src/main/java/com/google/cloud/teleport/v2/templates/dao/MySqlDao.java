@@ -50,11 +50,11 @@ public class MySqlDao implements Serializable {
     ConnectionFactory driverManagerConnectionFactory =
         new DriverManagerConnectionFactory(sqlUrl, sqlUser, sqlPasswd);
 
-    PoolableConnectionFactory poolfactory =
+    PoolableConnectionFactory poolFactory =
         new PoolableConnectionFactory(driverManagerConnectionFactory, null);
-    ObjectPool connectionPool = new GenericObjectPool(poolfactory);
+    ObjectPool connectionPool = new GenericObjectPool(poolFactory);
 
-    poolfactory.setPool(connectionPool);
+    poolFactory.setPool(connectionPool);
     try {
       Class.forName("org.apache.commons.dbcp2.PoolingDriver");
     } catch (ClassNotFoundException e) {

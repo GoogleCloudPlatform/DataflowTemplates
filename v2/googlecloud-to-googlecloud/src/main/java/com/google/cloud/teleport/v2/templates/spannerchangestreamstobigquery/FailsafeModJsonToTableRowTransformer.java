@@ -358,7 +358,7 @@ public final class FailsafeModJsonToTableRowTransformer {
             pkColumns.add(spannerColumnObj);
           }
 
-          // Create an empty list of non-pk columnsa
+          // Create an empty list of non-pk columns
           List<TrackedSpannerColumn> nonPkColumns = new ArrayList<>();
           // Introduce the new table into spannerTableByName.
           TrackedSpannerTable spannerTableObj =

@@ -373,7 +373,7 @@ public final class ExportRelatedTablesCheckTest {
   }
 
   /* Validates that pipeline executes full-db export when --tableNames and
-   * --shouldExportRelatedTables paramters are not filled */
+   * --shouldExportRelatedTables parameters are not filled */
   @Test
   public void exportDbWithoutTableNamesAndFlag_exportsFullDb() throws Exception {
     // spotless:off

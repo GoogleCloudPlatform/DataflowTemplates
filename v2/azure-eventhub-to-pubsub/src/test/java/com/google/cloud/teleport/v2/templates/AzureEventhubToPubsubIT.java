@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Integration test for {@link AzureEventhubToPubsub} (AzureEventhub_to_Pubsub). Its important to
- * note that Azure Eventhub Namespace and Evethub should be created before starting this pipeline.
+ * note that Azure Eventhub Namespace and Eventhub should be created before starting this pipeline.
  *
  * <p># Parameter required within code eventHubNameSpaceURL: EventHub name space URL of the form-
  * mynamespace.servicebus.windows.net:9093 secret: Secret name which stores the connection string to

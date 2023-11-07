@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
 public class MongoDbUtils implements Serializable {
 
   /**
-   * Returns the Table schema for BiQquery table based on user input The tabble schema can be a 3
+   * Returns the Table schema for BiQquery table based on user input The table schema can be a 3
    * column table with _id, document as a Json string and timestamp by default Or the Table schema
    * can be flattened version of the document with each field as a column for userOption "FLATTEN".
    */

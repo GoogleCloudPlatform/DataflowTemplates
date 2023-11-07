@@ -433,7 +433,7 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
     List<String> statements = new ArrayList<>();
     spannerServer.createDatabase(testMetadataDatabase, statements);
 
-    // Create databse, table, change stream, etc.
+    // Create database, table, change stream, etc.
     final String createTable =
         "CREATE TABLE "
             + TEST_TABLE

@@ -129,7 +129,7 @@ public class ProcessingContextGenerator {
         if (shardProgress != null) {
           Instant shardStartTimeInst = new Instant(shardProgress.getStart().toSqlTimestamp());
           shardStartTime = shardStartTimeInst.toString();
-          LOG.info(" The shard is startime is : {}", shardStartTime);
+          LOG.info(" The shard startTime is : {}", shardStartTime);
         } else {
           LOG.info(" Skipping non-reprocess shard: {}", shard);
           continue; // this shard was not marked for reprocess

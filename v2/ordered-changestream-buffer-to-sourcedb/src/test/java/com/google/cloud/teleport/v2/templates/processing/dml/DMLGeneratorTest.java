@@ -243,7 +243,7 @@ public final class DMLGeneratorTest {
   }
 
   @Test
-  public void allDataypesDML() throws Exception {
+  public void allDataTypesDML() throws Exception {
     Schema schema = SessionFileReader.read("src/test/resources/allDatatypeSession.json");
     List<String> parsedRec = null;
 

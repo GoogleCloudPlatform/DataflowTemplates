@@ -89,7 +89,7 @@ public class ProcessingContext implements Serializable {
     if ("Kafka".equals(bufferType)) {
       return "{ Shard details :"
           + shard.toString()
-          + " kakfaClusterDetails: "
+          + " kafkaClusterDetails: "
           + kafkaConnectionProfile.toString()
           + " schema: "
           + schema.toString()

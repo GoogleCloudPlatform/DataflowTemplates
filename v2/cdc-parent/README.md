@@ -166,7 +166,7 @@ such as the offset flush interval (Debezium's `offset.flush.interval.ms` propert
 To give parameters to the connector to be passed directly to Debezium, prefix
 them with `debezium.` in the properties file. For example, by adding the
 following line in the properties file, you can set the offset flush interval to
-500 miliseconds:
+500 milliseconds:
 
 ```
 debezium.offset.flush.interval.ms=500

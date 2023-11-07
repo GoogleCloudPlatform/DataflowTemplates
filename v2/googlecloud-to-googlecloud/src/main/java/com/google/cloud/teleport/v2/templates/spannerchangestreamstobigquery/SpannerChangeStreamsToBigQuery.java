@@ -66,7 +66,7 @@ import org.slf4j.LoggerFactory;
 // TODO(haikuo-google): Add README.
 // TODO(haikuo-google): Add stackdriver metrics.
 // TODO(haikuo-google): Ideally side input should be used to store schema information and shared
-// accrss DoFns, but since side input fix is not yet deployed at the moment, we read schema
+// accross DoFns, but since side input fix is not yet deployed at the moment, we read schema
 // information in the beginning of the DoFn as a work around. We should use side input instead when
 // it's available.
 // TODO(haikuo-google): Test the case where tables or columns are added while the pipeline is

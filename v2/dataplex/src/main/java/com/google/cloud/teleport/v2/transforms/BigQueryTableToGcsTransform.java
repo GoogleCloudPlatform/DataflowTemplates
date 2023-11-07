@@ -225,10 +225,10 @@ public class BigQueryTableToGcsTransform
 
   /**
    * When Beam's BigQueryIO reads from BQ it derives the Avro schema by itself, where it maps BQ's
-   * `DATE` type to Avro's `string` type, so the GenericRecords outputed by the BigQueryIO contain
+   * `DATE` type to Avro's `string` type, so the GenericRecords outputted by the BigQueryIO contain
    * `string` fields for the `DATE` columns. The Avro schema obtained from the BQ directly -- {@code
    * table.getSchema()} has the `DATE` columns mapped to type Avro's `int` with logical type `date`.
-   * To fix this mismatch this cmethod converts the `string` dates fields to `int` with logical type
+   * To fix this mismatch this method converts the `string` dates fields to `int` with logical type
    * `date` fields.
    *
    * <p>Note that for the TIMESTAMP type both Beam's BigQueryIO and BQ API map it to `long`,and for

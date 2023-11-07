@@ -122,7 +122,7 @@ public class FirestoreConverters {
      */
     @Hidden
     @Deprecated
-    void setDatastoreReadNamespace(ValueProvider<String> datstoreReadNamespace);
+    void setDatastoreReadNamespace(ValueProvider<String> datastoreReadNamespace);
 
     @TemplateParameter.Text(
         order = 4,
@@ -171,7 +171,7 @@ public class FirestoreConverters {
      */
     @Hidden
     @Deprecated
-    void setDatastoreWriteProjectId(ValueProvider<String> datstoreWriteProjectId);
+    void setDatastoreWriteProjectId(ValueProvider<String> datastoreWriteProjectId);
 
     /**
      * @deprecated Please use getFirestoreWriteEntityKind() instead.
@@ -630,7 +630,7 @@ public class FirestoreConverters {
       entityJsonPrinter = new EntityJsonPrinter();
     }
 
-    /** Processes Datstore entity into json. */
+    /** Processes Datastore entity into json. */
     @ProcessElement
     public void processElement(ProcessContext c) throws InvalidProtocolBufferException {
       Entity entity = c.element();
@@ -807,9 +807,9 @@ public class FirestoreConverters {
     }
 
     public Entity parse(String json) throws InvalidProtocolBufferException {
-      Entity.Builder entityBuilter = Entity.newBuilder();
-      merge(json, entityBuilter);
-      return entityBuilter.build();
+      Entity.Builder entityBuilder = Entity.newBuilder();
+      merge(json, entityBuilder);
+      return entityBuilder.build();
     }
   }
 
@@ -858,7 +858,7 @@ public class FirestoreConverters {
       // same entity more than once in the same commit is not supported (error "A non-transactional
       // commit may not contain multiple mutations affecting the same entity). Messages with the
       // same key are thus not written to Datastore and instead routed to an error PCollection for
-      // further handlig downstream.
+      // further handling downstream.
       PCollectionTuple entities =
           entity.apply(
               "CheckSameKey",

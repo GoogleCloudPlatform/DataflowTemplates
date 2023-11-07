@@ -249,7 +249,7 @@ public class SpannerStreamingWriteIntegrationTest {
     /* The order of event processing cannot be predicted or controlled in
      * Test pipelines. The order in the Arrays below does not mean the events
      * are processed in that order.
-     * As long as atleast 1 change event for the interleaved table is after the
+     * As long as at least 1 change event for the interleaved table is after the
      * parent table, this test will be successful.
      * Hence change event for interleaved table is repeated multiple times.
      * This also mimics the retry behavior during interleaved tables handling.

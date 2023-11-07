@@ -697,13 +697,13 @@ public class SpannerRecordConverterTest {
     Schema schemaLogicalType = logicalTypeConverter.convert(ddl).iterator().next();
     SpannerRecordConverter recordConverterLogicalType =
         new SpannerRecordConverter(schemaLogicalType, Dialect.POSTGRESQL);
-    GenericRecord avroRecordLogialType = recordConverterLogicalType.convert(struct);
-    assertThat(avroRecordLogialType.get("id"), equalTo(1L));
-    assertThat(avroRecordLogialType.get("ts1"), equalTo(1L));
-    assertThat(avroRecordLogialType.get("ts2"), equalTo(10000001L));
-    assertThat(avroRecordLogialType.get("ts3"), equalTo(0L));
-    assertThat(avroRecordLogialType.get("ts4"), equalTo(-62135596800000000L));
-    assertThat(avroRecordLogialType.get("ts5"), equalTo(253402300799999999L));
+    GenericRecord avroRecordLogicalType = recordConverterLogicalType.convert(struct);
+    assertThat(avroRecordLogicalType.get("id"), equalTo(1L));
+    assertThat(avroRecordLogicalType.get("ts1"), equalTo(1L));
+    assertThat(avroRecordLogicalType.get("ts2"), equalTo(10000001L));
+    assertThat(avroRecordLogicalType.get("ts3"), equalTo(0L));
+    assertThat(avroRecordLogicalType.get("ts4"), equalTo(-62135596800000000L));
+    assertThat(avroRecordLogicalType.get("ts5"), equalTo(253402300799999999L));
   }
 
   @Test

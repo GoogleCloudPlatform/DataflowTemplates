@@ -133,6 +133,7 @@ public class BigQueryToTFRecordTest {
     assertExamplesEqual(expected, actual);
   }
 
+  @SuppressWarnings("SpellCheckingInspection")
   @Test
   public void record2Example_throwsExceptionForUnsupportedFieldTypes() throws Exception {
     expectedEx.expect(RuntimeException.class);

@@ -187,7 +187,7 @@ public class DMLGenerator {
 
     /*
     Get all non-primary key col ids from source table
-    For each - get the corresponsding column name from spanner Schema
+    For each - get the corresponding column name from spanner Schema
     if the column cannot be found in spanner schema - continue to next,
       as the column will be stored with default/null values
     check if the column name found in Spanner schema exists in keyJson -
@@ -251,7 +251,7 @@ public class DMLGenerator {
     Map<String, String> response = new HashMap<>();
     /*
     Get all primary key col ids from source table
-    For each - get the corresponsding column name from spanner Schema
+    For each - get the corresponding column name from spanner Schema
     if the column cannot be found in spanner schema - return null
     check if the column name found in Spanner schema exists in keyJson -
       if so, get the string value
@@ -269,7 +269,7 @@ public class DMLGenerator {
       SpannerColumnDefinition spannerColDef = spannerTable.getColDefs().get(colId);
       if (spannerColDef == null) {
         LOG.warn(
-            "The corresponsing primary key column {} was not found in Spanner",
+            "The corresponding primary key column {} was not found in Spanner",
             sourceColDef.getName());
         return null;
       }

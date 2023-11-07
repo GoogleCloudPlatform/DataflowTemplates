@@ -354,7 +354,7 @@ public class DataStreamToSpanner {
             "The Duration for which the pipeline should keep polling a directory in GCS. Datastream"
                 + "output files are arranged in a directory structure which depicts the timestamp "
                 + "of the event grouped by minutes. This parameter should be approximately equal to"
-                + "maximum delay which could occur between event occuring in source database and "
+                + "maximum delay which could occur between event occurring in source database and "
                 + "the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes")
     @Default.Integer(10)
     Integer getDirectoryWatchDurationInMinutes();

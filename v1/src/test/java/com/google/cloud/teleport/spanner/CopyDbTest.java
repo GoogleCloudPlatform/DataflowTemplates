@@ -523,7 +523,7 @@ public class CopyDbTest {
             .setOptionName("optimizer_version")
             .setOptionValue("1")
             .build());
-    // Misformed database option
+    // Malformed database option
     dbOptionList.add(
         Export.DatabaseOption.newBuilder()
             .setOptionName("123version")
@@ -603,7 +603,7 @@ public class CopyDbTest {
             .setOptionName("optimizer_version")
             .setOptionValue("1")
             .build());
-    // Misformed database option
+    // Malformed database option
     dbOptionList.add(
         Export.DatabaseOption.newBuilder()
             .setOptionName("123version")

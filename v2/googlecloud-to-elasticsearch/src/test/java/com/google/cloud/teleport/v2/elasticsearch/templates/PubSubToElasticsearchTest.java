@@ -240,7 +240,7 @@ public class PubSubToElasticsearchTest {
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
                     .build());
 
-    PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_ERROROUTPUT_OUT))
+    PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_ERROR_OUTPUT_OUT))
         .satisfies(
             collection -> {
               FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
