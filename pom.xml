@@ -45,7 +45,7 @@
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.52.0-SNAPSHOT</beam.version>
+    <beam.version>2.52.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->
@@ -489,14 +489,14 @@
      unreleased Apache Beam versions, for example:
      mvn test -Psnapshot -Dbeam.version=2.50.0-SNAPSHOT -->
     <profile>
-      <id>snapshot</id>
+      <id>apache.candidate</id>
       <activation>
         <activeByDefault>true</activeByDefault>
       </activation>
       <repositories>
         <repository>
-          <id>apache.snapshots</id>
-          <url>https://repository.apache.org/content/repositories/snapshots</url>
+          <id>apache.candidate</id>
+          <url>https://repository.apache.org/content/repositories/orgapachebeam-1360/</url>
         </repository>
       </repositories>
     </profile>
