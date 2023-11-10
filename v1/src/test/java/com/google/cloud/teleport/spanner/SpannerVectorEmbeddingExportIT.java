@@ -69,11 +69,23 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException {
+    // Make test names shorter to have distinctive database IDs
+    String shortTestName =
+        testName
+                .toLowerCase()
+                .replace("test", "")
+                .replace("spannerto", "")
+                .replace("postgres", "pg")
+                .replace("json", "")
+            + dataBoostEnabled;
+
     // Set up resource managers
     googleSqlResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
+        SpannerResourceManager.builder(shortTestName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build();
     postgresResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+        SpannerResourceManager.builder(shortTestName, PROJECT, REGION, Dialect.POSTGRESQL)
             .maybeUseStaticInstance()
             .build();
   }
@@ -85,7 +97,7 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
 
   @Test
   public void testSpannerToGCSJSON() throws IOException {
-    String tableName = "testSpannerToGCSJSON_Documents" + RandomStringUtils.randomNumeric(5);
+    String tableName = "gsql" + dataBoostEnabled + RandomStringUtils.randomNumeric(5);
     String createDocumentsTableStatement =
         String.format(
             "CREATE TABLE `%s` (\n"
@@ -132,8 +144,7 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
   public void testPostgresSpannerToGCSJSON() throws IOException {
     // converting to lowercase for PG
     String tableName =
-        StringUtils.lowerCase(
-            "testPostgresSpannerToGCSJSON_Documents" + RandomStringUtils.randomNumeric(5));
+        StringUtils.lowerCase("pg" + dataBoostEnabled + RandomStringUtils.randomNumeric(5));
     String createDocumentsTableStatement =
         String.format(
             "CREATE TABLE %s (\n"
