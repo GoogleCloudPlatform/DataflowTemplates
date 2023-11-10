@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.OracleToBigQuery",
+  "classPath": "/template/oracle-to-bigquery/oracle-to-bigquery-conscrypt.jar:/template/oracle-to-bigquery/*:/template/oracle-to-bigquery/libs/*:/template/mysql-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"oracle-to-bigquery\"}"
+  }
+}

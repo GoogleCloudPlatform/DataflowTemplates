@@ -685,6 +685,7 @@
         <module>mongodb-to-googlecloud</module>
         <module>mqtt-to-pubsub</module>
         <module>mysql-to-googlecloud</module>
+        <module>oracle-to-googlecloud</module>
         <module>ordered-changestream-buffer-to-sourcedb</module>
         <module>postgresql-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
