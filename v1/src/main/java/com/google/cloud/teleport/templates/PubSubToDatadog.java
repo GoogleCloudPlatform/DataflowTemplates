@@ -139,7 +139,7 @@ public class PubSubToDatadog {
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToDatadog.class);
 
-  private static final Boolean DEFAULT_INCLUDE_PUBSUB_MESSAGE = false;
+  private static final Boolean DEFAULT_INCLUDE_PUBSUB_MESSAGE = true;
 
   @VisibleForTesting protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
   @VisibleForTesting protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
