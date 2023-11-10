@@ -39,7 +39,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.OracleResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
