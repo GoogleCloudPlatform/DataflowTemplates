@@ -50,7 +50,7 @@
 
     <!-- Common dependency versions -->
     <autovalue.version>1.8.2</autovalue.version>
-    <avro.version>1.8.2</avro.version>
+    <avro.version>1.11.3</avro.version>
     <checkstyle.version>10.7.0</checkstyle.version>
     <commons-codec.version>1.16.0</commons-codec.version>
     <commons-io.version>2.11.0</commons-io.version>
