@@ -28,7 +28,8 @@ public class JobMetadataUpdater {
       String metadataDatabase,
       String startString,
       String duration,
-      String tableSuffix) {
+      String tableSuffix,
+      String runId) {
     SpannerDao spannerDao =
         new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
     Duration size = DurationUtils.parseDuration(duration);
@@ -36,6 +37,6 @@ public class JobMetadataUpdater {
     // fixed windows start with nearest value divisible by duration
     Instant start =
         new Instant(timestamp.getMillis() - timestamp.plus(size).getMillis() % size.getMillis());
-    spannerDao.writeStartAndDuration(start.toString(), duration);
+    spannerDao.writeStartAndDuration(start.toString(), duration, runId);
   }
 }

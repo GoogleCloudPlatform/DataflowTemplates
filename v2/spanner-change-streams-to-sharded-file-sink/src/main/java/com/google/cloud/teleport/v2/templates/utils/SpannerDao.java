@@ -90,14 +90,14 @@ public class SpannerDao {
           createTable =
               "CREATE TABLE "
                   + spannerToGcsMetadataTableName
-                  + " ( dummy_id int not null default 1,start_time character varying NOT NULL,"
-                  + " duration character varying NOT NULL , PRIMARY KEY(dummy_id)) ";
+                  + " ( run_id character varying NOT NULL,start_time character varying NOT NULL,"
+                  + " duration character varying NOT NULL , PRIMARY KEY(run_id)) ";
         } else {
           createTable =
               "CREATE TABLE "
                   + spannerToGcsMetadataTableName
-                  + " (start_time STRING(MAX) NOT NULL,duration STRING(MAX) NOT NULL) PRIMARY"
-                  + " KEY()";
+                  + " (run_id STRING(MAX) NOT NULL,start_time STRING(MAX) NOT NULL,duration"
+                  + " STRING(MAX) NOT NULL) PRIMARY KEY(run_id)";
         }
         OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
             databaseAdminClient.updateDatabaseDdl(
@@ -136,15 +136,16 @@ public class SpannerDao {
           createTable =
               "CREATE TABLE "
                   + shardFileCreateProgressTableName
-                  + "( shard character varying NOT NULL,created_upto timestamp with time zone NOT"
-                  + " NULL,PRIMARY KEY(shard))";
+                  + "( run_id character varying NOT NULL,shard character varying NOT"
+                  + " NULL,created_upto timestamp with time zone NOT NULL,PRIMARY"
+                  + " KEY(run_id,shard))";
 
         } else {
           createTable =
               "CREATE TABLE "
                   + shardFileCreateProgressTableName
-                  + " (shard STRING(MAX) NOT NULL, "
-                  + " created_upto TIMESTAMP NOT NULL ) PRIMARY KEY(shard) ";
+                  + " (run_id STRING(MAX) NOT NULL,shard STRING(MAX) NOT NULL, "
+                  + " created_upto TIMESTAMP NOT NULL ) PRIMARY KEY(run_id,shard) ";
         }
         OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
             databaseAdminClient.updateDatabaseDdl(
@@ -165,7 +166,7 @@ public class SpannerDao {
     }
   }
 
-  public void initShardProgress(List<Shard> shards) {
+  public void initShardProgress(List<Shard> shards, String runId) {
     checkAndCreateProgressTable();
     List<Mutation> mutations = new ArrayList<>();
     Timestamp epochTimestamp = Timestamp.parseTimestamp("1970-01-01T12:00:00Z");
@@ -173,6 +174,8 @@ public class SpannerDao {
 
       mutations.add(
           Mutation.newInsertOrUpdateBuilder(shardFileCreateProgressTableName)
+              .set("run_id")
+              .to(runId)
               .set("shard")
               .to(shard.getLogicalShardId())
               .set("created_upto")
@@ -193,15 +196,17 @@ public class SpannerDao {
 
   /**
    * Writes the job's start time and window duration to the spanner_to_gcs_metadata table. The table
-   * only has one record, so the mutation will always overwrite the record.
+   * has one record per run.
    */
-  public void writeStartAndDuration(String start, String duration) {
+  public void writeStartAndDuration(String start, String duration, String runId) {
 
     // create the tables needed for the pipeline
     checkAndCreateMetadataTable();
     List<Mutation> mutations = new ArrayList<>();
     mutations.add(
         Mutation.newInsertOrUpdateBuilder(spannerToGcsMetadataTableName)
+            .set("run_id")
+            .to(runId)
             .set("start_time")
             .to(start)
             .set("duration")
@@ -211,7 +216,7 @@ public class SpannerDao {
     close();
   }
 
-  public void updateProgress(String shard, String endTime) {
+  public void updateProgress(String shard, String endTime, String runId) {
 
     Timestamp endTimestamp = Timestamp.parseTimestamp(endTime);
     DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
@@ -222,14 +227,16 @@ public class SpannerDao {
           "update "
               + shardFileCreateProgressTableName
               + " set created_upto=$1 "
-              + " where shard=$2 and created_upto<$3 ";
+              + " where run_id=$2 and shard=$3 and created_upto<$4 ";
       updateStatement =
           Statement.newBuilder(updateStatementStr)
               .bind("p1")
               .to(endTimestamp)
               .bind("p2")
-              .to(shard)
+              .to(runId)
               .bind("p3")
+              .to(shard)
+              .bind("p4")
               .to(endTimestamp)
               .build();
     } else {
@@ -237,9 +244,11 @@ public class SpannerDao {
           "update "
               + shardFileCreateProgressTableName
               + " set created_upto=@endTimestamp "
-              + " where shard=@shardId and created_upto<@endTimestamp";
+              + " where run_id=@runId and shard=@shardId and created_upto<@endTimestamp";
       updateStatement =
           Statement.newBuilder(updateStatementStr)
+              .bind("runId")
+              .to(runId)
               .bind("endTimestamp")
               .to(endTimestamp)
               .bind("shardId")

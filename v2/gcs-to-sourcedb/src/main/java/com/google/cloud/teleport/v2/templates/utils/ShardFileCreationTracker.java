@@ -26,27 +26,16 @@ public class ShardFileCreationTracker {
   private static final Logger LOG = LoggerFactory.getLogger(ShardFileCreationTracker.class);
   private SpannerDao spannerDao;
   private String shardId;
+  private String runId;
 
-  public ShardFileCreationTracker(
-      String spannerProjectId,
-      String metadataInstance,
-      String metadataDatabase,
-      String shardId,
-      String tableSuffix) {
-
-    this.spannerDao =
-        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
-    this.shardId = shardId;
-  }
-
-  public ShardFileCreationTracker(SpannerDao spannerDao, String shardId) {
-
+  public ShardFileCreationTracker(SpannerDao spannerDao, String shardId, String runId) {
     this.spannerDao = spannerDao;
     this.shardId = shardId;
+    this.runId = runId;
   }
 
   public Timestamp getShardFileCreationProgressTimestamp() {
-    Timestamp response = spannerDao.getShardFileCreationProgressTimestamp(shardId);
+    Timestamp response = spannerDao.getShardFileCreationProgressTimestamp(shardId, runId);
     return response;
   }
 

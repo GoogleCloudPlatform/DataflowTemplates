@@ -26,16 +26,20 @@ public class SpannerToGcsJobMetadataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToGcsJobMetadataFetcher.class);
 
   public static SpannerToGcsJobMetadata getSpannerToGcsJobMetadata(
-      String spannerProjectId, String metadataInstance, String metadataDatabase, String tableSuffix)
+      String spannerProjectId,
+      String metadataInstance,
+      String metadataDatabase,
+      String tableSuffix,
+      String runId)
       throws InterruptedException {
     SpannerDao spannerDao =
         new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
 
-    SpannerToGcsJobMetadata response = spannerDao.getSpannerToGcsJobMetadata();
+    SpannerToGcsJobMetadata response = spannerDao.getSpannerToGcsJobMetadata(runId);
     while (response == null) {
       LOG.info("SpannerToGcsJobMetadata response is null, will retry");
       Thread.sleep(5000);
-      response = spannerDao.getSpannerToGcsJobMetadata();
+      response = spannerDao.getSpannerToGcsJobMetadata(runId);
     }
     spannerDao.close();
     return response;

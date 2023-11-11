@@ -96,7 +96,8 @@ public class GCSToSourceStreamingHandler {
 
   private static void markShardProgress(
       ProcessingContext taskContext, String status, SpannerDao spannerDao) {
-    ShardProgressTracker shardProgressTracker = new ShardProgressTracker(spannerDao);
+    ShardProgressTracker shardProgressTracker =
+        new ShardProgressTracker(spannerDao, taskContext.getRunId());
     String fileStartTime = taskContext.getStartTimestamp();
     com.google.cloud.Timestamp startTs = com.google.cloud.Timestamp.parseTimestamp(fileStartTime);
 

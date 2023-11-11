@@ -35,21 +35,28 @@ public class FileProgressTracker extends DoFn<KV<String, String>, Void> {
   private String spannerInstance;
   private String spannerDatabase;
   private String tableSuffix;
+  private String runId;
   private FileCreationTracker fileCreationTracker;
 
   public FileProgressTracker(
-      String spannerProjectId, String spannerInstance, String spannerDatabase, String tableSuffix) {
+      String spannerProjectId,
+      String spannerInstance,
+      String spannerDatabase,
+      String tableSuffix,
+      String runId) {
     this.spannerProjectId = spannerProjectId;
     this.spannerInstance = spannerInstance;
     this.spannerDatabase = spannerDatabase;
     this.tableSuffix = tableSuffix;
+    this.runId = runId;
   }
 
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() {
     fileCreationTracker =
-        new FileCreationTracker(spannerProjectId, spannerInstance, spannerDatabase, tableSuffix);
+        new FileCreationTracker(
+            spannerProjectId, spannerInstance, spannerDatabase, tableSuffix, runId);
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */

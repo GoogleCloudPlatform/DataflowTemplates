@@ -22,22 +22,25 @@ import java.util.List;
 public class FileCreationTracker {
 
   private SpannerDao spannerDao;
+  private String runId;
 
   public FileCreationTracker(
       String spannerProjectId,
       String metadataInstance,
       String metadataDatabase,
-      String tableSuffix) {
+      String tableSuffix,
+      String runId) {
     this.spannerDao =
         new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+    this.runId = runId;
   }
 
   public void init(List<Shard> shards) {
-    spannerDao.initShardProgress(shards);
+    spannerDao.initShardProgress(shards, runId);
   }
 
   public void updateProgress(String shard, String endTime) {
-    this.spannerDao.updateProgress(shard, endTime);
+    this.spannerDao.updateProgress(shard, endTime, runId);
   }
 
   public void close() {

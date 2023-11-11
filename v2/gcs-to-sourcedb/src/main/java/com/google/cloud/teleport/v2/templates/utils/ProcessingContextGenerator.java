@@ -48,7 +48,8 @@ public class ProcessingContextGenerator {
       String metadataInstance,
       String metadataDatabase,
       String runMode,
-      String tableSuffix) {
+      String tableSuffix,
+      String runId) {
 
     LOG.info(" In getProcessingContextForGCS");
 
@@ -64,7 +65,8 @@ public class ProcessingContextGenerator {
     Schema schema = SessionFileReader.read(sessionFilePath);
 
     ShardProgressTracker shardProgressTracker =
-        new ShardProgressTracker(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+        new ShardProgressTracker(
+            spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
     shardProgressTracker.init();
 
     Map<String, ProcessingContext> response = new HashMap<>();
@@ -82,7 +84,7 @@ public class ProcessingContextGenerator {
         try {
           SpannerToGcsJobMetadata spannerToGcsJobMetadata =
               SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
-                  spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+                  spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
           windowDuration = spannerToGcsJobMetadata.getWindowDuration();
           startTimestamp = spannerToGcsJobMetadata.getStartTimestamp();
           LOG.info("The start timestamp  from Spanner to GCS job is : {}", startTimestamp);
@@ -104,7 +106,8 @@ public class ProcessingContextGenerator {
                 sourceDbTimezoneOffset,
                 startTimestamp,
                 duration,
-                gcsInputDirectoryPath);
+                gcsInputDirectoryPath,
+                runId);
         response.put(shard.getLogicalShardId(), taskContext);
       }
     } else if ("reprocess".equals(runMode)) {
@@ -113,7 +116,7 @@ public class ProcessingContextGenerator {
         try {
           SpannerToGcsJobMetadata spannerToGcsJobMetadata =
               SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
-                  spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+                  spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
           windowDuration = spannerToGcsJobMetadata.getWindowDuration();
           LOG.info("The window duration from Spanner to GCS job is : {}", windowDuration);
         } catch (Exception e) {
@@ -142,7 +145,8 @@ public class ProcessingContextGenerator {
                 sourceDbTimezoneOffset,
                 shardStartTime,
                 duration,
-                gcsInputDirectoryPath);
+                gcsInputDirectoryPath,
+                runId);
         response.put(shard.getLogicalShardId(), taskContext);
       }
     }

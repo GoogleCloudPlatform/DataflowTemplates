@@ -27,19 +27,23 @@ public class ShardProgressTracker {
   private static final Logger LOG = LoggerFactory.getLogger(ShardProgressTracker.class);
 
   private SpannerDao spannerDao;
+  private String runId;
 
   public ShardProgressTracker(
       String spannerProjectId,
       String metadataInstance,
       String metadataDatabase,
-      String tableSuffix) {
+      String tableSuffix,
+      String runId) {
 
     this.spannerDao =
         new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+    this.runId = runId;
   }
 
-  public ShardProgressTracker(SpannerDao spannerDao) {
+  public ShardProgressTracker(SpannerDao spannerDao, String runId) {
     this.spannerDao = spannerDao;
+    this.runId = runId;
   }
 
   public void init() {
@@ -47,11 +51,11 @@ public class ShardProgressTracker {
   }
 
   public Map<String, ShardProgress> getShardProgress() {
-    return spannerDao.getShardProgress();
+    return spannerDao.getShardProgress(runId);
   }
 
   public void writeShardProgress(ShardProgress shardProgress) {
-    spannerDao.writeShardProgress(shardProgress);
+    spannerDao.writeShardProgress(shardProgress, runId);
   }
 
   public void close() {

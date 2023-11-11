@@ -253,6 +253,16 @@ public class SpannerChangeStreamsToShardedFileSink {
     String getSkipDirectoryName();
 
     void setSkipDirectoryName(String value);
+
+    @TemplateParameter.Text(
+        order = 16,
+        optional = false,
+        description = "Reverse replication run identifier",
+        helpText =
+            "The identifier to distinguish between different runs of reverse replication flows.")
+    String getRunIdentifier();
+
+    void setRunIdentifier(String value);
   }
 
   /**
@@ -324,7 +334,8 @@ public class SpannerChangeStreamsToShardedFileSink {
         options.getMetadataDatabase(),
         options.getStartTimestamp(),
         options.getWindowDuration(),
-        tableSuffix);
+        tableSuffix,
+        options.getRunIdentifier());
 
     // Initialize the per shard progress with historical value
     // This makes it easier to fire blind UPDATES later on when
@@ -334,7 +345,8 @@ public class SpannerChangeStreamsToShardedFileSink {
             options.getSpannerProjectId(),
             options.getMetadataInstance(),
             options.getMetadataDatabase(),
-            tableSuffix);
+            tableSuffix,
+            options.getRunIdentifier());
     fileCreationTracker.init(shards);
 
     pipeline
@@ -370,7 +382,8 @@ public class SpannerChangeStreamsToShardedFileSink {
                     options.getSpannerProjectId(),
                     options.getMetadataInstance(),
                     options.getMetadataDatabase(),
-                    tableSuffix)));
+                    tableSuffix,
+                    options.getRunIdentifier())));
     return pipeline.run();
   }
 
