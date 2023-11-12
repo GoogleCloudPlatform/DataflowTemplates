@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -481,7 +482,12 @@ public class FormatDatastreamRecordToJson
           ZoneOffset offset =
               ZoneOffset.ofTotalSeconds(((Number) element.get("offset")).intValue() / 1000);
           ZonedDateTime fullDate = timestamp.atOffset(offset).toZonedDateTime();
-          jsonObject.put(fieldName, fullDate.format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+          // BigQuery only has UTC timestamps so we convert to UTC and adjust
+          jsonObject.put(
+              fieldName,
+              fullDate
+                  .withZoneSameInstant(ZoneId.of("UTC"))
+                  .format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
           break;
         default:
           LOG.warn(
