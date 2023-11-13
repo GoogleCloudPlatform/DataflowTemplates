@@ -94,7 +94,9 @@ public class TextToPubsubIT extends TemplateTestBase {
             .build();
     Result result = pipelineOperator().waitForCondition(createConfig(info), pubsubCheck);
 
-    assertThatResult(result).meetsConditions();
+    // Make sure that the check finds the expected of messages.
+    assertThatResult(result).isAnyOf(Result.CONDITION_MET, Result.LAUNCH_FINISHED);
+    assertThat(pubsubCheck.get()).isTrue();
     assertThat(
             pubsubCheck.getReceivedMessageList().stream()
                 .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())

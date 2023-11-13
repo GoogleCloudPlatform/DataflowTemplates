@@ -81,5 +81,13 @@ public abstract class ConditionCheck implements Supplier<Boolean> {
     public String toString() {
       return "CheckResult{" + "success=" + success + ", message='" + message + '\'' + '}';
     }
+
+    public boolean isSuccess() {
+      return success;
+    }
+
+    public String getMessage() {
+      return message;
+    }
   }
 }
