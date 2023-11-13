@@ -409,6 +409,9 @@
         <skipShade>true</skipShade>
         <!-- Some modules may yield no integration tests -->
         <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
       </properties>
       <build>
         <plugins>
@@ -434,6 +437,9 @@
                   <value>true</value>
                 </property>
               </systemProperties>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
               <trimStackTrace>false</trimStackTrace>
             </configuration>
           </plugin>
