@@ -146,6 +146,10 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
       config = config.withTrustSelfSignedCerts(options().getTrustSelfSignedCerts());
     }
 
+    if (options().getDisableCertificateValidation() != null) {
+      config = config.withDisableCertificateValidation(options().getDisableCertificateValidation());
+    }
+
     ElasticsearchIO.Write elasticsearchWriter =
         ElasticsearchIO.write()
             .withConnectionConfiguration(config)

@@ -135,6 +135,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
                     "query", "SELECT * FROM `" + toTableSpecLegacy(table).replace(':', '.') + "`")
                 .addParameter("outputDeadletterTable", toTableSpecLegacy(table) + "_dlq")
                 .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
+                .addParameter("disableCertificateValidation", "true")
                 .addParameter("index", indexName)
                 .addParameter("apiKey", "elastic"));
     assertThatPipeline(info).isRunning();
