@@ -63,7 +63,7 @@ public class AutoTemplate {
       input =
           sourceBlock.blockMethod.invoke(
               sourceBlock.blockInstance,
-              pipeline,
+              pipeline.begin(),
               options.as(sourceBlockInstance.getOptionsClass()));
 
       for (ExecutionBlock executionBlock : orderedBlocks) {

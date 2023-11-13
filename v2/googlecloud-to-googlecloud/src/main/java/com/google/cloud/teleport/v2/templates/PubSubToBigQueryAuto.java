@@ -46,8 +46,8 @@ public class PubSubToBigQueryAuto {
   static class DefaultDLQProvider implements Preprocessor<PipelineOptions> {
     @Override
     public void accept(PipelineOptions options) {
-      WriteDlqToBigQuery.BigQueryDlqOptions dlqOptions =
-          options.as(WriteDlqToBigQuery.BigQueryDlqOptions.class);
+      WriteDlqToBigQuery.BigQueryDlqConfiguration dlqOptions =
+          options.as(WriteDlqToBigQuery.BigQueryDlqConfiguration.class);
       if (dlqOptions.getOutputDeadletterTable() == null
           || dlqOptions.getOutputDeadletterTable().isEmpty()) {
         dlqOptions.setOutputDeadletterTable(

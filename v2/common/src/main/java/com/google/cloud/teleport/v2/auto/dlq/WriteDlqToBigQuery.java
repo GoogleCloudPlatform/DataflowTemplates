@@ -17,43 +17,72 @@ package com.google.cloud.teleport.v2.auto.dlq;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Consumes;
-import com.google.cloud.teleport.metadata.auto.TemplateTransform;
 import com.google.cloud.teleport.v2.auto.blocks.BlockConstants;
-import com.google.cloud.teleport.v2.auto.dlq.WriteDlqToBigQuery.BigQueryDlqOptions;
+import com.google.cloud.teleport.v2.auto.schema.RowTypes;
+import com.google.cloud.teleport.v2.auto.schema.TemplateWriteTransform;
+import com.google.cloud.teleport.v2.auto.schema.TemplateOptionSchema;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import org.apache.beam.sdk.coders.NullableCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
-import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesAndMessageIdCoder;
+import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
+import org.apache.beam.sdk.schemas.annotations.SchemaFieldDescription;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.values.PCollectionRowTuple;
+import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TypeDescriptor;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-public class WriteDlqToBigQuery implements TemplateTransform<BigQueryDlqOptions> {
+public class WriteDlqToBigQuery
+    extends TemplateWriteTransform<WriteDlqToBigQuery.BigQueryDlqConfiguration> {
 
-  public interface BigQueryDlqOptions extends PipelineOptions {
+  @Override
+  public PCollectionRowTuple transform(PCollectionRowTuple input, BigQueryDlqConfiguration config) {
+    return null;
+  }
+
+  @Override
+  public @NonNull String identifier() {
+    return "blocks:external:org.apache.beam:write_dlq_to_bigquery:v1";
+  }
+
+  @DefaultSchema(TemplateOptionSchema.class)
+  public interface BigQueryDlqConfiguration extends TemplateBlockOptions {
 
     @TemplateParameter.BigQueryTable(
         order = 4,
         optional = true,
         description =
-            "Table for messages failed to reach the output table (i.e., Deadletter table)",
+            "Table for messages failed to reach the output table (i.e., Deadletter table).",
         helpText =
             "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
                 + " schema, malformed json) are written to this table. It should be in the format"
                 + " of \"your-project-id:your-dataset.your-table-name\". If it doesn't exist, it"
                 + " will be created during pipeline execution. If not specified,"
                 + " \"{outputTableSpec}_error_records\" is used instead.")
+    @SchemaFieldDescription(
+        "Table for messages failed to reach the output table (i.e., Deadletter table).")
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String value);
   }
 
-  @Consumes(
-      value = FailsafeElement.class,
-      types = {PubsubMessage.class, String.class})
+  @Consumes(RowTypes.FailsafePubSubRow.class)
   public void writeDLQToBigQueryForPubsubMessage(
-      PCollectionTuple input, BigQueryDlqOptions options) {
+      PCollectionRowTuple input, BigQueryDlqConfiguration options) {
     input
-        .get(BlockConstants.ERROR_TAG_PS)
+        .get(BlockConstants.ERROR_TAG)
+        .apply(
+            MapElements.into(new TypeDescriptor<FailsafeElement<PubsubMessage, String>>() {})
+                .via(RowTypes.FailsafePubSubRow::rowToFailsafePubSub))
+        .setCoder(
+            FailsafeElementCoder.of(
+                NullableCoder.of(PubsubMessageWithAttributesAndMessageIdCoder.of()),
+                NullableCoder.of(StringUtf8Coder.of())))
         .apply(
             ErrorConverters.WritePubsubMessageErrors.newBuilder()
                 .setErrorRecordsTable(options.getOutputDeadletterTable())
@@ -61,12 +90,14 @@ public class WriteDlqToBigQuery implements TemplateTransform<BigQueryDlqOptions>
                 .build());
   }
 
-  @Consumes(
-      value = FailsafeElement.class,
-      types = {String.class, String.class})
-  public void writeDLQToBigQueryForString(PCollectionTuple input, BigQueryDlqOptions options) {
+  @Consumes(RowTypes.FailsafeStringRow.class)
+  public void writeDLQToBigQueryForString(
+      PCollectionRowTuple input, BigQueryDlqConfiguration options) {
     input
-        .get(BlockConstants.ERROR_TAG_STR)
+        .get(BlockConstants.ERROR_TAG)
+        .apply(
+            MapElements.into(new TypeDescriptor<FailsafeElement<String, String>>() {})
+                .via(RowTypes.FailsafeStringRow::rowToFailsafeString))
         .apply(
             ErrorConverters.WriteStringMessageErrors.newBuilder()
                 .setErrorRecordsTable(options.getOutputDeadletterTable())
@@ -75,7 +106,7 @@ public class WriteDlqToBigQuery implements TemplateTransform<BigQueryDlqOptions>
   }
 
   @Override
-  public Class<BigQueryDlqOptions> getOptionsClass() {
-    return BigQueryDlqOptions.class;
+  public Class<BigQueryDlqConfiguration> getOptionsClass() {
+    return BigQueryDlqConfiguration.class;
   }
 }

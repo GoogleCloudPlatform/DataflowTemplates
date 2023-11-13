@@ -15,19 +15,25 @@
  */
 package com.google.cloud.teleport.v2.auto.blocks;
 
+import com.google.auto.service.AutoService;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.auto.Outputs;
-import com.google.cloud.teleport.metadata.auto.TemplateTransform;
-import com.google.cloud.teleport.v2.auto.blocks.ReadFromPubSub.ReadFromPubSubOptions;
-import org.apache.beam.sdk.Pipeline;
+import com.google.cloud.teleport.v2.auto.schema.RowTypes;
+import com.google.cloud.teleport.v2.auto.schema.TemplateOptionSchema;
+import com.google.cloud.teleport.v2.auto.schema.TemplateReadTransform;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
-import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
+import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
+import org.apache.beam.sdk.values.PBegin;
+import org.apache.beam.sdk.values.PCollectionRowTuple;
+import org.apache.beam.sdk.values.Row;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-public class ReadFromPubSub implements TemplateTransform<ReadFromPubSubOptions> {
+@AutoService(SchemaTransformProvider.class)
+public class ReadFromPubSub extends TemplateReadTransform<ReadFromPubSub.ReadFromPubSubOptions> {
 
-  public interface ReadFromPubSubOptions extends PipelineOptions {
+  @DefaultSchema(TemplateOptionSchema.class)
+  public interface ReadFromPubSubOptions extends TemplateBlockOptions {
 
     @TemplateParameter.PubsubSubscription(
         order = 1,
@@ -39,13 +45,21 @@ public class ReadFromPubSub implements TemplateTransform<ReadFromPubSubOptions> 
     void setInputSubscription(String input);
   }
 
-  @Outputs(PubsubMessage.class)
-  public PCollection<PubsubMessage> read(Pipeline pipeline, ReadFromPubSubOptions options) {
+  @Override
+  public @NonNull String identifier() {
+    return "blocks:external:org.apache.beam:read_from_pubsub:v1";
+  }
 
-    return pipeline.apply(
-        "ReadPubSubSubscription",
-        PubsubIO.readMessagesWithAttributesAndMessageId()
-            .fromSubscription(options.getInputSubscription()));
+  @Outputs(RowTypes.PubSubMessageRow.class)
+  public PCollectionRowTuple read(PBegin input, ReadFromPubSubOptions options) {
+    return PCollectionRowTuple.of(
+        BlockConstants.OUTPUT_TAG,
+        input
+            .apply(
+                "ReadPubSubSubscription",
+                PubsubIO.readMessagesWithAttributesAndMessageId()
+                    .fromSubscription(options.getInputSubscription()))
+            .apply(RowTypes.PubSubMessageRow.MapToRow.of()));
   }
 
   @Override
