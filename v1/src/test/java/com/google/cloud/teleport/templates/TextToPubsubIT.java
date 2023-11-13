@@ -96,7 +96,7 @@ public class TextToPubsubIT extends TemplateTestBase {
 
     // Make sure that the check finds the expected of messages.
     assertThatResult(result).isAnyOf(Result.CONDITION_MET, Result.LAUNCH_FINISHED);
-    assertThat(pubsubCheck.check().isSuccess()).isTrue();
+    assertThat(pubsubCheck.get()).isTrue();
     assertThat(
             pubsubCheck.getReceivedMessageList().stream()
                 .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
