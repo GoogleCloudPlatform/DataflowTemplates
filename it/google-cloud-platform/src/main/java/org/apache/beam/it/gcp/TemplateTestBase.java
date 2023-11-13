@@ -327,6 +327,7 @@ public abstract class TemplateTestBase {
       "-DgcpTempLocation=" + bucketName,
       "-DstagePrefix=" + prefix,
       "-DtemplateName=" + template.name(),
+      "-DunifiedWorker=" + System.getProperty("unifiedWorker"),
       // Print stacktrace when command fails
       "-e"
     };
@@ -382,9 +383,18 @@ public abstract class TemplateTestBase {
   protected LaunchInfo launchTemplate(LaunchConfig.Builder options, boolean setupShutdownHook)
       throws IOException {
 
+    boolean flex = template.flexContainerName() != null && !template.flexContainerName().isEmpty();
+
     // Property allows testing with Runner v2 / Unified Worker
     if (System.getProperty("unifiedWorker") != null) {
       appendExperiment(options, "use_runner_v2");
+
+      if (System.getProperty("sdkContainerImage") != null) {
+        options.addParameter("sdkContainerImage", System.getProperty("sdkContainerImage"));
+        appendExperiment(
+            options, "worker_harness_container_image=" + System.getProperty("sdkContainerImage"));
+        appendExperiment(options, "disable_worker_rolling_upgrade");
+      }
     }
 
     if (System.getProperty("enableCleanupState") != null) {
