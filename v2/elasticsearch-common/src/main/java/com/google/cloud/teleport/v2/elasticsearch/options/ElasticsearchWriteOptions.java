@@ -248,8 +248,20 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setTrustSelfSignedCerts(Boolean trustSelfSignedCerts);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Boolean(
       order = 23,
+      optional = true,
+      description = "Disable SSL certificate validation.",
+      helpText =
+          "Disable SSL certificate validation (true/false). Default false (validation "
+              + "enabled). If true, all certificates are considered trusted.")
+  @Default.Boolean(false)
+  Boolean getDisableCertificateValidation();
+
+  void setDisableCertificateValidation(Boolean disableCertificateValidation);
+
+  @TemplateParameter.Text(
+      order = 24,
       optional = true,
       regexes = {
         "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
@@ -269,7 +281,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   void setApiKeyKMSEncryptionKey(String keyName);
 
   @TemplateParameter.Text(
-      order = 24,
+      order = 25,
       optional = true,
       regexes = {"^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$"},
       description = "Google Cloud Secret Manager ID.",
@@ -281,7 +293,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   void setApiKeySecretId(String secretId);
 
   @TemplateParameter.Enum(
-      order = 25,
+      order = 26,
       optional = true,
       enumOptions = {
         @TemplateEnumOption("PLAINTEXT"),
