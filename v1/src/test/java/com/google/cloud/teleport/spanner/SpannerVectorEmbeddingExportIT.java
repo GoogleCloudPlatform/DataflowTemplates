@@ -72,14 +72,7 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     // Make test names shorter to have distinctive database IDs
-    shortTestName =
-        testName
-                .toLowerCase()
-                .replace("test", "")
-                .replace("spannerto", "")
-                .replace("postgres", "pg")
-                .replace("json", "")
-            + dataBoostEnabled;
+    shortTestName = testName.toLowerCase().replace("test", "").replace("to", "") + dataBoostEnabled;
   }
 
   @After
