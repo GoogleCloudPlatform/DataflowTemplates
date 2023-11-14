@@ -455,7 +455,6 @@
     </build>
 
     <profiles>
-
         <profile>
             <id>missing-artifact-repos</id>
             <activation>

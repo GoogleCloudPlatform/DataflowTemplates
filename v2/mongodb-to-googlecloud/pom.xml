@@ -34,6 +34,10 @@
         Stream data from Google PubSub to a hosted MongoDB Database
     </description>
 
+    <properties>
+        <mongo-java-driver.version>3.12.11</mongo-java-driver.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -43,6 +47,11 @@
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongo-java-driver</artifactId>
+            <version>${mongo-java-driver.version}</version>
         </dependency>
 
         <!-- Test Dependencies -->
