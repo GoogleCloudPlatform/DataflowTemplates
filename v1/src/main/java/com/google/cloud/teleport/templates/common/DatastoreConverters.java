@@ -117,7 +117,7 @@ public class DatastoreConverters {
      */
     @Hidden
     @Deprecated
-    void setDatastoreReadNamespace(ValueProvider<String> datstoreReadNamespace);
+    void setDatastoreReadNamespace(ValueProvider<String> datastoreReadNamespace);
 
     @TemplateParameter.Text(
         order = 4,
@@ -621,7 +621,7 @@ public class DatastoreConverters {
       entityJsonPrinter = new EntityJsonPrinter();
     }
 
-    /** Processes Datstore entity into json. */
+    /** Processes Datastore entity into json. */
     @ProcessElement
     public void processElement(ProcessContext c) throws InvalidProtocolBufferException {
       Entity entity = c.element();
@@ -849,7 +849,7 @@ public class DatastoreConverters {
       // same entity more than once in the same commit is not supported (error "A non-transactional
       // commit may not contain multiple mutations affecting the same entity). Messages with the
       // same key are thus not written to Datastore and instead routed to an error PCollection for
-      // further handlig downstream.
+      // further handling downstream.
       PCollectionTuple entities =
           entity.apply(
               "CheckSameKey",

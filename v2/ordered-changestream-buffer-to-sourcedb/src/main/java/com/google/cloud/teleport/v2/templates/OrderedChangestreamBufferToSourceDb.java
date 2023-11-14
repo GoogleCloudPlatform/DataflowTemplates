@@ -99,7 +99,7 @@ public class OrderedChangestreamBufferToSourceDb {
         optional = true,
         description = "Destination source type",
         enumOptions = {@TemplateEnumOption("mysql")},
-        helpText = "This is the type of source databse.Currently only" + " mysql is supported.")
+        helpText = "This is the type of source database. Currently only mysql is supported.")
     @Default.String("mysql")
     String getSourceType();
 
@@ -164,7 +164,7 @@ public class OrderedChangestreamBufferToSourceDb {
         optional = true,
         description = "Duration in seconds between calls to stateful timer processing. ",
         helpText =
-            "Controls the time between succssive polls to buffer and processing of the resultant"
+            "Controls the time between successive polls to buffer and processing of the resultant"
                 + " records.")
     @Default.Integer(1)
     Integer getTimerInterval();

@@ -121,7 +121,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private final Counter processedEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Total events processed");
 
-  private final Counter sucessfulEvents =
+  private final Counter successfulEvents =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Successful events");
 
   private final Counter skippedEvents =
@@ -239,7 +239,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                   });
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
-      sucessfulEvents.inc();
+      successfulEvents.inc();
 
       // decrement the retry error count if this was retry attempt
       if (isRegularRunMode && isRetryRecord) {
@@ -261,7 +261,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       conversionErrors.inc();
     } catch (SpannerException se) {
       /* Errors that happen when writing to Cloud Spanner are considered retryable.
-       * Since all event convertion errors are caught beforehand as permanent errors,
+       * Since all event conversion errors are caught beforehand as permanent errors,
        * any other errors encountered while writing to Cloud Spanner can be retried.
        * Examples include:
        * 1. Deadline exceeded errors from Cloud Spanner.

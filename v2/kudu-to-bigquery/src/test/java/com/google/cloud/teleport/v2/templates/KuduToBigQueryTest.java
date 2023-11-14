@@ -67,13 +67,13 @@ public class KuduToBigQueryTest {
     Mockito.doReturn("string").when(kuduResult).getObject(7);
     Mockito.doReturn(1586422251000000000L).when(kuduResult).getLong(8);
 
-    // Convert using KuduConterters Class
+    // Convert using KuduConverters Class
     KuduToBigQuery.KuduConverters kuduConverters = new KuduToBigQuery.KuduConverters();
     TableRow convertedTableRow = kuduConverters.apply(kuduResult);
     List<TableRow> rows = ImmutableList.of(convertedTableRow);
     PCollection<TableRow> resultRows = pipeline.apply("CreateInput", Create.of(rows));
 
-    // Check if TableRow expected equal to convertion result
+    // Check if TableRow expected equal to conversion result
     assertThat(convertedTableRow, equalTo(expectedTableRow));
     PAssert.that(resultRows)
         .satisfies(

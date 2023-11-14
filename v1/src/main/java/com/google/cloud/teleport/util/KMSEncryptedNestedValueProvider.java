@@ -71,7 +71,7 @@ public class KMSEncryptedNestedValueProvider
             "KMS Key is not specified. Using unencrypted value of {} bytes",
             unencrypted.getBytes(StandardCharsets.UTF_8).length);
         return unencrypted;
-      } else if (!testkmsKey(kmsKey)) {
+      } else if (!checkKmsKey(kmsKey)) {
         IllegalArgumentException exception =
             new IllegalArgumentException("Provided KMS Key %s is invalid");
         throw new RuntimeException(exception);
@@ -93,7 +93,7 @@ public class KMSEncryptedNestedValueProvider
     super(value, key, KmsTranslatorInput.of());
   }
 
-  private static boolean testkmsKey(String kmsKey) {
+  private static boolean checkKmsKey(String kmsKey) {
     return KEYNAME_PATTERN.matcher(kmsKey).matches();
   }
 

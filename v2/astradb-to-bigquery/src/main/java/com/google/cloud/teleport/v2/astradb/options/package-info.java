@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package info for astradb module. */
+/** Package info for AstraDb module. */
 package com.google.cloud.teleport.v2.astradb.options;

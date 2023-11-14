@@ -63,15 +63,15 @@ public class InputRecordProcessor {
         JSONObject newValuesJson = new JSONObject(newValueJsonStr);
         JSONObject keysJson = new JSONObject(keysJsonStr);
 
-        String dmlStatment =
+        String dmlStatement =
             DMLGenerator.getDMLStatement(
                 modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
-        if (!dmlStatment.isEmpty()) {
-          dmlBatch.add(dmlStatment);
+        if (!dmlStatement.isEmpty()) {
+          dmlBatch.add(dmlStatement);
         }
         if (!capturedlagMetric) {
           /*
-          The commit timstamp of the first record is chosen for lag calculation
+          The commit timestamp of the first record is chosen for lag calculation
           Since the last record may have commit timestamp which might repeat for the
           next iteration of messages */
           capturedlagMetric = true;
@@ -91,7 +91,7 @@ public class InputRecordProcessor {
               + recordList.size()
               + " took : "
               + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)
-              + " miliseconds ");
+              + " milliseconds ");
 
       numRecProcessedMetric.inc(recordList.size()); // update the number of records processed metric
 

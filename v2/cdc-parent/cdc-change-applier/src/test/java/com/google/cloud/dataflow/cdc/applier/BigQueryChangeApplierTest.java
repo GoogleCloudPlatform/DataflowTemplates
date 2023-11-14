@@ -75,7 +75,7 @@ public class BigQueryChangeApplierTest {
 
   @Test
   void testSchemasEmittedOnlyOnChanges() {
-    TestStream<Row> testSream =
+    TestStream<Row> testStream =
         TestStream.create(SerializableCoder.of(Row.class))
             .addElements(
                 testInsertRecord(
@@ -91,7 +91,7 @@ public class BigQueryChangeApplierTest {
 
     Pipeline p = Pipeline.create();
 
-    PCollection<Row> input = p.apply(testSream).setRowSchema(UPDATE_RECORD_SCHEMA);
+    PCollection<Row> input = p.apply(testStream).setRowSchema(UPDATE_RECORD_SCHEMA);
 
     PCollection<KV<String, KV<Schema, Schema>>> tableSchemaCollection =
         BigQueryChangeApplier.buildTableSchemaCollection(input);

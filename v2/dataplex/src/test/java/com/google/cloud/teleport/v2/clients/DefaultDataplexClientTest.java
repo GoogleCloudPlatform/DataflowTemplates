@@ -58,7 +58,7 @@ public class DefaultDataplexClientTest {
   private static final String ASSET_NAME2 = ZONE_NAME + "/asset/asset_2";
   private static final String PAGE_TOKEN = "token_1";
 
-  // Entity for use in tests where it doens't  matter what the values are
+  // Entity for use in tests where it doesn't  matter what the values are
   private static final GoogleCloudDataplexV1Entity UNUSED_ENTITY =
       new GoogleCloudDataplexV1Entity()
           .setDataPath("invalid")

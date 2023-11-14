@@ -163,7 +163,7 @@ public abstract class HttpEventPublisher {
     return new ExponentialBackOff.Builder().setMaxElapsedTimeMillis(maxElapsedMillis()).build();
   }
 
-  /** Shutsdown connection manager and releases all resources. */
+  /** Shutdown connection manager and releases all resources. */
   public void close() throws IOException {
     if (transport() != null) {
       LOG.info("Closing publisher transport.");

@@ -150,7 +150,7 @@ public class BigQueryDynamicConverters {
       // req
       String tableName = String.format("%s.%s", tableId.getDataset(), tableId.getTable());
       TableDestination dest =
-          new TableDestination(tableName, "Name of table pulled from datafields");
+          new TableDestination(tableName, "Name of table pulled from data fields");
 
       return dest;
     }

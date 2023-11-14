@@ -34,7 +34,7 @@ import org.junit.runners.JUnit4;
 
 /** Test for DualInputNestedValueProvider. */
 @RunWith(JUnit4.class)
-public class DualInputNestedvalueProviderTest {
+public class DualInputNestedValueProviderTest {
   @Rule public ExpectedException expectedException = org.junit.rules.ExpectedException.none();
 
   /** A test interface. */

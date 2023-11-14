@@ -279,7 +279,7 @@ import org.slf4j.LoggerFactory;
  *
  * <h3>Monitoring</h3>
  *
- * <p>Several counters are provided for monitoring purpooses:
+ * <p>Several counters are provided for monitoring purposes:
  *
  * <ul>
  *   <li><tt>batchable_mutation_groups</tt><br>
@@ -1157,10 +1157,10 @@ public class LocalSpannerIO {
     @Override
     public void populateDisplayData(DisplayData.Builder builder) {
       super.populateDisplayData(builder);
-      populateDisplayDataWithParamaters(builder);
+      populateDisplayDataWithParameters(builder);
     }
 
-    private void populateDisplayDataWithParamaters(DisplayData.Builder builder) {
+    private void populateDisplayDataWithParameters(DisplayData.Builder builder) {
       getSpannerConfig().populateDisplayData(builder);
       builder.add(
           DisplayData.item("batchSizeBytes", getBatchSizeBytes())
@@ -1234,7 +1234,7 @@ public class LocalSpannerIO {
     @Override
     public void populateDisplayData(DisplayData.Builder builder) {
       super.populateDisplayData(builder);
-      spec.populateDisplayDataWithParamaters(builder);
+      spec.populateDisplayDataWithParameters(builder);
     }
 
     @Override
@@ -1515,7 +1515,7 @@ public class LocalSpannerIO {
       checkArgument(
           getInclusiveStartAt() != null,
           "LocalSpannerIO.readChangeStream() requires the start time to be set.");
-      // Inclusive end at is defaulted to ChangeStreamsContants.MAX_INCLUSIVE_END_AT
+      // Inclusive end at is defaulted to ChangeStreamsConstants.MAX_INCLUSIVE_END_AT
       checkArgument(
           getInclusiveEndAt() != null,
           "LocalSpannerIO.readChangeStream() requires the end time to be set. If you'd like to"

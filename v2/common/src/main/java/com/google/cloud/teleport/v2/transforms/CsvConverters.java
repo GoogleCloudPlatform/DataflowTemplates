@@ -163,7 +163,7 @@ public class CsvConverters {
   }
 
   /**
-   * Gets Csv format accoring to <a
+   * Gets Csv format according to <a
    * href="https://javadoc.io/doc/org.apache.commons/commons-csv">Apache Commons CSV</a>. If user
    * passed invalid format error is thrown.
    */

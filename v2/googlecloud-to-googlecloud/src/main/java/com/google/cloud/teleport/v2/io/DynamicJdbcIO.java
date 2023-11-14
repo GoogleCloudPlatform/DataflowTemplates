@@ -56,11 +56,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * DynamicJdbcIO provides a {@link DynamicWrite} class to allow templatized pipelines to write data
- * to a JDBC datasource using a driver class that is provided at runtime.
+ * DynamicJdbcIO provides a {@link DynamicWrite} class to allow template pipelines to write data to
+ * a JDBC datasource using a driver class that is provided at runtime.
  *
  * <p>Since all possible JDBC drivers are not known at template creation time, the driver jars
- * cannot be prestaged in the template.
+ * cannot be pre-staged in the template.
  *
  * <p>In order to provide the flexibility for the users to specify any JDBC driver class, the {@link
  * DynamicWrite} and the {@link DynamicDataSourceConfiguration} classes allow the user to provide

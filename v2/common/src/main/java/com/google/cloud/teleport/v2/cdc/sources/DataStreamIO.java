@@ -393,7 +393,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
             continue;
           }
           if (shouldFilterObject(object)) {
-            // Skip file due to iinitial timestamp
+            // Skip file due to initial timestamp
             continue;
           }
           Integer newDepth = getObjectDepth(object.getName());

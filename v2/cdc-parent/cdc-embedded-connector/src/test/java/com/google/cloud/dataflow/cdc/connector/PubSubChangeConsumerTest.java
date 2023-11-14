@@ -32,8 +32,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-/** Tests for PubSunChangeConsummer. */
-public class PubSubChangeconsumerTest {
+/** Tests for PubSubChangeConsumer. */
+public class PubSubChangeConsumerTest {
 
   @Test
   public void testBasicRecordAndFilteredRecordInput() throws InterruptedException {

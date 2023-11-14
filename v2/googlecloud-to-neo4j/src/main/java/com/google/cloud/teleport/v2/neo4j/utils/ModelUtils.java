@@ -239,7 +239,7 @@ public class ModelUtils {
         && (trExpression.endsWith("\"") || trExpression.endsWith("'"));
   }
 
-  // Make relationships idenfifiers upper case, no spaces
+  // Make relationships idendifiers upper case, no spaces
   public static String makeValidNeo4jRelationshipTypeIdentifier(String proposedTypeIdString) {
     String finalIdString =
         proposedTypeIdString

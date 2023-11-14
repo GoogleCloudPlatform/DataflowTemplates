@@ -159,7 +159,7 @@ public class ImportPipeline {
         helpText =
             "Flag to turn off early index creation if there are many indexes. Indexes and Foreign"
                 + " keys are created after dataload. If there are more than 40 DDL statements to be"
-                + " executed after dataload, it is preferable to create the indexes before datalod."
+                + " executed after dataload, it is preferable to create the indexes before dataload."
                 + " This is the flag to turn the feature off.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEarlyIndexCreateFlag();

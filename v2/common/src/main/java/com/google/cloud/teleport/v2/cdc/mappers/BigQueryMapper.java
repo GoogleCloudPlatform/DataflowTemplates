@@ -134,8 +134,8 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   /**
-   * This function sets a boolean value dictating if day partitioning shoud be applied to new tables
-   * created in BigQuery.
+   * This function sets a boolean value dictating if day partitioning should be applied to new
+   * tables created in BigQuery.
    *
    * @param dayPartitioning A boolean value if day partitioning should be applied.
    */

@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * ChangeEventContext class converts change events to Cloud Spanner mutations and stores all
- * intermediatory objects prior to applying them to Cloud Spanner.
+ * intermediary objects prior to applying them to Cloud Spanner.
  */
 public abstract class ChangeEventContext {
 

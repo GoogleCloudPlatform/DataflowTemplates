@@ -93,7 +93,7 @@ import org.slf4j.LoggerFactory;
     preview = true,
     requirements = {
       "The Pub/Sub Subscription must exist and the messages must be encoded in a valid JSON format.",
-      "The MongoDB cluster must exist and should be acccessible from the Dataflow worker machines."
+      "The MongoDB cluster must exist and should be accessible from the Dataflow worker machines."
     })
 public class PubSubToMongoDB {
   /**

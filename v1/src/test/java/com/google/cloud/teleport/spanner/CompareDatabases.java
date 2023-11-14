@@ -62,11 +62,11 @@ public class CompareDatabases extends PTransform<PBegin, PCollection<Long>> {
     final TupleTag<Struct> twoTag = new TupleTag<>();
     PCollection<KV<String, Struct>> rowsTwo = begin.apply("Read two", new ReadAllRows(two));
 
-    PCollection<KV<String, CoGbkResult>> cogroup =
+    PCollection<KV<String, CoGbkResult>> coGroup =
         KeyedPCollectionTuple.of(oneTag, rowsOne).and(twoTag, rowsTwo).apply(CoGroupByKey.create());
 
     PCollection<String> fails =
-        cogroup.apply(
+        coGroup.apply(
             ParDo.of(
                 new DoFn<KV<String, CoGbkResult>, String>() {
 

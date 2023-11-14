@@ -153,13 +153,13 @@ public class DynamicJdbcIOTest {
 
   @Test
   public void testDataSourceConfigurationNullPassword() throws Exception {
-    String usename = "sa";
+    String username = "sa";
     String password = null;
     DynamicJdbcIO.DynamicDataSourceConfiguration config =
         DynamicJdbcIO.DynamicDataSourceConfiguration.create(
                 "org.apache.derby.jdbc.ClientDriver",
                 maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null).get())
-            .withUsername(maybeDecrypt(usename, null).get())
+            .withUsername(maybeDecrypt(username, null).get())
             .withPassword(maybeDecrypt(password, null).get());
 
     try (Connection conn = config.buildDatasource().getConnection()) {
@@ -169,13 +169,13 @@ public class DynamicJdbcIOTest {
 
   @Test
   public void testDataSourceConfigurationNullUsernameAndPassword() throws Exception {
-    String usename = null;
+    String username = null;
     String password = null;
     DynamicJdbcIO.DynamicDataSourceConfiguration config =
         DynamicJdbcIO.DynamicDataSourceConfiguration.create(
                 "org.apache.derby.jdbc.ClientDriver",
                 maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null).get())
-            .withUsername(maybeDecrypt(usename, null).get())
+            .withUsername(maybeDecrypt(username, null).get())
             .withPassword(maybeDecrypt(password, null).get());
 
     try (Connection conn = config.buildDatasource().getConnection()) {

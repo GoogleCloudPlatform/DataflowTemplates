@@ -50,7 +50,7 @@ public class ParquetToBigtableTest {
 
   /** Test whether {@link ParquetToBigtable} correctly maps a GenericRecord to a KV. */
   @Test
-  public void applyParquettoBigtableFn() throws Exception {
+  public void applyParquetToBigtableFn() throws Exception {
 
     byte[] rowKey1 = "row1".getBytes();
     ByteBuffer key1 = ByteBuffer.wrap(rowKey1);
@@ -103,7 +103,7 @@ public class ParquetToBigtableTest {
    * SplitLargeRows enabled..
    */
   @Test
-  public void applyParquettoBigtableFnWithSplitLargeRows() throws Exception {
+  public void applyParquetToBigtableFnWithSplitLargeRows() throws Exception {
 
     byte[] rowKey1 = "row1".getBytes();
     ByteBuffer key1 = ByteBuffer.wrap(rowKey1);

@@ -19,7 +19,7 @@ For parameter `Astra token` it is possible to provide either a valid token _Star
 the resource id of the secret in the Google Secret Manager. If you provide a secret and got an error message 
 check the following:
 
-**Check that the required secret existx and can be access by the dataflow user.**
+**Check that the required secret exists and can be access by the dataflow user.**
 
 - ✅ Check that the secrets are created in the same project as the Dataflow Job
 - ✅ Check that the full path has been provided including the version number
@@ -76,7 +76,7 @@ astra db cqlsh <database-name> \
 
 ### Symptom: Schema Generation error
 
-**Check the schema of the source table and compatiblity**:
+**Check the schema of the source table and compatibility**:
 - UDT are not supported
 - Tuple are not supported
 - Complex nested structures are not supported

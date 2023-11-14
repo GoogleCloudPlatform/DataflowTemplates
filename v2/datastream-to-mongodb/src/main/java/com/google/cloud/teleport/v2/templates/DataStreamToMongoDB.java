@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * This pipeline ingests DataStream data from GCS. The data is then transformed to BSON documents
  * they are automatically added to MongoDB.
  *
- * <p>Example Usage: TODO: FIX EXMAPLE USAGE
+ * <p>Example Usage: TODO: FIX EXAMPLE USAGE
  */
 public class DataStreamToMongoDB {
 
@@ -233,7 +233,7 @@ public class DataStreamToMongoDB {
     PCollection<FailsafeElement<String, String>> jsonRecords =
         PCollectionList.of(datastreamJsonRecords).apply(Flatten.pCollections());
     /**
-     * Does below steps: 1. Converts JSON to BSON documents. 2. Removes the metadata fileds. 3.
+     * Does below steps: 1. Converts JSON to BSON documents. 2. Removes the metadata fields. 3.
      * Inserts the data into MongoDB collections.
      */
     jsonRecords

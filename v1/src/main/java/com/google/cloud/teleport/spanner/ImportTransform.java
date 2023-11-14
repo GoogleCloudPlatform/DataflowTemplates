@@ -411,7 +411,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     private transient LocalSpannerAccessor spannerAccessor;
     private static final Logger LOG = LoggerFactory.getLogger(CreateTables.class);
 
-    /* If the schema has a lot of DDL changes after dataload, its preferable to create
+    /* If the schema has a lot of DDL changes after data load, it's preferable to create
      * them before dataload. This provides the threshold for the early creation.
      */
     private static final int EARLY_INDEX_CREATE_THRESHOLD = 40;

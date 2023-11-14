@@ -205,7 +205,7 @@ public abstract class LoadTestBase {
   /**
    * Compute metrics of a Dataflow runner job.
    *
-   * @param metrics a map of raw metrics. The results are also appened in the map.
+   * @param metrics a map of raw metrics. The results are also appended in the map.
    * @param launchInfo Job info of the job
    * @param config a {@class MetricsConfiguration}
    */
@@ -250,7 +250,7 @@ public abstract class LoadTestBase {
   /**
    * Compute metrics of a Direct runner job.
    *
-   * @param metrics a map of raw metrics. The results are also appened in the map.
+   * @param metrics a map of raw metrics. The results are also appended in the map.
    * @param launchInfo Job info of the job
    */
   private void computeDirectMetrics(Map<String, Double> metrics, LaunchInfo launchInfo)

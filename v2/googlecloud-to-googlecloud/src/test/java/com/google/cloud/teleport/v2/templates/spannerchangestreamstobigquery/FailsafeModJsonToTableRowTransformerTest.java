@@ -303,14 +303,14 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             ValueCaptureType.OLD_AND_NEW_VALUES,
             1L,
             1L);
-    TestStream<String> testSream =
+    TestStream<String> testStream =
         TestStream.create(SerializableCoder.of(String.class))
             .addElements(mod.toJson())
             .advanceWatermarkTo(Instant.now())
             .advanceWatermarkToInfinity();
     Pipeline p = Pipeline.create();
     PCollection<FailsafeElement<String, String>> input =
-        p.apply(testSream)
+        p.apply(testStream)
             .apply(
                 ParDo.of(
                     new DoFn<String, FailsafeElement<String, String>>() {
@@ -430,14 +430,14 @@ public final class FailsafeModJsonToTableRowTransformerTest {
       }
     }
 
-    TestStream<String> testSream =
+    TestStream<String> testStream =
         TestStream.create(SerializableCoder.of(String.class))
             .addElements(mod.toJson())
             .advanceWatermarkTo(Instant.now())
             .advanceWatermarkToInfinity();
     Pipeline p = Pipeline.create();
     PCollection<FailsafeElement<String, String>> input =
-        p.apply(testSream)
+        p.apply(testStream)
             .apply(
                 ParDo.of(
                     new DoFn<String, FailsafeElement<String, String>>() {

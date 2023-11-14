@@ -350,7 +350,7 @@ public final class CSVRecordToMutationTest {
   }
 
   @Test
-  public void parseRowToMutationCustomizedDimiterAndFieldQulifier() throws Exception {
+  public void parseRowToMutationCustomizedDelimiterAndFieldQualifier() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
     PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =

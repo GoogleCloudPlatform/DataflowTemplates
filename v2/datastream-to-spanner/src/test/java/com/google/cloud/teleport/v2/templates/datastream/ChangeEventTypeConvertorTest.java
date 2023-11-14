@@ -60,13 +60,13 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("bool_field8", "FALSE");
     changeEvent.put("bool_field9", "fAlSE");
     changeEvent.put("bool_field10", false);
-    changeEvent.put("bool_field11", 10); // Integers other than 0 interpretted as true
+    changeEvent.put("bool_field11", 10); // Integers other than 0 interpreted as true
     changeEvent.put("bool_field12", 0); // False
-    changeEvent.put("bool_field13", "y"); // Interpretted as true
+    changeEvent.put("bool_field13", "y"); // Interpreted as true
     changeEvent.put("bool_field14", "n"); // False
     changeEvent.put("bool_field15", ""); // False
-    changeEvent.put("bool_field16", "Trueee"); // Interpretted as false.
-    changeEvent.put("bool_field17", 12145213.2233); // Decimals are interpretted as false.
+    changeEvent.put("bool_field16", "Trueee"); // Interpreted as false.
+    changeEvent.put("bool_field17", 12145213.2233); // Decimals are interpreted as false.
     changeEvent.put("bool_field18", JSONObject.NULL);
 
     JsonNode ce = getJsonNode(changeEvent.toString());
@@ -151,8 +151,8 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("field6", "-123456789");
     changeEvent.put("field7", "123456.789");
     changeEvent.put("field8", "-123456.789");
-    changeEvent.put("field9", true); // Interpretted as 1
-    changeEvent.put("field10", false); // Interpretted as 0
+    changeEvent.put("field9", true); // Interpreted as 1
+    changeEvent.put("field10", false); // Interpreted as 0
     changeEvent.put("field11", JSONObject.NULL);
 
     JsonNode ce = getJsonNode(changeEvent.toString());
@@ -591,7 +591,7 @@ public final class ChangeEventTypeConvertorTest {
   }
 
   @Test(expected = ChangeEventConvertorException.class)
-  public void cannotConvertRandomStringTodate() throws Exception {
+  public void cannotConvertRandomStringToDate() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
     JsonNode ce = getJsonNode(changeEvent.toString());

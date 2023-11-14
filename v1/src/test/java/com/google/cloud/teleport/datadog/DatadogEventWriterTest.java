@@ -123,7 +123,7 @@ public class DatadogEventWriterTest {
     assertThat(thrown).hasMessageThat().contains("apiKey needs to be provided");
   }
 
-  /** Test building {@link DatadogEventWriter} with default batchcount . */
+  /** Test building {@link DatadogEventWriter} with default batch count. */
   @Test
   public void eventWriterDefaultBatchCount() {
 

@@ -81,7 +81,7 @@ public final class InputFileReaderTest {
             RuntimeException.class,
             () ->
                 InputFileReader.getKafkaConnectionProfile(
-                    "src/test/resources/somemisingfile.json"));
+                    "src/test/resources/somemissingfile.json"));
     assertTrue(thrown.getMessage().contains("Failed to read kafka cluster input file"));
   }
 }

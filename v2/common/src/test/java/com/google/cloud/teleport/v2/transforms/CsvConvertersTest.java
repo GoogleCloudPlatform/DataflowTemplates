@@ -440,9 +440,9 @@ public class CsvConvertersTest {
    */
   @Test
   public void testCsvFormatWithDelimiter() {
-    String delim = ";";
-    CSVFormat csvFormat = CsvConverters.getCsvFormat("Excel", delim);
-    assertEquals(delim, String.valueOf(csvFormat.getDelimiter()));
+    String delimiter = ";";
+    CSVFormat csvFormat = CsvConverters.getCsvFormat("Excel", delimiter);
+    assertEquals(delimiter, String.valueOf(csvFormat.getDelimiter()));
   }
 
   /** Tests {@link CsvConverters#buildJsonString(List, List, String)} creates proper string. */

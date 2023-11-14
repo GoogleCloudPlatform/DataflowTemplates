@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
@@ -79,7 +77,7 @@ public class GCSReader {
   public List<TrimmedShardedDataChangeRecord> getRecords() {
     /*
     Call TextIO - read the file into PCollection
-    Get a JSON transfrom of the PCollection
+    Get a JSON transform of the PCollection
     Sort the Collection on commitTs,serverTrxId and record sequence
      */
     List<TrimmedShardedDataChangeRecord> changeStreamList = new ArrayList<>();
@@ -89,7 +87,6 @@ public class GCSReader {
 
       BufferedReader reader =
           new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
-      ObjectWriter ow = new ObjectMapper().writer();
       while (reader.ready()) {
         String line = reader.readLine();
         TrimmedShardedDataChangeRecord chrec =

@@ -252,7 +252,7 @@ public class SpannerConverters {
     private LocalSpannerAccessor spannerAccessor;
     private DatabaseClient databaseClient;
 
-    // LocalSpannerAccessor is not serialiazable, thus can't be passed as a mock so we need to pass
+    // LocalSpannerAccessor is not serializable, thus can't be passed as a mock so we need to pass
     // mocked database client directly instead. We can't generate stub of ExportTransform because
     // AutoValue generates a final class.
     // TODO make LocalSpannerAccessor serializable
@@ -747,7 +747,7 @@ public class SpannerConverters {
   }
 
   /**
-   * A DoFn that creates a transaction for read that honors the timestamp valueprovider parameter.
+   * A DoFn that creates a transaction for read that honors the timestamp ValueProvider parameter.
    */
   public static class CreateTransactionFnWithTimestamp extends DoFn<Object, Transaction> {
     private final SpannerConfig config;

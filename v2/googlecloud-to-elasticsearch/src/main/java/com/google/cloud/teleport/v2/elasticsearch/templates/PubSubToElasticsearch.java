@@ -84,7 +84,7 @@ public class PubSubToElasticsearch {
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
   /** The tag for the error output table of the json to table row transform. */
-  public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_ERROROUTPUT_OUT =
+  public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_ERROR_OUTPUT_OUT =
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
   /** Pubsub message/string coder for pipeline. */
@@ -208,7 +208,7 @@ public class PubSubToElasticsearch {
      * Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
      */
     convertedPubsubMessages
-        .get(TRANSFORM_ERROROUTPUT_OUT)
+        .get(TRANSFORM_ERROR_OUTPUT_OUT)
         .apply(ParDo.of(new FailedPubsubMessageToPubsubTopicFn()))
         .apply("writeFailureMessages", PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
 

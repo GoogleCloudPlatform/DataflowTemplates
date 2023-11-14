@@ -710,7 +710,7 @@ public class ElasticsearchIO {
         // shard.So we do not use desiredBundleSize because we cannot split shards.
         // With the slice API in ES 5.x+ we will be able to use desiredBundleSize.
         // Basically we will just ask the slice API to return data
-        // in nbBundles = estimatedSize / desiredBundleSize chuncks.
+        // in nbBundles = estimatedSize / desiredBundleSize chunks.
         // So each beam source will read around desiredBundleSize volume of data.
 
         JsonNode statsJson = BoundedElasticsearchSource.getStats(connectionConfiguration, true);
@@ -1240,7 +1240,7 @@ public class ElasticsearchIO {
     /**
      * Provide a function to extract the target type from the document allowing for dynamic document
      * routing. Should the function throw an Exception then the batch will fail and the exception
-     * propagated. Users are encouraged to consider carefully if multipe types are a sensible model
+     * propagated. Users are encouraged to consider carefully if multiple types are a sensible model
      * <a
      * href="https://www.elastic.co/blog/index-type-parent-child-join-now-future-in-elasticsearch">as
      * discussed in this blog</a>.

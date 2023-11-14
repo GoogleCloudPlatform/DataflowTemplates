@@ -102,8 +102,8 @@ public class StatefulRowCleaner extends PTransform<PCollection<TableRow>, PColle
    * The {@code StatefulCleanDatastreamRowFn} class statefully processes and filters data based on
    * the supplied primary keys and sort keys in the TableRow.
    *
-   * <p>The core usecase is to ensure Oracle transaction rollbacks are supplemented with the correct
-   * primary key values.
+   * <p>The core use case is to ensure Oracle transaction rollbacks are supplemented with the
+   * correct primary key values.
    */
   public static class StatefulCleanDatastreamRowFn extends DoFn<KV<String, TableRow>, TableRow> {
 

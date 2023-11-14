@@ -465,7 +465,7 @@ public abstract class JavascriptTextTransformer {
                         failedCounter.inc();
 
                       } catch (Throwable e) {
-                        // Throwable caught because UDFS can trigger Errors (e.g., StackOverflow)
+                        // Throwable caught because UDFs can trigger Errors (e.g., StackOverflow)
                         if (loggingEnabled) {
                           LOG.warn(
                               "Unexpected error occurred while applying UDF '{}' from file path '{}' due"
