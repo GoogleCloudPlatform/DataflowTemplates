@@ -96,8 +96,8 @@ jobs:
       run: |
         mvn verify -PtemplatesRelease \
         -DprojectId="dataflow-templates" \
-        -DbucketName="dataflow-templates-rc" \
-        -DlibrariesBucketName="dataflow-templates-releases" \
+        -DbucketName="dataflow-templates-staging" \
+        -DlibrariesBucketName="dataflow-templates-libraries" \
         -DstagePrefix="${CANDIDATE_NAME}" \
         -Dmaven.test.skip -T8 -e
       env:
