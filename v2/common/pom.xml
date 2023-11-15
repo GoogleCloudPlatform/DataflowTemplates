@@ -134,7 +134,7 @@
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
-            <version>3.1.8</version>
+            <version>${caffeine.version}</version>
         </dependency>
 
         <!-- Test dependencies -->
@@ -161,12 +161,6 @@
                 <artifactId>*</artifactId>
               </exclusion>
             </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongo-java-driver</artifactId>
-            <version>3.12.11</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 
