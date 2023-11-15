@@ -14,7 +14,7 @@ Search Format Structure</a> for additional details.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates/cloud-spanner-to-vertex-vector-search)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-vertex-vector-search)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Spanner_vectors_to_Cloud_Storage).
 
 :bulb: This is a generated documentation based

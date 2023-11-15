@@ -71,7 +71,7 @@ import org.slf4j.LoggerFactory;
       "Check <a href=\"https://cloud.google.com/vertex-ai/docs/vector-search/setup/format-structure#json\">Vector Search Format Structure</a> for additional details."
     },
     documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided-templates/cloud-spanner-to-vertex-vector-search",
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-vertex-vector-search",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The Cloud Spanner database must exist.",
