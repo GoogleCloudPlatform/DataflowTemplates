@@ -77,14 +77,16 @@ jobs:
         --changed-files="pom.xml" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-release=true
     - name: Run Integration Tests
       run: |
         ./cicd/run-it-tests \
         --changed-files="pom.xml" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-release=true
     - name: Upload Tests Report
       uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
       if: always() # always run even if previous step fails

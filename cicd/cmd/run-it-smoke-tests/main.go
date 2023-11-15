@@ -54,7 +54,6 @@ func main() {
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
-		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunIntegrationSmokeTests(),
 		mvnFlags.ThreadCount(8),
 		mvnFlags.IntegrationTestParallelism(4),
@@ -63,7 +62,8 @@ func main() {
 		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
-		flags.StageBucket())
+		flags.StageBucket(),
+		flags.FailureMode())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
