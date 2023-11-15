@@ -60,6 +60,8 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
   private SpannerResourceManager googleSqlResourceManager;
   private SpannerResourceManager postgresResourceManager;
 
+  private String shortTestName;
+
   @Parameterized.Parameter public Boolean dataBoostEnabled;
 
   @Parameterized.Parameters(name = "data-boost-{0}")
@@ -70,24 +72,7 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     // Make test names shorter to have distinctive database IDs
-    String shortTestName =
-        testName
-                .toLowerCase()
-                .replace("test", "")
-                .replace("spannerto", "")
-                .replace("postgres", "pg")
-                .replace("json", "")
-            + dataBoostEnabled;
-
-    // Set up resource managers
-    googleSqlResourceManager =
-        SpannerResourceManager.builder(shortTestName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build();
-    postgresResourceManager =
-        SpannerResourceManager.builder(shortTestName, PROJECT, REGION, Dialect.POSTGRESQL)
-            .maybeUseStaticInstance()
-            .build();
+    shortTestName = testName.toLowerCase().replace("test", "").replace("to", "") + dataBoostEnabled;
   }
 
   @After
@@ -96,7 +81,13 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
   }
 
   @Test
-  public void testSpannerToGCSJSON() throws IOException {
+  public void testGsqlToGcs() throws IOException {
+    googleSqlResourceManager =
+        SpannerResourceManager.builder(
+                (dataBoostEnabled ? "db_" : "") + shortTestName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build();
+
     String tableName = "gsql" + dataBoostEnabled + RandomStringUtils.randomNumeric(5);
     String createDocumentsTableStatement =
         String.format(
@@ -141,7 +132,16 @@ public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
   }
 
   @Test
-  public void testPostgresSpannerToGCSJSON() throws IOException {
+  public void testPgToGcs() throws IOException {
+    postgresResourceManager =
+        SpannerResourceManager.builder(
+                (dataBoostEnabled ? "db_" : "") + shortTestName,
+                PROJECT,
+                REGION,
+                Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .build();
+
     // converting to lowercase for PG
     String tableName =
         StringUtils.lowerCase("pg" + dataBoostEnabled + RandomStringUtils.randomNumeric(5));
