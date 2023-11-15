@@ -82,4 +82,3 @@ func FailureMode() string {
 	// Fail PRs at the end
 	return "-fae"
 }
-
