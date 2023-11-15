@@ -133,7 +133,7 @@
         <version>${avro.version}</version>
       </dependency>
 
-      <!-- If any module uses log4j 2.x, enforce it is patched by default -->
+      <!-- If any module uses log4j 2.x, enforce patched versions -->
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j</artifactId>
