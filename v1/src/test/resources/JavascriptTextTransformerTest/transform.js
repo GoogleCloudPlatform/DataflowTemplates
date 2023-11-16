@@ -50,7 +50,7 @@ function transformSlow(inData) {
   obj.name = row[0];
 
   sum = 0;
-  for (let i = 0; i <= 10000; i++) {
+  for (let i = 0; i < 1000000; i++) {
     sum += i;
   }
   obj.model = row[1];
