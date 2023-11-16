@@ -16,6 +16,7 @@
   "actions": [
     {
       "name": "Unique Seller",
+      "execute_after": "start",
       "type": "cypher",
       "options": [{
         "cypher": "CREATE CONSTRAINT unique_seller FOR (s:Seller) REQUIRE s.id IS NODE KEY"
@@ -23,6 +24,7 @@
     },
     {
       "name": "Unique Customer",
+      "execute_after": "start",
       "type": "cypher",
       "options": [{
         "cypher": "CREATE CONSTRAINT unique_customer FOR (c:Customer) REQUIRE c.id IS NODE KEY"
@@ -30,6 +32,7 @@
     },
     {
       "name": "Unique Sold Product",
+      "execute_after": "start",
       "type": "cypher",
       "options": [{
         "cypher": "CREATE CONSTRAINT unique_sold_product FOR ()-[s:SOLD]->() REQUIRE s.productId IS RELATIONSHIP KEY"
@@ -38,10 +41,50 @@
   ],
   "targets": [
     {
-      "custom_query": {
-        "name": "(:Customer)<-[:SOLD]-(:Seller) Nodes",
+      "node": {
+        "name": "(:Customer) Nodes",
         "source": "inline orders",
-        "query": "UNWIND $rows AS row MERGE (seller:Seller {id: row.seller_id}) MERGE (customer:Customer {id: row.customer_id}) MERGE (seller)-[:SOLD {productId: row.product_id}]->(customer)"
+        "mode": "merge",
+        "transform": {
+          "group": true
+        },
+        "mappings": {
+          "label": "\"Customer\"",
+          "properties": {
+            "keys": {
+              "customer_id": "id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "node": {
+        "name": "(:Seller) Nodes",
+        "source": "inline orders",
+        "mode": "merge",
+        "execute_after": "node",
+        "execute_after_name": "(:Customer) Nodes",
+        "transform": {
+          "group": true
+        },
+        "mappings": {
+          "label": "\"Seller\"",
+          "properties": {
+            "keys": {
+              "seller_id": "id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "custom_query": {
+        "name": "(:Customer)<-[:SOLD]-(:Seller) Rels",
+        "source": "inline orders",
+        "execute_after": "node",
+        "execute_after_name": "(:Seller) Nodes",
+        "query": "UNWIND $rows AS row MATCH (seller:Seller {id: row.seller_id}) MATCH (customer:Customer {id: row.customer_id}) MERGE (seller)-[:SOLD {productId: row.product_id}]->(customer)"
       }
     }
   ]
