@@ -262,7 +262,10 @@ public abstract class JavascriptTextTransformer {
         throw new RuntimeException("No UDF was loaded");
       }
 
-      Object result = invocable.invokeFunction(functionName(), data);
+      Object result;
+      synchronized (invocable) {
+        result = invocable.invokeFunction(functionName(), data);
+      }
       if (result == null || ScriptObjectMirror.isUndefined(result)) {
         return null;
       } else if (result instanceof String) {

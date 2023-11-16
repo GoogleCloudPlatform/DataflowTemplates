@@ -277,6 +277,36 @@ public class JavascriptTextTransformerTest {
     pipeline.run();
   }
 
+  /**
+   * Test {@link TransformTextViaJavascript} allows for script to test when there's computation /
+   * concurrency.
+   */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testDoFnWithComputation() {
+    List<String> inJson = Arrays.asList("A,B", "C,D", "E,F", "G,H");
+    List<String> expectedJson =
+        Arrays.asList(
+            "{\"name\":\"A\",\"model\":\"B\",\"sum\":50005000}",
+            "{\"name\":\"C\",\"model\":\"D\",\"sum\":50005000}",
+            "{\"name\":\"E\",\"model\":\"F\",\"sum\":50005000}",
+            "{\"name\":\"G\",\"model\":\"H\",\"sum\":50005000}");
+
+    PCollection<String> transformedJson =
+        pipeline
+            .apply("Create", Create.of(inJson))
+            .apply(
+                TransformTextViaJavascript.newBuilder()
+                    .setFileSystemPath(StaticValueProvider.of(TRANSFORM_FILE_PATH))
+                    .setFunctionName(StaticValueProvider.of("transformSlow"))
+                    .setReloadIntervalMinutes(StaticValueProvider.of(0))
+                    .build());
+
+    PAssert.that(transformedJson).containsInAnyOrder(expectedJson);
+
+    pipeline.run();
+  }
+
   /** Tests the {@link FailsafeJavascriptUdf} when the input is valid. */
   @Test
   @Category(NeedsRunner.class)

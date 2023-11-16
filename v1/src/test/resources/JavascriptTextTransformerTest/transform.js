@@ -37,3 +37,24 @@ function transformWithFilter(inJson) {
     return JSON.stringify(obj);
   }
 }
+/**
+ * A transform function which copies data to another attribute, with computation in the middle.
+ * @param {string} inJson
+ * @return {string} outJson
+ */
+function transformSlow(inData) {
+
+  var row = inData.split(',');
+  var obj = new Object();
+
+  obj.name = row[0];
+
+  sum = 0;
+  for (let i = 0; i <= 10000; i++) {
+    sum += i;
+  }
+  obj.model = row[1];
+  obj.sum = sum;
+
+  return JSON.stringify(obj);
+}
