@@ -312,21 +312,21 @@ public class JavascriptTextTransformerTest {
   public void testDoFnWithComputationAndReload() {
     List<String> inJson = Arrays.asList("A,B", "C,D", "E,F", "G,H");
     List<String> expectedJson =
-            Arrays.asList(
-                    "{\"name\":\"A\",\"model\":\"B\",\"sum\":499999500000}",
-                    "{\"name\":\"C\",\"model\":\"D\",\"sum\":499999500000}",
-                    "{\"name\":\"E\",\"model\":\"F\",\"sum\":499999500000}",
-                    "{\"name\":\"G\",\"model\":\"H\",\"sum\":499999500000}");
+        Arrays.asList(
+            "{\"name\":\"A\",\"model\":\"B\",\"sum\":499999500000}",
+            "{\"name\":\"C\",\"model\":\"D\",\"sum\":499999500000}",
+            "{\"name\":\"E\",\"model\":\"F\",\"sum\":499999500000}",
+            "{\"name\":\"G\",\"model\":\"H\",\"sum\":499999500000}");
 
     PCollection<String> transformedJson =
-            pipeline
-                    .apply("Create", Create.of(inJson))
-                    .apply(
-                            TransformTextViaJavascript.newBuilder()
-                                    .setFileSystemPath(StaticValueProvider.of(TRANSFORM_FILE_PATH))
-                                    .setFunctionName(StaticValueProvider.of("transformSlow"))
-                                    .setReloadIntervalMinutes(StaticValueProvider.of(1))
-                                    .build());
+        pipeline
+            .apply("Create", Create.of(inJson))
+            .apply(
+                TransformTextViaJavascript.newBuilder()
+                    .setFileSystemPath(StaticValueProvider.of(TRANSFORM_FILE_PATH))
+                    .setFunctionName(StaticValueProvider.of("transformSlow"))
+                    .setReloadIntervalMinutes(StaticValueProvider.of(1))
+                    .build());
 
     PAssert.that(transformedJson).containsInAnyOrder(expectedJson);
 
