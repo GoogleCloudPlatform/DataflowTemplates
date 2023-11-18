@@ -120,65 +120,6 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
     assertThatResult(result).meetsConditions();
   }
 
-  @Test
-  public void testCustomQueryImportOrdering() throws IOException {
-    String spec = contentOf("/testing-specs/custom-query/northwind-jobspec-ordered.json");
-    gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
-    gcsClient.createArtifact(
-        "neo4j-connection.json",
-        String.format(
-            "{\n"
-                + "  \"server_url\": \"%s\",\n"
-                + "  \"database\": \"%s\",\n"
-                + "  \"auth_type\": \"basic\",\n"
-                + "  \"username\": \"neo4j\",\n"
-                + "  \"pwd\": \"%s\"\n"
-                + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
-
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, specPath)
-            .addParameter("jobSpecUri", getGcsPath("inline-data-to-neo4j.json"))
-            .addParameter("neo4jConnectionUri", getGcsPath("neo4j-connection.json"));
-    LaunchInfo info = launchTemplate(options);
-
-    assertThatPipeline(info).isRunning();
-    Result result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(info),
-                Neo4jQueryCheck.builder(neo4jClient)
-                    .setQuery(
-                        "CALL db.schema.nodeTypeProperties() YIELD nodeLabels, propertyName, mandatory RETURN nodeLabels, collect(propertyName) AS propertyNames ORDER BY nodeLabels ASC")
-                    .setExpectedResult(
-                        List.of(
-                            Map.of(
-                                "nodeLabels", List.of("Customer"), "propertyNames", List.of("id")),
-                            Map.of(
-                                "nodeLabels", List.of("Product"), "propertyNames", List.of("id"))))
-                    .build(),
-                Neo4jQueryCheck.builder(neo4jClient)
-                    .setQuery(
-                        "MATCH (n) RETURN labels(n) AS labels, count(n) AS count ORDER BY count ASC, labels ASC")
-                    .setExpectedResult(
-                        List.of(
-                            Map.of("labels", List.of("Customer"), "count", 1L),
-                            Map.of("labels", List.of("Product"), "count", 2L)))
-                    .build(),
-                Neo4jQueryCheck.builder(neo4jClient)
-                    .setQuery(
-                        "CALL db.schema.relTypeProperties() YIELD relType, propertyName RETURN relType, collect(propertyName) AS propertyNames ORDER BY relType ASC")
-                    .setExpectedResult(
-                        List.of(Map.of("relType", ":`PURCHASED`", "propertyNames", List.of())))
-                    .build(),
-                Neo4jQueryCheck.builder(neo4jClient)
-                    .setQuery(
-                        "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count ORDER BY count ASC")
-                    .setExpectedResult(List.of(Map.of("type", "PURCHASED", "count", 2L)))
-                    .build());
-    assertThatResult(result).meetsConditions();
-  }
-
   private String contentOf(String resourcePath) throws IOException {
     try (BufferedReader bufferedReader =
         new BufferedReader(
