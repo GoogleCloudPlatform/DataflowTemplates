@@ -470,6 +470,7 @@ mvn clean verify -PtemplatesRelease \
 * [Dataflow Templates](https://cloud.google.com/dataflow/docs/concepts/dataflow-templates) - basic template concepts.
 * [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates) - official documentation for templates provided by Google (the source code is in this repository).
 * Dataflow Cookbook: [Blog](https://cloud.google.com/blog/products/data-analytics/introducing-dataflow-cookbook), [GitHub Repository](https://github.com/GoogleCloudPlatform/dataflow-cookbook) - pipeline examples and practical solutions to common data processing challenges.
+* [Dataflow Metrics Collector](https://github.com/GoogleCloudPlatform/dataflow-metrics-exporter) -  CLI tool to collect dataflow resource & execution metrics and export to either BigQuery or Google Cloud Storage. Useful for comparison and visualization of the metrics while benchmarking the dataflow pipelines using various data formats, resource configurations etc
 * [Apache Beam](https://beam.apache.org)
   - [Overview](https://beam.apache.org/use/beam-overview/)
   - Quickstart: [Java](https://beam.apache.org/get-started/quickstart-java), [Python](https://beam.apache.org/get-started/quickstart-py), [Go](https://beam.apache.org/get-started/quickstart-go)
