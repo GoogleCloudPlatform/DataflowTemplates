@@ -53,6 +53,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -667,6 +669,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     private final PCollectionView<String> uniqueIdView;
     private final PCollectionView<Dialect> dialectView;
     private final ValueProvider<ResourceId> baseDir;
+    private transient ConcurrentMap<String, SpannerRecordConverter> recordConverters;
 
     SchemaBasedDynamicDestinations(
         PCollectionView<Map<String, SerializableSchemaSupplier>> avroSchemas,
@@ -727,10 +730,18 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     @Override
     public GenericRecord formatRecord(Struct record) {
-      String table = record.getString(0);
-      Schema schema = sideInput(avroSchemas).get(table).get();
-      Dialect dialect = sideInput(dialectView);
-      return new SpannerRecordConverter(schema, dialect).convert(record);
+      synchronized (this) {
+        if (recordConverters == null) {
+          recordConverters = new ConcurrentHashMap<>();
+        }
+      }
+      return recordConverters
+          .computeIfAbsent(
+              record.getString(0),
+              (String table) ->
+                  new SpannerRecordConverter(
+                      sideInput(avroSchemas).get(table).get(), sideInput(dialectView)))
+          .convert(record);
     }
   }
 
