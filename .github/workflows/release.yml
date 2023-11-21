@@ -102,9 +102,8 @@ jobs:
         -Dmaven.test.skip -T8 -e
       env:
         CANDIDATE_NAME: ${{ inputs.candidateName }}
-    - name: Push changes
+    - name: Push tags
       run: |
-        git push -u origin --all
         git push -u origin --tags
     - name: Release
       run: |
