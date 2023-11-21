@@ -68,14 +68,16 @@ public class CassandraToBigtableIT extends TemplateTestBase {
   @Test
   public void testCassandraToBigtable() throws IOException {
     // Arrange
+    String sourceTableName =
+        "source_table_" + RandomStringUtils.randomAlphanumeric(8).toLowerCase();
     String tableName = "test_table_" + RandomStringUtils.randomAlphanumeric(8);
     List<Map<String, Object>> records = new ArrayList<>();
     records.add(Map.of("id", 1, "company", "Google"));
     records.add(Map.of("id", 2, "company", "Alphabet"));
 
     cassandraResourceManager.executeStatement(
-        "CREATE TABLE source_data ( id int PRIMARY KEY, company text )");
-    cassandraResourceManager.insertDocuments("source_data", records);
+        "CREATE TABLE " + sourceTableName + " ( id int PRIMARY KEY, company text )");
+    cassandraResourceManager.insertDocuments(sourceTableName, records);
 
     String colFamily = "names";
     bigtableResourceManager.createTable(tableName, ImmutableList.of(colFamily));
@@ -85,7 +87,7 @@ public class CassandraToBigtableIT extends TemplateTestBase {
             .addParameter("cassandraHosts", cassandraResourceManager.getHost())
             .addParameter("cassandraPort", String.valueOf(cassandraResourceManager.getPort()))
             .addParameter("cassandraKeyspace", cassandraResourceManager.getKeyspaceName())
-            .addParameter("cassandraTable", "source_data")
+            .addParameter("cassandraTable", sourceTableName)
             .addParameter("bigtableProjectId", PROJECT)
             .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
             .addParameter("bigtableTableId", tableName)
