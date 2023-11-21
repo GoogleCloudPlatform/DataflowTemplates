@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ColumnType;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;

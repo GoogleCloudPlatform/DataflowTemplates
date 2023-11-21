@@ -30,8 +30,8 @@ import java.io.Serializable;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.commons.lang3.StringUtils;
 import org.threeten.bp.Instant;
 

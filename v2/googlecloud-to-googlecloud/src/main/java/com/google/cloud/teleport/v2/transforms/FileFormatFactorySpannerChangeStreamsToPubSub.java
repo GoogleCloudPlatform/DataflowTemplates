@@ -19,8 +19,8 @@ import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToAv
 import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToJson.DataChangeRecordToJsonTextFn;
 
 import com.google.auto.value.AutoValue;
-import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.CoderException;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;

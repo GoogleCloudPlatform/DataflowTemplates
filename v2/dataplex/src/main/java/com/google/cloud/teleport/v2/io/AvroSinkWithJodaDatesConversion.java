@@ -26,10 +26,10 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.specific.SpecificData;
-import org.apache.beam.sdk.io.AvroIO;
-import org.apache.beam.sdk.io.AvroIO.Sink;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO.Sink;
+import org.apache.beam.sdk.extensions.avro.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.io.FileIO;
-import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.joda.time.ReadableInstant;
 
 /**

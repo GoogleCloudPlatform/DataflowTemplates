@@ -32,8 +32,10 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -519,7 +521,8 @@ public final class BigtableChangeStreamsToGcsIT extends TemplateTestBase {
   }
 
   private String formatTimeMicros(long microsCutoff) {
-    SimpleDateFormat format = new SimpleDateFormat("yyy-MM-dd'T'HH:mm:ssXXX");
+    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX");
+    format.setTimeZone(TimeZone.getTimeZone(ZoneId.of("UTC")));
     return format.format(new Date(microsCutoff / 1000));
   }
 }

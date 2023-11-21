@@ -23,7 +23,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
-import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.options.Default;
