@@ -42,6 +42,7 @@ public class GCSReader {
 
   private String fileName;
   private ShardFileCreationTracker shardFileCreationTracker;
+  private SkippedFileTracker skippedFileTracker;
   private Instant currentIntervalEnd;
   private String shardId;
   private boolean shouldRetryWhenFileNotFound;
@@ -70,6 +71,9 @@ public class GCSReader {
         new ShardFileCreationTracker(
             spannerDao, taskContext.getShard().getLogicalShardId(), taskContext.getRunId());
     this.shardId = taskContext.getShard().getLogicalShardId();
+    this.skippedFileTracker =
+        new SkippedFileTracker(
+            spannerDao, taskContext.getShard().getLogicalShardId(), taskContext.getRunId());
     shouldRetryWhenFileNotFound = true;
     shouldFailWhenFileNotFound = false;
   }
@@ -118,6 +122,7 @@ public class GCSReader {
           Metrics.counter(GCSReader.class, "file_not_found_errors_" + shardId).inc();
           throw new RuntimeException("File  " + fileName + " expected but not found  : " + e);
         }
+        skippedFileTracker.writeSkippedFileName(fileName);
         LOG.warn("File not found : " + fileName + " skipping the file");
       }
 
@@ -128,6 +133,25 @@ public class GCSReader {
     return changeStreamList;
   }
 
+  /**
+   * We reached here since we did not find the file in GCS for the given interval. This can happen
+   * if: 1. There was no data written to Spanner for that interval hence file does not exist in GCS
+   * 2. There is data, but file is yet to be written to GCS
+   *
+   * <p>So we check if the first pipeline that writes to GCS has progressed sufficiently. For this,
+   * we check the shard_file_create_progress table until the created_upto value is greater than or
+   * equal to the current window.
+   *
+   * <p>If the created_upto is equal to current window - then it's indication that file for current
+   * window is written and should exist in GCS. So we lookup the file again and fail if the file is
+   * not found.
+   *
+   * <p>If the created_upto is greater than current window, we need to know if there was any data in
+   * Spanner for the window we are checking. For this we query the date_seen table. If data was seen
+   * for the current window, then file should exist in GCS and we lookup the file indefinitely until
+   * is it found. If, however, there was no data for the current window in data_seen, then it means
+   * file for the current interval is not there in GCS. We just simply skip the file.
+   */
   private List<TrimmedShardedDataChangeRecord> checkAndReturnIfFileExists() {
     try {
       Timestamp firstPipelineProgress =
@@ -139,9 +163,8 @@ public class GCSReader {
       No one's fault here.*/
       while (firstPipelineProgress == null) {
         LOG.info(
-            "No data in shard_file_create_progress for shard {}, will retry in 10 seconds",
-            shardId);
-        Thread.sleep(10000);
+            "No data in shard_file_create_progress for shard {}, will retry in 2 seconds", shardId);
+        Thread.sleep(2000);
         firstPipelineProgress = shardFileCreationTracker.getShardFileCreationProgressTimestamp();
         Metrics.counter(GCSReader.class, "metadata_file_create_init_retry_" + shardId).inc();
       }
@@ -149,11 +172,11 @@ public class GCSReader {
       // the Spanner to GCS job needs to catchup - wait and retry
       while (firstPipelineProgress.compareTo(currentEndTimestamp) < 0) {
         LOG.info(
-            "Progress for shard {} in shard_file_create_progress is lagging {}, will retry in 10"
+            "Progress for shard {} in shard_file_create_progress is lagging {}, will retry in 2"
                 + " seconds",
             shardId,
             firstPipelineProgress);
-        Thread.sleep(10000);
+        Thread.sleep(2000);
         firstPipelineProgress = shardFileCreationTracker.getShardFileCreationProgressTimestamp();
         Metrics.counter(GCSReader.class, "metadata_file_create_lag_retry_" + shardId).inc();
       }
@@ -161,8 +184,14 @@ public class GCSReader {
       if (firstPipelineProgress.compareTo(currentEndTimestamp) > 0) {
         // the Spanner to GCS job has progressed past the current interval end timestamp
         // search for file again, if it exists process, else skip the file not found
-        shouldRetryWhenFileNotFound = false;
-        shouldFailWhenFileNotFound = false;
+        if (shardFileCreationTracker.doesDataExistForTimestamp(currentEndTimestamp)) {
+          LOG.info("Data exists for shard {} and time end {} ", shardId, currentEndTimestamp);
+          shouldRetryWhenFileNotFound = true; // can happen due to out of order writes
+          shouldFailWhenFileNotFound = true;
+        } else {
+          shouldRetryWhenFileNotFound = false;
+          shouldFailWhenFileNotFound = false;
+        }
         return getRecords();
       } else {
         // the progress matches exactly,file should exist, if it is not found return error
@@ -171,7 +200,8 @@ public class GCSReader {
         return getRecords();
       }
     } catch (Exception e) {
-      throw new RuntimeException(" Cannot determine file creation progress for shard : " + shardId);
+      throw new RuntimeException(
+          " Cannot determine file creation progress for shard : " + shardId, e);
     }
   }
 }

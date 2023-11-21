@@ -47,7 +47,7 @@ public class ShardProgressTracker {
   }
 
   public void init() {
-    spannerDao.checkAndcreateShardProgressTable();
+    spannerDao.checkAndCreateShardProgressTable();
   }
 
   public Map<String, ShardProgress> getShardProgress() {

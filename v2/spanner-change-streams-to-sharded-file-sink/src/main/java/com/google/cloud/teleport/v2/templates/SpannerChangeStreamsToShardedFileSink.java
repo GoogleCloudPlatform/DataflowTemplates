@@ -30,7 +30,8 @@ import com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToShardedFileS
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
-import com.google.cloud.teleport.v2.templates.transforms.FileProgressTracker;
+import com.google.cloud.teleport.v2.templates.transforms.ChangeDataProgressTrackerFn;
+import com.google.cloud.teleport.v2.templates.transforms.FileProgressTrackerFn;
 import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.WriterGCS;
@@ -367,6 +368,15 @@ public class SpannerChangeStreamsToShardedFileSink {
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
         .apply(
+            "Tracking change data seen",
+            ParDo.of(
+                new ChangeDataProgressTrackerFn(
+                    options.getSpannerProjectId(),
+                    options.getMetadataInstance(),
+                    options.getMetadataDatabase(),
+                    tableSuffix,
+                    options.getRunIdentifier())))
+        .apply(
             "Write To GCS",
             WriterGCS.newBuilder()
                 .withGcsOutputDirectory(options.getGcsOutputDirectory())
@@ -378,7 +388,7 @@ public class SpannerChangeStreamsToShardedFileSink {
         .apply(
             "Tracking file progress ",
             ParDo.of(
-                new FileProgressTracker(
+                new FileProgressTrackerFn(
                     options.getSpannerProjectId(),
                     options.getMetadataInstance(),
                     options.getMetadataDatabase(),

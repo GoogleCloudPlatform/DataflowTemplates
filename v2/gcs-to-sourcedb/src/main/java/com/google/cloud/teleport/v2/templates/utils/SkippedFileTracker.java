@@ -15,36 +15,44 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
-import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Checks the file creation progress of the Spanner to GCS job. */
-public class ShardFileCreationTracker {
+/** Audits the skipped files in Spanner table. */
+public class SkippedFileTracker {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ShardFileCreationTracker.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SkippedFileTracker.class);
   private SpannerDao spannerDao;
   private String shardId;
   private String runId;
 
-  public ShardFileCreationTracker(SpannerDao spannerDao, String shardId, String runId) {
+  public SkippedFileTracker(
+      String spannerProjectId,
+      String metadataInstance,
+      String metadataDatabase,
+      String tableSuffix,
+      String runId) {
+    this.spannerDao =
+        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+    this.runId = runId;
+  }
+
+  public SkippedFileTracker(SpannerDao spannerDao, String shardId, String runId) {
     this.spannerDao = spannerDao;
     this.shardId = shardId;
     this.runId = runId;
   }
 
-  public Timestamp getShardFileCreationProgressTimestamp() {
-    Timestamp response = spannerDao.getShardFileCreationProgressTimestamp(shardId, runId);
-    return response;
+  public void init() {
+    spannerDao.checkAndCreateSkippedFileTable();
   }
 
-  public boolean doesDataExistForTimestamp(Timestamp endTimestamp) {
-    long seconds = endTimestamp.getSeconds();
-    int nanos = endTimestamp.getNanos();
-    String orig = String.valueOf(nanos) + String.valueOf(seconds);
-    StringBuilder reversedString = new StringBuilder(orig);
-    String id = reversedString.reverse() + "_" + runId + "_" + shardId;
-    return spannerDao.doesIdExist(id);
+  public void writeSkippedFileName(String fileName) {
+    spannerDao.writeSkippedFile(shardId, runId, fileName);
+  }
+
+  public void close() {
+    spannerDao.close();
   }
 }

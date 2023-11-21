@@ -69,6 +69,13 @@ public class ProcessingContextGenerator {
             spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
     shardProgressTracker.init();
 
+    // We need this here to create the shard_skipped_files table.
+    SkippedFileTracker skippedFileTracker =
+        new SkippedFileTracker(
+            spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
+    skippedFileTracker.init();
+    skippedFileTracker.close();
+
     Map<String, ProcessingContext> response = new HashMap<>();
 
     /*

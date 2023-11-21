@@ -16,35 +16,41 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.Timestamp;
-import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/** Checks the file creation progress of the Spanner to GCS job. */
-public class ShardFileCreationTracker {
+/** Tracks the shard file creation progress. */
+public class DataSeenTracker {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ShardFileCreationTracker.class);
   private SpannerDao spannerDao;
-  private String shardId;
   private String runId;
 
-  public ShardFileCreationTracker(SpannerDao spannerDao, String shardId, String runId) {
-    this.spannerDao = spannerDao;
-    this.shardId = shardId;
+  public DataSeenTracker(
+      String spannerProjectId,
+      String metadataInstance,
+      String metadataDatabase,
+      String tableSuffix,
+      String runId) {
+    this.spannerDao =
+        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
     this.runId = runId;
   }
 
-  public Timestamp getShardFileCreationProgressTimestamp() {
-    Timestamp response = spannerDao.getShardFileCreationProgressTimestamp(shardId, runId);
-    return response;
-  }
-
-  public boolean doesDataExistForTimestamp(Timestamp endTimestamp) {
+  /**
+   * Writes the data_seen table with the end time of the window encountered. The primary key is
+   * generated so that there is no hotspotting.
+   */
+  public void updateDataSeen(String shard, String endTime) {
+    // primary key is end time in epoch, convert to string,reverse string then append run id and
+    // shard id, this gives a randomness to the primary key
+    Timestamp endTimestamp = Timestamp.parseTimestamp(endTime);
     long seconds = endTimestamp.getSeconds();
     int nanos = endTimestamp.getNanos();
     String orig = String.valueOf(nanos) + String.valueOf(seconds);
     StringBuilder reversedString = new StringBuilder(orig);
-    String id = reversedString.reverse() + "_" + runId + "_" + shardId;
-    return spannerDao.doesIdExist(id);
+    String id = reversedString.reverse() + "_" + runId + "_" + shard;
+    this.spannerDao.updateDataSeen(id, shard, endTimestamp, runId);
+  }
+
+  public void close() {
+    this.spannerDao.close();
   }
 }

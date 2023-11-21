@@ -28,8 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Captures the progress of the files created per shard. */
-public class FileProgressTracker extends DoFn<KV<String, String>, Void> {
-  private static final Logger LOG = LoggerFactory.getLogger(FileProgressTracker.class);
+public class FileProgressTrackerFn extends DoFn<KV<String, String>, Void> {
+  private static final Logger LOG = LoggerFactory.getLogger(FileProgressTrackerFn.class);
 
   private String spannerProjectId;
   private String spannerInstance;
@@ -38,7 +38,7 @@ public class FileProgressTracker extends DoFn<KV<String, String>, Void> {
   private String runId;
   private FileCreationTracker fileCreationTracker;
 
-  public FileProgressTracker(
+  public FileProgressTrackerFn(
       String spannerProjectId,
       String spannerInstance,
       String spannerDatabase,
@@ -65,6 +65,13 @@ public class FileProgressTracker extends DoFn<KV<String, String>, Void> {
     fileCreationTracker.close();
   }
 
+  /**
+   * This captures the file creation progress per shard in the shard_file_create_progress table.This
+   * method captures the latest window, per shard, successfully written up to this point in GCS.The
+   * table shard_file_create_progress is checked by the gcs-to-sourcedb pipeline to check
+   * progress.It ensures that the gcs-to-sourcedb pipeline will wait for files until this pipeline
+   * has progressed.
+   */
   @ProcessElement
   public void processElement(ProcessContext c, BoundedWindow window) {
     KV<String, String> element = c.element();
@@ -78,6 +85,7 @@ public class FileProgressTracker extends DoFn<KV<String, String>, Void> {
       fileCreationTracker.updateProgress(shardId, iw.end().toString());
 
     } else {
+      // Ideally we should not reach here, but adding this else for any unknown scenario
       fileCreationTracker.updateProgress(shardId, window.maxTimestamp().toString());
     }
   }

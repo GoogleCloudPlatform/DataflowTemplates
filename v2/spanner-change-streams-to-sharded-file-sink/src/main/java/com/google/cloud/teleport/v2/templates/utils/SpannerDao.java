@@ -41,8 +41,11 @@ public class SpannerDao {
 
   private SpannerAccessor spannerAccessor;
   private SpannerConfig spannerConfig;
-  private String shardFileCreateProgressTableName;
-  private String spannerToGcsMetadataTableName;
+  private String
+      shardFileCreateProgressTableName; // stores latest window of files created per shard
+  private String
+      spannerToGcsMetadataTableName; // stores the start time and duration supplied in input
+  private String dataSeenTableName; // stores the window end for change data records seen
   private boolean isPostgres;
   // Timeout for Cloud Spanner schema update.
   private static final int SCHEMA_UPDATE_WAIT_MIN = 5;
@@ -56,9 +59,11 @@ public class SpannerDao {
     this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
     spannerToGcsMetadataTableName = "spanner_to_gcs_metadata";
     shardFileCreateProgressTableName = "shard_file_create_progress";
+    dataSeenTableName = "data_seen";
     if (!tableSuffix.isEmpty()) {
       spannerToGcsMetadataTableName += "_" + tableSuffix;
       shardFileCreateProgressTableName += "_" + tableSuffix;
+      dataSeenTableName += "_" + tableSuffix;
     }
     isPostgres =
         Dialect.POSTGRESQL
@@ -166,7 +171,59 @@ public class SpannerDao {
     }
   }
 
+  private void checkAndCreateDataSeenTable() {
+
+    DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
+
+    String statement =
+        "select * from information_schema.tables where table_name='"
+            + dataSeenTableName
+            + "' and"
+            + " table_type='BASE TABLE'";
+    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
+      ResultSet resultSet = tx.executeQuery(Statement.of(statement));
+      if (!resultSet.next()) {
+        DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
+        String createTable = "";
+        if (isPostgres) {
+          createTable =
+              "CREATE TABLE "
+                  + dataSeenTableName
+                  + "( id character varying NOT NULL,run_id character varying NOT NULL,shard"
+                  + " character varying NOT NULL,window_seen timestamp with time zone NOT"
+                  + " NULL,update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,PRIMARY"
+                  + " KEY(id)) TTL INTERVAL '2 days' ON update_ts";
+
+        } else {
+          createTable =
+              "CREATE TABLE "
+                  + dataSeenTableName
+                  + " (id STRING(MAX) NOT NULL,run_id STRING(MAX) NOT NULL,shard STRING(MAX) NOT"
+                  + " NULL, window_seen TIMESTAMP NOT NULL , update_ts TIMESTAMP DEFAULT"
+                  + " (CURRENT_TIMESTAMP)) PRIMARY KEY(id) , ROW DELETION POLICY"
+                  + " (OLDER_THAN(update_ts, INTERVAL 2 DAY))";
+        }
+        OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
+            databaseAdminClient.updateDatabaseDdl(
+                spannerConfig.getInstanceId().get(),
+                spannerConfig.getDatabaseId().get(),
+                Arrays.asList(createTable),
+                null);
+
+        try {
+          op.get(SCHEMA_UPDATE_WAIT_MIN, TimeUnit.MINUTES);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    } catch (Exception e) {
+
+      throw new RuntimeException(e);
+    }
+  }
+
   public void initShardProgress(List<Shard> shards, String runId) {
+    checkAndCreateDataSeenTable();
     checkAndCreateProgressTable();
     List<Mutation> mutations = new ArrayList<>();
     Timestamp epochTimestamp = Timestamp.parseTimestamp("1970-01-01T12:00:00Z");
@@ -214,6 +271,23 @@ public class SpannerDao {
             .build());
     spannerAccessor.getDatabaseClient().write(mutations);
     close();
+  }
+
+  public void updateDataSeen(String id, String shard, Timestamp endTimestamp, String runId) {
+
+    List<Mutation> mutations = new ArrayList<>();
+    mutations.add(
+        Mutation.newInsertOrUpdateBuilder(dataSeenTableName)
+            .set("id")
+            .to(id)
+            .set("run_id")
+            .to(runId)
+            .set("shard")
+            .to(shard)
+            .set("window_seen")
+            .to(endTimestamp)
+            .build());
+    spannerAccessor.getDatabaseClient().write(mutations);
   }
 
   public void updateProgress(String shard, String endTime, String runId) {
