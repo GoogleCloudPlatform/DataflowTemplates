@@ -258,21 +258,18 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>it-jdbc</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-jdbc</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>it-cassandra</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-cassandra</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>it-splunk</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-splunk</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -1108,6 +1105,19 @@
           </plugin>
         </plugins>
       </build>
+    </profile>
+    <profile>
+      <id>splunk-build</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>splunk-artifactory</id>
+          <name>Splunk Releases</name>
+          <url>https://splunk.jfrog.io/splunk/ext-releases-local</url>
+        </repository>
+      </repositories>
     </profile>
   </profiles>
 

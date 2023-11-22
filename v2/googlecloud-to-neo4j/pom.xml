@@ -60,9 +60,8 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>it-neo4j</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-neo4j</artifactId>
       <scope>test</scope>
     </dependency>
 
