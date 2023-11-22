@@ -72,11 +72,11 @@
             <artifactId>mssql-jdbc</artifactId>
             <version>${mssql-jdbc.version}</version>
         </dependency>
-      <dependency>
-        <groupId>com.google.cloud.teleport</groupId>
-        <artifactId>truthmatchers</artifactId>
-        <version>${project.version}</version>
-        <scope>test</scope>
-      </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>truthmatchers</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
