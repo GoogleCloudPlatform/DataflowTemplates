@@ -308,8 +308,8 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
           String.format(
               "The job failed before launch! For more "
                   + "information please check the job log at "
-                  + "https://console.cloud.google.com/dataflow/jobs/us-central1/%s?project=%s.",
-              jobId, project));
+                  + "https://console.cloud.google.com/dataflow/jobs/%s/%s?project=%s.",
+              region, jobId, project));
     }
     return state;
   }
