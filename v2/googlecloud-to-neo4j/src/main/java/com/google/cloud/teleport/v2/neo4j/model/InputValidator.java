@@ -35,10 +35,6 @@ import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.networknt.schema.JsonSchema;
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -50,6 +46,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A helper class to validate DataFlow run-time inputs. */
 public class InputValidator {
@@ -89,7 +88,7 @@ public class InputValidator {
   public static ParsingResult validateNeo4jConnection(String json) {
     JsonSchema connectionSchema =
         Json.SCHEMA_FACTORY.getSchema(
-            InputValidator.class.getResourceAsStream("/schemas/connection.schema.json"));
+            InputValidator.class.getResourceAsStream("/schemas/connection.v1.0.json"));
     return Json.parseAndValidate(json, connectionSchema);
   }
 

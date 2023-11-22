@@ -18,10 +18,9 @@ package com.google.cloud.teleport.v2.neo4j.model.connection;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
-import org.neo4j.driver.AuthToken;
-
 import java.io.Serializable;
 import java.util.Objects;
+import org.neo4j.driver.AuthToken;
 
 @JsonTypeInfo(use = Id.NAME, property = "auth_type", defaultImpl = BasicConnectionParams.class)
 @JsonSubTypes({

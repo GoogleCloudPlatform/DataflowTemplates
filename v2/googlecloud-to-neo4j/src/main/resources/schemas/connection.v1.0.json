@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://cloud.google.com/dataflow/googlecloud-to-neo4j/connection.schema.json",
+  "$id": "https://neo4j.com/docs/common-content-dataflow/_attachments/schemas/connection.v1.0.json",
   "title": "Google Cloud to Neo4j - Neo4j Connection Settings",
   "description": "Neo4j Connection Settings",
   "type": "object",

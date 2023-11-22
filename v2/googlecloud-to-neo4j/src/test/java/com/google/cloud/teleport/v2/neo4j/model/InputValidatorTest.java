@@ -31,8 +31,8 @@ import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
-import com.networknt.schema.ValidationMessage;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
+import com.networknt.schema.ValidationMessage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -582,47 +582,47 @@ public class InputValidatorTest {
     assertThat(errors).containsExactly("$.realm: must be at least 1 characters long");
   }
 
-    @Test
-    public void invalidatesOptionsIfBothSecretAndGcsUriAreMissing() {
-        Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
-        when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
+  @Test
+  public void invalidatesOptionsIfBothSecretAndGcsUriAreMissing() {
+    Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
+    when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
 
-        List<String> errors = InputValidator.validateNeo4jPipelineOptions(options);
+    List<String> errors = InputValidator.validateNeo4jPipelineOptions(options);
 
-        assertThat(errors)
-                .isEqualTo(
-                        List.of("Neither Neo4j connection URI nor Neo4j connection secret were provided."));
-    }
+    assertThat(errors)
+        .isEqualTo(
+            List.of("Neither Neo4j connection URI nor Neo4j connection secret were provided."));
+  }
 
-    @Test
-    public void invalidatesOptionsIfBothSecretAndGcsUriAreSpecified() {
-        Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
-        when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
-        when(options.getNeo4jConnectionUri()).thenReturn("gs://example.com/neo4j.json");
-        when(options.getNeo4jConnectionSecretId())
-                .thenReturn("projects/my-project/secrets/a-secret/versions/1");
+  @Test
+  public void invalidatesOptionsIfBothSecretAndGcsUriAreSpecified() {
+    Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
+    when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
+    when(options.getNeo4jConnectionUri()).thenReturn("gs://example.com/neo4j.json");
+    when(options.getNeo4jConnectionSecretId())
+        .thenReturn("projects/my-project/secrets/a-secret/versions/1");
 
-        List<String> errors = InputValidator.validateNeo4jPipelineOptions(options);
+    List<String> errors = InputValidator.validateNeo4jPipelineOptions(options);
 
-        assertThat(errors)
-                .isEqualTo(
-                        List.of(
-                                "Both Neo4j connection URI and Neo4j connection secret were provided: only one must be set."));
-    }
+    assertThat(errors)
+        .isEqualTo(
+            List.of(
+                "Both Neo4j connection URI and Neo4j connection secret were provided: only one must be set."));
+  }
 
-    @Test
-    public void invalidatesOptionsIfSecretFormatIsIncorrect() {
-        Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
-        when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
-        when(options.getNeo4jConnectionSecretId()).thenReturn("wrongly-formatted-secret");
+  @Test
+  public void invalidatesOptionsIfSecretFormatIsIncorrect() {
+    Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
+    when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
+    when(options.getNeo4jConnectionSecretId()).thenReturn("wrongly-formatted-secret");
 
-        List<String> errors = InputValidator.validateNeo4jPipelineOptions(options);
+    List<String> errors = InputValidator.validateNeo4jPipelineOptions(options);
 
-        assertThat(errors)
-                .isEqualTo(
-                        List.of(
-                                "Neo4j connection secret must be in the form projects/{project}/secrets/{secret}/versions/{secret_version}"));
-    }
+    assertThat(errors)
+        .isEqualTo(
+            List.of(
+                "Neo4j connection secret must be in the form projects/{project}/secrets/{secret}/versions/{secret_version}"));
+  }
 
   private static List<Mapping> nodeMappings() {
     Mapping key = new Mapping();

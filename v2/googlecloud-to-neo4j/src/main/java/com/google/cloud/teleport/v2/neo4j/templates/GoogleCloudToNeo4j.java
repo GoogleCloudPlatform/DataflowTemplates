@@ -185,13 +185,14 @@ public class GoogleCloudToNeo4j {
   private static String readConnectionSettings(Neo4jFlexTemplateOptions options) {
     String secretId = options.getNeo4jConnectionSecretId();
     if (StringUtils.isNotEmpty(secretId)) {
-       return SecretManagerUtils.getSecret(secretId);
+      return SecretManagerUtils.getSecret(secretId);
     }
     String uri = options.getNeo4jConnectionUri();
     try {
       return FileSystemUtils.getPathContents(uri);
     } catch (Exception e) {
-      throw new RuntimeException(String.format("Unable to read Neo4j configuration at URI %s: ", uri), e);
+      throw new RuntimeException(
+          String.format("Unable to read Neo4j configuration at URI %s: ", uri), e);
     }
   }
 
