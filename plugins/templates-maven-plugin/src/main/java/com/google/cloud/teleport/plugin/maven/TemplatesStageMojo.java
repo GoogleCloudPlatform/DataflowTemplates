@@ -472,11 +472,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                               element("glob", "**/libs/conscrypt-openjdk-uber-*.jar"),
                               element("toLayer", "conscrypt")))))));
     }
-    executeMojo(
-        plugin,
-        goal("build"),
-        configuration(elements.toArray(new Element[elements.size()])),
-        executionEnvironment(project, session, pluginManager));
+
+    // Jib's LayerFilter extension is not thread-safe, do only one at a time
+    synchronized (TemplatesStageMojo.class) {
+      executeMojo(
+          plugin,
+          goal("build"),
+          configuration(elements.toArray(new Element[elements.size()])),
+          executionEnvironment(project, session, pluginManager));
+    }
 
     String[] flexTemplateBuildCmd =
         new String[] {
