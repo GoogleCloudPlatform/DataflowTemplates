@@ -22,24 +22,11 @@ import static org.hamcrest.Matchers.emptyIterable;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.iterableWithSize;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertThat;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.io.CharStreams;
 import com.google.zetasql.SqlException;
-import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.ProcessBuilder.Redirect;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -51,8 +38,6 @@ import org.apache.beam.sdk.extensions.sql.zetasql.ZetaSqlException;
 import org.apache.beam.sdk.options.ExperimentalOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -82,23 +67,6 @@ public final class DataflowSqlLauncherTest {
   private @Nullable String oldLoggingPath = null;
 
   /** Set up logging directory appropriate for tests. */
-  @Before
-  public void setup() throws Exception {
-    oldLoggingPath = System.getProperty(FlexTemplatesLogging.FILEPATH_PROPERTY);
-    System.setProperty(
-        FlexTemplatesLogging.FILEPATH_PROPERTY,
-        Paths.get(System.getProperty("java.io.tmpdir"), getClass().getCanonicalName() + ".log")
-            .toString());
-  }
-
-  @After
-  public void teardown() {
-    if (oldLoggingPath == null) {
-      System.clearProperty(FlexTemplatesLogging.FILEPATH_PROPERTY);
-    } else {
-      System.setProperty(FlexTemplatesLogging.FILEPATH_PROPERTY, oldLoggingPath);
-    }
-  }
 
   /**
    * Test that basic valid SQL with deprecated --outputTable runs and parses.
@@ -147,7 +115,7 @@ public final class DataflowSqlLauncherTest {
     thrown.expect(BadTemplateArgumentsException.class);
     thrown.expectMessage(allOf(containsString("outputTable"), containsString("outputs")));
     thrown.expectCause(instanceOf(InvalidSinkException.class));
-    DataflowSqlLauncher.buildAndRunPipeline(
+    DataflowSqlLauncher.main(
         new String[] {
           "--dryRun=true",
           "--queryString=SELECT 1 AS col1",
@@ -165,7 +133,7 @@ public final class DataflowSqlLauncherTest {
     thrown.expect(BadTemplateArgumentsException.class);
     thrown.expectMessage("outputs");
     thrown.expectCause(instanceOf(InvalidSinkException.class));
-    DataflowSqlLauncher.buildAndRunPipeline(
+    DataflowSqlLauncher.main(
         new String[] {
           "--dryRun=true", "--queryString=SELECT 1 AS col1", "--outputs=[{\"type\": \"foobar\"}]"
         });
@@ -177,8 +145,7 @@ public final class DataflowSqlLauncherTest {
     thrown.expect(BadTemplateArgumentsException.class);
     thrown.expectMessage("queryString");
     thrown.expectCause(instanceOf(IllegalArgumentException.class));
-    DataflowSqlLauncher.buildAndRunPipeline(
-        new String[] {"--dryRun=true", "--outputTable=" + OUTPUT_TABLE});
+    DataflowSqlLauncher.main(new String[] {"--dryRun=true", "--outputTable=" + OUTPUT_TABLE});
   }
 
   /** Exercise failure if output table is not provided. */
@@ -187,8 +154,7 @@ public final class DataflowSqlLauncherTest {
     thrown.expect(BadTemplateArgumentsException.class);
     thrown.expectMessage("outputs");
     thrown.expectCause(instanceOf(IllegalArgumentException.class));
-    DataflowSqlLauncher.buildAndRunPipeline(
-        new String[] {"--dryRun=true", "--queryString=SELECT 1 AS col1"});
+    DataflowSqlLauncher.main(new String[] {"--dryRun=true", "--queryString=SELECT 1 AS col1"});
   }
 
   /** Checks that an exception thrown while parsing the query is rethrown. */
@@ -228,51 +194,6 @@ public final class DataflowSqlLauncherTest {
     thrown.expectMessage("Casting TYPE_DOUBLE as TYPE_NUMERIC would cause overflow of literal");
     thrown.expectCause(instanceOf(ZetaSqlException.class));
     DataflowSqlLauncher.buildPipeline(options);
-  }
-
-  @Test
-  public void testStderrRedirectedToLogs() throws Exception {
-    File javaExecutable = new File(new File(System.getProperty("java.home"), "bin"), "java");
-    File logOutput = new File(logFolder.getRoot(), "test-log.json");
-
-    // java -cp <classpath> DataflowSqlLauncher
-    // This will cause a crash parsing pipeline options
-    List<String> cmd =
-        ImmutableList.of(
-            javaExecutable.getAbsolutePath(),
-            "-D" + FlexTemplatesLogging.FILEPATH_PROPERTY + "=" + logOutput.getAbsolutePath(),
-            "-D" + DataflowSqlLauncher.EXIT_DELAY_PROPERTY + "=0",
-            "-cp",
-            System.getProperty("java.class.path"),
-            DataflowSqlLauncher.class.getCanonicalName());
-
-    ProcessBuilder subprocessBuilder = new ProcessBuilder(cmd);
-    subprocessBuilder.redirectOutput(Redirect.INHERIT);
-
-    Process subprocess = subprocessBuilder.start();
-    InputStream subprocessStderr = subprocess.getErrorStream();
-    InputStream subprocessStdout =
-        subprocess.getInputStream(); // confusing naming, but yes this is its stdout
-
-    String subprocessStdoutOutput =
-        CharStreams.toString(new InputStreamReader(subprocessStdout, StandardCharsets.UTF_8));
-    assertThat(subprocessStdoutOutput, equalTo(""));
-
-    String subprocessStderrOutput =
-        CharStreams.toString(new InputStreamReader(subprocessStderr, StandardCharsets.UTF_8));
-    assertThat(
-        subprocessStderrOutput, startsWith("Invalid/unsupported arguments for SQL job launch:"));
-    // detect java stack trace
-    assertThat(subprocessStderrOutput, not(containsString("at com")));
-
-    List<String> allLogLines = Lists.newArrayList();
-    for (File logFile : logFolder.getRoot().listFiles()) {
-      allLogLines.addAll(Files.readAllLines(logFile.toPath(), StandardCharsets.UTF_8));
-    }
-    assertThat(allLogLines, iterableWithSize(1));
-    String errMsg = Iterables.get(allLogLines, 0);
-    assertThat(errMsg, containsString("Bad pipeline options"));
-    assertThat(errMsg, containsString("\"severity\":\"ERROR\""));
   }
 
   @Test
@@ -370,8 +291,7 @@ public final class DataflowSqlLauncherTest {
     thrown.expect(BadTemplateArgumentsException.class);
     thrown.expectMessage("Bad pipeline options");
 
-    DataflowSqlLauncher.buildAndRunPipeline(
-        new String[] {"--runner=DataflowRunner", "--runner=DirectRunner"});
+    DataflowSqlLauncher.main(new String[] {"--runner=DataflowRunner", "--runner=DirectRunner"});
   }
 
   @Test

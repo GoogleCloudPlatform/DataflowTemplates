@@ -90,7 +90,8 @@ final class ParameterTranslator {
         @JsonProperty("type") String type,
         @JsonProperty("arrayType") ParameterType arrayType,
         @JsonProperty("structTypes") List<ParameterStructType> structTypes) {
-      return new com.google.cloud.teleport.v2.sqllauncher.AutoValue_ParameterTranslator_ParameterType(type, arrayType, structTypes);
+      return new com.google.cloud.teleport.v2.sqllauncher
+          .AutoValue_ParameterTranslator_ParameterType(type, arrayType, structTypes);
     }
   }
 
@@ -111,7 +112,8 @@ final class ParameterTranslator {
         @JsonProperty("value") String value,
         @JsonProperty("arrayValues") List<ParameterValue> arrayValues,
         @JsonProperty("structValues") Map<String, ParameterValue> structValues) {
-      return new com.google.cloud.teleport.v2.sqllauncher.AutoValue_ParameterTranslator_ParameterValue(value, arrayValues, structValues);
+      return new com.google.cloud.teleport.v2.sqllauncher
+          .AutoValue_ParameterTranslator_ParameterValue(value, arrayValues, structValues);
     }
   }
 
@@ -124,7 +126,8 @@ final class ParameterTranslator {
     @JsonCreator
     static ParameterStructType create(
         @JsonProperty("name") String name, @JsonProperty("type") ParameterType type) {
-      return new com.google.cloud.teleport.v2.sqllauncher.AutoValue_ParameterTranslator_ParameterStructType(name, type);
+      return new com.google.cloud.teleport.v2.sqllauncher
+          .AutoValue_ParameterTranslator_ParameterStructType(name, type);
     }
   }
 

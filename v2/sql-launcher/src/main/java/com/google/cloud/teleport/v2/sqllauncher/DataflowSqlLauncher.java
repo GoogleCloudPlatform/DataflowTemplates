@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.services.bigquery.model.TableReference;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.sqllauncher.ParameterTranslator.Parameter;
 import com.google.cloud.teleport.v2.sqllauncher.ParameterTranslator.ParameterMode;
 import com.google.common.annotations.VisibleForTesting;
@@ -33,7 +34,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.Pipeline.PipelineVisitor;
 import org.apache.beam.sdk.extensions.gcp.util.Transport;
@@ -82,52 +82,15 @@ public class DataflowSqlLauncher {
 
   private static final long DEFAULT_EXIT_DELAY_MILLIS = 2 * 60 * 1000;
 
-  private static void flushLogsAndWait() throws InterruptedException {
-    FlexTemplatesLogging.flush();
-    @Nullable String exitDelay = System.getProperty(EXIT_DELAY_PROPERTY);
-    if (exitDelay == null) {
-      Thread.sleep(DEFAULT_EXIT_DELAY_MILLIS);
-    } else {
-      Thread.sleep(Integer.parseInt(exitDelay));
-    }
-  }
-
   public static void main(String[] args) throws Exception {
-    FlexTemplatesLogging.initialize();
-    try {
-      buildAndRunPipeline(args);
-    } catch (BadTemplateArgumentsException e) {
-      String err = "Invalid/unsupported arguments for SQL job launch: " + e.getMessage();
-      LOG.error(err, e);
-      FlexTemplatesLogging.consoleError(err);
-      // TODO: check if we can avoid this flush
-      flushLogsAndWait();
-      System.exit(BAD_TEMPLATE_ARGUMENTS_EXIT_CODE);
-    } catch (Throwable e) {
-      LOG.error("Error in SQL launcher", e);
-      FlexTemplatesLogging.consoleStackTrace(e);
-      // TODO: check if we can avoid this flush
-      flushLogsAndWait();
-      System.exit(UNCAUGHT_EXCEPTION_EXIT_CODE);
-    }
+    UncaughtExceptionLogger.register();
+
+    DataflowSqlLauncherOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(DataflowSqlLauncherOptions.class);
+    run(options);
   }
 
-  public static void buildAndRunPipeline(String[] args) throws IOException {
-    DataflowSqlLauncherOptions options;
-    try {
-      options =
-          PipelineOptionsFactory.fromArgs(args)
-              .withValidation()
-              .as(DataflowSqlLauncherOptions.class);
-    } catch (Throwable e) {
-      throw new BadTemplateArgumentsException(
-          "Bad pipeline options for query: " + e.getMessage(), e);
-    }
-
-    // If running under Flex Templates, the job id should be available at this point
-    if (options.getJobId() != null) {
-      FlexTemplatesLogging.setJobId(options.getJobId());
-    }
+  public static void run(DataflowSqlLauncherOptions options) throws IOException {
 
     Pipeline pipeline = buildPipeline(options);
     if (!options.getDryRun()) {
