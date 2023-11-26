@@ -19,11 +19,13 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.awaitility.Awaitility.await;
 
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -96,7 +98,13 @@ public class TextToPubsubIT extends TemplateTestBase {
 
     // Make sure that the check finds the expected of messages.
     assertThatResult(result).isAnyOf(Result.CONDITION_MET, Result.LAUNCH_FINISHED);
-    assertThat(pubsubCheck.get()).isTrue();
+
+    // Poll checker, to avoid timing issues on DirectRunner
+    await("Check if messages got to Pub/Sub on time")
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(pubsubCheck::get);
+
     assertThat(
             pubsubCheck.getReceivedMessageList().stream()
                 .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
