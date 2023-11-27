@@ -43,6 +43,13 @@
             <artifactId>google-api-services-datastream</artifactId>
             <version>v1-rev20230902-2.0.0</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.google.truth</groupId>
+            <artifactId>truth</artifactId>
+            <version>${truth.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
