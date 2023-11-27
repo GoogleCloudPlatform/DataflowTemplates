@@ -15,8 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import com.google.cloud.teleport.v2.cdc.dlq.FileBasedDeadLetterQueueReconsumer;
-import com.google.common.truth.Truth;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -62,13 +63,13 @@ public class DLQWriteTransformTest {
 
     // Assert
     File[] files = dlqDir.listFiles();
-    Truth.assertThat(files).isNotEmpty();
+    assertThat(files).isNotEmpty();
 
     ResourceId resourceId = FileSystems.matchNewResource(files[0].getAbsolutePath(), false);
-    Truth.assertThat(resourceId.getFilename()).doesNotContain("pane");
+    assertThat(resourceId.getFilename()).doesNotContain("pane");
 
     BufferedReader reader = FileBasedDeadLetterQueueReconsumer.readFile(resourceId);
-    Truth.assertThat(reader.readLine()).isEqualTo(JSON_ROW_CONTENT);
+    assertThat(reader.readLine()).isEqualTo(JSON_ROW_CONTENT);
   }
 
   @Test
@@ -90,13 +91,13 @@ public class DLQWriteTransformTest {
 
     // Assert
     File[] files = dlqDir.listFiles();
-    Truth.assertThat(files).isNotEmpty();
+    assertThat(files).isNotEmpty();
 
     ResourceId resourceId = FileSystems.matchNewResource(files[0].getAbsolutePath(), false);
-    Truth.assertThat(resourceId.getFilename()).contains("pane");
+    assertThat(resourceId.getFilename()).contains("pane");
 
     BufferedReader reader = FileBasedDeadLetterQueueReconsumer.readFile(resourceId);
-    Truth.assertThat(reader.readLine()).isEqualTo(JSON_ROW_CONTENT);
+    assertThat(reader.readLine()).isEqualTo(JSON_ROW_CONTENT);
   }
 
   private static String dlqFolderName(String testName) {

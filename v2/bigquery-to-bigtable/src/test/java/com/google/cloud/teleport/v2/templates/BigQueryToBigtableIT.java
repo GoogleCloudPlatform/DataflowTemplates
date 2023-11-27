@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.common.TestProperties.getProperty;
 import static org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts.bigQueryRowsToRecords;
 import static org.apache.beam.it.gcp.bigtable.matchers.BigtableAsserts.assertThatBigtableRecords;
@@ -28,7 +29,6 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
-import com.google.common.truth.Truth;
 import java.io.IOException;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -102,7 +102,7 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
     bigQueryClient.write(tableName, bigQueryRows);
 
     String colFamily = options.getParameter(WRITE_COL_FAMILY);
-    Truth.assertThat(colFamily).isNotNull();
+    assertThat(colFamily).isNotNull();
     bigtableClient.createTable(tableName, ImmutableList.of(colFamily));
 
     // Act
