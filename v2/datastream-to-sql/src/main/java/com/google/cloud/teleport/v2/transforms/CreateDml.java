@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import com.google.cloud.teleport.v2.io.CdcJdbcIO.DataSourceConfiguration;
+import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
+import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.utils.DatastreamToDML;
 import com.google.cloud.teleport.v2.utils.DatastreamToMySQLDML;
 import com.google.cloud.teleport.v2.utils.DatastreamToPostgresDML;
-import com.google.cloud.teleport.v2.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.HashMap;
 import java.util.Map;
