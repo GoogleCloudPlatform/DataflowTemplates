@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.database;
 
 import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.filterProperties;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
@@ -97,10 +97,10 @@ public class CypherGenerator {
     String nodeClause;
     if (edge.getSaveMode() == SaveMode.merge) {
       edgeClause = "MERGE";
-      nodeClause = edge.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge ? "MERGE" : "MATCH";
+      nodeClause = edge.getEdgeNodesMatchMode() == EdgeNodesSaveMode.merge ? "MERGE" : "MATCH";
     } else {
       edgeClause = "CREATE";
-      nodeClause = edge.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge ? "MERGE" : "CREATE";
+      nodeClause = edge.getEdgeNodesMatchMode() == EdgeNodesSaveMode.merge ? "MERGE" : "CREATE";
     }
 
     StringBuilder query = new StringBuilder();
@@ -258,7 +258,7 @@ public class CypherGenerator {
   private static Set<String> getRelationshipIndexAndConstraintsCypherStatements(Target target) {
 
     Set<String> cyphers = new LinkedHashSet<>();
-    if (target.getEdgeNodesMatchMode() == EdgeNodesMatchMode.merge) {
+    if (target.getEdgeNodesMatchMode() == EdgeNodesSaveMode.merge) {
       cyphers.addAll(
           getEntityKeyConstraintStatements(
               ModelUtils.getStaticLabels(FragmentType.source, target),

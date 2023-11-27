@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
-import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
@@ -78,11 +78,14 @@ public class TargetMapper {
         !json.has("execute_after")
             ? ActionExecuteAfter.nodes
             : ActionExecuteAfter.valueOf(json.getString("execute_after")));
-    target.setSaveMode(SaveMode.valueOf(json.getString("mode")));
-    target.setEdgeNodesMatchMode(
-        !json.has("edge_nodes_match_mode")
-            ? EdgeNodesMatchMode.match
-            : EdgeNodesMatchMode.valueOf(json.getString("edge_nodes_match_mode")));
+    SaveMode saveMode = SaveMode.valueOf(json.getString("mode"));
+    target.setSaveMode(saveMode);
+    if (!json.has("edge_nodes_match_mode")) {
+      target.setEdgeNodesMatchMode(EdgeNodesSaveMode.defaultFor(saveMode));
+    } else {
+      target.setEdgeNodesMatchMode(
+          EdgeNodesSaveMode.valueOf(json.getString("edge_nodes_match_mode")));
+    }
     addMappings(target, json.getJSONObject("mappings"));
   }
 

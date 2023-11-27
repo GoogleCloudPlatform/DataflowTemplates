@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.database;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
@@ -180,7 +180,7 @@ public class CypherGeneratorTest {
   public void doesNotGenerateDuplicateStatementForSelfLinkingNodes() {
     Target target = new Target();
     target.setSaveMode(SaveMode.merge);
-    target.setEdgeNodesMatchMode(EdgeNodesMatchMode.merge);
+    target.setEdgeNodesMatchMode(EdgeNodesSaveMode.merge);
     target.setType(TargetType.edge);
     target.setName("self-linking-nodes");
     Mapping type = new Mapping();
@@ -219,5 +219,48 @@ public class CypherGeneratorTest {
             Set.of(
                 "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:SELF_LINKS_TO]-() REQUIRE r.targetRelProperty IS RELATIONSHIP KEY",
                 "CREATE CONSTRAINT IF NOT EXISTS FOR (n:PlaceholderLabel) REQUIRE n.targetNodeProperty IS NODE KEY"));
+  }
+
+  @Test
+  public void matchesNodesOfRelationshipToMerge() {
+    Target target = new Target();
+    target.setSaveMode(SaveMode.merge);
+    target.setEdgeNodesMatchMode(EdgeNodesSaveMode.match);
+    target.setType(TargetType.edge);
+    target.setName("matches-rel-nodes");
+    Mapping type = new Mapping();
+    type.setFragmentType(FragmentType.rel);
+    type.setRole(RoleType.type);
+    type.setConstant("LINKS_TO");
+    Mapping key = new Mapping();
+    key.setFragmentType(FragmentType.rel);
+    key.setRole(RoleType.key);
+    key.setName("targetRelProperty");
+    key.setField("source_field");
+    Mapping sourceLabel = new Mapping();
+    sourceLabel.setFragmentType(FragmentType.source);
+    sourceLabel.setRole(RoleType.label);
+    sourceLabel.setConstant("StartNode");
+    Mapping sourceKey = new Mapping();
+    sourceKey.setFragmentType(FragmentType.source);
+    sourceKey.setRole(RoleType.key);
+    sourceKey.setName("targetNodeProperty");
+    sourceKey.setField("source_node_field");
+    Mapping targetLabel = new Mapping();
+    targetLabel.setFragmentType(FragmentType.target);
+    targetLabel.setRole(RoleType.label);
+    targetLabel.setConstant("EndNode");
+    Mapping targetKey = new Mapping();
+    targetKey.setFragmentType(FragmentType.target);
+    targetKey.setRole(RoleType.key);
+    targetKey.setName("targetNodeProperty");
+    targetKey.setField("source_node_field");
+    target.setMappings(List.of(type, key, sourceLabel, sourceKey, targetLabel, targetKey));
+
+    String importStatement = CypherGenerator.getUnwindCreateCypher(target);
+
+    assertThat(importStatement)
+        .isEqualTo(
+            "UNWIND $rows AS row  MATCH (source:StartNode {targetNodeProperty: row.source_node_field}) MATCH (target:EndNode {targetNodeProperty: row.source_node_field}) MERGE (source)-[rel:LINKS_TO {targetRelProperty: row.source_field}]->(target)");
   }
 }

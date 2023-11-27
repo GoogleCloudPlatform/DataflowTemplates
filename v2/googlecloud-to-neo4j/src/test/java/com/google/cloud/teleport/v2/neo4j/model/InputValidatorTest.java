@@ -17,9 +17,11 @@ package com.google.cloud.teleport.v2.neo4j.model;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
@@ -201,6 +203,20 @@ public class InputValidatorTest {
         .isEqualTo(
             List.of(
                 "Property targetProperty2 of target placeholder_node_target is mapped to too many types: Boolean, Float"));
+  }
+
+  @Test
+  public void invalidatesSpecThatMergesRelationshipButCreatesItsNodes() {
+    edgeTarget.setSaveMode(SaveMode.merge);
+    edgeTarget.setEdgeNodesMatchMode(EdgeNodesSaveMode.create);
+    jobSpec.setTargets(List.of(edgeTarget));
+
+    List<String> errorMessages = InputValidator.validateJobSpec(jobSpec);
+
+    assertThat(errorMessages)
+        .isEqualTo(
+            List.of(
+                "Edge target placeholder_edge_target uses incompatible save modes: either change the target's save mode to create or the edge node mode to match or merge"));
   }
 
   private static List<Mapping> nodeMappings() {

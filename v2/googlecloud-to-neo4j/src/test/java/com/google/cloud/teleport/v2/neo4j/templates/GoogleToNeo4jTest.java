@@ -83,7 +83,7 @@ public class GoogleToNeo4jTest {
   }
 
   @Test
-  public void testGetInvalidOrderQuery() {
+  public void testGetInvalidOrderedQuery() {
     Source source = jobSpec.getSourceList().get(0);
     source.setQuery("SELECT * FROM FOO ORDER BY X");
     List<String> messages = InputValidator.validateJobSpec(jobSpec);

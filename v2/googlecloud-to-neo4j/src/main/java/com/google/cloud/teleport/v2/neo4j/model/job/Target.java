@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
-import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesMatchMode;
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import java.io.Serializable;
@@ -36,7 +36,7 @@ public class Target implements Serializable, Comparable<Target> {
   private List<Mapping> mappings = new ArrayList<>();
   private SaveMode saveMode = SaveMode.append;
 
-  private EdgeNodesMatchMode edgeNodesMatchMode;
+  private EdgeNodesSaveMode edgeNodesSaveMode;
   private Map<String, Mapping> mappingByFieldMap = new HashMap<>();
   private List<String> fieldNames = new ArrayList<>();
   private int sequence = 0;
@@ -113,12 +113,12 @@ public class Target implements Serializable, Comparable<Target> {
     this.saveMode = saveMode;
   }
 
-  public EdgeNodesMatchMode getEdgeNodesMatchMode() {
-    return edgeNodesMatchMode;
+  public EdgeNodesSaveMode getEdgeNodesMatchMode() {
+    return edgeNodesSaveMode;
   }
 
-  public void setEdgeNodesMatchMode(EdgeNodesMatchMode edgeNodesMatchMode) {
-    this.edgeNodesMatchMode = edgeNodesMatchMode;
+  public void setEdgeNodesMatchMode(EdgeNodesSaveMode edgeNodesSaveMode) {
+    this.edgeNodesSaveMode = edgeNodesSaveMode;
   }
 
   public Map<String, Mapping> getMappingByFieldMap() {
