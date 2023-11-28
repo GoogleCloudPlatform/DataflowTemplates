@@ -173,7 +173,7 @@ public class GoogleCloudToNeo4j {
     }
 
     // Output debug log spec
-    LOG.info("Normalized JobSpec: {}", gson.toJson(this.jobSpec));
+    LOG.debug("Normalized JobSpec: {}", gson.toJson(this.jobSpec));
   }
 
   /**
