@@ -17,9 +17,9 @@ package com.google.cloud.teleport.v2.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.teleport.v2.io.CdcJdbcIO.DataSourceConfiguration;
-import com.google.cloud.teleport.v2.values.DatastreamRow;
-import com.google.cloud.teleport.v2.values.DmlInfo;
+import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
+import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
+import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -52,7 +52,7 @@ public abstract class DatastreamToDML
   private static List<String> defaultPrimaryKeys;
   private static MappedObjectCache<List<String>, Map<String, String>> tableCache;
   private static MappedObjectCache<List<String>, List<String>> primaryKeyCache;
-  private DataSourceConfiguration dataSourceConfiguration;
+  private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
   private DataSource dataSource;
   public String quoteCharacter;
   private static Map<String, String> schemaMap = new HashMap<String, String>();
@@ -78,7 +78,7 @@ public abstract class DatastreamToDML
     }
   }
 
-  public DatastreamToDML(DataSourceConfiguration config) {
+  public DatastreamToDML(CdcJdbcIO.DataSourceConfiguration config) {
     this.dataSourceConfiguration = config;
     this.quoteCharacter = getDefaultQuoteCharacter();
   }

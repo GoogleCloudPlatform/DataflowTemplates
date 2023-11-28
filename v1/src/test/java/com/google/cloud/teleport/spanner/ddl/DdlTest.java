@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
@@ -35,7 +36,6 @@ import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.base.Optional;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
-import com.google.common.truth.Truth;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -984,7 +984,7 @@ public class DdlTest {
     ForeignKey fkWithUnsupportedAction = fkWithUnsupportedActionBuilder.build();
     Throwable exception =
         assertThrows(IllegalArgumentException.class, () -> fkWithUnsupportedAction.prettyPrint());
-    Truth.assertThat(exception.getMessage())
+    assertThat(exception.getMessage())
         .matches("Foreign Key action not supported: ON DELETE SET NULL");
   }
 
