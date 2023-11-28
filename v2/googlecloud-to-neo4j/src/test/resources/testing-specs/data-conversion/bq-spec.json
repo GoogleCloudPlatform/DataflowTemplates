@@ -1,0 +1,28 @@
+{
+  "source": {
+    "type": "bigquery",
+    "name": "data",
+    "query": "SELECT `bool`, `int64`, `float64`, `numeric`, `string`, `bytes`, `timestamp`, `time`, `datetime` FROM $bqtable"
+  },
+  "targets": [
+    {
+      "node": {
+        "name": "Node",
+        "source": "data",
+        "mode": "append",
+        "mappings": {
+          "label": "\"Node\"",
+          "properties": {
+            "keys": ["int64"],
+            "booleans": ["bool"],
+            "bytearrays": ["bytes"],
+            "dates": ["time", "datetime", "timestamp"],
+            "doubles": ["float64", "numeric"],
+            "longs": ["int64"],
+            "strings": ["string"]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -233,6 +233,12 @@ public class MappingMapper {
         mappings.add(newMapping(fragmentType, f, PropertyType.Boolean));
       }
     }
+    if (propertyMappings.has("bytearrays")) {
+      List<FieldNameTuple> booleans = getFieldAndNameTuples(propertyMappings.get("bytearrays"));
+      for (FieldNameTuple f : booleans) {
+        mappings.add(newMapping(fragmentType, f, PropertyType.ByteArray));
+      }
+    }
   }
 
   private static List<FieldNameTuple> getFieldAndNameTuples(Object tuplesObj) {
