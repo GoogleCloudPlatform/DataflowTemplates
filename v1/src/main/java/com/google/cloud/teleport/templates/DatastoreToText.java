@@ -54,7 +54,6 @@ import org.apache.beam.sdk.options.ValueProvider;
       "firestoreReadNamespace",
       "firestoreReadGqlQuery",
       "firestoreReadProjectId",
-      "javascriptFunctionReload",
       "javascriptReloadFunction"
     },
     documentation =
@@ -74,8 +73,7 @@ import org.apache.beam.sdk.options.ValueProvider;
       "datastoreReadNamespace",
       "datastoreReadGqlQuery",
       "datastoreReadProjectId",
-      "javascriptFunctionReload",
-      "javascriptReloadIntervalMinutes"
+      "javascriptTextTransformReloadIntervalMinutes"
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/firestore-to-cloud-storage",
