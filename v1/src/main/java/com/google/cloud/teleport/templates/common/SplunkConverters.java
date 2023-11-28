@@ -18,12 +18,12 @@ package com.google.cloud.teleport.templates.common;
 import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
-import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Throwables;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
@@ -387,7 +387,7 @@ public class SplunkConverters {
                           // this is expected behavior.
                         }
 
-                        context.output(splunkEventOutputTag, builder.build());
+                        context.output(splunkEventOutputTag, builder.create());
                         CONVERSION_SUCCESS.inc();
 
                       } catch (Exception e) {

@@ -147,6 +147,10 @@
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-jdbc</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-splunk</artifactId>
+    </dependency>
 
     <!-- Dependencies needed for the Cassandra to CBT pipeline -->
     <dependency>
