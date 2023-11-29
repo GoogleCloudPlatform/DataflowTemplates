@@ -397,7 +397,7 @@ public class SpannerChangeStreamsUtils {
     return informationSchemaGoogleSQLTypeToSpannerType(type);
   }
 
-  public static Type informationSchemaGoogleSQLTypeToSpannerType(String type) {
+  private Type informationSchemaGoogleSQLTypeToSpannerType(String type) {
     type = cleanInformationSchemaType(type);
     switch (type) {
       case "BOOL":
@@ -480,7 +480,7 @@ public class SpannerChangeStreamsUtils {
    * the length limit into BigQuery. By removing the length limit, we essentially loose the
    * constraint of data written to BigQuery, and it won't cause errors.
    */
-  private static String cleanInformationSchemaType(String type) {
+  private String cleanInformationSchemaType(String type) {
     // Remove type size, e.g. STRING(1024) -> STRING.
     int leftParenthesisIdx = type.indexOf('(');
     if (leftParenthesisIdx != -1) {

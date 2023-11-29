@@ -24,7 +24,6 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
@@ -33,7 +32,6 @@ import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
@@ -49,11 +47,11 @@ import org.apache.beam.sdk.values.ValueInSingleWindow;
  */
 public final class BigQueryDynamicDestinations
     extends DynamicDestinations<TableRow, KV<TableId, TableRow>> {
-  private Map<String, TrackedSpannerTable> spannerTableByName;
+
+  private final Map<String, TrackedSpannerTable> spannerTableByName;
   private final String bigQueryProject, bigQueryDataset, bigQueryTableTemplate;
   private final Boolean useStorageWriteApi;
   private final ImmutableSet<String> ignoreFields;
-  private BigQueryDynamicDestinationsOptions bigQueryDynamicDestinationsOptions;
 
   public static BigQueryDynamicDestinations of(
       BigQueryDynamicDestinationsOptions bigQueryDynamicDestinationsOptions) {
@@ -80,7 +78,6 @@ public final class BigQueryDynamicDestinations
     this.bigQueryDataset = bigQueryDynamicDestinationsOptions.getBigQueryDataset();
     this.bigQueryTableTemplate = bigQueryDynamicDestinationsOptions.getBigQueryTableTemplate();
     this.useStorageWriteApi = bigQueryDynamicDestinationsOptions.getUseStorageWriteApi();
-    this.bigQueryDynamicDestinationsOptions = bigQueryDynamicDestinationsOptions;
   }
 
   private TableId getTableId(String bigQueryTableTemplate, TableRow tableRow) {
@@ -105,45 +102,12 @@ public final class BigQueryDynamicDestinations
     return new TableDestination(tableName, "BigQuery changelog table.");
   }
 
-  private boolean detectNewColumn(TableRow tableRow, String spannerTableName) {
-    HashSet<String> nonPkColumnNames = new HashSet<>();
-    for (TrackedSpannerColumn col :
-        this.spannerTableByName.get(spannerTableName).getNonPkColumns()) {
-      nonPkColumnNames.add(col.getName());
-    }
-    HashSet<String> pkColumnNames = new HashSet<>();
-    for (TrackedSpannerColumn col : this.spannerTableByName.get(spannerTableName).getPkColumns()) {
-      pkColumnNames.add(col.getName());
-    }
-    for (Map.Entry<? extends String, ?> entry : tableRow.entrySet()) {
-      if (!entry.getKey().startsWith("_metadata")
-          && !pkColumnNames.contains(entry.getKey())
-          && !nonPkColumnNames.contains(entry.getKey())) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   @Override
   public TableSchema getSchema(KV<TableId, TableRow> destination) {
     TableRow tableRow = destination.getValue();
     String spannerTableName =
         (String) tableRow.get(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME);
-    if (!this.spannerTableByName.containsKey(spannerTableName)
-        || detectNewColumn(tableRow, spannerTableName)) {
-      try (SpannerAccessor spannerAccessor =
-          SpannerAccessor.getOrCreate(this.bigQueryDynamicDestinationsOptions.getSpannerConfig())) {
-        Dialect dialect = getDialect(this.bigQueryDynamicDestinationsOptions.getSpannerConfig());
-        this.spannerTableByName =
-            new SpannerChangeStreamsUtils(
-                    spannerAccessor.getDatabaseClient(),
-                    this.bigQueryDynamicDestinationsOptions.getChangeStreamName(),
-                    dialect)
-                .getSpannerTableByName();
-      }
-    }
-    TrackedSpannerTable spannerTable = this.spannerTableByName.get(spannerTableName);
+    TrackedSpannerTable spannerTable = spannerTableByName.get(spannerTableName);
     List<TableFieldSchema> fields = getFields(spannerTable);
     List<TableFieldSchema> filteredFields = new ArrayList<>();
     for (TableFieldSchema field : fields) {

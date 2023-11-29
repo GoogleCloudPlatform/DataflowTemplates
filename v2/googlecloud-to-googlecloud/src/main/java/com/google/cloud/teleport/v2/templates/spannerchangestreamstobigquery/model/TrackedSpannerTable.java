@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model;
 
-import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -60,12 +59,12 @@ public final class TrackedSpannerTable implements Serializable {
       List<TrackedSpannerColumn> nonPkColumns) {
     this.pkColumns = new ArrayList<>(pkColumns);
     this.nonPkColumns = new ArrayList<>(nonPkColumns);
-    // Sort the primary key column by primary key ordinal position.
+    // Sort the primary key column by primary key oridinal position.
     Collections.sort(this.pkColumns, new SortByPkOrdinalPosition());
     Collections.sort(this.nonPkColumns, new SortByOrdinalPosition());
     this.tableName = tableName;
 
-    this.allColumns = new ArrayList<>();
+    this.allColumns = new ArrayList<>(this.pkColumns.size() + this.nonPkColumns.size());
     allColumns.addAll(this.pkColumns);
     allColumns.addAll(this.nonPkColumns);
   }
@@ -84,20 +83,6 @@ public final class TrackedSpannerTable implements Serializable {
 
   public List<TrackedSpannerColumn> getAllColumns() {
     return allColumns;
-  }
-
-  // TrackedSpannerColumn.create requires name, type, ordinalPosition, pkOrdinalPosition. The
-  // ordinal position of the primary key should be set to -1 for non-primary key.
-  public void addTrackedSpannerNonPkColumn(ModColumnType spannerColumn) {
-    TrackedSpannerColumn newSpannerColumnObj =
-        TrackedSpannerColumn.create(
-            spannerColumn.getName(),
-            SpannerChangeStreamsUtils.informationSchemaGoogleSQLTypeToSpannerType(
-                spannerColumn.getType().getCode()),
-            (int) spannerColumn.getOrdinalPosition(),
-            -1);
-    this.nonPkColumns.add(newSpannerColumnObj);
-    this.allColumns.add(newSpannerColumnObj);
   }
 
   @Override
