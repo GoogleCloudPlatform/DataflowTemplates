@@ -59,7 +59,7 @@ import org.slf4j.LoggerFactory;
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
-    skipOptions = {"javascriptFunctionReload", "javascriptReloadIntervalMinutes"},
+    skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
     requirements = {
       "Create a JSON file that describes your {{bigquery_name_short}} schema.\n"
           + "    <p>Ensure that there is a top-level JSON array titled <code>BigQuery Schema</code> and that its\n"
