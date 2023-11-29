@@ -16,9 +16,22 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateIgnoreParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 
 /** Interface used by the SQLServerToBigQuery pipeline to accept user input. */
 public interface SQLServerToBigQueryOptions extends JdbcToBigQueryOptions {
+
+  @TemplateParameter.Text(
+      optional = false,
+      regexes = {
+        "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
+      },
+      groupName = "Source",
+      description = "JDBC connection URL string.",
+      helpText =
+          "The JDBC connection URL string. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key.",
+      example = "jdbc:sqlserver://localhost;databaseName=sampledb")
+  String getConnectionURL();
 
   @TemplateIgnoreParameter
   default String getDriverClassName() {
