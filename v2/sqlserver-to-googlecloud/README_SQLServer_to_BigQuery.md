@@ -23,7 +23,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **connectionURL** (JDBC connection URL string.): The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Note the difference between an Oracle non-RAC database connection string (`jdbc:oracle:thin:@some-host:<port>:<sid>`) and an Oracle RAC database connection string (`jdbc:oracle:thin:@//some-host[:<port>]/<service_name>`). (Example: jdbc:mysql://some-host:3306/sampledb).
+* **connectionURL** (JDBC connection URL string.): The JDBC connection URL string. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. (Example: jdbc:sqlserver://localhost;databaseName=sampledb).
 * **outputTable** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects. (Example: <my-project>:<my-dataset>.<my-table>).
 * **bigQueryLoadingTemporaryDirectory** (Temporary directory for BigQuery loading process): The temporary directory for the BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
 
