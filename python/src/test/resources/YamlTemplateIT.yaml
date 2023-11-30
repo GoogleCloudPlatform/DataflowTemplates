@@ -1,0 +1,54 @@
+pipeline:
+  type: composite
+  transforms:
+    - type: ReadFromCsv
+      config:
+        path: "INPUT_PATH"
+    - type: MapToFields
+      name: MapWithErrorHandling
+      input: ReadFromCsv
+      config:
+        language: python
+        fields:
+          num: num
+          inverse: float(1 / num)
+          str:
+            expression: "'a' * num"
+            output_type: string
+        error_handling:
+          output: errors
+    - type: Filter
+      input: MapWithErrorHandling
+      config:
+        language: python
+        keep: "str[1] >= 'a'"
+        error_handling:
+          output: errors
+    - type: MapToFields
+      name: TrimErrors
+      input: [MapWithErrorHandling.errors, Filter.errors]
+      config:
+        language: python
+        fields:
+          error:
+            callable: "lambda x: x.msg"
+    - type: MapToFields
+      name: Sum
+      input: Filter
+      config:
+        language: java
+        append: true
+        drop: [str]
+        fields:
+          sum:
+            expression: num + inverse
+    - type: WriteToJson
+      name: WriteGoodFiles
+      input: Sum
+      config:
+        path: "OUTPUT_PATH/good"
+    - type: WriteToJson
+      name: WriteBadFiles
+      input: TrimErrors
+      config:
+        path: "OUTPUT_PATH/bad"
