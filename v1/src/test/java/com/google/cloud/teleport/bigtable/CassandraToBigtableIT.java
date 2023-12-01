@@ -16,9 +16,11 @@
 package com.google.cloud.teleport.bigtable;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.bigtable.matchers.BigtableAsserts.assertThatBigtableRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.datastax.driver.core.exceptions.AlreadyExistsException;
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
@@ -26,11 +28,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ExceptionUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
@@ -41,12 +43,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link CassandraToBigtable}. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(CassandraToBigtable.class)
 @RunWith(JUnit4.class)
 public class CassandraToBigtableIT extends TemplateTestBase {
+
+  private static final Logger LOG = LoggerFactory.getLogger(CassandraToBigtableIT.class);
 
   private CassandraResourceManager cassandraResourceManager;
   private BigtableResourceManager bigtableResourceManager;
@@ -74,9 +80,21 @@ public class CassandraToBigtableIT extends TemplateTestBase {
     List<Map<String, Object>> records = new ArrayList<>();
     records.add(Map.of("id", 1, "company", "Google"));
     records.add(Map.of("id", 2, "company", "Alphabet"));
+    records.add(Map.of("id", 3, "company", "Acme Inc"));
 
-    cassandraResourceManager.executeStatement(
-        "CREATE TABLE " + sourceTableName + " ( id int PRIMARY KEY, company text )");
+    try {
+      cassandraResourceManager.executeStatement(
+          "CREATE TABLE " + sourceTableName + " ( id int PRIMARY KEY, company text )");
+    } catch (Exception e) {
+      // This might happen because DriverTimeouts are retried on the ResourceManager, but the
+      // might have gone through.
+      if (ExceptionUtils.containsType(e, AlreadyExistsException.class)) {
+        LOG.warn("Already exists creating table {}, ignoring", e);
+      } else {
+        throw e;
+      }
+    }
+
     cassandraResourceManager.insertDocuments(sourceTableName, records);
 
     String colFamily = "names";
@@ -103,15 +121,12 @@ public class CassandraToBigtableIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     List<Row> rows = bigtableResourceManager.readTable(tableName);
-
-    // Create a map of <id, name>
-    Map<String, String> values =
-        rows.stream()
-            .collect(
-                Collectors.toMap(
-                    row -> row.getKey().toStringUtf8(),
-                    row -> row.getCells().get(0).getValue().toStringUtf8()));
-    assertThat(values.get("1")).isEqualTo("Google");
-    assertThat(values.get("2")).isEqualTo("Alphabet");
+    assertThat(rows).hasSize(3);
+    assertThatBigtableRecords(rows, colFamily)
+        .hasRecordsUnordered(
+            List.of(
+                Map.of("company", "Google"),
+                Map.of("company", "Alphabet"),
+                Map.of("company", "Acme Inc")));
   }
 }
