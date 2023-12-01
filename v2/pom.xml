@@ -255,7 +255,7 @@
                     <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>
                     <descriptorSetFileName>schema.pb</descriptorSetFileName>
                     <!-- This path must be unique, or else it may delete existing files. -->
-                    <descriptorSetOutputDirectory>${basedir}/target/generated-test-sources/protobuf/schema</descriptorSetOutputDirectory>
+                    <descriptorSetOutputDirectory>${project.build.directory}/generated-test-sources/protobuf/schema</descriptorSetOutputDirectory>
                     <additionalProtoPathElements>
                         <additionalProtoPathElement>${basedir}/src/test/proto</additionalProtoPathElement>
                     </additionalProtoPathElements>
