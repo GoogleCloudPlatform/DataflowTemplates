@@ -77,6 +77,9 @@ public class SpannerToBigQueryIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException {
+    // Make resource names more meaningful and unique (prefixes are used)
+    testName = testName.replace("testSpannerToBigQuery", "SpBq");
+
     spannerClient =
         SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
     bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
