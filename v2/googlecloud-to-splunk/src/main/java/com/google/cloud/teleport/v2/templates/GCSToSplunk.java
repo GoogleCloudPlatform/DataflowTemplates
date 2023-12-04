@@ -81,6 +81,7 @@ import org.slf4j.LoggerFactory;
           + "If a Javascript UDF and JSON schema are both inputted as parameters, only the Javascript UDF will be executed."
     },
     optionsClass = GCSToSplunkOptions.class,
+    skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
     flexContainerName = "gcs-to-splunk",
     contactInformation = "https://cloud.google.com/support",
     hidden = true)

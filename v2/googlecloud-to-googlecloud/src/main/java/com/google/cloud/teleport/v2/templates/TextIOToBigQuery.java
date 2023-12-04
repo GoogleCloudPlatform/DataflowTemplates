@@ -67,6 +67,7 @@ import org.json.JSONObject;
         "The Cloud Storage Text to BigQuery pipeline is a batch pipeline that allows you to read text files stored in "
             + "Cloud Storage, transform them using a JavaScript User Defined Function (UDF) that you provide, and append the result to a BigQuery table.",
     optionsClass = TextIOToBigQuery.Options.class,
+    skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery",
     flexContainerName = "text-to-bigquery",

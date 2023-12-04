@@ -59,7 +59,8 @@ import org.apache.beam.sdk.values.TupleTag;
         "firestoreWriteProjectId",
         "firestoreWriteEntityKind",
         "firestoreWriteNamespace",
-        "firestoreHintNumWorkers"
+        "firestoreHintNumWorkers",
+        "javascriptTextTransformReloadIntervalMinutes"
       },
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-datastore",
