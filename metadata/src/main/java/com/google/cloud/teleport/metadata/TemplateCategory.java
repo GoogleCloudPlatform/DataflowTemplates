@@ -19,9 +19,9 @@ package com.google.cloud.teleport.metadata;
 public enum TemplateCategory {
   GET_STARTED(1, "get_started", "Get Started"),
 
-  STREAMING(2, "STREAMING", "Process Data Continuously (stream)"),
+  STREAMING(2, "streaming_data_processing", "Process Data Continuously (stream)"),
 
-  BATCH(3, "BATCH", "Process Data in Bulk (batch)"),
+  BATCH(3, "batch_data_processing", "Process Data in Bulk (batch)"),
 
   UTILITIES(4, "utilities", "Utilities"),
 
