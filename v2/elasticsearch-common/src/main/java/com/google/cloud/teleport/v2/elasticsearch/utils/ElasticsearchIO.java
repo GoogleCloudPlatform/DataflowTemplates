@@ -518,7 +518,21 @@ public class ElasticsearchIO {
         } catch (Exception e) {
           throw new IOException("Can't load the client certificate from the keystore", e);
         }
+      } else if (isDisableCertificateValidation()) {
+        try {
+          final SSLContext sslContext =
+              SSLContextBuilder.create()
+                  .loadTrustMaterial((TrustStrategy) (chain, authType) -> true)
+                  .build();
+          final SSLIOSessionStrategy sessionStrategy = new SSLIOSessionStrategy(sslContext);
+          restClientBuilder.setHttpClientConfigCallback(
+              httpClientBuilder ->
+                  httpClientBuilder.setSSLContext(sslContext).setSSLStrategy(sessionStrategy));
+        } catch (Exception e) {
+          throw new IOException("Can't create context to ignore certificate", e);
+        }
       }
+
       restClientBuilder.setRequestConfigCallback(
           new RestClientBuilder.RequestConfigCallback() {
             @Override
