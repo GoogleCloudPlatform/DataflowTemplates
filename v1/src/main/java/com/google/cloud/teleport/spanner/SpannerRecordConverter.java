@@ -41,46 +41,138 @@ public class SpannerRecordConverter {
       Pattern.compile("character varying(\\([0-9]+\\))?\\[\\]");
   private final Schema schema;
   private final Dialect dialect;
+  private final List<FieldInfo> fields;
+
+  private static class FieldInfo {
+    private final Schema.Field field;
+    private final boolean generated;
+    private final String name;
+    private final String spannerType;
+    private final Schema type;
+    private final boolean supportedType;
+    private final boolean nullable;
+
+    private final boolean matchesString;
+    private final boolean matchesArray;
+    private final boolean matchesVarchar;
+    private final boolean matchesVarcharArray;
+
+    public FieldInfo(Schema.Field field) {
+      this.field = field;
+      this.generated = field.getProp("generationExpression") != null;
+      this.name = field.name();
+      this.spannerType = Strings.nullToEmpty(field.getProp(SQL_TYPE));
+
+      this.matchesString = STRING_PATTERN.matcher(this.spannerType).matches();
+      this.matchesArray = ARRAY_PATTERN.matcher(this.spannerType).matches();
+      this.matchesVarchar = VARCHAR_PATTERN.matcher(this.spannerType).matches();
+      this.matchesVarcharArray = VARCHAR_ARRAY_PATTERN.matcher(this.spannerType).matches();
+
+      Schema fieldType = field.schema();
+      if (fieldType.getType() == Schema.Type.UNION) {
+        Schema unpack = AvroUtil.unpackNullable(field.schema());
+        if (unpack == null) {
+          this.type = fieldType;
+          this.supportedType = false;
+          this.nullable = false;
+        } else {
+          this.type = unpack;
+          this.supportedType = true;
+          this.nullable = true;
+        }
+      } else {
+        this.type = fieldType;
+        this.supportedType = true;
+        this.nullable = false;
+      }
+    }
+
+    public void checkSupported() {
+      if (!supportedType) {
+        throw new IllegalArgumentException("Unsupported type" + type);
+      }
+    }
+
+    public Schema.Field getField() {
+      return field;
+    }
+
+    public boolean isGenerated() {
+      return generated;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public Schema getType() {
+      return type;
+    }
+
+    public boolean isNullable() {
+      return nullable;
+    }
+
+    public String getSpannerType() {
+      return spannerType;
+    }
+
+    public boolean matchesStringPattern() {
+      return matchesString;
+    }
+
+    public boolean matchesArrayPattern() {
+      return matchesArray;
+    }
+
+    public boolean matchesVarcharPattern() {
+      return matchesVarchar;
+    }
+
+    public boolean matchesVarcharArrayPattern() {
+      return matchesVarcharArray;
+    }
+  }
 
   public SpannerRecordConverter(Schema schema, Dialect dialect) {
     this.schema = schema;
     this.dialect = dialect;
+
+    this.fields = processFields();
   }
 
   public SpannerRecordConverter(Schema schema) {
-    this.schema = schema;
-    this.dialect = Dialect.GOOGLE_STANDARD_SQL;
+    this(schema, Dialect.GOOGLE_STANDARD_SQL);
+  }
+
+  private List<FieldInfo> processFields() {
+    return schema.getFields().stream().map(FieldInfo::new).collect(Collectors.toList());
   }
 
   public GenericRecord convert(Struct row) {
     GenericRecordBuilder builder = new GenericRecordBuilder(schema);
-    List<Schema.Field> fields = schema.getFields();
-    for (Schema.Field field : fields) {
-      if (field.getProp("generationExpression") != null) {
+    for (FieldInfo fieldInfo : this.fields) {
+      if (fieldInfo.isGenerated()) {
         // Generated column values are not exported.
         continue;
       }
-      String fieldName = field.name();
-      Schema type = field.schema();
-      // Empty string to avoid null checks.
-      String spannerType = Strings.nullToEmpty(field.getProp(SQL_TYPE));
-      boolean nullable = false;
-      if (type.getType() == Schema.Type.UNION) {
-        Schema unpack = AvroUtil.unpackNullable(field.schema());
-        if (unpack == null) {
-          throw new IllegalArgumentException("Unsupported type" + type);
-        }
-        type = unpack;
-        nullable = true;
-      }
+
+      fieldInfo.checkSupported();
+
+      Schema.Field field = fieldInfo.getField();
+      String fieldName = fieldInfo.getName();
+      Schema type = fieldInfo.getType();
+      String spannerType = fieldInfo.getSpannerType();
+
+      int fieldIndex = row.getColumnIndex(fieldName);
 
       boolean nullValue = row.isNull(fieldName);
-      if (nullValue && !nullable) {
+      if (nullValue && !fieldInfo.isNullable()) {
         throw new IllegalArgumentException("Unexpected null value for field " + fieldName);
       }
       switch (type.getType()) {
         case BOOLEAN:
-          builder.set(field, nullValue ? null : row.getBoolean(fieldName));
+          builder.set(field, nullValue ? null : row.getBoolean(fieldIndex));
           break;
         case LONG:
           if ((dialect == Dialect.GOOGLE_STANDARD_SQL && spannerType.equals("TIMESTAMP"))
@@ -89,18 +181,18 @@ public class SpannerRecordConverter {
                       || spannerType.equals("spanner.commit_timestamp")))) {
             long microSeconds = 0L;
             if (!nullValue) {
-              Timestamp ts = row.getTimestamp(fieldName);
+              Timestamp ts = row.getTimestamp(fieldIndex);
               microSeconds =
                   TimeUnit.SECONDS.toMicros(ts.getSeconds())
                       + TimeUnit.NANOSECONDS.toMicros(ts.getNanos());
             }
             builder.set(field, nullValue ? null : microSeconds);
           } else {
-            builder.set(field, nullValue ? null : row.getLong(fieldName));
+            builder.set(field, nullValue ? null : row.getLong(fieldIndex));
           }
           break;
         case DOUBLE:
-          builder.set(field, nullValue ? null : row.getDouble(fieldName));
+          builder.set(field, nullValue ? null : row.getDouble(fieldIndex));
           break;
         case BYTES:
           if (dialect == Dialect.GOOGLE_STANDARD_SQL && spannerType.equals("NUMERIC")) {
@@ -110,7 +202,7 @@ public class SpannerRecordConverter {
                 nullValue
                     ? null
                     : ByteBuffer.wrap(
-                        NumericUtils.stringToBytes(row.getBigDecimal(fieldName).toString())));
+                        NumericUtils.stringToBytes(row.getBigDecimal(fieldIndex).toString())));
             break;
           }
           if (dialect == Dialect.POSTGRESQL && spannerType.equals("numeric")) {
@@ -118,33 +210,32 @@ public class SpannerRecordConverter {
                 field,
                 nullValue
                     ? null
-                    : ByteBuffer.wrap(NumericUtils.pgStringToBytes(row.getString(fieldName))));
+                    : ByteBuffer.wrap(NumericUtils.pgStringToBytes(row.getString(fieldIndex))));
             break;
           }
           builder.set(
-              field, nullValue ? null : ByteBuffer.wrap(row.getBytes(fieldName).toByteArray()));
+              field, nullValue ? null : ByteBuffer.wrap(row.getBytes(fieldIndex).toByteArray()));
           break;
         case STRING:
           if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
-            if (STRING_PATTERN.matcher(spannerType).matches() || spannerType.equals("JSON")) {
-              builder.set(field, nullValue ? null : row.getString(fieldName));
+            if (fieldInfo.matchesStringPattern() || spannerType.equals("JSON")) {
+              builder.set(field, nullValue ? null : row.getString(fieldIndex));
             } else if (spannerType.equals("TIMESTAMP")) {
-              builder.set(field, nullValue ? null : row.getTimestamp(fieldName).toString());
+              builder.set(field, nullValue ? null : row.getTimestamp(fieldIndex).toString());
             } else if (spannerType.equals("DATE")) {
-              builder.set(field, nullValue ? null : row.getDate(fieldName).toString());
+              builder.set(field, nullValue ? null : row.getDate(fieldIndex).toString());
             }
           } else if (dialect == Dialect.POSTGRESQL) {
             if (spannerType.equals("jsonb")) {
-              builder.set(field, nullValue ? null : row.getPgJsonb(fieldName));
-            } else if (VARCHAR_PATTERN.matcher(spannerType).matches()
-                || spannerType.equals("text")) {
-              builder.set(field, nullValue ? null : row.getString(fieldName));
+              builder.set(field, nullValue ? null : row.getPgJsonb(fieldIndex));
+            } else if (fieldInfo.matchesVarcharPattern() || spannerType.equals("text")) {
+              builder.set(field, nullValue ? null : row.getString(fieldIndex));
             } else if (spannerType.equals("timestamp with time zone")) {
-              builder.set(field, nullValue ? null : row.getTimestamp(fieldName).toString());
+              builder.set(field, nullValue ? null : row.getTimestamp(fieldIndex).toString());
             } else if (spannerType.equals("spanner.commit_timestamp")) {
-              builder.set(field, nullValue ? null : row.getTimestamp(fieldName).toString());
+              builder.set(field, nullValue ? null : row.getTimestamp(fieldIndex).toString());
             } else if (spannerType.equals("date")) {
-              builder.set(field, nullValue ? null : row.getDate(fieldName).toString());
+              builder.set(field, nullValue ? null : row.getDate(fieldIndex).toString());
             }
           }
           break;
@@ -164,7 +255,7 @@ public class SpannerRecordConverter {
             }
             switch (arrayType.getType()) {
               case BOOLEAN:
-                builder.set(field, nullValue ? null : row.getBooleanList(fieldName));
+                builder.set(field, nullValue ? null : row.getBooleanList(fieldIndex));
                 break;
               case LONG:
                 if ((dialect == Dialect.GOOGLE_STANDARD_SQL
@@ -172,7 +263,7 @@ public class SpannerRecordConverter {
                     || (dialect == Dialect.POSTGRESQL
                         && spannerType.equals("timestamp with time zone[]"))) {
                   List<Long> values =
-                      row.getTimestampList(fieldName).stream()
+                      row.getTimestampList(fieldIndex).stream()
                           .map(
                               timestamp ->
                                   timestamp == null
@@ -182,12 +273,12 @@ public class SpannerRecordConverter {
                           .collect(Collectors.toList());
                   builder.set(field, nullValue ? null : values);
                 } else {
-                  builder.set(field, nullValue ? null : row.getLongList(fieldName));
+                  builder.set(field, nullValue ? null : row.getLongList(fieldIndex));
                 }
                 break;
               case DOUBLE:
                 {
-                  builder.set(field, nullValue ? null : row.getDoubleList(fieldName));
+                  builder.set(field, nullValue ? null : row.getDoubleList(fieldIndex));
                   break;
                 }
               case BYTES:
@@ -200,7 +291,7 @@ public class SpannerRecordConverter {
                     }
                     List<ByteBuffer> numericValues = null;
                     numericValues =
-                        row.getStringList(fieldName).stream()
+                        row.getStringList(fieldIndex).stream()
                             .map(
                                 numeric ->
                                     numeric == null
@@ -217,7 +308,7 @@ public class SpannerRecordConverter {
                     }
                     List<ByteBuffer> numericValues = null;
                     numericValues =
-                        row.getStringList(fieldName).stream()
+                        row.getStringList(fieldIndex).stream()
                             .map(
                                 numeric ->
                                     numeric == null
@@ -230,7 +321,7 @@ public class SpannerRecordConverter {
                   List<ByteBuffer> value = null;
                   if (!nullValue) {
                     value =
-                        row.getBytesList(fieldName).stream()
+                        row.getBytesList(fieldIndex).stream()
                             .map(
                                 bytes ->
                                     bytes == null ? null : ByteBuffer.wrap(bytes.toByteArray()))
@@ -242,25 +333,24 @@ public class SpannerRecordConverter {
               case STRING:
                 {
                   if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
-                    if (ARRAY_PATTERN.matcher(spannerType).matches()
-                        || spannerType.equals("ARRAY<JSON>")) {
-                      builder.set(field, nullValue ? null : row.getStringList(fieldName));
+                    if (fieldInfo.matchesArrayPattern() || spannerType.equals("ARRAY<JSON>")) {
+                      builder.set(field, nullValue ? null : row.getStringList(fieldIndex));
                     } else if (spannerType.equals("ARRAY<TIMESTAMP>")) {
-                      setTimestampArray(row, builder, field, fieldName, nullValue);
+                      setTimestampArray(row, builder, field, fieldIndex, nullValue);
                     } else if (spannerType.equals("ARRAY<DATE>")) {
-                      setDateArray(row, builder, field, fieldName, nullValue);
+                      setDateArray(row, builder, field, fieldIndex, nullValue);
                     }
                   }
                   if (dialect == Dialect.POSTGRESQL) {
                     if (spannerType.equals("jsonb[]")) {
-                      builder.set(field, nullValue ? null : row.getPgJsonbList(fieldName));
-                    } else if (VARCHAR_ARRAY_PATTERN.matcher(spannerType).matches()
+                      builder.set(field, nullValue ? null : row.getPgJsonbList(fieldIndex));
+                    } else if (fieldInfo.matchesVarcharArrayPattern()
                         || spannerType.equals("text[]")) {
-                      builder.set(field, nullValue ? null : row.getStringList(fieldName));
+                      builder.set(field, nullValue ? null : row.getStringList(fieldIndex));
                     } else if (spannerType.equals("timestamp with time zone[]")) {
-                      setTimestampArray(row, builder, field, fieldName, nullValue);
+                      setTimestampArray(row, builder, field, fieldIndex, nullValue);
                     } else if (spannerType.equals("date[]")) {
-                      setDateArray(row, builder, field, fieldName, nullValue);
+                      setDateArray(row, builder, field, fieldIndex, nullValue);
                     }
                   }
                   break;
@@ -285,13 +375,13 @@ public class SpannerRecordConverter {
       Struct row,
       GenericRecordBuilder builder,
       Schema.Field field,
-      String fieldName,
+      int fieldIndex,
       boolean nullValue) {
     if (nullValue) {
       builder.set(field, null);
     } else {
       List<String> values =
-          row.getTimestampList(fieldName).stream()
+          row.getTimestampList(fieldIndex).stream()
               .map(timestamp -> timestamp == null ? null : timestamp.toString())
               .collect(Collectors.toList());
       builder.set(field, values);
@@ -302,13 +392,13 @@ public class SpannerRecordConverter {
       Struct row,
       GenericRecordBuilder builder,
       Schema.Field field,
-      String fieldName,
+      int fieldIndex,
       boolean nullValue) {
     if (nullValue) {
       builder.set(field, null);
     } else {
       List<String> values =
-          row.getDateList(fieldName).stream()
+          row.getDateList(fieldIndex).stream()
               .map(date -> date == null ? null : date.toString())
               .collect(Collectors.toList());
       builder.set(field, values);
