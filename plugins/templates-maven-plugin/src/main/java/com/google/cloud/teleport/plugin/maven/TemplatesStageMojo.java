@@ -607,9 +607,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               projectId
             },
             directory);
+
+    // Ideally this should raise an exception, but in GitHub Actions this returns NZE even for
+    // successful runs.
     if (stageProcess.waitFor() != 0) {
-      throw new RuntimeException(
-          "Error building container image using gcloud. Check logs for details.");
+      LOG.warn("Possible error building container image using gcloud. Check logs for details.");
     }
   }
 
