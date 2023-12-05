@@ -1,0 +1,34 @@
+{
+  "source": {
+    "type": "text",
+    "name": "data",
+    "ordered_field_names": "boolean,double,long,string",
+    "data": [
+      [
+        true,
+        40.0,
+        50,
+        "a string"
+      ]
+    ]
+  },
+  "targets": [
+    {
+      "node": {
+        "name": "Node",
+        "source": "data",
+        "mode": "append",
+        "mappings": {
+          "label": "\"Node\"",
+          "properties": {
+            "keys": ["long"],
+            "booleans": ["boolean"],
+            "doubles": ["double"],
+            "longs": ["long"],
+            "strings": ["string"]
+          }
+        }
+      }
+    }
+  ]
+}

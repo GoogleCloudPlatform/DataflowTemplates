@@ -75,6 +75,7 @@ public class DataConversionIT extends TemplateTestBase {
   }
 
   // NOTE: BIGNUMERIC, GEOGRAPHY, JSON and INTERVAL BigQuery column types are not supported by Beam
+  // FIXME: fix date conversion
   @Test
   public void supportBigQueryDataTypes() throws Exception {
     TableId table =
@@ -135,6 +136,48 @@ public class DataConversionIT extends TemplateTestBase {
         "timestamp", ZonedDateTime.of(2023, 12, 15, 12, 13, 14, 156_000_000, ZoneId.of("UTC")));
     expectedRow.put("time", LocalTime.of(12, 13, 14));
     expectedRow.put("datetime", LocalDateTime.of(2019, 2, 17, 11, 24, 0, 0));
+    assertThatPipeline(info).isRunning();
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(
+                    createConfig(info),
+                    Neo4jQueryCheck.builder(neo4jClient)
+                        .setQuery(
+                            "MATCH (n) RETURN labels(n) AS labels, properties(n) AS props ORDER BY n.id ASC")
+                        .setExpectedResult(
+                            List.of(Map.of("labels", List.of("Node"), "props", expectedRow)))
+                        .build()))
+        .meetsConditions();
+  }
+
+  @Test
+  // FIXME: fix temporal value conversions, duration, byte arrays and potentially doubles
+  public void supportsMappedTypesForInlineCSV() throws Exception {
+    gcsClient.createArtifact(
+        "spec.json", contentOf("/testing-specs/data-conversion/inlinecsv-spec.json"));
+    gcsClient.createArtifact(
+        "neo4j.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"));
+    LaunchInfo info = launchTemplate(options);
+
+    Map<String, Object> expectedRow = new HashMap<>();
+    expectedRow.put("boolean", true);
+    expectedRow.put("double", 40.0D);
+    expectedRow.put("long", 50L);
+    expectedRow.put("string", "a string");
     assertThatPipeline(info).isRunning();
     assertThatResult(
             pipelineOperator()
