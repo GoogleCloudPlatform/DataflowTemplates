@@ -43,6 +43,7 @@ import org.apache.beam.sdk.transforms.ParDo;
         "The BigQuery to Elasticsearch template is a batch pipeline that ingests data from a BigQuery table into Elasticsearch as documents. "
             + "The template can either read the entire table or read specific records using a supplied query.",
     optionsClass = BigQueryToElasticsearchOptions.class,
+    skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
     flexContainerName = "bigquery-to-elasticsearch",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-elasticsearch",

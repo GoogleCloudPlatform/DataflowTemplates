@@ -63,6 +63,7 @@ import org.slf4j.LoggerFactory;
           + "Alternatively, you can provide a user-defined function (UDF) that parses the CSV text and outputs Elasticsearch documents."
     },
     optionsClass = GCSToElasticsearchOptions.class,
+    skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
     flexContainerName = "gcs-to-elasticsearch",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-elasticsearch",
