@@ -213,9 +213,8 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>it-jdbc</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-jdbc</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -246,6 +245,12 @@
       <groupId>org.apache.derby</groupId>
       <artifactId>derbynet</artifactId>
       <version>${derby.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>${mysql-connector-java.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

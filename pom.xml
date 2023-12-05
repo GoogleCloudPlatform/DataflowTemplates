@@ -498,6 +498,19 @@
         </repository>
       </repositories>
     </profile>
+    <profile>
+      <id>splunkDeps</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>splunk-artifactory</id>
+          <name>Splunk Releases</name>
+          <url>https://splunk.jfrog.io/splunk/ext-releases-local</url>
+        </repository>
+      </repositories>
+    </profile>
   </profiles>
 
   <modules>
