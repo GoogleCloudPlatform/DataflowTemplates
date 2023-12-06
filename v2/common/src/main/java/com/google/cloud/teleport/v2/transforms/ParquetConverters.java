@@ -37,10 +37,11 @@ public class ParquetConverters {
 
   /** Options for reading or writing Parquet files. */
   public interface ParquetOptions extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "The input filepattern to read from.",
         helpText = "Cloud storage file pattern glob to read from.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/path/*.parquet")
     String getInputFileSpec();
 

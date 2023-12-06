@@ -36,10 +36,11 @@ public class AvroConverters {
 
   /** Options for reading or writing Avro files. */
   public interface AvroOptions extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "The input filepattern to read from.",
         helpText = "Cloud storage file pattern glob to read from.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/path/*.avro")
     String getInputFileSpec();
 
