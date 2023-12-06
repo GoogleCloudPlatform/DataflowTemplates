@@ -166,7 +166,7 @@ public class SpannerRecordConverter {
 
       int fieldIndex = row.getColumnIndex(fieldName);
 
-      boolean nullValue = row.isNull(fieldName);
+      boolean nullValue = row.isNull(fieldIndex);
       if (nullValue && !fieldInfo.isNullable()) {
         throw new IllegalArgumentException("Unexpected null value for field " + fieldName);
       }
