@@ -1,6 +1,4 @@
 {
-  "config": {
-  },
   "source": {
     "type": "text",
     "format": "EXCEL",
