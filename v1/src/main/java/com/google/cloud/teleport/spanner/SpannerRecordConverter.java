@@ -17,12 +17,14 @@ package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
 
+import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.common.base.Strings;
 import java.nio.ByteBuffer;
+import java.text.DecimalFormatSymbols;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -42,6 +44,7 @@ public class SpannerRecordConverter {
   private final Schema schema;
   private final Dialect dialect;
   private final List<FieldInfo> fields;
+  private static final char ZERO_DIGIT = (new DecimalFormatSymbols()).getZeroDigit();
 
   private static class FieldInfo {
     private final Schema.Field field;
@@ -223,7 +226,7 @@ public class SpannerRecordConverter {
             } else if (spannerType.equals("TIMESTAMP")) {
               builder.set(field, nullValue ? null : row.getTimestamp(fieldIndex).toString());
             } else if (spannerType.equals("DATE")) {
-              builder.set(field, nullValue ? null : row.getDate(fieldIndex).toString());
+              builder.set(field, nullValue ? null : dateToString(row.getDate(fieldIndex)));
             }
           } else if (dialect == Dialect.POSTGRESQL) {
             if (spannerType.equals("jsonb")) {
@@ -235,7 +238,7 @@ public class SpannerRecordConverter {
             } else if (spannerType.equals("spanner.commit_timestamp")) {
               builder.set(field, nullValue ? null : row.getTimestamp(fieldIndex).toString());
             } else if (spannerType.equals("date")) {
-              builder.set(field, nullValue ? null : row.getDate(fieldIndex).toString());
+              builder.set(field, nullValue ? null : dateToString(row.getDate(fieldIndex)));
             }
           }
           break;
@@ -371,6 +374,38 @@ public class SpannerRecordConverter {
     return builder.build();
   }
 
+  // Package scope to be accessible to tests.
+  static String dateToString(Date date) {
+    StringBuilder b = new StringBuilder(10);
+    int year = date.getYear();
+    if (year < 1000) {
+      b.append(ZERO_DIGIT);
+      if (year < 100) {
+        b.append(ZERO_DIGIT);
+        if (year < 10) {
+          b.append(ZERO_DIGIT);
+        }
+      }
+    }
+    b.append(year);
+
+    b.append('-');
+
+    int month = date.getMonth();
+    if (month < 10) {
+      b.append(ZERO_DIGIT);
+    }
+    b.append(month);
+
+    b.append('-');
+
+    int dayOfMonth = date.getDayOfMonth();
+    if (dayOfMonth < 10) {
+      b.append(ZERO_DIGIT);
+    }
+    return b.append(dayOfMonth).toString();
+  }
+
   private static void setTimestampArray(
       Struct row,
       GenericRecordBuilder builder,
@@ -399,7 +434,7 @@ public class SpannerRecordConverter {
     } else {
       List<String> values =
           row.getDateList(fieldIndex).stream()
-              .map(date -> date == null ? null : date.toString())
+              .map(date -> date == null ? null : dateToString(date))
               .collect(Collectors.toList());
       builder.set(field, values);
     }

@@ -915,4 +915,18 @@ public class SpannerRecordConverterTest {
     assertEquals(1L, avroRecord.get("id"));
     assertNull(avroRecord.get("generatedInt"));
   }
+
+  @Test
+  public void dateToString() {
+    List<Date> dates =
+        Arrays.asList(
+            Date.fromYearMonthDay(10, 9, 5),
+            Date.fromYearMonthDay(500, 3, 4),
+            Date.fromYearMonthDay(2016, 12, 31),
+            Date.fromYearMonthDay(1, 1, 1));
+
+    for (Date date : dates) {
+      assertEquals(SpannerRecordConverter.dateToString(date), date.toString());
+    }
+  }
 }
