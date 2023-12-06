@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.neo4j.templates;
 
+import static com.google.cloud.teleport.v2.neo4j.templates.Connections.jsonBasicPayload;
+import static com.google.cloud.teleport.v2.neo4j.templates.Resources.contentOf;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -24,12 +26,9 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.TestProperties;
@@ -71,17 +70,7 @@ public class PropertyMappingsIT extends TemplateTestBase {
   public void mapsBooleanPropertiesFromInlineTextSource() throws Exception {
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/property-mappings/booleans-text-spec.json"));
-    gcsClient.createArtifact(
-        "neo4j.json",
-        String.format(
-            "{\n"
-                + "  \"server_url\": \"%s\",\n"
-                + "  \"database\": \"%s\",\n"
-                + "  \"auth_type\": \"basic\",\n"
-                + "  \"username\": \"neo4j\",\n"
-                + "  \"pwd\": \"%s\"\n"
-                + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -110,17 +99,7 @@ public class PropertyMappingsIT extends TemplateTestBase {
             RowToInsert.of(Map.of("id", "bool-4", "truthy", false))));
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/property-mappings/booleans-bq-spec.json"));
-    gcsClient.createArtifact(
-        "neo4j.json",
-        String.format(
-            "{\n"
-                + "  \"server_url\": \"%s\",\n"
-                + "  \"database\": \"%s\",\n"
-                + "  \"auth_type\": \"basic\",\n"
-                + "  \"username\": \"neo4j\",\n"
-                + "  \"pwd\": \"%s\"\n"
-                + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -132,14 +111,6 @@ public class PropertyMappingsIT extends TemplateTestBase {
 
     assertThatPipeline(info).isRunning();
     assertBooleansArePersisted(info);
-  }
-
-  private String contentOf(String resourcePath) throws IOException {
-    try (BufferedReader bufferedReader =
-        new BufferedReader(
-            new InputStreamReader(this.getClass().getResourceAsStream(resourcePath)))) {
-      return bufferedReader.lines().collect(Collectors.joining("\n"));
-    }
   }
 
   private void assertBooleansArePersisted(LaunchInfo info) throws IOException {

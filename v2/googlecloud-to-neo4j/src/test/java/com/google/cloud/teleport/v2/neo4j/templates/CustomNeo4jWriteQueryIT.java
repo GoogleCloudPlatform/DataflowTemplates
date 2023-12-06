@@ -15,16 +15,14 @@
  */
 package com.google.cloud.teleport.v2.neo4j.templates;
 
+import static com.google.cloud.teleport.v2.neo4j.templates.Resources.contentOf;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -118,13 +116,5 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                     .setExpectedResult(List.of(Map.of("type", "SOLD", "count", 2L)))
                     .build());
     assertThatResult(result).meetsConditions();
-  }
-
-  private String contentOf(String resourcePath) throws IOException {
-    try (BufferedReader bufferedReader =
-        new BufferedReader(
-            new InputStreamReader(this.getClass().getResourceAsStream(resourcePath)))) {
-      return bufferedReader.lines().collect(Collectors.joining("\n"));
-    }
   }
 }

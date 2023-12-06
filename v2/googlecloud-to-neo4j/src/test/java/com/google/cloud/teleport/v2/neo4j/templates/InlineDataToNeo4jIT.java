@@ -15,16 +15,15 @@
  */
 package com.google.cloud.teleport.v2.neo4j.templates;
 
+import static com.google.cloud.teleport.v2.neo4j.templates.Connections.jsonBasicPayload;
+import static com.google.cloud.teleport.v2.neo4j.templates.Resources.contentOf;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -64,17 +63,7 @@ public class InlineDataToNeo4jIT extends TemplateTestBase {
   public void testInlineDataToNeo4j() throws IOException {
     String spec = contentOf("/testing-specs/inline-data/northwind-jobspec.json");
     gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
-    gcsClient.createArtifact(
-        "neo4j-connection.json",
-        String.format(
-            "{\n"
-                + "  \"server_url\": \"%s\",\n"
-                + "  \"database\": \"%s\",\n"
-                + "  \"auth_type\": \"basic\",\n"
-                + "  \"username\": \"neo4j\",\n"
-                + "  \"pwd\": \"%s\"\n"
-                + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+    gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -128,13 +117,5 @@ public class InlineDataToNeo4jIT extends TemplateTestBase {
                     .setExpectedResult(List.of(Map.of("type", "PURCHASES", "count", 97L)))
                     .build());
     assertThatResult(result).meetsConditions();
-  }
-
-  private String contentOf(String resourcePath) throws IOException {
-    try (BufferedReader bufferedReader =
-        new BufferedReader(
-            new InputStreamReader(this.getClass().getResourceAsStream(resourcePath)))) {
-      return bufferedReader.lines().collect(Collectors.joining("\n"));
-    }
   }
 }

@@ -38,15 +38,28 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
 
   @TemplateParameter.GcsReadFile(
       order = 2,
+      optional = true,
       description = "Path to the Neo4j connection metadata",
-      helpText = "The path to Neo4j connection metadata JSON file.")
-  @Validation.Required
+      helpText =
+          "The path to Neo4j connection metadata JSON file. This is an alternative to the secret option.")
+  @Validation.Required(groups = "connection")
   String getNeo4jConnectionUri();
 
   void setNeo4jConnectionUri(String value);
 
   @TemplateParameter.Text(
       order = 3,
+      optional = true,
+      description = "Secret ID for the Neo4j connection metadata",
+      helpText =
+          "The secret ID for the Neo4j connection metadata. This is an alternative to the GCS path option.")
+  @Validation.Required(groups = "connection")
+  String getNeo4jConnectionSecretId();
+
+  void setNeo4jConnectionSecretId(String value);
+
+  @TemplateParameter.Text(
+      order = 4,
       optional = true,
       description = "Options JSON",
       helpText = "Options JSON. Use runtime tokens.",
@@ -57,7 +70,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   void setOptionsJson(String value);
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 5,
       optional = true,
       description = "Query SQL",
       helpText = "Override SQL query.")
@@ -67,7 +80,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
   void setReadQuery(String value);
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 6,
       optional = true,
       description = "Path to Text File",
       helpText = "Override text file pattern",

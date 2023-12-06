@@ -15,8 +15,11 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.connection;
 
+import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import com.google.cloud.teleport.v2.neo4j.utils.FileSystemUtils;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import java.io.Serializable;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,30 +31,38 @@ public class ConnectionParams implements Serializable {
 
   public String serverUrl, database, authType, username, password;
 
-  public ConnectionParams(String neoConnectionUri) {
-
-    String neoConnectionJsonStr = "{}";
-    try {
-      neoConnectionJsonStr = FileSystemUtils.getPathContents(neoConnectionUri);
-    } catch (Exception e) {
-      LOG.error("Unable to read {} neo4j configuration: ", neoConnectionUri, e);
+  public ConnectionParams(Neo4jFlexTemplateOptions options) {
+    String json;
+    String secretId = options.getNeo4jConnectionSecretId();
+    if (StringUtils.isNotBlank(secretId)) {
+      json = SecretManagerUtils.getSecret(secretId);
+    } else {
+      json = readGcsResource(options.getNeo4jConnectionUri());
     }
+    initialize(json);
+  }
 
+  private void initialize(String rawJson) {
     try {
-      JSONObject neoConnectionJson = new JSONObject(neoConnectionJsonStr);
-      serverUrl = neoConnectionJson.getString("server_url");
-      if (neoConnectionJson.has("auth_type")) {
-        authType = neoConnectionJson.getString("auth_type");
-      } else {
-        authType = "basic";
-      }
-      database =
-          neoConnectionJson.has("database") ? neoConnectionJson.getString("database") : "neo4j";
-      username = neoConnectionJson.getString("username");
-      password = neoConnectionJson.getString("pwd");
+      JSONObject json = new JSONObject(rawJson);
+      serverUrl = json.getString("server_url");
+      authType = json.has("auth_type") ? json.getString("auth_type") : "basic";
+      database = json.has("database") ? json.getString("database") : "neo4j";
+      username = json.getString("username");
+      password = json.getString("pwd");
 
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      LOG.error("Unable to parse Neo4j JSON connection metadata: ", e);
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private static String readGcsResource(String uri) {
+    try {
+      return FileSystemUtils.getPathContents(uri);
+    } catch (Exception e) {
+      LOG.error("Unable to read {} Neo4j configuration: ", uri, e);
+      throw new IllegalStateException(e);
     }
   }
 }
