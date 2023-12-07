@@ -1,0 +1,30 @@
+{
+  "source": {
+    "type": "text",
+    "format": "EXCEL",
+    "name": "inline-words",
+    "ordered_field_names": "word",
+    "data": [
+        ["word1"],
+        ["word2"],
+        ["word3"]
+      ]
+  },
+  "targets": [
+    {
+      "node": {
+        "name": "Word Nodes",
+        "source": "inline-words",
+        "mode": "merge",
+        "mappings": {
+          "label": "\"Word\"",
+          "properties": {
+            "keys": {
+              "word": "word"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.neo4j.templates;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.model.InputValidator;
-import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.JobSpecMapper;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
@@ -32,25 +31,17 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Unit tests for {@link GoogleCloudToNeo4j}. */
 @RunWith(JUnit4.class)
 public class GoogleToNeo4jTest {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GoogleToNeo4jTest.class);
-
   private static Provider providerImpl;
-  private static ConnectionParams neo4jConnection;
   private static JobSpec jobSpec;
   private static OptionsParams optionsParams;
 
   @BeforeClass
   public static void setUp() {
-    LOG.info("Initializing...");
-    neo4jConnection =
-        new ConnectionParams("src/test/resources/testing-specs/auradb-free-connection.json");
     jobSpec = JobSpecMapper.fromUri("src/test/resources/testing-specs/text-northwind-jobspec.json");
     providerImpl = ProviderFactory.of(jobSpec.getSourceList().get(0).getSourceType());
     optionsParams = new OptionsParams();
@@ -78,7 +69,6 @@ public class GoogleToNeo4jTest {
   public void testResolvedSqlVariable() {
     String uri = "SELECT * FROM TEST LIMIT $limit";
     String uriReplaced = ModelUtils.replaceVariableTokens(uri, optionsParams.getTokenMap());
-    LOG.info("uri: {}, uri_replaced: {}", uri, uriReplaced);
     assertThat(uriReplaced).contains("LIMIT 7");
   }
 

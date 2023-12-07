@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.neo4j.model;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
@@ -27,6 +29,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
@@ -53,6 +56,25 @@ public class InputValidatorTest {
     edgeTarget.setMappings(edgeMappings());
     jobSpec = new JobSpec();
     jobSpec.getSources().put("placeholder_source", source);
+  }
+
+  @Test
+  public void validatesOptionsWithGcsConnectionMetadata() {
+    Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
+    when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
+    when(options.getNeo4jConnectionUri()).thenReturn("gs://example.com/neo4j.json");
+
+    assertThat(InputValidator.validateNeo4jPipelineOptions(options)).isEmpty();
+  }
+
+  @Test
+  public void validatesOptionsWithConnectionMetadataSecret() {
+    Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
+    when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
+    when(options.getNeo4jConnectionSecretId())
+        .thenReturn("projects/my-project/secrets/a-secret/versions/1");
+
+    assertThat(InputValidator.validateNeo4jPipelineOptions(options)).isEmpty();
   }
 
   @Test
@@ -217,6 +239,48 @@ public class InputValidatorTest {
         .isEqualTo(
             List.of(
                 "Edge target placeholder_edge_target uses incompatible save modes: either change the target's save mode to create or the edge node mode to match or merge"));
+  }
+
+  @Test
+  public void invalidatesOptionsIfBothSecretAndGcsUriAreMissing() {
+    Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
+    when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
+
+    List<String> errors = InputValidator.validateNeo4jPipelineOptions(options);
+
+    assertThat(errors)
+        .isEqualTo(
+            List.of("Neither Neo4j connection URI nor Neo4j connection secret were provided."));
+  }
+
+  @Test
+  public void invalidatesOptionsIfBothSecretAndGcsUriAreSpecified() {
+    Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
+    when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
+    when(options.getNeo4jConnectionUri()).thenReturn("gs://example.com/neo4j.json");
+    when(options.getNeo4jConnectionSecretId())
+        .thenReturn("projects/my-project/secrets/a-secret/versions/1");
+
+    List<String> errors = InputValidator.validateNeo4jPipelineOptions(options);
+
+    assertThat(errors)
+        .isEqualTo(
+            List.of(
+                "Both Neo4j connection URI and Neo4j connection secret were provided: only one must be set."));
+  }
+
+  @Test
+  public void invalidatesOptionsIfSecretFormatIsIncorrect() {
+    Neo4jFlexTemplateOptions options = mock(Neo4jFlexTemplateOptions.class);
+    when(options.getJobSpecUri()).thenReturn("gs://example.com/spec.json");
+    when(options.getNeo4jConnectionSecretId()).thenReturn("wrongly-formatted-secret");
+
+    List<String> errors = InputValidator.validateNeo4jPipelineOptions(options);
+
+    assertThat(errors)
+        .isEqualTo(
+            List.of(
+                "Neo4j connection secret must be in the form projects/{project}/secrets/{secret}/versions/{secret_version}"));
   }
 
   private static List<Mapping> nodeMappings() {

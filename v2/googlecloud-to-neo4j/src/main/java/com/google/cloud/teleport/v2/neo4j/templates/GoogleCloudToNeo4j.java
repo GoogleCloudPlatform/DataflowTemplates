@@ -141,7 +141,7 @@ public class GoogleCloudToNeo4j {
         "Errors found validating pipeline options: ",
         InputValidator.validateNeo4jPipelineOptions(pipelineOptions));
 
-    this.neo4jConnection = new ConnectionParams(pipelineOptions.getNeo4jConnectionUri());
+    this.neo4jConnection = new ConnectionParams(pipelineOptions);
 
     // Validate connection
     processValidations(

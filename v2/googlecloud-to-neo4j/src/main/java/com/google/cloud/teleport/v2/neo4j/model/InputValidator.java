@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model;
 
+import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
@@ -60,10 +61,22 @@ public class InputValidator {
 
     List<String> validationMessages = new ArrayList<>();
 
-    if (StringUtils.isEmpty(pipelineOptions.getNeo4jConnectionUri())) {
-      validationMessages.add("Neo4j connection URI not provided.");
+    String neo4jConnectionUri = pipelineOptions.getNeo4jConnectionUri();
+    String neo4jConnectionSecret = pipelineOptions.getNeo4jConnectionSecretId();
+    if (StringUtils.isEmpty(neo4jConnectionUri) && StringUtils.isEmpty(neo4jConnectionSecret)) {
+      validationMessages.add(
+          "Neither Neo4j connection URI nor Neo4j connection secret were provided.");
     }
-
+    if (!StringUtils.isEmpty(neo4jConnectionUri) && !StringUtils.isEmpty(neo4jConnectionSecret)) {
+      validationMessages.add(
+          "Both Neo4j connection URI and Neo4j connection secret were provided: only one must be set.");
+    }
+    if (!StringUtils.isEmpty(neo4jConnectionSecret)
+        && !(SecretVersionName.isParsableFrom(neo4jConnectionSecret))) {
+      validationMessages.add(
+          "Neo4j connection secret must be in the form"
+              + " projects/{project}/secrets/{secret}/versions/{secret_version}");
+    }
     if (StringUtils.isEmpty(pipelineOptions.getJobSpecUri())) {
       validationMessages.add("Job spec URI not provided.");
     }
