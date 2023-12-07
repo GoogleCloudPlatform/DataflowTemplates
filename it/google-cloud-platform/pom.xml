@@ -34,14 +34,12 @@
             <artifactId>beam-it-common</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>conditions</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-conditions</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>truthmatchers</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-truthmatchers</artifactId>
         </dependency>
         <!-- File Formats -->
         <dependency>
@@ -131,6 +129,11 @@
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
             <version>${awaitility.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
+            <scope>provided</scope>
         </dependency>
         <!-- TODO(pranavbhandari): Remove the following dependencies after BigQueryIOLT is moved to the right directory -->
         <dependency>
