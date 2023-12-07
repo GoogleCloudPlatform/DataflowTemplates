@@ -59,11 +59,6 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
   // Schema of the destination Spanner database.
   private final PCollectionView<Ddl> ddlView;
   private final PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView;
-  private final ValueProvider<Character> columnDelimiter;
-  private final ValueProvider<Character> fieldQualifier;
-  private final ValueProvider<Boolean> trailingDelimiter;
-  private final ValueProvider<Character> escape;
-  private final ValueProvider<String> nullString;
   private final ValueProvider<String> dateFormat;
   private final ValueProvider<String> timestampFormat;
   private final ValueProvider<String> invalidOutputPath;
@@ -74,22 +69,12 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
   public CSVRecordToMutation(
       PCollectionView<Ddl> ddlView,
       PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView,
-      ValueProvider<Character> columnDelimiter,
-      ValueProvider<Character> fieldQualifier,
-      ValueProvider<Boolean> trailingDelimiter,
-      ValueProvider<Character> escape,
-      ValueProvider<String> nullString,
       ValueProvider<String> dateFormat,
       ValueProvider<String> timestampFormat,
       ValueProvider<String> invalidOutputPath,
       TupleTag<String> errorTag) {
     this.ddlView = ddlView;
     this.tableColumnsView = tableColumnsView;
-    this.columnDelimiter = columnDelimiter;
-    this.fieldQualifier = fieldQualifier;
-    this.trailingDelimiter = trailingDelimiter;
-    this.escape = escape;
-    this.nullString = nullString;
     this.dateFormat = dateFormat;
     this.timestampFormat = timestampFormat;
     this.invalidOutputPath = invalidOutputPath;

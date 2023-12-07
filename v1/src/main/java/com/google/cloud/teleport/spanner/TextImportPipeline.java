@@ -81,18 +81,22 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
     category = TemplateCategory.BATCH,
     displayName = "Text Files on Cloud Storage to Cloud Spanner",
     description =
-        "The Cloud Storage Text to Cloud Spanner template is a batch pipeline that reads CSV text files from "
-            + "Cloud Storage and imports them to a Cloud Spanner database.",
+        "The Cloud Storage Text to Cloud Spanner template is a batch pipeline that reads CSV text"
+            + " files from Cloud Storage and imports them to a Cloud Spanner database.",
     optionsClass = Options.class,
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-cloud-spanner",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The target Cloud Spanner database and table must exist.",
-      "You must have read permissions for the Cloud Storage bucket and write permissions for the target Cloud Spanner database.",
+      "You must have read permissions for the Cloud Storage bucket and write permissions for the"
+          + " target Cloud Spanner database.",
       "The input Cloud Storage path containing the CSV files must exist.",
-      "You must create an import manifest file containing a JSON description of the CSV files, and you must store that manifest file in Cloud Storage.",
-      "If the target Cloud Spanner database already has a schema, any columns specified in the manifest file must have the same data types as their corresponding columns in the target database's schema.",
+      "You must create an import manifest file containing a JSON description of the CSV files, and"
+          + " you must store that manifest file in Cloud Storage.",
+      "If the target Cloud Spanner database already has a schema, any columns specified in the"
+          + " manifest file must have the same data types as their corresponding columns in the"
+          + " target database's schema.",
       // TODO: convey all the information
       "The manifest file, encoded in ASCII or UTF-8, must match the following format: ... TODO ..."
     })
@@ -159,9 +163,9 @@ public class TextImportPipeline {
         optional = true,
         description = "Field qualifier used by the source file",
         helpText =
-            "The field qualifier used by the source file. It should be used when character needs to"
-                + " be escaped. Field qualifier should be used when character needs to be escaped."
-                + " The default value is double quotes.")
+            "The field qualifier used by the source file. This is the character to wrap"
+                + " together text that should be kept as one value. The default value is double"
+                + " quotes.")
     @Default.Character('"')
     ValueProvider<Character> getFieldQualifier();
 
@@ -186,7 +190,9 @@ public class TextImportPipeline {
         optional = true,
         description = "Escape character",
         helpText =
-            "The escape character. The default value is NULL (not using the escape character).")
+            "The escape character. The default value is null i.e. no custom escape character. Note:"
+                + " CSV rows are always default quoted with '\"'. This escape character is an"
+                + " additional escape character.")
     ValueProvider<Character> getEscape();
 
     void setEscape(ValueProvider<Character> value);
@@ -196,8 +202,8 @@ public class TextImportPipeline {
         optional = true,
         description = "Null String",
         helpText =
-            "The string that represents the NULL value. The default value is null (not using the"
-                + " null string).")
+            "The string that represents the NULL value. The default value is an empty string.")
+    @Default.String("")
     ValueProvider<String> getNullString();
 
     void setNullString(ValueProvider<String> value);

@@ -280,11 +280,6 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                           new CSVRecordToMutation(
                               ddlView,
                               tableColumnsView,
-                              options.getColumnDelimiter(),
-                              options.getFieldQualifier(),
-                              options.getTrailingDelimiter(),
-                              options.getEscape(),
-                              options.getNullString(),
                               options.getDateFormat(),
                               options.getTimestampFormat(),
                               options.getInvalidOutputPath(),
