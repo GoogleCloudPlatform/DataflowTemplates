@@ -66,11 +66,12 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
 
   void setReadQuery(String value);
 
-  @TemplateParameter.GcsReadFile(
+  @TemplateParameter.Text(
       order = 5,
       optional = true,
       description = "Path to Text File",
       helpText = "Override text file pattern",
+      regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
       example = "gs://your-bucket/path/*.json")
   @Default.String("")
   String getInputFilePattern();

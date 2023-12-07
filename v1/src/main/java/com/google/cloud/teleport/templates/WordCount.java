@@ -110,13 +110,14 @@ public class WordCount {
    */
   public interface WordCountOptions extends PipelineOptions {
 
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "Input file(s) in Cloud Storage",
         helpText =
             "The input file pattern Dataflow reads from. Use the example file "
                 + "(gs://dataflow-samples/shakespeare/kinglear.txt) or enter the path to your own "
-                + "using the same format: gs://your-bucket/your-file.txt")
+                + "using the same format: gs://your-bucket/your-file.txt",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"})
     ValueProvider<String> getInputFile();
 
     void setInputFile(ValueProvider<String> value);

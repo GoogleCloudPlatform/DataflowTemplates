@@ -81,10 +81,11 @@ public class DataStreamToPostgres {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "Cloud Storage Input File(s)",
         helpText = "Path of the file pattern glob to read from.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/path/*.avro")
     String getInputFilePattern();
 
