@@ -52,7 +52,7 @@
             <artifactId>json</artifactId>
             <version>${json.version}</version>
         </dependency>
-         <dependency>
+        <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
             <version>${kafka.version}</version>

@@ -68,9 +68,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>it-mongodb</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-mongodb</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -15,7 +15,7 @@
   ~ the License.
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>com.google.cloud.teleport</groupId>
         <artifactId>integration-testing-lib</artifactId>
@@ -30,19 +30,16 @@
     </properties>
     <dependencies>
         <dependency>
-            <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>it-common</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-common</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>conditions</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-conditions</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>truthmatchers</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-truthmatchers</artifactId>
         </dependency>
         <!-- File Formats -->
         <dependency>
@@ -132,6 +129,11 @@
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
             <version>${awaitility.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
+            <scope>provided</scope>
         </dependency>
         <!-- TODO(pranavbhandari): Remove the following dependencies after BigQueryIOLT is moved to the right directory -->
         <dependency>

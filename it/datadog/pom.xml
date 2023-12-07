@@ -28,19 +28,16 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>testcontainers</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-testcontainers</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>truthmatchers</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-truthmatchers</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.google.cloud.teleport</groupId>
-            <artifactId>conditions</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-conditions</artifactId>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -51,6 +48,17 @@
             <groupId>org.mock-server</groupId>
             <artifactId>mockserver-client-java</artifactId>
             <version>5.14.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>${json.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.auto.value</groupId>
+            <artifactId>auto-value</artifactId>
+            <version>${autovalue.version}</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>
