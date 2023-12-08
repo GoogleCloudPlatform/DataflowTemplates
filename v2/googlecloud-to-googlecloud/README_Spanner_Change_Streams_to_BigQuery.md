@@ -315,3 +315,56 @@ mvn clean package -PtemplatesRun \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "spanner_change_streams_to_bigquery" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Spanner_Change_Streams_to_BigQuery"
+  name              = "spanner-change-streams-to-bigquery"
+  region            = var.region
+  parameters        = {
+    spannerInstanceId = "<spannerInstanceId>"
+    spannerDatabase = "<spannerDatabase>"
+    spannerMetadataInstanceId = "<spannerMetadataInstanceId>"
+    spannerMetadataDatabase = "<spannerMetadataDatabase>"
+    spannerChangeStreamName = "<spannerChangeStreamName>"
+    bigQueryDataset = "<bigQueryDataset>"
+    # spannerProjectId = ""
+    # spannerDatabaseRole = "<spannerDatabaseRole>"
+    # spannerMetadataTableName = "<spannerMetadataTableName>"
+    # rpcPriority = "HIGH"
+    # spannerHost = "https://batch-spanner.googleapis.com"
+    # startTimestamp = ""
+    # endTimestamp = ""
+    # bigQueryProjectId = ""
+    # bigQueryChangelogTableNameTemplate = "{_metadata_spanner_table_name}_changelog"
+    # deadLetterQueueDirectory = ""
+    # dlqRetryMinutes = "10"
+    # ignoreFields = ""
+    # disableDlqRetries = "false"
+    # useStorageWriteApi = "false"
+    # useStorageWriteApiAtLeastOnce = "false"
+    # numStorageWriteApiStreams = "0"
+    # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
+  }
+}
+```

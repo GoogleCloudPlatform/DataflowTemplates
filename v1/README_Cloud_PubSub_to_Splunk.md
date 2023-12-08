@@ -238,3 +238,51 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "cloud_pubsub_to_splunk" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_PubSub_to_Splunk"
+  name              = "cloud-pubsub-to-splunk"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    url = "https://splunk-hec-host:8088"
+    outputDeadletterTopic = "<outputDeadletterTopic>"
+    # token = "<token>"
+    # batchCount = "<batchCount>"
+    # disableCertificateValidation = "<disableCertificateValidation>"
+    # parallelism = "<parallelism>"
+    # includePubsubMessage = "<includePubsubMessage>"
+    # tokenKMSEncryptionKey = "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name"
+    # tokenSecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
+    # tokenSource = "<tokenSource>"
+    # rootCaCertificatePath = "gs://mybucket/mycerts/privateCA.crt"
+    # enableBatchLogs = "true"
+    # enableGzipHttpCompression = "true"
+    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
+    # javascriptTextTransformFunctionName = "transform_udf1"
+    # javascriptTextTransformReloadIntervalMinutes = "0"
+  }
+}
+```

@@ -181,3 +181,43 @@ mvn clean package -PtemplatesRun \
 -pl v2/cdc-change-applier \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "cdc_to_bigquery_template" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Cdc_To_BigQuery_Template"
+  name              = "cdc-to-bigquery-template"
+  region            = var.region
+  parameters        = {
+    inputSubscriptions = "<inputSubscriptions>"
+    changeLogDataset = "<changeLogDataset>"
+    replicaDataset = "<replicaDataset>"
+    # inputTopics = "<inputTopics>"
+    # updateFrequencySecs = "<updateFrequencySecs>"
+    # useSingleTopic = "false"
+    # useStorageWriteApi = "false"
+    # useStorageWriteApiAtLeastOnce = "false"
+    # numStorageWriteApiStreams = "0"
+    # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
+  }
+}
+```

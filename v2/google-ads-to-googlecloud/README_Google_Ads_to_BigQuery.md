@@ -190,3 +190,45 @@ mvn clean package -PtemplatesRun \
 -pl v2/google-ads-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "google_ads_to_bigquery" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Google_Ads_to_BigQuery"
+  name              = "google-ads-to-bigquery"
+  region            = var.region
+  parameters        = {
+    customerIds = "12345,67890"
+    query = "SELECT campaign.id, campaign.name FROM campaign"
+    qpsPerWorker = "<qpsPerWorker>"
+    googleAdsClientId = "<googleAdsClientId>"
+    googleAdsClientSecret = "<googleAdsClientSecret>"
+    googleAdsRefreshToken = "<googleAdsRefreshToken>"
+    googleAdsDeveloperToken = "<googleAdsDeveloperToken>"
+    outputTableSpec = "<outputTableSpec>"
+    # loginCustomerId = "12345"
+    # bigQueryTableSchemaPath = "gs://MyBucket/bq_schema.json"
+    # writeDisposition = "WRITE_APPEND"
+    # createDisposition = "CREATE_IF_NEEDED"
+  }
+}
+```

@@ -258,3 +258,62 @@ mvn clean package -PtemplatesRun \
 -pl v2/streaming-data-generator \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "streaming_data_generator" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Streaming_Data_Generator"
+  name              = "streaming-data-generator"
+  region            = var.region
+  parameters        = {
+    qps = "<qps>"
+    # schemaTemplate = "<schemaTemplate>"
+    # schemaLocation = "gs://<bucket-name>/prefix"
+    # topic = "projects/<project-id>/topics/<topic-name>"
+    # messagesLimit = "0"
+    # outputType = "JSON"
+    # avroSchemaLocation = "gs://your-bucket/your-path/schema.avsc"
+    # sinkType = "PUBSUB"
+    # outputTableSpec = "<project>:<dataset>.<table_name>"
+    # writeDisposition = "WRITE_APPEND"
+    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
+    # windowDuration = "1m"
+    # outputDirectory = "gs://your-bucket/your-path/"
+    # outputFilenamePrefix = "output-"
+    # numShards = "0"
+    # driverClassName = "com.mysql.jdbc.Driver"
+    # connectionUrl = "jdbc:mysql://some-host:3306/sampledb"
+    # username = "<username>"
+    # password = "<password>"
+    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
+    # statement = "INSERT INTO tableName (column1, column2) VALUES (?,?)"
+    # projectId = "<projectId>"
+    # spannerInstanceName = "<spannerInstanceName>"
+    # spannerDatabaseName = "<spannerDatabaseName>"
+    # spannerTableName = "<spannerTableName>"
+    # maxNumMutations = "<maxNumMutations>"
+    # maxNumRows = "<maxNumRows>"
+    # batchSizeBytes = "<batchSizeBytes>"
+    # commitDeadlineSeconds = "<commitDeadlineSeconds>"
+  }
+}
+```

@@ -196,3 +196,45 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "cloud_spanner_vectors_to_cloud_storage" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_Spanner_vectors_to_Cloud_Storage"
+  name              = "cloud-spanner-vectors-to-cloud-storage"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    spannerProjectId = "<spannerProjectId>"
+    spannerInstanceId = "<spannerInstanceId>"
+    spannerDatabaseId = "<spannerDatabaseId>"
+    spannerTable = "<spannerTable>"
+    spannerColumnsToExport = "<spannerColumnsToExport>"
+    gcsOutputFolder = "gs://your-bucket/folder1/"
+    gcsOutputFilePrefix = "vector-embeddings"
+    # spannerHost = "https://batch-spanner.googleapis.com"
+    # spannerVersionTime = "1990-12-31T23:59:60Z"
+    # spannerDataBoostEnabled = "false"
+    # spannerPriority = "<spannerPriority>"
+  }
+}
+```

@@ -190,3 +190,45 @@ mvn clean package -PtemplatesRun \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "cloud_spanner_to_bigquery_flex" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Cloud_Spanner_to_BigQuery_Flex"
+  name              = "cloud-spanner-to-bigquery-flex"
+  region            = var.region
+  parameters        = {
+    spannerInstanceId = "<spannerInstanceId>"
+    spannerDatabaseId = "<spannerDatabaseId>"
+    spannerTableId = "<spannerTableId>"
+    sqlQuery = "<sqlQuery>"
+    outputTableSpec = "<outputTableSpec>"
+    # spannerProjectId = ""
+    # spannerRpcPriority = "<spannerRpcPriority>"
+    # bigQuerySchemaPath = "gs://your-bucket/your-schema.json"
+    # writeDisposition = "WRITE_APPEND"
+    # createDisposition = "CREATE_IF_NEEDED"
+    # useStorageWriteApi = "false"
+    # useStorageWriteApiAtLeastOnce = "false"
+  }
+}
+```

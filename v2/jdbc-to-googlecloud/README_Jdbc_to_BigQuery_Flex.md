@@ -239,3 +239,55 @@ mvn clean package -PtemplatesRun \
 -pl v2/jdbc-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "jdbc_to_bigquery_flex" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Jdbc_to_BigQuery_Flex"
+  name              = "jdbc-to-bigquery-flex"
+  region            = var.region
+  parameters        = {
+    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
+    driverClassName = "com.mysql.jdbc.Driver"
+    connectionURL = "jdbc:mysql://some-host:3306/sampledb"
+    outputTable = "<my-project>:<my-dataset>.<my-table>"
+    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp_dir"
+    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
+    # username = "<username>"
+    # password = "<password>"
+    # query = "select * from sampledb.sample_table"
+    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
+    # useColumnAlias = "false"
+    # isTruncate = "false"
+    # partitionColumn = "<partitionColumn>"
+    # table = "(select id, name from Person) as subq"
+    # numPartitions = "<numPartitions>"
+    # lowerBound = "<lowerBound>"
+    # upperBound = "<upperBound>"
+    # fetchSize = "50000"
+    # disabledAlgorithms = "SSLv3, RC4"
+    # extraFilesToStage = "gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id"
+    # useStorageWriteApi = "false"
+    # useStorageWriteApiAtLeastOnce = "false"
+  }
+}
+```

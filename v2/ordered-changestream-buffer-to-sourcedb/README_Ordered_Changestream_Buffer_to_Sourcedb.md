@@ -5,9 +5,6 @@ Streaming pipeline. Reads ordered Spanner change stream message from Pub/Sub to
 Kafka, transforms them, and writes them to a Source Database like MySQL.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Ordered_Changestream_Buffer_to_Sourcedb).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -22,13 +19,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional Parameters
 
-* **sourceType** (Destination source type): This is the type of source databse.Currently only mysql is supported. Defaults to: mysql.
+* **sourceType** (Destination source type): This is the type of source database. Currently only mysql is supported. Defaults to: mysql.
 * **bufferType** (Input buffer type): This is the type of input buffer read from. Supported values - PubSub/Kafka. Defaults to: pubsub.
 * **pubSubProjectId** (Project id for the PubSub subscriber): This is the project containing the pubsub subscribers. Required when the buffer is PubSub.
 * **pubSubMaxReadCount** (Max messages to read from PubSub subscriber): Tuning parameter, to control the throughput. Defaults to: 2000.
 * **kafkaClusterFilePath** (File location for Kafka cluster details file in Cloud Storage.): This is the file location for Kafka cluster details file in Cloud Storage.Required when the buffer is Kafka.
 * **sourceDbTimezoneOffset** (SourceDB timezone offset): This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
-* **timerInterval** (Duration in seconds between calls to stateful timer processing. ): Controls the time between succssive polls to buffer and processing of the resultant records. Defaults to: 1.
+* **timerInterval** (Duration in seconds between calls to stateful timer processing. ): Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1.
 
 
 
@@ -177,4 +174,43 @@ mvn clean package -PtemplatesRun \
 -Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,bufferType=$BUFFER_TYPE,pubSubProjectId=$PUB_SUB_PROJECT_ID,pubSubMaxReadCount=$PUB_SUB_MAX_READ_COUNT,kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerInterval=$TIMER_INTERVAL" \
 -pl v2/ordered-changestream-buffer-to-sourcedb \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "ordered_changestream_buffer_to_sourcedb" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Ordered_Changestream_Buffer_to_Sourcedb"
+  name              = "ordered-changestream-buffer-to-sourcedb"
+  region            = var.region
+  parameters        = {
+    sourceShardsFilePath = "<sourceShardsFilePath>"
+    sessionFilePath = "<sessionFilePath>"
+    # sourceType = "mysql"
+    # bufferType = "pubsub"
+    # pubSubProjectId = "<pubSubProjectId>"
+    # pubSubMaxReadCount = "2000"
+    # kafkaClusterFilePath = "<kafkaClusterFilePath>"
+    # sourceDbTimezoneOffset = "+00:00"
+    # timerInterval = "1"
+  }
+}
 ```

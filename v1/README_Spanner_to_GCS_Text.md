@@ -185,3 +185,44 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "spanner_to_gcs_text" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Spanner_to_GCS_Text"
+  name              = "spanner-to-gcs-text"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    spannerTable = "<spannerTable>"
+    spannerProjectId = "<spannerProjectId>"
+    spannerInstanceId = "<spannerInstanceId>"
+    spannerDatabaseId = "<spannerDatabaseId>"
+    textWritePrefix = "gs://your-bucket/your-path"
+    # csvTempDirectory = "gs://your-bucket/your-path"
+    # spannerPriority = "<spannerPriority>"
+    # spannerHost = "https://batch-spanner.googleapis.com"
+    # spannerSnapshotTime = "1990-12-31T23:59:60Z"
+    # dataBoostEnabled = "false"
+  }
+}
+```

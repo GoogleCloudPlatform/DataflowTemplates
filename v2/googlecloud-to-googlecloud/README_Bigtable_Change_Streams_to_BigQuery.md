@@ -230,3 +230,55 @@ mvn clean package -PtemplatesRun \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "bigtable_change_streams_to_bigquery" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Bigtable_Change_Streams_to_BigQuery"
+  name              = "bigtable-change-streams-to-bigquery"
+  region            = var.region
+  parameters        = {
+    bigQueryDataset = "<bigQueryDataset>"
+    bigtableChangeStreamAppProfile = "<bigtableChangeStreamAppProfile>"
+    bigtableReadInstanceId = "<bigtableReadInstanceId>"
+    bigtableReadTableId = "<bigtableReadTableId>"
+    # writeRowkeyAsBytes = "false"
+    # writeValuesAsBytes = "false"
+    # writeNumericTimestamps = "false"
+    # bigQueryProjectId = ""
+    # bigQueryChangelogTableName = ""
+    # bigQueryChangelogTablePartitionGranularity = ""
+    # bigQueryChangelogTablePartitionExpirationMs = "<bigQueryChangelogTablePartitionExpirationMs>"
+    # bigQueryChangelogTableFieldsToIgnore = "<bigQueryChangelogTableFieldsToIgnore>"
+    # dlqDirectory = ""
+    # bigtableChangeStreamMetadataInstanceId = ""
+    # bigtableChangeStreamMetadataTableTableId = ""
+    # bigtableChangeStreamCharset = "UTF-8"
+    # bigtableChangeStreamStartTimestamp = ""
+    # bigtableChangeStreamIgnoreColumnFamilies = ""
+    # bigtableChangeStreamIgnoreColumns = ""
+    # bigtableChangeStreamName = "<bigtableChangeStreamName>"
+    # bigtableChangeStreamResume = "false"
+    # bigtableReadProjectId = ""
+  }
+}
+```

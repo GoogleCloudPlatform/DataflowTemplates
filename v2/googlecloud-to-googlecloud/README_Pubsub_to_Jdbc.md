@@ -191,3 +191,45 @@ mvn clean package -PtemplatesRun \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "pubsub_to_jdbc" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Pubsub_to_Jdbc"
+  name              = "pubsub-to-jdbc"
+  region            = var.region
+  parameters        = {
+    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    driverClassName = "com.mysql.jdbc.Driver"
+    connectionUrl = "jdbc:mysql://some-host:3306/sampledb"
+    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
+    statement = "INSERT INTO tableName (column1, column2) VALUES (?,?)"
+    outputDeadletterTopic = "<outputDeadletterTopic>"
+    # username = "<username>"
+    # password = "<password>"
+    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
+    # KMSEncryptionKey = "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}"
+    # disabledAlgorithms = "SSLv3, RC4"
+    # extraFilesToStage = "gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id"
+  }
+}
+```

@@ -296,3 +296,66 @@ mvn clean package -PtemplatesRun \
 -pl v2/googlecloud-to-elasticsearch \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "pubsub_to_elasticsearch" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_to_Elasticsearch"
+  name              = "pubsub-to-elasticsearch"
+  region            = var.region
+  parameters        = {
+    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    errorOutputTopic = "<errorOutputTopic>"
+    connectionUrl = "https://elasticsearch-host:9200"
+    apiKey = "<apiKey>"
+    # dataset = "PUBSUB"
+    # namespace = "default"
+    # elasticsearchTemplateVersion = "1.0.0"
+    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
+    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # javascriptTextTransformReloadIntervalMinutes = "0"
+    # elasticsearchUsername = "<elasticsearchUsername>"
+    # elasticsearchPassword = "<elasticsearchPassword>"
+    # batchSize = "1000"
+    # batchSizeBytes = "5242880"
+    # maxRetryAttempts = "<maxRetryAttempts>"
+    # maxRetryDuration = "<maxRetryDuration>"
+    # propertyAsIndex = "<propertyAsIndex>"
+    # javaScriptIndexFnGcsPath = "<javaScriptIndexFnGcsPath>"
+    # javaScriptIndexFnName = "<javaScriptIndexFnName>"
+    # propertyAsId = "<propertyAsId>"
+    # javaScriptIdFnGcsPath = "<javaScriptIdFnGcsPath>"
+    # javaScriptIdFnName = "<javaScriptIdFnName>"
+    # javaScriptTypeFnGcsPath = "<javaScriptTypeFnGcsPath>"
+    # javaScriptTypeFnName = "<javaScriptTypeFnName>"
+    # javaScriptIsDeleteFnGcsPath = "<javaScriptIsDeleteFnGcsPath>"
+    # javaScriptIsDeleteFnName = "<javaScriptIsDeleteFnName>"
+    # usePartialUpdate = "false"
+    # bulkInsertMethod = "CREATE"
+    # trustSelfSignedCerts = "false"
+    # disableCertificateValidation = "false"
+    # apiKeyKMSEncryptionKey = "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name"
+    # apiKeySecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
+    # apiKeySource = "PLAINTEXT"
+  }
+}
+```
