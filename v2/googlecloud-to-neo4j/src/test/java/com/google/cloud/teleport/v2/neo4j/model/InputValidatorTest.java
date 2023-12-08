@@ -31,6 +31,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -150,7 +151,7 @@ public class InputValidatorTest {
     assertThat(errorMessages)
         .isEqualTo(
             List.of(
-                "Property duplicateTargetProperty of target placeholder_node_target is mapped to too many source fields: source_field_1, source_field_2"));
+                "Property duplicateTargetProperty in target placeholder_node_target is mapped to too many source fields: source_field_1, source_field_2"));
   }
 
   @Test
@@ -174,7 +175,7 @@ public class InputValidatorTest {
     assertThat(errorMessages)
         .isEqualTo(
             List.of(
-                "Property duplicateTargetProperty of target placeholder_node_target is mapped to too many source fields: source_field_1, source_field_2"));
+                "Property duplicateTargetProperty in target placeholder_node_target is mapped to too many source fields: source_field_1, source_field_2"));
   }
 
   @Test
@@ -198,7 +199,7 @@ public class InputValidatorTest {
     assertThat(errorMessages)
         .isEqualTo(
             List.of(
-                "Property targetProperty of target placeholder_edge_target is mapped to too many source fields: source_field_1, source_field_2"));
+                "Property targetProperty of the relationship in target placeholder_edge_target is mapped to too many source fields: source_field_1, source_field_2"));
   }
 
   @Test
@@ -224,7 +225,7 @@ public class InputValidatorTest {
     assertThat(errorMessages)
         .isEqualTo(
             List.of(
-                "Property targetProperty2 of target placeholder_node_target is mapped to too many types: Boolean, Float"));
+                "Property targetProperty2 in target placeholder_node_target is mapped to too many types: Boolean, Float"));
   }
 
   @Test

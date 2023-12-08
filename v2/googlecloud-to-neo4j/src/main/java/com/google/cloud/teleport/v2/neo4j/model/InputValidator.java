@@ -40,12 +40,14 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -163,7 +165,7 @@ public class InputValidator {
         }
       }
 
-      Map<String, PropertyMapping> propertyMappings =
+      Map<PropertyMappingKey, PropertyMapping> propertyMappings =
           new LinkedHashMap<>(target.getMappings().size());
       TargetType targetType = target.getType();
       switch (targetType) {
@@ -235,7 +237,7 @@ public class InputValidator {
 
   private static void validateNodeTarget(
       Target target,
-      Map<String, PropertyMapping> propertyMappings,
+      Map<PropertyMappingKey, PropertyMapping> propertyMappings,
       List<String> validationMessages) {
     for (Mapping mapping : target.getMappings()) {
       String property = mapping.getName();
@@ -247,7 +249,11 @@ public class InputValidator {
                 + mapping.getName());
       }
       propertyMappings
-          .computeIfAbsent(property, (prop) -> new PropertyMapping(target.getName(), prop))
+          .computeIfAbsent(
+              new PropertyMappingKey(FragmentType.node, property),
+              (prop) ->
+                  new PropertyMapping(
+                      target.getName(), prop.getPropertyName(), prop.getFragmentType()))
           .add(mapping);
     }
     if (StringUtils.isBlank(
@@ -263,7 +269,7 @@ public class InputValidator {
 
   private static void validateEdgeTarget(
       Target target,
-      Map<String, PropertyMapping> propertyMappings,
+      Map<PropertyMappingKey, PropertyMapping> propertyMappings,
       List<String> validationMessages) {
     for (Mapping mapping : target.getMappings()) {
       if (mapping.getFragmentType() == FragmentType.node) {
@@ -284,7 +290,11 @@ public class InputValidator {
         }
       }
       propertyMappings
-          .computeIfAbsent(mapping.getName(), (prop) -> new PropertyMapping(target.getName(), prop))
+          .computeIfAbsent(
+              new PropertyMappingKey(mapping.getFragmentType(), mapping.getName()),
+              (prop) ->
+                  new PropertyMapping(
+                      target.getName(), prop.getPropertyName(), prop.getFragmentType()))
           .add(mapping);
     }
 
@@ -341,10 +351,12 @@ class PropertyMapping {
   private final Set<String> types = new LinkedHashSet<>();
   private final String targetName;
   private final String propertyName;
+  private final FragmentType fragmentType;
 
-  public PropertyMapping(String targetName, String propertyName) {
+  public PropertyMapping(String targetName, String propertyName, FragmentType fragmentType) {
     this.targetName = targetName;
     this.propertyName = propertyName;
+    this.fragmentType = fragmentType;
   }
 
   public void add(Mapping mapping) {
@@ -363,17 +375,59 @@ class PropertyMapping {
     if (sourceFields.size() > 1) {
       String msg =
           String.format(
-              "Property %s of target %s is mapped to too many source fields: %s",
-              propertyName, targetName, String.join(", ", sourceFields));
+              "Property %s%s in target %s is mapped to too many source fields: %s",
+              propertyName, fragmentDescription(), targetName, String.join(", ", sourceFields));
       errorMessages.add(msg);
     }
     if (types.size() > 1) {
       String msg =
           String.format(
-              "Property %s of target %s is mapped to too many types: %s",
+              "Property %s in target %s is mapped to too many types: %s",
               propertyName, targetName, String.join(", ", types));
       errorMessages.add(msg);
     }
     return errorMessages.stream();
+  }
+
+  private String fragmentDescription() {
+    switch (fragmentType) {
+      case source:
+        return " of the source node";
+      case target:
+        return " of the target node";
+      case rel:
+        return " of the relationship";
+      default:
+        return "";
+    }
+  }
+}
+
+class PropertyMappingKey {
+
+  private final FragmentType fragmentType;
+  private final String propertyName;
+
+  public PropertyMappingKey(FragmentType fragmentType, String propertyName) {
+    this.fragmentType = fragmentType;
+    this.propertyName = propertyName;
+  }
+
+  public FragmentType getFragmentType() {
+    return fragmentType;
+  }
+
+  public String getPropertyName() {
+    return propertyName;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return EqualsBuilder.reflectionEquals(this, o);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fragmentType, propertyName);
   }
 }
