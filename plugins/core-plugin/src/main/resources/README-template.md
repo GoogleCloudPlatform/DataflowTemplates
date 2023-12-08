@@ -210,3 +210,51 @@ mvn clean package -PtemplatesRun \
 </#if>
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+<#if flex>
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+<#else>
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+</#if>
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+<#if flex>
+resource "google_dataflow_flex_template_job" "${spec.metadata.internalName?lower_case}" {
+<#else>
+resource "google_dataflow_job" "${spec.metadata.internalName?lower_case}" {
+</#if>
+
+  provider          = google-beta
+<#if flex>
+  container_spec_gcs_path = "gs://dataflow-templates-${r"${var.region}"}/latest/flex/${spec.metadata.internalName}"
+<#else>
+  template_gcs_path = "gs://dataflow-templates-${r"${var.region}"}/latest/${spec.metadata.internalName}"
+</#if>
+  name              = "${spec.metadata.internalName?lower_case?replace("_", "-")}"
+  region            = var.region
+<#if !flex>
+  temp_gcs_location = "gs://bucket-name-here/temp"
+</#if>
+  parameters        = {
+<#list spec.metadata.parameters as parameter><#if !parameter.optional!false>    ${parameter.name} = "${TemplateDocsUtils.printExampleOrDefaultValueVariable(parameter).replace("\"\"", "")}"
+  </#if>
+  </#list>
+  }
+}
+```

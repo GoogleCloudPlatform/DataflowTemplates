@@ -5,9 +5,6 @@ A pipeline that exports all tables from a BigQuery dataset to Cloud Storage,
 registering metadata for the newly created files in Dataplex.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Dataplex_BigQuery_to_GCS).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -189,4 +186,37 @@ mvn clean package -PtemplatesRun \
 -Dparameters="sourceBigQueryDataset=$SOURCE_BIG_QUERY_DATASET,tables=$TABLES,destinationStorageBucketAssetName=$DESTINATION_STORAGE_BUCKET_ASSET_NAME,exportDataModifiedBeforeDateTime=$EXPORT_DATA_MODIFIED_BEFORE_DATE_TIME,maxParallelBigQueryMetadataRequests=$MAX_PARALLEL_BIG_QUERY_METADATA_REQUESTS,fileFormat=$FILE_FORMAT,fileCompression=$FILE_COMPRESSION,partitionIdRegExp=$PARTITION_ID_REG_EXP,writeDisposition=$WRITE_DISPOSITION,enforceSamePartitionKey=$ENFORCE_SAME_PARTITION_KEY,deleteSourceData=$DELETE_SOURCE_DATA,updateDataplexMetadata=$UPDATE_DATAPLEX_METADATA" \
 -pl v2/dataplex \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "dataplex_bigquery_to_gcs" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Dataplex_BigQuery_to_GCS"
+  name              = "dataplex-bigquery-to-gcs"
+  region            = var.region
+  parameters        = {
+    sourceBigQueryDataset = "<sourceBigQueryDataset>"
+    destinationStorageBucketAssetName = "<destinationStorageBucketAssetName>"
+    maxParallelBigQueryMetadataRequests = "5"
+  }
+}
 ```

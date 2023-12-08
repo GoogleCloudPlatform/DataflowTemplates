@@ -230,3 +230,37 @@ mvn clean package -PtemplatesRun \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "bigtable_change_streams_to_bigquery" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Bigtable_Change_Streams_to_BigQuery"
+  name              = "bigtable-change-streams-to-bigquery"
+  region            = var.region
+  parameters        = {
+    bigQueryDataset = "<bigQueryDataset>"
+    bigtableChangeStreamAppProfile = "<bigtableChangeStreamAppProfile>"
+    bigtableReadInstanceId = "<bigtableReadInstanceId>"
+    bigtableReadTableId = "<bigtableReadTableId>"
+  }
+}
+```

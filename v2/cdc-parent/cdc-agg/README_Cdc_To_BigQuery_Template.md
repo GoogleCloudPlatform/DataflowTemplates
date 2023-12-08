@@ -80,7 +80,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cdc_To_BigQuery_Template" \
--pl v2/cdc-parent/cdc-change-applier \
+-pl v2/cdc-change-applier \
 -am
 ```
 
@@ -178,6 +178,39 @@ mvn clean package -PtemplatesRun \
 -DjobName="cdc-to-bigquery-template-job" \
 -DtemplateName="Cdc_To_BigQuery_Template" \
 -Dparameters="inputTopics=$INPUT_TOPICS,inputSubscriptions=$INPUT_SUBSCRIPTIONS,changeLogDataset=$CHANGE_LOG_DATASET,replicaDataset=$REPLICA_DATASET,updateFrequencySecs=$UPDATE_FREQUENCY_SECS,useSingleTopic=$USE_SINGLE_TOPIC,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
--pl v2/cdc-parent/cdc-change-applier \
+-pl v2/cdc-change-applier \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "cdc_to_bigquery_template" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Cdc_To_BigQuery_Template"
+  name              = "cdc-to-bigquery-template"
+  region            = var.region
+  parameters        = {
+    inputSubscriptions = "<inputSubscriptions>"
+    changeLogDataset = "<changeLogDataset>"
+    replicaDataset = "<replicaDataset>"
+  }
+}
 ```

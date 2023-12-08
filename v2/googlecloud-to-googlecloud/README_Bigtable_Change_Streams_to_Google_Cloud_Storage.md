@@ -5,9 +5,6 @@ Streaming pipeline. Streams Bigtable change stream data records and writes them
 into a Cloud Storage bucket using Dataflow Runner V2.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Bigtable_Change_Streams_to_Google_Cloud_Storage).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -233,4 +230,38 @@ mvn clean package -PtemplatesRun \
 -Dparameters="outputFileFormat=$OUTPUT_FILE_FORMAT,windowDuration=$WINDOW_DURATION,bigtableMetadataTableTableId=$BIGTABLE_METADATA_TABLE_TABLE_ID,schemaOutputFormat=$SCHEMA_OUTPUT_FORMAT,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,outputBatchSize=$OUTPUT_BATCH_SIZE,outputShardsCount=$OUTPUT_SHARDS_COUNT,useBase64Rowkeys=$USE_BASE64ROWKEYS,useBase64ColumnQualifiers=$USE_BASE64COLUMN_QUALIFIERS,useBase64Values=$USE_BASE64VALUES,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID" \
 -pl v2/googlecloud-to-googlecloud \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "bigtable_change_streams_to_google_cloud_storage" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Bigtable_Change_Streams_to_Google_Cloud_Storage"
+  name              = "bigtable-change-streams-to-google-cloud-storage"
+  region            = var.region
+  parameters        = {
+    gcsOutputDirectory = "gs://your-bucket/your-path"
+    bigtableChangeStreamAppProfile = "<bigtableChangeStreamAppProfile>"
+    bigtableReadInstanceId = "<bigtableReadInstanceId>"
+    bigtableReadTableId = "<bigtableReadTableId>"
+  }
+}
 ```

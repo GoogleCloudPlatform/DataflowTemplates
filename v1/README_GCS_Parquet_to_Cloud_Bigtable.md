@@ -165,3 +165,38 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "gcs_parquet_to_cloud_bigtable" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/GCS_Parquet_to_Cloud_Bigtable"
+  name              = "gcs-parquet-to-cloud-bigtable"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    bigtableProjectId = "<bigtableProjectId>"
+    bigtableInstanceId = "<bigtableInstanceId>"
+    bigtableTableId = "<bigtableTableId>"
+    inputFilePattern = "gs://your-bucket/your-files/*.parquet"
+  }
+}
+```

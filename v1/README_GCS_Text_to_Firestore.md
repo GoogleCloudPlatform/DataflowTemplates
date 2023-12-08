@@ -28,7 +28,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
 * **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 * **firestoreWriteEntityKind** (Firestore entity kind): Firestore kind under which entities will be written in the output Google Cloud project.
 * **firestoreWriteNamespace** (Namespace of the Firestore entity): Firestore namespace under which entities will be written in the output Google Cloud project.
 * **firestoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Firestore ramp-up throttling step. Defaults to 500 if not specified.
@@ -134,7 +133,6 @@ export ERROR_WRITE_PATH=<errorWritePath>
 ### Optional
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 export FIRESTORE_WRITE_ENTITY_KIND=<firestoreWriteEntityKind>
 export FIRESTORE_WRITE_NAMESPACE=<firestoreWriteNamespace>
 export FIRESTORE_HINT_NUM_WORKERS=<firestoreHintNumWorkers>
@@ -146,7 +144,6 @@ gcloud dataflow jobs run "gcs-text-to-firestore-job" \
   --parameters "textReadPattern=$TEXT_READ_PATTERN" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
-  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
   --parameters "firestoreWriteProjectId=$FIRESTORE_WRITE_PROJECT_ID" \
   --parameters "firestoreWriteEntityKind=$FIRESTORE_WRITE_ENTITY_KIND" \
   --parameters "firestoreWriteNamespace=$FIRESTORE_WRITE_NAMESPACE" \
@@ -177,7 +174,6 @@ export ERROR_WRITE_PATH=<errorWritePath>
 ### Optional
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 export FIRESTORE_WRITE_ENTITY_KIND=<firestoreWriteEntityKind>
 export FIRESTORE_WRITE_NAMESPACE=<firestoreWriteNamespace>
 export FIRESTORE_HINT_NUM_WORKERS=<firestoreHintNumWorkers>
@@ -189,7 +185,41 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-text-to-firestore-job" \
 -DtemplateName="GCS_Text_to_Firestore" \
--Dparameters="textReadPattern=$TEXT_READ_PATTERN,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,firestoreWriteProjectId=$FIRESTORE_WRITE_PROJECT_ID,firestoreWriteEntityKind=$FIRESTORE_WRITE_ENTITY_KIND,firestoreWriteNamespace=$FIRESTORE_WRITE_NAMESPACE,firestoreHintNumWorkers=$FIRESTORE_HINT_NUM_WORKERS,errorWritePath=$ERROR_WRITE_PATH" \
+-Dparameters="textReadPattern=$TEXT_READ_PATTERN,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,firestoreWriteProjectId=$FIRESTORE_WRITE_PROJECT_ID,firestoreWriteEntityKind=$FIRESTORE_WRITE_ENTITY_KIND,firestoreWriteNamespace=$FIRESTORE_WRITE_NAMESPACE,firestoreHintNumWorkers=$FIRESTORE_HINT_NUM_WORKERS,errorWritePath=$ERROR_WRITE_PATH" \
 -pl v1 \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "gcs_text_to_firestore" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/GCS_Text_to_Firestore"
+  name              = "gcs-text-to-firestore"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    textReadPattern = "<textReadPattern>"
+    firestoreWriteProjectId = "<firestoreWriteProjectId>"
+    errorWritePath = "gs://your-bucket/errors/"
+  }
+}
 ```

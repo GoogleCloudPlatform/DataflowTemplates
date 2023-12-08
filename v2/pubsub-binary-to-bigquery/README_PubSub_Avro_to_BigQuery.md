@@ -184,3 +184,37 @@ mvn clean package -PtemplatesRun \
 -pl v2/pubsub-binary-to-bigquery \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "pubsub_avro_to_bigquery" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_Avro_to_BigQuery"
+  name              = "pubsub-avro-to-bigquery"
+  region            = var.region
+  parameters        = {
+    schemaPath = "<schemaPath>"
+    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    outputTableSpec = "<outputTableSpec>"
+    outputTopic = "projects/your-project-id/topics/your-topic-name"
+  }
+}
+```

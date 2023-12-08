@@ -220,3 +220,37 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "cloud_pubsub_to_datadog" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_PubSub_to_Datadog"
+  name              = "cloud-pubsub-to-datadog"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    url = "https://http-intake.logs.datadoghq.com"
+    outputDeadletterTopic = "<outputDeadletterTopic>"
+  }
+}
+```

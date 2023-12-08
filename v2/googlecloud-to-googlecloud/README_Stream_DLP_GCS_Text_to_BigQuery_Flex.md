@@ -1,5 +1,5 @@
 
-Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP) template
+Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP) with BQ Storage Write API support template
 ---
 The Data Masking/Tokenization from Cloud Storage to BigQuery template uses <a
 href="https://cloud.google.com/dlp/docs">Sensitive Data Protection</a> and
@@ -198,4 +198,38 @@ mvn clean package -PtemplatesRun \
 -Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,deidentifyTemplateName=$DEIDENTIFY_TEMPLATE_NAME,inspectTemplateName=$INSPECT_TEMPLATE_NAME,batchSize=$BATCH_SIZE,datasetName=$DATASET_NAME,dlpProjectId=$DLP_PROJECT_ID,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -pl v2/googlecloud-to-googlecloud \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "stream_dlp_gcs_text_to_bigquery_flex" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Stream_DLP_GCS_Text_to_BigQuery_Flex"
+  name              = "stream-dlp-gcs-text-to-bigquery-flex"
+  region            = var.region
+  parameters        = {
+    inputFilePattern = "gs://your-bucket/your-files/*.csv"
+    deidentifyTemplateName = "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id"
+    datasetName = "<datasetName>"
+    dlpProjectId = "<dlpProjectId>"
+  }
+}
 ```

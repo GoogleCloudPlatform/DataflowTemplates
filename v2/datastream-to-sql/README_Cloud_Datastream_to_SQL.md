@@ -218,3 +218,37 @@ mvn clean package -PtemplatesRun \
 -pl v2/datastream-to-sql \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "cloud_datastream_to_sql" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Cloud_Datastream_to_SQL"
+  name              = "cloud-datastream-to-sql"
+  region            = var.region
+  parameters        = {
+    inputFilePattern = "<inputFilePattern>"
+    databaseHost = "<databaseHost>"
+    databaseUser = "<databaseUser>"
+    databasePassword = "<databasePassword>"
+  }
+}
+```

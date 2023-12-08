@@ -5,9 +5,6 @@ Streaming pipeline. Ingests data from Spanner Change Streams, orders them, and
 writes them to a sink.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Spanner_Change_Streams_to_Sink).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -209,4 +206,42 @@ mvn clean package -PtemplatesRun \
 -Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,incrementInterval=$INCREMENT_INTERVAL,sinkType=$SINK_TYPE,pubSubDataTopicId=$PUB_SUB_DATA_TOPIC_ID,pubSubErrorTopicId=$PUB_SUB_ERROR_TOPIC_ID,pubSubEndpoint=$PUB_SUB_ENDPOINT,kafkaClusterFilePath=$KAFKA_CLUSTER_FILE_PATH,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE" \
 -pl v2/spanner-change-streams-to-sink \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "spanner_change_streams_to_sink" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Spanner_Change_Streams_to_Sink"
+  name              = "spanner-change-streams-to-sink"
+  region            = var.region
+  parameters        = {
+    changeStreamName = "<changeStreamName>"
+    instanceId = "<instanceId>"
+    databaseId = "<databaseId>"
+    spannerProjectId = "<spannerProjectId>"
+    metadataInstance = "<metadataInstance>"
+    metadataDatabase = "<metadataDatabase>"
+    sinkType = "<sinkType>"
+    sessionFilePath = "<sessionFilePath>"
+  }
+}
 ```

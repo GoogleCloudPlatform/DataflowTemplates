@@ -166,3 +166,38 @@ mvn clean package -PtemplatesRun \
 -pl v2/jms-to-pubsub \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "jms_to_pubsub" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Jms_to_PubSub"
+  name              = "jms-to-pubsub"
+  region            = var.region
+  parameters        = {
+    inputName = "queue"
+    inputType = "queue"
+    outputTopic = "projects/your-project-id/topics/your-topic-name"
+    username = "sampleusername"
+    password = "samplepassword"
+  }
+}
+```

@@ -204,3 +204,40 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "jdbc_to_bigquery" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Jdbc_to_BigQuery"
+  name              = "jdbc-to-bigquery"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
+    driverClassName = "com.mysql.jdbc.Driver"
+    connectionURL = "jdbc:mysql://some-host:3306/sampledb"
+    query = "select * from sampledb.sample_table"
+    outputTable = "<outputTable>"
+    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp_dir"
+  }
+}
+```

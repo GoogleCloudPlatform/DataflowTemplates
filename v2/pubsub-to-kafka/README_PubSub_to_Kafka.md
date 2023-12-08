@@ -5,9 +5,6 @@ A streaming pipeline which inserts data from a Pub/Sub Topic and transforms them
 using a JavaScript user-defined function (UDF), and writes them to kafka topic.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_to_Kafka).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -187,4 +184,37 @@ mvn clean package -PtemplatesRun \
 -Dparameters="inputTopic=$INPUT_TOPIC,bootstrapServer=$BOOTSTRAP_SERVER,outputTopic=$OUTPUT_TOPIC,outputDeadLetterTopic=$OUTPUT_DEAD_LETTER_TOPIC,secretStoreUrl=$SECRET_STORE_URL,vaultToken=$VAULT_TOKEN,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
 -pl v2/pubsub-to-kafka \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "pubsub_to_kafka" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_to_Kafka"
+  name              = "pubsub-to-kafka"
+  region            = var.region
+  parameters        = {
+    inputTopic = "projects/your-project-id/topics/your-topic-name"
+    outputTopic = "topic"
+    outputDeadLetterTopic = "<outputDeadLetterTopic>"
+  }
+}
 ```

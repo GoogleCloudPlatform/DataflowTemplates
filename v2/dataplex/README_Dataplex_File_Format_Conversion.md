@@ -5,9 +5,6 @@ A pipeline that converts file format of Cloud Storage files, registering metadat
 for the newly created files in Dataplex.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Dataplex_File_Format_Conversion).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -165,4 +162,37 @@ mvn clean package -PtemplatesRun \
 -Dparameters="inputAssetOrEntitiesList=$INPUT_ASSET_OR_ENTITIES_LIST,outputFileFormat=$OUTPUT_FILE_FORMAT,outputFileCompression=$OUTPUT_FILE_COMPRESSION,outputAsset=$OUTPUT_ASSET,writeDisposition=$WRITE_DISPOSITION,updateDataplexMetadata=$UPDATE_DATAPLEX_METADATA" \
 -pl v2/dataplex \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "dataplex_file_format_conversion" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Dataplex_File_Format_Conversion"
+  name              = "dataplex-file-format-conversion"
+  region            = var.region
+  parameters        = {
+    inputAssetOrEntitiesList = "<inputAssetOrEntitiesList>"
+    outputFileFormat = "<outputFileFormat>"
+    outputAsset = "<outputAsset>"
+  }
+}
 ```

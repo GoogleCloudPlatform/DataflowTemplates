@@ -5,9 +5,6 @@ A streaming pipeline which ingests data from Kafka and writes to a pre-existing
 Cloud Storage bucket with a variety of file types.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Kafka_to_GCS).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -169,4 +166,39 @@ mvn clean package -PtemplatesRun \
 -Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,inputTopics=$INPUT_TOPICS,outputFileFormat=$OUTPUT_FILE_FORMAT,windowDuration=$WINDOW_DURATION,outputDirectory=$OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS" \
 -pl v2/kafka-to-gcs \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "kafka_to_gcs" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Kafka_to_GCS"
+  name              = "kafka-to-gcs"
+  region            = var.region
+  parameters        = {
+    bootstrapServers = "localhost:9092,127.0.0.1:9093"
+    inputTopics = "topic1,topic2"
+    outputFileFormat = "TEXT"
+    outputDirectory = "gs://your-bucket/your-path"
+    numShards = "0"
+  }
+}
 ```

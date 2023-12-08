@@ -174,3 +174,38 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "bulk_compress_gcs_files" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Bulk_Compress_GCS_Files"
+  name              = "bulk-compress-gcs-files"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    inputFilePattern = "gs://your-bucket/your-files/*.txt"
+    outputDirectory = "gs://your-bucket/your-path"
+    outputFailureFile = "gs://your-bucket/compressed/failed.csv"
+    compression = "<compression>"
+  }
+}
+```

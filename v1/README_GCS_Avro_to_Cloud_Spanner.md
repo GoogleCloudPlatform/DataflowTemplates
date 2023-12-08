@@ -29,7 +29,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **waitForForeignKeys** (Wait for Foreign Keys): By default the import pipeline is not blocked on foreign key creation, and it may complete with foreign keys still being created in the background. If true, the pipeline waits until foreign keys are created.
 * **waitForChangeStreams** (Wait for Change Streams): By default the import pipeline is blocked on change stream creation. If false, it may complete with change streams still being created in the background.
 * **waitForSequences** (Wait for Sequences): By default the import pipeline is blocked on sequence creation. If false, it may complete with sequences still being created in the background.
-* **earlyIndexCreateFlag** (Create Indexes early): Flag to turn off early index creation if there are many indexes. Indexes and Foreign keys are created after dataload. If there are more than 40 DDL statements to be executed after dataload, it is preferable to create the indexes before datalod. This is the flag to turn the feature off. Defaults to: true.
+* **earlyIndexCreateFlag** (Create Indexes early): Flag to turn off early index creation if there are many indexes. Indexes and Foreign keys are created after dataload. If there are more than 40 DDL statements to be executed after dataload, it is preferable to create the indexes before dataload. This is the flag to turn the feature off. Defaults to: true.
 * **spannerProjectId** (Cloud Spanner Project Id): The project ID of the Cloud Spanner instance.
 * **ddlCreationTimeoutInMinutes** (DDL Creation timeout in minutes): DDL Creation timeout in minutes. Defaults to: 30.
 * **spannerPriority** (Priority for Spanner RPC invocations): The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].
@@ -192,4 +192,38 @@ mvn clean package -PtemplatesRun \
 -Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,inputDir=$INPUT_DIR,spannerHost=$SPANNER_HOST,waitForIndexes=$WAIT_FOR_INDEXES,waitForForeignKeys=$WAIT_FOR_FOREIGN_KEYS,waitForChangeStreams=$WAIT_FOR_CHANGE_STREAMS,waitForSequences=$WAIT_FOR_SEQUENCES,earlyIndexCreateFlag=$EARLY_INDEX_CREATE_FLAG,spannerProjectId=$SPANNER_PROJECT_ID,ddlCreationTimeoutInMinutes=$DDL_CREATION_TIMEOUT_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY" \
 -pl v1 \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "gcs_avro_to_cloud_spanner" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/GCS_Avro_to_Cloud_Spanner"
+  name              = "gcs-avro-to-cloud-spanner"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    instanceId = "<instanceId>"
+    databaseId = "<databaseId>"
+    inputDir = "<inputDir>"
+  }
+}
 ```

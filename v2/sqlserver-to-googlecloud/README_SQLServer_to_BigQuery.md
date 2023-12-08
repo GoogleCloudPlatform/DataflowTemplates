@@ -228,3 +228,36 @@ mvn clean package -PtemplatesRun \
 -pl v2/sqlserver-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "sqlserver_to_bigquery" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/SQLServer_to_BigQuery"
+  name              = "sqlserver-to-bigquery"
+  region            = var.region
+  parameters        = {
+    connectionURL = "jdbc:sqlserver://localhost;databaseName=sampledb"
+    outputTable = "<my-project>:<my-dataset>.<my-table>"
+    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp_dir"
+  }
+}
+```

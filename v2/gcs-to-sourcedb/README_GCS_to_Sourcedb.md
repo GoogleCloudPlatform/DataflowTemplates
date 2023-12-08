@@ -23,10 +23,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerProjectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
 * **metadataInstance** (Cloud Spanner Instance to store the shard progress when reading from gcs): This is the instance to store the shard progress of the files processed.
 * **metadataDatabase** (Cloud Spanner Database to store the shard progress when reading from gcs): This is the database to store  the shard progress of the files processed..
+* **runIdentifier** (Reverse replication run identifier): The identifier to distinguish between different runs of reverse replication flows.
 
 ### Optional Parameters
 
-* **sourceType** (Destination source type): This is the type of source databse.Currently only mysql is supported. Defaults to: mysql.
+* **sourceType** (Destination source type): This is the type of source database. Currently only mysql is supported. Defaults to: mysql.
 * **sourceDbTimezoneOffset** (SourceDB timezone offset): This is the timezone offset from UTC for the source database. Example value: +10:00. Defaults to: +00:00.
 * **timerInterval** (Duration in seconds between calls to stateful timer processing. ): Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1.
 * **startTimestamp** (File start timestamp, takes precedence if provided, else value from spanner_to_gcs_metadata is considered, for regular mode.): Start time of file for all shards. If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode.
@@ -122,6 +123,7 @@ export GCSINPUT_DIRECTORY_PATH=<GCSInputDirectoryPath>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export METADATA_INSTANCE=<metadataInstance>
 export METADATA_DATABASE=<metadataDatabase>
+export RUN_IDENTIFIER=<runIdentifier>
 
 ### Optional
 export SOURCE_TYPE=mysql
@@ -148,7 +150,8 @@ gcloud dataflow flex-template run "gcs-to-sourcedb-job" \
   --parameters "metadataInstance=$METADATA_INSTANCE" \
   --parameters "metadataDatabase=$METADATA_DATABASE" \
   --parameters "runMode=$RUN_MODE" \
-  --parameters "metadataTableSuffix=$METADATA_TABLE_SUFFIX"
+  --parameters "metadataTableSuffix=$METADATA_TABLE_SUFFIX" \
+  --parameters "runIdentifier=$RUN_IDENTIFIER"
 ```
 
 For more information about the command, please check:
@@ -173,6 +176,7 @@ export GCSINPUT_DIRECTORY_PATH=<GCSInputDirectoryPath>
 export SPANNER_PROJECT_ID=<spannerProjectId>
 export METADATA_INSTANCE=<metadataInstance>
 export METADATA_DATABASE=<metadataDatabase>
+export RUN_IDENTIFIER=<runIdentifier>
 
 ### Optional
 export SOURCE_TYPE=mysql
@@ -190,7 +194,44 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-to-sourcedb-job" \
 -DtemplateName="GCS_to_Sourcedb" \
--Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerInterval=$TIMER_INTERVAL,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE,metadataTableSuffix=$METADATA_TABLE_SUFFIX" \
+-Dparameters="sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,sourceType=$SOURCE_TYPE,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,timerInterval=$TIMER_INTERVAL,startTimestamp=$START_TIMESTAMP,windowDuration=$WINDOW_DURATION,GCSInputDirectoryPath=$GCSINPUT_DIRECTORY_PATH,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,runMode=$RUN_MODE,metadataTableSuffix=$METADATA_TABLE_SUFFIX,runIdentifier=$RUN_IDENTIFIER" \
 -pl v2/gcs-to-sourcedb \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform command:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "gcs_to_sourcedb" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/GCS_to_Sourcedb"
+  name              = "gcs-to-sourcedb"
+  region            = var.region
+  parameters        = {
+    sourceShardsFilePath = "<sourceShardsFilePath>"
+    sessionFilePath = "<sessionFilePath>"
+    GCSInputDirectoryPath = "<GCSInputDirectoryPath>"
+    spannerProjectId = "<spannerProjectId>"
+    metadataInstance = "<metadataInstance>"
+    metadataDatabase = "<metadataDatabase>"
+    runIdentifier = "<runIdentifier>"
+  }
+}
 ```
