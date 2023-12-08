@@ -79,6 +79,104 @@ public class InputValidatorTest {
   }
 
   @Test
+  public void rejectsSameNameAcrossSourceOrTargetKeys() {
+    String sourceName = "some source";
+    Target target = new Target();
+    target.setName("CustomTarget");
+    target.setType(TargetType.edge);
+    target.setSource(sourceName);
+
+    Mapping relMapping = new Mapping();
+    relMapping.setFragmentType(FragmentType.rel);
+    relMapping.setRole(RoleType.type);
+    relMapping.setConstant("CustomTarget");
+
+    Mapping startMapping1 = new Mapping();
+    startMapping1.setFragmentType(FragmentType.source);
+    startMapping1.setRole(RoleType.key);
+    startMapping1.setName("id");
+    startMapping1.setField("personId");
+
+    Mapping startMapping2 = new Mapping();
+    startMapping2.setFragmentType(FragmentType.source);
+    startMapping2.setRole(RoleType.key);
+    startMapping2.setName("id");
+    startMapping2.setField("employeeId");
+
+    Mapping endMapping1 = new Mapping();
+    endMapping1.setFragmentType(FragmentType.target);
+    endMapping1.setRole(RoleType.key);
+    endMapping1.setName("name");
+    endMapping1.setField("movieName");
+
+    Mapping endMapping2 = new Mapping();
+    endMapping2.setFragmentType(FragmentType.target);
+    endMapping2.setRole(RoleType.key);
+    endMapping2.setName("name");
+    endMapping2.setField("blockbusterName");
+
+    target.setMappings(
+        Arrays.asList(relMapping, startMapping1, startMapping2, endMapping1, endMapping2));
+
+    JobSpec jobSpec = new JobSpec();
+    jobSpec.getSources().put(sourceName, source(sourceName));
+    jobSpec.getTargets().add(target);
+
+    List<String> errorMessages = InputValidator.validateJobSpec(jobSpec);
+
+    assertThat(errorMessages)
+        .isEqualTo(
+            Arrays.asList(
+                "Property id of the source node in target CustomTarget is mapped to too many source fields: personId, employeeId",
+                "Property name of the target node in target CustomTarget is mapped to too many source fields: movieName, blockbusterName"));
+  }
+
+  @Test
+  public void validatesSameNameAcrossSourceAndTarget() {
+    String sourceName = "some source";
+    Target target = new Target();
+    target.setName("CustomTarget");
+    target.setType(TargetType.edge);
+    target.setSource(sourceName);
+
+    Mapping startMapping = new Mapping();
+    startMapping.setFragmentType(FragmentType.source);
+    startMapping.setRole(RoleType.key);
+    startMapping.setName("id");
+    startMapping.setField("personId");
+
+    Mapping endMapping = new Mapping();
+    endMapping.setFragmentType(FragmentType.target);
+    endMapping.setRole(RoleType.key);
+    endMapping.setName("id");
+    endMapping.setField("movieId");
+
+    Mapping relMapping = new Mapping();
+    relMapping.setFragmentType(FragmentType.rel);
+    relMapping.setRole(RoleType.type);
+    relMapping.setConstant("CustomTarget");
+
+    Mapping relKeyMapping = new Mapping();
+    relKeyMapping.setFragmentType(FragmentType.rel);
+    relKeyMapping.setRole(RoleType.key);
+    relKeyMapping.setName("id");
+    relKeyMapping.setField("relationshipId");
+
+    target.getMappings().add(startMapping);
+    target.getMappings().add(endMapping);
+    target.getMappings().add(relMapping);
+    target.getMappings().add(relKeyMapping);
+
+    JobSpec jobSpec = new JobSpec();
+    jobSpec.getSources().put(sourceName, source(sourceName));
+    jobSpec.getTargets().add(target);
+
+    List<String> errorMessages = InputValidator.validateJobSpec(jobSpec);
+
+    assertThat(errorMessages).isEmpty();
+  }
+
+  @Test
   public void rejectsCustomQueryTargetWithoutQuery() {
     String sourceName = "some source";
     Target target = new Target();
