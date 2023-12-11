@@ -205,3 +205,44 @@ mvn clean package -PtemplatesRun \
 -pl v2/pubsub-to-redis \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "cloud_pubsub_to_redis" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Cloud_PubSub_to_Redis"
+  name              = "cloud-pubsub-to-redis"
+  region            = var.region
+  parameters        = {
+    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    redisHost = "your.cloud.db.redislabs.com"
+    redisPort = "12345"
+    redisPassword = ""
+    # sslEnabled = "false"
+    # redisSinkType = "STRING_SINK"
+    # connectionTimeout = "2000"
+    # ttl = "-1"
+    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
+    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # javascriptTextTransformReloadIntervalMinutes = "0"
+  }
+}
+```

@@ -15,11 +15,15 @@
  */
 package com.google.cloud.teleport.plugin.docs;
 
+import static com.google.cloud.teleport.plugin.docs.TemplateDocsUtils.printDefaultValueVariable;
+import static com.google.cloud.teleport.plugin.docs.TemplateDocsUtils.printExampleOrDefaultValueVariable;
 import static com.google.cloud.teleport.plugin.docs.TemplateDocsUtils.replaceSiteTags;
 import static com.google.cloud.teleport.plugin.docs.TemplateDocsUtils.replaceVariableInterpolationNames;
 import static com.google.cloud.teleport.plugin.docs.TemplateDocsUtils.wrapText;
 import static org.junit.Assert.assertEquals;
 
+import com.google.cloud.teleport.plugin.model.ImageSpecParameter;
+import com.google.cloud.teleport.plugin.model.ImageSpecParameterType;
 import org.junit.Test;
 
 /** Tests for {@link TemplateDocsUtils}. */
@@ -114,5 +118,32 @@ public class TemplateDocsUtilsTest {
     assertEquals(
         "This has the project id. For example: <code>project_id</code>",
         replaceSiteTags("This has the project id. (Example: project_id)"));
+  }
+
+  @Test
+  public void testReplaceParameterNoDefault() {
+    ImageSpecParameter parameter = new ImageSpecParameter();
+    parameter.setName("inputSubscription");
+    parameter.setParamType(ImageSpecParameterType.TEXT);
+    assertEquals("<inputSubscription>", printDefaultValueVariable(parameter));
+  }
+
+  @Test
+  public void testReplaceParameterDefault() {
+    ImageSpecParameter parameter = new ImageSpecParameter();
+    parameter.setName("inputSubscription");
+    parameter.setDefaultValue("Google");
+    parameter.setParamType(ImageSpecParameterType.TEXT);
+    assertEquals("Google", printDefaultValueVariable(parameter));
+  }
+
+  @Test
+  public void testReplaceParameterExample() {
+    ImageSpecParameter parameter = new ImageSpecParameter();
+    parameter.setName("inputSubscription");
+    parameter.setDefaultValue("Google");
+    parameter.setParamType(ImageSpecParameterType.TEXT);
+    parameter.setHelpText("This parameter sets the subscription user (Example: Dataflow).");
+    assertEquals("Dataflow", printExampleOrDefaultValueVariable(parameter));
   }
 }

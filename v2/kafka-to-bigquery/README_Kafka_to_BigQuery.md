@@ -208,3 +208,46 @@ mvn clean package -PtemplatesRun \
 -pl v2/kafka-to-bigquery \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "kafka_to_bigquery" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Kafka_to_BigQuery"
+  name              = "kafka-to-bigquery"
+  region            = var.region
+  parameters        = {
+    outputTableSpec = "<outputTableSpec>"
+    # bootstrapServers = "localhost:9092,127.0.0.1:9093"
+    # inputTopics = "topic1,topic2"
+    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
+    # readBootstrapServers = "localhost:9092,127.0.0.1:9093"
+    # kafkaReadTopics = "topic1,topic2"
+    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
+    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # javascriptTextTransformReloadIntervalMinutes = "0"
+    # useStorageWriteApi = "false"
+    # useStorageWriteApiAtLeastOnce = "false"
+    # numStorageWriteApiStreams = "0"
+    # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
+  }
+}
+```

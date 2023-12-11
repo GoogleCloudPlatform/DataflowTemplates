@@ -199,3 +199,47 @@ mvn clean package -PtemplatesRun \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "cloud_pubsub_to_avro_flex" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Cloud_PubSub_to_Avro_Flex"
+  name              = "cloud-pubsub-to-avro-flex"
+  region            = var.region
+  parameters        = {
+    outputDirectory = "<outputDirectory>"
+    avroTempDirectory = "<avroTempDirectory>"
+    # inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    # inputTopic = "<inputTopic>"
+    # outputFilenamePrefix = "output"
+    # outputFilenameSuffix = ""
+    # outputShardTemplate = "W-P-SS-of-NN"
+    # numShards = "0"
+    # windowDuration = "5m"
+    # yearPattern = "YYYY"
+    # monthPattern = "MM"
+    # dayPattern = "dd"
+    # hourPattern = "HH"
+    # minutePattern = "mm"
+  }
+}
+```

@@ -4,9 +4,6 @@ Kinesis To Pubsub template
 A pipeline which sends Kinesis Datastream records into a Pubsub topic.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Kinesis_To_Pubsub).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -164,4 +161,40 @@ mvn clean package -PtemplatesRun \
 -Dparameters="secretId1=$SECRET_ID1,secretId2=$SECRET_ID2,awsRegion=$AWS_REGION,awsDataFormat=$AWS_DATA_FORMAT,kinesisDataStream=$KINESIS_DATA_STREAM,outputPubsubTopic=$OUTPUT_PUBSUB_TOPIC" \
 -pl v2/kinesis-to-pubsub \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "kinesis_to_pubsub" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Kinesis_To_Pubsub"
+  name              = "kinesis-to-pubsub"
+  region            = var.region
+  parameters        = {
+    secretId1 = "<secretId1>"
+    secretId2 = "<secretId2>"
+    awsRegion = "<awsRegion>"
+    kinesisDataStream = "<kinesisDataStream>"
+    outputPubsubTopic = "projects/your-project-id/topics/your-topic-name"
+    # awsDataFormat = "<awsDataFormat>"
+  }
+}
 ```

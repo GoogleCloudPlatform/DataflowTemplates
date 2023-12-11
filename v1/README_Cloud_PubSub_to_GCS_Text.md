@@ -190,3 +190,45 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "cloud_pubsub_to_gcs_text" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_PubSub_to_GCS_Text"
+  name              = "cloud-pubsub-to-gcs-text"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    outputDirectory = "<outputDirectory>"
+    outputFilenamePrefix = "output"
+    # inputTopic = "<inputTopic>"
+    # userTempLocation = "<userTempLocation>"
+    # outputFilenameSuffix = ""
+    # outputShardTemplate = "W-P-SS-of-NN"
+    # yearPattern = "<yearPattern>"
+    # monthPattern = "<monthPattern>"
+    # dayPattern = "<dayPattern>"
+    # hourPattern = "<hourPattern>"
+    # minutePattern = "<minutePattern>"
+  }
+}
+```

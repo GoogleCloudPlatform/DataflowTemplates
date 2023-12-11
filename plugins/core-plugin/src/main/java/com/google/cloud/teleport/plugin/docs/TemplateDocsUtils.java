@@ -19,6 +19,8 @@ import com.google.cloud.teleport.plugin.model.ImageSpecParameter;
 import com.google.common.base.MoreObjects;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 
 /** Utility methods that can be used to generate docs / called statically from Freemarker. */
@@ -155,5 +157,24 @@ public final class TemplateDocsUtils {
         .replaceAll("(?m)For example, \"(.*?)\"", "For example: <code>$1</code>")
         .replaceAll("(?m)Defaults to: (.*?)\\.", "Defaults to: <code>$1</code>.")
         .replaceAll("(?m)`(.*?)`", "<code>$1</code>");
+  }
+
+  /**
+   * Prints the right side of a variable to set to a Terraform variable. The main idea is to make
+   * scripts a bit cleaner and use quotes only when needed, or to show explicitly that the value is
+   * empty.
+   *
+   * <p>In case there's no default, {@code <paramName>} is used.
+   */
+  public static String printExampleOrDefaultValueVariable(ImageSpecParameter parameter) {
+    if (parameter.getHelpText() != null && parameter.getHelpText().contains("(Example: ")) {
+      Pattern pattern = Pattern.compile(".*\\(Example: (.*)\\).*");
+      Matcher matcher = pattern.matcher(parameter.getHelpText());
+      if (matcher.find()) {
+        return matcher.group(1);
+      }
+    }
+
+    return printDefaultValueVariable(parameter);
   }
 }

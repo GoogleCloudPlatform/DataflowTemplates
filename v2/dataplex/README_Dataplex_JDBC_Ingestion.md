@@ -13,9 +13,6 @@ $(gcloud auth application-default print-access-token)" -H "Content-Type:
 application/json".
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Dataplex_JDBC_Ingestion).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -221,4 +218,52 @@ mvn clean package -PtemplatesRun \
 -Dparameters="connectionURL=$CONNECTION_URL,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,KMSEncryptionKey=$KMSENCRYPTION_KEY,outputAsset=$OUTPUT_ASSET,partitioningScheme=$PARTITIONING_SCHEME,paritionColumn=$PARITION_COLUMN,writeDisposition=$WRITE_DISPOSITION,fileFormat=$FILE_FORMAT,useColumnAlias=$USE_COLUMN_ALIAS,updateDataplexMetadata=$UPDATE_DATAPLEX_METADATA,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
 -pl v2/dataplex \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "dataplex_jdbc_ingestion" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Dataplex_JDBC_Ingestion"
+  name              = "dataplex-jdbc-ingestion"
+  region            = var.region
+  parameters        = {
+    connectionURL = "jdbc:mysql://some-host:3306/sampledb"
+    driverClassName = "com.mysql.jdbc.Driver"
+    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
+    query = "select * from sampledb.sample_table"
+    outputTable = "<outputTable>"
+    outputAsset = "<outputAsset>"
+    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
+    # username = "<username>"
+    # password = "<password>"
+    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
+    # partitioningScheme = "DAILY"
+    # paritionColumn = "<paritionColumn>"
+    # writeDisposition = "WRITE_EMPTY"
+    # fileFormat = "PARQUET"
+    # useColumnAlias = "false"
+    # updateDataplexMetadata = "false"
+    # useStorageWriteApi = "false"
+    # useStorageWriteApiAtLeastOnce = "false"
+  }
+}
 ```

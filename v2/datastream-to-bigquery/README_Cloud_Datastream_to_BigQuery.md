@@ -286,3 +286,63 @@ mvn clean package -PtemplatesRun \
 -pl v2/datastream-to-bigquery \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "cloud_datastream_to_bigquery" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Cloud_Datastream_to_BigQuery"
+  name              = "cloud-datastream-to-bigquery"
+  region            = var.region
+  parameters        = {
+    inputFilePattern = "<inputFilePattern>"
+    inputFileFormat = "avro"
+    gcsPubSubSubscription = "<gcsPubSubSubscription>"
+    outputStagingDatasetTemplate = "{_metadata_dataset}"
+    outputDatasetTemplate = "{_metadata_dataset}"
+    deadLetterQueueDirectory = ""
+    # streamName = "<streamName>"
+    # rfcStartDateTime = "1970-01-01T00:00:00.00Z"
+    # fileReadConcurrency = "10"
+    # outputProjectId = "<outputProjectId>"
+    # outputStagingTableNameTemplate = "{_metadata_table}_log"
+    # outputTableNameTemplate = "{_metadata_table}"
+    # ignoreFields = "_metadata_stream,_metadata_schema"
+    # mergeFrequencyMinutes = "5"
+    # dlqRetryMinutes = "10"
+    # dataStreamRootUrl = "https://datastream.googleapis.com/"
+    # applyMerge = "true"
+    # mergeConcurrency = "30"
+    # partitionRetentionDays = "1"
+    # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
+    # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # javascriptTextTransformReloadIntervalMinutes = "0"
+    # pythonTextTransformGcsPath = "gs://your-bucket/your-transforms/*.py"
+    # pythonRuntimeVersion = "<pythonRuntimeVersion>"
+    # pythonTextTransformFunctionName = "transform_udf1"
+    # runtimeRetries = "5"
+    # useStorageWriteApi = "false"
+    # useStorageWriteApiAtLeastOnce = "false"
+    # numStorageWriteApiStreams = "0"
+    # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
+  }
+}
+```

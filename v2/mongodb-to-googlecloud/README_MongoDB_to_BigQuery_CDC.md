@@ -196,3 +196,46 @@ mvn clean package -PtemplatesRun \
 -pl v2/mongodb-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "mongodb_to_bigquery_cdc" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/MongoDB_to_BigQuery_CDC"
+  name              = "mongodb-to-bigquery-cdc"
+  region            = var.region
+  parameters        = {
+    mongoDbUri = "mongouri"
+    database = "my-db"
+    collection = "my-collection"
+    userOption = "NONE"
+    inputTopic = "projects/your-project-id/topics/your-topic-name"
+    outputTableSpec = "bqtable"
+    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
+    # useStorageWriteApi = "false"
+    # useStorageWriteApiAtLeastOnce = "false"
+    # numStorageWriteApiStreams = "0"
+    # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
+    # javascriptDocumentTransformGcsPath = "gs://your-bucket/your-transforms/*.js"
+    # javascriptDocumentTransformFunctionName = "transform"
+  }
+}
+```

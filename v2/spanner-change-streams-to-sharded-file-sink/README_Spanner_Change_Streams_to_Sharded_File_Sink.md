@@ -25,6 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **metadataDatabase** (Cloud Spanner Database to store metadata when reading from changestreams): This is the database to store the metadata used by the connector to control the consumption of the change stream API data.
 * **gcsOutputDirectory** (Output file directory in Cloud Storage): The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path/).
 * **sourceShardsFilePath** (Source shard details file path in Cloud Storage): Source shard details file path in Cloud Storage that contains connection profile of source shards. Atleast one shard information is expected.
+* **runIdentifier** (Reverse replication run identifier): The identifier to distinguish between different runs of reverse replication flows.
 
 ### Optional Parameters
 
@@ -126,6 +127,7 @@ export METADATA_INSTANCE=<metadataInstance>
 export METADATA_DATABASE=<metadataDatabase>
 export GCS_OUTPUT_DIRECTORY=<gcsOutputDirectory>
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
+export RUN_IDENTIFIER=<runIdentifier>
 
 ### Optional
 export START_TIMESTAMP=""
@@ -154,7 +156,8 @@ gcloud dataflow flex-template run "spanner-change-streams-to-sharded-file-sink-j
   --parameters "filtrationMode=$FILTRATION_MODE" \
   --parameters "sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH" \
   --parameters "metadataTableSuffix=$METADATA_TABLE_SUFFIX" \
-  --parameters "skipDirectoryName=$SKIP_DIRECTORY_NAME"
+  --parameters "skipDirectoryName=$SKIP_DIRECTORY_NAME" \
+  --parameters "runIdentifier=$RUN_IDENTIFIER"
 ```
 
 For more information about the command, please check:
@@ -181,6 +184,7 @@ export METADATA_INSTANCE=<metadataInstance>
 export METADATA_DATABASE=<metadataDatabase>
 export GCS_OUTPUT_DIRECTORY=<gcsOutputDirectory>
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
+export RUN_IDENTIFIER=<runIdentifier>
 
 ### Optional
 export START_TIMESTAMP=""
@@ -198,7 +202,53 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-sharded-file-sink-job" \
 -DtemplateName="Spanner_Change_Streams_to_Sharded_File_Sink" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,sessionFilePath=$SESSION_FILE_PATH,windowDuration=$WINDOW_DURATION,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,filtrationMode=$FILTRATION_MODE,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,metadataTableSuffix=$METADATA_TABLE_SUFFIX,skipDirectoryName=$SKIP_DIRECTORY_NAME" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,sessionFilePath=$SESSION_FILE_PATH,windowDuration=$WINDOW_DURATION,gcsOutputDirectory=$GCS_OUTPUT_DIRECTORY,filtrationMode=$FILTRATION_MODE,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,metadataTableSuffix=$METADATA_TABLE_SUFFIX,skipDirectoryName=$SKIP_DIRECTORY_NAME,runIdentifier=$RUN_IDENTIFIER" \
 -pl v2/spanner-change-streams-to-sharded-file-sink \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "spanner_change_streams_to_sharded_file_sink" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Spanner_Change_Streams_to_Sharded_File_Sink"
+  name              = "spanner-change-streams-to-sharded-file-sink"
+  region            = var.region
+  parameters        = {
+    changeStreamName = "<changeStreamName>"
+    instanceId = "<instanceId>"
+    databaseId = "<databaseId>"
+    spannerProjectId = "<spannerProjectId>"
+    metadataInstance = "<metadataInstance>"
+    metadataDatabase = "<metadataDatabase>"
+    gcsOutputDirectory = "gs://your-bucket/your-path/"
+    sourceShardsFilePath = "<sourceShardsFilePath>"
+    runIdentifier = "<runIdentifier>"
+    # startTimestamp = ""
+    # endTimestamp = ""
+    # sessionFilePath = "<sessionFilePath>"
+    # windowDuration = "5m"
+    # filtrationMode = "forward_migration"
+    # metadataTableSuffix = ""
+    # skipDirectoryName = "skip"
+  }
+}
 ```

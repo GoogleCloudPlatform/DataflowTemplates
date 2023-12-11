@@ -208,3 +208,48 @@ mvn clean package -PtemplatesRun \
 -pl v2/file-format-conversion \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "file_format_conversion" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/File_Format_Conversion"
+  name              = "file-format-conversion"
+  region            = var.region
+  parameters        = {
+    inputFileFormat = "<inputFileFormat>"
+    outputFileFormat = "<outputFileFormat>"
+    inputFileSpec = "<inputFileSpec>"
+    outputBucket = "gs://your-bucket/path/"
+    schema = "gs://your-bucket/your-path/schema.avsc"
+    # containsHeaders = "false"
+    # deadletterTable = "your-project:your-dataset.your-table-name"
+    # delimiter = ","
+    # csvFormat = "Default"
+    # jsonSchemaPath = "gs://path/to/schema"
+    # largeNumFiles = "false"
+    # csvFileEncoding = "UTF-8"
+    # logDetailedCsvConversionErrors = "false"
+    # numShards = "0"
+    # outputFilePrefix = "output"
+  }
+}
+```

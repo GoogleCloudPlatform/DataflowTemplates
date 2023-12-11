@@ -28,7 +28,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **firestoreHintNumWorkers** (Expected number of workers): Hint for the expected number of workers in the Firestore ramp-up throttling step. Defaults to: 500.
 * **javascriptTextTransformGcsPath** (JavaScript UDF path in Cloud Storage): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.
 * **javascriptTextTransformFunctionName** (JavaScript UDF name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
-* **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 
 
 ## User-Defined functions (UDFs)
@@ -133,7 +132,6 @@ export FIRESTORE_READ_NAMESPACE=<firestoreReadNamespace>
 export FIRESTORE_HINT_NUM_WORKERS=500
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 
 gcloud dataflow jobs run "firestore-to-firestore-delete-job" \
   --project "$PROJECT" \
@@ -145,8 +143,7 @@ gcloud dataflow jobs run "firestore-to-firestore-delete-job" \
   --parameters "firestoreDeleteProjectId=$FIRESTORE_DELETE_PROJECT_ID" \
   --parameters "firestoreHintNumWorkers=$FIRESTORE_HINT_NUM_WORKERS" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
-  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
-  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES"
+  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME"
 ```
 
 For more information about the command, please check:
@@ -174,7 +171,6 @@ export FIRESTORE_READ_NAMESPACE=<firestoreReadNamespace>
 export FIRESTORE_HINT_NUM_WORKERS=500
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -183,7 +179,45 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="firestore-to-firestore-delete-job" \
 -DtemplateName="Firestore_to_Firestore_Delete" \
--Dparameters="firestoreReadGqlQuery=$FIRESTORE_READ_GQL_QUERY,firestoreReadProjectId=$FIRESTORE_READ_PROJECT_ID,firestoreReadNamespace=$FIRESTORE_READ_NAMESPACE,firestoreDeleteProjectId=$FIRESTORE_DELETE_PROJECT_ID,firestoreHintNumWorkers=$FIRESTORE_HINT_NUM_WORKERS,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
+-Dparameters="firestoreReadGqlQuery=$FIRESTORE_READ_GQL_QUERY,firestoreReadProjectId=$FIRESTORE_READ_PROJECT_ID,firestoreReadNamespace=$FIRESTORE_READ_NAMESPACE,firestoreDeleteProjectId=$FIRESTORE_DELETE_PROJECT_ID,firestoreHintNumWorkers=$FIRESTORE_HINT_NUM_WORKERS,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
 -pl v1 \
 -am
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "firestore_to_firestore_delete" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Firestore_to_Firestore_Delete"
+  name              = "firestore-to-firestore-delete"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    firestoreReadGqlQuery = "<firestoreReadGqlQuery>"
+    firestoreReadProjectId = "<firestoreReadProjectId>"
+    firestoreDeleteProjectId = "<firestoreDeleteProjectId>"
+    # firestoreReadNamespace = "<firestoreReadNamespace>"
+    # firestoreHintNumWorkers = "500"
+    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
+    # javascriptTextTransformFunctionName = "transform_udf1"
+  }
+}
 ```

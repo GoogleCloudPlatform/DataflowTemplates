@@ -222,3 +222,49 @@ mvn clean package -PtemplatesRun \
 -pl v2/googlecloud-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "spanner_change_streams_to_pubsub" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Spanner_Change_Streams_to_PubSub"
+  name              = "spanner-change-streams-to-pubsub"
+  region            = var.region
+  parameters        = {
+    spannerInstanceId = "<spannerInstanceId>"
+    spannerDatabase = "<spannerDatabase>"
+    spannerMetadataInstanceId = "<spannerMetadataInstanceId>"
+    spannerMetadataDatabase = "<spannerMetadataDatabase>"
+    spannerChangeStreamName = "<spannerChangeStreamName>"
+    pubsubTopic = "<pubsubTopic>"
+    # spannerProjectId = ""
+    # spannerDatabaseRole = "<spannerDatabaseRole>"
+    # spannerMetadataTableName = "<spannerMetadataTableName>"
+    # startTimestamp = ""
+    # endTimestamp = ""
+    # spannerHost = "https://spanner.googleapis.com"
+    # outputDataFormat = "JSON"
+    # pubsubAPI = "pubsubio"
+    # pubsubProjectId = ""
+    # rpcPriority = "HIGH"
+  }
+}
+```

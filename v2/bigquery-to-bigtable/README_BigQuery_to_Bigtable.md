@@ -209,3 +209,50 @@ mvn clean package -PtemplatesRun \
 -pl v2/bigquery-to-bigtable \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "bigquery_to_bigtable" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/BigQuery_to_Bigtable"
+  name              = "bigquery-to-bigtable"
+  region            = var.region
+  parameters        = {
+    readIdColumn = "<readIdColumn>"
+    bigtableWriteInstanceId = "<bigtableWriteInstanceId>"
+    bigtableWriteTableId = "<bigtableWriteTableId>"
+    bigtableWriteColumnFamily = "<bigtableWriteColumnFamily>"
+    # inputTableSpec = "bigquery-project:dataset.input_table"
+    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
+    # query = "select * from sampledb.sample_table"
+    # useLegacySql = "false"
+    # queryLocation = "US"
+    # bigtableRpcAttemptTimeoutMs = "<bigtableRpcAttemptTimeoutMs>"
+    # bigtableRpcTimeoutMs = "<bigtableRpcTimeoutMs>"
+    # bigtableAdditionalRetryCodes = "RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED"
+    # bigtableWriteAppProfile = "default"
+    # bigtableWriteProjectId = "<bigtableWriteProjectId>"
+    # bigtableBulkWriteLatencyTargetMs = "<bigtableBulkWriteLatencyTargetMs>"
+    # bigtableBulkWriteMaxRowKeyCount = "<bigtableBulkWriteMaxRowKeyCount>"
+    # bigtableBulkWriteMaxRequestSizeBytes = "<bigtableBulkWriteMaxRequestSizeBytes>"
+  }
+}
+```

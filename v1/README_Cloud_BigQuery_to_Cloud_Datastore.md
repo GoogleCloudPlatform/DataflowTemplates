@@ -174,3 +174,42 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "cloud_bigquery_to_cloud_datastore" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_BigQuery_to_Cloud_Datastore"
+  name              = "cloud-bigquery-to-cloud-datastore"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    readQuery = "<readQuery>"
+    datastoreWriteProjectId = "<datastoreWriteProjectId>"
+    errorWritePath = "gs://your-bucket/errors/"
+    # readIdColumn = "<readIdColumn>"
+    # invalidOutputPath = "gs://your-bucket/your-path"
+    # datastoreWriteEntityKind = "<datastoreWriteEntityKind>"
+    # datastoreWriteNamespace = "<datastoreWriteNamespace>"
+    # datastoreHintNumWorkers = "500"
+  }
+}
+```

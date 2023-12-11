@@ -187,3 +187,44 @@ mvn clean package -PtemplatesRun \
 -pl v2/jdbc-to-googlecloud \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "jdbc_to_pubsub" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Jdbc_to_PubSub"
+  name              = "jdbc-to-pubsub"
+  region            = var.region
+  parameters        = {
+    driverClassName = "com.mysql.jdbc.Driver"
+    connectionUrl = "jdbc:mysql://some-host:3306/sampledb"
+    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
+    query = "select * from sampledb.sample_table"
+    outputTopic = "projects/your-project-id/topics/your-topic-name"
+    # username = "<username>"
+    # password = "<password>"
+    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
+    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
+    # disabledAlgorithms = "SSLv3, RC4"
+    # extraFilesToStage = "gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id"
+  }
+}
+```

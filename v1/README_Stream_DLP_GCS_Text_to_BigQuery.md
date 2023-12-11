@@ -185,3 +185,40 @@ mvn clean package -PtemplatesRun \
 -pl v1 \
 -am
 ```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "stream_dlp_gcs_text_to_bigquery" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Stream_DLP_GCS_Text_to_BigQuery"
+  name              = "stream-dlp-gcs-text-to-bigquery"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    inputFilePattern = "gs://your-bucket/your-files/*.csv"
+    deidentifyTemplateName = "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id"
+    datasetName = "<datasetName>"
+    dlpProjectId = "<dlpProjectId>"
+    # inspectTemplateName = "projects/your-project-id/locations/global/inspectTemplates/generated_template_id"
+    # batchSize = "<batchSize>"
+  }
+}
+```
