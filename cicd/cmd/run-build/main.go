@@ -35,7 +35,7 @@ func main() {
 		mvnFlags.SkipShade(),
 		mvnFlags.SkipSpotlessCheck(),
 		mvnFlags.SkipTests(),
-		mvnFlags.ThreadCount(8))
+		mvnFlags.ThreadCount(3))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
