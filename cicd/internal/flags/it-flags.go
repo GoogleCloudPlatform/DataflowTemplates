@@ -29,6 +29,7 @@ var (
 	dArtifactBucket string
 	dStageBucket    string
 	dHostIp         string
+	dReleaseMode    bool
 )
 
 // Registers all common flags. Must be called before flag.Parse().
@@ -37,7 +38,8 @@ func RegisterItFlags() {
 	flag.StringVar(&dProject, "it-project", "", "The GCP project to run the integration tests in")
 	flag.StringVar(&dArtifactBucket, "it-artifact-bucket", "", "A GCP bucket to store test artifacts")
 	flag.StringVar(&dStageBucket, "it-stage-bucket", "", "(optional) A GCP bucket to stage templates")
-	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on)")
+	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on")
+	flag.BoolVar(&dReleaseMode, "it-release", false, "(optional) Set if tests are being executed for a release")
 }
 
 func Region() string {
@@ -69,4 +71,14 @@ func HostIp() string {
 		}
 	}
 	return "-DhostIp=" + dHostIp
+}
+
+func FailureMode() string {
+	// Fail releases fast
+	if dReleaseMode {
+		return "-ff"
+	}
+
+	// Fail PRs at the end
+	return "-fae"
 }
