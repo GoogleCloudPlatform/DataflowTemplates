@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner.common;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.common.collect.ImmutableList;
 
 /** Describes a type with size. */
 public final class SizedType {
@@ -74,6 +75,12 @@ public final class SizedType {
           Type arrayType = type.getArrayElementType();
           return "ARRAY<" + typeString(arrayType, size) + ">";
         }
+      case STRUCT:
+      {
+        StringBuilder sb = new StringBuilder();
+        type.toString(sb);
+        return sb.toString();
+      }
       case PG_ARRAY:
         {
           Type arrayType = type.getArrayElementType();
@@ -128,6 +135,48 @@ public final class SizedType {
             String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);
             SizedType itemType = parseSpannerType(spannerArrayType, dialect);
             return t(Type.array(itemType.type), itemType.size);
+          }
+          if (spannerType.startsWith("STRUCT")) {
+            // Substring "STRUCT<xxx>"
+            String spannerStructType = spannerType.substring(7, spannerType.length() - 1);
+
+            ImmutableList<Type.StructField>.Builder fields = ImmutableList.builder();
+            int current = 0;
+
+            while (current < spannerStructType.length()) {
+              int i = 0;
+              // Read the name.
+              for (; !Character.isWhitespace(spannerStructType.charAt(i)); ++i) {}
+              String field_name = spannerStructType.substring(current, i);
+              // Skip whitespace.
+              for (; Character.isWhitespace(spannerStructType.charAt(i)); ++i) {}
+              // Find the end of the type.
+              current = i;
+              int bracket_count = 0;
+              for (; i < spannerStructType.length(); ++i) {
+                char c = spannerStructType.charAt(i);
+                if (c == '<') {
+                  ++bracket_count;
+                } else if (c == '>') {
+                  if (--bracket_count < 0) {
+                    break;
+                  }
+                } else if (c == ',') {
+                  if (bracket_count == 0) {
+                    break;
+                  }
+                }
+              }
+              if (bracket_count != 0) {
+                throw new IllegalArgumentException("Unknown spanner type " + spannerType);
+              }
+              SizedType field_type = parseSpannerType(spannerStructType.substring(current, i),
+                  dialect);
+              fields.add(Type.StructField.of(field_name, field_type.type));
+              current = i;
+            }
+
+            return t(Type.struct(fields.build()));
           }
           break;
         }
