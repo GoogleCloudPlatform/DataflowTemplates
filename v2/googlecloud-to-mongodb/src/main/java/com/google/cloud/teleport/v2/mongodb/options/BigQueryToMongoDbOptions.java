@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.mongodb.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
@@ -32,7 +31,6 @@ public class BigQueryToMongoDbOptions {
         order = 1,
         description = "MongoDB Connection URI",
         helpText = "URI to connect to MongoDB Atlas.")
-    @Default.String("mongouri")
     String getMongoDbUri();
 
     void setMongoDbUri(String getMongoDbUri);
@@ -42,7 +40,6 @@ public class BigQueryToMongoDbOptions {
         description = "MongoDB Database",
         helpText = "Database in MongoDB to store the collection.",
         example = "my-db")
-    @Default.String("db")
     String getDatabase();
 
     void setDatabase(String database);
@@ -52,7 +49,6 @@ public class BigQueryToMongoDbOptions {
         description = "MongoDB collection",
         helpText = "Name of the collection inside MongoDB database.",
         example = "my-collection")
-    @Default.String("collection")
     String getCollection();
 
     void setCollection(String collection);
@@ -66,7 +62,6 @@ public class BigQueryToMongoDbOptions {
         description = "BigQuery source table",
         helpText = "BigQuery source table spec.",
         example = "bigquery-project:dataset.input_table")
-    @Default.String("bqtable")
     String getInputTableSpec();
 
     void setInputTableSpec(String inputTableSpec);

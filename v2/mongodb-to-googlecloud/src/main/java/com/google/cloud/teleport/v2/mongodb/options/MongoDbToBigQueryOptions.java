@@ -33,7 +33,6 @@ public class MongoDbToBigQueryOptions {
         order = 1,
         description = "MongoDB Connection URI",
         helpText = "MongoDB connection URI in the format `mongodb+srv://:@`.")
-    @Default.String("mongouri")
     String getMongoDbUri();
 
     void setMongoDbUri(String getMongoDbUri);
@@ -52,7 +51,6 @@ public class MongoDbToBigQueryOptions {
         description = "MongoDB collection",
         helpText = "Name of the collection inside MongoDB database.",
         example = "my-collection")
-    @Default.String("collection")
     String getCollection();
 
     void setCollection(String collection);
@@ -104,7 +102,6 @@ public class MongoDbToBigQueryOptions {
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
-    @Default.String("bqtable")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String outputTableSpec);
