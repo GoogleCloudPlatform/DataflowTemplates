@@ -50,6 +50,7 @@ public final class MetadataUtils {
         TemplateParameter.PubsubTopic.class,
         TemplateParameter.Text.class
       };
+  public static final String BIGQUERY_TABLE_PATTERN = ".+[\\.:].+\\..+";
 
   private MetadataUtils() {}
 
@@ -188,7 +189,7 @@ public final class MetadataUtils {
       case "BigQueryTable":
         TemplateParameter.BigQueryTable bigQueryTableParam =
             (TemplateParameter.BigQueryTable) parameterAnnotation;
-        return List.of(".+:.+\\..+");
+        return List.of(BIGQUERY_TABLE_PATTERN);
       case "KmsEncryptionKey":
         TemplateParameter.KmsEncryptionKey kmsEncryptionKeyParam =
             (TemplateParameter.KmsEncryptionKey) parameterAnnotation;

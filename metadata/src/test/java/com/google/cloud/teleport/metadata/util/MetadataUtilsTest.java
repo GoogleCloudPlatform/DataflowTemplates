@@ -15,12 +15,16 @@
  */
 package com.google.cloud.teleport.metadata.util;
 
+import static com.google.cloud.teleport.metadata.util.MetadataUtils.BIGQUERY_TABLE_PATTERN;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameterNameFromMethod;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.junit.Test;
+
+import java.util.regex.Pattern;
 
 /** Class to unit test {@link MetadataUtils} functionality. */
 public class MetadataUtilsTest {
@@ -45,5 +49,21 @@ public class MetadataUtilsTest {
     assertThat(getParameterNameFromMethod("getShouldKnowMyName")).isEqualTo("shouldKnowMyName");
     assertThat(getParameterNameFromMethod("name")).isEqualTo("name");
     assertThat(getParameterNameFromMethod("isClassic")).isEqualTo("classic");
+  }
+
+  @Test
+  public void testRegexesBigQueryValid() {
+    Pattern pattern = Pattern.compile(BIGQUERY_TABLE_PATTERN);
+    assertThat(pattern.matcher("myproject:mydataset.mytable").matches()).isTrue();
+    assertThat(pattern.matcher("myproject.mydataset.mytable").matches()).isTrue();
+    assertThat(pattern.matcher("myproject.mydataset.mytable_whatever").matches()).isTrue();
+  }
+
+  @Test
+  public void testRegexesBigQueryInvalid() {
+    Pattern pattern = Pattern.compile(BIGQUERY_TABLE_PATTERN);
+    assertThat(pattern.matcher("myproject:mydataset").matches()).isFalse();
+    assertThat(pattern.matcher("myproject.mydataset").matches()).isFalse();
+    assertThat(pattern.matcher("myproject.mydataset_whatever").matches()).isFalse();
   }
 }
