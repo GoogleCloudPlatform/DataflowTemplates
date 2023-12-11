@@ -1,0 +1,73 @@
+{
+  "config": {
+    "reset_db": true
+  },
+  "sources": [
+    {
+      "type": "text",
+      "format": "EXCEL",
+      "name": "likes",
+      "ordered_field_names": "id,personId,foodId,rating",
+      "data": [
+        [
+          "1",
+          "1",
+          "1",
+          "5"
+        ],
+        [
+          "2",
+          "1",
+          "2",
+          "4"
+        ],
+        [
+          "3",
+          "3",
+          "3",
+          "1"
+        ]
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "edge": {
+        "source": "likes",
+        "name": "likes",
+        "mode": "merge",
+        "edge_nodes_match_mode": "merge",
+        "transform": {
+          "group": true
+        },
+        "mappings": {
+          "type": "\"LIKES\"",
+          "source": {
+            "label": "\"Person\"",
+            "key": {
+              "personId": "id"
+            }
+          },
+          "target": {
+            "label": "\"Food\"",
+            "key": {
+              "foodId": "id"
+            }
+          },
+          "properties": {
+            "integers": [
+              {
+                "rating": "rating"
+              }
+            ],
+            "keys": [
+              {
+                "id": "id"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
