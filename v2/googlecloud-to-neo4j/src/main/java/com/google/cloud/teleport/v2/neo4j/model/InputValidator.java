@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model;
 
 import com.google.cloud.secretmanager.v1.SecretVersionName;
-import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.model.Json.ParsingResult;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
@@ -34,6 +34,7 @@ import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.networknt.schema.JsonSchema;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -61,7 +62,7 @@ public class InputValidator {
   public static List<String> validateNeo4jPipelineOptions(
       Neo4jFlexTemplateOptions pipelineOptions) {
 
-    List<String> validationMessages = new ArrayList<>();
+    List<String> validationMessages = new ArrayList<>(2);
 
     String neo4jConnectionUri = pipelineOptions.getNeo4jConnectionUri();
     String neo4jConnectionSecret = pipelineOptions.getNeo4jConnectionSecretId();
@@ -86,18 +87,11 @@ public class InputValidator {
     return validationMessages;
   }
 
-  public static List<String> validateNeo4jConnection(ConnectionParams connectionParams) {
-    List<String> validationMessages = new ArrayList<>();
-    if (StringUtils.isEmpty(connectionParams.serverUrl)) {
-      validationMessages.add("Missing connection server URL");
-    }
-    if (StringUtils.isEmpty(connectionParams.username)) {
-      validationMessages.add("Missing connection username");
-    }
-    if (StringUtils.isEmpty(connectionParams.password)) {
-      validationMessages.add("Missing connection password");
-    }
-    return validationMessages;
+  public static ParsingResult validateNeo4jConnection(String json) {
+    JsonSchema connectionSchema =
+        Json.SCHEMA_FACTORY.getSchema(
+            InputValidator.class.getResourceAsStream("/schemas/connection.v1.0.json"));
+    return Json.parseAndValidate(json, connectionSchema);
   }
 
   public static List<String> validateJobSpec(JobSpec jobSpec) {

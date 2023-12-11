@@ -49,6 +49,11 @@
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-secretmanager</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <version>1.0.87</version>
+    </dependency>
 
     <!-- Test dependencies -->
     <dependency>

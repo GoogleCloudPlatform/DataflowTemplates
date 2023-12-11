@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,54 +15,56 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.connection;
 
-import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
-import com.google.cloud.teleport.v2.neo4j.utils.FileSystemUtils;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 import java.io.Serializable;
-import org.apache.commons.lang3.StringUtils;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Objects;
+import org.neo4j.driver.AuthToken;
 
-/** Helper object for connection params. */
-public class ConnectionParams implements Serializable {
+@JsonTypeInfo(use = Id.NAME, property = "auth_type", defaultImpl = BasicConnectionParams.class)
+@JsonSubTypes({
+  @JsonSubTypes.Type(value = BasicConnectionParams.class, name = "basic"),
+  @JsonSubTypes.Type(value = NoAuthConnectionParams.class, name = "none"),
+  @JsonSubTypes.Type(value = KerberosConnectionParams.class, name = "kerberos"),
+  @JsonSubTypes.Type(value = BearerConnectionParams.class, name = "bearer"),
+  @JsonSubTypes.Type(value = CustomConnectionParams.class, name = "custom")
+})
+public abstract class ConnectionParams implements Serializable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ConnectionParams.class);
+  private final String serverUrl;
+  private final String database;
 
-  public String serverUrl, database, authType, username, password;
-
-  public ConnectionParams(Neo4jFlexTemplateOptions options) {
-    String json;
-    String secretId = options.getNeo4jConnectionSecretId();
-    if (StringUtils.isNotBlank(secretId)) {
-      json = SecretManagerUtils.getSecret(secretId);
-    } else {
-      json = readGcsResource(options.getNeo4jConnectionUri());
-    }
-    initialize(json);
+  public ConnectionParams(String serverUrl, String database) {
+    this.serverUrl = serverUrl;
+    this.database = database == null ? "neo4j" : database;
   }
 
-  private void initialize(String rawJson) {
-    try {
-      JSONObject json = new JSONObject(rawJson);
-      serverUrl = json.getString("server_url");
-      authType = json.has("auth_type") ? json.getString("auth_type") : "basic";
-      database = json.has("database") ? json.getString("database") : "neo4j";
-      username = json.getString("username");
-      password = json.getString("pwd");
-
-    } catch (Exception e) {
-      LOG.error("Unable to parse Neo4j JSON connection metadata: ", e);
-      throw new IllegalStateException(e);
-    }
+  public String getServerUrl() {
+    return serverUrl;
   }
 
-  private static String readGcsResource(String uri) {
-    try {
-      return FileSystemUtils.getPathContents(uri);
-    } catch (Exception e) {
-      LOG.error("Unable to read {} Neo4j configuration: ", uri, e);
-      throw new IllegalStateException(e);
+  public String getDatabase() {
+    return database;
+  }
+
+  public abstract AuthToken asAuthToken();
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    ConnectionParams that = (ConnectionParams) o;
+    return Objects.equals(serverUrl, that.serverUrl) && Objects.equals(database, that.database);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(serverUrl, database);
   }
 }

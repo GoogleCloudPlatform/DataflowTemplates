@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neo4j.com/docs/common-content-dataflow/_attachments/schemas/connection.v1.0.json",
+  "title": "Google Cloud to Neo4j - Neo4j Connection Settings",
+  "description": "Neo4j Connection Settings",
+  "type": "object",
+  "properties": {
+    "server_url": {
+      "description": "URL of the Neo4j server",
+      "type": "string",
+      "format": "uri",
+      "pattern": "^(neo4j|bolt)(\\+s(sc)?)?://"
+    },
+    "database": {
+      "description": "Name of the database",
+      "type": "string",
+      "default": "neo4j",
+      "minLength": 1
+    },
+    "auth_type": {
+      "description": "Authentication type",
+      "type": "string",
+      "enum": [
+        "basic", "none", "kerberos", "bearer", "custom"
+      ],
+      "default": "basic"
+    }
+  },
+  "required": [
+    "server_url"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "auth_type": {
+            "const": "basic"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "username": {
+            "description": "Basic authentication username",
+            "type": "string",
+            "minLength": 1
+          },
+          "pwd": {
+            "description": "Basic authentication password",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "username",
+          "pwd"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "auth_type": {
+            "const": "kerberos"
+          }
+        },
+        "required": ["auth_type"]
+      },
+      "then": {
+        "properties": {
+          "ticket": {
+            "description": "Kerberos authentication base64-encoded ticket",
+            "type": "string",
+            "contentEncoding": "base64",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "ticket"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "auth_type": {
+            "const": "bearer"
+          }
+        },
+        "required": ["auth_type"]
+      },
+      "then": {
+        "properties": {
+          "token": {
+            "description": "Bearer authentication token",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "auth_type": {
+            "const": "custom"
+          }
+        },
+        "required": ["auth_type"]
+      },
+      "then": {
+        "properties": {
+          "principal": {
+            "description": "Custom authentication principal",
+            "type": "string",
+            "minLength": 1
+          },
+          "credentials": {
+            "description": "Custom authentication credentials",
+            "type": "string",
+            "minLength": 1
+          },
+          "realm": {
+            "description": "Custom authentication realm",
+            "type": "string",
+            "minLength": 1
+          },
+          "scheme": {
+            "description": "Custom authentication scheme",
+            "type": "string",
+            "minLength": 1
+          },
+          "parameters": {
+            "description": "Custom authentication parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "principal", "credentials", "scheme"
+        ]
+      }
+    }
+  ]
+}
