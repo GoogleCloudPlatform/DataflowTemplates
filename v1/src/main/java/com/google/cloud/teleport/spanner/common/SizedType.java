@@ -76,11 +76,17 @@ public final class SizedType {
           return "ARRAY<" + typeString(arrayType, size) + ">";
         }
       case STRUCT:
-      {
-        StringBuilder sb = new StringBuilder();
-        type.toString(sb);
-        return sb.toString();
-      }
+        {
+          StringBuilder sb = new StringBuilder();
+          for (int i = 0; i < type.getStructFields().size(); ++i) {
+            Type.StructField field = type.getStructFields().get(i);
+            sb.append(i > 0 ? ", " : "")
+                .append(field.getName())
+                .append(" ")
+                .append(typeString(field.getType(), -1));
+          }
+          return "STRUCT<" + sb.toString() + ">";
+        }
       case PG_ARRAY:
         {
           Type arrayType = type.getArrayElementType();
@@ -130,53 +136,55 @@ public final class SizedType {
           if (spannerType.equals("JSON")) {
             return t(Type.json(), null);
           }
-          if (spannerType.startsWith("ARRAY")) {
+          if (spannerType.startsWith("ARRAY<")) {
             // Substring "ARRAY<xxx>"
             String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);
             SizedType itemType = parseSpannerType(spannerArrayType, dialect);
             return t(Type.array(itemType.type), itemType.size);
           }
-          if (spannerType.startsWith("STRUCT")) {
+          if (spannerType.startsWith("STRUCT<")) {
             // Substring "STRUCT<xxx>"
             String spannerStructType = spannerType.substring(7, spannerType.length() - 1);
-
-            ImmutableList<Type.StructField>.Builder fields = ImmutableList.builder();
+            ImmutableList.Builder<Type.StructField> fields = ImmutableList.builder();
             int current = 0;
-
             while (current < spannerStructType.length()) {
-              int i = 0;
-              // Read the name.
-              for (; !Character.isWhitespace(spannerStructType.charAt(i)); ++i) {}
-              String field_name = spannerStructType.substring(current, i);
+              int i = current;
               // Skip whitespace.
               for (; Character.isWhitespace(spannerStructType.charAt(i)); ++i) {}
-              // Find the end of the type.
               current = i;
-              int bracket_count = 0;
+              // Read the name.
+              for (; !Character.isWhitespace(spannerStructType.charAt(i)); ++i) {}
+              String fieldName = spannerStructType.substring(current, i);
+              // Skip whitespace.
+              for (; Character.isWhitespace(spannerStructType.charAt(i)); ++i) {}
+              current = i;
+
+              // Find the end of the type.
+              int bracketCount = 0;
               for (; i < spannerStructType.length(); ++i) {
                 char c = spannerStructType.charAt(i);
                 if (c == '<') {
-                  ++bracket_count;
+                  ++bracketCount;
                 } else if (c == '>') {
-                  if (--bracket_count < 0) {
+                  if (--bracketCount < 0) {
                     break;
                   }
                 } else if (c == ',') {
-                  if (bracket_count == 0) {
+                  if (bracketCount == 0) {
                     break;
                   }
                 }
               }
-              if (bracket_count != 0) {
+              if (bracketCount != 0) {
                 throw new IllegalArgumentException("Unknown spanner type " + spannerType);
               }
-              SizedType field_type = parseSpannerType(spannerStructType.substring(current, i),
-                  dialect);
-              fields.add(Type.StructField.of(field_name, field_type.type));
-              current = i;
+              SizedType fieldType =
+                  parseSpannerType(spannerStructType.substring(current, i), dialect);
+              fields.add(Type.StructField.of(fieldName, fieldType.type));
+              current = i + 1;
             }
-
-            return t(Type.struct(fields.build()));
+            return t(Type.struct(fields.build()), null);
+            ;
           }
           break;
         }
