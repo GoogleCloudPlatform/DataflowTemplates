@@ -21,10 +21,8 @@ import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameter
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import com.google.cloud.teleport.metadata.TemplateParameter;
-import org.junit.Test;
-
 import java.util.regex.Pattern;
+import org.junit.Test;
 
 /** Class to unit test {@link MetadataUtils} functionality. */
 public class MetadataUtilsTest {

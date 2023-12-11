@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.mongodb.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
