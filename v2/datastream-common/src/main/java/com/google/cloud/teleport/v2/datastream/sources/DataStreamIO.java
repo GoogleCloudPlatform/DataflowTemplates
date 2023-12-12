@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.datastream.transforms.FormatDatastreamJsonTo
 import com.google.cloud.teleport.v2.datastream.transforms.FormatDatastreamRecordToJson;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -312,6 +313,8 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
         try {
           Metadata fileMetadata = FileSystems.matchSingleFileSpec(fileName);
           context.output(fileMetadata);
+        } catch (FileNotFoundException e) {
+          LOG.warn("Ignoring non-existent file {}", fileName, e);
         } catch (IOException e) {
           LOG.error("GCS Failure retrieving {}", fileName, e);
           throw e;
