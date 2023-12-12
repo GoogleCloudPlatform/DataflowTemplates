@@ -211,7 +211,8 @@ public class FormatDatastreamRecordToJson
 
   private String getSourceMetadata(GenericRecord record, String fieldName) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.hasField(fieldName) && sourceMetadata.get(fieldName) != null) {
+    if (sourceMetadata.getSchema().getField(fieldName) != null
+        && sourceMetadata.get(fieldName) != null) {
       return sourceMetadata.get(fieldName).toString();
     }
 
@@ -232,7 +233,8 @@ public class FormatDatastreamRecordToJson
 
   private String getMetadataChangeType(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.hasField("change_type") && sourceMetadata.get("change_type") != null) {
+    if (sourceMetadata.getSchema().getField("change_type") != null
+        && sourceMetadata.get("change_type") != null) {
       return sourceMetadata.get("change_type").toString();
     }
 
@@ -241,7 +243,8 @@ public class FormatDatastreamRecordToJson
 
   private JsonNode getPrimaryKeys(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (!sourceMetadata.hasField("primary_keys") || sourceMetadata.get("primary_keys") == null) {
+    if (sourceMetadata.getSchema().getField("primary_keys") == null
+        || sourceMetadata.get("primary_keys") == null) {
       return null;
     }
 
@@ -256,7 +259,8 @@ public class FormatDatastreamRecordToJson
   private Boolean getMetadataIsDeleted(GenericRecord record) {
     boolean isDeleted = false;
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.hasField("is_deleted") && sourceMetadata.get("is_deleted") != null) {
+    if (sourceMetadata.getSchema().getField("is_deleted") != null
+        && sourceMetadata.get("is_deleted") != null) {
       isDeleted = (boolean) sourceMetadata.get("is_deleted");
     }
 
@@ -265,7 +269,8 @@ public class FormatDatastreamRecordToJson
 
   private String getOracleRowId(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.hasField("row_id") && sourceMetadata.get("row_id") != null) {
+    if (sourceMetadata.getSchema().getField("row_id") != null
+        && sourceMetadata.get("row_id") != null) {
       return sourceMetadata.get("row_id").toString();
     }
 
@@ -274,7 +279,7 @@ public class FormatDatastreamRecordToJson
 
   private Long getOracleScn(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.hasField("scn") && sourceMetadata.get("scn") != null) {
+    if (sourceMetadata.getSchema().getField("scn") != null && sourceMetadata.get("scn") != null) {
       return (Long) sourceMetadata.get("scn");
     }
 
@@ -291,7 +296,7 @@ public class FormatDatastreamRecordToJson
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
     // oracle sort keys are a list of four values that are provided in this order:
     // [timestamp, scn, rs_id, ssn]
-    if (sourceMetadata.hasField("ssn") && sourceMetadata.get("ssn") != null) {
+    if (sourceMetadata.getSchema().getField("ssn") != null && sourceMetadata.get("ssn") != null) {
       return (Long) sourceMetadata.get("ssn");
     }
 
@@ -304,7 +309,8 @@ public class FormatDatastreamRecordToJson
     }
 
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.hasField("rs_id") && sourceMetadata.get("rs_id") != null) {
+    if (sourceMetadata.getSchema().getField("rs_id") != null
+        && sourceMetadata.get("rs_id") != null) {
       return sourceMetadata.get("rs_id").toString();
     }
 
@@ -313,7 +319,8 @@ public class FormatDatastreamRecordToJson
 
   private String getOracleTxId(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.hasField("tx_id") && sourceMetadata.get("tx_id") != null) {
+    if (sourceMetadata.getSchema().getField("tx_id") != null
+        && sourceMetadata.get("tx_id") != null) {
       return sourceMetadata.get("tx_id").toString();
     }
 
@@ -322,7 +329,7 @@ public class FormatDatastreamRecordToJson
 
   private String getPostgresLsn(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.hasField("lsn") && sourceMetadata.get("lsn") != null) {
+    if (sourceMetadata.getSchema().getField("lsn") != null && sourceMetadata.get("lsn") != null) {
       return sourceMetadata.get("lsn").toString();
     }
 
@@ -331,7 +338,8 @@ public class FormatDatastreamRecordToJson
 
   private String getPostgresTxId(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.hasField("tx_id") && sourceMetadata.get("tx_id") != null) {
+    if (sourceMetadata.getSchema().getField("tx_id") != null
+        && sourceMetadata.get("tx_id") != null) {
       return sourceMetadata.get("tx_id").toString();
     }
 

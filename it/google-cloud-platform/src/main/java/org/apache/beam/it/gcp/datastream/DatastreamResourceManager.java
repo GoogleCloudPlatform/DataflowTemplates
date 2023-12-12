@@ -17,9 +17,10 @@
  */
 package org.apache.beam.it.gcp.datastream;
 
-import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.it.gcp.datastream.DatastreamResourceManagerUtils.generateDatastreamId;
 
 import com.google.api.gax.core.CredentialsProvider;
+import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.datastream.v1.AvroFileFormat;
 import com.google.cloud.datastream.v1.BigQueryDestinationConfig;
 import com.google.cloud.datastream.v1.BigQueryProfile;
@@ -42,6 +43,7 @@ import com.google.cloud.datastream.v1.OracleProfile;
 import com.google.cloud.datastream.v1.OracleSourceConfig;
 import com.google.cloud.datastream.v1.PostgresqlProfile;
 import com.google.cloud.datastream.v1.PostgresqlSourceConfig;
+import com.google.cloud.datastream.v1.PrivateConnectivity;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.StaticServiceIpConnectivity;
 import com.google.cloud.datastream.v1.Stream;
@@ -54,9 +56,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import org.apache.arrow.util.VisibleForTesting;
 import org.apache.beam.it.common.ResourceManager;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,13 +69,22 @@ import org.slf4j.LoggerFactory;
 public final class DatastreamResourceManager implements ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(DatastreamResourceManager.class);
   private static final String FIELD_STATE = "state";
-  private final DatastreamClient datastreamClient;
-  private final String location;
+
+  private static final java.time.Duration DEFAULT_BQ_STALENESS_DURATION =
+      java.time.Duration.ofMinutes(15);
+
+  private final String testId;
   private final String projectId;
+  private final String location;
+
   private final Set<String> createdStreamIds;
   private final Set<String> createdConnectionProfileIds;
 
-  enum DestinationOutputFormat {
+  private final PrivateConnectivity privateConnectivity;
+
+  private final DatastreamClient datastreamClient;
+
+  public enum DestinationOutputFormat {
     AVRO_FILE_FORMAT,
     JSON_FILE_FORMAT
   }
@@ -91,109 +101,137 @@ public final class DatastreamResourceManager implements ResourceManager {
   @VisibleForTesting
   public DatastreamResourceManager(DatastreamClient datastreamClient, Builder builder) {
     this.datastreamClient = datastreamClient;
-    this.location = builder.location;
+    this.testId = builder.testName;
     this.projectId = builder.projectId;
+    this.location = builder.location;
     this.createdStreamIds = Collections.synchronizedSet(new HashSet<>());
     this.createdConnectionProfileIds = Collections.synchronizedSet(new HashSet<>());
+    this.privateConnectivity = builder.privateConnectivity;
   }
 
-  public static Builder builder(
-      String projectId, String location, CredentialsProvider credentialsProvider) {
-    checkArgument(!Strings.isNullOrEmpty(projectId), "projectID can not be null or empty");
-    checkArgument(!Strings.isNullOrEmpty(location), "location can not be null or empty");
-    return new Builder(projectId, location, credentialsProvider);
+  public static Builder builder(String testName, String projectId, String location) {
+    return new Builder(testName, projectId, location);
   }
 
   /**
+   * Helper method to construct and send a Connection Profile.
+   *
+   * @param connectionProfileBuilder The Connection Profile Builder with instance-specific
+   *     parameters set.
+   * @param connectionProfileId The display name of the Connection Profile.
+   * @return The Connection Profile that was created in Datastream.
+   */
+  private synchronized ConnectionProfile createConnectionProfile(
+      ConnectionProfile.Builder connectionProfileBuilder, String connectionProfileId)
+      throws ExecutionException, InterruptedException {
+    connectionProfileBuilder.setDisplayName(connectionProfileId);
+
+    if (privateConnectivity != null) {
+      connectionProfileBuilder.setPrivateConnectivity(privateConnectivity);
+    } else {
+      connectionProfileBuilder.setStaticServiceIpConnectivity(
+          StaticServiceIpConnectivity.getDefaultInstance());
+    }
+
+    CreateConnectionProfileRequest request =
+        CreateConnectionProfileRequest.newBuilder()
+            .setParent(LocationName.of(projectId, location).toString())
+            .setConnectionProfile(connectionProfileBuilder)
+            .setConnectionProfileId(connectionProfileId)
+            .build();
+
+    ConnectionProfile reference = datastreamClient.createConnectionProfileAsync(request).get();
+    createdConnectionProfileIds.add(connectionProfileId);
+    return reference;
+  }
+
+  /**
+   * Creates a Source Connection Profile for a JDBC server. Supported JDBC types are - MySql,
+   * Postgres and Oracle.
+   *
    * @param connectionProfileId The ID of the connection profile.
    * @param source An object representing the JDBC source.
    * @return A Datastream JDBC source connection profile.
    */
   private synchronized ConnectionProfile createJDBCSourceConnectionProfile(
       String connectionProfileId, JDBCSource source) {
-    checkArgument(
-        !Strings.isNullOrEmpty(connectionProfileId),
-        "connectionProfileId can not be null or empty");
+
     LOG.info(
         "Creating JDBC Source Connection Profile {} in project {}.",
         connectionProfileId,
         projectId);
+
     ConnectionProfile.Builder connectionProfileBuilder = ConnectionProfile.newBuilder();
-    JDBCSource.SourceType type = source.type();
+
+    switch (source.type()) {
+      case MYSQL:
+        MysqlProfile.Builder mysqlProfileBuilder = MysqlProfile.newBuilder();
+        mysqlProfileBuilder
+            .setHostname(source.hostname())
+            .setUsername(source.username())
+            .setPassword(source.password())
+            .setPort(source.port());
+        connectionProfileBuilder.setMysqlProfile(mysqlProfileBuilder);
+        break;
+      case ORACLE:
+        OracleProfile.Builder oracleProfileBuilder = OracleProfile.newBuilder();
+        oracleProfileBuilder
+            .setHostname(source.hostname())
+            .setUsername(source.username())
+            .setPassword(source.password())
+            .setPort(source.port())
+            .setDatabaseService(((OracleSource) source).database());
+        connectionProfileBuilder.setOracleProfile(oracleProfileBuilder);
+        break;
+      case POSTGRESQL:
+        PostgresqlProfile.Builder postgresqlProfileBuilder = PostgresqlProfile.newBuilder();
+        postgresqlProfileBuilder
+            .setHostname(source.hostname())
+            .setUsername(source.username())
+            .setPassword(source.password())
+            .setPort(source.port())
+            .setDatabase(((PostgresqlSource) source).database());
+        connectionProfileBuilder.setPostgresqlProfile(postgresqlProfileBuilder);
+        break;
+      default:
+        throw new DatastreamResourceManagerException(
+            "Could not recognize JDBC source type " + source.type().name());
+    }
 
     try {
-      switch (type) {
-        case MYSQL:
-          MysqlProfile.Builder mysqlProfileBuilder = MysqlProfile.newBuilder();
-          mysqlProfileBuilder
-              .setHostname(source.hostname())
-              .setUsername(source.username())
-              .setPassword(source.password())
-              .setPort(source.port());
-          connectionProfileBuilder.setMysqlProfile(mysqlProfileBuilder);
-          break;
-        case ORACLE:
-          OracleProfile.Builder oracleProfileBuilder = OracleProfile.newBuilder();
-          oracleProfileBuilder
-              .setHostname(source.hostname())
-              .setUsername(source.username())
-              .setPassword(source.password())
-              .setPort(source.port());
-          connectionProfileBuilder.setOracleProfile(oracleProfileBuilder);
-          break;
-        case POSTGRESQL:
-          PostgresqlProfile.Builder postgresqlProfileBuilder = PostgresqlProfile.newBuilder();
-          postgresqlProfileBuilder
-              .setHostname(source.hostname())
-              .setUsername(source.username())
-              .setPassword(source.password())
-              .setPort(source.port())
-              .setDatabase(((PostgresqlSource) source).database());
-          connectionProfileBuilder.setPostgresqlProfile(postgresqlProfileBuilder);
-          break;
-        default:
-          throw new DatastreamResourceManagerException(
-              "Could not recognize JDBC source type " + type.name());
-      }
 
-      ConnectionProfile connectionProfile =
-          connectionProfileBuilder
-              .setDisplayName(connectionProfileId)
-              .setStaticServiceIpConnectivity(StaticServiceIpConnectivity.getDefaultInstance())
-              .build();
-      CreateConnectionProfileRequest request =
-          CreateConnectionProfileRequest.newBuilder()
-              .setParent(LocationName.of(projectId, location).toString())
-              .setConnectionProfile(connectionProfile)
-              .setConnectionProfileId(connectionProfileId)
-              .build();
-      ConnectionProfile reference = datastreamClient.createConnectionProfileAsync(request).get();
-      createdConnectionProfileIds.add(connectionProfileId);
+      ConnectionProfile reference =
+          createConnectionProfile(connectionProfileBuilder, connectionProfileId);
 
       LOG.info(
           "Successfully created JDBC Source Connection Profile {} in project {}.",
           connectionProfileId,
           projectId);
+
       return reference;
-    } catch (ExecutionException | InterruptedException e) {
+
+    } catch (Exception e) {
       throw new DatastreamResourceManagerException(
-          "Failed to create JDBC source connection profile. ", e);
+          "Failed to create JDBC source connection profile.", e);
     }
   }
 
   /**
+   * Creates a Source Configuration for a JDBC server. Supported JDBC types are - MySql, Postgres
+   * and Oracle.
+   *
    * @param sourceConnectionProfileId The ID of the connection profile.
    * @param source An object representing the JDBC source.
    * @return a SourceConfig object which is required to configure a Stream.
    */
-  public synchronized SourceConfig buildSourceConfig(
+  public synchronized SourceConfig buildJDBCSourceConfig(
       String sourceConnectionProfileId, JDBCSource source) {
 
-    createJDBCSourceConnectionProfile(sourceConnectionProfileId, source);
+    ConnectionProfile connectionProfile =
+        createJDBCSourceConnectionProfile(
+            generateDatastreamId(testId + "-" + sourceConnectionProfileId), source);
     SourceConfig.Builder sourceConfigBuilder =
-        SourceConfig.newBuilder()
-            .setSourceConnectionProfile(
-                ConnectionProfileName.format(projectId, location, sourceConnectionProfileId));
+        SourceConfig.newBuilder().setSourceConnectionProfile(connectionProfile.getName());
 
     switch (source.type()) {
       case MYSQL:
@@ -207,78 +245,71 @@ public final class DatastreamResourceManager implements ResourceManager {
         break;
       default:
         throw new DatastreamResourceManagerException(
-            "Could not recognize JDBC source type " + source.type().name());
+            "Invalid JDBC source type "
+                + source.type().name()
+                + ". Must be one of MySQL, Postgres or Oracle.");
     }
 
     return sourceConfigBuilder.build();
   }
 
   /**
+   * Creates a Connection Profile for a GCS bucket.
+   *
    * @param connectionProfileId The ID of the GCS connection profile.
    * @param gcsBucketName The GCS Bucket to connect to.
-   * @param gcsRootPath The Path prefix to specific gcs location. Can either be empty or must start
-   *     with '/'.
    * @return A Datastream GCS destination connection profile.
    */
-  public synchronized ConnectionProfile createGCSDestinationConnectionProfile(
-      String connectionProfileId, String gcsBucketName, String gcsRootPath) {
-    checkArgument(
-        !Strings.isNullOrEmpty(connectionProfileId),
-        "connectionProfileId can not be null or empty");
-    checkArgument(!Strings.isNullOrEmpty(gcsBucketName), "gcsBucketName can not be null or empty");
-    checkArgument(gcsRootPath != null, "gcsRootPath can not be null");
-    checkArgument(
-        gcsRootPath.isEmpty() || gcsRootPath.charAt(0) == '/',
-        "gcsRootPath must either be an empty string or start with a '/'");
+  synchronized ConnectionProfile createGCSDestinationConnectionProfile(
+      String connectionProfileId, String gcsBucketName) {
 
     LOG.info(
         "Creating GCS Destination Connection Profile {} in project {}.",
         connectionProfileId,
         projectId);
 
+    ConnectionProfile.Builder connectionProfileBuilder =
+        ConnectionProfile.newBuilder()
+            .setGcsProfile(GcsProfile.newBuilder().setBucket(gcsBucketName).setRootPath("/"));
+
     try {
-      ConnectionProfile.Builder connectionProfileBuilder =
-          ConnectionProfile.newBuilder()
-              .setDisplayName(connectionProfileId)
-              .setStaticServiceIpConnectivity(StaticServiceIpConnectivity.getDefaultInstance())
-              .setGcsProfile(
-                  GcsProfile.newBuilder().setBucket(gcsBucketName).setRootPath(gcsRootPath));
 
-      CreateConnectionProfileRequest request =
-          CreateConnectionProfileRequest.newBuilder()
-              .setParent(LocationName.of(projectId, location).toString())
-              .setConnectionProfile(connectionProfileBuilder)
-              .setConnectionProfileId(connectionProfileId)
-              .build();
+      ConnectionProfile reference =
+          createConnectionProfile(connectionProfileBuilder, connectionProfileId);
 
-      ConnectionProfile reference = datastreamClient.createConnectionProfileAsync(request).get();
-      createdConnectionProfileIds.add(connectionProfileId);
       LOG.info(
           "Successfully created GCS Destination Connection Profile {} in project {}.",
           connectionProfileId,
           projectId);
 
       return reference;
-    } catch (ExecutionException | InterruptedException e) {
+
+    } catch (Exception e) {
       throw new DatastreamResourceManagerException(
-          "Failed to create GCS source connection profile. ", e);
+          "Failed to create GCS destination connection profile.", e);
     }
   }
 
   /**
+   * Creates a Destination Configuration for a GCS destination bucket.
+   *
    * @param connectionProfileId The ID of the connection profile.
-   * @param path The Path prefix to specific GCS location. Can either be empty or must start with
-   *     '/'.
+   * @param path The Path prefix to specific GCS location.
    * @param destinationOutputFormat The format of the files written to GCS.
    * @return A DestinationConfig object representing a GCS destination configuration.
    */
   public synchronized DestinationConfig buildGCSDestinationConfig(
-      String connectionProfileId, String path, DestinationOutputFormat destinationOutputFormat) {
+      String connectionProfileId,
+      String gcsBucketName,
+      String path,
+      DestinationOutputFormat destinationOutputFormat) {
+
+    ConnectionProfile connectionProfile =
+        createGCSDestinationConnectionProfile(
+            generateDatastreamId(testId + "-" + connectionProfileId), gcsBucketName);
 
     DestinationConfig.Builder destinationConfigBuilder =
-        DestinationConfig.newBuilder()
-            .setDestinationConnectionProfile(
-                ConnectionProfileName.format(projectId, location, connectionProfileId));
+        DestinationConfig.newBuilder().setDestinationConnectionProfile(connectionProfile.getName());
 
     GcsDestinationConfig.Builder gcsDestinationConfigBuilder =
         GcsDestinationConfig.newBuilder().setPath(path);
@@ -294,70 +325,83 @@ public final class DatastreamResourceManager implements ResourceManager {
   }
 
   /**
+   * Creates a Connection Profile for a BigQuery instance.
+   *
    * @param connectionProfileId The ID of the connection profile.
    * @return A Datastream BigQuery destination connection profile.
    */
-  public synchronized ConnectionProfile createBQDestinationConnectionProfile(
-      String connectionProfileId) {
+  synchronized ConnectionProfile createBQDestinationConnectionProfile(String connectionProfileId) {
 
     LOG.info(
         "Creating BQ Destination Connection Profile {} in project {}.",
         connectionProfileId,
         projectId);
 
+    ConnectionProfile.Builder connectionProfileBuilder =
+        ConnectionProfile.newBuilder().setBigqueryProfile(BigQueryProfile.newBuilder());
+
     try {
-      ConnectionProfile.Builder connectionProfileBuilder =
-          ConnectionProfile.newBuilder()
-              .setDisplayName(connectionProfileId)
-              .setStaticServiceIpConnectivity(StaticServiceIpConnectivity.getDefaultInstance())
-              .setBigqueryProfile(BigQueryProfile.newBuilder());
 
-      CreateConnectionProfileRequest request =
-          CreateConnectionProfileRequest.newBuilder()
-              .setParent(LocationName.of(projectId, location).toString())
-              .setConnectionProfile(connectionProfileBuilder)
-              .setConnectionProfileId(connectionProfileId)
-              .build();
-
-      ConnectionProfile reference = datastreamClient.createConnectionProfileAsync(request).get();
-      createdConnectionProfileIds.add(connectionProfileId);
+      ConnectionProfile reference =
+          createConnectionProfile(connectionProfileBuilder, connectionProfileId);
 
       LOG.info(
           "Successfully created BQ Destination Connection Profile {} in project {}.",
           connectionProfileId,
           projectId);
+
       return reference;
-    } catch (ExecutionException | InterruptedException e) {
+
+    } catch (Exception e) {
       throw new DatastreamResourceManagerException(
           "Failed to create BQ destination connection profile. ", e);
     }
   }
 
   /**
+   * Creates a Destination Configuration for a single BigQuery destination dataset.
+   *
    * @param connectionProfileId The ID of the connection profile.
-   * @param stalenessLimitSeconds The desired data freshness in seconds.
    * @param datasetId The ID of the BigQuery dataset.
    * @return A DestinationConfig object representing a BigQuery destination configuration.
    */
   public synchronized DestinationConfig buildBQDestinationConfig(
-      String connectionProfileId, long stalenessLimitSeconds, String datasetId) {
+      String connectionProfileId, DatasetId datasetId) {
+    return buildBQDestinationConfig(connectionProfileId, DEFAULT_BQ_STALENESS_DURATION, datasetId);
+  }
+
+  /**
+   * Creates a Destination Configuration for a single BigQuery destination dataset.
+   *
+   * @param connectionProfileId The ID of the connection profile.
+   * @param stalenessLimit The desired data freshness.
+   * @param datasetId The ID of the BigQuery dataset.
+   * @return A DestinationConfig object representing a BigQuery destination configuration.
+   */
+  public synchronized DestinationConfig buildBQDestinationConfig(
+      String connectionProfileId, java.time.Duration stalenessLimit, DatasetId datasetId) {
+
+    ConnectionProfile connectionProfile =
+        createBQDestinationConnectionProfile(
+            generateDatastreamId(testId + "-" + connectionProfileId));
 
     DestinationConfig.Builder destinationConfigBuilder =
-        DestinationConfig.newBuilder()
-            .setDestinationConnectionProfile(
-                ConnectionProfileName.format(projectId, location, connectionProfileId));
+        DestinationConfig.newBuilder().setDestinationConnectionProfile(connectionProfile.getName());
 
     BigQueryDestinationConfig.Builder bigQueryDestinationConfig =
         BigQueryDestinationConfig.newBuilder()
-            .setDataFreshness(Duration.newBuilder().setSeconds(stalenessLimitSeconds).build())
+            .setDataFreshness(Duration.newBuilder().setSeconds(stalenessLimit.getSeconds()))
             .setSingleTargetDataset(
-                BigQueryDestinationConfig.SingleTargetDataset.newBuilder().setDatasetId(datasetId));
+                BigQueryDestinationConfig.SingleTargetDataset.newBuilder()
+                    .setDatasetId(datasetId.getProject() + ":" + datasetId.getDataset()));
 
     destinationConfigBuilder.setBigqueryDestinationConfig(bigQueryDestinationConfig);
     return destinationConfigBuilder.build();
   }
 
   /**
+   * Creates a Datastream stream from the given source to the given destination.
+   *
    * @param streamId The ID of the stream.
    * @param sourceConfig A SourceConfig object representing the source configuration.
    * @param destinationConfig A DestinationConfig object representing the destination configuration.
@@ -365,7 +409,26 @@ public final class DatastreamResourceManager implements ResourceManager {
    */
   public synchronized Stream createStream(
       String streamId, SourceConfig sourceConfig, DestinationConfig destinationConfig) {
+    return createStream(
+        streamId, sourceConfig, destinationConfig, Stream.BackfillAllStrategy.getDefaultInstance());
+  }
 
+  /**
+   * Creates a Datastream stream from the given source to the given destination.
+   *
+   * @param streamId The ID of the stream.
+   * @param sourceConfig A SourceConfig object representing the source configuration.
+   * @param destinationConfig A DestinationConfig object representing the destination configuration.
+   * @param backfillAllStrategy
+   * @return A Datastream stream object.
+   */
+  public synchronized Stream createStream(
+      String streamId,
+      SourceConfig sourceConfig,
+      DestinationConfig destinationConfig,
+      Stream.BackfillAllStrategy backfillAllStrategy) {
+
+    streamId = generateDatastreamId(testId + "-" + streamId);
     LOG.info("Creating Stream {} in project {}.", streamId, projectId);
 
     try {
@@ -375,10 +438,10 @@ public final class DatastreamResourceManager implements ResourceManager {
               .setStreamId(streamId)
               .setStream(
                   Stream.newBuilder()
-                      .setSourceConfig(sourceConfig)
                       .setDisplayName(streamId)
+                      .setSourceConfig(sourceConfig)
                       .setDestinationConfig(destinationConfig)
-                      .setBackfillAll(Stream.BackfillAllStrategy.getDefaultInstance())
+                      .setBackfillAll(backfillAllStrategy)
                       .build())
               .build();
 
@@ -387,26 +450,22 @@ public final class DatastreamResourceManager implements ResourceManager {
 
       LOG.info("Successfully created Stream {} in project {}.", streamId, projectId);
       return reference;
-    } catch (ExecutionException | InterruptedException e) {
+    } catch (Exception e) {
       throw new DatastreamResourceManagerException("Failed to create stream. ", e);
     }
   }
 
-  public synchronized Stream updateStreamState(String streamId, Stream.State state) {
+  public synchronized Stream updateStreamState(Stream stream, Stream.State state) {
 
-    LOG.info("Updating {}'s state to {} in project {}.", streamId, state.name(), projectId);
+    LOG.info("Updating {}'s state to {} in project {}.", stream.getName(), state.name(), projectId);
 
     try {
-      Stream.Builder streamBuilder =
-          Stream.newBuilder()
-              .setName(StreamName.format(projectId, location, streamId))
-              .setState(state);
 
       FieldMask.Builder fieldMaskBuilder = FieldMask.newBuilder().addPaths(FIELD_STATE);
 
       UpdateStreamRequest request =
           UpdateStreamRequest.newBuilder()
-              .setStream(streamBuilder)
+              .setStream(stream.toBuilder().setState(state))
               .setUpdateMask(fieldMaskBuilder)
               .build();
 
@@ -414,26 +473,26 @@ public final class DatastreamResourceManager implements ResourceManager {
 
       LOG.info(
           "Successfully updated {}'s state to {} in project {}.",
-          streamId,
+          stream.getName(),
           state.name(),
           projectId);
+
       return reference;
-    } catch (InterruptedException | ExecutionException e) {
-      throw new DatastreamResourceManagerException("Failed to update stream. ", e);
+    } catch (Exception e) {
+      throw new DatastreamResourceManagerException("Failed to update stream.", e);
     }
   }
 
-  public synchronized Stream startStream(String streamId) {
-    LOG.info("Starting Stream {} in project {}.", streamId, projectId);
-    return updateStreamState(streamId, Stream.State.RUNNING);
+  public synchronized Stream startStream(Stream stream) {
+    LOG.info("Starting Stream {} in project {}.", stream.getName(), projectId);
+    return updateStreamState(stream, Stream.State.RUNNING);
   }
 
-  public synchronized Stream pauseStream(String streamId) {
-    LOG.info("Pausing Stream {} in project {}.", streamId, projectId);
-    return updateStreamState(streamId, Stream.State.PAUSED);
+  public synchronized Stream pauseStream(Stream stream) {
+    LOG.info("Pausing Stream {} in project {}.", stream.getName(), projectId);
+    return updateStreamState(stream, Stream.State.PAUSED);
   }
 
-  @Override
   public synchronized void cleanupAll() {
     LOG.info("Cleaning up Datastream resource manager.");
     boolean producedError = false;
@@ -485,18 +544,38 @@ public final class DatastreamResourceManager implements ResourceManager {
 
   /** Builder for {@link DatastreamResourceManager}. */
   public static final class Builder {
+    private final String testName;
     private final String projectId;
     private final String location;
+
     private CredentialsProvider credentialsProvider;
 
-    private Builder(String projectId, String location, CredentialsProvider credentialsProvider) {
+    private PrivateConnectivity privateConnectivity;
+
+    private Builder(String testName, String projectId, String location) {
+      this.testName = testName;
       this.projectId = projectId;
       this.location = location;
-      this.credentialsProvider = credentialsProvider;
     }
 
     public Builder setCredentialsProvider(CredentialsProvider credentialsProvider) {
       this.credentialsProvider = credentialsProvider;
+      return this;
+    }
+
+    public Builder setPrivateConnectivity(String privateConnectionName) {
+      this.privateConnectivity =
+          PrivateConnectivity.newBuilder()
+              .setPrivateConnection(
+                  String.join(
+                      "/",
+                      "projects",
+                      projectId,
+                      "locations",
+                      location,
+                      "privateConnections",
+                      privateConnectionName))
+              .build();
       return this;
     }
 

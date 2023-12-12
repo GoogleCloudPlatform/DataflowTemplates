@@ -43,6 +43,43 @@
             <artifactId>spanner-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>${json.version}</version>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-google-cloud-platform</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-conditions</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-jdbc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.30</version>
+            <scope>test</scope>
+        </dependency>
+<!--        TODO - Remove when https://github.com/apache/beam/pull/29732 is released. -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-jdbc</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>
