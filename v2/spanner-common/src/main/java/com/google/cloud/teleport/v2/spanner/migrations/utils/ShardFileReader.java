@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -51,9 +53,33 @@ public class ShardFileReader {
               .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
               .create()
               .fromJson(result, listOfShardObject);
+      Pattern partialPattern = Pattern.compile("projects/.*/secrets/.*");
+      Pattern fullPattern = Pattern.compile("projects/.*/secrets/.*/versions/.*");
+      Pattern partialWithSlash = Pattern.compile("projects/.*/secrets/.*/");
 
-      for (Shard s : shardList) {
-        LOG.info(" The shard is: {} ", s);
+      for (Shard shard : shardList) {
+        LOG.info(" The shard is: {} ", shard);
+        String password = shard.getPassword();
+
+        if (partialPattern.matcher(password).matches()) {
+          LOG.info("The matched secret for shard {} is : {}", shard.getLogicalShardId(), password);
+          if (fullPattern.matcher(password).matches()) {
+            LOG.info("The secret for shard {} is : {}", shard.getLogicalShardId(), password);
+            shard.setPassword(SecretManagerUtils.getSecret(password));
+          } else {
+            // partial match hence get the latest version
+            String versionToAppend = "versions/latest";
+            if (partialWithSlash.matcher(password).matches()) {
+              password += versionToAppend;
+            } else {
+              password += "/" + versionToAppend;
+            }
+
+            LOG.info(
+                "The generated secret for shard {} is : {}", shard.getLogicalShardId(), password);
+            shard.setPassword(SecretManagerUtils.getSecret(password));
+          }
+        }
       }
 
       Collections.sort(
