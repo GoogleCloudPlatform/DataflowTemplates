@@ -184,7 +184,6 @@ public final class SizedType {
               current = i + 1;
             }
             return t(Type.struct(fields.build()), null);
-            ;
           }
           break;
         }
