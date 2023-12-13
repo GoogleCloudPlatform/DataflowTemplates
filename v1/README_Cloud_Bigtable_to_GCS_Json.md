@@ -25,6 +25,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Optional Parameters
 
 * **outputDirectory** (Cloud Storage directory for storing JSON files): The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/).
+* **userOption** (User option): User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string. Defaults to: NONE.
+* **columnsAliases** (Columns aliases): Comma separated list of columns which are required for Vertex AI Vector Search Index. The `id` & `embedding` are required columns for Vertex Vector Search. You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are `rowkey` and `cf:my_embedding`, in which `rowkey` and the embedding column is named differently, `cf:my_embedding;embedding` and `rowkey;id` should be specified. Only used when FLATTEN user option is specified.
 
 
 
@@ -117,6 +119,8 @@ export FILENAME_PREFIX=part
 
 ### Optional
 export OUTPUT_DIRECTORY=<outputDirectory>
+export USER_OPTION=NONE
+export COLUMNS_ALIASES=<columnsAliases>
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-json-job" \
   --project "$PROJECT" \
@@ -126,7 +130,9 @@ gcloud dataflow jobs run "cloud-bigtable-to-gcs-json-job" \
   --parameters "bigtableInstanceId=$BIGTABLE_INSTANCE_ID" \
   --parameters "bigtableTableId=$BIGTABLE_TABLE_ID" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
-  --parameters "filenamePrefix=$FILENAME_PREFIX"
+  --parameters "filenamePrefix=$FILENAME_PREFIX" \
+  --parameters "userOption=$USER_OPTION" \
+  --parameters "columnsAliases=$COLUMNS_ALIASES"
 ```
 
 For more information about the command, please check:
@@ -152,6 +158,8 @@ export FILENAME_PREFIX=part
 
 ### Optional
 export OUTPUT_DIRECTORY=<outputDirectory>
+export USER_OPTION=NONE
+export COLUMNS_ALIASES=<columnsAliases>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -160,7 +168,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-gcs-json-job" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Json" \
--Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX" \
+-Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,userOption=$USER_OPTION,columnsAliases=$COLUMNS_ALIASES" \
 -pl v1 \
 -am
 ```
