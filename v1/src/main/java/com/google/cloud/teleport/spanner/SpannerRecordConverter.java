@@ -45,6 +45,7 @@ public class SpannerRecordConverter {
   private final Dialect dialect;
   private final List<FieldInfo> fields;
   private static final char ZERO_DIGIT = (new DecimalFormatSymbols()).getZeroDigit();
+  private boolean fieldsColumnIndicesInitialized = false;
 
   private static class FieldInfo {
     private final Schema.Field field;
@@ -59,6 +60,8 @@ public class SpannerRecordConverter {
     private final boolean matchesArray;
     private final boolean matchesVarchar;
     private final boolean matchesVarcharArray;
+
+    private int rowColumnIndex = -1;
 
     public FieldInfo(Schema.Field field) {
       this.field = field;
@@ -120,6 +123,14 @@ public class SpannerRecordConverter {
       return spannerType;
     }
 
+    public int getColumnIndex() {
+      return rowColumnIndex;
+    }
+
+    public void setColumnIndex(Struct row) {
+      rowColumnIndex = row.getColumnIndex(getName());
+    }
+
     public boolean matchesStringPattern() {
       return matchesString;
     }
@@ -153,6 +164,13 @@ public class SpannerRecordConverter {
   }
 
   public GenericRecord convert(Struct row) {
+    synchronized (this.fields) {
+      if (!fieldsColumnIndicesInitialized) {
+        this.fields.stream().forEach(fieldInfo -> fieldInfo.setColumnIndex(row));
+        fieldsColumnIndicesInitialized = true;
+      }
+    }
+
     GenericRecordBuilder builder = new GenericRecordBuilder(schema);
     for (FieldInfo fieldInfo : this.fields) {
       if (fieldInfo.isGenerated()) {
@@ -167,7 +185,7 @@ public class SpannerRecordConverter {
       Schema type = fieldInfo.getType();
       String spannerType = fieldInfo.getSpannerType();
 
-      int fieldIndex = row.getColumnIndex(fieldName);
+      int fieldIndex = fieldInfo.getColumnIndex();
 
       boolean nullValue = row.isNull(fieldIndex);
       if (nullValue && !fieldInfo.isNullable()) {

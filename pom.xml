@@ -35,7 +35,7 @@
 
     <!-- Plugins -->
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
-    <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
@@ -409,6 +409,9 @@
         <skipShade>true</skipShade>
         <!-- Some modules may yield no integration tests -->
         <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
       </properties>
       <build>
         <plugins>
@@ -434,6 +437,9 @@
                   <value>true</value>
                 </property>
               </systemProperties>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
               <trimStackTrace>false</trimStackTrace>
             </configuration>
           </plugin>
