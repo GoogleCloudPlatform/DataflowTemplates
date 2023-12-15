@@ -15,7 +15,10 @@
  */
 package com.google.cloud.teleport.spanner.common;
 
+import static java.lang.Character.isWhitespace;
+
 import com.google.cloud.spanner.Dialect;
+import com.google.common.collect.ImmutableList;
 
 /** Describes a type with size. */
 public final class SizedType {
@@ -74,6 +77,18 @@ public final class SizedType {
           Type arrayType = type.getArrayElementType();
           return "ARRAY<" + typeString(arrayType, size) + ">";
         }
+      case STRUCT:
+        {
+          StringBuilder sb = new StringBuilder();
+          for (int i = 0; i < type.getStructFields().size(); ++i) {
+            Type.StructField field = type.getStructFields().get(i);
+            sb.append(i > 0 ? ", " : "")
+                .append(field.getName())
+                .append(" ")
+                .append(typeString(field.getType(), -1));
+          }
+          return "STRUCT<" + sb.toString() + ">";
+        }
       case PG_ARRAY:
         {
           Type arrayType = type.getArrayElementType();
@@ -123,11 +138,59 @@ public final class SizedType {
           if (spannerType.equals("JSON")) {
             return t(Type.json(), null);
           }
-          if (spannerType.startsWith("ARRAY")) {
+          if (spannerType.startsWith("ARRAY<")) {
             // Substring "ARRAY<xxx>"
             String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);
             SizedType itemType = parseSpannerType(spannerArrayType, dialect);
             return t(Type.array(itemType.type), itemType.size);
+          }
+          if (spannerType.startsWith("STRUCT<")) {
+            // Substring "STRUCT<xxx>"
+            String spannerStructType = spannerType.substring(7, spannerType.length() - 1);
+            ImmutableList.Builder<Type.StructField> fields = ImmutableList.builder();
+            int current = 0;
+            // Parse each struct field. These type names are coming from information schema and are
+            // expected to be correctly formatted. Fields are specified as NAME TYPE and separated
+            // with commas. Since TYPE can be another struct we cannot simply split on commas, but
+            // instead we will count opening braces and ignore any commas that are part of field
+            // type specification.
+            while (current < spannerStructType.length()) {
+              int i = current;
+              // Skip whitespace.
+              for (; isWhitespace(spannerStructType.charAt(i)); ++i) {}
+              current = i;
+              // Read the name.
+              for (; !isWhitespace(spannerStructType.charAt(i)); ++i) {}
+              String fieldName = spannerStructType.substring(current, i);
+              // Skip whitespace.
+              for (; isWhitespace(spannerStructType.charAt(i)); ++i) {}
+              current = i;
+              // Find the end of the type.
+              int bracketCount = 0;
+              for (; i < spannerStructType.length(); ++i) {
+                char c = spannerStructType.charAt(i);
+                if (c == '<') {
+                  ++bracketCount;
+                } else if (c == '>') {
+                  if (--bracketCount < 0) {
+                    break;
+                  }
+                } else if (c == ',') {
+                  if (bracketCount == 0) {
+                    break;
+                  }
+                }
+              }
+              if (bracketCount != 0) {
+                throw new IllegalArgumentException("Unknown spanner type " + spannerType);
+              }
+              // Read the type.
+              SizedType fieldType =
+                  parseSpannerType(spannerStructType.substring(current, i), dialect);
+              fields.add(Type.StructField.of(fieldName, fieldType.type));
+              current = i + 1;
+            }
+            return t(Type.struct(fields.build()), null);
           }
           break;
         }
