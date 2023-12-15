@@ -63,7 +63,7 @@ public class BigtableToJsonIT extends TemplateTestBase {
   }
 
   @Test
-  public void testBigtableToJson() throws IOException {
+  public void testUnflattenedBigtableToJson() throws IOException {
     // Arrange
     String tableId = generateTableId(testName);
     bigtableResourceManager.createTable(tableId, ImmutableList.of("col1"));
@@ -82,6 +82,45 @@ public class BigtableToJsonIT extends TemplateTestBase {
             .addParameter("bigtableTableId", tableId)
             .addParameter("outputDirectory", getGcsPath("output/"))
             .addParameter("filenamePrefix", "bigtable-to-json-output-");
+
+    // Act
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    List<Artifact> artifacts = gcsClient.listArtifacts("output/", Pattern.compile(".*"));
+    assertThat(artifacts).isNotEmpty();
+
+    assertThatArtifacts(artifacts)
+        .asJsonRecords()
+        .hasRecordsWithStrings(ImmutableList.of("new-value1", "new-value2", "new-value3"));
+  }
+
+  @Test
+  public void testFlattenedBigtableToJson() throws IOException {
+    // Arrange
+    String tableId = generateTableId(testName);
+    bigtableResourceManager.createTable(tableId, ImmutableList.of("col1"));
+
+    long timestamp = System.currentTimeMillis() * 1000;
+    bigtableResourceManager.write(
+        ImmutableList.of(
+            RowMutation.create(tableId, "r1").setCell("col1", "c1", timestamp, "new-value1"),
+            RowMutation.create(tableId, "r2").setCell("col1", "c1", timestamp, "new-value2"),
+            RowMutation.create(tableId, "r3").setCell("col1", "c1", timestamp, "new-value3")));
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("bigtableProjectId", PROJECT)
+            .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableTableId", tableId)
+            .addParameter("outputDirectory", getGcsPath("output/"))
+            .addParameter("filenamePrefix", "bigtable-to-json-output-")
+            .addParameter("userOption", "FLATTEN");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
