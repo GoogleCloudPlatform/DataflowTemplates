@@ -221,6 +221,7 @@ public class JsonTestUtil {
   }
 
   /** Parse following value from JSON node: text, number, boolean, null. */
+  @SuppressWarnings("nullness")
   private static Object parseSimpleNode(JsonNode element) {
     if (element.isTextual()) {
       return element.asText();

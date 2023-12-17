@@ -227,18 +227,18 @@ public class BigTableIOLT extends IOLoadTestBase {
 
     @AutoValue.Builder
     abstract static class Builder {
-      abstract Configuration.Builder setNumRows(long numRows);
+      abstract Builder setNumRows(long numRows);
 
-      abstract Configuration.Builder setPipelineTimeout(int timeOutMinutes);
+      abstract Builder setPipelineTimeout(int timeOutMinutes);
 
-      abstract Configuration.Builder setRunner(String runner);
+      abstract Builder setRunner(String runner);
 
-      abstract Configuration.Builder setValueSizeBytes(int valueSizeBytes);
+      abstract Builder setValueSizeBytes(int valueSizeBytes);
 
       abstract Configuration build();
     }
 
-    abstract Configuration.Builder toBuilder();
+    abstract Builder toBuilder();
   }
 
   /** Maps long number to the BigTable format record. */
