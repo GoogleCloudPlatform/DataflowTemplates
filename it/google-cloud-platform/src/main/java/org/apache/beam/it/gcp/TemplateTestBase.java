@@ -87,12 +87,26 @@ public abstract class TemplateTestBase {
   @Rule
   public TestRule watcher =
       new TestWatcher() {
+        private long started;
+
+        @Override
         protected void starting(Description description) {
+          this.started = System.currentTimeMillis();
+
           LOG.info(
               "Starting integration test {}.{}",
               description.getClassName(),
               description.getMethodName());
           testName = description.getMethodName();
+        }
+
+        @Override
+        protected void finished(Description description) {
+          LOG.info(
+              "Finished integration test {}.{} in {} seconds",
+              description.getClassName(),
+              description.getMethodName(),
+              (System.currentTimeMillis() - this.started) / 1000.0);
         }
       };
 
