@@ -30,11 +30,12 @@ import (
 
 const (
 	// mvn commands
-	cleanInstallCmd  = "clean install"
-	cleanVerifyCmd   = "clean verify"
-	cleanTestCmd     = "clean test"
-	verifyCmd        = "verify"
-	spotlessCheckCmd = "spotless:check"
+	cleanInstallCmd    = "clean install"
+	cleanVerifyCmd     = "clean verify"
+	cleanTestCmd       = "clean test"
+	verifyCmd          = "verify"
+	spotlessCheckCmd   = "spotless:check"
+	checkstyleCheckCmd = "checkstyle:check"
 
 	// regexes
 	javaFileRegex     = "\\.java$"
@@ -274,7 +275,17 @@ func SpotlessCheck() Workflow {
 }
 
 func (*spotlessCheckWorkflow) Run(args ...string) error {
-	return RunForChangedModules(spotlessCheckCmd, args...)
+	return op.RunMavenOnPom(unifiedPom, spotlessCheckCmd, args...)
+}
+
+type checkstyleCheckWorkflow struct{}
+
+func CheckstyleCheck() Workflow {
+	return &checkstyleCheckWorkflow{}
+}
+
+func (*checkstyleCheckWorkflow) Run(args ...string) error {
+	return op.RunMavenOnPom(unifiedPom, checkstyleCheckCmd, args...)
 }
 
 // Removes root and returns results. This may reorder the input.
