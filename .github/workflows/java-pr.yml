@@ -48,6 +48,18 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Run Spotless
         run: ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+  checkstyle_check:
+    name: Checkstyle
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Checkstyle
+        run: ./cicd/run-checkstyle --changed-files="${{ steps.setup-env.outputs.changed-files }}"
   java_build:
     name: Build
     timeout-minutes: 60
@@ -86,7 +98,7 @@ jobs:
         uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:
     name: Dataflow Templates Integration Smoke Tests
-    needs: [java_build]
+    needs: [spotless_check, checkstyle_check, java_build]
     timeout-minutes: 60
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
@@ -143,7 +155,7 @@ jobs:
   java_load_tests_templates:
     if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
     name: Dataflow Templates Load Tests
-    needs: [spotless_check, java_build, java_unit_tests, java_integration_tests_templates]
+    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests, java_integration_tests_templates]
     timeout-minutes: 600
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, perf]
