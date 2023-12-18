@@ -61,7 +61,7 @@ import org.slf4j.LoggerFactory;
         "The Bigtable to JSON template is a pipeline that reads data from a Bigtable table and writes it to a Cloud Storage bucket in JSON format",
     optionsClass = Options.class,
     documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-json", // TODO(rongal): create guide.
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-json",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The Bigtable table must exist.",
