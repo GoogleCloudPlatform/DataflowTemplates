@@ -22,11 +22,9 @@ import com.google.cloud.datastream.v1.PostgresqlSchema;
 import com.google.cloud.datastream.v1.PostgresqlSourceConfig;
 import com.google.cloud.datastream.v1.PostgresqlTable;
 import com.google.protobuf.MessageOrBuilder;
-import java.util.List;
-import java.util.Map;
 
 /**
- * Client for PostgreSQL resource used by Datastream.
+ * Client for Postgresql resource used by Datastream.
  *
  * <p>Subclass of {@link JDBCSource}.
  */
@@ -47,12 +45,10 @@ public class PostgresqlSource extends JDBCSource {
       String username,
       String password,
       int port,
-      Map<String, List<String>> allowedTables,
       String database,
       String replicationSlot,
       String publication) {
-    return new Builder(
-        hostname, username, password, port, allowedTables, database, replicationSlot, publication);
+    return new Builder(hostname, username, password, port, database, replicationSlot, publication);
   }
 
   @Override
@@ -62,41 +58,41 @@ public class PostgresqlSource extends JDBCSource {
 
   @Override
   public MessageOrBuilder config() {
-    PostgresqlRdbms.Builder postgresqlRdbmsBuilder = PostgresqlRdbms.newBuilder();
-
-    for (String schema : this.allowedTables().keySet()) {
-      PostgresqlSchema.Builder postgresqlSchemaBuilder =
-          PostgresqlSchema.newBuilder().setSchema(schema);
-      for (String table : allowedTables().get(schema)) {
-        postgresqlSchemaBuilder.addPostgresqlTables(PostgresqlTable.newBuilder().setTable(table));
+    PostgresqlSourceConfig.Builder configBuilder = PostgresqlSourceConfig.newBuilder();
+    if (this.allowedTables().size() > 0) {
+      PostgresqlRdbms.Builder postgresqlRdbmsBuilder = PostgresqlRdbms.newBuilder();
+      for (String schema : this.allowedTables().keySet()) {
+        PostgresqlSchema.Builder postgresqlSchemaBuilder =
+            PostgresqlSchema.newBuilder().setSchema(schema);
+        for (String table : allowedTables().get(schema)) {
+          postgresqlSchemaBuilder.addPostgresqlTables(PostgresqlTable.newBuilder().setTable(table));
+        }
+        postgresqlRdbmsBuilder.addPostgresqlSchemas(postgresqlSchemaBuilder);
       }
-      postgresqlRdbmsBuilder.addPostgresqlSchemas(postgresqlSchemaBuilder);
+      configBuilder.setIncludeObjects(postgresqlRdbmsBuilder);
     }
-    return PostgresqlSourceConfig.newBuilder()
-        .setIncludeObjects(postgresqlRdbmsBuilder)
-        .setPublication(this.publication)
-        .setReplicationSlot(this.replicationSlot);
+    return configBuilder.setPublication(this.publication).setReplicationSlot(this.replicationSlot);
   }
 
   public String database() {
     return this.database;
   }
 
+  /** Builder for {@link PostgresqlSource}. */
   public static class Builder extends JDBCSource.Builder<PostgresqlSource> {
-    private String database;
-    private String publication;
-    private String replicationSlot;
+    private final String database;
+    private final String publication;
+    private final String replicationSlot;
 
     public Builder(
         String hostname,
         String username,
         String password,
         int port,
-        Map<String, List<String>> allowedTables,
         String database,
         String replicationSlot,
         String publication) {
-      super(hostname, username, password, port, allowedTables);
+      super(hostname, username, password, port);
       this.database = database;
       this.replicationSlot = replicationSlot;
       this.publication = publication;

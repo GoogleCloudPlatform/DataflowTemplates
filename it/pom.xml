@@ -186,5 +186,7 @@
   <modules>
     <module>google-cloud-platform</module>
     <module>datadog</module>
+    <module>conditions</module>
+    <module>jdbc</module>
   </modules>
 </project>
