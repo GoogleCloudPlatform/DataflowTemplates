@@ -47,19 +47,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-
-
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin). 
 
 ### Building Template
 
@@ -85,8 +78,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Spanner_to_GCS_Text" \
--pl v1 \
--am
+-f v1
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -185,8 +177,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="spanner-to-gcs-text-job" \
 -DtemplateName="Spanner_to_GCS_Text" \
 -Dparameters="csvTempDirectory=$CSV_TEMP_DIRECTORY,spannerPriority=$SPANNER_PRIORITY,spannerTable=$SPANNER_TABLE,spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabaseId=$SPANNER_DATABASE_ID,spannerHost=$SPANNER_HOST,spannerSnapshotTime=$SPANNER_SNAPSHOT_TIME,dataBoostEnabled=$DATA_BOOST_ENABLED,textWritePrefix=$TEXT_WRITE_PREFIX" \
--pl v1 \
--am
+-f v1
 ```
 
 ## Terraform

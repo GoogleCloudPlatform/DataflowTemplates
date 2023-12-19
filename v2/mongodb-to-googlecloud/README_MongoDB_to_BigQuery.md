@@ -18,11 +18,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **mongoDbUri** (MongoDB Connection URI): MongoDB connection URI in the format `mongodb+srv://:@`. Defaults to: mongouri.
+* **mongoDbUri** (MongoDB Connection URI): MongoDB connection URI in the format `mongodb+srv://:@`.
 * **database** (MongoDB database): Database in MongoDB to read the collection from. (Example: my-db).
-* **collection** (MongoDB collection): Name of the collection inside MongoDB database. (Example: my-collection). Defaults to: collection.
+* **collection** (MongoDB collection): Name of the collection inside MongoDB database. (Example: my-collection).
 * **userOption** (User option): User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string. Defaults to: NONE.
-* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects. Defaults to: bqtable.
+* **outputTableSpec** (BigQuery output table): BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 
 ### Optional Parameters
 
@@ -47,19 +47,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-
-
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/mongodb-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/mongodb/templates/MongoDbToBigQuery.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin). 
 
 ### Building Template
 
@@ -85,8 +78,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="MongoDB_to_BigQuery" \
--pl v2/mongodb-to-googlecloud \
--am
+-f v2/mongodb-to-googlecloud
 ```
 
 
@@ -117,11 +109,11 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/MongoDB_to_BigQuery"
 
 ### Required
-export MONGO_DB_URI=mongouri
+export MONGO_DB_URI=<mongoDbUri>
 export DATABASE=<database>
-export COLLECTION=collection
+export COLLECTION=<collection>
 export USER_OPTION=NONE
-export OUTPUT_TABLE_SPEC=bqtable
+export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
@@ -162,11 +154,11 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export MONGO_DB_URI=mongouri
+export MONGO_DB_URI=<mongoDbUri>
 export DATABASE=<database>
-export COLLECTION=collection
+export COLLECTION=<collection>
 export USER_OPTION=NONE
-export OUTPUT_TABLE_SPEC=bqtable
+export OUTPUT_TABLE_SPEC=<outputTableSpec>
 
 ### Optional
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
@@ -183,8 +175,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="mongodb-to-bigquery-job" \
 -DtemplateName="MongoDB_to_BigQuery" \
 -Dparameters="mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,KMSEncryptionKey=$KMSENCRYPTION_KEY,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,outputTableSpec=$OUTPUT_TABLE_SPEC,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
--pl v2/mongodb-to-googlecloud \
--am
+-f v2/mongodb-to-googlecloud
 ```
 
 ## Terraform
@@ -213,11 +204,11 @@ resource "google_dataflow_flex_template_job" "mongodb_to_bigquery" {
   name              = "mongodb-to-bigquery"
   region            = var.region
   parameters        = {
-    mongoDbUri = "mongouri"
+    mongoDbUri = "<mongoDbUri>"
     database = "my-db"
     collection = "my-collection"
     userOption = "NONE"
-    outputTableSpec = "bqtable"
+    outputTableSpec = "<outputTableSpec>"
     # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"

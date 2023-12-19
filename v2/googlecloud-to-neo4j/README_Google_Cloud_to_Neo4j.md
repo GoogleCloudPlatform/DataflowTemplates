@@ -21,10 +21,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required Parameters
 
 * **jobSpecUri** (Path to the job specification file): The path to the job specification file, which contains the configuration for source and target metadata.
-* **neo4jConnectionUri** (Path to the Neo4j connection metadata): The path to Neo4j connection metadata JSON file.
 
 ### Optional Parameters
 
+* **neo4jConnectionUri** (Path to the Neo4j connection metadata): The path to Neo4j connection metadata JSON file. This is an alternative to the secret option.
+* **neo4jConnectionSecretId** (Secret ID for the Neo4j connection metadata): The secret ID for the Neo4j connection metadata. This is an alternative to the GCS path option.
 * **optionsJson** (Options JSON): Options JSON. Use runtime tokens. (Example: {token1:value1,token2:value2}). Defaults to empty.
 * **readQuery** (Query SQL): Override SQL query. Defaults to empty.
 * **inputFilePattern** (Path to Text File): Override text file pattern (Example: gs://your-bucket/path/*.json). Defaults to empty.
@@ -46,19 +47,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-
-
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-neo4j/src/main/java/com/google/cloud/teleport/v2/neo4j/templates/GoogleCloudToNeo4j.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin). 
 
 ### Building Template
 
@@ -84,8 +78,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Google_Cloud_to_Neo4j" \
--pl v2/googlecloud-to-neo4j \
--am
+-f v2/googlecloud-to-neo4j
 ```
 
 
@@ -117,9 +110,10 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Google_Cloud_to_N
 
 ### Required
 export JOB_SPEC_URI=<jobSpecUri>
-export NEO4J_CONNECTION_URI=<neo4jConnectionUri>
 
 ### Optional
+export NEO4J_CONNECTION_URI=<neo4jConnectionUri>
+export NEO4J_CONNECTION_SECRET_ID=<neo4jConnectionSecretId>
 export OPTIONS_JSON=""
 export READ_QUERY=""
 export INPUT_FILE_PATTERN=""
@@ -132,6 +126,7 @@ gcloud dataflow flex-template run "google-cloud-to-neo4j-job" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "jobSpecUri=$JOB_SPEC_URI" \
   --parameters "neo4jConnectionUri=$NEO4J_CONNECTION_URI" \
+  --parameters "neo4jConnectionSecretId=$NEO4J_CONNECTION_SECRET_ID" \
   --parameters "optionsJson=$OPTIONS_JSON" \
   --parameters "readQuery=$READ_QUERY" \
   --parameters "inputFilePattern=$INPUT_FILE_PATTERN" \
@@ -156,9 +151,10 @@ export REGION=us-central1
 
 ### Required
 export JOB_SPEC_URI=<jobSpecUri>
-export NEO4J_CONNECTION_URI=<neo4jConnectionUri>
 
 ### Optional
+export NEO4J_CONNECTION_URI=<neo4jConnectionUri>
+export NEO4J_CONNECTION_SECRET_ID=<neo4jConnectionSecretId>
 export OPTIONS_JSON=""
 export READ_QUERY=""
 export INPUT_FILE_PATTERN=""
@@ -172,9 +168,8 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="google-cloud-to-neo4j-job" \
 -DtemplateName="Google_Cloud_to_Neo4j" \
--Dparameters="jobSpecUri=$JOB_SPEC_URI,neo4jConnectionUri=$NEO4J_CONNECTION_URI,optionsJson=$OPTIONS_JSON,readQuery=$READ_QUERY,inputFilePattern=$INPUT_FILE_PATTERN,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
--pl v2/googlecloud-to-neo4j \
--am
+-Dparameters="jobSpecUri=$JOB_SPEC_URI,neo4jConnectionUri=$NEO4J_CONNECTION_URI,neo4jConnectionSecretId=$NEO4J_CONNECTION_SECRET_ID,optionsJson=$OPTIONS_JSON,readQuery=$READ_QUERY,inputFilePattern=$INPUT_FILE_PATTERN,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-f v2/googlecloud-to-neo4j
 ```
 
 ## Terraform
@@ -204,7 +199,8 @@ resource "google_dataflow_flex_template_job" "google_cloud_to_neo4j" {
   region            = var.region
   parameters        = {
     jobSpecUri = "<jobSpecUri>"
-    neo4jConnectionUri = "<neo4jConnectionUri>"
+    # neo4jConnectionUri = "<neo4jConnectionUri>"
+    # neo4jConnectionSecretId = "<neo4jConnectionSecretId>"
     # optionsJson = "{token1:value1,token2:value2}"
     # readQuery = ""
     # inputFilePattern = "gs://your-bucket/path/*.json"

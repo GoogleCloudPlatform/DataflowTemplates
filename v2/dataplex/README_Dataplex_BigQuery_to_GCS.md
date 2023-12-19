@@ -45,19 +45,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-
-
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/dataplex/src/main/java/com/google/cloud/teleport/v2/templates/DataplexBigQueryToGcs.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin). 
 
 ### Building Template
 
@@ -83,8 +76,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Dataplex_BigQuery_to_GCS" \
--pl v2/dataplex \
--am
+-f v2/dataplex
 ```
 
 
@@ -187,8 +179,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="dataplex-bigquery-to-gcs-job" \
 -DtemplateName="Dataplex_BigQuery_to_GCS" \
 -Dparameters="sourceBigQueryDataset=$SOURCE_BIG_QUERY_DATASET,tables=$TABLES,destinationStorageBucketAssetName=$DESTINATION_STORAGE_BUCKET_ASSET_NAME,exportDataModifiedBeforeDateTime=$EXPORT_DATA_MODIFIED_BEFORE_DATE_TIME,maxParallelBigQueryMetadataRequests=$MAX_PARALLEL_BIG_QUERY_METADATA_REQUESTS,fileFormat=$FILE_FORMAT,fileCompression=$FILE_COMPRESSION,partitionIdRegExp=$PARTITION_ID_REG_EXP,writeDisposition=$WRITE_DISPOSITION,enforceSamePartitionKey=$ENFORCE_SAME_PARTITION_KEY,deleteSourceData=$DELETE_SOURCE_DATA,updateDataplexMetadata=$UPDATE_DATAPLEX_METADATA" \
--pl v2/dataplex \
--am
+-f v2/dataplex
 ```
 
 ## Terraform
