@@ -22,8 +22,8 @@ import com.google.auto.value.AutoValue;
 
 /**
  * Models a terraform variable definition. See <a
- * href="https://developer.hashicorp.com/terraform/language/values/variables">Input Variables</a> for
- * more information.
+ * href="https://developer.hashicorp.com/terraform/language/values/variables">Input Variables</a>
+ * for more information.
  */
 @AutoValue
 @JsonSerialize(as = TerraformVariable.class)
