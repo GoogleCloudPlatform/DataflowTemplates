@@ -1,0 +1,9 @@
+[
+  {
+  "logicalShardId":"shardA",
+  "host":"hostShardA",
+  "user":"test",
+  "port":"3306",
+  "dbName":"test"
+  }
+]
