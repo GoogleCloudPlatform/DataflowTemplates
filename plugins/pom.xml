@@ -54,7 +54,7 @@
                             <style>GOOGLE</style>
                         </googleJavaFormat>
                         <licenseHeader>
-                            <file>JAVA_LICENSE_HEADER</file>
+                            <file>../JAVA_LICENSE_HEADER</file>
                         </licenseHeader>
                     </java>
                 </configuration>
