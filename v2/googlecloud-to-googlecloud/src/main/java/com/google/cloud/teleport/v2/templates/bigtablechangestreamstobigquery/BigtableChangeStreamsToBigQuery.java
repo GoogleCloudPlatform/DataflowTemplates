@@ -88,7 +88,8 @@ import org.slf4j.LoggerFactory;
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-bigtable-change-streams-to-bigquery",
     flexContainerName = "bigtable-changestreams-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    streaming = true)
 public final class BigtableChangeStreamsToBigQuery {
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToBigQuery.class);
 

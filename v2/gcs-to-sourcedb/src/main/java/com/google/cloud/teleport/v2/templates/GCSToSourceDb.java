@@ -58,7 +58,8 @@ import org.slf4j.LoggerFactory;
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/gcs-to-sourcedb",
     contactInformation = "https://cloud.google.com/support",
-    hidden = true)
+    hidden = true,
+    streaming = true)
 public class GCSToSourceDb {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceDb.class);

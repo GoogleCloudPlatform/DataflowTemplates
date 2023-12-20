@@ -28,7 +28,8 @@ displayName = "Streaming LLM",
 description = "Execute Large Language Models in Streaming mode using Pub/Sub.",
 flexContainerName = "streaming-llm",
 contactInformation = "https://cloud.google.com/support",
-hidden = true)*/
+hidden = true,
+streaming = true)*/
 public interface StreamingLLM {
 
   @TemplateParameter.PubsubSubscription(

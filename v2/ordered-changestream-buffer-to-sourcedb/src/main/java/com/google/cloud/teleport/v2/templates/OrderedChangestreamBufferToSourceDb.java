@@ -59,7 +59,8 @@ import org.slf4j.LoggerFactory;
     optionsClass = Options.class,
     flexContainerName = "ordered-changestream-buffer-to-sourcedb",
     contactInformation = "https://cloud.google.com/support",
-    hidden = true)
+    hidden = true,
+    streaming = true)
 public class OrderedChangestreamBufferToSourceDb {
 
   private static final Logger LOG =

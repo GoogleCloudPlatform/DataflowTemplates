@@ -109,7 +109,8 @@ import org.slf4j.LoggerFactory;
       "The Pub/Sub unprocessed topic must exist prior to running the pipeline.",
       "The Redis database endpoint must be accessible from the Dataflow workers' subnetwork.",
     },
-    preview = true)
+    preview = true,
+    streaming = true)
 public class PubSubToRedis {
   /*
    * Options supported by {@link PubSubToRedis}

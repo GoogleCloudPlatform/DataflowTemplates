@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
     optionsClass = BigtableChangeStreamsToHBase.BigtableToHbasePipelineOptions.class,
     flexContainerName = "bigtable-changestreams-to-hbase",
     contactInformation = "https://cloud.google.com/support",
+    streaming = true,
     preview = true)
 public class BigtableChangeStreamsToHBase {
 

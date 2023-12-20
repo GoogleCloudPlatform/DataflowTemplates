@@ -94,7 +94,8 @@ import org.apache.commons.lang3.ArrayUtils;
       "The output Pub/Sub topic must exist.",
       "The output BigQuery dataset must exist.",
       "If the BigQuery table exists, it must have a schema matching the proto data regardless of the <code>createDisposition</code> value."
-    })
+    },
+    streaming = true)
 public final class PubsubProtoToBigQuery {
   private static final TupleTag<FailsafeElement<String, String>> UDF_SUCCESS_TAG = new TupleTag<>();
   private static final TupleTag<FailsafeElement<String, String>> UDF_FAILURE_TAG = new TupleTag<>();

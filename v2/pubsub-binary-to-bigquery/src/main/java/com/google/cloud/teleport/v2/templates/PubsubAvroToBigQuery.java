@@ -68,7 +68,8 @@ import org.apache.beam.sdk.values.Row;
       "The schema file for the Avro records must exist on Cloud Storage.",
       "The unprocessed Pub/Sub topic must exist.",
       "The output BigQuery dataset must exist."
-    })
+    },
+    streaming = true)
 public final class PubsubAvroToBigQuery {
   /**
    * Validates input flags and executes the Dataflow pipeline.

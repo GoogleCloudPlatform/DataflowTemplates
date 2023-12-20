@@ -111,7 +111,8 @@ import org.slf4j.LoggerFactory;
       "BigQuery destination datasets are created and the Compute Engine Service Account has been granted admin access to them.",
       "A primary key is necessary in the source table for the destination replica table to be created.",
       "A MySQL or Oracle source database. PostgreSQL databases are not supported."
-    })
+    },
+    streaming = true)
 public class DataStreamToBigQuery {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToBigQuery.class);

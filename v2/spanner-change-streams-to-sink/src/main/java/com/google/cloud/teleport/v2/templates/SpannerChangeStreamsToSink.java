@@ -64,7 +64,8 @@ import org.slf4j.LoggerFactory;
     optionsClass = Options.class,
     flexContainerName = "spanner-change-streams-to-sink",
     contactInformation = "https://cloud.google.com/support",
-    hidden = true)
+    hidden = true,
+    streaming = true)
 public class SpannerChangeStreamsToSink {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToSink.class);

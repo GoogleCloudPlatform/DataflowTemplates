@@ -410,6 +410,10 @@ public abstract class TemplateTestBase {
       options.addEnvironment("workerMachineType", System.getProperty("workerMachineType"));
     }
 
+    if (System.getProperty("streamingAtLeastOnce") != null) {
+      appendExperiment(options, "streaming_mode_at_least_once");
+    }
+
     if (usingDirectRunner) {
       // For direct runner tests we need to explicitly add a tempLocation if missing
       if (options.getParameter("tempLocation") == null) {

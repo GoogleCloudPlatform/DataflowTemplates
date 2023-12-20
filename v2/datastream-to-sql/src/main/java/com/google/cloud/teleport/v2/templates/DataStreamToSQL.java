@@ -82,7 +82,8 @@ import org.slf4j.LoggerFactory;
       "<a href=\"https://cloud.google.com/storage/docs/reporting-changes\">Cloud Storage Pub/Sub notifications</a> are enabled for the Datastream data.",
       "A PostgreSQL database was seeded with the required schema.",
       "Network access between Dataflow workers and PostgreSQL is set up."
-    })
+    },
+    streaming = true)
 public class DataStreamToSQL {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSQL.class);

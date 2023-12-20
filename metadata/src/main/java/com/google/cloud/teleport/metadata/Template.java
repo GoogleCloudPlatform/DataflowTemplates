@@ -83,6 +83,15 @@ public @interface Template {
   /** Language in which the template is defined. */
   TemplateType type() default TemplateType.JAVA;
 
+  /** Indicates if the template is a streaming pipeline. * */
+  boolean streaming() default false;
+
+  /** Indicates if the template supports at-least-once correctness. */
+  boolean supportsAtLeastOnce() default true;
+
+  /** Indicates if it there are benefits to run the template using exactly-once correctness. */
+  boolean supportsExactlyOnce() default true;
+
   public @interface AdditionalDocumentationBlock {
     String name();
 

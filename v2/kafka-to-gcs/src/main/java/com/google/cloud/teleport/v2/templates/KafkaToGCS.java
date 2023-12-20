@@ -72,7 +72,8 @@ import org.slf4j.LoggerFactory;
     optionsClass = KafkaToGCSOptions.class,
     flexContainerName = "kafka-to-gcs",
     contactInformation = "https://cloud.google.com/support",
-    hidden = true)
+    hidden = true,
+    streaming = true)
 public class KafkaToGCS {
 
   /* Logger for class. */

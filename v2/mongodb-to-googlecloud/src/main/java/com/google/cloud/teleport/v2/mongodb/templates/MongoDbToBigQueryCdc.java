@@ -68,7 +68,8 @@ import org.slf4j.LoggerFactory;
       "The target BigQuery dataset must exist.",
       "The source MongoDB instance must be accessible from the Dataflow worker machines.",
       "The change stream pushing changes from MongoDB to Pub/Sub should be running."
-    })
+    },
+    streaming = true)
 public class MongoDbToBigQueryCdc {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
