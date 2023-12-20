@@ -18,10 +18,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **mongoDbUri** (MongoDB Connection URI): URI to connect to MongoDB Atlas. Defaults to: mongouri.
-* **database** (MongoDB Database): Database in MongoDB to store the collection. (Example: my-db). Defaults to: db.
-* **collection** (MongoDB collection): Name of the collection inside MongoDB database. (Example: my-collection). Defaults to: collection.
-* **inputTableSpec** (BigQuery source table): BigQuery source table spec. (Example: bigquery-project:dataset.input_table). Defaults to: bqtable.
+* **mongoDbUri** (MongoDB Connection URI): URI to connect to MongoDB Atlas.
+* **database** (MongoDB Database): Database in MongoDB to store the collection. (Example: my-db).
+* **collection** (MongoDB collection): Name of the collection inside MongoDB database. (Example: my-collection).
+* **inputTableSpec** (BigQuery source table): BigQuery source table spec. (Example: bigquery-project:dataset.input_table).
 
 ### Optional Parameters
 
@@ -41,19 +41,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-
-
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/googlecloud-to-mongodb/src/main/java/com/google/cloud/teleport/v2/mongodb/templates/BigQueryToMongoDb.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
 
 ### Building Template
 
@@ -79,8 +72,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="BigQuery_to_MongoDB" \
--pl v2/googlecloud-to-mongodb \
--am
+-f v2/googlecloud-to-mongodb
 ```
 
 
@@ -111,10 +103,10 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/BigQuery_to_MongoDB"
 
 ### Required
-export MONGO_DB_URI=mongouri
-export DATABASE=db
-export COLLECTION=collection
-export INPUT_TABLE_SPEC=bqtable
+export MONGO_DB_URI=<mongoDbUri>
+export DATABASE=<database>
+export COLLECTION=<collection>
+export INPUT_TABLE_SPEC=<inputTableSpec>
 
 ### Optional
 
@@ -144,10 +136,10 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export MONGO_DB_URI=mongouri
-export DATABASE=db
-export COLLECTION=collection
-export INPUT_TABLE_SPEC=bqtable
+export MONGO_DB_URI=<mongoDbUri>
+export DATABASE=<database>
+export COLLECTION=<collection>
+export INPUT_TABLE_SPEC=<inputTableSpec>
 
 ### Optional
 
@@ -159,8 +151,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="bigquery-to-mongodb-job" \
 -DtemplateName="BigQuery_to_MongoDB" \
 -Dparameters="mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,inputTableSpec=$INPUT_TABLE_SPEC" \
--pl v2/googlecloud-to-mongodb \
--am
+-f v2/googlecloud-to-mongodb
 ```
 
 ## Terraform
@@ -189,7 +180,7 @@ resource "google_dataflow_flex_template_job" "bigquery_to_mongodb" {
   name              = "bigquery-to-mongodb"
   region            = var.region
   parameters        = {
-    mongoDbUri = "mongouri"
+    mongoDbUri = "<mongoDbUri>"
     database = "my-db"
     collection = "my-collection"
     inputTableSpec = "bigquery-project:dataset.input_table"

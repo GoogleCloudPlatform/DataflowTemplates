@@ -55,19 +55,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-
-
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/astradb-to-bigquery/src/main/java/com/google/cloud/teleport/v2/astradb/templates/AstraDbToBigQuery.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
 
 ### Building Template
 
@@ -93,8 +86,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="AstraDB_To_BigQuery" \
--pl v2/astradb-to-bigquery \
--am
+-f v2/astradb-to-bigquery
 ```
 
 
@@ -185,8 +177,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="astradb-to-bigquery-job" \
 -DtemplateName="AstraDB_To_BigQuery" \
 -Dparameters="astraToken=$ASTRA_TOKEN,astraDatabaseId=$ASTRA_DATABASE_ID,astraKeyspace=$ASTRA_KEYSPACE,astraTable=$ASTRA_TABLE,astraQuery=$ASTRA_QUERY,astraDatabaseRegion=$ASTRA_DATABASE_REGION,minTokenRangesCount=$MIN_TOKEN_RANGES_COUNT,outputTableSpec=$OUTPUT_TABLE_SPEC" \
--pl v2/astradb-to-bigquery \
--am
+-f v2/astradb-to-bigquery
 ```
 
 ## Terraform
