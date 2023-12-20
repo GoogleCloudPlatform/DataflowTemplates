@@ -54,6 +54,9 @@ public class TemplateTerraformGenerator {
 
   public static void terraform(ImageSpec imageSpec, OutputStream destination) throws IOException {
     LOG.info("Generating terraform for template {}...", imageSpec.getMetadata().getInternalName());
+    ObjectNode root = OBJECT_MAPPER.createObjectNode();
+    terraform(imageSpec, root);
+    OBJECT_MAPPER.writer().writeValue(destination, root);
     destination.flush();
     destination.close();
   }
@@ -61,7 +64,7 @@ public class TemplateTerraformGenerator {
   @VisibleForTesting
   static void terraform(ImageSpec imageSpec, ObjectNode destination) {
     destination.put(COMMENT_KEY, COMMENT_VALUE);
-    terraform(imageSpec.getMetadata().getParameters(), destination);
+    //    terraform(imageSpec.getMetadata().getParameters(), destination);
   }
 
   @VisibleForTesting

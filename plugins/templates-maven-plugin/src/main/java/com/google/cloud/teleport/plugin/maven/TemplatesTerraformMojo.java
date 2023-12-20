@@ -15,16 +15,22 @@
  */
 package com.google.cloud.teleport.plugin.maven;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import com.google.cloud.teleport.plugin.terraform.TemplateTerraformGenerator;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -41,19 +47,15 @@ import org.slf4j.LoggerFactory;
     requiresDependencyResolution = ResolutionScope.COMPILE)
 public class TemplatesTerraformMojo extends TemplatesBaseMojo {
   private static final Logger LOG = LoggerFactory.getLogger(TemplatesTerraformMojo.class);
-  private static final String FILE_PATH = "terraform/main.tf.json";
+
+  private static final String TERRAFORM = "terraform";
+  private static final String TF_JSON_FILE_NAME = "dataflow_job.tf.json";
 
   @Override
   public void execute() throws MojoExecutionException {
 
     try {
       URLClassLoader loader = buildClassloader();
-
-      LOG.info("Generating Template Specs, saving at target: {}", targetDirectory);
-
-      if (!targetDirectory.exists()) {
-        boolean ignored = targetDirectory.mkdirs();
-      }
 
       List<TemplateDefinitions> templateDefinitions =
           TemplateDefinitionsParser.scanDefinitions(loader);
@@ -65,11 +67,17 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
                 + definition.getTemplateAnnotation().name()
                 + "...");
 
+        File module = modulePath(definition);
+        File moduleDirectory = module.getParentFile();
+        checkState(moduleDirectory.isDirectory());
+        Files.createDirectories(Path.of(moduleDirectory.toURI()));
+
         ImageSpec imageSpec = definition.buildSpecModel(false);
-        File module = new File(targetDirectory, FILE_PATH);
         boolean ignored = module.createNewFile();
+        LOG.info("Creating terraform module in {}...", module);
         FileOutputStream output = new FileOutputStream(module);
         TemplateTerraformGenerator.terraform(imageSpec, output);
+        LOG.info("Finished creating terraform module in {}", module);
       }
 
     } catch (MalformedURLException e) {
@@ -81,5 +89,19 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @VisibleForTesting
+  File modulePath(TemplateDefinitions definition) {
+    if (definition.isFlex()) {
+      return Path.of(targetDirectory.toURI())
+          .resolve(Paths.get(TERRAFORM, TF_JSON_FILE_NAME))
+          .toFile();
+    }
+
+    // definition.isClassic()
+    return Path.of(targetDirectory.toURI())
+        .resolve(Paths.get(TERRAFORM, definition.getTemplateAnnotation().name(), TF_JSON_FILE_NAME))
+        .toFile();
   }
 }
