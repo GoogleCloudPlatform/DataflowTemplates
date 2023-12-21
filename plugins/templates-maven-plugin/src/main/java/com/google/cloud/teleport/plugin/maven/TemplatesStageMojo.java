@@ -113,6 +113,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       required = false)
   protected String basePythonContainerImage;
 
+  @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
+  protected boolean unifiedWorker;
+
   public TemplatesStageMojo() {}
 
   public TemplatesStageMojo(
@@ -131,7 +134,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String artifactRegion,
       String gcpTempLocation,
       String baseContainerImage,
-      String basePythonContainerImage) {
+      String basePythonContainerImage,
+      boolean unifiedWorker) {
     this.project = project;
     this.session = session;
     this.outputDirectory = outputDirectory;
@@ -148,6 +152,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     this.gcpTempLocation = gcpTempLocation;
     this.baseContainerImage = baseContainerImage;
     this.basePythonContainerImage = basePythonContainerImage;
+    this.unifiedWorker = unifiedWorker;
   }
 
   public void execute() throws MojoExecutionException {
@@ -257,6 +262,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String gcpTempLocationPath = "gs://" + bucketNameOnly(gcpTempLocation) + "/temp/";
       arguments.add(element("argument", "--gcpTempLocation=" + gcpTempLocationPath));
       arguments.add(element("argument", "--tempLocation=" + gcpTempLocationPath));
+    }
+
+    if (unifiedWorker) {
+      arguments.add(element("argument", "--experiments=use_runner_v2"));
     }
 
     arguments.add(
