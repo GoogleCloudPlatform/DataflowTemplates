@@ -1,8 +1,0 @@
-resource "google_dataflow_job" "{{ .Name | to_snake_case }}" {
-    name = "{{ .Name | to_snake_case}}"
-    template_gcs_path = "{{ .TemplateGcsPath }}"
-    temp_gcs_location = "{{ .TempGcsLocation }}"
-    parameters = {
-        {{.Parameters | encode}}
-    }
-}
