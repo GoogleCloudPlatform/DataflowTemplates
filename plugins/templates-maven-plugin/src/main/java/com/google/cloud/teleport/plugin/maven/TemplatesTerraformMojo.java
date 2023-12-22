@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.plugin.maven;
 
-import static com.google.common.base.Preconditions.checkState;
-
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
@@ -55,12 +53,8 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
   public void execute() throws MojoExecutionException {
 
     try {
-      URLClassLoader loader = buildClassloader();
 
-      List<TemplateDefinitions> templateDefinitions =
-          TemplateDefinitionsParser.scanDefinitions(loader);
-
-      for (TemplateDefinitions definition : templateDefinitions) {
+      for (TemplateDefinitions definition : loadDefinitions()) {
 
         LOG.info(
             "Generating terraform from template: "
@@ -69,7 +63,6 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
 
         File module = modulePath(definition);
         File moduleDirectory = module.getParentFile();
-        checkState(moduleDirectory.isDirectory());
         Files.createDirectories(Path.of(moduleDirectory.toURI()));
 
         ImageSpec imageSpec = definition.buildSpecModel(false);
@@ -92,15 +85,23 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
   }
 
   @VisibleForTesting
+  List<TemplateDefinitions> loadDefinitions()
+      throws MalformedURLException, DependencyResolutionRequiredException, MojoExecutionException {
+    URLClassLoader loader = buildClassloader();
+
+    return TemplateDefinitionsParser.scanDefinitions(loader);
+  }
+
+  @VisibleForTesting
   File modulePath(TemplateDefinitions definition) {
     if (definition.isFlex()) {
-      return Path.of(targetDirectory.toURI())
+      return Path.of(baseDirectory.toURI())
           .resolve(Paths.get(TERRAFORM, TF_JSON_FILE_NAME))
           .toFile();
     }
 
     // definition.isClassic()
-    return Path.of(targetDirectory.toURI())
+    return Path.of(baseDirectory.toURI())
         .resolve(Paths.get(TERRAFORM, definition.getTemplateAnnotation().name(), TF_JSON_FILE_NAME))
         .toFile();
   }

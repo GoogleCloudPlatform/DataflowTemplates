@@ -15,10 +15,9 @@
  */
 package com.google.cloud.teleport.plugin.terraform;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.plugin.model.ImageSpecParameter;
+import com.google.cloud.teleport.plugin.model.ImageSpecParameterType;
 
 /**
  * Models a terraform variable definition. See <a
@@ -26,45 +25,42 @@ import com.google.auto.value.AutoValue;
  * for more information.
  */
 @AutoValue
-@JsonSerialize(as = TerraformVariable.class)
-@JsonDeserialize(builder = AutoValue_TerraformVariable.Builder.class)
 abstract class TerraformVariable {
 
   /** Name that identifies the variable. */
-  @JsonProperty("name")
   abstract String getName();
 
   /** Specifies what value types are accepted for the variable. */
-  @JsonProperty("type")
   abstract Type getType();
 
   /** This specifies the input variable's documentation. */
-  @JsonProperty("description")
   abstract String getDescription();
 
   /** Specify if the variable can be null within the module. */
-  @JsonProperty("nullable")
   abstract Boolean getNullable();
-
-  abstract Builder toBuilder();
 
   static Builder builder() {
     return new AutoValue_TerraformVariable.Builder();
   }
 
+  static TerraformVariable from(ImageSpecParameter parameter) {
+    return TerraformVariable.builder()
+        .setName(parameter.getName())
+        .setDescription(parameter.getHelpText())
+        .setType(type(parameter.getParamType()))
+        .setNullable(parameter.isOptional())
+        .build();
+  }
+
   @AutoValue.Builder
   abstract static class Builder {
 
-    @JsonProperty("name")
     abstract Builder setName(String value);
 
-    @JsonProperty("description")
     abstract Builder setDescription(String value);
 
-    @JsonProperty("type")
     abstract Builder setType(Type value);
 
-    @JsonProperty("nullable")
     abstract Builder setNullable(Boolean value);
 
     abstract TerraformVariable build();
@@ -101,5 +97,16 @@ abstract class TerraformVariable {
      * A (or object): a group of values identified by named labels, like {name = "Mabel", age = 52}.
      */
     MAP,
+  }
+
+  private static TerraformVariable.Type type(ImageSpecParameterType specParameterType) {
+    switch (specParameterType) {
+      case NUMBER:
+        return Type.NUMBER;
+      case BOOLEAN:
+        return Type.BOOL;
+      default:
+        return Type.STRING;
+    }
   }
 }
