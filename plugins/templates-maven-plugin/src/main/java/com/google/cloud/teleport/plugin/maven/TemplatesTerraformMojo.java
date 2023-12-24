@@ -30,6 +30,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+
+import freemarker.template.TemplateException;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -69,7 +71,7 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
         boolean ignored = module.createNewFile();
         LOG.info("Creating terraform module in {}...", module);
         FileOutputStream output = new FileOutputStream(module);
-        TemplateTerraformGenerator.terraform(imageSpec, output);
+        TemplateTerraformGenerator.process(imageSpec, output);
         LOG.info("Finished creating terraform module in {}", module);
       }
 
@@ -81,6 +83,8 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
       throw new MojoExecutionException("File not found", e);
     } catch (IOException e) {
       throw new RuntimeException(e);
+    } catch (TemplateException e) {
+        throw new MojoExecutionException("Template processing failed", e);
     }
   }
 

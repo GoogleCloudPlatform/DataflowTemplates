@@ -16,8 +16,11 @@
 package com.google.cloud.teleport.plugin.terraform;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.plugin.model.ImageSpecParameter;
-import com.google.cloud.teleport.plugin.model.ImageSpecParameterType;
+import java.util.List;
+
+import freemarker.ext.beans.BeansWrapper;
+import freemarker.template.TemplateModel;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Models a terraform variable definition. See <a
@@ -25,31 +28,27 @@ import com.google.cloud.teleport.plugin.model.ImageSpecParameterType;
  * for more information.
  */
 @AutoValue
-abstract class TerraformVariable {
+public abstract class TerraformVariable {
 
   /** Name that identifies the variable. */
-  abstract String getName();
+  public abstract String getName();
 
   /** Specifies what value types are accepted for the variable. */
-  abstract Type getType();
+  public abstract Type getType();
 
   /** This specifies the input variable's documentation. */
-  abstract String getDescription();
+  public abstract String getDescription();
 
-  /** Specify if the variable can be null within the module. */
-  abstract Boolean getNullable();
+  /** Configures validation of the variable input. */
+  @Nullable
+  public abstract List<String> getRegexes();
+
+  /** Sets the default value if none provided. */
+  @Nullable
+  public abstract String getDefaultValue();
 
   static Builder builder() {
     return new AutoValue_TerraformVariable.Builder();
-  }
-
-  static TerraformVariable from(ImageSpecParameter parameter) {
-    return TerraformVariable.builder()
-        .setName(parameter.getName())
-        .setDescription(parameter.getHelpText())
-        .setType(type(parameter.getParamType()))
-        .setNullable(parameter.isOptional())
-        .build();
   }
 
   @AutoValue.Builder
@@ -61,7 +60,9 @@ abstract class TerraformVariable {
 
     abstract Builder setType(Type value);
 
-    abstract Builder setNullable(Boolean value);
+    abstract Builder setDefaultValue(String value);
+
+    abstract Builder setRegexes(List<String> value);
 
     abstract TerraformVariable build();
   }
@@ -83,30 +84,5 @@ abstract class TerraformVariable {
 
     /** A boolean value, either true or false. bool values can be used in conditional logic. */
     BOOL,
-
-    /**
-     * A (or tuple): a sequence of values, like ["us-west-1a", "us-west-1c"]. Identify elements in a
-     * list with consecutive whole numbers, starting with zero.
-     */
-    LIST,
-
-    /** A collection of unique values that do not have any secondary identifiers or ordering. */
-    SET,
-
-    /**
-     * A (or object): a group of values identified by named labels, like {name = "Mabel", age = 52}.
-     */
-    MAP,
-  }
-
-  private static TerraformVariable.Type type(ImageSpecParameterType specParameterType) {
-    switch (specParameterType) {
-      case NUMBER:
-        return Type.NUMBER;
-      case BOOLEAN:
-        return Type.BOOL;
-      default:
-        return Type.STRING;
-    }
   }
 }

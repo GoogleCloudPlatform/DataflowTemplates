@@ -15,10 +15,50 @@
  */
 package com.google.cloud.teleport.plugin.terraform;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.sdk.util.Preconditions.checkStateNotNull;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.plugin.model.ImageSpec;
+import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
+import com.google.cloud.teleport.plugin.sample.AtoBOk;
+import freemarker.ext.beans.BeanModel;
+import freemarker.template.TemplateException;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+import freemarker.template.TemplateModel;
 import org.junit.Test;
 
 public class TemplateTerraformGeneratorTest {
 
   @Test
-  public void variable() {}
+  public void testAtoBOk() throws IOException, URISyntaxException, TemplateException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    TemplateTerraformGenerator.process(buildSpecModel(AtoBOk.class), out);
+    String result = out.toString(StandardCharsets.UTF_8);
+    assertThat(result, equalTo(loadResource("terraform/atobok.tf")));
+  }
+
+  private static ImageSpec buildSpecModel(Class<?> clazz) {
+    checkArgument(clazz.isAnnotationPresent(Template.class));
+    return new TemplateDefinitions(clazz, clazz.getAnnotation(Template.class))
+            .buildSpecModel(false);
+  }
+  private static String loadResource(String fileName) throws URISyntaxException, IOException {
+    URI uri =
+            checkStateNotNull(
+                    TemplateTerraformGeneratorTest.class.getClassLoader().getResource(fileName))
+                    .toURI();
+    return Files.readString(Paths.get(uri));
+  }
+
 }
