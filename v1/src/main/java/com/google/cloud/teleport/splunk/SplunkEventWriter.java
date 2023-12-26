@@ -34,7 +34,11 @@ import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
@@ -52,7 +56,10 @@ import org.apache.beam.sdk.state.TimerSpecs;
 import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.util.MoreFutures;
 import org.apache.beam.sdk.values.KV;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,6 +145,8 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   @Nullable
   abstract ValueProvider<Integer> inputBatchCount();
 
+  private List<CompletionStage<Void>> bundleFlushes;
+
   @Setup
   public void setup() {
 
@@ -204,6 +213,8 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       publisher = builder.build();
       LOG.info("Successfully created HttpEventPublisher");
 
+      bundleFlushes = new ArrayList<>();
+
     } catch (CertificateException
         | NoSuchAlgorithmException
         | KeyStoreException
@@ -238,6 +249,14 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       }
       flush(receiver, bufferState, countState);
     }
+  }
+
+  @FinishBundle
+  public void finishBundle() throws ExecutionException, InterruptedException {
+    for (CompletionStage<Void> flush : bundleFlushes) {
+      MoreFutures.get(flush);
+    }
+    bundleFlushes.clear();
   }
 
   @OnTimer(TIME_ID_NAME)
@@ -279,98 +298,111 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       @StateId(COUNT_STATE_NAME) ValueState<Long> countState)
       throws IOException {
 
-    if (!bufferState.isEmpty().read()) {
-
-      HttpResponse response = null;
-      List<SplunkEvent> events = Lists.newArrayList(bufferState.read());
-      long startTime = System.nanoTime();
-      try {
-        // Important to close this response to avoid connection leak.
-        response = publisher.execute(events);
-        if (!response.isSuccessStatusCode()) {
-          UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
-          FAILED_WRITES.inc(countState.read());
-          int statusCode = response.getStatusCode();
-          if (statusCode >= 400 && statusCode < 500) {
-            INVALID_REQUESTS.inc();
-          } else if (statusCode >= 500 && statusCode < 600) {
-            SERVER_ERROR_REQUESTS.inc();
-          }
-
-          logWriteFailures(
-              countState,
-              response.getStatusCode(),
-              response.parseAsString(),
-              response.getStatusMessage());
-          flushWriteFailures(
-              events, response.getStatusMessage(), response.getStatusCode(), receiver);
-
-        } else {
-          SUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
-          SUCCESS_WRITES.inc(countState.read());
-          VALID_REQUESTS.inc();
-          SUCCESSFUL_WRITE_BATCH_SIZE.update(countState.read());
-
-          if (enableBatchLogs) {
-            LOG.info("Successfully wrote {} events", countState.read());
-          }
-        }
-
-      } catch (HttpResponseException e) {
-        UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
-        FAILED_WRITES.inc(countState.read());
-        int statusCode = e.getStatusCode();
-        if (statusCode >= 400 && statusCode < 500) {
-          INVALID_REQUESTS.inc();
-        } else if (statusCode >= 500 && statusCode < 600) {
-          SERVER_ERROR_REQUESTS.inc();
-        }
-
-        logWriteFailures(countState, e.getStatusCode(), e.getContent(), e.getStatusMessage());
-        flushWriteFailures(events, e.getStatusMessage(), e.getStatusCode(), receiver);
-
-      } catch (IOException ioe) {
-        UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
-        FAILED_WRITES.inc(countState.read());
-        INVALID_REQUESTS.inc();
-
-        logWriteFailures(countState, 0, ioe.getMessage(), null);
-        flushWriteFailures(events, ioe.getMessage(), null, receiver);
-
-      } finally {
-        // States are cleared regardless of write success or failure since we
-        // write failed events to an output PCollection.
-        bufferState.clear();
-        countState.clear();
-
-        // We've observed cases where errors at this point can cause the pipeline to keep retrying
-        // the same events over and over (e.g. from Dataflow Runner's Pub/Sub implementation). Since
-        // the events have either been published or wrapped for error handling, we can safely
-        // ignore this error, though there may or may not be a leak of some type depending on
-        // HttpResponse's implementation. However, any potential leak would still happen if we let
-        // the exception fall through, so this isn't considered a major issue.
-        try {
-          if (response != null) {
-            response.ignore();
-          }
-        } catch (IOException e) {
-          LOG.warn(
-              "Error ignoring response from Splunk. Messages should still have published, but there"
-                  + " might be a connection leak.",
-              e);
-        }
-      }
+    if (bufferState.isEmpty().read()) {
+      return;
     }
+
+    List<SplunkEvent> events = Lists.newArrayList(bufferState.read());
+    long startTime = System.nanoTime();
+    int eventCount = events.size();
+
+    bundleFlushes.add(
+        MoreFutures.runAsync(
+            () -> {
+              HttpResponse response = null;
+              try {
+                // Important to close this response to avoid connection leak.
+                response = publisher.execute(events);
+                if (!response.isSuccessStatusCode()) {
+                  UNSUCCESSFUL_WRITE_LATENCY_MS.update(
+                      nanosToMillis(System.nanoTime() - startTime));
+                  FAILED_WRITES.inc(eventCount);
+                  int statusCode = response.getStatusCode();
+                  if (statusCode >= 400 && statusCode < 500) {
+                    INVALID_REQUESTS.inc();
+                  } else if (statusCode >= 500 && statusCode < 600) {
+                    SERVER_ERROR_REQUESTS.inc();
+                  }
+
+                  logWriteFailures(
+                      eventCount,
+                      response.getStatusCode(),
+                      response.parseAsString(),
+                      response.getStatusMessage());
+                  flushWriteFailures(
+                      events, response.getStatusMessage(), response.getStatusCode(), receiver);
+
+                } else {
+                  SUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
+                  SUCCESS_WRITES.inc(eventCount);
+                  VALID_REQUESTS.inc();
+                  SUCCESSFUL_WRITE_BATCH_SIZE.update(eventCount);
+
+                  if (enableBatchLogs) {
+                    LOG.info("Successfully wrote {} events", eventCount);
+                  }
+                }
+
+              } catch (HttpResponseException e) {
+                UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
+                FAILED_WRITES.inc(eventCount);
+                int statusCode = e.getStatusCode();
+                if (statusCode >= 400 && statusCode < 500) {
+                  INVALID_REQUESTS.inc();
+                } else if (statusCode >= 500 && statusCode < 600) {
+                  SERVER_ERROR_REQUESTS.inc();
+                }
+
+                logWriteFailures(
+                    eventCount, e.getStatusCode(), e.getContent(), e.getStatusMessage());
+                flushWriteFailures(events, e.getStatusMessage(), e.getStatusCode(), receiver);
+
+              } catch (IOException ioe) {
+                UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
+                FAILED_WRITES.inc(eventCount);
+                INVALID_REQUESTS.inc();
+
+                logWriteFailures(eventCount, 0, ioe.getMessage(), null);
+                flushWriteFailures(events, ioe.getMessage(), null, receiver);
+
+              } finally {
+                // We've observed cases where errors at this point can cause the pipeline to keep
+                // retrying
+                // the same events over and over (e.g. from Dataflow Runner's Pub/Sub
+                // implementation).
+                // Since
+                // the events have either been published or wrapped for error handling, we can
+                // safely
+                // ignore this error, though there may or may not be a leak of some type depending
+                // on
+                // HttpResponse's implementation. However, any potential leak would still happen if
+                // we
+                // let
+                // the exception fall through, so this isn't considered a major issue.
+                try {
+                  if (response != null) {
+                    response.ignore();
+                  }
+                } catch (IOException e) {
+                  LOG.warn(
+                      "Error ignoring response from Splunk. Messages should still have published, but there"
+                          + " might be a connection leak.",
+                      e);
+                }
+              }
+            }));
+
+    // States are cleared regardless of write success or failure since we
+    // write failed events to an output PCollection.
+    bufferState.clear();
+    countState.clear();
   }
 
   /** Utility method to log write failures. */
   private void logWriteFailures(
-      @StateId(COUNT_STATE_NAME) ValueState<Long> countState,
-      int statusCode,
-      String content,
-      String statusMessage) {
+      long countState, int statusCode, String content, String statusMessage) {
     if (enableBatchLogs) {
-      LOG.error("Failed to write {} events", countState.read());
+      LOG.error("Failed to write {} events", countState);
     }
     LOG.error(
         "Error writing to Splunk. StatusCode: {}, content: {}, StatusMessage: {}",
