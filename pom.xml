@@ -566,7 +566,7 @@
   <repositories>
     <repository>
       <id>apache.candidate</id>
-      <url>https://repository.apache.org/content/repositories/orgapachebeam-1364/</url>
+      <url>https://repository.apache.org/content/repositories/orgapachebeam-1365/</url>
     </repository>
   </repositories>
 
