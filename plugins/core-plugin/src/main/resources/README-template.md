@@ -55,17 +55,13 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=${spec.metadata.sourceFilePath!README.md})
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
 
 ### Building Template
 
@@ -100,13 +96,12 @@ mvn clean package -PtemplatesStage  \
 -DstagePrefix="templates" \
 -DtemplateName="${spec.metadata.internalName}" \
 <#if language == 'PYTHON'>
--pl python \
+-f python
 <#elseif flex>
--pl v2/${spec.metadata.module!} \
+-f v2/${spec.metadata.module!}
 <#else>
--pl v1 \
+-f v1
 </#if>
--am
 ```
 
 <#if flex>
@@ -202,13 +197,12 @@ mvn clean package -PtemplatesRun \
 -DtemplateName="${spec.metadata.internalName}" \
 -Dparameters="<#list spec.metadata.parameters as parameter>${parameter.name}=$${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}<#sep>,</#sep></#list>" \
 <#if language == 'PYTHON'>
--pl python \
+-f python
 <#elseif flex>
--pl v2/${spec.metadata.module!} \
+-f v2/${spec.metadata.module!}
 <#else>
--pl v1 \
+-f v1
 </#if>
--am
 ```
 
 ## Terraform

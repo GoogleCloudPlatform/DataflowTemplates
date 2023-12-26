@@ -16,9 +16,5 @@
  * limitations under the License.
  */
 
-/**
- * Transforms for reading and writing from/to Apache HBase.
- *
- * @see org.apache.beam.sdk.io.hbase.HBaseIO
- */
-package com.google.cloud.teleport.v2.templates.hbase;
+/** Package that contains reusable BigQuery conditions. */
+package org.apache.beam.it.gcp.spanner.conditions;

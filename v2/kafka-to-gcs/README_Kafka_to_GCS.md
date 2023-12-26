@@ -39,17 +39,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/kafka-to-gcs/src/main/java/com/google/cloud/teleport/v2/templates/KafkaToGCS.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
 
 ### Building Template
 
@@ -75,8 +71,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Kafka_to_GCS" \
--pl v2/kafka-to-gcs \
--am
+-f v2/kafka-to-gcs
 ```
 
 
@@ -164,8 +159,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="kafka-to-gcs-job" \
 -DtemplateName="Kafka_to_GCS" \
 -Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,inputTopics=$INPUT_TOPICS,outputFileFormat=$OUTPUT_FILE_FORMAT,windowDuration=$WINDOW_DURATION,outputDirectory=$OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS" \
--pl v2/kafka-to-gcs \
--am
+-f v2/kafka-to-gcs
 ```
 
 ## Terraform

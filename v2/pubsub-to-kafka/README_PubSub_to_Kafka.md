@@ -51,17 +51,13 @@ for more information about how to create and test those functions.
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/pubsub-to-kafka/src/main/java/com/google/cloud/teleport/v2/templates/PubsubToKafka.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
 
 ### Building Template
 
@@ -87,8 +83,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="PubSub_to_Kafka" \
--pl v2/pubsub-to-kafka \
--am
+-f v2/pubsub-to-kafka
 ```
 
 
@@ -182,8 +177,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="pubsub-to-kafka-job" \
 -DtemplateName="PubSub_to_Kafka" \
 -Dparameters="inputTopic=$INPUT_TOPIC,bootstrapServer=$BOOTSTRAP_SERVER,outputTopic=$OUTPUT_TOPIC,outputDeadLetterTopic=$OUTPUT_DEAD_LETTER_TOPIC,secretStoreUrl=$SECRET_STORE_URL,vaultToken=$VAULT_TOKEN,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
--pl v2/pubsub-to-kafka \
--am
+-f v2/pubsub-to-kafka
 ```
 
 ## Terraform

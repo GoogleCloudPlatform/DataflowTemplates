@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -39,8 +38,13 @@ import org.slf4j.LoggerFactory;
 public class ShardFileReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(ShardFileReader.class);
+  private ISecretManagerAccessor secretManagerAccessor;
 
-  public static List<Shard> getOrderedShardDetails(String sourceShardsFilePath) {
+  public ShardFileReader(ISecretManagerAccessor secretManagerAccessor) {
+    this.secretManagerAccessor = secretManagerAccessor;
+  }
+
+  public List<Shard> getOrderedShardDetails(String sourceShardsFilePath) {
 
     try (InputStream stream =
         Channels.newInputStream(
@@ -59,25 +63,61 @@ public class ShardFileReader {
 
       for (Shard shard : shardList) {
         LOG.info(" The shard is: {} ", shard);
-        String password = shard.getPassword();
-
-        if (partialPattern.matcher(password).matches()) {
-          LOG.info("The matched secret for shard {} is : {}", shard.getLogicalShardId(), password);
-          if (fullPattern.matcher(password).matches()) {
-            LOG.info("The secret for shard {} is : {}", shard.getLogicalShardId(), password);
-            shard.setPassword(SecretManagerUtils.getSecret(password));
-          } else {
-            // partial match hence get the latest version
-            String versionToAppend = "versions/latest";
-            if (partialWithSlash.matcher(password).matches()) {
-              password += versionToAppend;
-            } else {
-              password += "/" + versionToAppend;
-            }
-
+        String secretManagerUri = shard.getSecretManagerUri();
+        if (secretManagerUri != null && !secretManagerUri.isEmpty()) {
+          LOG.info(
+              "Secret Manager will be used to get password for shard {} having secret {}",
+              shard.getLogicalShardId(),
+              secretManagerUri);
+          if (partialPattern.matcher(secretManagerUri).matches()) {
             LOG.info(
-                "The generated secret for shard {} is : {}", shard.getLogicalShardId(), password);
-            shard.setPassword(SecretManagerUtils.getSecret(password));
+                "The matched secret for shard {} is : {}",
+                shard.getLogicalShardId(),
+                secretManagerUri);
+            if (fullPattern.matcher(secretManagerUri).matches()) {
+              LOG.info(
+                  "The secret for shard {} is : {}", shard.getLogicalShardId(), secretManagerUri);
+              shard.setPassword(secretManagerAccessor.getSecret(secretManagerUri));
+            } else {
+              // partial match hence get the latest version
+              String versionToAppend = "versions/latest";
+              if (partialWithSlash.matcher(secretManagerUri).matches()) {
+                secretManagerUri += versionToAppend;
+              } else {
+                secretManagerUri += "/" + versionToAppend;
+              }
+
+              LOG.info(
+                  "The generated secret for shard {} is : {}",
+                  shard.getLogicalShardId(),
+                  secretManagerUri);
+              shard.setPassword(secretManagerAccessor.getSecret(secretManagerUri));
+            }
+          } else {
+            LOG.error(
+                "The secretManagerUri field with value {} for shard {} , specified in file {} does"
+                    + " not adhere to expected pattern projects/.*/secrets/.*/versions/.*",
+                secretManagerUri,
+                shard.getLogicalShardId(),
+                sourceShardsFilePath);
+            throw new RuntimeException(
+                "The secretManagerUri field with value "
+                    + secretManagerUri
+                    + " for shard "
+                    + shard.getLogicalShardId()
+                    + ", specified in file "
+                    + sourceShardsFilePath
+                    + " does not adhere to expected pattern"
+                    + " projects/.*/secrets/.*/versions/.*");
+          }
+        } else {
+          String password = shard.getPassword();
+          if (password == null || password.isEmpty()) {
+            throw new RuntimeException(
+                "Neither password nor secretManagerUri was found in the shard file "
+                    + sourceShardsFilePath
+                    + "  for shard "
+                    + shard.getLogicalShardId());
           }
         }
       }

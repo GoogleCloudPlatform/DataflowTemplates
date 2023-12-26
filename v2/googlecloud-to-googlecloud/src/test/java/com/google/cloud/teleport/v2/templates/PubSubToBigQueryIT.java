@@ -44,6 +44,7 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -115,9 +116,11 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
             Field.of("name", StandardSQLTypeName.STRING));
     Schema bqSchema = Schema.of(bqSchemaFields);
 
-    TopicName topic = pubsubResourceManager.createTopic("input");
+    String nameSuffix = RandomStringUtils.randomAlphanumeric(8);
+    TopicName topic = pubsubResourceManager.createTopic("input-" + nameSuffix);
     bigQueryResourceManager.createDataset(REGION);
-    SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "sub-1");
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, "sub-1-" + nameSuffix);
     TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
     TableId dlqTable =
         TableId.of(
@@ -184,9 +187,11 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
             Field.of("name", StandardSQLTypeName.STRING));
     Schema bqSchema = Schema.of(bqSchemaFields);
 
-    TopicName topic = pubsubResourceManager.createTopic("input");
+    String nameSuffix = RandomStringUtils.randomAlphanumeric(8);
+    TopicName topic = pubsubResourceManager.createTopic("input-" + nameSuffix);
     bigQueryResourceManager.createDataset(REGION);
-    SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "sub-1");
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, "sub-1-" + nameSuffix);
     TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
     TableId dlqTable =
         TableId.of(

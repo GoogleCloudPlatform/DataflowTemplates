@@ -25,6 +25,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Optional Parameters
 
 * **outputDirectory** (Cloud Storage directory for storing JSON files): The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/).
+* **userOption** (User option): User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string. Defaults to: NONE.
+* **columnsAliases** (Columns aliases): Comma separated list of columns which are required for Vertex AI Vector Search Index. The `id` & `embedding` are required columns for Vertex Vector Search. You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are `rowkey` and `cf:my_embedding`, in which `rowkey` and the embedding column is named differently, `cf:my_embedding;embedding` and `rowkey;id` should be specified. Only used when FLATTEN user option is specified.
 
 
 
@@ -40,17 +42,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v1/src/main/java/com/google/cloud/teleport/bigtable/BigtableToJson.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
 
 ### Building Template
 
@@ -76,8 +74,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Json" \
--pl v1 \
--am
+-f v1
 ```
 
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
@@ -117,6 +114,8 @@ export FILENAME_PREFIX=part
 
 ### Optional
 export OUTPUT_DIRECTORY=<outputDirectory>
+export USER_OPTION=NONE
+export COLUMNS_ALIASES=<columnsAliases>
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-json-job" \
   --project "$PROJECT" \
@@ -126,7 +125,9 @@ gcloud dataflow jobs run "cloud-bigtable-to-gcs-json-job" \
   --parameters "bigtableInstanceId=$BIGTABLE_INSTANCE_ID" \
   --parameters "bigtableTableId=$BIGTABLE_TABLE_ID" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
-  --parameters "filenamePrefix=$FILENAME_PREFIX"
+  --parameters "filenamePrefix=$FILENAME_PREFIX" \
+  --parameters "userOption=$USER_OPTION" \
+  --parameters "columnsAliases=$COLUMNS_ALIASES"
 ```
 
 For more information about the command, please check:
@@ -152,6 +153,8 @@ export FILENAME_PREFIX=part
 
 ### Optional
 export OUTPUT_DIRECTORY=<outputDirectory>
+export USER_OPTION=NONE
+export COLUMNS_ALIASES=<columnsAliases>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -160,7 +163,44 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-gcs-json-job" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Json" \
--Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX" \
--pl v1 \
--am
+-Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,userOption=$USER_OPTION,columnsAliases=$COLUMNS_ALIASES" \
+-f v1
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_job).
+
+Here is an example of Terraform configuration:
+
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_job" "cloud_bigtable_to_gcs_json" {
+
+  provider          = google-beta
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_Bigtable_to_GCS_Json"
+  name              = "cloud-bigtable-to-gcs-json"
+  region            = var.region
+  temp_gcs_location = "gs://bucket-name-here/temp"
+  parameters        = {
+    bigtableProjectId = "<bigtableProjectId>"
+    bigtableInstanceId = "<bigtableInstanceId>"
+    bigtableTableId = "<bigtableTableId>"
+    filenamePrefix = "part"
+    # outputDirectory = "gs://your-bucket/your-path/"
+    # userOption = "NONE"
+    # columnsAliases = "<columnsAliases>"
+  }
+}
 ```

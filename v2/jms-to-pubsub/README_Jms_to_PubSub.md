@@ -41,17 +41,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/jms-to-pubsub/src/main/java/com/google/cloud/teleport/v2/templates/JmsToPubsub.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
 
 ### Building Template
 
@@ -77,8 +73,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Jms_to_PubSub" \
--pl v2/jms-to-pubsub \
--am
+-f v2/jms-to-pubsub
 ```
 
 
@@ -163,8 +158,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="jms-to-pubsub-job" \
 -DtemplateName="Jms_to_PubSub" \
 -Dparameters="jmsServer=$JMS_SERVER,inputName=$INPUT_NAME,inputType=$INPUT_TYPE,outputTopic=$OUTPUT_TOPIC,username=$USERNAME,password=$PASSWORD" \
--pl v2/jms-to-pubsub \
--am
+-f v2/jms-to-pubsub
 ```
 
 ## Terraform

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
@@ -60,8 +61,8 @@ public class ProcessingContextGenerator {
               + sourceType
               + " is unsupported. Supported values are : mysql");
     }
-
-    List<Shard> shards = ShardFileReader.getOrderedShardDetails(sourceShardsFilePath);
+    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+    List<Shard> shards = shardFileReader.getOrderedShardDetails(sourceShardsFilePath);
     Schema schema = SessionFileReader.read(sessionFilePath);
 
     ShardProgressTracker shardProgressTracker =

@@ -66,14 +66,15 @@ public class SecretManagerIT extends TemplateTestBase {
   @Test
   public void runsTemplateWithNeo4jConnectionSecret() throws IOException {
     gcsClient.createArtifact("spec.json", contentOf("/testing-specs/secret-manager/spec.json"));
-    secretClient.createSecret("neo4j-connection-secret", jsonBasicPayload(neo4jClient));
+    String secretId = "neo4j-connection-secret-" + testId;
+    secretClient.createSecret(secretId, jsonBasicPayload(neo4jClient));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("jobSpecUri", getGcsPath("spec.json"))
             .addParameter(
                 "neo4jConnectionSecretId",
-                String.format("projects/%s/secrets/neo4j-connection-secret/versions/1", PROJECT));
+                String.format("projects/%s/secrets/%s/versions/1", PROJECT, secretId));
     LaunchInfo info = launchTemplate(options);
 
     assertThatPipeline(info).isRunning();

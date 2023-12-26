@@ -491,7 +491,21 @@ public class ElasticsearchIO {
         restClientBuilder.setDefaultHeaders(
             new Header[] {new BasicHeader("Authorization", "Bearer " + getBearerToken())});
       }
-      if (getKeystorePath() != null && !getKeystorePath().isEmpty()) {
+
+      if (isDisableCertificateValidation()) {
+        try {
+          final SSLContext sslContext =
+              SSLContextBuilder.create()
+                  .loadTrustMaterial((TrustStrategy) (chain, authType) -> true)
+                  .build();
+          final SSLIOSessionStrategy sessionStrategy = new SSLIOSessionStrategy(sslContext);
+          restClientBuilder.setHttpClientConfigCallback(
+              httpClientBuilder ->
+                  httpClientBuilder.setSSLContext(sslContext).setSSLStrategy(sessionStrategy));
+        } catch (Exception e) {
+          throw new IOException("Can't create context to ignore certificate", e);
+        }
+      } else if (getKeystorePath() != null && !getKeystorePath().isEmpty()) {
         try {
           KeyStore keyStore = KeyStore.getInstance("jks");
           try (InputStream is = new FileInputStream(new File(getKeystorePath()))) {
@@ -499,17 +513,10 @@ public class ElasticsearchIO {
             keyStore.load(is, (keystorePassword == null) ? null : keystorePassword.toCharArray());
           }
 
-          final SSLContext sslContext;
-          if (isDisableCertificateValidation()) {
-            sslContext =
-                SSLContextBuilder.create()
-                    .loadTrustMaterial((TrustStrategy) (chain, authType) -> true)
-                    .build();
-          } else {
-            final TrustStrategy trustStrategy =
-                isTrustSelfSignedCerts() ? new TrustSelfSignedStrategy() : null;
-            sslContext = SSLContexts.custom().loadTrustMaterial(keyStore, trustStrategy).build();
-          }
+          final TrustStrategy trustStrategy =
+              isTrustSelfSignedCerts() ? new TrustSelfSignedStrategy() : null;
+          SSLContext sslContext =
+              SSLContexts.custom().loadTrustMaterial(keyStore, trustStrategy).build();
 
           final SSLIOSessionStrategy sessionStrategy = new SSLIOSessionStrategy(sslContext);
           restClientBuilder.setHttpClientConfigCallback(
@@ -519,6 +526,7 @@ public class ElasticsearchIO {
           throw new IOException("Can't load the client certificate from the keystore", e);
         }
       }
+
       restClientBuilder.setRequestConfigCallback(
           new RestClientBuilder.RequestConfigCallback() {
             @Override

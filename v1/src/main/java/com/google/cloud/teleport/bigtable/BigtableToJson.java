@@ -23,9 +23,12 @@ import com.google.cloud.teleport.bigtable.BigtableToJson.Options;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -38,6 +41,7 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +61,7 @@ import org.slf4j.LoggerFactory;
         "The Bigtable to JSON template is a pipeline that reads data from a Bigtable table and writes it to a Cloud Storage bucket in JSON format",
     optionsClass = Options.class,
     documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-json", // TODO(rongal): create guide.
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-json",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The Bigtable table must exist.",
@@ -119,6 +123,35 @@ public class BigtableToJson {
 
     @SuppressWarnings("unused")
     void setFilenamePrefix(ValueProvider<String> filenamePrefix);
+
+    @TemplateParameter.Enum(
+        order = 6,
+        optional = true,
+        enumOptions = {@TemplateEnumOption("FLATTEN"), @TemplateEnumOption("NONE")},
+        description = "User option",
+        helpText =
+            "User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string.")
+    @Default.String("NONE")
+    String getUserOption();
+
+    @SuppressWarnings("unused")
+    void setUserOption(String userOption);
+
+    @TemplateParameter.Text(
+        order = 7,
+        optional = true,
+        description = "Columns aliases",
+        helpText =
+            "Comma separated list of columns which are required for Vertex AI Vector Search Index."
+                + " The `id` & `embedding` are required columns for Vertex Vector Search."
+                + " You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are"
+                + " `rowkey` and `cf:my_embedding`, in which `rowkey` and the embedding column is named differently,"
+                + " `cf:my_embedding;embedding` and `rowkey;id` should be specified."
+                + " Only used when FLATTEN user option is specified.")
+    ValueProvider<String> getColumnsAliases();
+
+    @SuppressWarnings("unused")
+    void setColumnsAliases(ValueProvider<String> value);
   }
 
   /**
@@ -166,9 +199,13 @@ public class BigtableToJson {
                   }
                   return folder + outputFilePrefix.get();
                 });
+    String userOption = options.getUserOption();
     pipeline
         .apply("Read from Bigtable", read)
-        .apply("Transform to JSON", MapElements.via(new BigtableToJsonFn()))
+        .apply(
+            "Transform to JSON",
+            MapElements.via(
+                new BigtableToJsonFn(userOption.equals("FLATTEN"), options.getColumnsAliases())))
         .apply("Write to storage", TextIO.write().to(outputFilePathWithPrefix).withSuffix(".json"));
 
     return pipeline.run();
@@ -176,33 +213,94 @@ public class BigtableToJson {
 
   /** Translates Bigtable {@link Row} to JSON. */
   static class BigtableToJsonFn extends SimpleFunction<Row, String> {
+    private boolean flatten;
+    private ValueProvider<String> columnsAliases;
+
+    public BigtableToJsonFn(boolean flatten, ValueProvider<String> columnsAliases) {
+      this.flatten = flatten;
+      this.columnsAliases = columnsAliases;
+    }
+
     @Override
     public String apply(Row row) {
       StringWriter stringWriter = new StringWriter();
       JsonWriter jsonWriter = new JsonWriter(stringWriter);
       try {
-        jsonWriter.beginObject();
-        jsonWriter.name(row.getKey().toStringUtf8());
-        jsonWriter.beginObject();
-        for (Family family : row.getFamiliesList()) {
-          String familyName = family.getName();
-          jsonWriter.name(familyName);
-          jsonWriter.beginObject();
-          for (Column column : family.getColumnsList()) {
-            for (Cell cell : column.getCellsList()) {
-              jsonWriter
-                  .name(column.getQualifier().toStringUtf8())
-                  .value(cell.getValue().toStringUtf8());
-            }
-          }
-          jsonWriter.endObject();
+        if (flatten) {
+          serializeFlattented(row, jsonWriter);
+        } else {
+          serializeUnFlattented(row, jsonWriter);
         }
-        jsonWriter.endObject();
-        jsonWriter.endObject();
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
       return stringWriter.toString();
+    }
+
+    private void serializeUnFlattented(Row row, JsonWriter jsonWriter) throws IOException {
+      jsonWriter.beginObject();
+      jsonWriter.name(row.getKey().toStringUtf8());
+      jsonWriter.beginObject();
+      for (Family family : row.getFamiliesList()) {
+        String familyName = family.getName();
+        jsonWriter.name(familyName);
+        jsonWriter.beginObject();
+        for (Column column : family.getColumnsList()) {
+          for (Cell cell : column.getCellsList()) {
+            jsonWriter
+                .name(column.getQualifier().toStringUtf8())
+                .value(cell.getValue().toStringUtf8());
+          }
+        }
+        jsonWriter.endObject();
+      }
+      jsonWriter.endObject();
+      jsonWriter.endObject();
+    }
+
+    private void serializeFlattented(Row row, JsonWriter jsonWriter) throws IOException {
+      jsonWriter.beginObject();
+      Map<String, String> columnsWithAliases = extractColumnsAliases();
+
+      maybeAddToJson(jsonWriter, columnsWithAliases, "rowkey", row.getKey().toStringUtf8());
+      for (Family family : row.getFamiliesList()) {
+        String familyName = family.getName();
+        for (Column column : family.getColumnsList()) {
+          for (Cell cell : column.getCellsList()) {
+            maybeAddToJson(
+                jsonWriter,
+                columnsWithAliases,
+                familyName + ":" + column.getQualifier().toStringUtf8(),
+                cell.getValue().toStringUtf8());
+          }
+        }
+      }
+      jsonWriter.endObject();
+    }
+
+    private void maybeAddToJson(
+        JsonWriter jsonWriter, Map<String, String> columnsWithAliases, String key, String value)
+        throws IOException {
+      if (!columnsWithAliases.isEmpty() && !columnsWithAliases.containsKey(key)) {
+        return;
+      }
+      jsonWriter.name(columnsWithAliases.getOrDefault(key, key)).value(value);
+    }
+
+    private Map<String, String> extractColumnsAliases() {
+      Map<String, String> columnsWithAliases = new HashMap<>();
+      if (StringUtils.isBlank(columnsAliases.get())) {
+        return columnsWithAliases;
+      }
+      String[] columnsList = columnsAliases.get().split(",");
+
+      for (String columnsWithAlias : columnsList) {
+        String[] columnWithAlias = columnsWithAlias.split(";");
+        if (columnWithAlias.length == 2) {
+          columnsWithAliases.put(columnWithAlias[0], columnWithAlias[1]);
+        }
+      }
+      return columnsWithAliases;
     }
   }
 }

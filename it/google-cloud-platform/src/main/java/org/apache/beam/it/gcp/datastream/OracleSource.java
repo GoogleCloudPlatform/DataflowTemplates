@@ -22,8 +22,6 @@ import com.google.cloud.datastream.v1.OracleSchema;
 import com.google.cloud.datastream.v1.OracleSourceConfig;
 import com.google.cloud.datastream.v1.OracleTable;
 import com.google.protobuf.MessageOrBuilder;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Client for Oracle resource used by Datastream.
@@ -32,17 +30,16 @@ import java.util.Map;
  */
 public class OracleSource extends JDBCSource {
 
+  private final String database;
+
   OracleSource(Builder builder) {
     super(builder);
+    this.database = builder.database;
   }
 
   public static Builder builder(
-      String hostname,
-      String username,
-      String password,
-      int port,
-      Map<String, List<String>> allowedTables) {
-    return new Builder(hostname, username, password, port, allowedTables);
+      String hostname, String username, String password, int port, String database) {
+    return new Builder(hostname, username, password, port, database);
   }
 
   @Override
@@ -52,25 +49,33 @@ public class OracleSource extends JDBCSource {
 
   @Override
   public MessageOrBuilder config() {
-    OracleRdbms.Builder oracleRdmsBuilder = OracleRdbms.newBuilder();
-    for (String schema : this.allowedTables().keySet()) {
-      OracleSchema.Builder oracleSchemaBuilder = OracleSchema.newBuilder().setSchema(schema);
-      for (String table : this.allowedTables().get(schema)) {
-        oracleSchemaBuilder.addOracleTables(OracleTable.newBuilder().setTable(table));
+    OracleSourceConfig.Builder configBuilder = OracleSourceConfig.newBuilder();
+    if (this.allowedTables().size() > 0) {
+      OracleRdbms.Builder oracleRdmsBuilder = OracleRdbms.newBuilder();
+      for (String schema : this.allowedTables().keySet()) {
+        OracleSchema.Builder oracleSchemaBuilder = OracleSchema.newBuilder().setSchema(schema);
+        for (String table : this.allowedTables().get(schema)) {
+          oracleSchemaBuilder.addOracleTables(OracleTable.newBuilder().setTable(table));
+        }
+        oracleRdmsBuilder.addOracleSchemas(oracleSchemaBuilder);
       }
-      oracleRdmsBuilder.addOracleSchemas(oracleSchemaBuilder);
+      configBuilder.setIncludeObjects(oracleRdmsBuilder);
     }
-    return OracleSourceConfig.newBuilder().setIncludeObjects(oracleRdmsBuilder);
+    return configBuilder.build();
   }
 
+  public String database() {
+    return database;
+  }
+
+  /** Builder for {@link OracleSource}. */
   public static class Builder extends JDBCSource.Builder<OracleSource> {
-    public Builder(
-        String hostname,
-        String username,
-        String password,
-        int port,
-        Map<String, List<String>> allowedTables) {
-      super(hostname, username, password, port, allowedTables);
+
+    private String database;
+
+    public Builder(String hostname, String username, String password, int port, String database) {
+      super(hostname, username, password, port);
+      this.database = database;
     }
 
     @Override

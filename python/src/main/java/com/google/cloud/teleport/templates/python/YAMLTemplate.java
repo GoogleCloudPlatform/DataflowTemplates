@@ -21,7 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 
 /** Placeholder template class for YAMLTemplate in Python. */
 @Template(
-    name = "YAML_Template_Python",
+    name = "Yaml_Template",
     category = TemplateCategory.GET_STARTED,
     type = Template.TemplateType.PYTHON,
     displayName = "YAML Template (Experimental)",

@@ -84,7 +84,8 @@ public final class SpannerResourceManagerTest {
   @Before
   public void setUp() {
     testManager =
-        new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT, false, null);
+        new SpannerResourceManager(
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT), spanner);
   }
 
   private void prepareCreateInstanceMock() throws ExecutionException, InterruptedException {
@@ -441,7 +442,8 @@ public final class SpannerResourceManagerTest {
     doThrow(SpannerException.class).when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
     testManager =
-        new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT, false, null);
+        new SpannerResourceManager(
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT), spanner);
 
     // act & assert
     assertThrows(SpannerResourceManagerException.class, () -> testManager.cleanupAll());
@@ -453,7 +455,8 @@ public final class SpannerResourceManagerTest {
     doNothing().when(instanceAdminClient).deleteInstance(any());
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
     testManager =
-        new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT, false, null);
+        new SpannerResourceManager(
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT), spanner);
 
     // act
     testManager.cleanupAll();
@@ -470,7 +473,8 @@ public final class SpannerResourceManagerTest {
     when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
     when(spanner.isClosed()).thenReturn(true);
     testManager =
-        new SpannerResourceManager(spanner, TEST_ID, PROJECT_ID, REGION, DIALECT, false, null);
+        new SpannerResourceManager(
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT), spanner);
     testManager.cleanupAll();
     String statement =
         "CREATE TABLE Singers (\n"
@@ -508,7 +512,10 @@ public final class SpannerResourceManagerTest {
     when(spanner.getDatabaseAdminClient()).thenReturn(databaseAdminClient);
     testManager =
         new SpannerResourceManager(
-            spanner, TEST_ID, PROJECT_ID, REGION, DIALECT, true, "existing-instance");
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT)
+                .setInstanceId("existing-instance")
+                .useStaticInstance(),
+            spanner);
 
     // act
     testManager.cleanupAll();

@@ -26,6 +26,7 @@ public class Shard implements Serializable {
   private String user;
   private String password;
   private String dbName;
+  private String secretManagerUri;
 
   public Shard(
       String logicalShardId,
@@ -33,13 +34,15 @@ public class Shard implements Serializable {
       String port,
       String user,
       String password,
-      String dbName) {
+      String dbName,
+      String secretManagerUri) {
     this.logicalShardId = logicalShardId;
     this.host = host;
     this.port = port;
     this.user = user;
     this.password = password;
     this.dbName = dbName;
+    this.secretManagerUri = secretManagerUri;
   }
 
   public Shard() {}
@@ -90,6 +93,14 @@ public class Shard implements Serializable {
 
   public void setDbName(String input) {
     this.dbName = input;
+  }
+
+  public String getSecretManagerUri() {
+    return secretManagerUri;
+  }
+
+  public void setSecretManagerUri(String input) {
+    this.secretManagerUri = input;
   }
 
   @Override

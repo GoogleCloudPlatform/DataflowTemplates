@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToShardedFileSink.Options;
@@ -292,8 +293,8 @@ public class SpannerChangeStreamsToShardedFileSink {
   public static PipelineResult run(Options options) {
 
     Pipeline pipeline = Pipeline.create(options);
-
-    List<Shard> shards = ShardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
+    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+    List<Shard> shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
     if (shards == null || shards.isEmpty()) {
       throw new RuntimeException("The source shards file cannot be empty");
     }

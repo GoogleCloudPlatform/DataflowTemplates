@@ -64,17 +64,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/streaming-data-generator/src/main/java/com/google/cloud/teleport/v2/templates/StreamingDataGenerator.java)
 
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
 
 ### Building Template
 
@@ -100,8 +96,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Streaming_Data_Generator" \
--pl v2/streaming-data-generator \
--am
+-f v2/streaming-data-generator
 ```
 
 
@@ -255,8 +250,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="streaming-data-generator-job" \
 -DtemplateName="Streaming_Data_Generator" \
 -Dparameters="qps=$QPS,schemaTemplate=$SCHEMA_TEMPLATE,schemaLocation=$SCHEMA_LOCATION,topic=$TOPIC,messagesLimit=$MESSAGES_LIMIT,outputType=$OUTPUT_TYPE,avroSchemaLocation=$AVRO_SCHEMA_LOCATION,sinkType=$SINK_TYPE,outputTableSpec=$OUTPUT_TABLE_SPEC,writeDisposition=$WRITE_DISPOSITION,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,windowDuration=$WINDOW_DURATION,outputDirectory=$OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS,driverClassName=$DRIVER_CLASS_NAME,connectionUrl=$CONNECTION_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,statement=$STATEMENT,projectId=$PROJECT_ID,spannerInstanceName=$SPANNER_INSTANCE_NAME,spannerDatabaseName=$SPANNER_DATABASE_NAME,spannerTableName=$SPANNER_TABLE_NAME,maxNumMutations=$MAX_NUM_MUTATIONS,maxNumRows=$MAX_NUM_ROWS,batchSizeBytes=$BATCH_SIZE_BYTES,commitDeadlineSeconds=$COMMIT_DEADLINE_SECONDS" \
--pl v2/streaming-data-generator \
--am
+-f v2/streaming-data-generator
 ```
 
 ## Terraform
