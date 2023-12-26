@@ -82,6 +82,8 @@ public final class Type implements Serializable {
 
   private static final int AMBIGUOUS_FIELD = -1;
   private static final long serialVersionUID = -3076152125004114582L;
+  private static final Type TYPE_PG_COMMIT_TIMESTAMP =
+      new Type(Type.Code.PG_COMMIT_TIMESTAMP, null, null);
 
   /** Returns the descriptor for the {@code BOOL type}. */
   public static Type bool() {
@@ -180,6 +182,10 @@ public final class Type implements Serializable {
 
   public static Type pgDate() {
     return TYPE_PG_DATE;
+  }
+
+  public static Type pgCommitTimestamp() {
+    return TYPE_PG_COMMIT_TIMESTAMP;
   }
 
   /** Returns a descriptor for an array of {@code elementType}. */
@@ -296,7 +302,8 @@ public final class Type implements Serializable {
     PG_BYTEA("bytea", Dialect.POSTGRESQL),
     PG_TIMESTAMPTZ("timestamp with time zone", Dialect.POSTGRESQL),
     PG_DATE("date", Dialect.POSTGRESQL),
-    PG_ARRAY("array", Dialect.POSTGRESQL);
+    PG_ARRAY("array", Dialect.POSTGRESQL),
+    PG_COMMIT_TIMESTAMP("SPANNER.COMMIT_TIMESTAMP", Dialect.POSTGRESQL);
 
     private final String name;
     private final Dialect dialect;

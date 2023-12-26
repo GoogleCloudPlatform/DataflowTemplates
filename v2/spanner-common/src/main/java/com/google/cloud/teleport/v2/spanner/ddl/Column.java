@@ -163,6 +163,8 @@ public abstract class Column implements Serializable {
           Type arrayType = type.getArrayElementType();
           return typeString(arrayType, size) + "[]";
         }
+      case PG_COMMIT_TIMESTAMP:
+        return Type.Code.PG_COMMIT_TIMESTAMP.getName();
     }
 
     throw new IllegalArgumentException("Unknown type " + type);
@@ -406,6 +408,9 @@ public abstract class Column implements Serializable {
           }
           if (spannerType.equals(Type.Code.PG_DATE.getName())) {
             return t(Type.pgDate(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_COMMIT_TIMESTAMP.getName())) {
+            return t(Type.pgCommitTimestamp(), null);
           }
           break;
         }
