@@ -178,6 +178,13 @@
         <artifactId>snappy-java</artifactId>
         <version>${snappy.version}</version>
       </dependency>
+
+      <!-- Remove this enforced version after libraries-bom moves past rev20231117 -->
+      <dependency>
+        <groupId>com.google.apis</groupId>
+        <artifactId>google-api-services-storage</artifactId>
+        <version>v1-rev20231202-2.0.0</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
