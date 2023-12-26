@@ -24,20 +24,20 @@ import freemarker.template.DefaultObjectWrapperBuilder;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import freemarker.template.TemplateExceptionHandler;
+import freemarker.template.Version;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
-
-import freemarker.template.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Class that can generate terraform files based on template annotations. */
 public class TemplateTerraformGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(TemplateTerraformGenerator.class);
-  private static final String TEMPLATE_PATH = "terraform/module-template.tf";
+  private static final String TEMPLATE_PATH_CLASSIC = "terraform-templates/google.tf";
+  private static final String TEMPLATE_PATH_FLEX = "terraform-templates/google-beta.tf";
 
   private static final Version VERSION = Configuration.VERSION_2_3_32;
   private static final Configuration FREEMARKER_CONFIG = new Configuration(VERSION);
@@ -51,8 +51,9 @@ public class TemplateTerraformGenerator {
     FREEMARKER_CONFIG.setObjectWrapper(wrapperBuilder.build());
   }
 
-  public static void process(ImageSpec imageSpec, OutputStream destination) throws IOException, TemplateException {
-    Template template = FREEMARKER_CONFIG.getTemplate(TEMPLATE_PATH);
+  public static void process(ImageSpec imageSpec, OutputStream destination)
+      throws IOException, TemplateException {
+    Template template = templateOf(imageSpec);
     LOG.info("Generating terraform for template {}...", imageSpec.getMetadata().getInternalName());
     OutputStreamWriter writer = new OutputStreamWriter(destination);
     template.process(moduleOf(imageSpec), writer);
@@ -60,11 +61,16 @@ public class TemplateTerraformGenerator {
     destination.close();
   }
 
+  private static Template templateOf(ImageSpec spec) throws IOException {
+    if (spec.getMetadata().isFlexTemplate()) {
+      return FREEMARKER_CONFIG.getTemplate(TEMPLATE_PATH_FLEX);
+    }
+
+    return FREEMARKER_CONFIG.getTemplate(TEMPLATE_PATH_CLASSIC);
+  }
+
   private static TerraformModule moduleOf(ImageSpec imageSpec) {
-    return TerraformModule.builder()
-            .setName(imageSpec.getMetadata().getName())
-            .setParameters(variablesOf(imageSpec.getMetadata()))
-            .build();
+    return TerraformModule.builder().setParameters(variablesOf(imageSpec.getMetadata())).build();
   }
 
   private static List<TerraformVariable> variablesOf(ImageSpecMetadata metadata) {
@@ -80,13 +86,13 @@ public class TemplateTerraformGenerator {
     if (parameter.isOptional() != null && parameter.isOptional() && defaultValue == null) {
       defaultValue = "";
     }
-        return TerraformVariable.builder()
-            .setName(parameter.getName())
-            .setType(variableTypeOf(parameter.getParamType()))
-            .setDescription(parameter.getHelpText())
-            .setDefaultValue(defaultValue)
-            .setRegexes(parameter.getRegexes())
-            .build();
+    return TerraformVariable.builder()
+        .setName(parameter.getName())
+        .setType(variableTypeOf(parameter.getParamType()))
+        .setDescription(parameter.getHelpText())
+        .setDefaultValue(defaultValue)
+        .setRegexes(parameter.getRegexes())
+        .build();
   }
 
   private static TerraformVariable.Type variableTypeOf(ImageSpecParameterType parameterType) {

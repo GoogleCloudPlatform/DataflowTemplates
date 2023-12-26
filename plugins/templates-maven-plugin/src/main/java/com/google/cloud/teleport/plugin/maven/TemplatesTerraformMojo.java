@@ -20,6 +20,7 @@ import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import com.google.cloud.teleport.plugin.terraform.TemplateTerraformGenerator;
 import com.google.common.annotations.VisibleForTesting;
+import freemarker.template.TemplateException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -30,8 +31,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-
-import freemarker.template.TemplateException;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -84,7 +83,7 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
     } catch (IOException e) {
       throw new RuntimeException(e);
     } catch (TemplateException e) {
-        throw new MojoExecutionException("Template processing failed", e);
+      throw new MojoExecutionException("Template processing failed", e);
     }
   }
 

@@ -17,9 +17,6 @@ package com.google.cloud.teleport.plugin.terraform;
 
 import com.google.auto.value.AutoValue;
 import java.util.List;
-
-import freemarker.ext.beans.BeansWrapper;
-import freemarker.template.TemplateModel;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,15 +18,9 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	tfjson "github.com/hashicorp/terraform-json"
 	"log"
-)
-
-const (
-	resourceDataflowJob             = "google_dataflow_job"
-	resourceDataflowFlexTemplateJob = "google_dataflow_flex_template_job"
 )
 
 // getSchema of the Google and Google Beta terraform providers.
@@ -51,10 +45,17 @@ func writeSchema(key string, provider *tfjson.ProviderSchema) error {
 	outProvider := &tfjson.ProviderSchema{
 		ResourceSchemas: make(map[string]*tfjson.Schema),
 	}
+
 	w, ok := output[key]
 	if !ok {
-		return fmt.Errorf("provider not planned for schema reflection: %s", key)
+		return fmt.Errorf("no output mapped from key: %s", key)
 	}
+
+	fter, ok := formatterMap[key]
+	if !ok {
+		return fmt.Errorf("no formatter mapped form key: %s", key)
+	}
+
 	resourceDataflowJobSchema, ok := provider.ResourceSchemas[resourceDataflowJob]
 	if ok {
 		outProvider.ResourceSchemas[resourceDataflowJob] = resourceDataflowJobSchema
@@ -64,5 +65,5 @@ func writeSchema(key string, provider *tfjson.ProviderSchema) error {
 		outProvider.ResourceSchemas[resourceDataflowFlexTemplateJob] = resourceDataflowFlexJobSchema
 	}
 
-	return json.NewEncoder(w).Encode(outProvider)
+	return fter.Format(outProvider, w)
 }

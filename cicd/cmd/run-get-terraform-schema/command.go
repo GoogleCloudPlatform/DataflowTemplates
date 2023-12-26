@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -19,32 +19,62 @@ package main
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"io"
 	"log"
 	"os"
 	"path"
 )
 
-const (
-	googleProviderFileName     = "google.json"
-	googleBetaProviderFileName = "google-beta.json"
-	registryPathGoogle         = "registry.terraform.io/hashicorp/google"
-	registryPathGoogleBeta     = "registry.terraform.io/hashicorp/google-beta"
-)
-
 var (
 	command = &cobra.Command{
-		Use:   "run-get-terraform-schema [DIR]",
-		Short: "Acquires the schema of Dataflow related resources of the Google and Google-Beta providers. Outputs to DIR, created if needed; outputs to STDOUT if no DIR provided.",
-		Args:  parseTargetDir,
-		RunE:  runE,
-	}
+		Use: "run-get-terraform-schema [DIR]",
+		Short: `Acquires the schema of Dataflow related resources of the Google and Google-Beta providers.
+Outputs to DIR, created if needed; outputs to STDOUT if no DIR provided.`,
+		Long: `Acquires the schema of Dataflow related resources of the Google and Google-Beta providers.
 
-	output = map[string]io.Writer{
-		registryPathGoogle:     os.Stdout,
-		registryPathGoogleBeta: os.Stdout,
+DIR is an optional positional argument that configures the output directory. If not DIR is specified, then the
+program outputs to STDOUT.
+
+Available formats:
+	tf	Outputs in a terraform hcl format for use as a freemarker template.
+	json	Outputs the terraform provider schema in JSON format.
+`,
+		Args:    parseTargetDir,
+		RunE:    runE,
+		PreRunE: preRunE,
 	}
 )
+
+func init() {
+	command.Flags().StringVarP(&format, "format", "f", format, formatHelp)
+}
+
+func preRunE(_ *cobra.Command, _ []string) error {
+	if format == "" {
+		return fmt.Errorf("format is empty but required")
+	}
+	log.Printf("using format: %s\n", format)
+
+	switch format {
+	case formatJson:
+		formatterMap = map[string]formatter{
+			registryPathGoogle:     &jsonFormatter{},
+			registryPathGoogleBeta: &jsonFormatter{},
+		}
+		return nil
+	case formatTerraform:
+		formatterMap = map[string]formatter{
+			registryPathGoogle: &hclFormatter{
+				resourceKey: resourceDataflowJob,
+			},
+			registryPathGoogleBeta: &hclFormatter{
+				resourceKey: resourceDataflowFlexTemplateJob,
+			},
+		}
+		return nil
+	default:
+		return fmt.Errorf("specified format: %s is not allowed; run with -help to see allowed formats", format)
+	}
+}
 
 func runE(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
@@ -74,8 +104,8 @@ func parseTargetDir(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("error creating directory: %s", targetDir)
 	}
 
-	googleProviderFilePath := path.Join(targetDir, googleProviderFileName)
-	googleBetaProviderFilePath := path.Join(targetDir, googleBetaProviderFileName)
+	googleProviderFilePath := path.Join(targetDir, fmt.Sprintf("%s.%s", google, format))
+	googleBetaProviderFilePath := path.Join(targetDir, fmt.Sprintf("%s.%s", googleBeta, format))
 
 	if output[registryPathGoogle], err = os.Create(googleProviderFilePath); err != nil {
 		return fmt.Errorf("error creating %s: %w", googleProviderFilePath, err)

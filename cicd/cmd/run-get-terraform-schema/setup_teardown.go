@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -30,20 +30,6 @@ import (
 	"log"
 	"os"
 	"path"
-)
-
-const (
-	google            = "google"
-	googleBeta        = "google-beta"
-	providerTmplStr   = `provider "%s" {}`
-	fileName          = "main.tf"
-	versionConstraint = "~> 1.0"
-)
-
-var (
-	googleProvider     = fmt.Sprintf(providerTmplStr, google)
-	googleBetaProvider = fmt.Sprintf(providerTmplStr, googleBeta)
-	content            = fmt.Sprintf("%s\n%s\n", googleProvider, googleBetaProvider)
 )
 
 // setup the workflow:
@@ -108,7 +94,7 @@ func (t *terraform) stageProvider() error {
 		return fmt.Errorf("error creating temp directory: %w", err)
 	}
 
-	filePath := path.Join(t.workingDir, fileName)
+	filePath := path.Join(t.workingDir, providerFileName)
 
 	f, err := os.Create(filePath)
 	if err != nil {
