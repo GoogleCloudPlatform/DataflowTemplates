@@ -346,7 +346,11 @@ public abstract class TemplateTestBase {
   public void tearDownBase() throws IOException {
     LOG.info("Invoking tearDownBase cleanups for {} - {}", testName, testId);
 
-    pipelineLauncher.cleanupAll();
+    if (pipelineLauncher != null) {
+      pipelineLauncher.cleanupAll();
+    } else {
+      LOG.error("pipelineLauncher was not initialized, there was an error triggering {}", testName);
+    }
     if (gcsClient != null) {
       gcsClient.cleanupAll();
     }
