@@ -20,7 +20,7 @@ import static org.apache.beam.it.gcp.bigtable.matchers.BigtableAsserts.assertTha
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.datastax.driver.core.exceptions.AlreadyExistsException;
+import com.datastax.oss.driver.api.core.servererrors.AlreadyExistsException;
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
