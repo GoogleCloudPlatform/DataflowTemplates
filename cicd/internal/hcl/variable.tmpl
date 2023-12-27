@@ -1,0 +1,3 @@
+{{ range $name, $schemaAttribute := . }}variable "{{$name}}" {
+  type = {{$schemaAttribute | extractAttributeType }}
+}{{end}}
