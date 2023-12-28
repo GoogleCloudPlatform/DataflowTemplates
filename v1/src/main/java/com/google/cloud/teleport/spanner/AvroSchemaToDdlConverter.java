@@ -126,7 +126,6 @@ public class AvroSchemaToDdlConverter {
     for (Schema.Field f : schema.getFields()) {
       if (f.name().equals(INPUT)) {
         for (Schema.Field c : f.schema().getFields()) {
-          LOG.error("input field {} {}", c.name(), c.getProp(SQL_TYPE));
           builder
               .inputColumn(c.name())
               .parseType(c.getProp(SQL_TYPE))
