@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
+import com.google.cloud.teleport.v2.spanner.migrations.metadata.SpannerToGcsJobMetadata;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -23,20 +24,13 @@ import org.joda.time.Instant;
 public class JobMetadataUpdater {
 
   public static void writeStartAndDuration(
-      String spannerProjectId,
-      String metadataInstance,
-      String metadataDatabase,
-      String startString,
-      String duration,
-      String tableSuffix,
-      String runId) {
-    SpannerDao spannerDao =
-        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
-    Duration size = DurationUtils.parseDuration(duration);
-    Instant timestamp = Instant.parse(startString);
+      SpannerDao spannerDao, String runId, SpannerToGcsJobMetadata jobMetadata) {
+
+    Duration size = DurationUtils.parseDuration(jobMetadata.getWindowDuration());
+    Instant timestamp = Instant.parse(jobMetadata.getStartTimestamp());
     // fixed windows start with nearest value divisible by duration
     Instant start =
         new Instant(timestamp.getMillis() - timestamp.plus(size).getMillis() % size.getMillis());
-    spannerDao.writeStartAndDuration(start.toString(), duration, runId);
+    spannerDao.upsertSpannerToGcsMetadata(start.toString(), jobMetadata.getWindowDuration(), runId);
   }
 }

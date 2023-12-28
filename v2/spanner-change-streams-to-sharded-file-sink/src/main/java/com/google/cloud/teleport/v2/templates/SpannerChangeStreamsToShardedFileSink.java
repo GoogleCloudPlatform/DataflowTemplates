@@ -22,6 +22,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.metadata.SpannerToGcsJobMetadata;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
@@ -39,6 +40,7 @@ import com.google.cloud.teleport.v2.templates.transforms.WriterGCS;
 import com.google.cloud.teleport.v2.templates.utils.FileCreationTracker;
 import com.google.cloud.teleport.v2.templates.utils.InformationSchemaReader;
 import com.google.cloud.teleport.v2.templates.utils.JobMetadataUpdater;
+import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -265,6 +267,19 @@ public class SpannerChangeStreamsToShardedFileSink {
     String getRunIdentifier();
 
     void setRunIdentifier(String value);
+
+    @TemplateParameter.Enum(
+        order = 17,
+        optional = true,
+        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("resume")},
+        description =
+            "This is the type of run mode. Supported values are regular and resume. Default is"
+                + " regular.",
+        helpText = "Regular starts from input start time, resume start from last processed time.")
+    @Default.String("regular")
+    String getRunMode();
+
+    void setRunMode(String value);
   }
 
   /**
@@ -328,16 +343,23 @@ public class SpannerChangeStreamsToShardedFileSink {
                 + tableSuffix);
       }
     }
+
+    // Have a common start time stamp when updating the metadata tables
+    // And when reading from change streams
+    SpannerDao spannerDao =
+        new SpannerDao(
+            options.getSpannerProjectId(),
+            options.getMetadataInstance(),
+            options.getMetadataDatabase(),
+            tableSuffix);
+    SpannerToGcsJobMetadata jobMetadata = getStartTimeAndDuration(options, spannerDao);
+
     // Capture the window start time and duration config.
     // This is read by the GCSToSource template to ensure the same config is used in both templates.
-    JobMetadataUpdater.writeStartAndDuration(
-        options.getSpannerProjectId(),
-        options.getMetadataInstance(),
-        options.getMetadataDatabase(),
-        options.getStartTimestamp(),
-        options.getWindowDuration(),
-        tableSuffix,
-        options.getRunIdentifier());
+    if (options.getRunMode().equals(Constants.RUN_MODE_REGULAR)) {
+      JobMetadataUpdater.writeStartAndDuration(spannerDao, options.getRunIdentifier(), jobMetadata);
+    }
+    spannerDao.close();
 
     // Initialize the per shard progress with historical value
     // This makes it easier to fire blind UPDATES later on when
@@ -352,7 +374,9 @@ public class SpannerChangeStreamsToShardedFileSink {
     fileCreationTracker.init(shards);
 
     pipeline
-        .apply(getReadChangeStreamDoFn(options, spannerConfig))
+        .apply(
+            getReadChangeStreamDoFn(
+                options, spannerConfig, Timestamp.parseTimestamp(jobMetadata.getStartTimestamp())))
         .apply(ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
         .apply(ParDo.of(new PreprocessRecordsFn()))
         .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class))
@@ -367,7 +391,8 @@ public class SpannerChangeStreamsToShardedFileSink {
                     options.getSkipDirectoryName())))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
-            Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+            Window.into(
+                FixedWindows.of(DurationUtils.parseDuration(jobMetadata.getWindowDuration()))))
         .apply(
             "Tracking change data seen",
             ParDo.of(
@@ -385,7 +410,8 @@ public class SpannerChangeStreamsToShardedFileSink {
                 .build())
         .apply(
             "Creating file tracking window",
-            Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+            Window.into(
+                FixedWindows.of(DurationUtils.parseDuration(jobMetadata.getWindowDuration()))))
         .apply(
             "Tracking file progress ",
             ParDo.of(
@@ -399,12 +425,8 @@ public class SpannerChangeStreamsToShardedFileSink {
   }
 
   public static SpannerIO.ReadChangeStream getReadChangeStreamDoFn(
-      Options options, SpannerConfig spannerConfig) {
+      Options options, SpannerConfig spannerConfig, Timestamp startTime) {
 
-    Timestamp startTime = Timestamp.now();
-    if (!options.getStartTimestamp().equals("")) {
-      startTime = Timestamp.parseTimestamp(options.getStartTimestamp());
-    }
     SpannerIO.ReadChangeStream readChangeStreamDoFn =
         SpannerIO.readChangeStream()
             .withSpannerConfig(spannerConfig)
@@ -417,5 +439,52 @@ public class SpannerChangeStreamsToShardedFileSink {
           Timestamp.parseTimestamp(options.getEndTimestamp()));
     }
     return readChangeStreamDoFn;
+  }
+
+  /**
+   * This method gets the start time of reading change streams and the window duration.
+   *
+   * <p>In the regular mode, they are taken from the pipeline input. If start time is not there in
+   * input, it takes the current time.
+   *
+   * <p>In the resume mode, the duration is taken from the original run via spanner_to_gcs_metadata
+   * table. The start time is taken based on the what is the minimum duration processed by the
+   * writer job. This is the most deterministic way to know the starting point. We cannot rely on
+   * the file creation metadata tables since files can be created in parallel for various windows.
+   *
+   * <p>In the scenario where pause was triggered before the writer job could start,the start time
+   * cannot be determined by looking at shard_file_process_progress table. In this case, the start
+   * time is taken from the original run via spanner_to_gcs_metadata.
+   */
+  private static SpannerToGcsJobMetadata getStartTimeAndDuration(
+      Options options, SpannerDao spannerDao) {
+    Timestamp startTime = Timestamp.now();
+    String duration = options.getWindowDuration();
+    if (options.getRunMode().equals(Constants.RUN_MODE_REGULAR)) {
+      if (!options.getStartTimestamp().equals("")) {
+        startTime = Timestamp.parseTimestamp(options.getStartTimestamp());
+      }
+    } else {
+      // resume run mode
+      // Get the original job start time and duration
+      SpannerToGcsJobMetadata jobMetadata =
+          spannerDao.getSpannerToGcsJobMetadata(options.getRunIdentifier());
+      if (jobMetadata == null) {
+        throw new RuntimeException(
+            "Could not read from spanner_to_gcs_metadata table. This table should exist when"
+                + " running in resume mode.");
+      }
+      duration = jobMetadata.getWindowDuration();
+      startTime = spannerDao.getMinimumStartTimeAcrossAllShards(options.getRunIdentifier());
+      if (startTime == null) {
+        // This happens when the pause was called before writer job could start
+        // In this case, fallback to the start time of the original run
+        startTime = Timestamp.parseTimestamp(jobMetadata.getStartTimestamp());
+      }
+    }
+    LOG.info(
+        "Run mode {} and startTime {} and duration {} ", options.getRunMode(), startTime, duration);
+    SpannerToGcsJobMetadata response = new SpannerToGcsJobMetadata(startTime.toString(), duration);
+    return response;
   }
 }
