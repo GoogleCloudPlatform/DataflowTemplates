@@ -575,7 +575,7 @@ public class DdlTest {
     model.inputColumn("i2").type(Type.string()).size(-1).endInputColumn();
     model
         .outputColumn("o1")
-        .type(Type.int64())
+        .type(Type.struct(Type.StructField.of("a", Type.int64())))
         .size(-1)
         .columnOptions(ImmutableList.of("required=TRUE"))
         .endOutputColumn();
@@ -586,7 +586,7 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             "CREATE MODEL `user_model`"
                 + " INPUT ( `i1` BOOL OPTIONS (required=FALSE), `i2` STRING(MAX), )"
-                + " OUTPUT ( `o1` INT64, `o2` FLOAT64, )"
+                + " OUTPUT ( `o1` STRUCT<a INT64>, `o2` FLOAT64, )"
                 + " REMOTE OPTIONS (endpoint=\"test\")"));
   }
 

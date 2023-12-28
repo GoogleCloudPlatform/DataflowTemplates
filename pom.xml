@@ -242,6 +242,8 @@
           <excludedGroups>${integration.tests}</excludedGroups>
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
           <trimStackTrace>false</trimStackTrace>
+          <parallel>classesAndMethods</parallel>
+          <threadCount>10</threadCount>
           <systemPropertyVariables>
             <!-- Allow this project to be tested with JDK 21 -->
             <net.bytebuddy.experimental>true</net.bytebuddy.experimental>

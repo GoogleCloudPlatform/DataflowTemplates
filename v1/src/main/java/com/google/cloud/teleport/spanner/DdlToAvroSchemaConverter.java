@@ -68,6 +68,8 @@ public class DdlToAvroSchemaConverter {
   private final String namespace;
   private final String version;
   private final Boolean shouldExportTimestampAsLogicalType;
+  // Counter to track how many structs were created and give each Avro record a unique name.
+  private int structCounter = 0;
 
   public DdlToAvroSchemaConverter(
       String namespace, String version, Boolean shouldExportTimestampAsLogicalType) {
@@ -304,6 +306,14 @@ public class DdlToAvroSchemaConverter {
       case PG_ARRAY:
         Schema avroItemsType = avroType(spannerType.getArrayElementType());
         return SchemaBuilder.builder().array().items().type(wrapAsNullable(avroItemsType));
+      case STRUCT:
+        SchemaBuilder.FieldAssembler<Schema> fields =
+            SchemaBuilder.builder().record("struct_" + structCounter++).fields();
+        for (com.google.cloud.teleport.spanner.common.Type.StructField structField :
+            spannerType.getStructFields()) {
+          fields.name(structField.getName()).type(avroType(structField.getType())).noDefault();
+        }
+        return fields.endRecord();
       default:
         throw new IllegalArgumentException("Unknown spanner type " + spannerType);
     }

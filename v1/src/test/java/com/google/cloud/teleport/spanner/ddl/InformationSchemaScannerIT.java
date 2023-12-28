@@ -32,6 +32,7 @@ import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.cloud.teleport.spanner.SpannerServerResource;
 import com.google.cloud.teleport.spanner.common.Type;
+import com.google.cloud.teleport.spanner.common.Type.StructField;
 import com.google.common.collect.HashMultimap;
 import java.util.Arrays;
 import java.util.Collections;
@@ -272,11 +273,59 @@ public class InformationSchemaScannerIT {
     assertThat(model.inputColumns().get(0).columnOptions(), hasSize(1));
     assertThat(model.inputColumns().get(0).columnOptions(), hasItems("required=TRUE"));
     assertThat(model.outputColumns(), hasSize(2));
+    assertThat(model.outputColumns().get(0).name(), is("classes"));
+    assertThat(model.outputColumns().get(0).type(), is(Type.array(Type.string())));
+    assertThat(model.outputColumns().get(0).columnOptions(), hasSize(1));
+    assertThat(model.outputColumns().get(0).columnOptions(), hasItems("required=TRUE"));
     assertThat(model.remote(), equalTo(true));
     assertThat(
         model.options(),
         hasItems(
             "endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\""));
+
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(modelDef));
+  }
+
+  @Test
+  public void structModel() throws Exception {
+    String modelDef =
+        "CREATE MODEL `TextEmbeddingGecko`"
+            + " INPUT ( `content` STRING(MAX), )"
+            + " OUTPUT ( `embeddings` STRUCT<statistics STRUCT<truncated BOOL, token_count FLOAT64>, values ARRAY<FLOAT64>>, )"
+            + " REMOTE "
+            + " OPTIONS (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/publishers/google/models/textembedding-gecko\")";
+
+    spannerServer.createDatabase(dbId, Arrays.asList(modelDef));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.models(), hasSize(1));
+    Model model = ddl.model("TextEmbeddingGecko");
+    assertThat(model, notNullValue());
+    assertThat(ddl.model("TEXTEMBEDDINGGECKO"), sameInstance(model));
+    assertThat(model.inputColumns(), hasSize(1));
+    assertThat(model.inputColumns().get(0).name(), is("content"));
+    assertThat(model.inputColumns().get(0).type(), is(Type.string()));
+    assertThat(model.inputColumns().get(0).columnOptions(), hasSize(1));
+    assertThat(model.inputColumns().get(0).columnOptions(), hasItems("required=TRUE"));
+    assertThat(model.outputColumns(), hasSize(1));
+    assertThat(model.outputColumns().get(0).name(), is("embeddings"));
+    assertThat(
+        model.outputColumns().get(0).type(),
+        is(
+            Type.struct(
+                StructField.of(
+                    "statistics",
+                    Type.struct(
+                        StructField.of("truncated", Type.bool()),
+                        StructField.of("token_count", Type.float64()))),
+                StructField.of("values", Type.array(Type.float64())))));
+    assertThat(model.outputColumns().get(0).columnOptions(), hasSize(1));
+    assertThat(model.outputColumns().get(0).columnOptions(), hasItems("required=TRUE"));
+    assertThat(model.remote(), equalTo(true));
+    assertThat(
+        model.options(),
+        hasItems(
+            "endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/publishers/google/models/textembedding-gecko\""));
 
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(modelDef));
   }

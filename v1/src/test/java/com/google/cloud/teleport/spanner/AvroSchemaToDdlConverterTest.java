@@ -421,15 +421,49 @@ public class AvroSchemaToDdlConverterTest {
             + "      \"fields\":["
             + "        {\"name\":\"o1\", \"type\":\"long\", \"sqlType\":\"INT64\"}]}}] "
             + "}";
+    String modelStructString =
+        "{"
+            + "\"type\":\"record\","
+            + "\"name\":\"ModelStruct\","
+            + "\"namespace\":\"spannertest\","
+            + "\"googleFormatVersion\":\"booleans\","
+            + "\"googleStorage\":\"CloudSpanner\", "
+            + "\"spannerEntity\":\"Model\", "
+            + "\"spannerRemote\":\"false\", "
+            + "\"fields\":["
+            + "  {\"name\":\"Input\","
+            + "   \"type\":"
+            + "     {\"type\":\"record\","
+            + "      \"name\":\"ModelStruct_Input\","
+            + "      \"fields\":["
+            + "        {\"name\":\"i1\","
+            + "         \"sqlType\":\"STRUCT<a BOOL>\","
+            + "         \"type\": "
+            + "           {\"type\":\"record\","
+            + "            \"name\":\"struct_1\","
+            + "            \"fields\":[{\"name\":\"a\",\"type\":\"boolean\"}]}}]}},"
+            + "  {\"name\":\"Output\","
+            + "   \"type\":"
+            + "     {\"type\":\"record\","
+            + "      \"name\":\"ModelStruct_Output\","
+            + "      \"fields\":["
+            + "        {\"name\":\"o1\","
+            + "         \"sqlType\":\"STRUCT<a BOOL, b ARRAY<STRUCT<c STRING(MAX), d ARRAY<FLOAT64>>>, e STRUCT<f STRUCT<g INT64>>>\","
+            + "         \"type\": "
+            + "           {\"type\":\"record\","
+            + "            \"name\":\"struct_2\","
+            + "            \"fields\":[{\"name\":\"a\",\"type\":\"boolean\"}]}}]}}]"
+            + "}";
 
     Collection<Schema> schemas = new ArrayList<>();
     Schema.Parser parser = new Schema.Parser();
     schemas.add(parser.parse(modelAllString));
     schemas.add(parser.parse(modelMinString));
+    schemas.add(parser.parse(modelStructString));
 
     AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
     Ddl ddl = converter.toDdl(schemas);
-    assertThat(ddl.models(), hasSize(2));
+    assertThat(ddl.models(), hasSize(3));
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
@@ -445,7 +479,10 @@ public class AvroSchemaToDdlConverterTest {
                 + " REMOTE OPTIONS (endpoint=\"test\")"
                 + " CREATE MODEL `ModelMin`"
                 + " INPUT ( `i1` BOOL, )"
-                + " OUTPUT ( `o1` INT64, )"));
+                + " OUTPUT ( `o1` INT64, )"
+                + " CREATE MODEL `ModelStruct`"
+                + " INPUT ( `i1` STRUCT<a BOOL>, )"
+                + " OUTPUT ( `o1` STRUCT<a BOOL, b ARRAY<STRUCT<c STRING(MAX), d ARRAY<FLOAT64>>>, e STRUCT<f STRUCT<g INT64>>>, )"));
   }
 
   @Test
