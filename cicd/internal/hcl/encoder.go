@@ -24,20 +24,15 @@ import (
 
 type Encoder struct {
 	w         io.Writer
-	formatter formatter
+	formatter Formatter
 }
 
 // NewEncoder instantiates an Encoder. Applies each Option from the variadic parameter to the instantiated Encoder.
 // Defaults to a JSON format.
-func NewEncoder(w io.Writer, opts ...Option) *Encoder {
+func NewEncoder(w io.Writer, formatter Formatter) *Encoder {
 	enc := &Encoder{
-		w: w,
-	}
-	for _, opt := range opts {
-		opt.apply(enc)
-	}
-	if enc.formatter == nil {
-		WithJsonFormat().apply(enc)
+		w:         w,
+		formatter: formatter,
 	}
 	return enc
 }

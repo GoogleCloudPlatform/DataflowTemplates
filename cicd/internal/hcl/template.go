@@ -20,6 +20,7 @@ import (
 	_ "embed"
 	"fmt"
 	tfjson "github.com/hashicorp/terraform-json"
+	"github.com/zclconf/go-cty/cty"
 	"text/template"
 	"time"
 )
@@ -28,10 +29,6 @@ var (
 	headerTmpl = template.Must(template.New("header").Funcs(template.FuncMap{
 		"currentYear": currentYear,
 	}).Parse(headerTmplF))
-
-	variableTmpl = template.Must(template.New("variable").Funcs(template.FuncMap{
-		"extractAttributeType": extractAttributeType,
-	}).Parse(variableTmplF))
 )
 
 //go:embed header.tmpl
@@ -44,19 +41,50 @@ func currentYear() string {
 	return time.Now().Format("2006")
 }
 
-func extractAttributeType(attr *tfjson.SchemaAttribute) string {
-	typeName := attr.AttributeType.FriendlyName()
-	attrType := attr.AttributeType
+func isAttributeTypeNil(attrType *cty.Type) bool {
+	return attrType.Equals(cty.NilType)
+}
+
+func extractAttributeType(attrType *cty.Type) string {
+	typeName := attrType.FriendlyName()
 
 	if attrType.IsMapType() {
-		typeName = fmt.Sprintf("map(%s)", attr.AttributeType.ElementType().FriendlyName())
+		typeName = fmt.Sprintf("map(%s)", attrType.ElementType().FriendlyName())
 	}
 	if attrType.IsListType() {
-		typeName = fmt.Sprintf("list(%s)", attr.AttributeType.ElementType().FriendlyName())
+		typeName = fmt.Sprintf("list(%s)", attrType.ElementType().FriendlyName())
 	}
 	if attrType.IsSetType() {
-		typeName = fmt.Sprintf("set(%s)", attr.AttributeType.ElementType().FriendlyName())
+		typeName = fmt.Sprintf("set(%s)", attrType.ElementType().FriendlyName())
 	}
 
 	return typeName
+}
+
+func (f *templateFormatter) variableTemplate() *template.Template {
+	tmpl := template.Must(f.tmpl.Clone())
+	return template.Must(tmpl.Funcs(template.FuncMap{
+		"isAttributeTypeNil":   isAttributeTypeNil,
+		"extractAttributeType": extractAttributeType,
+		"filter":               f.filter,
+	}).Parse(variableTmplF))
+}
+
+func (f *templateFormatter) filter(input map[string]*tfjson.SchemaAttribute) map[string]*tfjson.SchemaAttribute {
+	result := map[string]*tfjson.SchemaAttribute{}
+	for name, attr := range input {
+		if !f.exclude(name, attr) {
+			result[name] = attr
+		}
+	}
+	return result
+}
+
+func (f *templateFormatter) exclude(name string, attr *tfjson.SchemaAttribute) bool {
+	for _, excl := range f.exclusions {
+		if match := excl.Match(name, attr); match {
+			return true
+		}
+	}
+	return false
 }

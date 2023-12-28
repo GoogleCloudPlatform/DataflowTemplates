@@ -1,3 +1,19 @@
-{{ range $name, $schemaAttribute := . }}variable "{{$name}}" {
-  type = {{$schemaAttribute | extractAttributeType }}
-}{{end}}
+{{/* Produces terraform variable blocks from a map[string]*tfjson.SchemaAttribute{}. */}}
+{{define "variable" }}
+    {{/* Apply templateFormatter's filture func to the map. */}}
+    {{with $attrs := . | filter }}
+        {{range $name, $attr := $attrs }}
+            variable "{{$name}}" {
+                {{/* Conditional tests whether tfjson.SchemaAttribute's AttributeType is not cty.NilType. */}}
+            {{if .AttributeType | isAttributeTypeNil | not }}
+                {{/* Calls the extractAttributeType func to convert the .AttributeType to a string. */}}
+                type = {{.AttributeType | extractAttributeType}}
+            {{ end}}
+                {{/* Conditional tests whether .Description is zero value. */}}
+            {{with .Description }}
+                description = "{{.}}"
+            {{ end}}
+            }
+        {{ end}}
+    {{ end}}
+{{ end}}

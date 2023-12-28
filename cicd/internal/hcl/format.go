@@ -17,39 +17,53 @@
 package hcl
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 	tfjson "github.com/hashicorp/terraform-json"
 	"io"
 	"text/template"
 )
 
-type formatter interface {
+type Formatter interface {
 	Format(schema *tfjson.ProviderSchema) error
+}
+
+func WithJsonFormat() Formatter {
+	return &jsonFormatter{}
 }
 
 type jsonFormatter struct {
 	w io.Writer
 }
 
-func (f *jsonFormatter) apply(enc *Encoder) {
-	f.w = enc.w
-	enc.formatter = f
-}
-
 func (f *jsonFormatter) Format(schema *tfjson.ProviderSchema) error {
 	return json.NewEncoder(f.w).Encode(schema)
 }
 
-type templateFormatter struct {
-	w    io.Writer
-	tmpl template.Template
+func WithTemplateFormat(tmpl *template.Template, exclude ...Matcher) Formatter {
+	return &templateFormatter{
+		tmpl:       tmpl,
+		exclusions: exclude,
+	}
 }
 
-func (f *templateFormatter) apply(enc *Encoder) {
-	f.w = enc.w
-	enc.formatter = f
+type templateFormatter struct {
+	w          io.Writer
+	tmpl       *template.Template
+	exclusions []Matcher
 }
 
 func (f *templateFormatter) Format(schema *tfjson.ProviderSchema) error {
-	return f.tmpl.Execute(f.w, schema)
+	if schema == nil {
+		return fmt.Errorf("schema is nil")
+	}
+	buf := bytes.Buffer{}
+	if err := f.tmpl.Execute(&buf, schema); err != nil {
+		return err
+	}
+	b := hclwrite.Format(buf.Bytes())
+	_, err := f.w.Write(b)
+	return err
 }
