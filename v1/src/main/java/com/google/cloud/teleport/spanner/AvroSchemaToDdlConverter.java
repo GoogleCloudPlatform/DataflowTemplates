@@ -116,7 +116,7 @@ public class AvroSchemaToDdlConverter {
     if (modelName == null) {
       modelName = schema.getName();
     }
-    LOG.error("Converting to Ddl modelName {}", modelName);
+    LOG.debug("Converting to Ddl modelName {}", modelName);
 
     Model.Builder builder = Model.builder(dialect);
     builder.name(modelName);
