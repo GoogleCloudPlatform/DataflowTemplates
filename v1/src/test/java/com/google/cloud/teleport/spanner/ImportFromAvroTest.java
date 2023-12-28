@@ -1065,7 +1065,9 @@ public class ImportFromAvroTest {
             .record("TextEmbeddingGecko_Output")
             .fields()
             .name("embeddings")
-            .prop("sqlType", "STRUCT<statistics STRUCT<truncated BOOL, token_count FLOAT64>, values ARRAY<FLOAT64>>")
+            .prop(
+                "sqlType",
+                "STRUCT<statistics STRUCT<truncated BOOL, token_count FLOAT64>, values ARRAY<FLOAT64>>")
             .type()
             .record("struct_1")
             .fields()
