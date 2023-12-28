@@ -77,16 +77,8 @@ public class GCSToSourceStreamingHandler {
       LOG.info(
           "Shard " + shardId + ": Successfully processed batch of " + records.size() + " records.");
     } catch (Exception e) {
-      // TODO: Error handling and retry
-      /*
-      If we are here, it means we have exhausted all the retries
-      At this stage we dump the error records to error topic
-      and either halt the pipeline  or continue
-      as per the configuration
-      If writing to DLQ topic also fails - write to logs
-      */
       markShardFailure(taskContext, spannerDao);
-      throw new RuntimeException("Failure when processing records: " + e.getMessage());
+      throw new RuntimeException("Failure when processing records", e);
     }
   }
 

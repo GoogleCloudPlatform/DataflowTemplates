@@ -138,7 +138,8 @@ public class ProcessingContextGenerator {
         ShardProgress shardProgress = shardProgressList.get(shard.getLogicalShardId());
         String shardStartTime = startTimestamp;
         if (shardProgress != null) {
-          Instant shardStartTimeInst = new Instant(shardProgress.getStart().toSqlTimestamp());
+          Instant shardStartTimeInst =
+              new Instant(shardProgress.getFileStartInterval().toSqlTimestamp());
           shardStartTime = shardStartTimeInst.toString();
           LOG.info(" The shard startTime is : {}", shardStartTime);
         } else {

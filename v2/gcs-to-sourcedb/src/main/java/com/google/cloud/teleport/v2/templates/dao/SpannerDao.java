@@ -92,13 +92,13 @@ public class SpannerDao {
     Statement statement;
     if (isPostgres) {
       String statementStr =
-          "SELECT shard, start, status from "
+          "SELECT shard, file_start_interval, status from "
               + shardFileProcessProgressTableName
               + " where run_id=$1 and status='REPROCESS'";
       statement = Statement.newBuilder(statementStr).bind("p1").to(runId).build();
     } else {
       String statementStr =
-          "SELECT shard, start, status from "
+          "SELECT shard, file_start_interval, status from "
               + shardFileProcessProgressTableName
               + " where run_id=@runId and status='REPROCESS'";
       statement = Statement.newBuilder(statementStr).bind("runId").to(runId).build();
@@ -133,8 +133,8 @@ public class SpannerDao {
             .to(runId)
             .set("shard")
             .to(shardProgress.getShard())
-            .set("start")
-            .to(shardProgress.getStart())
+            .set("file_start_interval")
+            .to(shardProgress.getFileStartInterval())
             .set("status")
             .to(shardProgress.getStatus())
             .build());
@@ -163,15 +163,15 @@ public class SpannerDao {
           createTable =
               "create table "
                   + shardFileProcessProgressTableName
-                  + " (run_id character varying NOT NULL,shard character varying NOT NULL,start"
-                  + " timestamp with time zone NOT NULL,status character varying NOT NULL,PRIMARY"
-                  + " KEY(run_id,shard))";
+                  + " (run_id character varying NOT NULL, shard character varying NOT"
+                  + " NULL, file_start_interval timestamp with time zone NOT NULL, status character"
+                  + " varying NOT NULL, PRIMARY KEY(run_id,shard))";
         } else {
           createTable =
               "create table "
                   + shardFileProcessProgressTableName
-                  + " (run_id STRING(MAX) NOT NULL,shard STRING(MAX) NOT NULL,start TIMESTAMP"
-                  + " NOT NULL,status STRING(MAX) NOT NULL,) PRIMARY KEY(run_id,shard)";
+                  + " (run_id STRING(MAX) NOT NULL, shard STRING(MAX) NOT NULL, file_start_interval"
+                  + " TIMESTAMP NOT NULL, status STRING(MAX) NOT NULL,) PRIMARY KEY(run_id, shard)";
         }
         OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
             databaseAdminClient.updateDatabaseDdl(
@@ -212,9 +212,9 @@ public class SpannerDao {
           createTable =
               "create table "
                   + skippedFileTableName
-                  + " (id varchar(36) DEFAULT spanner.generate_uuid(),run_id character varying NOT"
-                  + " NULL,shard character varying NOT NULL,file_name character varying NOT"
-                  + " NULL,insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,PRIMARY"
+                  + " (id varchar(36) DEFAULT spanner.generate_uuid(), run_id character varying NOT"
+                  + " NULL, shard character varying NOT NULL, file_name character varying NOT"
+                  + " NULL, insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP, PRIMARY"
                   + " KEY(id))";
 
         } else {
