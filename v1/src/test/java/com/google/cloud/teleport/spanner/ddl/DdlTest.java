@@ -586,7 +586,7 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             "CREATE MODEL `user_model`"
                 + " INPUT ( `i1` BOOL OPTIONS (required=FALSE), `i2` STRING(MAX), )"
-                + " OUTPUT ( `o1` INT64, `o2` FLOAT64, )"
+                + " OUTPUT ( `o1` INT64 OPTIONS (required=TRUE), `o2` FLOAT64, )"
                 + " REMOTE OPTIONS (endpoint=\"test\")"));
   }
 

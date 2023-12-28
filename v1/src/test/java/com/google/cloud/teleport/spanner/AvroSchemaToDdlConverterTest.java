@@ -439,7 +439,7 @@ public class AvroSchemaToDdlConverterTest {
                 + "  `i2` STRING(MAX),"
                 + " )"
                 + " OUTPUT ("
-                + " `o1` INT64,"
+                + " `o1` INT64 OPTIONS (required=TRUE),"
                 + " `o2` FLOAT64,"
                 + " )"
                 + " REMOTE OPTIONS (endpoint=\"test\")"
