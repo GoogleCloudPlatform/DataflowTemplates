@@ -8,12 +8,16 @@
             {{if .AttributeType | isAttributeTypeNil | not }}
                 {{/* Calls the extractAttributeType func to convert the .AttributeType to a string. */}}
                 type = {{.AttributeType | extractAttributeType}}
-            {{ end}}
+            {{end}}
                 {{/* Conditional tests whether .Description is zero value. */}}
             {{with .Description }}
                 description = "{{.}}"
-            {{ end}}
+            {{end}}
+            {{/* Conditional tests whether .Optional is true and sets default to null. */}}
+            {{if .Optional}}
+                default = null
+            {{end}}
             }
-        {{ end}}
-    {{ end}}
-{{ end}}
+        {{end}}
+    {{end}}
+{{end}}

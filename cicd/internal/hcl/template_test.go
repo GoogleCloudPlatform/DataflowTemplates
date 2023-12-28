@@ -147,6 +147,19 @@ variable "foo" {
 			exclusions: nil,
 			wantErr:    false,
 		},
+		{
+			name: "optional",
+			input: map[string]*tfjson.SchemaAttribute{
+				"foo": {
+					Optional: true,
+				},
+			},
+			want: `
+variable "foo" {
+	default = null
+}
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
