@@ -187,6 +187,7 @@ public class PubSubToElasticsearch {
                     .setJavascriptTextTransformFunctionName(
                         options.getJavascriptTextTransformFunctionName())
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
+                    .setJavascriptTextTransformReloadIntervalMinutes(options.getJavascriptTextTransformReloadIntervalMinutes())
                     .build());
 
     /*
