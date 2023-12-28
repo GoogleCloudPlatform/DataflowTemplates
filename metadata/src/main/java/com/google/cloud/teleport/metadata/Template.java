@@ -89,7 +89,7 @@ public @interface Template {
   /** Indicates if the template supports at-least-once correctness. */
   boolean supportsAtLeastOnce() default true;
 
-  /** Indicates if it there are benefits to run the template using exactly-once correctness. */
+  /** Indicates if the template supports exactly-once correctness. */
   boolean supportsExactlyOnce() default true;
 
   public @interface AdditionalDocumentationBlock {
