@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -77,6 +78,18 @@ public class ImportPipelineIT extends TemplateTestBase {
         "input/Singers-manifest.json",
         Resources.getResource("ImportPipelineIT/" + subdirectory + "/Singers-manifest.json")
             .getPath());
+
+    if (Objects.equals(subdirectory, "googlesql")) {
+      gcsClient.uploadArtifact(
+          "input/ModelStruct.avro-00000-of-00001",
+          Resources.getResource("ImportPipelineIT/" + subdirectory + "/ModelStruct.avro")
+              .getPath());
+      gcsClient.uploadArtifact(
+          "input/ModelStruct-manifest.json",
+          Resources.getResource("ImportPipelineIT/" + subdirectory + "/ModelStruct-manifest.json")
+              .getPath());
+    }
+
     gcsClient.uploadArtifact(
         "input/spanner-export.json",
         Resources.getResource("ImportPipelineIT/" + subdirectory + "/spanner-export.json")
