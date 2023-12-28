@@ -89,6 +89,7 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
                 .addParameter(
                     "javascriptTextTransformGcsPath", getGcsPath("udf-name-upper-case.js"))
                 .addParameter("javascriptTextTransformFunctionName", "transform"),
+                .addParameter("javascriptTextTransformReloadIntervalMinutes", 1)
         Map.of("id", "1", "name", testName.toUpperCase()));
   }
 
