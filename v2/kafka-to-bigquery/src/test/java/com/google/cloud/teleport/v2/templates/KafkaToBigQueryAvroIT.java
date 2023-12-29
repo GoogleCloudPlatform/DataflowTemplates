@@ -139,7 +139,7 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
         "input/" + udfFileName,
         "function transform(value) {\n"
             + "  const data = JSON.parse(value);\n"
-            + "  data.name = data.name.toUpperCase();\n"
+            + "  data.productName = data.productName.toUpperCase();\n"
             + "  return JSON.stringify(data);\n"
             + "}");
 
@@ -151,8 +151,8 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
             assertThatBigQueryRecords(tableResult)
                 .hasRecordsUnordered(
                     List.of(
-                        Map.of("id", 11, "name", "DATAFLOW"),
-                        Map.of("id", 12, "name", "PUB/SUB"))));
+                        Map.of("productId", 11, "productName", "DATAFLOW"),
+                        Map.of("productId", 12, "productName", "PUB/SUB"))));
   }
 
   private Schema getDeadletterSchema() {
@@ -197,8 +197,8 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
     String bqTable = testName;
     Schema bqSchema =
         Schema.of(
-            Field.of("id", StandardSQLTypeName.INT64),
-            Field.newBuilder("name", StandardSQLTypeName.STRING).setMaxLength(10L).build());
+            Field.of("productId", StandardSQLTypeName.INT64),
+            Field.newBuilder("productName", StandardSQLTypeName.STRING).setMaxLength(10L).build());
 
     TableId tableId = bigQueryClient.createTable(bqTable, bqSchema);
     TableId deadletterTableId = TableId.of(tableId.getDataset(), tableId.getTable() + "_dlq");
@@ -260,7 +260,9 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
     } else {
       assertThatBigQueryRecords(tableRows)
           .hasRecordsUnordered(
-              List.of(Map.of("id", 11, "name", "Dataflow"), Map.of("id", 12, "name", "Pub/Sub")));
+              List.of(
+                  Map.of("productId", 11, "productName", "Dataflow"),
+                  Map.of("productId", 12, "productName", "Pub/Sub")));
     }
   }
 
@@ -280,6 +282,9 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
   }
 
   private GenericRecord createRecord(int id, String name, double value) {
-    return new GenericRecordBuilder(avroSchema).set("id", id).set("name", name).build();
+    return new GenericRecordBuilder(avroSchema)
+        .set("productId", id)
+        .set("productName", name)
+        .build();
   }
 }
