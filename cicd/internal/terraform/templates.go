@@ -14,35 +14,50 @@
  * the License.
  */
 
-package hcl
+package terraform
 
 import (
+	"embed"
 	_ "embed"
 	"fmt"
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/zclconf/go-cty/cty"
+	"io"
 	"text/template"
 	"time"
 )
 
-var (
-	headerTmpl = template.Must(template.New("header").Funcs(template.FuncMap{
-		"currentYear": currentYear,
-	}).Parse(headerTmplF))
+const (
+	headerTmpl    = "header"
+	variablesTmpl = "variables"
 )
 
-//go:embed header.tmpl
-var headerTmplF string
+var (
+	tmpls = template.Must(template.New("templates").Funcs(template.FuncMap{
+		"currentYear":          currentYear,
+		"isAttributeTypeNil":   isAttributeTypeNil,
+		"extractAttributeType": extractAttributeType,
+	}).ParseFS(tmplFS, "*.tmpl"))
+)
 
-//go:embed variable.tmpl
-var variableTmplF string
+//go:embed header.tmpl variable.tmpl
+var tmplFS embed.FS
+
+// Schema models terraform provider and resource schemas.
+type Schema interface {
+	*tfjson.ProviderSchema | *tfjson.Schema | *tfjson.SchemaAttribute
+}
+
+type Encoder[S Schema] struct {
+	tmplName string
+}
+
+func (enc *Encoder[S]) Encode(w io.Writer, data map[string]S) error {
+	return tmpls.ExecuteTemplate(w, enc.tmplName, data)
+}
 
 func currentYear() string {
 	return time.Now().Format("2006")
-}
-
-func isAttributeTypeNil(attrType *cty.Type) bool {
-	return attrType.Equals(cty.NilType)
 }
 
 func extractAttributeType(attrType *cty.Type) string {
@@ -61,30 +76,6 @@ func extractAttributeType(attrType *cty.Type) string {
 	return typeName
 }
 
-func (f *templateFormatter) variableTemplate() *template.Template {
-	tmpl := template.Must(f.tmpl.Clone())
-	return template.Must(tmpl.Funcs(template.FuncMap{
-		"isAttributeTypeNil":   isAttributeTypeNil,
-		"extractAttributeType": extractAttributeType,
-		"filter":               f.filter,
-	}).Parse(variableTmplF))
-}
-
-func (f *templateFormatter) filter(input map[string]*tfjson.SchemaAttribute) map[string]*tfjson.SchemaAttribute {
-	result := map[string]*tfjson.SchemaAttribute{}
-	for name, attr := range input {
-		if !f.exclude(name, attr) {
-			result[name] = attr
-		}
-	}
-	return result
-}
-
-func (f *templateFormatter) exclude(name string, attr *tfjson.SchemaAttribute) bool {
-	for _, excl := range f.exclusions {
-		if match := excl.Match(name, attr); match {
-			return true
-		}
-	}
-	return false
+func isAttributeTypeNil(attrType *cty.Type) bool {
+	return attrType.Equals(cty.NilType)
 }

@@ -14,30 +14,24 @@
  * the License.
  */
 
-// Package hcl implements encoding of terraform.
-package hcl
+package terraform
 
-import (
-	tfjson "github.com/hashicorp/terraform-json"
-	"io"
-)
-
-type Encoder struct {
-	w         io.Writer
-	formatter Formatter
+type Filter[S Schema] struct {
+	matcher Matcher[S]
 }
 
-// NewEncoder instantiates an Encoder. Applies each Option from the variadic parameter to the instantiated Encoder.
-// Defaults to a JSON format.
-func NewEncoder(w io.Writer, formatter Formatter) *Encoder {
-	enc := &Encoder{
-		w:         w,
-		formatter: formatter,
+func NewFilter[S Schema](matcher Matcher[S]) *Filter[S] {
+	return &Filter[S]{
+		matcher: matcher,
 	}
-	return enc
 }
 
-// Encode a tfjson.ProviderSchema.
-func (enc *Encoder) Encode(schema *tfjson.ProviderSchema) error {
-	return enc.formatter.Format(schema)
+func (filter *Filter[S]) Apply(data map[string]S) map[string]S {
+	result := map[string]S{}
+	for k, v := range data {
+		if filter.matcher.Match(k, v) {
+			result[k] = v
+		}
+	}
+	return result
 }
