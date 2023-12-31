@@ -125,19 +125,99 @@ func TestEncoder_Encode_variables(t *testing.T) {
 	}
 }
 
+func TestEncoder_Encode_module(t *testing.T) {
+	tests := []struct {
+		name  string
+		input map[string]*tfjson.Schema
+		want  string
+	}{
+		{
+			name:  "empty",
+			input: map[string]*tfjson.Schema{},
+			want:  "",
+		},
+		{
+			name: "no attrs",
+			input: map[string]*tfjson.Schema{
+				"foo": {
+					Block: &tfjson.SchemaBlock{},
+				},
+			},
+			want: `resource "foo" "generated" {}`,
+		},
+		{
+			name: "1 attr",
+			input: map[string]*tfjson.Schema{
+				"foo": {
+					Block: &tfjson.SchemaBlock{
+						Attributes: map[string]*tfjson.SchemaAttribute{
+							"bar": {},
+						},
+					},
+				},
+			},
+			want: `
+			variable "bar" {}
+			resource "foo" "generated" {
+				bar = var.bar
+			}`,
+		},
+		{
+			name: "2 attrs",
+			input: map[string]*tfjson.Schema{
+				"foo": {
+					Block: &tfjson.SchemaBlock{
+						Attributes: map[string]*tfjson.SchemaAttribute{
+							"bar": {},
+							"baz": {},
+						},
+					},
+				},
+			},
+			want: `
+			variable "bar" {}
+			variable "baz" {}
+			resource "foo" "generated" {
+				bar = var.bar
+				baz = var.baz
+			}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := bytes.Buffer{}
+			enc := &Encoder[*tfjson.Schema]{
+				tmplName: moduleTmpl,
+			}
+			if err := enc.Encode(&buf, tt.input); err != nil {
+				t.Fatal(err)
+			}
+
+			diff("module.tmpl", tt.want, buf, t)
+		})
+	}
+}
+
 func diff(message string, want string, got bytes.Buffer, t *testing.T) {
-	wf, wd := hclsyntax.ParseConfig([]byte(want), "variable.tmpl", hcl.InitialPos)
+	wf, wd := hclsyntax.ParseConfig([]byte(want), message, hcl.InitialPos)
 	if wd.HasErrors() {
 		t.Fatal(errors.Join(wd.Errs()...))
 	}
 
-	gf, gd := hclsyntax.ParseConfig(got.Bytes(), "variable.tmpl", hcl.InitialPos)
+	gf, gd := hclsyntax.ParseConfig(got.Bytes(), message, hcl.InitialPos)
 	if gd.HasErrors() {
 		t.Fatal(errors.Join(gd.Errs()...))
 	}
 
 	opts := []cmp.Option{
-		cmpopts.IgnoreUnexported(hclsyntax.Body{}, hclsyntax.ScopeTraversalExpr{}, hcl.TraverseRoot{}, hclsyntax.TemplateExpr{}, hclsyntax.LiteralValueExpr{}),
+		cmpopts.IgnoreUnexported(
+			hclsyntax.Body{},
+			hclsyntax.ScopeTraversalExpr{},
+			hcl.TraverseRoot{},
+			hclsyntax.TemplateExpr{},
+			hclsyntax.LiteralValueExpr{},
+			hcl.TraverseAttr{},
+		),
 		cmpopts.IgnoreTypes(hcl.Range{}),
 		cmp.AllowUnexported(cty.Value{}, cty.Type{}),
 		cmpopts.EquateComparable(cty.Type{}),

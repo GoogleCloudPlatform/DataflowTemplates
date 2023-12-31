@@ -29,6 +29,7 @@ import (
 
 const (
 	headerTmpl    = "header"
+	moduleTmpl    = "module"
 	variablesTmpl = "variables"
 )
 
@@ -40,7 +41,7 @@ var (
 	}).ParseFS(tmplFS, "*.tmpl"))
 )
 
-//go:embed header.tmpl variable.tmpl
+//go:embed header.tmpl module.tmpl variable.tmpl
 var tmplFS embed.FS
 
 // Schema models terraform provider and resource schemas.
