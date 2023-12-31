@@ -145,7 +145,9 @@ func runE(cmd *cobra.Command, _ []string) error {
 			cancel()
 		}
 
-		if err := json.NewEncoder(w).Encode(resourceData); err != nil {
+		if err := json.NewEncoder(w).Encode(map[string]*tfjson.Schema{
+			resource: resourceData,
+		}); err != nil {
 			errChan <- err
 		}
 
