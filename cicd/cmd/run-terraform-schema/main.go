@@ -1,36 +1,40 @@
+/*
+ * Copyright (C) 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 package main
 
 import (
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/cmd/run-terraform-schema/describe"
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/cmd/run-terraform-schema/download"
 	"github.com/spf13/cobra"
-	"path"
-)
-
-const (
-	google                          = "google"
-	googleBeta                      = "google-beta"
-	hashicorpRegistry               = "registry.terraform.io/hashicorp"
-	resourceDataflowJob             = "google_dataflow_job"
-	resourceDataflowFlexTemplateJob = "google_dataflow_flex_template_job"
 )
 
 var (
-	registry  = hashicorpRegistry
-	providers = []string{
-		path.Join(hashicorpRegistry, google),
-		path.Join(hashicorpRegistry, googleBeta),
-	}
-	resources = []string{
-		resourceDataflowFlexTemplateJob,
-		resourceDataflowJob,
-	}
-
 	rootCmd = &cobra.Command{
-		Use: "run-get-terraform-schema [FILE]",
-		Short: `Acquires the schema of terraform providers.
-Outputs to DIR, created if needed; outputs to STDOUT if no DIR provided.`,
+		Use:   "run-terraform-schema",
+		Short: "Downloads and describes terraform provider schemas",
 	}
 )
 
-func main() {
+func init() {
+	rootCmd.AddCommand(download.Command, describe.Command)
+}
 
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		panic(err)
+	}
 }

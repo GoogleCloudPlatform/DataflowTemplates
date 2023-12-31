@@ -30,6 +30,6 @@ const (
 )
 
 var (
-	GoogleUri     = path.Join(hashicorpRegistry, Google)
-	GoogleBetaUri = path.Join(hashicorpRegistry, GoogleBeta)
+	ProviderGoogleUri     = path.Join(hashicorpRegistry, Google)
+	ProviderGoogleBetaUri = path.Join(hashicorpRegistry, GoogleBeta)
 )

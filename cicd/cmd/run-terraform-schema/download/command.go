@@ -15,7 +15,7 @@
  */
 
 // Package download holds the subcommand that fetches the terraform provider schemas.
-package describe
+package download
 
 import (
 	"context"

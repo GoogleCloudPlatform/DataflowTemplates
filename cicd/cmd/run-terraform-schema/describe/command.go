@@ -1,12 +1,16 @@
-package query
+package describe
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/cmd/run-terraform-schema/consts_vars"
+	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/spf13/cobra"
 	"io"
 	"log"
 	"os"
+	"time"
 )
 
 const (
@@ -15,7 +19,9 @@ const (
 )
 
 var (
-	r io.Reader = os.Stdin
+	timeout               = time.Second * 3
+	r       io.ReadCloser = os.Stdin
+	w                     = os.Stdout
 
 	// TODO(damondouglas): remove GoogleBeta when google_dataflow_flex_template_job generally available
 	providers = map[string]string{
@@ -55,7 +61,7 @@ func addProviderCommands() {
 
 func addResourceCommand(parent *cobra.Command, providerUri string, resource string) {
 	cmd := &cobra.Command{
-		Use:   fmt.Sprintf("resource [FILE]"),
+		Use:   fmt.Sprintf(fmt.Sprintf("%s [FILE]", resource)),
 		Short: fmt.Sprintf("Describe terraform resource %s schema from FILE. Reads from STDIN if no FILE provided.", resource),
 		Args:  fileArgs,
 		RunE:  runE,
@@ -69,7 +75,23 @@ func addResourceCommand(parent *cobra.Command, providerUri string, resource stri
 	parent.AddCommand(cmd)
 }
 
+func fileArgs(_ *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return nil
+	}
+
+	f, err := os.Open(args[0])
+	r = f
+	return err
+}
+
 func runE(cmd *cobra.Command, _ []string) error {
+	ctx, cancel := context.WithTimeout(cmd.Context(), timeout)
+	defer r.Close()
+	defer cancel()
+
+	errChan := make(chan error)
+
 	providerFlag := cmd.Flag(providerFlagName)
 	if providerFlag == nil {
 		return fmt.Errorf("%s is not assigned", providerFlagName)
@@ -81,21 +103,50 @@ func runE(cmd *cobra.Command, _ []string) error {
 	}
 
 	provider := providerFlag.Value.String()
-	resource := providerFlag.Value.String()
+	resource := resourceFlag.Value.String()
 
-	log.Println(provider, resource)
+	go func() {
 
-	return nil
-}
+		var data map[string]*tfjson.ProviderSchema
+		if err := json.NewDecoder(r).Decode(&data); err != nil {
+			errChan <- fmt.Errorf("error loading provider schema data, err: %w", err)
+		}
 
-func fileArgs(_ *cobra.Command, args []string) error {
-	if len(args) == 0 {
+		providerData, ok := data[provider]
+		if !ok || providerData == nil {
+			log.Printf("no data for provider: %s", provider)
+			cancel()
+		}
+
+		if providerData.ResourceSchemas == nil {
+			log.Printf("resource schemas is nil for provider %s\n", provider)
+			cancel()
+		}
+
+		resourceData, ok := providerData.ResourceSchemas[resource]
+		if !ok || resourceData == nil {
+			log.Printf("data for provider: %s does not contain resource: %s \n", provider, resource)
+			cancel()
+		}
+
+		if err := json.NewEncoder(w).Encode(resourceData); err != nil {
+			errChan <- err
+		}
+
+		cancel()
+
+	}()
+
+	select {
+	case err := <-errChan:
+		return err
+	case <-ctx.Done():
+		deadline, _ := ctx.Deadline()
+		if time.Now().After(deadline) {
+			return fmt.Errorf("deadline exceeded. Perhaps FILE not specified or not piped from STDIN")
+		}
 		return nil
 	}
-
-	f, err := os.Open(args[0])
-	r = f
-	return err
 }
 
 func must(err error) {
