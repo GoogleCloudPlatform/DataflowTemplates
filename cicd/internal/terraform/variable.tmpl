@@ -33,8 +33,14 @@
         {{ end}}
         {{/* Conditional tests whether .Description is zero value. */}}
         {{with .Description }}
-            description = "{{.}}"
+            description = "{{. | sanitize}}"
         {{ end}}
+        {{if .Optional}}
+            default = null
+        {{end}}
+        {{if .Sensitive}}
+            sensitive = true
+        {{end}}
         }
     {{ end}}
 {{ end}}

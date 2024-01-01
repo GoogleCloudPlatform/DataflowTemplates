@@ -50,6 +50,16 @@ func (m MatchName[S]) Match(name string, _ S) bool {
 }
 
 type AttrMatcher Matcher[*tfjson.SchemaAttribute]
+
+type MatchIsDeprecated bool
+
+func (m MatchIsDeprecated) Match(_ string, data *tfjson.SchemaAttribute) bool {
+	if data == nil {
+		return false
+	}
+	return data.Deprecated == bool(m)
+}
+
 type MatchIsComputed bool
 
 func (m MatchIsComputed) Match(_ string, data *tfjson.SchemaAttribute) bool {

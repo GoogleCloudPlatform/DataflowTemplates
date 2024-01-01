@@ -20,9 +20,11 @@
             See https://developer.hashicorp.com/terraform/language/modules
 */}}
 {{define "module"}}
+{{"parameter_variable" | extra}}
     {{range $resourceName, $resourceSchema := .}}
         {{template "variables" $resourceSchema.Block.Attributes}}
         resource "{{$resourceName}}" "generated" {
+            {{"parameter_resource" | extra}}
             {{range $attrName, $attr := $resourceSchema.Block.Attributes}}
                 {{$attrName}} = var.{{$attrName}}
             {{end}}

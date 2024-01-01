@@ -14,28 +14,28 @@
  * the License.
  */
 
-package main
+// Package generate holds the subcommand that generates files based on terraform provider schemas.
+package generate
 
 import (
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/cmd/run-terraform-schema/describe"
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/cmd/run-terraform-schema/download"
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/cmd/run-terraform-schema/generate"
 	"github.com/spf13/cobra"
+	"io"
+	"os"
 )
 
 var (
-	rootCmd = &cobra.Command{
-		Use:   "run-terraform-schema",
-		Short: "Downloads and describes terraform provider schemas",
+	w       io.Writer = os.Stdout
+	Command           = &cobra.Command{
+		Use:   "generate",
+		Short: "Generates content based on terraform provider schemas",
 	}
 )
 
-func init() {
-	rootCmd.AddCommand(download.Command, describe.Command, generate.Command)
-}
-
-func main() {
-	if err := rootCmd.Execute(); err != nil {
-		panic(err)
+func fileArgs(_ *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return nil
 	}
+	f, err := os.Create(args[0])
+	w = f
+	return err
 }

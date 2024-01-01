@@ -23,26 +23,64 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/zclconf/go-cty/cty"
 	"io"
+	"strings"
 	"text/template"
 	"time"
 )
 
 const (
+	extraFnName   = "extra"
 	headerTmpl    = "header"
 	moduleTmpl    = "module"
 	variablesTmpl = "variables"
 )
 
 var (
-	tmpls = template.Must(template.New("templates").Funcs(template.FuncMap{
+	funcs = template.FuncMap{
 		"currentYear":          currentYear,
 		"isAttributeTypeNil":   isAttributeTypeNil,
 		"extractAttributeType": extractAttributeType,
-	}).ParseFS(tmplFS, "*.tmpl"))
+		"sanitize":             sanitize,
+		extraFnName:            func(string) string { return "" },
+	}
+
+	FreemarkerParameterVariableExtra Extra = &extraImpl{
+		key:   "parameter_variable",
+		value: freemarkerParameterVariableExtra,
+	}
+
+	FreemarkerParameterResourceExtra Extra = &extraImpl{
+		key:   "parameter_resource",
+		value: freemarkerParameterResourceExtra,
+	}
 )
 
 //go:embed header.tmpl module.tmpl variable.tmpl
 var tmplFS embed.FS
+
+//go:embed freemarker_parameter_variable_extra.ftl
+var freemarkerParameterVariableExtra string
+
+//go:embed freemarker_parameter_resource_extra.ftl
+var freemarkerParameterResourceExtra string
+
+func ModuleEncoder(extra ...Extra) *Encoder[*tfjson.Schema] {
+	lookup := map[string]string{}
+	for _, ex := range extra {
+		lookup[ex.Key()] = ex.Value()
+	}
+	funcs[extraFnName] = func(key string) string {
+		if v, ok := lookup[key]; ok {
+			return v
+		}
+		return ""
+	}
+	tmpls := template.Must(template.New("templates").Funcs(funcs).ParseFS(tmplFS, "*.tmpl"))
+	return &Encoder[*tfjson.Schema]{
+		tmplName: moduleTmpl,
+		tmpls:    tmpls,
+	}
+}
 
 // Schema models terraform provider and resource schemas.
 type Schema interface {
@@ -51,10 +89,14 @@ type Schema interface {
 
 type Encoder[S Schema] struct {
 	tmplName string
+	tmpls    *template.Template
 }
 
 func (enc *Encoder[S]) Encode(w io.Writer, data map[string]S) error {
-	return tmpls.ExecuteTemplate(w, enc.tmplName, data)
+	if enc.tmpls == nil {
+		enc.tmpls = template.Must(template.New("templates").Funcs(funcs).ParseFS(tmplFS, "*.tmpl"))
+	}
+	return enc.tmpls.ExecuteTemplate(w, enc.tmplName, data)
 }
 
 func currentYear() string {
@@ -79,4 +121,31 @@ func extractAttributeType(attrType *cty.Type) string {
 
 func isAttributeTypeNil(attrType *cty.Type) bool {
 	return attrType.Equals(cty.NilType)
+}
+
+func sanitize(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, "\n", "")
+	s = strings.ReplaceAll(s, "[", " ")
+	s = strings.ReplaceAll(s, "]", "")
+	s = strings.ReplaceAll(s, `"`, "'")
+	return s
+}
+
+type Extra interface {
+	Key() string
+	Value() string
+}
+
+type extraImpl struct {
+	key   string
+	value string
+}
+
+func (extra *extraImpl) Key() string {
+	return extra.key
+}
+
+func (extra *extraImpl) Value() string {
+	return extra.value
 }
