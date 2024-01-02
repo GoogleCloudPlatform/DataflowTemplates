@@ -259,7 +259,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // Errors that result during Event conversions are not retryable.
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
       conversionErrors.inc();
-    } catch (SpannerException se) {
+    } catch (SpannerException | IllegalStateException ex) {
       /* Errors that happen when writing to Cloud Spanner are considered retryable.
        * Since all event conversion errors are caught beforehand as permanent errors,
        * any other errors encountered while writing to Cloud Spanner can be retried.
@@ -267,8 +267,11 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
        * 1. Deadline exceeded errors from Cloud Spanner.
        * 2. Failures due to foreign key/interleaved table constraints.
        * 3. Any transient errors in Cloud Spanner.
+       * IllegalStateException can occur due to conditions like spanner pool being closed,
+       * in which case if this event is requed to same or different node at a later point in time,
+       * a retry might work.
        */
-      outputWithErrorTag(c, msg, se, SpannerTransactionWriter.RETRYABLE_ERROR_TAG);
+      outputWithErrorTag(c, msg, ex, SpannerTransactionWriter.RETRYABLE_ERROR_TAG);
       // do not increment the retry error count if this was retry attempt
       if (!isRetryRecord) {
         retryableErrors.inc();
