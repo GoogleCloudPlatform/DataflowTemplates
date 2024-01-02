@@ -50,8 +50,12 @@ public class ShardProgressTracker {
     spannerDao.checkAndCreateShardProgressTable();
   }
 
-  public Map<String, ShardProgress> getShardProgress() {
-    return spannerDao.getShardProgress(runId);
+  public Map<String, ShardProgress> getShardProgressByStatus(String status) {
+    return spannerDao.getShardProgressByRunIdAndStatus(runId, status);
+  }
+
+  public Map<String, ShardProgress> getAllShardProgress() {
+    return spannerDao.getAllShardProgressByRunId(runId);
   }
 
   public void writeShardProgress(ShardProgress shardProgress) {

@@ -86,21 +86,73 @@ public class SpannerDao {
                 .getDialect();
   }
 
-  public Map<String, ShardProgress> getShardProgress(String runId) {
+  public Map<String, ShardProgress> getShardProgressByRunIdAndStatus(
+      String runId, String inputStatus) {
     Map<String, ShardProgress> shardProgress = new HashMap<>();
     DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
     Statement statement;
     if (isPostgres) {
       String statementStr =
+          "SELECT shard, file_start_interval , status from "
+              + shardFileProcessProgressTableName
+              + " where run_id=$1 and status=$2";
+      statement =
+          Statement.newBuilder(statementStr)
+              .bind("p1")
+              .to(runId)
+              .bind("p2")
+              .to(inputStatus)
+              .build();
+    } else {
+      String statementStr =
           "SELECT shard, file_start_interval, status from "
               + shardFileProcessProgressTableName
-              + " where run_id=$1 and status='REPROCESS'";
+              + " where run_id=@runId and status=@status";
+      statement =
+          Statement.newBuilder(statementStr)
+              .bind("runId")
+              .to(runId)
+              .bind("status")
+              .to(inputStatus)
+              .build();
+    }
+
+    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
+      ResultSet resultSet = tx.executeQuery(statement);
+
+      while (resultSet.next()) {
+        String shard = resultSet.getString(0);
+        Timestamp start = resultSet.getTimestamp(1);
+        String status = resultSet.getString(2);
+        ShardProgress rec = new ShardProgress(shard, start, status);
+        shardProgress.put(shard, rec);
+      }
+    } catch (Exception e) {
+
+      throw new RuntimeException(
+          "The "
+              + shardFileProcessProgressTableName
+              + " table could not be read. "
+              + e.getMessage());
+    }
+    return shardProgress;
+  }
+
+  public Map<String, ShardProgress> getAllShardProgressByRunId(String runId) {
+    Map<String, ShardProgress> shardProgress = new HashMap<>();
+    DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
+    Statement statement;
+    if (isPostgres) {
+      String statementStr =
+          "SELECT shard, file_start_interval , status from "
+              + shardFileProcessProgressTableName
+              + " where run_id=$1";
       statement = Statement.newBuilder(statementStr).bind("p1").to(runId).build();
     } else {
       String statementStr =
           "SELECT shard, file_start_interval, status from "
               + shardFileProcessProgressTableName
-              + " where run_id=@runId and status='REPROCESS'";
+              + " where run_id=@runId ";
       statement = Statement.newBuilder(statementStr).bind("runId").to(runId).build();
     }
 
@@ -165,7 +217,7 @@ public class SpannerDao {
                   + shardFileProcessProgressTableName
                   + " (run_id character varying NOT NULL, shard character varying NOT"
                   + " NULL, file_start_interval timestamp with time zone NOT NULL, status character"
-                  + " varying NOT NULL, PRIMARY KEY(run_id,shard))";
+                  + " varying NOT NULL, PRIMARY KEY(run_id, shard))";
         } else {
           createTable =
               "create table "

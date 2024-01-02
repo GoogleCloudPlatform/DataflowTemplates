@@ -22,6 +22,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.GCSToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.transforms.GcsToSourceStreamer;
 import com.google.cloud.teleport.v2.templates.utils.ProcessingContextGenerator;
 import java.util.Map;
@@ -197,10 +198,23 @@ public class GCSToSourceDb {
     @TemplateParameter.Enum(
         order = 12,
         optional = true,
-        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("reprocess")},
-        description = "This type of run mode. Supported values - regular/reprocess.",
-        helpText = "Regular writes to source db, reprocess erred shards")
-    @Default.String("regular")
+        enumOptions = {
+          @TemplateEnumOption(Constants.RUN_MODE_REGULAR),
+          @TemplateEnumOption(Constants.RUN_MODE_REPROCESS),
+          @TemplateEnumOption(Constants.RUN_MODE_RESUME_SUCCESS),
+          @TemplateEnumOption(Constants.RUN_MODE_RESUME_FAILED),
+          @TemplateEnumOption(Constants.RUN_MODE_RESUME_ALL)
+        },
+        description =
+            "This type of run mode. Supported values are"
+                + " regular/reprocess/resumeSucess/resumeFailed/resumeAll. Defaults to regular. All"
+                + " run modes should have the same run identifier.",
+        helpText =
+            "Regular writes to source db, reprocess does processing the specific shards marked as"
+                + " REPROCESS, resumeFailed does reprocess of all shards in error state,"
+                + " resumeSuccess continues processing shards in successful state,"
+                + " resumeAll continues processing all shards irrespective of state.")
+    @Default.String(Constants.RUN_MODE_REGULAR)
     String getRunMode();
 
     void setRunMode(String value);
@@ -283,7 +297,7 @@ public class GCSToSourceDb {
             options.getRunIdentifier());
 
     LOG.info("The size of  processing context is : " + processingContextMap.size());
-    // TODO: add deletegcs mode handling
+
     pipeline
         .apply(
             "Create Context",

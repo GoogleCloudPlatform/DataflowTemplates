@@ -59,25 +59,50 @@ public final class ShardProgressTrackerTest {
   }
 
   @Test
-  public void shardProgressTrackerGetShardProgressSuccess() {
+  public void shardProgressTrackerGetShardProgressByStatusSuccess() {
     ShardProgress shardProgress = new ShardProgress("shardA", Timestamp.now(), "SUCCESS");
     Map<String, ShardProgress> expectedResponse = new HashMap<>();
     expectedResponse.put("shardA", shardProgress);
-    doReturn(expectedResponse).when(spannerDaoMock).getShardProgress("run1");
+    doReturn(expectedResponse)
+        .when(spannerDaoMock)
+        .getShardProgressByRunIdAndStatus("run1", "SUCCESS");
     ShardProgressTracker shardProgressTracker = new ShardProgressTracker(spannerDaoMock, "run1");
-    Map<String, ShardProgress> response = shardProgressTracker.getShardProgress();
+    Map<String, ShardProgress> response = shardProgressTracker.getShardProgressByStatus("SUCCESS");
     assertEquals(
         expectedResponse.get("shardA").getFileStartInterval(),
         response.get("shardA").getFileStartInterval());
   }
 
   @Test
-  public void shardProgressTrackerGetShardProgressFailed() {
-
-    doThrow(RuntimeException.class).when(spannerDaoMock).getShardProgress("run1");
+  public void shardProgressTrackerGetShardProgressByStatusFailed() {
+    doThrow(RuntimeException.class)
+        .when(spannerDaoMock)
+        .getShardProgressByRunIdAndStatus("run1", "SUCCESS");
     ShardProgressTracker shardProgressTracker = new ShardProgressTracker(spannerDaoMock, "run1");
     RuntimeException thrown =
-        assertThrows(RuntimeException.class, () -> shardProgressTracker.getShardProgress());
+        assertThrows(
+            RuntimeException.class, () -> shardProgressTracker.getShardProgressByStatus("SUCCESS"));
+  }
+
+  @Test
+  public void shardProgressTrackerGetAllShardProgressSuccess() {
+    ShardProgress shardProgress = new ShardProgress("shardA", Timestamp.now(), "SUCCESS");
+    Map<String, ShardProgress> expectedResponse = new HashMap<>();
+    expectedResponse.put("shardA", shardProgress);
+    doReturn(expectedResponse).when(spannerDaoMock).getAllShardProgressByRunId("run1");
+    ShardProgressTracker shardProgressTracker = new ShardProgressTracker(spannerDaoMock, "run1");
+    Map<String, ShardProgress> response = shardProgressTracker.getAllShardProgress();
+    assertEquals(
+        expectedResponse.get("shardA").getFileStartInterval(),
+        response.get("shardA").getFileStartInterval());
+  }
+
+  @Test
+  public void shardProgressTrackerGetAllShardProgressFailed() {
+    doThrow(RuntimeException.class).when(spannerDaoMock).getAllShardProgressByRunId("run1");
+    ShardProgressTracker shardProgressTracker = new ShardProgressTracker(spannerDaoMock, "run1");
+    RuntimeException thrown =
+        assertThrows(RuntimeException.class, () -> shardProgressTracker.getAllShardProgress());
   }
 
   @Test
