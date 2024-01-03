@@ -1464,7 +1464,7 @@ public class ImportFromAvroTest {
             + " SKIP RANGE 0 1000 START COUNTER WITH 50";
     String tableDef =
         "CREATE TABLE \"T\" ("
-            + "\"id\" bigint NOT NULL DEFAULT nextval('PGSequence2'),"
+            + "\"id\" bigint NOT NULL DEFAULT nextval('\"PGSequence2\"'),"
             + "\"c\" bigint,"
             + "PRIMARY KEY (\"id\"))";
 
@@ -1498,7 +1498,7 @@ public class ImportFromAvroTest {
                 + " SKIP RANGE 0 1000 START COUNTER WITH 50"
                 + "CREATE TABLE \"T\" ("
                 + "\n\t\"id\"                                    bigint NOT NULL"
-                + " DEFAULT nextval('PGSequence2'::text),\n\t"
+                + " DEFAULT nextval('\"PGSequence2\"'::text),\n\t"
                 + "\"c\"                                     bigint,"
                 + "\n\tPRIMARY KEY (\"id\")\n)\n\n"));
   }
