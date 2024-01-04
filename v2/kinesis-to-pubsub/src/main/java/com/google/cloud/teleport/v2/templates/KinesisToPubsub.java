@@ -65,7 +65,8 @@ import org.slf4j.LoggerFactory;
     description = "A pipeline which sends Kinesis Datastream records into a Pubsub topic.",
     optionsClass = KinesisToPubsubOptions.class,
     flexContainerName = "kinesis-to-pubsub",
-    hidden = true)
+    hidden = true,
+    streaming = true)
 public class KinesisToPubsub {
   private static final Logger logger = LoggerFactory.getLogger(KinesisToPubsub.class);
 

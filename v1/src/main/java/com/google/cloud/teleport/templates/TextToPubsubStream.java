@@ -57,7 +57,8 @@ import org.joda.time.Duration;
       "Input files must be in newline-delimited JSON or CSV format. Records that span multiple lines in the source files can cause issues downstream, because each line within the files is published as a message to Pub/Sub.",
       "The Pub/Sub topic must exist prior to execution.",
       "The pipeline runs indefinitely and needs to be terminated manually.",
-    })
+    },
+    streaming = true)
 public class TextToPubsubStream {
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);
 

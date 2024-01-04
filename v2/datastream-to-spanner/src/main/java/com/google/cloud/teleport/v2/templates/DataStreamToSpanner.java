@@ -101,7 +101,8 @@ import org.slf4j.LoggerFactory;
       "A Datastream stream in Running or Not started state.",
       "A Cloud Storage bucket where Datastream events are replicated.",
       "A Cloud Spanner database with existing tables. These tables can be empty or contain data.",
-    })
+    },
+    streaming = true)
 public class DataStreamToSpanner {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpanner.class);

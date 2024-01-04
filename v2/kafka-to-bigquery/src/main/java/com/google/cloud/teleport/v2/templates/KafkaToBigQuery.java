@@ -121,7 +121,8 @@ import org.slf4j.LoggerFactory;
       "The output BigQuery table must exist.",
       "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
       "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
-    })
+    },
+    streaming = true)
 public class KafkaToBigQuery {
 
   /* Logger for class. */

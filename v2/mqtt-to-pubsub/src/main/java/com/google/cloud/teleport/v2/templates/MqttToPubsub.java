@@ -53,7 +53,8 @@ import org.apache.beam.sdk.transforms.ParDo;
       "The Pub/Sub output topic name must exist.",
       "The MQTT host IP must exist and have the proper network configuration for worker machines to reach the MQTT host.",
       "The MQTT topic that data is extracted from must have a name."
-    })
+    },
+    streaming = true)
 public class MqttToPubsub {
 
   /**

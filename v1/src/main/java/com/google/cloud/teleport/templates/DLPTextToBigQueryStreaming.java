@@ -130,6 +130,7 @@ import org.slf4j.LoggerFactory;
       "The Sensitive Data Protection templates must exist (for example, DeidentifyTemplate and InspectTemplate). For more details, see <a href=\"https://cloud.google.com/dlp/docs/concepts-templates\">Sensitive Data Protection templates</a>.",
       "The BigQuery dataset must exist."
     },
+    streaming = true,
     hidden = true)
 public class DLPTextToBigQueryStreaming {
 

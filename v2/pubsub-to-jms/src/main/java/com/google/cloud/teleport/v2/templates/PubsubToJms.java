@@ -52,7 +52,8 @@ import org.slf4j.LoggerFactory;
     optionsClass = PubsubToJmsOptions.class,
     flexContainerName = "pubsub-to-jms",
     contactInformation = "https://cloud.google.com/support",
-    hidden = true)
+    hidden = true,
+    streaming = true)
 public class PubsubToJms {
 
   /**
