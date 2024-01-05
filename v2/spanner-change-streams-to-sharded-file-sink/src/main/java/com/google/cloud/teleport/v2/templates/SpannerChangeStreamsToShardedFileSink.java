@@ -281,6 +281,30 @@ public class SpannerChangeStreamsToShardedFileSink {
     String getRunMode();
 
     void setRunMode(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 18,
+        optional = true,
+        description = "Custom jar location in Cloud Storage",
+        helpText =
+            "Custom jar location in Cloud Storage that contains the customization logic"
+                + " for fetching shard id.")
+    @Default.String("")
+    String getShardingCustomJarPath();
+
+    void setShardingCustomJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 19,
+        optional = true,
+        description = "Custom class name",
+        helpText =
+            "Fully qualified class name having the custom shard id implementation.  It is a"
+                + " mandatory field in case shardingCustomJarPath is specified")
+    @Default.String("")
+    String getShardingCustomClassName();
+
+    void setShardingCustomClassName(String value);
   }
 
   /**
@@ -389,7 +413,9 @@ public class SpannerChangeStreamsToShardedFileSink {
                     ddl,
                     shardingMode,
                     shards.get(0).getLogicalShardId(),
-                    options.getSkipDirectoryName())))
+                    options.getSkipDirectoryName(),
+                    options.getShardingCustomJarPath(),
+                    options.getShardingCustomClassName())))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(
