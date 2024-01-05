@@ -186,6 +186,12 @@
                     <artifactId>jib-maven-plugin</artifactId>
                     <version>${jib.maven.version}</version>
                     <configuration>
+                        <extraDirectories>
+                            <paths>
+                                <from>${project.build.directory}/extra_libs</from>
+                                <into>${app-root}/libs</into>
+                            </paths>
+                        </extraDirectories>
                         <from>
                             <!--
                             The Dataflow Template base image to use. This
@@ -490,11 +496,6 @@
                                     <goal>shade</goal>
                                 </goals>
                                 <configuration>
-                                    <extraDirectories>
-                                        <paths>
-                                            <path>${project.build.directory}/extra_libs</path>
-                                        </paths>
-                                    </extraDirectories>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <shadeTestJar>true</shadeTestJar>
                                     <artifactSet>
@@ -701,6 +702,8 @@
         <module>spanner-migrations-sdk</module>
         <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
+
+        <module>flagship-events</module>
  </modules>
 
 </project>
