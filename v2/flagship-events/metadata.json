@@ -1,0 +1,14 @@
+{
+  "name": "Flagship Events Pubsub-to-BigQuery",
+  "description": "An Apache Beam streaming pipeline that reads JSON encoded messages from Pub/Sub and writes the results to a BigQuery",
+  "parameters": [
+    {
+      "name": "env",
+      "label": "Environment deploying into",
+      "helpText": "The deployment environment",
+      "regexes": [
+        "[a-z]+"
+      ]
+    }
+  ]
+}
