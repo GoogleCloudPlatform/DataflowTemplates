@@ -65,11 +65,7 @@ public abstract class ModelColumn implements Serializable {
         .append(typeString());
 
     if (columnOptions() != null && !columnOptions().isEmpty()) {
-      // TODO(adrw-google): Print required option once 29.6 is deployed to PROD.
-      String optionsString =
-          columnOptions().stream()
-              .filter(option -> !"required=TRUE".equals(option))
-              .collect(Collectors.joining(", "));
+      String optionsString = columnOptions().stream().collect(Collectors.joining(", "));
       if (!optionsString.isEmpty()) {
         appendable.append(" OPTIONS (").append(optionsString).append(")");
       }
