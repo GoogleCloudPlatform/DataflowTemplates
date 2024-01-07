@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -30,8 +32,12 @@ import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.Javascr
 import com.google.cloud.teleport.v2.transforms.SplunkConverters;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.FailsafeStringToSplunkEvent;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
+import com.google.cloud.teleport.v2.utils.KMSUtils;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.cloud.teleport.v2.values.SplunkTokenSource;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.repackaged.core.org.apache.commons.lang3.EnumUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -40,6 +46,8 @@ import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.io.splunk.SplunkIO;
 import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -47,7 +55,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,17 +65,26 @@ import org.slf4j.LoggerFactory;
  * org.apache.beam.sdk.io.splunk.SplunkEvent}s and writes those records into Splunk's HEC endpoint.
  * Any errors which occur in the execution of the UDF, conversion to {@link
  * org.apache.beam.sdk.io.splunk.SplunkEvent} or writing to HEC will be outputted to a GCS link.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-splunk/README_GCS_To_Splunk.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_To_Splunk",
     category = TemplateCategory.BATCH,
     displayName = "Cloud Storage To Splunk",
-    description =
-        "A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to Splunk's"
-            + " HTTP Event Collector (HEC).",
+    description = {
+      "A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to Splunk's"
+          + " HTTP Event Collector (HEC).",
+      "The template creates the Splunk payload as a JSON element using either CSV headers (default), JSON schema or JavaScript UDF. "
+          + "If a Javascript UDF and JSON schema are both inputted as parameters, only the Javascript UDF will be executed."
+    },
     optionsClass = GCSToSplunkOptions.class,
+    skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
     flexContainerName = "gcs-to-splunk",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public final class GCSToSplunk {
 
   /** String/String Coder for FailsafeElement. */
@@ -146,6 +163,7 @@ public final class GCSToSplunk {
    * @return The pipeline result.
    */
   public static PipelineResult run(GCSToSplunkOptions options) {
+    ValueProvider<String> token = getMaybeDecryptedToken(options);
     Pipeline pipeline = Pipeline.create(options);
 
     CoderRegistry registry = pipeline.getCoderRegistry();
@@ -164,7 +182,9 @@ public final class GCSToSplunk {
             .apply("Convert to Splunk Event", convertToSplunkEvent());
 
     PCollection<SplunkWriteError> wrappedSplunkWriteErrors =
-        splunkEventTuple.get(SPLUNK_EVENT_OUT).apply("Write to Splunk", writeToSplunk(options));
+        splunkEventTuple
+            .get(SPLUNK_EVENT_OUT)
+            .apply("Write to Splunk", writeToSplunk(options, token));
 
     flattenErrorsAndConvertToString(
             failsafeTransformedLines.get(UDF_ERROR_OUT),
@@ -204,11 +224,14 @@ public final class GCSToSplunk {
     return SplunkConverters.failsafeStringToSplunkEvent(SPLUNK_EVENT_OUT, SPLUNK_EVENT_ERROR_OUT);
   }
 
-  static SplunkIO.Write writeToSplunk(GCSToSplunkOptions options) {
-    return SplunkIO.write(options.getUrl(), options.getToken())
+  static SplunkIO.Write writeToSplunk(GCSToSplunkOptions options, ValueProvider<String> token) {
+    return SplunkIO.write(StaticValueProvider.of(options.getUrl()), token)
         .withBatchCount(options.getBatchCount())
         .withParallelism(options.getParallelism())
-        .withDisableCertificateValidation(options.getDisableCertificateValidation());
+        .withDisableCertificateValidation(options.getDisableCertificateValidation())
+        .withRootCaCertificatePath(options.getRootCaCertificatePath())
+        .withEnableBatchLogs(options.getEnableBatchLogs())
+        .withEnableGzipHttpCompression(options.getEnableGzipHttpCompression());
   }
 
   static PCollectionTuple flattenErrorsAndConvertToString(
@@ -274,6 +297,32 @@ public final class GCSToSplunk {
         errorString += "Error Message: " + error.getErrorMessage() + ".";
       }
       context.output(errorString);
+    }
+  }
+
+  private static ValueProvider<String> getMaybeDecryptedToken(GCSToSplunkOptions options) {
+    SplunkTokenSource splunkTokenSource =
+        EnumUtils.getEnum(SplunkTokenSource.class, options.getTokenSource());
+    switch (splunkTokenSource) {
+      case SECRET_MANAGER:
+        checkArgument(
+            options.getTokenSecretId() != null,
+            "tokenSecretId is required to retrieve token from Secret Manager");
+        LOG.info("Using token secret stored in Secret Manager");
+        return StaticValueProvider.of(SecretManagerUtils.getSecret(options.getTokenSecretId()));
+      case KMS:
+        checkArgument(
+            options.getToken() != null && options.getTokenKMSEncryptionKey() != null,
+            "token and tokenKmsEncryptionKey are required while decrypting using KMS Key");
+        LOG.info("Using KMS Key to decrypt token");
+        return KMSUtils.maybeDecrypt(options.getToken(), options.getTokenKMSEncryptionKey());
+      case PLAINTEXT:
+      default:
+        checkArgument(options.getToken() != null, "token is required for writing events");
+        LOG.warn(
+            "Using plaintext token. Consider storing the token in Secret Manager or "
+                + "pass an encrypted token and a KMS Key to decrypt it");
+        return StaticValueProvider.of(options.getToken());
     }
   }
 }

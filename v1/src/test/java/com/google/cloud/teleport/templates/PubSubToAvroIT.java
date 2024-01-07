@@ -15,36 +15,36 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.avro.AvroPubsubMessageRecord;
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.TopicName;
-import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.reflect.ReflectDatumReader;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.artifacts.Artifact;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -63,20 +63,18 @@ public class PubSubToAvroIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
   @After
   public void tearDown() {
-    pubsubResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager);
   }
 
   @Test
   public void testTopicToAvro() throws IOException {
     // Arrange
-    String name = testName.getMethodName();
+    String name = testName;
     Pattern expectedFilePattern = Pattern.compile(".*topic-output-.*");
     TopicName topic = pubsubResourceManager.createTopic("input-topic");
 
@@ -92,8 +90,6 @@ public class PubSubToAvroIT extends TemplateTestBase {
 
     ImmutableSet<String> messages =
         ImmutableSet.of("message1-" + name, "message2-" + name, "message3-" + name);
-    messages.forEach(
-        m -> pubsubResourceManager.publish(topic, ImmutableMap.of(), ByteString.copyFromUtf8(m)));
 
     AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
     Result result =
@@ -101,7 +97,15 @@ public class PubSubToAvroIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  artifacts.set(artifactClient.listArtifacts(testName, expectedFilePattern));
+
+                  // For tests that run against topics, sending repeatedly will make it work for
+                  // cases in which the on-demand subscription is created after sending messages.
+                  for (String message : messages) {
+                    pubsubResourceManager.publish(
+                        topic, ImmutableMap.of(), ByteString.copyFromUtf8(message));
+                  }
+
+                  artifacts.set(gcsClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
 

@@ -32,7 +32,7 @@ import java.util.NoSuchElementException;
  * data analytics.
  *
  * <p>Please refer to <b><a href=
- * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/src/test/resources/EventMetadataBuilder/inputGCPAuditlogMessageEnriched.json">
+ * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-elasticsearch/src/test/resources/EventMetadataBuilder/inputGCPAuditlogMessageEnriched.json">
  * inputGCPAuditlogMessageEnriched.json</a></b> to see an example of enriched message.
  */
 public class EventMetadataBuilder implements Serializable {

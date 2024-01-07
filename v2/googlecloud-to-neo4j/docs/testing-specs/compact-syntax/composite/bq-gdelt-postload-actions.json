@@ -19,20 +19,18 @@
       "node": {
         "source": "gdelt",
         "name": "BQ_GGGRecord",
-        "active": true,
         "mode": "merge",
         "transform": {
           "group": true
         },
-        "automap": false,
         "mappings": {
           "labels": [
             "\"BQ_GGGRecord\""
           ],
-          "keys": [
-            {"Guid": "Guid"}
-          ],
           "properties": {
+            "keys": [
+              {"Guid": "Guid"}
+            ],
             "strings": ["URL","DateTime","Title","DocTone","Location","Lat","Lon","CountryCode","Adm1Code","GeoType","ContextualText"]
           }
         }
@@ -42,18 +40,16 @@
       "node": {
         "source": "gdelt",
         "name": "BQ_GGGRecord2",
-        "active": true,
         "mode": "merge",
         "transform": {
           "group": true
         },
-        "automap": false,
         "mappings": {
           "labels": [
             "\"BQ_GGGRecord2\""
           ],
-          "keys": ["Guid"],
           "properties": {
+            "keys": ["Guid"],
             "strings": ["URL","DateTime","Title","DocTone","Location","Lat","Lon","CountryCode","Adm1Code","GeoType","ContextualText"]
           }
         }
@@ -63,20 +59,18 @@
       "node": {
         "source": "gdelt",
         "name": "BQ_GGGRecord3",
-        "active": true,
         "mode": "merge",
         "transform": {
           "group": true
         },
-        "automap": false,
         "mappings": {
           "labels": [
             "\"BQ_GGGRecord3\""
           ],
-          "keys": [
-            "Guid"
-          ],
           "properties": {
+            "keys": [
+              "Guid"
+            ],
             "strings": [
               "URL",
               "DateTime",

@@ -30,11 +30,11 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       optional = true,
       description = "Shard template",
       helpText =
-          "Defines the unique/dynamic portion of each windowed file. Recommended: use the "
-              + "default (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is "
-              + "replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are replaced "
-              + "with the shard number and number of shards respectively. The pipeline assumes a single "
-              + "file output and will produce the text of '00-of-01' by default.")
+          "Defines the unique/dynamic portion of each windowed file. Recommended: use the default"
+              + " (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is"
+              + " replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are"
+              + " replaced with the shard number and number of shards respectively. The pipeline"
+              + " assumes a single file output and will produce the text of '00-of-01' by default.")
   @Default.String("W-P-SS-of-NN")
   String getOutputShardTemplate();
 
@@ -48,7 +48,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
           "The maximum number of output shards produced when writing. A higher number of shards "
               + "means higher throughput for writing to Cloud Storage, but potentially higher data "
               + "aggregation cost across shards when processing output Cloud Storage files.")
-  @Default.Integer(1)
+  @Default.Integer(0)
   Integer getNumShards();
 
   void setNumShards(Integer value);
@@ -58,8 +58,9 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       optional = true,
       description = "Window duration",
       helpText =
-          "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for "
-              + "seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h).",
+          "The window duration/size in which data will be written to Cloud Storage. Allowed formats"
+              + " are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for"
+              + " hours, example: 2h).",
       example = "5m")
   @Default.String("5m")
   String getWindowDuration();
@@ -72,9 +73,9 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       regexes = {"^[^A-Za-z0-9/](y+|Y+)[^A-Za-z0-9/]$"},
       description = "Custom Year Pattern to use for the output directory",
       helpText =
-          "Pattern for formatting the year. Must be one or more of 'y' or 'Y'. Case makes no "
-              + "difference in the year. The pattern can be optionally wrapped by characters that aren't "
-              + "either alphanumeric or the directory ('/') character. Defaults to 'YYYY'")
+          "Pattern for formatting the year. Must be one or more of 'y' or 'Y'. Case makes no"
+              + " difference in the year. The pattern can be optionally wrapped by characters that"
+              + " aren't either alphanumeric or the directory ('/') character. Defaults to 'YYYY'")
   @Default.String("YYYY")
   String getYearPattern();
 
@@ -100,10 +101,10 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       regexes = {"^[^A-Za-z0-9/](d+|D+)[^A-Za-z0-9/]$"},
       description = "Custom Day Pattern to use for the output directory",
       helpText =
-          "Pattern for formatting the day. Must be one or more of 'd' for day of month or 'D' "
-              + "for day of year. Case makes no difference in the year. The pattern can be optionally "
-              + "wrapped by characters that aren't either alphanumeric or the directory ('/') character. "
-              + "Defaults to 'dd'")
+          "Pattern for formatting the day. Must be one or more of 'd' for day of month or 'D' for"
+              + " day of year. Case makes no difference in the year. The pattern can be optionally"
+              + " wrapped by characters that aren't either alphanumeric or the directory ('/')"
+              + " character. Defaults to 'dd'")
   @Default.String("dd")
   String getDayPattern();
 
@@ -115,9 +116,9 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       regexes = {"^[^A-Za-z0-9/](H+)[^A-Za-z0-9/]$"},
       description = "Custom Hour Pattern to use for the output directory",
       helpText =
-          "Pattern for formatting the hour. Must be one or more of the 'H' character. The "
-              + "pattern can be optionally wrapped by characters that aren't alphanumeric or the directory "
-              + "('/') character. Defaults to 'HH'")
+          "Pattern for formatting the hour. Must be one or more of the 'H' character. The pattern"
+              + " can be optionally wrapped by characters that aren't alphanumeric or the directory"
+              + " ('/') character. Defaults to 'HH'")
   @Default.String("HH")
   String getHourPattern();
 
@@ -129,9 +130,9 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       regexes = {"^[^A-Za-z0-9/](m+)[^A-Za-z0-9/]$"},
       description = "Custom Minute Pattern to use for the output directory",
       helpText =
-          "Pattern for formatting the minute. Must be one or more of the 'm' character. The "
-              + "pattern can be optionally wrapped by characters that aren't alphanumeric or the directory "
-              + "('/') character. Defaults to 'mm'")
+          "Pattern for formatting the minute. Must be one or more of the 'm' character. The pattern"
+              + " can be optionally wrapped by characters that aren't alphanumeric or the directory"
+              + " ('/') character. Defaults to 'mm'")
   @Default.String("mm")
   String getMinutePattern();
 

@@ -20,8 +20,9 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
-import com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQuery;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQueryTableRows;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.TableRowToJsonFn;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.TransformTextViaJavascript;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -30,19 +31,28 @@ import org.apache.beam.sdk.transforms.ParDo;
 /**
  * The {@link BigQueryToElasticsearch} pipeline exports data from a BigQuery table to Elasticsearch.
  *
- * <p>Please refer to <b><a href=
- * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/docs/BigQueryToElasticsearch/README.md">
- * README.md</a></b> for further information.
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-elasticsearch/README_BigQuery_to_Elasticsearch.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "BigQuery_to_Elasticsearch",
     category = TemplateCategory.BATCH,
     displayName = "BigQuery to Elasticsearch",
     description =
-        "A pipeline which sends BigQuery records into an Elasticsearch instance as json documents.",
+        "The BigQuery to Elasticsearch template is a batch pipeline that ingests data from a BigQuery table into Elasticsearch as documents. "
+            + "The template can either read the entire table or read specific records using a supplied query.",
     optionsClass = BigQueryToElasticsearchOptions.class,
+    skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
     flexContainerName = "bigquery-to-elasticsearch",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-elasticsearch",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The source BigQuery table must exist.",
+      "A Elasticsearch host on a Google Cloud instance or on Elastic Cloud with Elasticsearch version 7.0 or above and should be accessible from the Dataflow worker machines.",
+    })
 public class BigQueryToElasticsearch {
   /**
    * Main entry point for pipeline execution.
@@ -81,7 +91,7 @@ public class BigQueryToElasticsearch {
     pipeline
         .apply(
             "ReadFromBigQuery",
-            ReadBigQuery.newBuilder()
+            ReadBigQueryTableRows.newBuilder()
                 .setOptions(options.as(BigQueryToElasticsearchOptions.class))
                 .build())
 
@@ -91,7 +101,16 @@ public class BigQueryToElasticsearch {
         .apply("TableRowsToJsonDocument", ParDo.of(new TableRowToJsonFn()))
 
         /*
-         * Step #3: Write converted records to Elasticsearch
+         * Step #3: Apply UDF functions (if specified)
+         */
+        .apply(
+            TransformTextViaJavascript.newBuilder()
+                .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                .build())
+
+        /*
+         * Step #4: Write converted records to Elasticsearch
          */
         .apply(
             "WriteToElasticsearch",

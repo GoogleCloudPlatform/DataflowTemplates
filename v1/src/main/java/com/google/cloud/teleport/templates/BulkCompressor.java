@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.templates.BulkCompressor.Options;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteStreams;
@@ -52,12 +53,11 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@link BulkCompressor} is a batch pipeline that compresses files on matched by an input file
  * pattern and outputs them to a specified file location. This pipeline can be useful when you need
- * to compress large batches of files as part of a perodic archival process. The supported
- * compression modes are: <code>BZIP2</code>, <code>DEFLATE</code>, <code>GZIP</code>, <code>ZIP
- * </code>. Files output to the destination location will follow a naming schema of original
- * filename appended with the compression mode extension. The extensions appended will be one of:
- * <code>.bzip2</code>, <code>.deflate</code>, <code>.gz</code>, <code>.zip</code> as determined by
- * the compression type.
+ * to compress large batches of files as part of a periodic archival process. The supported
+ * compression modes are: <code>BZIP2</code>, <code>DEFLATE</code>, <code>GZIP</code>. Files output
+ * to the destination location will follow a naming schema of original filename appended with the
+ * compression mode extension. The extensions appended will be one of: <code>.bzip2</code>, <code>
+ * .deflate</code>, <code>.gz</code> as determined by the compression type.
  *
  * <p>Any errors which occur during the compression process will be output to the failure file in
  * CSV format of filename, error message. If no failures occur during execution, the error file will
@@ -71,47 +71,29 @@ import org.slf4j.LoggerFactory;
  *   <li>The output directory must exist prior to pipeline execution.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * PIPELINE_FOLDER=gs://${PROJECT_ID}/dataflow/pipelines/bulk-compressor
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.BulkCompressor \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}"
- *
- * # Execute the template
- * JOB_NAME=bulk-compressor-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputFilePattern=${PIPELINE_FOLDER}/test/uncompressed/*,\
- * outputDirectory=${PIPELINE_FOLDER}/test/compressed,\
- * outputFailureFile=${PIPELINE_FOLDER}/test/failure/failed-${JOB_NAME}.csv,\
- * compression=GZIP"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Bulk_Compress_GCS_Files.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Bulk_Compress_GCS_Files",
     category = TemplateCategory.UTILITIES,
     displayName = "Bulk Compress Files on Cloud Storage",
-    description = "Batch pipeline. Compresses files on Cloud Storage to a specified location.",
+    description = {
+      "The Bulk Compress Cloud Storage Files template is a batch pipeline that compresses files on Cloud Storage to a specified location. "
+          + "This template can be useful when you need to compress large batches of files as part of a periodic archival process. "
+          + "The supported compression modes are: BZIP2, DEFLATE, GZIP. Files output to the destination location will follow a naming schema of original filename appended with the compression mode extension. The extensions appended will be one of: .bzip2, .deflate, .gz.",
+      "Any errors which occur during the compression process will be output to the failure file in CSV format of filename, error message. "
+          + "If no failures occur while running the pipeline, the error file will still be created but will contain no error records."
+    },
     optionsClass = Options.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bulk-compress-cloud-storage",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The compression must be in one of the following formats: `BZIP2`, `DEFLATE`, `GZIP`.",
+      "The output directory must exist prior to running the pipeline."
+    })
 public class BulkCompressor {
 
   /** The logger to output status messages to. */
@@ -129,10 +111,11 @@ public class BulkCompressor {
    * command-line.
    */
   public interface Options extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-files/*.txt")
     @Required
     ValueProvider<String> getInputFilePattern();
@@ -165,7 +148,11 @@ public class BulkCompressor {
 
     @TemplateParameter.Enum(
         order = 4,
-        enumOptions = {"BZIP2", "DEFLATE", "GZIP"},
+        enumOptions = {
+          @TemplateEnumOption("BZIP2"),
+          @TemplateEnumOption("DEFLATE"),
+          @TemplateEnumOption("GZIP")
+        },
         description = "Compression",
         helpText =
             "The compression algorithm used to compress the matched files. Valid algorithms: BZIP2, DEFLATE, GZIP")
@@ -173,6 +160,18 @@ public class BulkCompressor {
     ValueProvider<Compression> getCompression();
 
     void setCompression(ValueProvider<Compression> value);
+
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        regexes = {"^[A-Za-z_0-9.]*"},
+        description = "Output filename suffix",
+        helpText =
+            "Output filename suffix of the files to write. Defaults to .bzip2, .deflate or .gz depending on the compression algorithm.")
+    @Required
+    ValueProvider<String> getOutputFilenameSuffix();
+
+    void setOutputFilenameSuffix(ValueProvider<String> value);
   }
 
   /**
@@ -253,9 +252,19 @@ public class BulkCompressor {
     public void processElement(ProcessContext context) {
       ResourceId inputFile = context.element().resourceId();
       Compression compression = compressionValue.get();
+      Options options = context.getPipelineOptions().as(Options.class);
+      String outputFilename;
 
-      // Add the compression extension to the output filename. Example: demo.txt -> demo.txt.gz
-      String outputFilename = inputFile.getFilename() + compression.getSuggestedSuffix();
+      // Add the extension to the output filename.
+      if (options.getOutputFilenameSuffix() != null
+          && options.getOutputFilenameSuffix().isAccessible()
+          && options.getOutputFilenameSuffix().get() != null) {
+        // Use suffix parameter. Example: demo.txt -> demo.txt.foo
+        outputFilename = inputFile.getFilename() + options.getOutputFilenameSuffix().get();
+      } else {
+        // Use compression extension. Example: demo.txt -> demo.txt.gz
+        outputFilename = inputFile.getFilename() + compression.getSuggestedSuffix();
+      }
 
       // Resolve the necessary resources to perform the transfer
       ResourceId outputDir = FileSystems.matchNewResource(destinationLocation.get(), true);

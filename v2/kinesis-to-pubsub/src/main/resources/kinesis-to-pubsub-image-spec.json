@@ -1,0 +1,48 @@
+{
+  "name": "A Dataflow pipeline that takes data from AWS Kinesis to Pubsub",
+  "description": "A pipeline to read from a Kinesis data stream and write to Pubsub",
+  "parameters": [
+    {
+      "name": "secretId1",
+      "label": "First Secret ID",
+      "helpText": "First Secret ID",
+      "paramType": "TEXT"
+    },
+    {
+      "name": "secretId2",
+      "label": "Second Secret ID",
+      "helpText": "Second Secret ID",
+      "paramType": "TEXT"
+    },
+    {
+      "name": "awsRegion",
+      "label": "AWS Region",
+      "helpText": "AWS Region",
+      "paramType": "TEXT"
+    },
+    {
+      "name": "awsDataFormat",
+      "label": "Format of the data expected",
+      "helpText": "Format of the data expected",
+      "regexes": [
+        "[a-zA-Z]+"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "kinesisDataStream",
+      "label": "Name of the Kinesis Data stream to read from",
+      "helpText": "Name of the Kinesis Data stream to read from. Enter the full name of the Kinesis Data stream",
+      "regexes": [
+        "[a-zA-Z0-9_.]+"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputPubsubTopic",
+      "label": "PubSub Output Topic",
+      "helpText": "PubSub Output Topic",
+      "paramType": "TEXT"
+    }
+  ]
+}

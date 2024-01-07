@@ -16,10 +16,13 @@
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 
 /**
  * The {@link BigQueryToElasticsearchOptions} class provides the custom execution options passed by
  * the executor at the command-line.
  */
 public interface BigQueryToElasticsearchOptions
-    extends BigQueryConverters.BigQueryReadOptions, ElasticsearchWriteOptions {}
+    extends BigQueryConverters.BigQueryReadOptions,
+        ElasticsearchWriteOptions,
+        JavascriptTextTransformerOptions {}

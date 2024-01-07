@@ -33,21 +33,20 @@
     </description>
 
     <dependencies>
-        <!-- Excluding com.google.protobuf transitive dependencies to avoid version conflicts -->
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
-            <artifactId>common</artifactId>
+            <artifactId>datastream-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.2.27</version>
+            <version>${postgresql.version}</version>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.30</version>
+            <version>${mysql-connector-java.version}</version>
             <exclusions>
               <exclusion>
                 <groupId>com.google.protobuf</groupId>

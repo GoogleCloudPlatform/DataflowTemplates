@@ -31,7 +31,7 @@ import org.apache.beam.sdk.options.Description;
     optionsClass = AtoBOptionsMissingAnnotation.class)
 public class AtoBMissingAnnotation {
 
-  interface AtoBOptionsMissingAnnotation {
+  public interface AtoBOptionsMissingAnnotation {
     @TemplateParameter.BigQueryTable(
         order = 2,
         name = "to",

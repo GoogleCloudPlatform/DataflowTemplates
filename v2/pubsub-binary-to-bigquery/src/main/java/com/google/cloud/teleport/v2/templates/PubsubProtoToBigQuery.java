@@ -68,17 +68,34 @@ import org.apache.commons.lang3.ArrayUtils;
  * records from Pub/Sub to BigQuery.
  *
  * <p>Persistent failures are written to a Pub/Sub unprocessed topic.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-binary-to-bigquery/README_PubSub_Proto_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "PubSub_Proto_to_BigQuery",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub Proto to BigQuery",
-    description =
-        "A streaming pipeline that reads Protobuf messages from a Pub/Sub subscription and writes"
-            + " them to a BigQuery table.",
+    description = {
+      "The Pub/Sub proto to BigQuery template is a streaming pipeline that ingests proto data from a Pub/Sub subscription into a BigQuery table. "
+          + "Any errors that occur while writing to the BigQuery table are streamed into a Pub/Sub unprocessed topic.\n",
+      "A JavaScript user-defined function (UDF) can be provided to transform data. "
+          + "Errors while executing the UDF can be sent to either a separate Pub/Sub topic or the same unprocessed topic as the BigQuery errors."
+    },
     optionsClass = PubSubProtoToBigQueryOptions.class,
     flexContainerName = "pubsub-proto-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-proto-to-bigquery",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The input Pub/Sub subscription must exist.",
+      "The schema file for the Proto records must exist on Cloud Storage.",
+      "The output Pub/Sub topic must exist.",
+      "The output BigQuery dataset must exist.",
+      "If the BigQuery table exists, it must have a schema matching the proto data regardless of the <code>createDisposition</code> value."
+    },
+    streaming = true)
 public final class PubsubProtoToBigQuery {
   private static final TupleTag<FailsafeElement<String, String>> UDF_SUCCESS_TAG = new TupleTag<>();
   private static final TupleTag<FailsafeElement<String, String>> UDF_FAILURE_TAG = new TupleTag<>();
@@ -338,6 +355,8 @@ public final class PubsubProtoToBigQuery {
               FailsafeJavascriptUdf.<String>newBuilder()
                   .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                   .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                  .setReloadIntervalMinutes(
+                      options.getJavascriptTextTransformReloadIntervalMinutes())
                   .setSuccessTag(UDF_SUCCESS_TAG)
                   .setFailureTag(UDF_FAILURE_TAG)
                   .build());

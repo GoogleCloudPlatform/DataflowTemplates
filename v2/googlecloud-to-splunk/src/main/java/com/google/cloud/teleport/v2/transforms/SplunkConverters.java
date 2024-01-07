@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Throwables;
 import com.google.gson.JsonElement;
@@ -26,6 +27,7 @@ import com.google.gson.JsonSyntaxException;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -134,6 +136,99 @@ public final class SplunkConverters {
     Integer getParallelism();
 
     void setParallelism(Integer parallelism);
+
+    @TemplateParameter.Enum(
+        order = 6,
+        enumOptions = {
+          @TemplateEnumOption("PLAINTEXT"),
+          @TemplateEnumOption("KMS"),
+          @TemplateEnumOption("SECRET_MANAGER")
+        },
+        description = "Source of the token passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
+        helpText =
+            "Source of the token. One of PLAINTEXT, KMS or SECRET_MANAGER. If tokenSource is set to KMS, "
+                + "tokenKMSEncryptionKey and encrypted token must be provided. If tokenSource is set to "
+                + "SECRET_MANAGER, tokenSecretId must be provided. If tokenSource is set to PLAINTEXT, "
+                + "token must be provided.")
+    String getTokenSource();
+
+    void setTokenSource(String tokenSource);
+
+    @TemplateParameter.Text(
+        order = 7,
+        optional = true,
+        regexes = {
+          "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
+        },
+        description = "Google Cloud KMS encryption key for the token",
+        helpText =
+            "The Cloud KMS key to decrypt the HEC token string. This parameter must be "
+                + "provided if the tokenSource is set to KMS. If this parameter is provided, token "
+                + "string should be passed in encrypted. Encrypt parameters using the KMS API encrypt "
+                + "endpoint. The Key should be in the format "
+                + "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. "
+                + "See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt ",
+        example =
+            "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name")
+    String getTokenKMSEncryptionKey();
+
+    void setTokenKMSEncryptionKey(String keyName);
+
+    @TemplateParameter.Text(
+        order = 8,
+        optional = true,
+        regexes = {
+          "^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$"
+        },
+        description = "Google Cloud Secret Manager ID.",
+        helpText =
+            "Secret Manager secret ID for the token. This parameter should be provided if the tokenSource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
+        example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+    String getTokenSecretId();
+
+    void setTokenSecretId(String secretId);
+
+    @TemplateParameter.Text(
+        order = 9,
+        optional = true,
+        description = "Cloud Storage path to root CA certificate.",
+        helpText =
+            "The full URL to root CA certificate in Cloud Storage. The certificate provided in "
+                + "Cloud Storage must be DER-encoded and may be supplied in binary or printable "
+                + "(Base64) encoding. If the certificate is provided in Base64 encoding, it must "
+                + "be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded "
+                + "at the end by -----END CERTIFICATE-----. If this parameter is provided, this "
+                + "private CA certificate file will be fetched and added to Dataflow worker's trust "
+                + "store in order to verify Splunk HEC endpoint's SSL certificate which is signed "
+                + "by that private CA. If this parameter is not provided, the default trust store "
+                + "is used.",
+        example = "gs://mybucket/mycerts/privateCA.crt")
+    String getRootCaCertificatePath();
+
+    void setRootCaCertificatePath(String rootCaCertificatePath);
+
+    @TemplateParameter.Boolean(
+        order = 10,
+        optional = true,
+        description = "Enable logs for batches written to Splunk.",
+        helpText =
+            "Parameter which specifies if logs should be enabled for batches written to Splunk.")
+    @Default.Boolean(true)
+    Boolean getEnableBatchLogs();
+
+    void setEnableBatchLogs(Boolean enableBatchLogs);
+
+    @TemplateParameter.Boolean(
+        order = 11,
+        optional = true,
+        description =
+            "Enable compression (gzip content encoding) in HTTP requests sent to Splunk HEC.",
+        helpText =
+            "Parameter which specifies if HTTP requests sent to Splunk HEC should be GZIP encoded.")
+    @Default.Boolean(true)
+    Boolean getEnableGzipHttpCompression();
+
+    void setEnableGzipHttpCompression(Boolean enableGzipHttpCompression);
   }
 
   /**
@@ -141,9 +236,9 @@ public final class SplunkConverters {
    * PCollectionTuple} consisting of the following {@link PCollection}:
    *
    * <ul>
-   *   <li>{@link FailsafeStringToSplunkEvent#splunkEventOutputTag()} - Contains {@link SplunkEvent}
+   *   <li>{@link FailsafeStringToSplunkEvent#splunkEventOutputTag} - Contains {@link SplunkEvent}
    *       objects converted from input.
-   *   <li>{@link FailsafeStringToSplunkEvent#splunkEventErrorTag()} - Contains {@link
+   *   <li>{@link FailsafeStringToSplunkEvent#splunkEventErrorTag} - Contains {@link
    *       FailsafeElement} objects of conversion failures.
    * </ul>
    */
@@ -262,7 +357,7 @@ public final class SplunkConverters {
                           // or has other exceptions. In this case, we will
                           // simply capture the entire input as an 'event' and
                           // not worry about capturing any specific properties
-                          // (for e.g Timestamp etc).
+                          // (for example Timestamp).
                           // We also do not want to LOG this as we might be running
                           // a pipeline to simply log text entries to Splunk and
                           // this is expected behavior.

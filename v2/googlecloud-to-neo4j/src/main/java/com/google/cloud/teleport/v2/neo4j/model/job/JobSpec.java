@@ -19,56 +19,23 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.Getter;
-import lombok.Setter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Job specification request object. */
-@Getter
 public class JobSpec implements Serializable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(JobSpec.class);
-
   // initialize defaults;
-  private final Map<String, Source> sources = new HashMap<>();
-  private final List<Target> targets = new ArrayList<>();
-  @Setter private Config config = new Config();
-  private final Map<String, String> options = new HashMap<>();
+  private final Map<String, Source> sources = new LinkedHashMap<>();
+  private List<Target> targets = new ArrayList<>();
+  private Config config = new Config();
   private final List<Action> actions = new ArrayList<>();
 
-  public List<Target> getActiveTargetsBySource(String sourceName) {
+  public List<Target> getActiveTargetsBySourceAndType(String sourceName, TargetType type) {
     List<Target> targets = new ArrayList<>();
     for (Target target : this.targets) {
-      if (target.isActive() && target.getSource().equals(sourceName)) {
-        targets.add(target);
-      }
-    }
-    return targets;
-  }
-
-  public List<Target> getActiveNodeTargetsBySource(String sourceName) {
-    List<Target> targets = new ArrayList<>();
-    for (Target target : this.targets) {
-      if (target.isActive()
-          && target.getType() == TargetType.node
-          && target.getSource().equals(sourceName)) {
-        targets.add(target);
-      }
-    }
-    return targets;
-  }
-
-  public List<Target> getActiveRelationshipTargetsBySource(String sourceName) {
-    List<Target> targets = new ArrayList<>();
-    for (Target target : this.targets) {
-      if (target.isActive()
-          && target.getType() == TargetType.edge
-          && target.getSource().equals(sourceName)) {
+      if (target.isActive() && target.getType() == type && target.getSource().equals(sourceName)) {
         targets.add(target);
       }
     }
@@ -81,9 +48,8 @@ public class JobSpec implements Serializable {
 
   public List<Source> getSourceList() {
     ArrayList<Source> sourceList = new ArrayList<>();
-    Iterator<String> sourceKeySet = sources.keySet().iterator();
-    while (sourceKeySet.hasNext()) {
-      sourceList.add(sources.get(sourceKeySet.next()));
+    for (String s : sources.keySet()) {
+      sourceList.add(sources.get(s));
     }
     return sourceList;
   }
@@ -113,6 +79,30 @@ public class JobSpec implements Serializable {
         actions.add(action);
       }
     }
+    return actions;
+  }
+
+  public Map<String, Source> getSources() {
+    return sources;
+  }
+
+  public List<Target> getTargets() {
+    return targets;
+  }
+
+  public void setTargets(List<Target> targets) {
+    this.targets = targets;
+  }
+
+  public Config getConfig() {
+    return config;
+  }
+
+  public void setConfig(Config config) {
+    this.config = config;
+  }
+
+  public List<Action> getActions() {
     return actions;
   }
 }

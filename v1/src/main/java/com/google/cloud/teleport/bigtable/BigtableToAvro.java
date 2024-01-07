@@ -35,8 +35,11 @@ import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -47,15 +50,26 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
 /**
  * Dataflow pipeline that exports data from a Cloud Bigtable table to Avro files in GCS. Currently,
  * filtering on Cloud Bigtable table is not supported.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_Bigtable_to_GCS_Avro.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_Bigtable_to_GCS_Avro",
     category = TemplateCategory.BATCH,
     displayName = "Cloud Bigtable to Avro Files in Cloud Storage",
     description =
-        "A pipeline which reads in Cloud Bigtable table and writes it to Cloud Storage in Avro format.",
+        "The Bigtable to Cloud Storage Avro template is a pipeline that reads data from a Bigtable table and writes it to a Cloud Storage bucket in Avro format. "
+            + "You can use the template to move data from Bigtable to Cloud Storage.",
     optionsClass = Options.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-avro",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Bigtable table must exist.",
+      "The output Cloud Storage bucket must exist before running the pipeline."
+    })
 public class BigtableToAvro {
 
   /** Options for the export pipeline. */
@@ -64,7 +78,8 @@ public class BigtableToAvro {
         order = 1,
         description = "Project ID",
         helpText =
-            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from")
+            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to"
+                + " read data from")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
@@ -94,7 +109,8 @@ public class BigtableToAvro {
         order = 4,
         description = "Output file directory in Cloud Storage",
         helpText =
-            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime"
+                + " formatting is used to parse directory path for date & time formatters.",
         example = "gs://your-bucket/your-path")
     ValueProvider<String> getOutputDirectory();
 
@@ -105,6 +121,7 @@ public class BigtableToAvro {
         order = 5,
         description = "Avro file prefix",
         helpText = "The prefix of the Avro file name. For example, \"table1-\"")
+    @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
     @SuppressWarnings("unused")
@@ -148,7 +165,9 @@ public class BigtableToAvro {
             new SerializableFunction<TranslatorInput<String, String>, String>() {
               @Override
               public String apply(TranslatorInput<String, String> input) {
-                return new StringBuilder(input.getX()).append(input.getY()).toString();
+                return FileSystems.matchNewResource(input.getX(), true)
+                    .resolve(input.getY(), StandardResolveOptions.RESOLVE_FILE)
+                    .toString();
               }
             });
 

@@ -16,32 +16,42 @@
 package com.google.cloud.teleport.v2.kafka.transforms;
 
 import com.google.cloud.teleport.v2.kafka.utils.SslConsumerFactoryFn;
+import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.coders.ByteArrayCoder;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
+import org.apache.beam.sdk.io.kafka.DeserializerProvider;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
 /** Different transformations over the processed data in the pipeline. */
 public class KafkaTransform {
 
   /**
-   * Configures Kafka consumer.
+   * Configures Kafka consumer that reads String.
    *
    * @param bootstrapServers Kafka servers to read from
    * @param topicsList Kafka topics to read from
    * @param config configuration for the Kafka consumer
    * @return PCollection of Kafka Key & Value Pair deserialized in string format
    */
-  public static PTransform<PBegin, PCollection<KV<String, String>>> readFromKafka(
+  public static PTransform<PBegin, PCollection<KV<String, String>>> readStringFromKafka(
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
@@ -62,6 +72,34 @@ public class KafkaTransform {
   }
 
   /**
+   * Configures Kafka consumer that reads Avro GenericRecord.
+   *
+   * @param bootstrapServers Kafka servers to read from
+   * @param topicsList Kafka topics to read from
+   * @param config configuration for the Kafka consumer
+   * @return PCollection of Kafka Key & Value Pair deserialized in string format
+   */
+  public static PTransform<PBegin, PCollection<KV<byte[], GenericRecord>>> readAvroFromKafka(
+      String bootstrapServers,
+      List<String> topicsList,
+      Map<String, Object> config,
+      String avroSchema,
+      @Nullable Map<String, String> sslConfig) {
+    KafkaIO.Read<byte[], GenericRecord> kafkaRecords =
+        KafkaIO.<byte[], GenericRecord>read()
+            .withBootstrapServers(bootstrapServers)
+            .withTopics(topicsList)
+            .withKeyDeserializerAndCoder(
+                ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
+            .withValueDeserializer(new KafkaSchemaDeserializerProvider(avroSchema))
+            .withConsumerConfigUpdates(config);
+    if (sslConfig != null) {
+      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new SslConsumerFactoryFn(sslConfig));
+    }
+    return kafkaRecords.withoutMetadata();
+  }
+
+  /**
    * The {@link MessageToFailsafeElementFn} wraps an Kafka Message with the {@link FailsafeElement}
    * class so errors can be recovered from and the original message can be output to a error records
    * table.
@@ -73,6 +111,33 @@ public class KafkaTransform {
     public void processElement(ProcessContext context) {
       KV<String, String> message = context.element();
       context.output(FailsafeElement.of(message, message.getValue()));
+    }
+  }
+
+  static class KafkaSchemaDeserializerProvider implements DeserializerProvider<GenericRecord> {
+
+    private String avroSchemaPath;
+    private transient Schema avroSchema;
+
+    public KafkaSchemaDeserializerProvider(String avroSchemaPath) {
+      this.avroSchemaPath = avroSchemaPath;
+    }
+
+    @Override
+    public Deserializer<GenericRecord> getDeserializer(Map<String, ?> configs, boolean isKey) {
+      return new SchemaKafkaAvroDeserializer(getAvroSchema(), configs);
+    }
+
+    @Override
+    public Coder<GenericRecord> getCoder(CoderRegistry coderRegistry) {
+      return NullableCoder.of(AvroCoder.of(getAvroSchema()));
+    }
+
+    protected synchronized Schema getAvroSchema() {
+      if (this.avroSchema == null) {
+        this.avroSchema = SchemaUtils.getAvroSchema(avroSchemaPath);
+      }
+      return this.avroSchema;
     }
   }
 }

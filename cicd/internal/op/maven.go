@@ -21,18 +21,21 @@ import (
 )
 
 // Runs the given Maven command on a specified POM file. Considering the input, this is equivalent to:
-//		mvn -B {cmd} -f {pom} {args...}
+//
+//	mvn -B {cmd} -f {pom} {args...}
 func RunMavenOnPom(pom string, cmd string, args ...string) error {
 	fullArgs := []string{"-B"}
 	fullArgs = append(fullArgs, strings.Split(cmd, " ")...)
 	fullArgs = append(fullArgs, "-f", pom)
+	fullArgs = append(fullArgs, "-e")
 	fullArgs = append(fullArgs, args...)
 
 	return RunCmdAndStreamOutput("mvn", fullArgs)
 }
 
 // Runs the given Maven command on a specified module. Considering the input, this is equivalent to:
-//		mvn -B {cmd} -f {pom} -pl {module} {args...}
+//
+//	mvn -B {cmd} -f {pom} -pl {module} {args...}
 func RunMavenOnModule(pom string, cmd string, module string, args ...string) error {
 	fullArgs := []string{"-pl", module}
 	fullArgs = append(fullArgs, args...)

@@ -63,18 +63,20 @@ The template requires the following parameters:
 Template can be executed using the following gcloud command:
 
 ```sh
+export PROJECT=<my-project>
 export IMAGE_NAME_VERSION=b0.12
-export TEMPLATE_IMAGE_SPEC="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec-${IMAGE_NAME_VERSION}.json"
+export TEMPLATE_SPEC_GCSPATH="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec-${IMAGE_NAME_VERSION}.json"
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
  
 gcloud dataflow flex-template run "googlecloud-to-neo4j-text-cli-`date +%Y%m%d-%H%M%S`" \
-    --template-file-gcs-location="$TEMPLATE_IMAGE_SPEC" \
+    --project "$PROJECT" \
     --region "$REGION" \
+    --template-file-gcs-location="TEMPLATE_SPEC_GCSPATH" \
     --parameters jobSpecUri="gs://neo4j-dataflow/job-specs/testing/text/text-northwind-jobspec.json" \
     --parameters neo4jConnectionUri="gs://neo4j-dataflow/job-specs/testing/connection/auradb-free-connection.json" \
-    --max-workers=1 \
-    --worker-machine-type=${MACHINE_TYPE} 
+    --parameters workerMachineType="$WORKER_MACHINE" \
+    --max-workers=1
 ```
 
 ## Building Project
@@ -109,14 +111,13 @@ mvn clean test -pl v2/googlecloud-to-neo4j -am
 * Note that /template is the working directory inside the container image
 
 ```sh
-export PROJECT=neo4j-se-team-201905
-export GCS_WORKING_DIR=gs://neo4j-se-temp/dataflow-working
+export PROJECT= [YOUR_PROJECT_ID]
 export APP_NAME=googlecloud-to-neo4j
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
 export IMAGE_NAME=neo4j-dataflow
 export IMAGE_NAME_VERSION=b0.12
-export BUCKET_NAME=gs://neo4j-dataflow/flex-templates
+export BUCKET_NAME= [URI FOR CLOUD STORAGE BUCKET AND FOLDER (ex. gs://bucket-name/folder-name)] 
 export TARGET_GCR_IMAGE=us.gcr.io/${PROJECT}/${IMAGE_NAME}-${IMAGE_NAME_VERSION}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
@@ -131,7 +132,7 @@ gcloud config set project ${PROJECT}
 * Execute the following command from the directory containing the root pom.xml:
 
 ```sh
-mvn -DskipTests=true clean package \
+mvn -DskipTests=true clean install \
     -pl v2/${TEMPLATE_POM_MODULE} \
     -am \
     -Djib.container.mainClass=com.google.cloud.teleport.v2.neo4j.templates.GoogleCloudToNeo4j \
@@ -208,47 +209,4 @@ gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VER
 
     https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/build
     https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
-
-## Known issues
-
-### Roadmap
-
-- Support for reading data from other non-SQL sources including Avro, Parquet,
-  and MongoDb
-- Support for reading data from other SQL based sources including Spanner and
-  Postgres
-- Support for auditing writes to Parquet on GCS
-- Supporting join transformations inside the job
-- Support for write back to Neo4j
-- Implement automap to auto-generate properties
-- Performance benchmark documentation
-
-## Running Apache Hop
-
-```sh
-export JAVA_HOME=`/usr/libexec/java_home -v 11`
-cd ~/Documents/hop
-./hop-gui.sh
-```
-
-### Testing Template
-
-The template unit tests can be run using:
-
-```sh
-mvn test
-```
-
-## Maintainer
-
-    Anthony Krinsky 
-    Sr. Sales Engineer
-    anthony.krinsky@neo4j.com
-
-Note that test scripts point to my auraDb instance. AuraDb is free up to 50,000
-nodes/edges.  
-Great for testing but don't forget to manually "resume" it if inactive for 3
-days.
-
-    https://console.neo4j.io
 

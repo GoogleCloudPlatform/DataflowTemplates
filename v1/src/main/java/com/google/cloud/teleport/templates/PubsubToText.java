@@ -48,74 +48,30 @@ import org.apache.beam.sdk.values.PCollection;
  * This pipeline ingests incoming data from a Cloud Pub/Sub topic and outputs the raw data into
  * windowed files at the specified output directory.
  *
- * <p>Example Usage:
- *
- * <pre>
- * # Set the pipeline vars
- * PIPELINE_NAME=PubsubToText
- * PROJECT_ID=PROJECT ID HERE
- * PIPELINE_BUCKET=TEMPLATE STORAGE BUCKET NAME HERE
- * OUTPUT_BUCKET=JOB OUTPUT BUCKET NAME HERE
- * PIPELINE_FOLDER=gs://${PIPELINE_BUCKET}/dataflow/pipelines/pubsub-to-gcs-text
- * USE_SUBSCRIPTION=true or false depending on whether the pipeline should read
- *                  from a Pub/Sub Subscription or a Pub/Sub Topic.
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER} \
- * --useSubscription=${USE_SUBSCRIPTION}"
- *
- * # Execute the template
- * JOB_NAME=pubsub-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * # Execute a pipeline to read from a Topic.
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputTopic=projects/${PROJECT_ID}/topics/input-topic-name,\
- * userTempLocation=gs://${OUTPUT_BUCKET}/tmp/,\
- * windowDuration=5m,\
- * numShards=1,\
- * outputDirectory=gs://${OUTPUT_BUCKET}/output/,\
- * outputFilenamePrefix=windowed-file,\
- * outputFilenameSuffix=.txt"
- *
- * # Execute a pipeline to read from a Subscription.
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputSubscription=projects/${PROJECT_ID}/subscriptions/input-subscription-name,\
- * windowDuration=5m,\
- * numShards=1,\
- * userTempLocation=gs://${OUTPUT_BUCKET}/tmp/,\
- * outputDirectory=gs://${OUTPUT_BUCKET}/output/,\
- * outputFilenamePrefix=windowed-file,\
- * outputFilenameSuffix=.txt"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_PubSub_to_GCS_Text.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_PubSub_to_GCS_Text",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Text Files on Cloud Storage",
     description =
-        "Streaming pipeline. Reads records from Pub/Sub and writes them to Cloud Storage, creating"
-            + " a text file for each five minute window. Note that this pipeline assumes no"
-            + " newlines in the body of the Pub/Sub message and thus each message becomes a single"
-            + " line in the output file.",
+        "The Pub/Sub to Cloud Storage Text template is a streaming pipeline that reads records from Pub/Sub topic and "
+            + "saves them as a series of Cloud Storage files in text format. "
+            + "The template can be used as a quick way to save data in Pub/Sub for future use. "
+            + "By default, the template generates a new file every 5 minutes.",
     optionsClass = Options.class,
-    contactInformation = "https://cloud.google.com/support")
+    skipOptions = {"inputSubscription"},
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-topic-to-text",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Pub/Sub topic must exist prior to execution.",
+      "The messages published to the topic must be in text format.",
+      "The messages published to the topic must not contain any newlines. Note that each Pub/Sub message is saved as a single line in the output file."
+    },
+    streaming = true)
 public class PubsubToText {
 
   /**

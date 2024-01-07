@@ -15,27 +15,26 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.PullResponse;
-import com.google.pubsub.v1.ReceivedMessage;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,19 +47,18 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(PubsubToPubsub.class)
 @RunWith(JUnit4.class)
 public class PubSubToPubSubIT extends TemplateTestBase {
+
   private PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
   @After
   public void tearDown() {
-    pubsubResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager);
   }
 
   @Test
@@ -75,9 +73,10 @@ public class PubSubToPubSubIT extends TemplateTestBase {
 
     List<String> expectedMessages =
         List.of(
-            "message1-" + testName.getMethodName(),
-            "message2-" + testName.getMethodName(),
-            "message3-" + testName.getMethodName());
+            "message1-" + testName,
+            "message2-" + testName,
+            "message3-" + testName,
+            "message4-" + testName + "-long-" + RandomStringUtils.randomAlphabetic(1000, 2000));
     publishMessages(inputTopic, expectedMessages);
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -88,21 +87,16 @@ public class PubSubToPubSubIT extends TemplateTestBase {
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
-    List<ReceivedMessage> receivedMessages = new ArrayList<>();
-    Result result =
-        pipelineOperator()
-            .waitForConditionAndFinish(
-                createConfig(info),
-                () -> {
-                  PullResponse response =
-                      pubsubResourceManager.pull(outputSubscription, expectedMessages.size());
-                  receivedMessages.addAll(response.getReceivedMessagesList());
-                  return receivedMessages.size() >= expectedMessages.size();
-                });
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, outputSubscription)
+            .setMinMessages(expectedMessages.size())
+            .build();
+
+    Result result = pipelineOperator().waitForConditionAndFinish(createConfig(info), pubsubCheck);
 
     // Assert
     List<String> actualMessages =
-        receivedMessages.stream()
+        pubsubCheck.getReceivedMessageList().stream()
             .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
             .collect(Collectors.toList());
     assertThatResult(result).meetsConditions();

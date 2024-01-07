@@ -15,12 +15,16 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
+
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
+import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
@@ -58,9 +62,24 @@ public class InformationSchemaScanner {
     listViews(builder);
     listColumns(builder);
     listColumnOptions(builder);
+    if (isModelSupported()) {
+      listModels(builder);
+      listModelOptions(builder);
+      listModelColumns(builder);
+      listModelColumnOptions(builder);
+    }
     if (isChangeStreamsSupported()) {
       listChangeStreams(builder);
       listChangeStreamOptions(builder);
+    }
+    if (isSequenceSupported()) {
+      Map<String, Long> currentCounters = Maps.newHashMap();
+      listSequences(builder, currentCounters);
+      if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
+        listSequenceOptionsGoogleSQL(builder, currentCounters);
+      } else {
+        listSequenceOptionsPostgreSQL(builder, currentCounters);
+      }
     }
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
@@ -484,12 +503,14 @@ public class InformationSchemaScanner {
                 + " WHERE t.table_catalog = '' AND t.table_schema = ''"
                 + " ORDER BY t.table_name, t.column_name");
       case POSTGRESQL:
+        // Ignore the 'allow_commit_timestamp' option since it's not user-settable in POSTGRESQL.
         return Statement.of(
             "SELECT t.table_name, t.column_name, t.option_name, t.option_type,"
                 + " t.option_value"
                 + " FROM information_schema.column_options AS t"
                 + " WHERE t.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " AND t.option_name NOT IN ('allow_commit_timestamp')"
                 + " ORDER BY t.table_name, t.column_name");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
@@ -507,7 +528,8 @@ public class InformationSchemaScanner {
                     + " kcu1.table_name,"
                     + " kcu1.column_name,"
                     + " kcu2.table_name,"
-                    + " kcu2.column_name"
+                    + " kcu2.column_name,"
+                    + " rc.delete_rule"
                     + " FROM information_schema.referential_constraints as rc"
                     + " INNER JOIN information_schema.key_column_usage as kcu1"
                     + " ON kcu1.constraint_catalog = rc.constraint_catalog"
@@ -533,7 +555,8 @@ public class InformationSchemaScanner {
                     + " kcu1.table_name,"
                     + " kcu1.column_name,"
                     + " kcu2.table_name,"
-                    + " kcu2.column_name"
+                    + " kcu2.column_name,"
+                    + " rc.delete_rule"
                     + " FROM information_schema.referential_constraints as rc"
                     + " INNER JOIN information_schema.key_column_usage as kcu1"
                     + " ON kcu1.constraint_catalog = rc.constraint_catalog"
@@ -563,6 +586,7 @@ public class InformationSchemaScanner {
       String column = resultSet.getString(2);
       String referencedTable = resultSet.getString(3);
       String referencedColumn = resultSet.getString(4);
+      String deleteRule = resultSet.getString(5);
       Map<String, ForeignKey.Builder> tableForeignKeys =
           foreignKeys.computeIfAbsent(table, k -> Maps.newTreeMap());
       ForeignKey.Builder foreignKey =
@@ -573,6 +597,10 @@ public class InformationSchemaScanner {
                       .name(name)
                       .table(table)
                       .referencedTable(referencedTable));
+      if (!isNullOrEmpty(deleteRule)) {
+        foreignKey.referentialAction(
+            Optional.of(ReferentialAction.getReferentialAction("DELETE", deleteRule)));
+      }
       foreignKey.columnsBuilder().add(column);
       foreignKey.referencedColumnsBuilder().add(referencedColumn);
     }
@@ -645,7 +673,7 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         queryStatement =
             Statement.of(
-                "SELECT v.table_name, v.view_definition"
+                "SELECT v.table_name, v.view_definition, v.security_type"
                     + " FROM information_schema.views AS v"
                     + " WHERE v.table_catalog = '' AND v.table_schema = ''");
         preconditionStatement =
@@ -658,7 +686,7 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         queryStatement =
             Statement.of(
-                "SELECT v.table_name, v.view_definition"
+                "SELECT v.table_name, v.view_definition, v.security_type"
                     + " FROM information_schema.views AS v"
                     + " WHERE v.table_schema NOT IN"
                     + " ('information_schema', 'spanner_sys', 'pg_catalog')");
@@ -686,8 +714,188 @@ public class InformationSchemaScanner {
     while (resultSet.next()) {
       String viewName = resultSet.getString(0);
       String viewQuery = resultSet.getString(1);
+      String viewSecurityType = resultSet.getString(2);
       LOG.debug("Schema View {}", viewName);
-      builder.createView(viewName).query(viewQuery).security(View.SqlSecurity.INVOKER).endView();
+      builder
+          .createView(viewName)
+          .query(viewQuery)
+          .security(View.SqlSecurity.valueOf(viewSecurityType))
+          .endView();
+    }
+  }
+
+  // TODO: Remove after models are supported in POSTGRESQL.
+  private boolean isModelSupported() {
+    return dialect == Dialect.GOOGLE_STANDARD_SQL;
+  }
+
+  private void listModels(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.model_name, t.is_remote "
+                    + " FROM information_schema.models AS t"
+                    + " WHERE t.model_catalog = '' AND t.model_schema = ''"));
+    while (resultSet.next()) {
+      String modelName = resultSet.getString(0);
+      boolean remote = resultSet.isNull(1) ? false : resultSet.getBoolean(1);
+      LOG.debug("Schema Model {} Remote {} {}", modelName, remote);
+      builder.createModel(modelName).remote(remote).endModel();
+    }
+  }
+
+  private void listModelOptions(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.model_name, t.option_name, t.option_type, t.option_value "
+                    + " FROM information_schema.model_options AS t"
+                    + " WHERE t.model_catalog = '' AND t.model_schema = ''"
+                    + " ORDER BY t.model_name, t.option_name"));
+
+    Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String modelName = resultSet.getString(0);
+      String optionName = resultSet.getString(1);
+      String optionType = resultSet.getString(2);
+      String optionValue = resultSet.getString(3);
+
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(modelName, k -> ImmutableList.builder());
+
+      if (optionType.equalsIgnoreCase("STRING")) {
+        options.add(
+            optionName
+                + "="
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(
+            optionName
+                + "="
+                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry : allOptions.entrySet()) {
+      String modelName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder.createModel(modelName).options(options).endModel();
+    }
+  }
+
+  private void listModelColumns(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.model_name, t.column_kind, t.ordinal_position, t.column_name,"
+                    + " t.data_type FROM information_schema.model_columns as t"
+                    + " WHERE t.model_catalog = '' AND t.model_schema = ''"
+                    + " ORDER BY t.model_name, t.column_kind, t.ordinal_position"));
+
+    while (resultSet.next()) {
+      String modelName = resultSet.getString(0);
+      String columnKind = resultSet.getString(1);
+      String columnName = resultSet.getString(3);
+      String spannerType = resultSet.getString(4);
+      if (columnKind.equalsIgnoreCase("INPUT")) {
+        builder
+            .createModel(modelName)
+            .inputColumn(columnName)
+            .parseType(spannerType)
+            .endInputColumn()
+            .endModel();
+      } else if (columnKind.equalsIgnoreCase("OUTPUT")) {
+        builder
+            .createModel(modelName)
+            .outputColumn(columnName)
+            .parseType(spannerType)
+            .endOutputColumn()
+            .endModel();
+      } else {
+        throw new IllegalArgumentException("Unrecognized model column kind: " + columnKind);
+      }
+    }
+  }
+
+  private void listModelColumnOptions(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.model_name, t.column_kind, t.column_name, t.option_name, t.option_type,"
+                    + " t.option_value FROM information_schema.model_column_options as t WHERE"
+                    + " t.model_catalog = '' AND t.model_schema = '' ORDER BY t.model_name,"
+                    + " t.column_kind, t.column_name"));
+
+    Map<KV<String, String>, ImmutableList.Builder<String>> inputOptions = Maps.newHashMap();
+    Map<KV<String, String>, ImmutableList.Builder<String>> outputOptions = Maps.newHashMap();
+
+    while (resultSet.next()) {
+      String modelName = resultSet.getString(0);
+      String columnKind = resultSet.getString(1);
+      String columnName = resultSet.getString(2);
+      String optionName = resultSet.getString(3);
+      String optionType = resultSet.getString(4);
+      String optionValue = resultSet.getString(5);
+
+      KV<String, String> kv = KV.of(modelName, columnName);
+      ImmutableList.Builder<String> options;
+      if (columnKind.equals("INPUT")) {
+        options = inputOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
+      } else if (columnKind.equals("OUTPUT")) {
+        options = outputOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
+      } else {
+        throw new IllegalArgumentException("Unrecognized model column kind: " + columnKind);
+      }
+
+      if (optionType.equalsIgnoreCase("STRING")) {
+        options.add(
+            optionName
+                + "="
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(
+            optionName
+                + "="
+                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<KV<String, String>, ImmutableList.Builder<String>> entry :
+        inputOptions.entrySet()) {
+      String modelName = entry.getKey().getKey();
+      String columnName = entry.getKey().getValue();
+      ImmutableList<String> options = entry.getValue().build();
+      builder
+          .createModel(modelName)
+          .inputColumn(columnName)
+          .columnOptions(options)
+          .endInputColumn()
+          .endModel();
+    }
+
+    for (Map.Entry<KV<String, String>, ImmutableList.Builder<String>> entry :
+        outputOptions.entrySet()) {
+      String modelName = entry.getKey().getKey();
+      String columnName = entry.getKey().getValue();
+      ImmutableList<String> options = entry.getValue().build();
+      builder
+          .createModel(modelName)
+          .outputColumn(columnName)
+          .columnOptions(options)
+          .endOutputColumn()
+          .endModel();
     }
   }
 
@@ -833,6 +1041,194 @@ public class InformationSchemaScanner {
       String changeStreamName = entry.getKey();
       ImmutableList<String> options = entry.getValue().build();
       builder.createChangeStream(changeStreamName).options(options).endChangeStream();
+    }
+  }
+
+  private boolean isSequenceSupported() {
+    Statement statement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        statement =
+            Statement.of(
+                "SELECT COUNT(1)"
+                    + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                    + " t.TABLE_SCHEMA = 'INFORMATION_SCHEMA'"
+                    + " AND t.TABLE_NAME = 'SEQUENCES'");
+        break;
+      case POSTGRESQL:
+        statement =
+            Statement.of(
+                "SELECT COUNT(1)"
+                    + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                    + " t.TABLE_SCHEMA = 'information_schema'"
+                    + " AND t.TABLE_NAME = 'sequences'");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+
+    try (ResultSet resultSet = context.executeQuery(statement)) {
+      // Returns a single row with a 1 if sequences are supported and a 0 if not.
+      resultSet.next();
+      if (resultSet.getLong(0) == 0) {
+        LOG.info("information_schema.sequences is not present");
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private void listSequences(Ddl.Builder builder, Map<String, Long> currentCounters) {
+    Statement queryStatement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        queryStatement =
+            Statement.of("SELECT s.name, s.data_type FROM information_schema.sequences AS s");
+        break;
+      case POSTGRESQL:
+        queryStatement =
+            Statement.of(
+                "SELECT s.sequence_name, s.data_type FROM information_schema.sequences AS s");
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+
+    ResultSet resultSet = context.executeQuery(queryStatement);
+    while (resultSet.next()) {
+      String sequenceName = resultSet.getString(0);
+      builder.createSequence(sequenceName).endSequence();
+
+      Statement sequenceCounterStatement;
+      switch (dialect) {
+        case GOOGLE_STANDARD_SQL:
+          sequenceCounterStatement =
+              Statement.of("SELECT GET_INTERNAL_SEQUENCE_STATE(SEQUENCE " + sequenceName + ")");
+          break;
+        case POSTGRESQL:
+          sequenceCounterStatement =
+              Statement.of(
+                  "SELECT spanner.GET_INTERNAL_SEQUENCE_STATE('\"" + sequenceName + "\"')");
+          break;
+        default:
+          throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+      }
+
+      ResultSet resultSetForCounter = context.executeQuery(sequenceCounterStatement);
+      if (resultSetForCounter.next() && !resultSetForCounter.isNull(0)) {
+        Long counterValue = resultSetForCounter.getLong(0);
+        currentCounters.put(sequenceName, counterValue);
+      }
+    }
+  }
+
+  private void listSequenceOptionsGoogleSQL(
+      Ddl.Builder builder, Map<String, Long> currentCounters) {
+    if (dialect != Dialect.GOOGLE_STANDARD_SQL) {
+      throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.name, t.option_name, t.option_type, t.option_value"
+                    + " FROM information_schema.sequence_options AS t"
+                    + " ORDER BY t.name, t.option_name"));
+
+    Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String sequenceName = resultSet.getString(0);
+      String optionName = resultSet.getString(1);
+      String optionType = resultSet.getString(2);
+      String optionValue = resultSet.getString(3);
+
+      if (optionName == Sequence.SEQUENCE_START_WITH_COUNTER
+          && currentCounters.containsKey(sequenceName)) {
+        // The sequence is in use, we need to apply the current counter to
+        // the DDL builder, instead of the one retrieved from Information Schema.
+        continue;
+      }
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(sequenceName, k -> ImmutableList.builder());
+      if (optionType.equalsIgnoreCase("STRING")) {
+        options.add(
+            optionName
+                + "="
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    // Inject the current counter value to sequences that are in use.
+    for (Map.Entry<String, Long> entry : currentCounters.entrySet()) {
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(entry.getKey(), k -> ImmutableList.builder());
+      // Add a buffer to accommodate writes that may happen after import
+      // is run. Note that this is not 100% failproof, since more writes may
+      // happen and they will make the sequence advances past the buffer.
+      Long newCounterStartValue = entry.getValue() + Sequence.SEQUENCE_COUNTER_BUFFER;
+      options.add(
+          Sequence.SEQUENCE_START_WITH_COUNTER + "=" + String.valueOf(newCounterStartValue));
+      LOG.info(
+          "Sequence "
+              + entry.getKey()
+              + "'s current counter is updated to "
+              + newCounterStartValue);
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry : allOptions.entrySet()) {
+      String sequenceName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder.createSequence(sequenceName).options(options).endSequence();
+    }
+  }
+
+  private void listSequenceOptionsPostgreSQL(
+      Ddl.Builder builder, Map<String, Long> currentCounters) {
+    if (dialect != Dialect.POSTGRESQL) {
+      throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.sequence_name, t.sequence_kind, t.counter_start_value, "
+                    + " t.skip_range_min, t.skip_range_max"
+                    + " FROM information_schema.sequences AS t"
+                    + " ORDER BY t.sequence_name"));
+
+    Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String sequenceName = resultSet.getString(0);
+      String sequenceKind = resultSet.isNull(1) ? null : resultSet.getString(1);
+      Long counterStartValue = resultSet.isNull(2) ? null : resultSet.getLong(2);
+      Long skipRangeMin = resultSet.isNull(3) ? null : resultSet.getLong(3);
+      Long skipRangeMax = resultSet.isNull(4) ? null : resultSet.getLong(4);
+
+      if (sequenceKind == null) {
+        throw new IllegalArgumentException(
+            "Sequence kind for sequence " + sequenceName + " cannot be null");
+      }
+      if (currentCounters.containsKey(sequenceName)) {
+        // The sequence is in use, we need to apply the current counter to
+        // the DDL builder, instead of the one retrieved from Information Schema.
+        // Add a buffer to accommodate writes that may happen after import
+        // is run. Note that this is not 100% failproof, since more writes may
+        // happen and they will make the sequence advances past the buffer.
+        counterStartValue = currentCounters.get(sequenceName) + Sequence.SEQUENCE_COUNTER_BUFFER;
+        LOG.info(
+            "Sequence " + sequenceName + "'s current counter is updated to " + counterStartValue);
+      }
+
+      builder
+          .createSequence(sequenceName)
+          .sequenceKind(sequenceKind)
+          .counterStartValue(counterStartValue)
+          .skipRangeMin(skipRangeMin)
+          .skipRangeMax(skipRangeMax)
+          .endSequence();
     }
   }
 }

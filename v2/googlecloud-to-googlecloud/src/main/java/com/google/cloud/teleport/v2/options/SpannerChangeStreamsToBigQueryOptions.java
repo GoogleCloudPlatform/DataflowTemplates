@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
@@ -25,7 +26,8 @@ import org.apache.beam.sdk.options.Validation;
  * The {@link SpannerChangeStreamsToBigQueryOptions} class provides the custom execution options
  * passed by the executor at the command-line.
  */
-public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineOptions {
+public interface SpannerChangeStreamsToBigQueryOptions
+    extends DataflowPipelineOptions, BigQueryStorageApiStreamingOptions {
 
   @TemplateParameter.ProjectId(
       order = 1,
@@ -59,6 +61,19 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
 
   @TemplateParameter.Text(
       order = 4,
+      optional = true,
+      description = "Spanner database role",
+      helpText =
+          "Database role user assumes while reading from the change stream. The database role"
+              + " should have required privileges to read from change stream. If a database role is"
+              + " not specified, the user should have required IAM permissions to read from the"
+              + " database.")
+  String getSpannerDatabaseRole();
+
+  void setSpannerDatabaseRole(String spannerDatabaseRole);
+
+  @TemplateParameter.Text(
+      order = 5,
       description = "Spanner metadata instance ID",
       helpText = "The Spanner instance to use for the change streams connector metadata table.")
   @Validation.Required
@@ -67,30 +82,32 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
   void setSpannerMetadataInstanceId(String value);
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 6,
       description = "Spanner metadata database",
       helpText =
-          "The Spanner database to use for the change streams connector metadata table. For change streams tracking all tables in a database, we recommend putting the metadata table in a separate database.")
+          "The Spanner database to use for the change streams connector metadata table. For change"
+              + " streams tracking all tables in a database, we recommend putting the metadata"
+              + " table in a separate database.")
   @Validation.Required
   String getSpannerMetadataDatabase();
 
   void setSpannerMetadataDatabase(String value);
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 7,
       optional = true,
       description = "Cloud Spanner metadata table name",
       helpText =
-          "The Cloud Spanner change streams connector metadata table name to use. If not "
-              + "provided, a Cloud Spanner change streams connector metadata table will automatically be "
-              + "created during the pipeline flow. This parameter must be provided when updating an "
-              + "existing pipeline and should not be provided otherwise.")
+          "The Cloud Spanner change streams connector metadata table name to use. If not provided,"
+              + " a Cloud Spanner change streams connector metadata table will automatically be"
+              + " created during the pipeline flow. This parameter must be provided when updating"
+              + " an existing pipeline and should not be provided otherwise.")
   String getSpannerMetadataTableName();
 
   void setSpannerMetadataTableName(String value);
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 8,
       description = "Spanner change stream",
       helpText = "The name of the Spanner change stream to read from.")
   @Validation.Required
@@ -99,19 +116,24 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
   void setSpannerChangeStreamName(String value);
 
   @TemplateParameter.Enum(
-      order = 8,
-      enumOptions = {"LOW", "MEDIUM", "HIGH"},
+      order = 9,
+      enumOptions = {
+        @TemplateEnumOption("LOW"),
+        @TemplateEnumOption("MEDIUM"),
+        @TemplateEnumOption("HIGH")
+      },
       optional = true,
       description = "Priority for Spanner RPC invocations",
       helpText =
-          "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
+          "The request priority for Cloud Spanner calls. The value must be one of:"
+              + " [HIGH,MEDIUM,LOW].")
   @Default.Enum("HIGH")
   RpcPriority getRpcPriority();
 
   void setRpcPriority(RpcPriority value);
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 10,
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
@@ -121,42 +143,44 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
   void setSpannerHost(String value);
 
   @TemplateParameter.DateTime(
-      order = 10,
+      order = 11,
       optional = true,
       description = "The timestamp to read change streams from",
       helpText =
-          "The starting DateTime, inclusive, to use for reading change streams "
-              + "(https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the "
-              + "timestamp when the pipeline starts.")
+          "The starting DateTime, inclusive, to use for reading change streams"
+              + " (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z."
+              + " Defaults to the timestamp when the pipeline starts.")
   @Default.String("")
   String getStartTimestamp();
 
   void setStartTimestamp(String startTimestamp);
 
   @TemplateParameter.DateTime(
-      order = 11,
+      order = 12,
       optional = true,
       description = "The timestamp to read change streams to",
       helpText =
-          "The ending DateTime, inclusive, to use for reading change streams "
-              + "(https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an infinite "
-              + "time in the future.")
+          "The ending DateTime, inclusive, to use for reading change streams"
+              + " (https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an"
+              + " infinite time in the future.")
   @Default.String("")
   String getEndTimestamp();
 
   void setEndTimestamp(String startTimestamp);
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       description = "BigQuery dataset",
-      helpText = "The BigQuery dataset for change streams output.")
+      helpText =
+          "The BigQuery dataset for change streams output. Both the dataSetName and the full"
+              + " dataSetId (i.e. bigQueryProjectId.dataSetName) are acceptable.")
   @Validation.Required
   String getBigQueryDataset();
 
   void setBigQueryDataset(String value);
 
   @TemplateParameter.ProjectId(
-      order = 13,
+      order = 14,
       optional = true,
       description = "BigQuery project ID",
       helpText = "The BigQuery Project. Default is the project for the Dataflow job.")
@@ -166,7 +190,7 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
   void setBigQueryProjectId(String value);
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       optional = true,
       description = "BigQuery table name Template",
       helpText = "The Template for the BigQuery table name that contains the change log")
@@ -176,18 +200,20 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
   void setBigQueryChangelogTableNameTemplate(String value);
 
   @TemplateParameter.GcsWriteFolder(
-      order = 15,
+      order = 16,
       optional = true,
       description = "Dead letter queue directory",
       helpText =
-          "The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.")
+          "The file path to store any unprocessed records with the reason they failed to be"
+              + " processed. Default is a directory under the Dataflow job's temp location. The"
+              + " default value is enough under most conditions.")
   @Default.String("")
-  String getDlqDirectory();
+  String getDeadLetterQueueDirectory();
 
-  void setDlqDirectory(String value);
+  void setDeadLetterQueueDirectory(String value);
 
   @TemplateParameter.Integer(
-      order = 16,
+      order = 17,
       optional = true,
       description = "Dead letter queue retry minutes",
       helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
@@ -198,7 +224,7 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
 
   // TODO(haikuo-google): Test this in UIF test.
   @TemplateParameter.Text(
-      order = 17,
+      order = 18,
       optional = true,
       description = "Fields to be ignored",
       helpText =
@@ -216,4 +242,14 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
   String getIgnoreFields();
 
   void setIgnoreFields(String value);
+
+  @TemplateParameter.Boolean(
+      order = 19,
+      optional = true,
+      description = "Whether or not to disable retries for the DLQ",
+      helpText = "Whether or not to disable retries for the DLQ")
+  @Default.Boolean(false)
+  boolean getDisableDlqRetries();
+
+  void setDisableDlqRetries(boolean value);
 }

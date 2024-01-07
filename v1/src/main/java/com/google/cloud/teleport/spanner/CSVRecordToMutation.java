@@ -34,11 +34,15 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Converts a CSVRecord into a {@link Mutation} object.
@@ -55,35 +59,26 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
   // Schema of the destination Spanner database.
   private final PCollectionView<Ddl> ddlView;
   private final PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView;
-  private final ValueProvider<Character> columnDelimiter;
-  private final ValueProvider<Character> fieldQualifier;
-  private final ValueProvider<Boolean> trailingDelimiter;
-  private final ValueProvider<Character> escape;
-  private final ValueProvider<String> nullString;
   private final ValueProvider<String> dateFormat;
   private final ValueProvider<String> timestampFormat;
+  private final ValueProvider<String> invalidOutputPath;
+  private final TupleTag<String> errorTag;
 
   private Mutation.WriteBuilder writeBuilder = null;
 
   public CSVRecordToMutation(
       PCollectionView<Ddl> ddlView,
       PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView,
-      ValueProvider<Character> columnDelimiter,
-      ValueProvider<Character> fieldQualifier,
-      ValueProvider<Boolean> trailingDelimiter,
-      ValueProvider<Character> escape,
-      ValueProvider<String> nullString,
       ValueProvider<String> dateFormat,
-      ValueProvider<String> timestampFormat) {
+      ValueProvider<String> timestampFormat,
+      ValueProvider<String> invalidOutputPath,
+      TupleTag<String> errorTag) {
     this.ddlView = ddlView;
     this.tableColumnsView = tableColumnsView;
-    this.columnDelimiter = columnDelimiter;
-    this.fieldQualifier = fieldQualifier;
-    this.trailingDelimiter = trailingDelimiter;
-    this.escape = escape;
-    this.nullString = nullString;
     this.dateFormat = dateFormat;
     this.timestampFormat = timestampFormat;
+    this.invalidOutputPath = invalidOutputPath;
+    this.errorTag = errorTag;
   }
 
   @ProcessElement
@@ -102,8 +97,16 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
     try {
       c.output(parseRow(writeBuilder, row, table, tableColumnsMap.get(tableName)));
     } catch (IllegalArgumentException e) {
-      throw new RuntimeException(
-          String.format("Error to parseRow. row: %s, table: %s", row, table), e);
+
+      // Send to error tag only if output path is given, otherwise, throw exception.
+      if (invalidOutputPath != null && StringUtils.isNotEmpty(invalidOutputPath.get())) {
+        c.output(
+            errorTag,
+            StreamSupport.stream(row.spliterator(), false).collect(Collectors.joining(",")));
+      } else {
+        throw new RuntimeException(
+            String.format("Error to parseRow. row: %s, table: %s", row, table), e);
+      }
     }
   }
 
@@ -113,7 +116,7 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
    *
    * @param builder MutationBuilder to construct
    * @param row CSVRecord parsed list of data cell
-   * @param Table table with column names and column data types
+   * @param table table with column names and column data types
    * @return the Mutation object built from the CSVRecord
    */
   protected final Mutation parseRow(
@@ -206,6 +209,7 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
           break;
         case TIMESTAMP:
         case PG_TIMESTAMPTZ:
+        case PG_SPANNER_COMMIT_TIMESTAMP:
           if (isNullValue) {
             columnValue = Value.timestamp(null);
           } else {

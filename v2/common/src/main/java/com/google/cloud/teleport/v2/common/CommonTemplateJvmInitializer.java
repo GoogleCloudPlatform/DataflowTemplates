@@ -69,7 +69,7 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
       LOG.info("disabledAlgorithms is set to {}.", value);
       Security.setProperty("jdk.tls.disabledAlgorithms", value);
       SSLServerSocketFactory fact = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
-      LOG.info("Supported Ciper Suites: " + String.join(", ", fact.getSupportedCipherSuites()));
+      LOG.info("Supported Cipher Suites: " + String.join(", ", fact.getSupportedCipherSuites()));
     }
 
     if (pipelineOptions.getExtraFilesToStage() != null) {

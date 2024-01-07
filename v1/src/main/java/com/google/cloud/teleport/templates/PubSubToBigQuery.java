@@ -80,76 +80,49 @@ import org.slf4j.LoggerFactory;
  *   <li>The BigQuery output table exists.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * BUCKET_NAME=BUCKET NAME HERE
- * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/pubsub-to-bigquery
- * USE_SUBSCRIPTION=true or false depending on whether the pipeline should read
- *                  from a Pub/Sub Subscription or a Pub/Sub Topic.
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.PubSubToBigQuery \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}
- * --useSubscription=${USE_SUBSCRIPTION}
- * "
- *
- * # Execute the template
- * JOB_NAME=pubsub-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * # Execute a pipeline to read from a Topic.
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputTopic=projects/${PROJECT_ID}/topics/input-topic-name,\
- * outputTableSpec=${PROJECT_ID}:dataset-id.output-table,\
- * outputDeadletterTable=${PROJECT_ID}:dataset-id.deadletter-table"
- *
- * # Execute a pipeline to read from a Subscription.
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputSubscription=projects/${PROJECT_ID}/subscriptions/input-subscription-name,\
- * outputTableSpec=${PROJECT_ID}:dataset-id.output-table,\
- * outputDeadletterTable=${PROJECT_ID}:dataset-id.deadletter-table"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_PubSub_Subscription_to_BigQuery.md">README
+ * for Subscription</a> or <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_PubSub_to_BigQuery.md">README
+ * for Topic</a> for instructions on how to use or modify this template.
  */
 @Template(
     name = "PubSub_Subscription_to_BigQuery",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub Subscription to BigQuery",
     description =
-        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub subscription, transforms"
-            + " them using a JavaScript user-defined function (UDF), and writes them to a"
-            + " pre-existing BigQuery table as BigQuery elements.",
+        "The Pub/Sub Subscription to BigQuery template is a streaming pipeline that reads JSON-formatted messages from a Pub/Sub subscription and writes them to a BigQuery table. "
+            + "You can use the template as a quick solution to move Pub/Sub data to BigQuery. "
+            + "The template reads JSON-formatted messages from Pub/Sub and converts them to BigQuery elements.",
     optionsClass = Options.class,
     skipOptions = "inputTopic",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-subscription-to-bigquery",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The <a href=\"https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage\">`data` field</a> of Pub/Sub messages must use the JSON format, described in this <a href=\"https://developers.google.com/api-client-library/java/google-http-java-client/json\">JSON guide</a>. For example, messages with values in the `data` field formatted as `{\"k1\":\"v1\", \"k2\":\"v2\"}` can be inserted into a BigQuery table with two columns, named `k1` and `k2`, with a string data type.",
+      "The output table must exist prior to running the pipeline. The table schema must match the input JSON objects."
+    },
+    streaming = true)
 @Template(
     name = "PubSub_to_BigQuery",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub Topic to BigQuery",
     description =
-        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub topic, transforms them"
-            + " using a JavaScript user-defined function (UDF), and writes them to a pre-existing"
-            + " BigQuery table as BigQuery elements.",
+        "The Pub/Sub Topic to BigQuery template is a streaming pipeline that reads JSON-formatted messages from a Pub/Sub topic and writes them to a BigQuery table. "
+            + "You can use the template as a quick solution to move Pub/Sub data to BigQuery. "
+            + "The template reads JSON-formatted messages from Pub/Sub and converts them to BigQuery elements.",
     optionsClass = Options.class,
     skipOptions = "inputSubscription",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The <a href=\"https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage\">`data` field</a> of Pub/Sub messages must use the JSON format, described in this <a href=\"https://developers.google.com/api-client-library/java/google-http-java-client/json\">JSON guide</a>. For example, messages with values in the `data` field formatted as `{\"k1\":\"v1\", \"k2\":\"v2\"}` can be inserted into a BigQuery table with two columns, named `k1` and `k2`, with a string data type.",
+      "The output table must exist prior to running the pipeline. The table schema must match the input JSON objects."
+    },
+    hidden = true,
+    streaming = true)
 public class PubSubToBigQuery {
 
   /** The log to output status messages to. */
@@ -229,11 +202,9 @@ public class PubSubToBigQuery {
         description =
             "Table for messages failed to reach the output table (i.e., Deadletter table)",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
-                + " schema, malformed json) are written to this table. It should be in the format"
-                + " of \"your-project-id:your-dataset.your-table-name\". If it doesn't exist, it"
-                + " will be created during pipeline execution. If not specified,"
-                + " \"{outputTableSpec}_error_records\" is used instead.")
+            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
+                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.")
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);
@@ -438,6 +409,8 @@ public class PubSubToBigQuery {
                   FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
                       .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                       .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                      .setReloadIntervalMinutes(
+                          options.getJavascriptTextTransformReloadIntervalMinutes())
                       .setSuccessTag(UDF_OUT)
                       .setFailureTag(UDF_DEADLETTER_OUT)
                       .build());

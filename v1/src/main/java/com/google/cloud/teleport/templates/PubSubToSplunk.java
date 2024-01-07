@@ -58,8 +58,8 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,58 +77,22 @@ import org.slf4j.LoggerFactory;
  *   <li>Deadletter topic exists.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * BUCKET_NAME=BUCKET NAME HERE
- * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/pubsub-to-bigquery
- * USE_SUBSCRIPTION=true or false depending on whether the pipeline should read
- *                  from a Pub/Sub Subscription or a Pub/Sub Topic.
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.PubSubToSplunk \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template/PubSubToSplunk \
- * --runner=${RUNNER}
- * "
- *
- * # Execute the template
- * JOB_NAME=pubsub-to-splunk-$USER-`date +"%Y%m%d-%H%M%S%z"`
- * BATCH_COUNT=1
- * PARALLELISM=5
- *
- * # Execute the templated pipeline:
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template/PubSubToSplunk \
- * --zone=us-east1-d \
- * --parameters \
- * "inputSubscription=projects/${PROJECT_ID}/subscriptions/input-subscription-name,\
- * token=my-splunk-hec-token,\
- * url=http://splunk-hec-server-address:8088,\
- * batchCount=${BATCH_COUNT},\
- * parallelism=${PARALLELISM},\
- * disableCertificateValidation=false,\
- * outputDeadletterTopic=projects/${PROJECT_ID}/topics/deadletter-topic-name,\
- * javascriptTextTransformGcsPath=gs://${BUCKET_NAME}/splunk/js/my-js-udf.js,\
- * javascriptTextTransformFunctionName=myUdf"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_PubSub_to_Splunk.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_PubSub_to_Splunk",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Splunk",
-    description =
-        "A pipeline that reads from a Pub/Sub subscription and writes to Splunk's HTTP Event Collector (HEC).",
+    description = {
+      "The Pub/Sub to Splunk template is a streaming pipeline that reads messages from a Pub/Sub subscription and writes the message payload to Splunk via Splunk's HTTP Event Collector (HEC). The most common use case of this template is to export logs to Splunk. "
+          + "To see an example of the underlying workflow, see <a href=\"https://cloud.google.com/architecture/deploying-production-ready-log-exports-to-splunk-using-dataflow\">Deploying production-ready log exports to Splunk using Dataflow</a>.\n",
+      "Before writing to Splunk, you can also apply a JavaScript user-defined function to the message payload. "
+          + "Any messages that experience processing failures are forwarded to a Pub/Sub unprocessed topic for further troubleshooting and reprocessing.\n",
+      "As an extra layer of protection for your HEC token, you can also pass in a Cloud KMS key along with the base64-encoded HEC token parameter encrypted with the Cloud KMS key. "
+          + "See the <a href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud KMS API encryption endpoint</a> for additional details on encrypting your HEC token parameter."
+    },
     optionsClass = PubSubToSplunkOptions.class,
     optionsOrder = {
       PubsubReadSubscriptionOptions.class,
@@ -136,7 +100,16 @@ import org.slf4j.LoggerFactory;
       JavascriptTextTransformerOptions.class,
       PubsubWriteDeadletterTopicOptions.class
     },
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-splunk",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The source Pub/Sub subscription must exist prior to running the pipeline.",
+      "The Pub/Sub unprocessed topic must exist prior to running the pipeline.",
+      "The Splunk HEC endpoint must be accessible from the Dataflow workers' network.",
+      "The Splunk HEC token must be generated and available."
+    },
+    streaming = true)
 public class PubSubToSplunk {
 
   /** String/String Coder for FailsafeElement. */
@@ -241,6 +214,8 @@ public class PubSubToSplunk {
                 FailsafeJavascriptUdf.<String>newBuilder()
                     .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .setLoggingEnabled(ValueProvider.StaticValueProvider.of(true))
                     .setSuccessTag(UDF_OUT)
                     .setFailureTag(UDF_DEADLETTER_OUT)

@@ -17,10 +17,8 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Mutation.WriteBuilder;
+import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.v2.utils.SpannerUtils;
-import com.google.cloud.teleport.v2.values.SpannerSchema;
-import com.google.cloud.teleport.v2.values.SpannerSchema.SpannerDataTypes;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -28,41 +26,31 @@ import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerSchema;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerSchema.Column;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.json.JSONObject;
 
 /** Cloud Spanner transformation helper that convert each row to Mutation object. */
 public class JsonStringToMutationFn extends DoFn<String, Mutation> {
-
-  private final String projectId;
   private final String spannerTableName;
-  private final String spannerDBName;
-  private final String spannerInstanceName;
-
-  private SpannerSchema spannerSchema = null;
-  private List<String> spannerSchemaColumns = null;
+  private final PCollectionView<SpannerSchema> spannerSchemaView;
 
   public JsonStringToMutationFn(
-      String projectId, String spannerInstanceName, String spannerDBName, String spannerTableName) {
+      String spannerTableName, PCollectionView<SpannerSchema> spannerSchemaView) {
     this.spannerTableName = spannerTableName;
-    this.spannerDBName = spannerDBName;
-    this.spannerInstanceName = spannerInstanceName;
-    this.projectId = projectId;
-  }
-
-  @Setup
-  public void setup() {
-    this.spannerSchema =
-        SpannerUtils.getSpannerSchemaFromSpanner(
-            this.projectId, spannerInstanceName, spannerDBName, spannerTableName);
-    this.spannerSchemaColumns = spannerSchema.getColumnList();
+    this.spannerSchemaView = spannerSchemaView;
   }
 
   @ProcessElement
   public void processElement(ProcessContext c) throws IOException {
-    JsonObject row = JsonParser.parseString(Objects.requireNonNull(c.element())).getAsJsonObject();
+    SpannerSchema spannerSchema = c.sideInput(spannerSchemaView);
+    List<Column> spannerSchemaColumns = spannerSchema.getColumns(spannerTableName);
+    JsonObject row =
+        JsonParser.parseString(Objects.requireNonNull(c.element()).toLowerCase()).getAsJsonObject();
     WriteBuilder writeBuilder = Mutation.newInsertOrUpdateBuilder(spannerTableName);
-    c.output(parseRow(writeBuilder, row, spannerSchema, spannerSchemaColumns));
+    c.output(parseRow(writeBuilder, row, spannerSchemaColumns));
   }
 
   /**
@@ -70,15 +58,10 @@ public class JsonStringToMutationFn extends DoFn<String, Mutation> {
    *
    * @param builder Mutation builder to construct object
    * @param row parsed JSONObject containing row data
-   * @param spannerSchema schema with column name and column data type
    * @return build Mutation object for the row
    */
   @VisibleForTesting
-  Mutation parseRow(
-      WriteBuilder builder,
-      JsonObject row,
-      SpannerSchema spannerSchema,
-      List<String> spannerSchemaColumns)
+  Mutation parseRow(WriteBuilder builder, JsonObject row, List<Column> spannerSchemaColumns)
       throws IllegalArgumentException {
     if (row.size() != spannerSchemaColumns.size()) {
       throw new RuntimeException(
@@ -87,8 +70,9 @@ public class JsonStringToMutationFn extends DoFn<String, Mutation> {
 
     // Extract cell by cell and construct Mutation object
     for (int i = 0; i < row.size(); i++) {
-      String columnName = spannerSchemaColumns.get(i);
-      SpannerDataTypes columnType = spannerSchema.getColumnType(columnName);
+      Column spannerColumn = spannerSchemaColumns.get(i);
+      String columnName = spannerColumn.getName();
+      Type columnType = spannerColumn.getType();
       JsonElement cellValue = row.get(columnName);
 
       if (cellValue == JSONObject.NULL) {
@@ -96,7 +80,7 @@ public class JsonStringToMutationFn extends DoFn<String, Mutation> {
       } else {
         // TODO: make the tests below match Spanner's SQL literal rules wherever possible,
         // in terms of how input is accepted, and throw exceptions on invalid input.
-        switch (columnType) {
+        switch (columnType.getCode()) {
           case BOOL:
             builder.set(columnName).to(cellValue.getAsBoolean());
             break;
@@ -123,8 +107,7 @@ public class JsonStringToMutationFn extends DoFn<String, Mutation> {
                         cellValue.getAsString().replaceAll("\"", "").trim()));
             break;
           default:
-            throw new IllegalArgumentException(
-                "Unrecognized column data type: " + spannerSchema.getColumnType(columnName));
+            throw new IllegalArgumentException("Unrecognized column data type: " + columnType);
         }
       }
     }

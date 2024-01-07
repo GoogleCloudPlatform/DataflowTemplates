@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -38,14 +40,57 @@ public final class PostgresChangeEventSequenceTest {
   }
 
   @Test
-  public void canOrderBasedOnLsn() {
+  public void canOrderBasedOnRightLsn() {
     PostgresChangeEventSequence oldEvent =
-        new PostgresChangeEventSequence(eventTimestamp, "16/423");
+        new PostgresChangeEventSequence(eventTimestamp, "16/FFFFFFFE");
     PostgresChangeEventSequence newEvent =
-        new PostgresChangeEventSequence(eventTimestamp, "16/1223");
+        new PostgresChangeEventSequence(eventTimestamp, "16/FFFFFFFF");
 
     assertTrue(oldEvent.compareTo(newEvent) < 0);
     assertTrue(newEvent.compareTo(oldEvent) > 0);
+  }
+
+  @Test
+  public void canOrderBasedOnLeftLsn() {
+    PostgresChangeEventSequence oldEvent =
+        new PostgresChangeEventSequence(eventTimestamp, "5E30A78/3B9ACA00");
+    PostgresChangeEventSequence newEvent =
+        new PostgresChangeEventSequence(eventTimestamp, "3B9ACA00/5E30A78");
+
+    assertTrue(oldEvent.compareTo(newEvent) < 0);
+    assertTrue(newEvent.compareTo(oldEvent) > 0);
+  }
+
+  @Test
+  public void equalLeftAndRightLsn() {
+    PostgresChangeEventSequence oldEvent =
+        new PostgresChangeEventSequence(eventTimestamp, "3B9ACA00/16");
+    PostgresChangeEventSequence newEvent =
+        new PostgresChangeEventSequence(eventTimestamp, "3B9ACA00/16");
+
+    assertTrue(oldEvent.compareTo(newEvent) == 0);
+  }
+
+  @Test
+  public void testGetParsedLSN() {
+    PostgresChangeEventSequence sequence = new PostgresChangeEventSequence(123456L, "16/2A50F3");
+    Long expectedParsedLSN = 2773235L;
+    Long actualParsedLSN = sequence.getParsedLSN(1);
+    assertEquals(expectedParsedLSN, actualParsedLSN);
+  }
+
+  @Test
+  public void testGetParsedLSNInvalid() {
+    PostgresChangeEventSequence sequence = new PostgresChangeEventSequence(123456L, "16/2A50H3");
+    assertThrows(NumberFormatException.class, () -> sequence.getParsedLSN(1));
+  }
+
+  @Test
+  public void testGetParsedLSNForOutOfBoundIndex() {
+    PostgresChangeEventSequence sequence = new PostgresChangeEventSequence(123456L, "16");
+    Long expectedParsedLSN = 0L;
+    Long actualParsedLSN = sequence.getParsedLSN(1);
+    assertEquals(expectedParsedLSN, actualParsedLSN);
   }
 
   @Test

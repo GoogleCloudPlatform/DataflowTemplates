@@ -73,10 +73,10 @@ public class BigQueryTableRowCleaner {
       Boolean rowValue = (Boolean) rowObject;
       row.put(rowKey, rowValue.toString());
     } else if (rowObject instanceof LinkedHashMap) {
-      String jsonString = gson.toJson((LinkedHashMap) rowObject, Map.class);
+      String jsonString = gson.toJson(rowObject, Map.class);
       row.put(rowKey, jsonString);
     } else if (rowObject instanceof ArrayList) {
-      String jsonString = gson.toJson((ArrayList) rowObject);
+      String jsonString = gson.toJson(rowObject);
       row.put(rowKey, jsonString);
     }
   }

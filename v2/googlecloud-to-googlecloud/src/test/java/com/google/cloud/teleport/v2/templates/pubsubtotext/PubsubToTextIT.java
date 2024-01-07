@@ -15,29 +15,29 @@
  */
 package com.google.cloud.teleport.v2.templates.pubsubtotext;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifacts;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifacts;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
-import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.artifacts.Artifact;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,20 +66,18 @@ public final class PubsubToTextIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
   @After
-  public void tearDownClass() {
-    pubsubResourceManager.cleanupAll();
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(pubsubResourceManager);
   }
 
   @Test
   public void testTopicToGcs() throws IOException {
     // Arrange
-    String messageString = String.format("msg-%s", testName.getMethodName());
+    String messageString = String.format("msg-%s", testName);
     Pattern expectedFilePattern = Pattern.compile(".*topic-output-.*");
 
     TopicName topic = pubsubResourceManager.createTopic("input");
@@ -105,7 +103,12 @@ public final class PubsubToTextIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  artifacts.set(artifactClient.listArtifacts(testName, expectedFilePattern));
+
+                  // For tests that run against topics, sending repeatedly will make it work for
+                  // cases in which the on-demand subscription is created after sending messages.
+                  pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+
+                  artifacts.set(gcsClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
 
@@ -123,7 +126,7 @@ public final class PubsubToTextIT extends TemplateTestBase {
   @Test
   public void testSubscriptionToGcs() throws IOException {
     // Arrange
-    String messageString = String.format("msg-%s", testName.getMethodName());
+    String messageString = String.format("msg-%s", testName);
     Pattern expectedFilePattern = Pattern.compile(".*subscription-output-.*");
 
     TopicName topic = pubsubResourceManager.createTopic("input");
@@ -152,7 +155,7 @@ public final class PubsubToTextIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  artifacts.set(artifactClient.listArtifacts(testName, expectedFilePattern));
+                  artifacts.set(gcsClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
 

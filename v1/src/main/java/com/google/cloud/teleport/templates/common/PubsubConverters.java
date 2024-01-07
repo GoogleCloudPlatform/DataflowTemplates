@@ -59,7 +59,7 @@ public class PubsubConverters {
         order = 1,
         description = "Output deadletter Pub/Sub topic",
         helpText =
-            "The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.")
+            "The Pub/Sub topic to publish deadletter records to. The name should be in the format of `projects/your-project-id/topics/your-topic-name`.")
     @Validation.Required
     ValueProvider<String> getOutputDeadletterTopic();
 

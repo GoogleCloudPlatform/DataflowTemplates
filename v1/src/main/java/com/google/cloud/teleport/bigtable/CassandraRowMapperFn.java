@@ -256,9 +256,9 @@ class CassandraRowMapperFn implements Mapper<Row>, Serializable {
   }
 
   /**
-   * Most primitivies are represented the same way in Beam and Cassandra however there are a few
-   * that differ. This method converts the native representation of timestamps, uuids, varint, dates
-   * and IPs to a format which works for the Beam Schema.
+   * Most primitives are represented the same way in Beam and Cassandra however there are a few that
+   * differ. This method converts the native representation of timestamps, uuids, varint, dates and
+   * IPs to a format which works for the Beam Schema.
    *
    * <p>Dates and Timestamps are returned as DateTime objects whilst UUIDs are converted to Strings.
    * Varint is converted into BigDecimal. The rest simply pass through as they are.
@@ -277,11 +277,11 @@ class CassandraRowMapperFn implements Mapper<Row>, Serializable {
       case TIMESTAMP:
         return new DateTime(value);
       case UUID:
-        return ((UUID) value).toString();
+        return value.toString();
       case VARINT:
         return new BigDecimal((BigInteger) value);
       case TIMEUUID:
-        return ((UUID) value).toString();
+        return value.toString();
       case DATE:
         LocalDate ld = (LocalDate) value;
         return new DateTime(ld.getYear(), ld.getMonth(), ld.getDay(), 0, 0);

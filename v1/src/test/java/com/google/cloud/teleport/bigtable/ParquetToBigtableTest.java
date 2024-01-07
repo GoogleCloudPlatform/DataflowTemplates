@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -35,7 +35,7 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -50,7 +50,7 @@ public class ParquetToBigtableTest {
 
   /** Test whether {@link ParquetToBigtable} correctly maps a GenericRecord to a KV. */
   @Test
-  public void applyParquettoBigtableFn() throws Exception {
+  public void applyParquetToBigtableFn() throws Exception {
 
     byte[] rowKey1 = "row1".getBytes();
     ByteBuffer key1 = ByteBuffer.wrap(rowKey1);
@@ -103,7 +103,7 @@ public class ParquetToBigtableTest {
    * SplitLargeRows enabled..
    */
   @Test
-  public void applyParquettoBigtableFnWithSplitLargeRows() throws Exception {
+  public void applyParquetToBigtableFnWithSplitLargeRows() throws Exception {
 
     byte[] rowKey1 = "row1".getBytes();
     ByteBuffer key1 = ByteBuffer.wrap(rowKey1);

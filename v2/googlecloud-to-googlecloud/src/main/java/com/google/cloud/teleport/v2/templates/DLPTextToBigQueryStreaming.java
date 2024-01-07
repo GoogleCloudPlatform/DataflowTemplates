@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.api.services.bigquery.model.TableCell;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
@@ -24,6 +28,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.DLPTextToBigQueryStreaming.TokenizePipelineOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.common.base.Charsets;
@@ -38,6 +43,8 @@ import com.google.privacy.dlp.v2.Table;
 import com.google.privacy.dlp.v2.Value;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.sql.SQLException;
@@ -51,6 +58,7 @@ import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.AtomicCoder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.Compression;
@@ -81,6 +89,7 @@ import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
@@ -104,82 +113,53 @@ import org.slf4j.LoggerFactory;
  *   <li>The BigQuery Dataset exists
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * export PROJECT={project id}
- * export TEMPLATE_MODULE=googlecloud-to-googlecloud
- * export TEMPLATE_NAME=dlptext-to-bigquery
- * export BUCKET_NAME=gs://{bucket name}
- * export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${TEMPLATE_NAME}-image
- * export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
- * export BASE_CONTAINER_IMAGE_VERSION=latest
- * export APP_ROOT=/template/${TEMPLATE_NAME}
- * export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_NAME}-command-spec.json
- * export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_NAME}-image-spec.json
- *
- * gcloud config set project ${PROJECT}
- *
- * # Build and push image to Google Container Repository
- * mvn package \
- *   -Dimage=${TARGET_GCR_IMAGE} \
- *   -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- *   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- *   -Dapp-root=${APP_ROOT} \
- *   -Dcommand-spec=${COMMAND_SPEC} \
- *   -Djib.applicationCache=/tmp/jib-cache \
- *   -am -pl ${TEMPLATE_MODULE}
- *
- * # Create and upload image spec
- * echo '{
- *  "image":"'${TARGET_GCR_IMAGE}'",
- *  "metadata":{
- *    "name":"DLP Text To BigQuery Streaming",
- *    "description":"Apply DLP to CSV files in GCS and store obfuscated data to BigQuery",
- *  },
- *  "sdk_info":{"language":"JAVA"}
- * }' > image_spec.json
- * gsutil cp image_spec.json ${TEMPLATE_IMAGE_SPEC}
- * rm image_spec.json
- *
- * # Run template
- * export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
- * gcloud beta dataflow flex-template run ${JOB_NAME} \
- *       --project=${PROJECT} --region=us-central1 \
- *       --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
- *       --parameters \
- *       "inputFilePattern=gs://{bucketName}/{fileName}.csv,\
- *        batchSize=15,\
- *        datasetName={BQDatasetId},\
- *        dlpProjectId={projectId},\
- *        deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Stream_DLP_GCS_Text_to_BigQuery_Flex.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
-    name = "Stream_DLP_GCS_Text_to_BigQuery",
+    name = "Stream_DLP_GCS_Text_to_BigQuery_Flex",
     category = TemplateCategory.STREAMING,
-    displayName = "Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP)",
-    description =
-        "An example pipeline that reads CSV files from Cloud Storage, uses Cloud DLP API to mask"
-            + " and tokenize data based on the DLP templates provided and stores output in"
-            + " BigQuery. Note, not all configuration settings are available in this default"
-            + " template. You may need to deploy a custom template to accommodate your specific"
-            + " environment and data needs. More details here:"
-            + " https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp",
+    displayName =
+        "Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP) with BQ Storage Write API support",
+    description = {
+      "The Data Masking/Tokenization from Cloud Storage to BigQuery template uses <a href=\"https://cloud.google.com/dlp/docs\">Sensitive Data Protection</a> and creates a streaming pipeline that does the following steps:\n"
+          + "1. Reads CSV files from a Cloud Storage bucket.\n"
+          + "2. Calls the Cloud Data Loss Prevention API (part of Sensitive Data Protection) for de-identification.\n"
+          + "3. Writes the de-identified data into the specified BigQuery table.",
+      "The template supports using both a Sensitive Data Protection <a href=\"https://cloud.google.com/dlp/docs/creating-templates\">inspection template</a> and a Sensitive Data Protection <a href=\"https://cloud.google.com/dlp/docs/creating-templates-deid\">de-identification template</a>. As a result, the template supports both of the following tasks:\n"
+          + "- Inspect for potentially sensitive information and de-identify the data.\n"
+          + "- De-identify structured data where columns are specified to be de-identified and no inspection is needed.",
+      "Note: This template does not support a regional path for de-identification template location. Only a global path is supported."
+    },
     optionsClass = TokenizePipelineOptions.class,
-    contactInformation = "https://cloud.google.com/support")
+    flexContainerName = "dlptext-to-bigquery",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/dlp-text-to-bigquery",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The input data to tokenize must exist.",
+      "The Sensitive Data Protection templates must exist (for example, DeidentifyTemplate and InspectTemplate). For more details, see <a href=\"https://cloud.google.com/dlp/docs/concepts-templates\">Sensitive Data Protection templates</a>.",
+      "The BigQuery dataset must exist."
+    },
+    streaming = true)
 public class DLPTextToBigQueryStreaming {
 
   public static final Logger LOG = LoggerFactory.getLogger(DLPTextToBigQueryStreaming.class);
+
   /** Default interval for polling files in GCS. */
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(30);
+
   /** Expected only CSV file in GCS bucket. */
   private static final String ALLOWED_FILE_EXTENSION = String.valueOf("csv");
+
   /** Regular expression that matches valid BQ table IDs. */
   private static final Pattern TABLE_REGEXP = Pattern.compile("[-\\w$@]{1,1024}");
+
   /** Regular expression that matches valid BQ column name . */
   private static final Pattern COLUMN_NAME_REGEXP = Pattern.compile("^[A-Za-z_]+[A-Za-z_0-9]*$");
+
   /** Default window interval to create side inputs for header records. */
   private static final Duration WINDOW_INTERVAL = Duration.standardSeconds(30);
 
@@ -209,6 +189,10 @@ public class DLPTextToBigQueryStreaming {
   public static PipelineResult run(TokenizePipelineOptions options) {
     // Create the pipeline
     Pipeline p = Pipeline.create(options);
+
+    // TableRow is not deterministic in general, but here it is, as it supports only string values
+    p.getCoderRegistry().registerCoderForClass(TableRow.class, DeterministicTableRowJsonCoder.of());
+
     /*
      * Steps:
      *   1) Read from the text source continuously based on default interval e.g. 30 seconds
@@ -303,12 +287,14 @@ public class DLPTextToBigQueryStreaming {
    * The {@link TokenizePipelineOptions} interface provides the custom execution options passed by
    * the executor at the command-line.
    */
-  public interface TokenizePipelineOptions extends DataflowPipelineOptions {
+  public interface TokenizePipelineOptions
+      extends BigQueryStorageApiStreamingOptions, DataflowPipelineOptions {
 
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-files/*.csv")
     String getInputFilePattern();
 
@@ -400,6 +386,7 @@ public class DLPTextToBigQueryStreaming {
 
     private final Integer batchSize;
     private PCollectionView<List<KV<String, List<String>>>> headerMap;
+
     /** This counter is used to track number of lines processed against batch size. */
     private Integer lineCount;
 
@@ -470,8 +457,6 @@ public class DLPTextToBigQueryStreaming {
      * the complete work for a given element. For our case this would be the total number of rows
      * for each CSV file. We will calculate the number of split required based on total number of
      * rows and batch size provided.
-     *
-     * @throws IOException
      */
     @GetInitialRestriction
     public OffsetRange getInitialRestriction(@Element KV<String, ReadableFile> csvFile)
@@ -555,6 +540,7 @@ public class DLPTextToBigQueryStreaming {
    * received, this DoFn ouptputs KV of new table with table id as key.
    */
   static class DLPTokenizationDoFn extends DoFn<KV<String, Table>, KV<String, Table>> {
+
     private String dlpProjectId;
     private DlpServiceClient dlpServiceClient;
     private String deIdentifyTemplateName;
@@ -663,8 +649,9 @@ public class DLPTextToBigQueryStreaming {
               value -> {
                 String checkedHeaderName =
                     checkHeaderName(headers[headerIndex.getAndIncrement()].toString());
-                bqRow.set(checkedHeaderName, value.getStringValue());
-                cells.add(new TableCell().set(checkedHeaderName, value.getStringValue()));
+                String stringValue = value.getStringValue();
+                bqRow.set(checkedHeaderName, stringValue);
+                cells.add(new TableCell().set(checkedHeaderName, stringValue).setV(stringValue));
               });
       bqRow.setF(cells);
       return bqRow;
@@ -712,8 +699,9 @@ public class DLPTextToBigQueryStreaming {
       List<TableCell> cells = bqRow.getF();
       for (int i = 0; i < cells.size(); i++) {
         Map<String, Object> object = cells.get(i);
-        String header = object.keySet().iterator().next();
-        /** currently all BQ data types are set to String */
+        String header =
+            object.keySet().stream().filter(name -> !name.equals("v")).findFirst().get();
+        /* currently all BQ data types are set to String */
         fields.add(new TableFieldSchema().setName(checkHeaderName(header)).setType("STRING"));
       }
 
@@ -769,5 +757,67 @@ public class DLPTextToBigQueryStreaming {
       throw new IllegalArgumentException("Column name can't be matched to a valid format " + name);
     }
     return checkedHeader;
+  }
+
+  /**
+   * A Coder that encodes BigQuery {@link TableRow} objects in their native JSON format. It is
+   * deterministic because it doesn't encode arbitrary objects, just {@link String} instances.
+   */
+  static class DeterministicTableRowJsonCoder extends AtomicCoder<TableRow> {
+
+    public static DeterministicTableRowJsonCoder of() {
+      return INSTANCE;
+    }
+
+    @Override
+    public void encode(TableRow value, OutputStream outStream) throws IOException {
+      encode(value, outStream, Context.NESTED);
+    }
+
+    @Override
+    public void encode(TableRow value, OutputStream outStream, Context context) throws IOException {
+      String strValue = MAPPER.writeValueAsString(value);
+      StringUtf8Coder.of().encode(strValue, outStream, context);
+    }
+
+    @Override
+    public TableRow decode(InputStream inStream) throws IOException {
+      return decode(inStream, Context.NESTED);
+    }
+
+    @Override
+    public TableRow decode(InputStream inStream, Context context) throws IOException {
+      String strValue = StringUtf8Coder.of().decode(inStream, context);
+      return MAPPER.readValue(strValue, TableRow.class);
+    }
+
+    @Override
+    public long getEncodedElementByteSize(TableRow value) throws Exception {
+      String strValue = MAPPER.writeValueAsString(value);
+      return StringUtf8Coder.of().getEncodedElementByteSize(strValue);
+    }
+
+    @Override
+    public void verifyDeterministic() {}
+
+    /////////////////////////////////////////////////////////////////////////////
+
+    // FAIL_ON_EMPTY_BEANS is disabled in order to handle null values in
+    // TableRow.
+    private static final ObjectMapper MAPPER =
+        new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .registerModule(new JodaModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+
+    private static final DeterministicTableRowJsonCoder INSTANCE =
+        new DeterministicTableRowJsonCoder();
+    private static final TypeDescriptor<TableRow> TYPE_DESCRIPTOR = new TypeDescriptor<>() {};
+
+    @Override
+    public TypeDescriptor<TableRow> getEncodedTypeDescriptor() {
+      return TYPE_DESCRIPTOR;
+    }
   }
 }

@@ -15,12 +15,10 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
-import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
-import com.google.cloud.teleport.v2.neo4j.model.enums.SourceType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
@@ -28,15 +26,16 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.model.job.Transform;
 import com.google.common.collect.ImmutableList;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -45,21 +44,10 @@ import org.slf4j.LoggerFactory;
 /** Utility functions for Beam rows and schema. */
 public class ModelUtils {
   public static final String DEFAULT_STAR_QUERY = "SELECT * FROM PCOLLECTION";
-  private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
   private static final String neoIdentifierDisAllowedCharactersRegex = "[^a-zA-Z0-9_]";
-  private static final String neoIdentifierDisAllowedCharactersRegexIncSpace = "[^a-zA-Z0-9_ ]";
   private static final String nonAlphaCharsRegex = "[^a-zA-Z]";
   private static final Pattern variablePattern = Pattern.compile("(\\$([a-zA-Z0-9_]+))");
   private static final Logger LOG = LoggerFactory.getLogger(ModelUtils.class);
-
-  public static Target generateDefaultTarget(Source source) {
-    if (source.getSourceType() == SourceType.text) {
-      // TODO: create default target (nodes) for source
-      return new Target();
-    } else {
-      throw new RuntimeException("Unhandled source type: " + source.getSourceType());
-    }
-  }
 
   public static String getRelationshipKeyField(Target target, FragmentType fragmentType) {
     return getFirstField(target, fragmentType, ImmutableList.of(RoleType.key));
@@ -83,19 +71,6 @@ public class ModelUtils {
     return "";
   }
 
-  public static boolean singleSourceSpec(JobSpec jobSpec) {
-    boolean singleSourceQuery = true;
-    for (Target target : jobSpec.getTargets()) {
-      if (target.isActive()) {
-        boolean targetRequiresRequery = ModelUtils.targetHasTransforms(target);
-        if (targetRequiresRequery) {
-          singleSourceQuery = false;
-        }
-      }
-    }
-    return singleSourceQuery;
-  }
-
   public static boolean targetsHaveTransforms(JobSpec jobSpec, Source source) {
     for (Target target : jobSpec.getTargets()) {
       if (target.isActive()) {
@@ -108,28 +83,6 @@ public class ModelUtils {
       }
     }
     return false;
-  }
-
-  public static boolean nodesOnly(JobSpec jobSpec) {
-    for (Target target : jobSpec.getTargets()) {
-      if (target.isActive()) {
-        if (target.getType() == TargetType.edge) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  public static boolean relationshipsOnly(JobSpec jobSpec) {
-    for (Target target : jobSpec.getTargets()) {
-      if (target.isActive()) {
-        if (target.getType() == TargetType.node) {
-          return false;
-        }
-      }
-    }
-    return true;
   }
 
   public static boolean targetHasTransforms(Target target) {
@@ -145,28 +98,23 @@ public class ModelUtils {
     return requiresRequery;
   }
 
-  public static Set<String> getBqFieldSet(com.google.cloud.bigquery.Schema schema) {
-    Set<String> fieldNameMap = new HashSet<>();
-    FieldList fieldList = schema.getFields();
-    for (Field field : fieldList) {
-      fieldNameMap.add(field.getName());
-    }
-    return fieldNameMap;
-  }
-
   public static Set<String> getBeamFieldSet(Schema schema) {
     return new HashSet<>(schema.getFieldNames());
   }
 
   public static String getTargetSql(
-      Set<String> fieldNameMap, Target target, boolean generateSqlSort) {
-    return getTargetSql(fieldNameMap, target, generateSqlSort, null);
+      Set<String> fieldNameMap, TargetQuerySpec targetQuerySpec, boolean generateSqlSort) {
+    return getTargetSql(fieldNameMap, targetQuerySpec, generateSqlSort, null);
   }
 
   public static String getTargetSql(
-      Set<String> fieldNameMap, Target target, boolean generateSqlSort, String baseSql) {
-    StringBuilder sb = new StringBuilder();
+      Set<String> fieldNameMap,
+      TargetQuerySpec targetQuerySpec,
+      boolean generateSqlSort,
+      String baseSql) {
 
+    StringBuilder sb = new StringBuilder();
+    Target target = targetQuerySpec.getTarget();
     String orderByClause = "";
     if (target.getType() == TargetType.edge) {
       String sortField = getRelationshipKeyField(target, FragmentType.target);
@@ -249,7 +197,7 @@ public class ModelUtils {
       return proposedIdString;
     }
     String finalIdString =
-        proposedIdString.trim().replaceAll(neoIdentifierDisAllowedCharactersRegexIncSpace, "_");
+        proposedIdString.trim().replaceAll(neoIdentifierDisAllowedCharactersRegex, "_");
     if (finalIdString.substring(0, 1).matches(nonAlphaCharsRegex)) {
       finalIdString = "_" + finalIdString;
     }
@@ -291,7 +239,7 @@ public class ModelUtils {
         && (trExpression.endsWith("\"") || trExpression.endsWith("'"));
   }
 
-  // Make relationships idenfifiers upper case, no spaces
+  // Make relationships idendifiers upper case, no spaces
   public static String makeValidNeo4jRelationshipTypeIdentifier(String proposedTypeIdString) {
     String finalIdString =
         proposedTypeIdString
@@ -306,7 +254,6 @@ public class ModelUtils {
 
   public static List<String> getStaticOrDynamicRelationshipType(
       String dynamicRowPrefix, Target target) {
-    StringBuilder sb = new StringBuilder();
     List<String> relationships = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
       if (m.getFragmentType() == FragmentType.rel) {
@@ -327,25 +274,35 @@ public class ModelUtils {
     return relationships;
   }
 
-  public static List<String> getStaticLabels(FragmentType entityType, Target target) {
+  public static List<String> getStaticLabels(FragmentType fragmentType, Target target) {
     List<String> labels = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
-      if (m.getFragmentType() == entityType) {
-        if (m.getLabels().size() > 0) {
-          labels.addAll(m.getLabels());
-        } else if (m.getRole() == RoleType.label) {
-          if (StringUtils.isNotEmpty(m.getConstant())) {
-            labels.add(m.getConstant());
-          } else {
-            // we cannot index on dynamic labels.  These would need to happen with a pre-transform
-            // action
-            // dynamic labels not handled here
-            // labels.add(prefix+"."+m.field);
-          }
-        }
+      if (m.getFragmentType() != fragmentType || m.getRole() != RoleType.label) {
+        continue;
+      }
+      String labelConstantValue = m.getConstant();
+      if (StringUtils.isNotEmpty(labelConstantValue)) {
+        labels.add(labelConstantValue);
       }
     }
     return labels;
+  }
+
+  public static String getStaticType(Target target) {
+    for (Mapping m : target.getMappings()) {
+      if (m.getFragmentType() != FragmentType.rel) {
+        continue;
+      }
+      if (m.getRole() == RoleType.type) {
+        if (StringUtils.isNotEmpty(m.getConstant())) {
+          return m.getConstant();
+        }
+      }
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            "could not find rel-type definition in the mapping of the relationship target: %s",
+            target));
   }
 
   public static List<String> getStaticOrDynamicLabels(
@@ -353,9 +310,7 @@ public class ModelUtils {
     List<String> labels = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
       if (m.getFragmentType() == entityType) {
-        if (m.getLabels().size() > 0) {
-          labels.addAll(m.getLabels());
-        } else if (m.getRole() == RoleType.label) {
+        if (m.getRole() == RoleType.label) {
           if (StringUtils.isNotEmpty(m.getConstant())) {
             labels.add(m.getConstant());
           } else {
@@ -380,23 +335,6 @@ public class ModelUtils {
     return fieldNames;
   }
 
-  public static List<String> getNameOrConstants(
-      FragmentType entityType, List<RoleType> roleTypes, Target target) {
-    List<String> fieldOrConstants = new ArrayList<>();
-    for (Mapping m : target.getMappings()) {
-      if (m.getFragmentType() == entityType) {
-        if (roleTypes.contains(m.getRole())) {
-          if (StringUtils.isNotBlank(m.getConstant())) {
-            fieldOrConstants.add(m.getConstant());
-          } else if (StringUtils.isNotBlank(m.getName())) {
-            fieldOrConstants.add(m.getName());
-          }
-        }
-      }
-    }
-    return fieldOrConstants;
-  }
-
   public static List<String> getFieldOrConstants(
       FragmentType entityType, List<RoleType> roleTypes, Target target) {
     List<String> fieldOrConstants = new ArrayList<>();
@@ -414,7 +352,7 @@ public class ModelUtils {
     return fieldOrConstants;
   }
 
-  public static String replaceVariableTokens(String text, HashMap<String, String> replacements) {
+  public static String replaceVariableTokens(String text, Map<String, String> replacements) {
     Matcher matcher = variablePattern.matcher(text);
     // populate the replacements map ...
     StringBuilder builder = new StringBuilder();
@@ -436,55 +374,10 @@ public class ModelUtils {
     return replacedText;
   }
 
-  public static List<String> getIndexedProperties(
-      boolean indexAllProperties, FragmentType entityType, Target target) {
-    List<String> indexedProperties = new ArrayList<>();
-    for (Mapping m : target.getMappings()) {
-
-      if (m.getFragmentType() == entityType) {
-        if (m.getRole() == RoleType.key || m.isIndexed() || indexAllProperties) {
-          indexedProperties.add(m.getName());
-        }
-      }
-    }
-    return indexedProperties;
-  }
-
-  public static List<String> getUniqueProperties(FragmentType entityType, Target target) {
-    List<String> uniqueProperties = new ArrayList<>();
-    for (Mapping m : target.getMappings()) {
-
-      if (m.getFragmentType() == entityType) {
-        if (m.isUnique() || m.getRole() == RoleType.key) {
-          uniqueProperties.add(m.getName());
-        }
-      }
-    }
-    return uniqueProperties;
-  }
-
-  public static List<String> getRequiredProperties(FragmentType entityType, Target target) {
-    List<String> mandatoryProperties = new ArrayList<>();
-    for (Mapping m : target.getMappings()) {
-
-      if (m.getFragmentType() == entityType) {
-        if (m.isMandatory()) {
-          mandatoryProperties.add(m.getName());
-        }
-      }
-    }
-    return mandatoryProperties;
-  }
-
-  public static List<String> getNodeKeyProperties(FragmentType entityType, Target target) {
-    List<String> nodeKeyProperties = new ArrayList<>();
-    for (Mapping m : target.getMappings()) {
-      if (m.getFragmentType() == entityType) {
-        if (m.getRole() == RoleType.key) {
-          nodeKeyProperties.add(m.getName());
-        }
-      }
-    }
-    return nodeKeyProperties;
+  public static Set<String> filterProperties(Target target, Predicate<Mapping> mappingPredicate) {
+    return target.getMappings().stream()
+        .filter(mappingPredicate)
+        .map(Mapping::getName)
+        .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 }

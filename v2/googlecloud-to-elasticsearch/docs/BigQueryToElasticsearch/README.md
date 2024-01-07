@@ -120,6 +120,13 @@ echo '{
               "isOptional":true
           },
           {
+              "name":"queryLocation",
+              "label":"BigQuery geographic location where the query job  will be executed.",
+              "helpText":"Needed when reading from an authorized view without underlying table permission.",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
               "name":"batchSize",
               "label":"Batch size in number of documents",
               "helpText":"Batch size in number of documents. Default: 1000",
@@ -261,6 +268,7 @@ The template has the following optional parameters:
 * query: Query to run against input table,
     * For Standard SQL  ex: 'SELECT max_temperature FROM \`clouddataflow-readonly.samples.weather_stations\`'
     * For Legacy SQL ex: 'SELECT max_temperature FROM [clouddataflow-readonly:samples.weather_stations]'
+* queryLocation: Set query location. It should be used reading from authorized views. Default: determined by reading the metadata of the dataset that contains the underlying tables.
 * batchSize: Batch size in number of documents. Default: 1000
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries

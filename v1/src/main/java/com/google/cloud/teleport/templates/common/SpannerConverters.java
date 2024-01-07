@@ -32,19 +32,23 @@ import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Type.Code;
 import com.google.cloud.spanner.Type.StructField;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.StringWriter;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.FileSystems;
@@ -64,6 +68,8 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,6 +151,19 @@ public class SpannerConverters {
 
     @SuppressWarnings("unused")
     void setSpannerSnapshotTime(ValueProvider<String> value);
+
+    @TemplateParameter.Boolean(
+        order = 7,
+        optional = true,
+        description = "Use independent compute resource (Spanner DataBoost).",
+        helpText =
+            "Use Spanner on-demand compute so the export job will run on independent compute"
+                + " resources and have no impact to current Spanner workloads. This will incur"
+                + " additional charges in Spanner.")
+    @Default.Boolean(false)
+    ValueProvider<Boolean> getDataBoostEnabled();
+
+    void setDataBoostEnabled(ValueProvider<Boolean> value);
   }
 
   /** Factory for Export transform class. */
@@ -154,13 +173,31 @@ public class SpannerConverters {
         ValueProvider<String> table,
         SpannerConfig spannerConfig,
         ValueProvider<String> textWritePrefix,
-        ValueProvider<String> timestamp) {
+        ValueProvider<String> timestamp,
+        ValueProvider<String> columnsToExport,
+        ValueProvider<Boolean> exportSchema) {
       return ExportTransform.builder()
           .table(table)
           .spannerConfig(spannerConfig)
           .textWritePrefix(textWritePrefix)
           .timestamp(timestamp)
+          .columnsToExport(columnsToExport)
+          .exportSchema(exportSchema)
           .build();
+    }
+
+    public static ExportTransform create(
+        ValueProvider<String> table,
+        SpannerConfig spannerConfig,
+        ValueProvider<String> textWritePrefix,
+        ValueProvider<String> timestamp) {
+      return create(
+          table,
+          spannerConfig,
+          textWritePrefix,
+          timestamp,
+          ValueProvider.StaticValueProvider.of(null),
+          ValueProvider.StaticValueProvider.of(true));
     }
   }
 
@@ -171,7 +208,11 @@ public class SpannerConverters {
 
     abstract ValueProvider<String> table();
 
+    abstract ValueProvider<String> columnsToExport();
+
     abstract SpannerConfig spannerConfig();
+
+    abstract ValueProvider<Boolean> exportSchema();
 
     abstract ValueProvider<String> textWritePrefix();
 
@@ -191,6 +232,10 @@ public class SpannerConverters {
     public abstract static class Builder {
       public abstract Builder table(ValueProvider<String> table);
 
+      public abstract Builder columnsToExport(ValueProvider<String> columnsToExport);
+
+      public abstract Builder exportSchema(ValueProvider<Boolean> exportSchema);
+
       public abstract Builder spannerConfig(SpannerConfig spannerConfig);
 
       public abstract Builder textWritePrefix(ValueProvider<String> textWritePrefix);
@@ -207,7 +252,7 @@ public class SpannerConverters {
     private LocalSpannerAccessor spannerAccessor;
     private DatabaseClient databaseClient;
 
-    // LocalSpannerAccessor is not serialiazable, thus can't be passed as a mock so we need to pass
+    // LocalSpannerAccessor is not serializable, thus can't be passed as a mock so we need to pass
     // mocked database client directly instead. We can't generate stub of ExportTransform because
     // AutoValue generates a final class.
     // TODO make LocalSpannerAccessor serializable
@@ -265,8 +310,11 @@ public class SpannerConverters {
             LOG.info("Reading schema information");
             columns = getAllColumns(context, table().get(), dialect);
             String columnJson = SpannerConverters.GSON.toJson(columns);
-            LOG.info("Saving schema information");
-            saveSchema(columnJson, textWritePrefix().get() + SCHEMA_SUFFIX);
+
+            if (BooleanUtils.isTrue(exportSchema().get())) {
+              LOG.info("Saving schema information");
+              saveSchema(columnJson, textWritePrefix().get() + SCHEMA_SUFFIX);
+            }
           }
         } finally {
           closeSpannerAccessor();
@@ -275,11 +323,20 @@ public class SpannerConverters {
         PartitionOptions partitionOptions =
             PartitionOptions.newBuilder().setMaxPartitions(maxPartitions).build();
 
-        String columnsListAsString =
-            columns.entrySet().stream()
-                .map(x -> createColumnExpression(x.getKey(), x.getValue(), dialect))
-                .collect(Collectors.joining(","));
+        String columnsListAsString;
+
+        if (StringUtils.isNotBlank(columnsToExport().get())) {
+          LOG.info("Exporting selected columns passed by user: {}", columnsToExport().get());
+          columnsListAsString = prepareColumnExpression(columnsToExport().get());
+        } else {
+          columnsListAsString =
+              columns.entrySet().stream()
+                  .map(x -> createColumnExpression(x.getKey(), x.getValue(), dialect))
+                  .collect(Collectors.joining(","));
+        }
+
         ReadOperation read;
+
         switch (dialect) {
           case GOOGLE_STANDARD_SQL:
             read =
@@ -309,7 +366,7 @@ public class SpannerConverters {
           return "CAST(`" + columnName + "` AS STRING) AS " + columnName;
         }
         if (columnType.equals("JSON")) {
-          return "TO_JSON_STRING(`" + columnName + "`) AS " + columnName;
+          return "`" + columnName + "`";
         }
 
         if (columnType.equals("ARRAY<NUMERIC>")) {
@@ -381,11 +438,53 @@ public class SpannerConverters {
   }
 
   /**
+   * Generate a column expression for use in a query based on user-supplied column and alias values.
+   *
+   * @param columnsToExport User-provided data in the format of "column1: alias1, column2, column3:
+   *     alias3".
+   * @return A prepared column expression suitable for use in a Data Query Language (DQL) statement.
+   */
+  @VisibleForTesting
+  static String prepareColumnExpression(String columnsToExport) {
+    String[] columnsList = columnsToExport.split(",");
+    StringBuilder columnExpressionBuilder = new StringBuilder();
+
+    for (String columnWithAlias : columnsList) {
+      if (StringUtils.isBlank(columnWithAlias)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Please provide a valid comma-separated list of columns to be extracted. The received input is not valid: %s",
+                columnsToExport));
+      }
+      // Split around ":" to check if alias is present
+      String[] columnMap = columnWithAlias.trim().split(":");
+      columnExpressionBuilder.append(columnMap[0].trim());
+      if (columnMap.length > 1) {
+        columnExpressionBuilder.append(" AS ");
+        columnExpressionBuilder.append(columnMap[1].trim());
+      }
+      columnExpressionBuilder.append(",");
+    }
+
+    // Removing the last character which is ','
+    if (columnExpressionBuilder.length() > 0) {
+      columnExpressionBuilder.deleteCharAt(columnExpressionBuilder.length() - 1);
+    }
+
+    return columnExpressionBuilder.toString();
+  }
+
+  /** Interface for all the Struct Printers. */
+  interface StructPrinter {
+    String print(Struct struct);
+  }
+
+  /**
    * Struct printer for converting a Spanner Struct to CSV. See {@link this#parseArrayValue(Struct,
    * String)} for data type conversions. It uses a standard comma separated format as for RFC4180
    * but allowing empty lines.
    */
-  public static class StructCsvPrinter {
+  public static class StructCsvPrinter implements StructPrinter {
 
     /**
      * Prints Struct as a CSV String.
@@ -393,6 +492,7 @@ public class SpannerConverters {
      * @param struct Spanner Struct.
      * @return Spanner Struct encoded as a CSV String.
      */
+    @Override
     public String print(Struct struct) {
       StringWriter stringWriter = new StringWriter();
       try {
@@ -426,6 +526,125 @@ public class SpannerConverters {
         result.add(parsers.get(columnName).apply(struct, columnName));
       }
       return result;
+    }
+  }
+
+  /** Struct printer for converting a Spanner Struct to JSON. */
+  public static class StructJSONPrinter implements StructPrinter {
+    private StructValidator structValidator = null;
+
+    public StructJSONPrinter(StructValidator structValidator) {
+      this.structValidator = structValidator;
+    }
+
+    public StructJSONPrinter() {}
+
+    /**
+     * To get string in json format from Struct.
+     *
+     * @param struct Spanner Struct.
+     * @return Spanner Struct encoded as a JSON String.
+     */
+    @Override
+    public String print(Struct struct) {
+      if (structValidator != null) {
+        structValidator.validate(struct);
+      }
+
+      StringWriter stringWriter = new StringWriter();
+      try {
+        JsonWriter jsonWriter = new JsonWriter(stringWriter);
+        LinkedHashMap<String, BiFunction<Struct, String, String>> parsers = Maps.newLinkedHashMap();
+        parsers.putAll(mapColumnParsers(struct.getType().getStructFields()));
+        parseResultSet(jsonWriter, struct, parsers);
+      } catch (IOException e) {
+        throw new RuntimeException("Error parsing the Spanner struct to JSON", e);
+      }
+      return stringWriter.toString();
+    }
+
+    /**
+     * To parse Struct using different parsers for different type and process it using JSONWriter.
+     *
+     * @param jsonWriter JSON Writer
+     * @param struct Data from Spanner
+     * @param parsers Map from Column Name to their parser
+     * @throws IOException
+     */
+    private static void parseResultSet(
+        JsonWriter jsonWriter,
+        Struct struct,
+        LinkedHashMap<String, BiFunction<Struct, String, String>> parsers)
+        throws IOException {
+      // Start the JSON object
+      jsonWriter.beginObject();
+
+      for (String columnName : parsers.keySet()) {
+        String columnValue = parsers.get(columnName).apply(struct, columnName);
+
+        // If null value then ignoring it and not exporting to JSON file
+        if (columnValue == null) {
+          continue;
+        }
+
+        if (Arrays.asList(Code.JSON, Code.PG_JSONB)
+            .contains(struct.getColumnType(columnName).getCode())) {
+          // If the column is of type JSON or PG_JSON
+          jsonWriter.name(columnName).jsonValue(columnValue);
+        } else if (struct.getColumnType(columnName).getCode() == Code.ARRAY) {
+          // If the column is of type ARRAY
+          List<? extends Object> values = parseArrayValueAsObjectList(struct, columnName);
+          jsonWriter.name(columnName);
+          jsonWriter.beginArray();
+          for (Object value : values) {
+            jsonWriter.value(value != null ? value.toString() : null);
+          }
+          jsonWriter.endArray();
+        } else {
+          jsonWriter.name(columnName).value(columnValue);
+        }
+      }
+      jsonWriter.endObject();
+    }
+  }
+
+  /**
+   * To parse array value as list of derived objects.
+   *
+   * @param currentRow Struct
+   * @param columnName Column Name
+   * @return List of generic objects
+   */
+  private static List<? extends Object> parseArrayValueAsObjectList(
+      Struct currentRow, String columnName) {
+    Code code = currentRow.getColumnType(columnName).getArrayElementType().getCode();
+    switch (code) {
+      case BOOL:
+        return currentRow.getBooleanList(columnName);
+      case INT64:
+        return currentRow.getLongList(columnName);
+      case FLOAT64:
+        return currentRow.getDoubleList(columnName);
+      case STRING:
+      case PG_NUMERIC:
+      case JSON:
+        return currentRow.getStringList(columnName);
+      case PG_JSONB:
+        return currentRow.getPgJsonbList(columnName);
+      case BYTES:
+        return currentRow.getBytesList(columnName).stream()
+            .map(byteArray -> Base64.getEncoder().encodeToString(byteArray.toByteArray()))
+            .collect(Collectors.toList());
+      case DATE:
+        return currentRow.getDateList(columnName).stream()
+            .map(Date::toString)
+            .collect(Collectors.toList());
+      case TIMESTAMP:
+        return currentRow.getTimestampList(columnName).stream()
+            .map(Timestamp::toString)
+            .collect(Collectors.toList());
+      default:
+        throw new RuntimeException("Unsupported type: " + code);
     }
   }
 
@@ -469,6 +688,10 @@ public class SpannerConverters {
       case STRING:
       case PG_NUMERIC:
         return nullSafeColumnParser(Struct::getString);
+      case JSON:
+        return nullSafeColumnParser(Struct::getJson);
+      case PG_JSONB:
+        return nullSafeColumnParser(Struct::getPgJsonb);
       case BYTES:
         return nullSafeColumnParser(
             (currentRow, columnName) ->
@@ -524,7 +747,7 @@ public class SpannerConverters {
   }
 
   /**
-   * A DoFn that creates a transaction for read that honors the timestamp valueprovider parameter.
+   * A DoFn that creates a transaction for read that honors the timestamp ValueProvider parameter.
    */
   public static class CreateTransactionFnWithTimestamp extends DoFn<Object, Transaction> {
     private final SpannerConfig config;
@@ -591,6 +814,76 @@ public class SpannerConverters {
        */
 
       return TimestampBound.ofReadTimestamp(tsVal);
+    }
+  }
+
+  /** Interface to validate Struct. If validation fails then throws RuntimeException */
+  interface StructValidator {
+    void validate(Struct struct);
+  }
+
+  /**
+   * To validate struct and check whether data can be exported in the format supported by Vertex AI
+   * Vector Search Index.
+   */
+  public static class VectorSearchStructValidator implements StructValidator {
+    private static final String ID = "id";
+    private static final String EMBEDDING = "embedding";
+    private static final String RESTRICTS = "restricts";
+    private static final String CROWDING_TAG = "crowding_tag";
+
+    Map<String, List<Type>> fieldExpectedTypesMap =
+        Map.of(
+            EMBEDDING, List.of(Type.array(Type.float64())),
+            RESTRICTS, List.of(Type.json(), Type.pgJsonb()),
+            CROWDING_TAG, List.of(Type.string()));
+
+    @Override
+    public void validate(Struct struct) {
+      // Not Null
+      validateNotNull(struct, ID);
+      validateNotNull(struct, EMBEDDING);
+
+      // Type Check
+      validateType(struct, EMBEDDING, fieldExpectedTypesMap.get(EMBEDDING));
+      validateTypeIfExists(struct, RESTRICTS, fieldExpectedTypesMap.get(RESTRICTS));
+      validateTypeIfExists(struct, CROWDING_TAG, fieldExpectedTypesMap.get(CROWDING_TAG));
+    }
+
+    /** To validate type of the column in struct. */
+    private void validateType(Struct struct, String columnName, List<Type> expectedTypes) {
+      if (!expectedTypes.contains(struct.getColumnType(columnName))) {
+        throw new RuntimeException(
+            String.format(
+                "Expected %s column to be one of the following type: %s but received %s",
+                columnName, expectedTypes, struct.getColumnType(columnName)));
+      }
+    }
+
+    /** To validate type of the column if it exists in struct. */
+    private void validateTypeIfExists(Struct struct, String columnName, List<Type> expectedTypes) {
+      boolean columnExists = true;
+      try {
+        struct.getColumnType(columnName);
+      } catch (IllegalArgumentException e) {
+        if (e.getMessage().startsWith("Field not found: ")) {
+          columnExists = false;
+        }
+      }
+
+      if (!columnExists) {
+        // validating type if it exists
+        return;
+      }
+
+      validateType(struct, columnName, expectedTypes);
+    }
+
+    /** To validate whether the required columns are not null. */
+    private void validateNotNull(Struct struct, String columnName) {
+      if (struct.isNull(columnName)) {
+        throw new RuntimeException(String.format("Expected %s column to be not null", columnName));
+      }
     }
   }
 }

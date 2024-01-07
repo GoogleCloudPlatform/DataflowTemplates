@@ -15,25 +15,27 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.awaitility.Awaitility.await;
 
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.Duration;
+import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,34 +48,39 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(TextToPubsub.class)
 @RunWith(JUnit4.class)
 public class TextToPubsubIT extends TemplateTestBase {
+
   private static final String TEST_ROOT_DIR = TextToPubsubIT.class.getSimpleName();
   private PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
   @After
   public void tearDown() {
-    pubsubResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager);
   }
 
   @Test
   public void testTextToTopic() throws IOException {
     // Arrange
+    Map<String, String> artifacts =
+        Map.of(
+            "message1-" + testName,
+            RandomStringUtils.randomAlphabetic(1, 2),
+            "message2-" + testName,
+            RandomStringUtils.randomAlphabetic(1, 2),
+            "message3-" + testName,
+            RandomStringUtils.randomAlphabetic(200, 400),
+            "message4-" + testName + "-long-" + RandomStringUtils.randomAlphabetic(100, 200),
+            RandomStringUtils.randomAlphabetic(100, 200));
+    createArtifacts(artifacts);
+
     TopicName outputTopic = pubsubResourceManager.createTopic("topic");
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
-    List<String> expectedArtifacts =
-        List.of(
-            "message1-" + testName.getMethodName(),
-            "message2-" + testName.getMethodName(),
-            "message3-" + testName.getMethodName());
-    createArtifacts(expectedArtifacts);
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("inputFilePattern", getInputFilePattern())
@@ -82,36 +89,36 @@ public class TextToPubsubIT extends TemplateTestBase {
     // Act
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
-    List<String> records = new ArrayList<>();
-    Result result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(info),
-                () -> {
-                  PullResponse response =
-                      pubsubResourceManager.pull(outputSubscription, expectedArtifacts.size());
-                  if (response.getReceivedMessagesCount() > 0) {
-                    records.addAll(
-                        response.getReceivedMessagesList().stream()
-                            .map(
-                                receivedMessage ->
-                                    receivedMessage.getMessage().getData().toStringUtf8())
-                            .collect(Collectors.toList()));
-                  }
-                  return records.size() >= expectedArtifacts.size();
-                });
 
-    assertThatResult(result).meetsConditions();
-    assertThat(records).containsAtLeastElementsIn(expectedArtifacts);
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, outputSubscription)
+            .setMinMessages(artifacts.size())
+            .build();
+    Result result = pipelineOperator().waitForCondition(createConfig(info), pubsubCheck);
+
+    // Make sure that the check finds the expected of messages.
+    assertThatResult(result).isAnyOf(Result.CONDITION_MET, Result.LAUNCH_FINISHED);
+
+    // Poll checker, to avoid timing issues on DirectRunner
+    await("Check if messages got to Pub/Sub on time")
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(pubsubCheck::get);
+
+    assertThat(
+            pubsubCheck.getReceivedMessageList().stream()
+                .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
+                .collect(Collectors.toList()))
+        .containsAtLeastElementsIn(artifacts.values());
   }
 
-  private void createArtifacts(List<String> expectedArtifacts) {
-    for (String artifact : expectedArtifacts) {
-      artifactClient.createArtifact(artifact, artifact.getBytes());
+  private void createArtifacts(Map<String, String> artifacts) {
+    for (Map.Entry<String, String> artifact : artifacts.entrySet()) {
+      gcsClient.createArtifact(artifact.getKey(), artifact.getValue());
     }
   }
 
   private String getInputFilePattern() {
-    return getFullGcsPath(artifactBucketName, TEST_ROOT_DIR, artifactClient.runId(), "*");
+    return getFullGcsPath(artifactBucketName, TEST_ROOT_DIR, gcsClient.runId(), "*");
   }
 }

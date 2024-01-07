@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates.common;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptRuntime;
 import com.google.common.base.Strings;
 import com.google.common.io.CharStreams;
 import java.io.BufferedReader;
@@ -147,17 +148,13 @@ public abstract class SubprocessTextTransformer {
       return process;
     }
 
-    /**
-     * Factory method for making a new Invocable. TODO: REPLACE WITH PROCESSBUILDER
-     *
-     * @param scripts
-     */
+    /** Factory method for making a new Invocable. TODO: REPLACE WITH PROCESSBUILDER */
     @Nullable
     private static ProcessBuilder newProcess() {
       // System.out.println(scripts);
       ProcessBuilder pb = new ProcessBuilder();
 
-      return (ProcessBuilder) pb;
+      return pb;
     }
 
     /**
@@ -303,7 +300,7 @@ public abstract class SubprocessTextTransformer {
      * Loads into memory scripts from a File System from a given path. Supports any file system that
      * {@link FileSystems} supports.
      *
-     * @return a collection of scripts loaded as UF8 Strings
+     * @return a collection of scripts loaded as UTF8 Strings
      */
     private static Collection<String> getScripts(String path) throws IOException {
       MatchResult result = FileSystems.match(path);
@@ -422,85 +419,6 @@ public abstract class SubprocessTextTransformer {
               }));
     }
   }
-
-  /**
-   * The {@link FailsafeJavascriptUdf} class processes user-defined functions is a fail-safe manner
-   * by maintaining the original payload post-transformation and outputting to a dead-letter on
-   * failure.
-   */
-
-  // @AutoValue
-  // public abstract static class FailsafeJavascriptUdf<T>
-  //     extends PTransform<PCollection<FailsafeElement<T, String>>, PCollectionTuple> {
-  //   public abstract @Nullable ValueProvider<String> fileSystemPath();
-
-  //   public abstract @Nullable ValueProvider<String> functionName();
-
-  //   public abstract TupleTag<FailsafeElement<T, String>> successTag();
-
-  //   public abstract TupleTag<FailsafeElement<T, String>> failureTag();
-
-  //   public static <T> Builder<T> newBuilder() {
-  //     return new AutoValue_JavascriptTextTransformer_FailsafeJavascriptUdf.Builder<>();
-  //   }
-
-  //   /** Builder for {@link FailsafeJavascriptUdf}. */
-  //   @AutoValue.Builder
-  //   public abstract static class Builder<T> {
-  //     public abstract Builder<T> setFileSystemPath(@Nullable ValueProvider<String>
-  // fileSystemPath);
-
-  //     public abstract Builder<T> setFunctionName(@Nullable ValueProvider<String> functionName);
-
-  //     public abstract Builder<T> setSuccessTag(TupleTag<FailsafeElement<T, String>> successTag);
-
-  //     public abstract Builder<T> setFailureTag(TupleTag<FailsafeElement<T, String>> failureTag);
-
-  //     public abstract FailsafeJavascriptUdf<T> build();
-  //   }
-
-  //   @Override
-  //   public PCollectionTuple expand(PCollection<FailsafeElement<T, String>> elements) {
-  //     return elements.apply(
-  //         "ProcessUdf",
-  //         ParDo.of(
-  //                 new DoFn<FailsafeElement<T, String>, FailsafeElement<T, String>>() {
-  //                   private ProcessBuilder processBuilder;
-
-  //                   @Setup
-  //                   public void setup() {
-  //                     if (fileSystemPath() != null && functionName() != null) {
-  //                       processBuilder =
-  //                           getProcessBuilder(fileSystemPath().get(), functionName().get());
-  //                     }
-  //                   }
-
-  //                   @ProcessElement
-  //                   public void processElement(ProcessContext context) {
-  //                     FailsafeElement<T, String> element = context.element();
-  //                     String payloadStr = element.getPayload();
-
-  //                     try {
-  //                       if (process != null) {
-  //                         payloadStr = javascriptRuntime.invoke(payloadStr);
-  //                       }
-
-  //                       if (!Strings.isNullOrEmpty(payloadStr)) {
-  //                         context.output(
-  //                             FailsafeElement.of(element.getOriginalPayload(), payloadStr));
-  //                       }
-  //                     } catch (Exception e) {
-  //                       context.output(
-  //                           failureTag(),
-  //                           FailsafeElement.of(element)
-  //                               .setErrorMessage(e.getMessage())
-  //                               .setStacktrace(Throwables.getStackTraceAsString(e)));
-  //                     }
-  //                   }
-  //                 })
-  //             .withOutputTags(successTag(), TupleTagList.of(failureTag())));
-  //   }
-  // }
 
   /**
    * Retrieves a {@link JavascriptRuntime} configured to invoke the specified function within the

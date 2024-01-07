@@ -15,15 +15,15 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import javax.annotation.Nullable;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -36,10 +36,11 @@ public class AvroConverters {
 
   /** Options for reading or writing Avro files. */
   public interface AvroOptions extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "The input filepattern to read from.",
         helpText = "Cloud storage file pattern glob to read from.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/path/*.avro")
     String getInputFileSpec();
 
@@ -72,7 +73,7 @@ public class AvroConverters {
             "The maximum number of output shards produced when writing. A higher number of "
                 + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
                 + "data aggregation cost across shards when processing output Cloud Storage files. "
-                + "Default value is decided by the runner.")
+                + "Default value is decided by Dataflow.")
     @Default.Integer(0)
     Integer getNumShards();
 

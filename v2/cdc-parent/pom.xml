@@ -14,9 +14,10 @@
   ~ License for the specific language governing permissions and limitations under
   ~ the License.
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <parent>
     <groupId>com.google.cloud.teleport.v2</groupId>
     <artifactId>dynamic-templates</artifactId>
@@ -28,13 +29,12 @@
   <artifactId>cdc-parent</artifactId>
   <inceptionYear>2019</inceptionYear>
   <packaging>pom</packaging>
+
   <properties>
     <debezium.version>0.9.5.Final</debezium.version>
-    <data-catalog.version>0.35.0</data-catalog.version>
-
     <licenseHeaderFile>../../JAVA_LICENSE_HEADER</licenseHeaderFile>
-
   </properties>
+
   <licenses>
     <license>
       <name>The Apache Software License, Version 2.0</name>
@@ -69,7 +69,6 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-dependency-plugin</artifactId>
-          <version>${maven-dependency-plugin.version}</version>
           <executions>
               <execution>
                   <id>analyze-dependencies</id>
@@ -102,11 +101,12 @@
         <version>${slf4j.version}</version>
         <scope>compile</scope>
       </dependency>
-      <!-- TODO(bvolpato): remove hardcoded version -->
+
+      <!-- Use specific versions of the driver, matching Debezium -->
       <dependency>
-        <groupId>com.google.api.grpc</groupId>
-        <artifactId>grpc-google-cloud-datacatalog-v1beta1</artifactId>
-        <version>${data-catalog.version}</version>
+        <groupId>mysql</groupId>
+        <artifactId>mysql-connector-java</artifactId>
+        <version>8.0.13</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -134,6 +134,17 @@
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
       <version>5.5.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-google-cloud-platform</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-jdbc</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

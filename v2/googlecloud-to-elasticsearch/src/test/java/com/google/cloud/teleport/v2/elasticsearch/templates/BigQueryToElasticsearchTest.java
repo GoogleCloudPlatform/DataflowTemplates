@@ -22,12 +22,13 @@ import static org.junit.Assert.assertThat;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import java.util.List;
+import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -40,7 +41,6 @@ public class BigQueryToElasticsearchTest {
   private static final List<TableRow> rows = ImmutableList.of(tableRow);
   private static final String jsonifiedTableRow =
       "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
   /** Test the {@link BigQueryToElasticsearch} pipeline end-to-end. */
@@ -48,6 +48,7 @@ public class BigQueryToElasticsearchTest {
   public void testBigQueryToElasticsearchE2E() {
 
     // Build pipeline
+    Pipeline pipeline = Pipeline.create();
     PCollection<String> testStrings =
         pipeline
             .apply("CreateInput", Create.of(rows))
@@ -74,6 +75,7 @@ public class BigQueryToElasticsearchTest {
     exceptionRule.expect(IllegalArgumentException.class);
 
     // Build pipeline
+    TestPipeline pipeline = TestPipeline.create();
     pipeline.apply("CreateInput", Create.of(tableRow));
 
     // Execute pipeline

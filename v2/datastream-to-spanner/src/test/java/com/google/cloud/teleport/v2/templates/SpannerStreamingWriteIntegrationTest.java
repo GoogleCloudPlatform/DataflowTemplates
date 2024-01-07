@@ -27,11 +27,11 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
-import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.InformationSchemaScanner;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.Arrays;
 import org.apache.beam.sdk.PipelineResult;
@@ -140,17 +140,18 @@ public class SpannerStreamingWriteIntegrationTest {
 
   private void constructAndRunPipeline(PCollection<FailsafeElement<String, String>> jsonRecords) {
     String shadowTablePrefix = "shadow";
-    SpannerConfig sourceConfig = spannerServer.getSpannerConfig(testDb);
+    SpannerConfig spannerConfig = spannerServer.getSpannerConfig(testDb);
     PCollection<Ddl> ddl =
         testPipeline.apply(
             "Process Information Schema",
-            new ProcessInformationSchema(sourceConfig, true, shadowTablePrefix, "oracle"));
+            new ProcessInformationSchema(spannerConfig, true, shadowTablePrefix, "oracle"));
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
-    Session session = new Session();
+    Schema schema = new Schema();
 
     jsonRecords.apply(
         "Write events to Cloud Spanner",
-        new SpannerTransactionWriter(sourceConfig, ddlView, session, shadowTablePrefix, "oracle"));
+        new SpannerTransactionWriter(
+            spannerConfig, ddlView, schema, null, shadowTablePrefix, "oracle", false, true));
 
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();
@@ -248,7 +249,7 @@ public class SpannerStreamingWriteIntegrationTest {
     /* The order of event processing cannot be predicted or controlled in
      * Test pipelines. The order in the Arrays below does not mean the events
      * are processed in that order.
-     * As long as atleast 1 change event for the interleaved table is after the
+     * As long as at least 1 change event for the interleaved table is after the
      * parent table, this test will be successful.
      * Hence change event for interleaved table is repeated multiple times.
      * This also mimics the retry behavior during interleaved tables handling.

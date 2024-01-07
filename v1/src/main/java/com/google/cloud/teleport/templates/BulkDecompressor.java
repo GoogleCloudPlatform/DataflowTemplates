@@ -100,30 +100,28 @@ import org.slf4j.LoggerFactory;
  * gs://docs-demo/compressedFile.gz, File is malformed or not compressed in BZIP2 format.
  * </pre>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.BulkDecompressor \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --runner=DataflowRunner \
- * --inputFilePattern=gs://${PROJECT_ID}/compressed-dir/*.gz \
- * --outputDirectory=gs://${PROJECT_ID}/decompressed-dir \
- * --outputFailureFile=gs://${PROJECT_ID}/decompressed-dir/failed.csv"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Bulk_Decompress_GCS_Files.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Bulk_Decompress_GCS_Files",
     category = TemplateCategory.UTILITIES,
     displayName = "Bulk Decompress Files on Cloud Storage",
-    description =
-        "A pipeline which decompresses files on Cloud Storage to a specified location. Supported formats: Bzip2, deflate, and gzip.",
+    description = {
+      "The Bulk Decompress Cloud Storage Files template is a batch pipeline that decompresses files on Cloud Storage to a specified location. "
+          + "This functionality is useful when you want to use compressed data to minimize network bandwidth costs during a migration, but would like to maximize analytical processing speed by operating on uncompressed data after migration. "
+          + "The pipeline automatically handles multiple compression modes during a single run and determines the decompression mode to use based on the file extension (.bzip2, .deflate, .gz, .zip).",
+      "Note: The Bulk Decompress Cloud Storage Files template is intended for single compressed files and not compressed folders."
+    },
     optionsClass = Options.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bulk-decompress-cloud-storage",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The files to decompress must be in one of the following formats: Bzip2, Deflate, and Gzip.",
+      "The output directory must exist prior to running the pipeline."
+    })
 public class BulkDecompressor {
 
   /** The logger to output status messages to. */
@@ -161,10 +159,11 @@ public class BulkDecompressor {
    * command-line.
    */
   public interface Options extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-files/*.gz")
     @Required
     ValueProvider<String> getInputFilePattern();

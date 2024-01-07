@@ -19,20 +19,18 @@
       "node": {
         "source": "ggg",
         "name": "GGGRecord",
-        "active": true,
         "mode": "merge",
         "transform": {
           "group": true
         },
-        "automap": false,
         "mappings": {
           "labels": [
             "\"GGGRecord\""
           ],
-          "keys": [
-            {"sourceUrl": "URL"}
-          ],
           "properties": {
+            "keys": [
+              {"sourceUrl": "URL"}
+            ],
             "strings": [
               {"title": "Title"}
             ],

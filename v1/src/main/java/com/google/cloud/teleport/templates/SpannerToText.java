@@ -21,6 +21,7 @@ import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.templates.SpannerToText.SpannerToTextOptions;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
@@ -59,29 +60,22 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Schema file sample: { "id":"INT64", "name":"STRING(MAX)" }
  *
- * <p>A sample run:
- *
- * <pre>
- * mvn compile exec:java \
- *   -Dexec.mainClass=com.google.cloud.teleport.templates.SpannerToText \
- *   -Dexec.args="--runner=DataflowRunner \
- *                --spannerProjectId=projectId \
- *                --gcpTempLocation=gs://gsTmpLocation \
- *                --spannerInstanceId=instanceId \
- *                --spannerDatabaseId=databaseId \
- *                --spannerTable=table_name \
- *                --spannerSnapshotTime=snapshot_time \
- *                --textWritePrefix=gcsOutputPath"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Spanner_to_GCS_Text.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Spanner_to_GCS_Text",
     category = TemplateCategory.BATCH,
     displayName = "Cloud Spanner to Text Files on Cloud Storage",
     description =
-        "A pipeline which reads in Cloud Spanner table and writes it to Cloud Storage as CSV text files.",
+        "The Cloud Spanner to Cloud Storage Text template is a batch pipeline that reads in data from a Cloud Spanner "
+            + "table, and writes it to Cloud Storage as CSV text files.",
     optionsClass = SpannerToTextOptions.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-cloud-storage",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {"The input Spanner table must exist before running the pipeline."})
 public class SpannerToText {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToText.class);
@@ -103,11 +97,16 @@ public class SpannerToText {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"LOW", "MEDIUM", "HIGH"},
+        enumOptions = {
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
+        },
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
+            "The request priority for Cloud Spanner calls. The value must be one of:"
+                + " [HIGH,MEDIUM,LOW].")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
@@ -133,7 +132,8 @@ public class SpannerToText {
             .withProjectId(options.getSpannerProjectId())
             .withInstanceId(options.getSpannerInstanceId())
             .withDatabaseId(options.getSpannerDatabaseId())
-            .withRpcPriority(options.getSpannerPriority());
+            .withRpcPriority(options.getSpannerPriority())
+            .withDataBoostEnabled(options.getDataBoostEnabled());
 
     PTransform<PBegin, PCollection<ReadOperation>> spannerExport =
         SpannerConverters.ExportTransformFactory.create(

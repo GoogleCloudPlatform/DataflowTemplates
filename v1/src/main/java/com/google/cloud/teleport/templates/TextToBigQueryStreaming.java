@@ -72,34 +72,83 @@ import org.slf4j.LoggerFactory;
  * continuously polls for new files, reads them row-by-row and processes each record into BigQuery.
  * The polling interval is set at 10 seconds.
  *
- * <p>Example Usage:
- *
- * <pre>
- * {@code mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.TextToBigQueryStreaming \
- * -Dexec.args="\
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${STAGING_BUCKET}/staging \
- * --tempLocation=gs://${STAGING_BUCKET}/tmp \
- * --runner=DataflowRunner \
- * --inputFilePattern=gs://path/to/input* \
- * --JSONPath=gs://path/to/json/schema.json \
- * --outputTable={$PROJECT_ID}:${OUTPUT_DATASET}.${OUTPUT_TABLE} \
- * --javascriptTextTransformGcsPath=gs://path/to/transform/udf.js \
- * --javascriptTextTransformFunctionName=${TRANSFORM_NAME} \
- * --bigQueryLoadingTemporaryDirectory=gs://${STAGING_BUCKET}/tmp \
- * --outputDeadletterTable=${PROJECT_ID}:${ERROR_DATASET}.${ERROR_TABLE}"
- * }
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Stream_GCS_Text_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Stream_GCS_Text_to_BigQuery",
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Storage Text to BigQuery (Stream)",
-    description =
-        "A streaming pipeline that can read text files stored in Cloud Storage, perform a transform via a user defined JavaScript function, and stream the results into BigQuery. This pipeline requires a JavaScript function and a JSON representation of the BigQuery TableSchema.",
+    description = {
+      "The Text Files on Cloud Storage to BigQuery pipeline is a streaming pipeline that allows you to stream text "
+          + "files stored in Cloud Storage, transform them using a JavaScript User Defined Function (UDF) that you provide, and append the result to BigQuery.\n",
+      "The pipeline runs indefinitely and needs to be terminated manually via a\n"
+          + "    <a href=\"https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#cancel\">cancel</a> and not a\n"
+          + "    <a href=\"https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#drain\">drain</a>, due to its use of the\n"
+          + "    <code>Watch</code> transform, which is a splittable <code>DoFn</code> that does not support\n"
+          + "    draining."
+    },
     optionsClass = TextToBigQueryStreamingOptions.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "Create a JSON file that describes the schema of your output table in BigQuery.\n"
+          + "    <p>\n"
+          + "      Ensure that there is a top-level JSON array titled <code>fields</code> and that its\n"
+          + "      contents follow the pattern <code>{\"name\": \"COLUMN_NAME\", \"type\": \"DATA_TYPE\"}</code>.\n"
+          + "      For example:\n"
+          + "    </p>\n"
+          + "<pre class=\"prettyprint lang-json\">\n"
+          + "{\n"
+          + "  \"fields\": [\n"
+          + "    {\n"
+          + "      \"name\": \"location\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"name\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"age\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"color\",\n"
+          + "      \"type\": \"STRING\",\n"
+          + "      \"mode\": \"REQUIRED\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"coffee\",\n"
+          + "      \"type\": \"STRING\",\n"
+          + "      \"mode\": \"REQUIRED\"\n"
+          + "    }\n"
+          + "  ]\n"
+          + "}\n"
+          + "</pre>",
+      "Create a JavaScript (<code>.js</code>) file with your UDF function that supplies the logic\n"
+          + "    to transform the lines of text. Note that your function must return a JSON string.\n"
+          + "    <p>For example, this function splits each line of a CSV file and returns a JSON string after\n"
+          + "      transforming the values.</p>\n"
+          + "<pre class=\"prettyprint\" suppresswarning>\n"
+          + "function transform(line) {\n"
+          + "var values = line.split(',');\n"
+          + "\n"
+          + "var obj = new Object();\n"
+          + "obj.location = values[0];\n"
+          + "obj.name = values[1];\n"
+          + "obj.age = values[2];\n"
+          + "obj.color = values[3];\n"
+          + "obj.coffee = values[4];\n"
+          + "var jsonString = JSON.stringify(obj);\n"
+          + "\n"
+          + "return jsonString;\n"
+          + "}\n"
+          + "</pre>"
+    },
+    streaming = true)
 public class TextToBigQueryStreaming {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextToBigQueryStreaming.class);
@@ -336,10 +385,9 @@ public class TextToBigQueryStreaming {
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched "
-                + "schema, malformed json) are written to this table. If it doesn't exist, it will be "
-                + "created during pipeline execution. If not specified, \"outputTableSpec_error_records\" "
-                + "is used instead.",
+            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
+                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
         example = "your-project-id:your-dataset.your-table-name")
     ValueProvider<String> getOutputDeadletterTable();
 

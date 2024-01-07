@@ -26,16 +26,30 @@ import org.apache.beam.sdk.options.Default.Integer;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.ValueProvider;
 
-/** Placeholder template class for {@link ExportJob}. */
+/**
+ * Placeholder template class for {@link ExportJob}.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_Bigtable_to_GCS_SequenceFile.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Cloud_Bigtable_to_GCS_SequenceFile",
     category = TemplateCategory.BATCH,
     displayName = "Cloud Bigtable to SequenceFile Files on Cloud Storage",
     description =
-        "A pipeline which reads in Cloud Bigtable table and writes it to Cloud Storage in SequenceFile format.",
+        "The Bigtable to Cloud Storage SequenceFile template is a pipeline that reads data from a Bigtable table and "
+            + "writes the data to a Cloud Storage bucket in SequenceFile format. "
+            + "You can use the template to copy data from Bigtable to Cloud Storage.",
     placeholderClass = ExportJob.class,
     optionsClass = ExportJobPlaceholderOptions.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-sequencefile",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Bigtable table must exist.",
+      "The output Cloud Storage bucket must exist before running the pipeline."
+    })
 public class ExportJobPlaceholder {
 
   /** Options class for the ExportJob pipeline. */

@@ -81,11 +81,24 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${artifactRegion}", readonly = true, required = false)
   protected String artifactRegion;
 
+  @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
+  protected String gcpTempLocation;
+
   @Parameter(
       name = "baseContainerImage",
-      defaultValue = "gcr.io/dataflow-templates-base/java11-template-launcher-base:latest",
+      defaultValue =
+          "gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless:latest",
       required = false)
   protected String baseContainerImage;
+
+  @Parameter(
+      name = "basePythonContainerImage",
+      defaultValue = "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest",
+      required = false)
+  protected String basePythonContainerImage;
+
+  @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
+  protected boolean unifiedWorker;
 
   @Parameter(defaultValue = "${parameters}", readonly = true, required = true)
   protected String parameters;
@@ -98,7 +111,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
       BuildPluginManager pluginManager =
           (BuildPluginManager) session.lookup("org.apache.maven.plugin.BuildPluginManager");
 
-      LOG.info("Staging Templates to bucket {}...", bucketNameOnly(bucketName));
+      LOG.info("Staging Templates to bucket '{}'...", bucketNameOnly(bucketName));
 
       List<TemplateDefinitions> templateDefinitions =
           TemplateDefinitionsParser.scanDefinitions(loader);
@@ -118,7 +131,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
       String currentTemplateName = imageSpec.getMetadata().getName();
 
       if (stagePrefix == null || stagePrefix.isEmpty()) {
-        stagePrefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm").format(new Date()) + "_RC01";
+        stagePrefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_RC01";
       }
 
       LOG.info("Staging template {}...", currentTemplateName);
@@ -141,7 +154,10 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               stagePrefix,
               useRegion,
               artifactRegion,
-              baseContainerImage);
+              gcpTempLocation,
+              baseContainerImage,
+              basePythonContainerImage,
+              unifiedWorker);
 
       String useJobName =
           StringUtils.isNotEmpty(jobName)

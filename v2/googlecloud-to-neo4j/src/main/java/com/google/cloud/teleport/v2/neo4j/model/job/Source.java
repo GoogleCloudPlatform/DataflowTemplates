@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.BeamUtils;
 import java.io.Serializable;
@@ -23,20 +22,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.Getter;
-import lombok.Setter;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.commons.csv.CSVFormat;
 import org.json.JSONArray;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Source query metadata. */
-@Getter
-@Setter
 public class Source implements Serializable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(Source.class);
   private SourceType sourceType = SourceType.text;
   private String name = "";
   private String uri = "";
@@ -49,9 +41,6 @@ public class Source implements Serializable {
   private String[] fieldNames = new String[0];
   private Map<String, Integer> fieldPosByName = new HashMap<>();
   private List<List<Object>> inline = new ArrayList<>();
-
-  private ActionExecuteAfter executeAfter = ActionExecuteAfter.preloads;
-  private String executeAfterName = "";
 
   public static List<List<Object>> jsonToListOfListsArray(JSONArray lines) {
     if (lines == null) {
@@ -92,5 +81,81 @@ public class Source implements Serializable {
 
   public Schema getTextFileSchema() {
     return BeamUtils.textToBeamSchema(fieldNames);
+  }
+
+  public SourceType getSourceType() {
+    return sourceType;
+  }
+
+  public void setSourceType(SourceType sourceType) {
+    this.sourceType = sourceType;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public String getUri() {
+    return uri;
+  }
+
+  public void setUri(String uri) {
+    this.uri = uri;
+  }
+
+  public String getDelimiter() {
+    return delimiter;
+  }
+
+  public void setDelimiter(String delimiter) {
+    this.delimiter = delimiter;
+  }
+
+  public String getSeparator() {
+    return separator;
+  }
+
+  public void setSeparator(String separator) {
+    this.separator = separator;
+  }
+
+  public String getQuery() {
+    return query;
+  }
+
+  public void setQuery(String query) {
+    this.query = query;
+  }
+
+  public CSVFormat getCsvFormat() {
+    return csvFormat;
+  }
+
+  public void setCsvFormat(CSVFormat csvFormat) {
+    this.csvFormat = csvFormat;
+  }
+
+  public String[] getFieldNames() {
+    return fieldNames;
+  }
+
+  public void setFieldNames(String[] fieldNames) {
+    this.fieldNames = fieldNames;
+  }
+
+  public Map<String, Integer> getFieldPosByName() {
+    return fieldPosByName;
+  }
+
+  public List<List<Object>> getInline() {
+    return inline;
+  }
+
+  public void setInline(List<List<Object>> inline) {
+    this.inline = inline;
   }
 }

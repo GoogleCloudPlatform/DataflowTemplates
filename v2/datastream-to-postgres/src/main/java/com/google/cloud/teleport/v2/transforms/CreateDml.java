@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import com.google.cloud.teleport.v2.io.CdcJdbcIO.DataSourceConfiguration;
+import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
+import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.utils.DatabaseMigrationUtils;
-import com.google.cloud.teleport.v2.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -42,18 +42,21 @@ public class CreateDml {
   public CreateDml() {}
 
   public static CreateDmlFromRecord createDmlObjects(
-      DataSourceConfiguration dataSourceConfiguration) {
+      CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration) {
     return new CreateDmlFromRecord(dataSourceConfiguration);
   }
 
-  /** This class is used as the default return value of {@link CreateDml#createDmlObjects()}. */
+  /**
+   * This class is used as the default return value of {@link
+   * CreateDml#createDmlObjects(DataSourceConfiguration)}}.
+   */
   public static class CreateDmlFromRecord
       extends PTransform<
           PCollection<FailsafeElement<String, String>>, PCollection<KV<String, DmlInfo>>> {
 
-    private static DataSourceConfiguration dataSourceConfiguration;
+    private static CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
 
-    public CreateDmlFromRecord(DataSourceConfiguration dataSourceConfiguration) {
+    public CreateDmlFromRecord(CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration) {
       this.dataSourceConfiguration = dataSourceConfiguration;
     }
 

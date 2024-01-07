@@ -31,7 +31,6 @@
 
   <properties>
     <json-data-generator.version>1.10</json-data-generator.version>
-    <snakeyaml.version>1.33</snakeyaml.version>
    </properties>
 
   <dependencies>
@@ -39,6 +38,11 @@
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport.v2</groupId>
+      <artifactId>jdbc-common</artifactId>
       <version>${project.version}</version>
     </dependency>
 
@@ -56,6 +60,13 @@
       </exclusions>
     </dependency>
 
+    <!-- Jdbc dependencies -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql.version}</version>
+    </dependency>
+
     <!-- json-data-generator dependency javafaker depends on snakeyaml  -->
     <dependency>
       <groupId>org.yaml</groupId>
@@ -68,6 +79,17 @@
       <groupId>com.google.truth</groupId>
       <artifactId>truth</artifactId>
       <version>${truth.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-google-cloud-platform</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-jdbc</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

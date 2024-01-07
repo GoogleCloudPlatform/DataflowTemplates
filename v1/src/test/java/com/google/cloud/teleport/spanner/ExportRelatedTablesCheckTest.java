@@ -170,7 +170,7 @@ public final class ExportRelatedTablesCheckTest {
         destDbPrefix + fullExportChkpt,
         fullExportChkpt,
         "",
-        /* relatedTables =*/ false,
+        /* relatedTables= */ false,
         exportPipeline,
         importPipeline);
 
@@ -226,7 +226,7 @@ public final class ExportRelatedTablesCheckTest {
         destDbPrefix + usersChkpt,
         usersChkpt,
         usersTable,
-        /* relatedTables =*/ false,
+        /* relatedTables= */ false,
         exportPipeline,
         importPipeline);
 
@@ -288,7 +288,7 @@ public final class ExportRelatedTablesCheckTest {
         destDbPrefix + multiTableChkpt,
         multiTableChkpt,
         usersTable + "," + allTypesTable,
-        /* relatedTables =*/ false,
+        /* relatedTables= */ false,
         exportPipeline,
         importPipeline);
 
@@ -358,7 +358,7 @@ public final class ExportRelatedTablesCheckTest {
         destDbPrefix + emptyChkpt,
         emptyChkpt,
         emptyTable,
-        /* relatedTables =*/ false,
+        /* relatedTables= */ false,
         exportPipeline,
         importPipeline);
 
@@ -373,7 +373,7 @@ public final class ExportRelatedTablesCheckTest {
   }
 
   /* Validates that pipeline executes full-db export when --tableNames and
-   * --shouldExportRelatedTables paramters are not filled */
+   * --shouldExportRelatedTables parameters are not filled */
   @Test
   public void exportDbWithoutTableNamesAndFlag_exportsFullDb() throws Exception {
     // spotless:off
@@ -404,7 +404,7 @@ public final class ExportRelatedTablesCheckTest {
     // referencing `table_a` )
     ddl.addNewReferencedTable("table_c", "table_a");
 
-    createAndPopulate(ddl, /* numBatches = */ 100);
+    createAndPopulate(ddl, /* numBatches= */ 100);
 
     // Export the entire database (without setting --tablesName or --shouldExportRelatedTables)
     spannerServer.createDatabase(destDbPrefix + chkptOne, Collections.emptyList());
@@ -413,7 +413,7 @@ public final class ExportRelatedTablesCheckTest {
         destDbPrefix + chkptOne,
         chkptOne,
         "", // --tableNames would not be set, defaults to an empty string
-        /* relatedTables =*/ false,
+        /* relatedTables= */ false,
         exportPipeline,
         importPipeline);
 
@@ -455,7 +455,7 @@ public final class ExportRelatedTablesCheckTest {
             .build();
     // spotless:on
 
-    createAndPopulate(ddl, /* numBatches = */ 100);
+    createAndPopulate(ddl, /* numBatches= */ 100);
 
     // Export the single disconnected table database (without --shouldExportRelatedTables)
     spannerServer.createDatabase(destDbPrefix + chkptTwo, Collections.emptyList());
@@ -464,7 +464,7 @@ public final class ExportRelatedTablesCheckTest {
         destDbPrefix + chkptTwo,
         chkptTwo,
         tableC,
-        /* relatedTables =*/ false,
+        /* relatedTables= */ false,
         exportPipeline,
         importPipeline);
 
@@ -630,7 +630,7 @@ public final class ExportRelatedTablesCheckTest {
     // referencing `table_a` )
     ddl.addNewReferencedTable("table_c", "table_a");
 
-    createAndPopulate(ddl, /* numBatches = */ 100);
+    createAndPopulate(ddl, /* numBatches= */ 100);
 
     // Expected PipelineExecutionException caused by Exception:
     // set --shouldExportRelatedTables to true when no tables were specified for export
@@ -643,7 +643,7 @@ public final class ExportRelatedTablesCheckTest {
                 destDbPrefix + chkptFour,
                 chkptFour,
                 "", // --tableNames would not be set, defaults to an empty string
-                /* relatedTables =*/ true,
+                /* relatedTables= */ true,
                 exportPipeline,
                 importPipeline));
   }
@@ -680,7 +680,7 @@ public final class ExportRelatedTablesCheckTest {
     // referencing `table_a` )
     ddl.addNewReferencedTable("table_c", "table_a");
 
-    createAndPopulate(ddl, /* numBatches = */ 100);
+    createAndPopulate(ddl, /* numBatches= */ 100);
 
     // Export the entire database (without setting --tablesName)
     spannerServer.createDatabase(destDbPrefix + chkptFive, Collections.emptyList());
@@ -689,7 +689,7 @@ public final class ExportRelatedTablesCheckTest {
         destDbPrefix + chkptFive,
         chkptFive,
         "", // --tableNames would not be set, defaults to an empty string
-        /* relatedTables =*/ false,
+        /* relatedTables= */ false,
         exportPipeline,
         importPipeline);
 
@@ -740,7 +740,7 @@ public final class ExportRelatedTablesCheckTest {
             .build();
     // spotless:on
 
-    createAndPopulate(ddl, /* numBatches = */ 100);
+    createAndPopulate(ddl, /* numBatches= */ 100);
 
     // Export the single table along with it's required tables
     spannerServer.createDatabase(destDbPrefix + chkptSix, Collections.emptyList());
@@ -749,7 +749,7 @@ public final class ExportRelatedTablesCheckTest {
         destDbPrefix + chkptSix,
         chkptSix,
         tableC, // --tableNames would be given tableC
-        /* relatedTables =*/ true,
+        /* relatedTables= */ true,
         exportPipeline,
         importPipeline);
 
@@ -768,7 +768,7 @@ public final class ExportRelatedTablesCheckTest {
   @Test
   public void randomExportTest() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
-    createAndPopulate(ddl, /* numBatches = */ 100);
+    createAndPopulate(ddl, /* numBatches= */ 100);
 
     // Print the Ddl
     ddl.prettyPrint();
@@ -796,7 +796,7 @@ public final class ExportRelatedTablesCheckTest {
         destDbPrefix + chkptSeven,
         chkptSeven,
         String.join(",", randomExportTables),
-        /* relatedTables =*/ true,
+        /* relatedTables= */ true,
         exportPipeline,
         importPipeline);
 
@@ -851,7 +851,7 @@ public final class ExportRelatedTablesCheckTest {
     // referencing `table_a`)
     ddl.addNewReferencedTable("table_c", "table_a");
 
-    createAndPopulate(ddl, /* numBatches = */ 100);
+    createAndPopulate(ddl, /* numBatches= */ 100);
 
     // Expected PipelineExecutionException caused by Exception:
     // Attempt to export a non existent table 'table_d'.
@@ -864,7 +864,7 @@ public final class ExportRelatedTablesCheckTest {
                 destDbPrefix + chkptEight,
                 chkptEight,
                 tableD,
-                /* relatedTables =*/ false,
+                /* relatedTables= */ false,
                 exportPipeline,
                 importPipeline));
   }
@@ -962,7 +962,7 @@ public final class ExportRelatedTablesCheckTest {
         .build();
     // spotless:on
 
-    createAndPopulate(ddl, /* numBatches = */ 100);
+    createAndPopulate(ddl, /* numBatches= */ 100);
 
     // Export the single table along with it's required tables
     spannerServer.createDatabase(destDbPrefix + chkptNine, Collections.emptyList());
@@ -971,7 +971,7 @@ public final class ExportRelatedTablesCheckTest {
         destDbPrefix + chkptNine,
         chkptNine,
         String.join(",", ImmutableList.of(tableA, tableC, tableF, tableJ)),
-        /* relatedTables =*/ true,
+        /* relatedTables= */ true,
         exportPipeline,
         importPipeline);
 
@@ -1032,6 +1032,7 @@ public final class ExportRelatedTablesCheckTest {
         new ImportTransform(
             copyConfig,
             source,
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),

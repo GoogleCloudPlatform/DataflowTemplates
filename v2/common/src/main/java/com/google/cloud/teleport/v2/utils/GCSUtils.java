@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.utils;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,7 +31,7 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.CharStreams;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -88,8 +88,7 @@ public class GCSUtils {
   }
 
   /**
-   * The {@link SchemaUtils#getGcsFileAsString(String)} reads a file from GCS and returns it as a
-   * string.
+   * Reads a file from GCS and returns it as a string.
    *
    * @param filePath path to file in GCS
    * @return contents of the file as a string
@@ -106,8 +105,7 @@ public class GCSUtils {
   }
 
   /**
-   * The {@link GCSUtils#getGcsFileAsBytes(String)} reads a file from GCS and returns it as raw
-   * bytes.
+   * Reads a file from GCS and returns it as raw bytes.
    *
    * @param filePath path to file in GCS
    * @return raw contents of file

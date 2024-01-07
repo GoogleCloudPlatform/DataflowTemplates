@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.templates;
 
 import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.Template.AdditionalDocumentationBlock;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.neo4j.actions.ActionDoFnFactory;
@@ -24,13 +25,18 @@ import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadAction;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.InputRefactoring;
 import com.google.cloud.teleport.v2.neo4j.model.InputValidator;
+import com.google.cloud.teleport.v2.neo4j.model.Json;
+import com.google.cloud.teleport.v2.neo4j.model.Json.ParsingResult;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ArtifactType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.JobSpecMapper;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.OptionsParamsMapper;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec.SourceQuerySpecBuilder;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec.TargetQuerySpecBuilder;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
@@ -42,8 +48,10 @@ import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
 import com.google.cloud.teleport.v2.neo4j.transforms.Neo4jRowWriterTransform;
 import com.google.cloud.teleport.v2.neo4j.utils.BeamBlock;
+import com.google.cloud.teleport.v2.neo4j.utils.FileSystemUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.ProcessingCoder;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.List;
@@ -67,15 +75,43 @@ import org.slf4j.LoggerFactory;
  * Dataflow template which reads Google Cloud data (Text, BigQuery) and writes it to Neo4j.
  *
  * <p>In case of BigQuery, the source data can be either a table or a SQL query.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-neo4j/README_Google_Cloud_to_Neo4j.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Google_Cloud_to_Neo4j",
     category = TemplateCategory.BATCH,
     displayName = "Google Cloud to Neo4j",
-    description = "Copy data from Google Cloud (BigQuery, Text) into Neo4j.",
+    description =
+        "The Google Cloud to Neo4j template lets you import a dataset into a Neo4j database through a Dataflow job, "
+            + "sourcing data from CSV files hosted in Google Cloud Storage buckets. It also lets you to manipulate and transform the data "
+            + "at various steps of the import. You can use the template for both first-time imports and incremental imports.",
     optionsClass = Neo4jFlexTemplateOptions.class,
     flexContainerName = "googlecloud-to-neo4j",
-    contactInformation = "https://support.neo4j.com/")
+    contactInformation = "https://support.neo4j.com/",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/google-cloud-to-neo4j",
+    requirements = {
+      "A running Neo4j instance",
+      "A Google Cloud Storage bucket",
+      "A dataset to import, in the form of CSV files",
+      "A job specification file to use"
+    },
+    additionalDocumentation = {
+      @AdditionalDocumentationBlock(
+          name = "Create a job specification file",
+          content = {
+            "The job specification file consists of a JSON object with the following sections:\n"
+                + "- `config` - global flags affecting how the import is performed.\n"
+                + "- `sources` - data source definitions (relational).\n"
+                + "- `targets` - data target definitions (graph: nodes/relationships).\n"
+                + "- `actions` - pre/post-load actions.\n"
+                + "For more information, see <a href=\"https://neo4j.com/docs/dataflow-google-cloud/job-specification/\" class=\"external\">Create a job specification file</a> in the Neo4j documentation."
+          })
+    },
+    preview = true)
 public class GoogleCloudToNeo4j {
 
   private static final Logger LOG = LoggerFactory.getLogger(GoogleCloudToNeo4j.class);
@@ -109,12 +145,14 @@ public class GoogleCloudToNeo4j {
         "Errors found validating pipeline options: ",
         InputValidator.validateNeo4jPipelineOptions(pipelineOptions));
 
-    this.neo4jConnection = new ConnectionParams(pipelineOptions.getNeo4jConnectionUri());
-
-    // Validate connection
-    processValidations(
-        "Errors found validating Neo4j connection: ",
-        InputValidator.validateNeo4jConnection(this.neo4jConnection));
+    String neo4jConnectionJson = readConnectionSettings(pipelineOptions);
+    ParsingResult parsingResult = InputValidator.validateNeo4jConnection(neo4jConnectionJson);
+    if (!parsingResult.isSuccessful()) {
+      processValidations(
+          "Errors found validating Neo4j connection: ",
+          parsingResult.formatErrors("Could not validate connection JSON"));
+    }
+    this.neo4jConnection = Json.map(parsingResult, ConnectionParams.class);
 
     this.jobSpec = JobSpecMapper.fromUri(pipelineOptions.getJobSpecUri());
 
@@ -141,7 +179,21 @@ public class GoogleCloudToNeo4j {
     }
 
     // Output debug log spec
-    LOG.info("Normalized JobSpec: {}", gson.toJson(this.jobSpec));
+    LOG.debug("Normalized JobSpec: {}", gson.toJson(this.jobSpec));
+  }
+
+  private static String readConnectionSettings(Neo4jFlexTemplateOptions options) {
+    String secretId = options.getNeo4jConnectionSecretId();
+    if (StringUtils.isNotEmpty(secretId)) {
+      return SecretManagerUtils.getSecret(secretId);
+    }
+    String uri = options.getNeo4jConnectionUri();
+    try {
+      return FileSystemUtils.getPathContents(uri);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          String.format("Unable to read Neo4j configuration at URI %s: ", uri), e);
+    }
   }
 
   /**
@@ -181,12 +233,15 @@ public class GoogleCloudToNeo4j {
 
   public void run() {
 
-    ////////////////////////////
-    // Reset db
-    if (jobSpec.getConfig().getResetDb()) {
-      Neo4jConnection directConnect = new Neo4jConnection(this.neo4jConnection);
-      directConnect.resetDatabase();
+    try (Neo4jConnection directConnect = new Neo4jConnection(this.neo4jConnection)) {
+      boolean resetDb = jobSpec.getConfig().getResetDb();
+      if (!resetDb) {
+        directConnect.verifyConnectivity();
+      } else {
+        directConnect.resetDatabase();
+      }
     }
+
     ////////////////////////////
     // Run preload actions
     runPreloadActions(jobSpec.getPreloadActions());
@@ -209,7 +264,9 @@ public class GoogleCloudToNeo4j {
       Provider providerImpl = ProviderFactory.of(source.getSourceType());
       providerImpl.configure(optionsParams, jobSpec);
       PCollection<Row> sourceMetadata =
-          pipeline.apply("Source metadata", providerImpl.queryMetadata(source));
+          pipeline.apply(
+              String.format("Metadata for source %s", source.getName()),
+              providerImpl.queryMetadata(source));
       Schema sourceBeamSchema = sourceMetadata.getSchema();
       processingQueue.addToQueue(
           ArtifactType.source, false, source.getName(), defaultActionContext, sourceMetadata);
@@ -220,13 +277,15 @@ public class GoogleCloudToNeo4j {
       boolean targetsHaveTransforms = ModelUtils.targetsHaveTransforms(jobSpec, source);
       if (!targetsHaveTransforms || !providerImpl.supportsSqlPushDown()) {
         SourceQuerySpec sourceQuerySpec =
-            SourceQuerySpec.builder().source(source).sourceSchema(sourceBeamSchema).build();
+            new SourceQuerySpecBuilder().source(source).sourceSchema(sourceBeamSchema).build();
         nullableSourceBeamRows =
             pipeline
                 .apply(
                     "Query " + source.getName(), providerImpl.querySourceBeamRows(sourceQuerySpec))
                 .setRowSchema(sourceBeamSchema);
       }
+
+      String sourceName = source.getName();
 
       ////////////////////////////
       // Optimization: if we're not mixing nodes and edges, then run in parallel
@@ -235,16 +294,16 @@ public class GoogleCloudToNeo4j {
       ////////////////////////////
       // No optimization possible so write nodes then edges.
       // Write node targets
-      List<Target> nodeTargets = jobSpec.getActiveNodeTargetsBySource(source.getName());
+      List<Target> nodeTargets =
+          jobSpec.getActiveTargetsBySourceAndType(sourceName, TargetType.node);
       for (Target nodeTarget : nodeTargets) {
         TargetQuerySpec targetQuerySpec =
-            TargetQuerySpec.builder()
+            new TargetQuerySpecBuilder()
                 .source(source)
                 .sourceBeamSchema(sourceBeamSchema)
                 .nullableSourceRows(nullableSourceBeamRows)
                 .target(nodeTarget)
                 .build();
-        PCollection<Row> preInsertBeamRows;
         String nodeStepDescription =
             nodeTarget.getSequence()
                 + ": "
@@ -252,14 +311,9 @@ public class GoogleCloudToNeo4j {
                 + "->"
                 + nodeTarget.getName()
                 + " nodes";
-        if (ModelUtils.targetHasTransforms(nodeTarget)) {
-          preInsertBeamRows =
-              pipeline.apply(
-                  "Query " + nodeStepDescription,
-                  providerImpl.queryTargetBeamRows(targetQuerySpec));
-        } else {
-          preInsertBeamRows = nullableSourceBeamRows;
-        }
+        PCollection<Row> preInsertBeamRows =
+            pipeline.apply(
+                "Query " + nodeStepDescription, providerImpl.queryTargetBeamRows(targetQuerySpec));
 
         Neo4jRowWriterTransform targetWriterTransform =
             new Neo4jRowWriterTransform(jobSpec, neo4jConnection, nodeTarget);
@@ -290,10 +344,10 @@ public class GoogleCloudToNeo4j {
       ////////////////////////////
       // Write relationship targets
       List<Target> relationshipTargets =
-          jobSpec.getActiveRelationshipTargetsBySource(source.getName());
+          jobSpec.getActiveTargetsBySourceAndType(sourceName, TargetType.edge);
       for (Target relationshipTarget : relationshipTargets) {
         TargetQuerySpec targetQuerySpec =
-            TargetQuerySpec.builder()
+            new TargetQuerySpecBuilder()
                 .source(source)
                 .nullableSourceRows(nullableSourceBeamRows)
                 .sourceBeamSchema(sourceBeamSchema)
@@ -345,6 +399,47 @@ public class GoogleCloudToNeo4j {
             blockingReturn,
             preInsertBeamRows);
       }
+      ////////////////////////////
+      // Custom query targets
+      List<Target> customQueryTargets =
+          jobSpec.getActiveTargetsBySourceAndType(sourceName, TargetType.custom_query);
+      for (Target customQueryTarget : customQueryTargets) {
+        String customQueryStepDescription =
+            customQueryTarget.getSequence()
+                + ": "
+                + source.getName()
+                + "->"
+                + customQueryTarget.getName()
+                + " (custom query)";
+        Neo4jRowWriterTransform targetWriterTransform =
+            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, customQueryTarget);
+
+        PCollection<Row> blockingReturn =
+            nullableSourceBeamRows
+                .apply(
+                    "** Unblocking "
+                        + customQueryStepDescription
+                        + "(after "
+                        + customQueryTarget.getExecuteAfter()
+                        + "."
+                        + customQueryTarget.getExecuteAfterName()
+                        + ")",
+                    Wait.on(
+                        processingQueue.waitOnCollection(
+                            customQueryTarget.getExecuteAfter(),
+                            customQueryTarget.getExecuteAfterName(),
+                            customQueryStepDescription)))
+                .setCoder(nullableSourceBeamRows.getCoder())
+                .apply("Writing " + customQueryStepDescription, targetWriterTransform)
+                .setCoder(nullableSourceBeamRows.getCoder());
+
+        processingQueue.addToQueue(
+            ArtifactType.custom_query,
+            false,
+            customQueryTarget.getName(),
+            blockingReturn,
+            nullableSourceBeamRows);
+      }
     }
 
     ////////////////////////////
@@ -380,6 +475,8 @@ public class GoogleCloudToNeo4j {
         artifactType = ArtifactType.node;
       } else if (action.executeAfter == ActionExecuteAfter.edge) {
         artifactType = ArtifactType.edge;
+      } else if (action.executeAfter == ActionExecuteAfter.custom_query) {
+        artifactType = ArtifactType.custom_query;
       }
       LOG.info("Registering action: {}", action.name);
       // Get targeted execution context
@@ -392,7 +489,7 @@ public class GoogleCloudToNeo4j {
 
       // We have chosen a DoFn pattern applied to a single Integer row so that @ProcessElement
       // evaluates only once per invocation.
-      // For future actions (ie. logger) that consume upstream data context, we would use a
+      // For future actions (i.e. logger) that consume upstream data context, we would use a
       // Transform pattern
       // The challenge in this case of the Transform pattern is that @FinishBundle could execute
       // many times.

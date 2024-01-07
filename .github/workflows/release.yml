@@ -23,7 +23,7 @@ permissions:
 jobs:
   release:
     name: Create Release
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, it]
     steps:
     - name: Get releaser identity
       run: |
@@ -32,14 +32,15 @@ jobs:
     - name: Declare release branch name and tag name
       id: variables
       run: |
-        echo "::set-output name=releaseBranchName::release_${CANDIDATE_NAME,,}"
-        echo "::set-output name=tagName::${CANDIDATE_NAME^^}"
+        echo "releaseBranchName=release_${CANDIDATE_NAME,,}" >> $GITHUB_OUTPUT
+        echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
       env:
         CANDIDATE_NAME: ${{ inputs.candidateName }}
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
       with:
         fetch-depth: 0
+        token: ${{ secrets.RELEASE_TOKEN }}
     - name: Create release branch
       run: git checkout -b $RELEASE_BRANCH_NAME $BRANCH_COMMIT
       env:
@@ -63,9 +64,48 @@ jobs:
       env:
         RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
         TAG_NAME: ${{ steps.variables.outputs.tagName }}
-    - name: Push changes
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Build
+      run: ./cicd/run-build --changed-files="pom.xml"
+    - name: Run Unit Tests
+      run: ./cicd/run-unit-tests --changed-files="pom.xml"
+    - name: Run Integration Smoke Tests
       run: |
-        git push -u origin --all
+        ./cicd/run-it-smoke-tests \
+        --changed-files="pom.xml" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-release=true
+    - name: Run Integration Tests
+      run: |
+        ./cicd/run-it-tests \
+        --changed-files="pom.xml" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-release=true
+    - name: Upload Tests Report
+      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      if: always() # always run even if previous step fails
+      with:
+        name: surefire-test-results
+        path: '**/surefire-reports/TEST-*.xml'
+        retention-days: 1
+    - name: Create artifacts and push
+      run: |
+        mvn verify -PtemplatesRelease \
+        -DprojectId="dataflow-templates" \
+        -DbucketName="dataflow-templates-staging" \
+        -DlibrariesBucketName="dataflow-templates-libraries" \
+        -DstagePrefix="${CANDIDATE_NAME}" \
+        -Dmaven.test.skip -T8 -e
+      env:
+        CANDIDATE_NAME: ${{ inputs.candidateName }}
+    - name: Push tags
+      run: |
         git push -u origin --tags
     - name: Release
       run: |

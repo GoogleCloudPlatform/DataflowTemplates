@@ -15,24 +15,14 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.PipelineUtils.createJobName;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -42,6 +32,14 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
+import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -63,31 +61,25 @@ public class PubSubSubscriptionToBigQueryIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     pubsubResourceManager =
-        DefaultPubsubResourceManager.builder(testName.getMethodName(), PROJECT)
-            .credentialsProvider(credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     bigQueryResourceManager =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
-            .setCredentials(credentials)
-            .build();
+        BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After
   public void cleanUp() {
-    pubsubResourceManager.cleanupAll();
-    bigQueryResourceManager.cleanupAll();
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, bigQueryResourceManager);
   }
 
   @Test
   public void testSubscriptionToBigQuery() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
-    String bqTable = testName.getMethodName();
+    String bqTable = testName;
     List<Map<String, Object>> messages =
         List.of(
-            Map.of("job", jobName, "msgNumber", 1),
-            Map.of("job", jobName, "msgNumber", 2),
-            Map.of("job", jobName, "msgNumber", 3));
+            Map.of("job", testId, "msgNumber", 1),
+            Map.of("job", testId, "msgNumber", 2),
+            Map.of("job", testId, "msgNumber", 3));
     List<Field> bqSchemaFields =
         Arrays.asList(
             Field.of("job", StandardSQLTypeName.STRING),
@@ -105,7 +97,7 @@ public class PubSubSubscriptionToBigQueryIT extends TemplateTestBase {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("inputSubscription", subscription.toString())
-            .addParameter("outputTableSpec", toTableSpec(table));
+            .addParameter("outputTableSpec", toTableSpecLegacy(table));
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -121,7 +113,7 @@ public class PubSubSubscriptionToBigQueryIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThatRecords(bigQueryResourceManager.readTable(table)).hasRecords(messages);
+    assertThatBigQueryRecords(bigQueryResourceManager.readTable(table)).hasRecords(messages);
   }
 
   private void publishMessages(TopicName topic, List<Map<String, Object>> messages) {

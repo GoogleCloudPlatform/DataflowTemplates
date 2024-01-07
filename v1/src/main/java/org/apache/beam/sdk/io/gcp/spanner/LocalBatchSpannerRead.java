@@ -20,7 +20,6 @@ package org.apache.beam.sdk.io.gcp.spanner;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.Options;
-import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.Partition;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
@@ -39,7 +38,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
@@ -114,64 +113,48 @@ abstract class LocalBatchSpannerRead
     @ProcessElement
     public void processElement(ProcessContext c) throws Exception {
       Transaction tx = c.sideInput(txView);
-      BatchReadOnlyTransaction context =
+      BatchReadOnlyTransaction batchTx =
           spannerAccessor.getBatchClient().batchReadOnlyTransaction(tx.transactionId());
-      for (Partition p : execute(c.element(), context)) {
+      ReadOperation op = c.element();
+      boolean dataBoostEnabled =
+          config.getDataBoostEnabled() != null
+              && Boolean.TRUE.equals(config.getDataBoostEnabled().get());
+
+      List<Partition> partitions;
+      if (op.getQuery() != null) {
+        // Query was selected.
+        partitions =
+            batchTx.partitionQuery(
+                op.getPartitionOptions(),
+                op.getQuery(),
+                Options.priority(config.getRpcPriority().get()),
+                Options.dataBoostEnabled(dataBoostEnabled));
+      } else if (op.getIndex() != null) {
+        // Read with index was selected.
+        partitions =
+            batchTx.partitionReadUsingIndex(
+                op.getPartitionOptions(),
+                op.getTable(),
+                op.getIndex(),
+                op.getKeySet(),
+                op.getColumns(),
+                Options.priority(config.getRpcPriority().get()),
+                Options.dataBoostEnabled(dataBoostEnabled));
+      } else {
+        // Read from table was selected.
+        partitions =
+            batchTx.partitionRead(
+                op.getPartitionOptions(),
+                op.getTable(),
+                op.getKeySet(),
+                op.getColumns(),
+                Options.priority(config.getRpcPriority().get()),
+                Options.dataBoostEnabled(dataBoostEnabled));
+      }
+
+      for (Partition p : partitions) {
         c.output(p);
       }
-    }
-
-    private List<Partition> execute(ReadOperation op, BatchReadOnlyTransaction tx) {
-      if (config.getRpcPriority() != null && config.getRpcPriority().get() != null) {
-        return executeWithPriority(op, tx, config.getRpcPriority().get());
-      } else {
-        return executeWithoutPriority(op, tx);
-      }
-    }
-
-    private List<Partition> executeWithoutPriority(ReadOperation op, BatchReadOnlyTransaction tx) {
-      // Query was selected.
-      if (op.getQuery() != null) {
-        return tx.partitionQuery(op.getPartitionOptions(), op.getQuery());
-      }
-      // Read with index was selected.
-      if (op.getIndex() != null) {
-        return tx.partitionReadUsingIndex(
-            op.getPartitionOptions(),
-            op.getTable(),
-            op.getIndex(),
-            op.getKeySet(),
-            op.getColumns());
-      }
-      // Read from table was selected.
-      return tx.partitionRead(
-          op.getPartitionOptions(), op.getTable(), op.getKeySet(), op.getColumns());
-    }
-
-    private List<Partition> executeWithPriority(
-        ReadOperation op, BatchReadOnlyTransaction tx, RpcPriority rpcPriority) {
-      // Query was selected.
-      if (op.getQuery() != null) {
-        return tx.partitionQuery(
-            op.getPartitionOptions(), op.getQuery(), Options.priority(rpcPriority));
-      }
-      // Read with index was selected.
-      if (op.getIndex() != null) {
-        return tx.partitionReadUsingIndex(
-            op.getPartitionOptions(),
-            op.getTable(),
-            op.getIndex(),
-            op.getKeySet(),
-            op.getColumns(),
-            Options.priority(rpcPriority));
-      }
-      // Read from table was selected.
-      return tx.partitionRead(
-          op.getPartitionOptions(),
-          op.getTable(),
-          op.getKeySet(),
-          op.getColumns(),
-          Options.priority(rpcPriority));
     }
   }
 

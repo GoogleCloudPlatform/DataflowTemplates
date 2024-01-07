@@ -30,42 +30,71 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 
-/** Dataflow template which deletes pulled Datastore Entities. */
+/**
+ * Dataflow template which deletes pulled Datastore Entities.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Datastore_to_Datastore_Delete.md">README
+ * Datastore</a> or <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Firestore_to_Firestore_Delete.md">README
+ * Firestore</a> for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Datastore_to_Datastore_Delete",
-    category = TemplateCategory.UTILITIES,
+    category = TemplateCategory.LEGACY,
     displayName = "Bulk Delete Entities in Datastore [Deprecated]",
     description =
-        "A pipeline which reads in Entities (via a GQL query) from Datastore, optionally passes in the JSON encoded Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
+        "A pipeline which reads in Entities (via a GQL query) from Datastore, optionally passes in the JSON encoded "
+            + "Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
     optionsClass = DatastoreToDatastoreDeleteOptions.class,
     skipOptions = {
       "firestoreReadGqlQuery",
       "firestoreReadProjectId",
       "firestoreReadNamespace",
       "firestoreDeleteProjectId",
-      "firestoreHintNumWorkers"
+      "firestoreHintNumWorkers",
+      "javascriptTextTransformReloadIntervalMinutes"
     },
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-bulk-delete",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "Datastore must be set up in the project prior to running the template.",
+      "If reading and deleting from separate Datastore instances, the Dataflow <a href=\"https://cloud.google.com/dataflow/docs/concepts/security-and-permissions#worker-service-account\">Worker Service Account</a> must have permission to read from one instance and delete from the other."
+    })
 @Template(
     name = "Firestore_to_Firestore_Delete",
     category = TemplateCategory.UTILITIES,
     displayName = "Bulk Delete Entities in Firestore (Datastore mode)",
     description =
-        "A pipeline which reads in Entities (via a GQL query) from Firestore, optionally passes in the JSON encoded Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
+        "A pipeline which reads in Entities (via a GQL query) from Firestore, optionally passes in the JSON encoded "
+            + "Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
     optionsClass = DatastoreToDatastoreDeleteOptions.class,
+    optionsOrder = {
+      DatastoreReadOptions.class,
+      DatastoreDeleteOptions.class,
+      JavascriptTextTransformerOptions.class
+    },
     skipOptions = {
       "datastoreReadGqlQuery",
       "datastoreReadProjectId",
       "datastoreReadNamespace",
       "datastoreDeleteProjectId",
-      "datastoreHintNumWorkers"
+      "datastoreHintNumWorkers",
+      "javascriptTextTransformReloadIntervalMinutes"
     },
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/firestore-bulk-delete",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "Firestore must be set up in the project prior to running the template.",
+      "If reading and deleting from separate Firestore instances, the Dataflow <a href=\"https://cloud.google.com/dataflow/docs/concepts/security-and-permissions#worker-service-account\">Worker Service Account</a> must have permission to read from one instance and delete from the other."
+    })
 public class DatastoreToDatastoreDelete {
 
   public static <T> ValueProvider<T> selectProvidedInput(
       ValueProvider<T> datastoreInput, ValueProvider<T> firestoreInput) {
-    return new FirestoreNestedValueProvider(datastoreInput, firestoreInput);
+    return new FirestoreNestedValueProvider<T>(datastoreInput, firestoreInput);
   }
 
   /** Custom PipelineOptions. */

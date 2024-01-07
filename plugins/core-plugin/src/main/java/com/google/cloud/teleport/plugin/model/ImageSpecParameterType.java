@@ -21,6 +21,9 @@ public enum ImageSpecParameterType {
   /** Generic text parameter. */
   TEXT,
 
+  /** BigQuery table reference. */
+  BIGQUERY_TABLE,
+
   /** Cloud Storage glob to read file(s). */
   GCS_READ_FILE,
 
@@ -37,5 +40,14 @@ public enum ImageSpecParameterType {
   PUBSUB_SUBSCRIPTION,
 
   /** Pub/Sub Topic to read or write. */
-  PUBSUB_TOPIC;
+  PUBSUB_TOPIC,
+
+  /** Boolean parameter. */
+  BOOLEAN,
+
+  /** Enum parameter. */
+  ENUM,
+
+  /** Number parameter. */
+  NUMBER;
 }

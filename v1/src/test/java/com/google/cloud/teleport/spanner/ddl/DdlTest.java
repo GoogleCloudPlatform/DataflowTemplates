@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
@@ -28,9 +29,11 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.Type;
+import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn.IndexColumnsBuilder;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn.Order;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
+import com.google.common.base.Optional;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
@@ -99,7 +102,9 @@ public class DdlTest {
         .foreignKeys(
             ImmutableList.of(
                 "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
-                    + " REFERENCES `AllowedNames` (`first_name`)"))
+                    + " REFERENCES `AllowedNames` (`first_name`)",
+                "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
+                    + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"))
         .checkConstraints(ImmutableList.of("CONSTRAINT `ck` CHECK (`first_name` != `last_name`)"))
         .endTable();
     Export export =
@@ -127,9 +132,11 @@ public class DdlTest {
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
-                + " REFERENCES `AllowedNames` (`first_name`)"));
+                + " REFERENCES `AllowedNames` (`first_name`)"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
+                + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"));
     List<String> statements = ddl.statements();
-    assertEquals(4, statements.size());
+    assertEquals(5, statements.size());
     assertThat(
         statements.get(0),
         equalToCompressingWhiteSpace(
@@ -151,6 +158,11 @@ public class DdlTest {
                 + " `AllowedNames` (`first_name`)"));
     assertThat(
         statements.get(3),
+        equalToCompressingWhiteSpace(
+            "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`) REFERENCES"
+                + " `AllowedNames` (`last_name`) ON DELETE CASCADE"));
+    assertThat(
+        statements.get(4),
         equalToCompressingWhiteSpace(
             "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"));
     assertNotNull(ddl.hashCode());
@@ -187,6 +199,10 @@ public class DdlTest {
         .generatedAs("CONCAT(first_name, ' ', last_name)")
         .stored()
         .endColumn()
+        .column("update_time")
+        .pgSpannerCommitTimestamp()
+        .notNull()
+        .endColumn()
         .primaryKey()
         .asc("id")
         .asc("gen_id")
@@ -196,7 +212,9 @@ public class DdlTest {
         .foreignKeys(
             ImmutableList.of(
                 "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
-                    + " REFERENCES \"AllowedNames\" (\"first_name\")"))
+                    + " REFERENCES \"AllowedNames\" (\"first_name\")",
+                "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
+                    + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"))
         .checkConstraints(
             ImmutableList.of("CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\")"))
         .endTable();
@@ -222,12 +240,15 @@ public class DdlTest {
                 + " \"last_name\" character varying DEFAULT Lennon,"
                 + " \"full_name\" character varying GENERATED ALWAYS AS"
                 + " (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " \"update_time\" spanner.commit_timestamp NOT NULL,"
                 + " CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\", \"gen_id\")"
                 + " ) "
                 + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
-                + " REFERENCES \"AllowedNames\" (\"first_name\")"));
+                + " REFERENCES \"AllowedNames\" (\"first_name\")"
+                + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
+                + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"));
     assertNotNull(ddl.hashCode());
   }
 
@@ -532,7 +553,67 @@ public class DdlTest {
             "ALTER TABLE \"Account\" ADD CONSTRAINT \"account_to_user\" FOREIGN KEY"
                 + " (\"account_id\", \"owner_name\") REFERENCES \"User\" (\"user_id\","
                 + " \"full_name\")"));
+    // TODO(gunjj) Consider moving FK ON DELETE CASCADE test from simple()/pgSimple() to this method
+    // for PG and for a separate such method for GSQL
     assertNotNull(foreignKey.hashCode());
+  }
+
+  @Test
+  public void testModel() {
+    Model.Builder model =
+        Model.builder()
+            .name("user_model")
+            .remote(true)
+            .options(ImmutableList.of("endpoint=\"test\""));
+
+    model
+        .inputColumn("i1")
+        .type(Type.bool())
+        .size(-1)
+        .columnOptions(ImmutableList.of("required=FALSE"))
+        .endInputColumn();
+    model.inputColumn("i2").type(Type.string()).size(-1).endInputColumn();
+    model
+        .outputColumn("o1")
+        .type(Type.int64())
+        .size(-1)
+        .columnOptions(ImmutableList.of("required=TRUE"))
+        .endOutputColumn();
+    model.outputColumn("o2").type(Type.float64()).size(-1).endOutputColumn();
+
+    assertThat(
+        model.build().prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE MODEL `user_model`"
+                + " INPUT ( `i1` BOOL OPTIONS (required=FALSE), `i2` STRING(MAX), )"
+                + " OUTPUT ( `o1` INT64 OPTIONS (required=TRUE), `o2` FLOAT64, )"
+                + " REMOTE OPTIONS (endpoint=\"test\")"));
+  }
+
+  @Test
+  public void pgTestModel() {
+    Model.Builder model =
+        Model.builder(Dialect.POSTGRESQL)
+            .name("user_model")
+            .remote(true)
+            .options(ImmutableList.of("endpoint=\"test\""));
+
+    model
+        .inputColumn("i1")
+        .type(Type.bool())
+        .size(-1)
+        .columnOptions(ImmutableList.of("required=FALSE"))
+        .endInputColumn();
+    model.inputColumn("i2").type(Type.string()).size(-1).endInputColumn();
+    model
+        .outputColumn("o1")
+        .type(Type.int64())
+        .size(-1)
+        .columnOptions(ImmutableList.of("required=TRUE"))
+        .endOutputColumn();
+    model.outputColumn("o2").type(Type.float64()).size(-1).endOutputColumn();
+
+    assertThrows(IllegalArgumentException.class, () -> model.build().prettyPrint());
   }
 
   @Test
@@ -654,6 +735,71 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
                 + " FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"));
+    assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void sequences() {
+    Ddl ddl =
+        Ddl.builder()
+            .createSequence("MySequence")
+            .options(
+                ImmutableList.of(
+                    "sequence_kind=\"bit_reversed_positive\"",
+                    "skip_range_min=0",
+                    "skip_range_max=1000",
+                    "start_with_counter=50"))
+            .endSequence()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE SEQUENCE `MySequence`"
+                + " OPTIONS (sequence_kind=\"bit_reversed_positive\", "
+                + " skip_range_min=0, skip_range_max=1000, start_with_counter=50)"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(1, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace(
+            "CREATE SEQUENCE `MySequence`"
+                + " OPTIONS (sequence_kind=\"bit_reversed_positive\", "
+                + " skip_range_min=0, skip_range_max=1000, start_with_counter=50)"));
+    assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void pgSequences() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createSequence("MyPGSequence")
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(Long.valueOf(30))
+            .skipRangeMin(Long.valueOf(1))
+            .skipRangeMax(Long.valueOf(1000))
+            .endSequence()
+            .createSequence("MyPGSequence2")
+            .sequenceKind("bit_reversed_positive")
+            .endSequence()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE"
+                + " SKIP RANGE 1 1000 START COUNTER WITH 30 "
+                + "\nCREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(2, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace(
+            "CREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE"
+                + " SKIP RANGE 1 1000 START COUNTER WITH 30"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace("CREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"));
     assertNotNull(ddl.hashCode());
   }
 
@@ -784,6 +930,7 @@ public class DdlTest {
     assertThrows(NullPointerException.class, () -> foreignKeyBuilder.table(null));
     assertThrows(NullPointerException.class, () -> foreignKeyBuilder.referencedTable(null));
     assertThrows(NullPointerException.class, () -> foreignKeyBuilder.dialect(null));
+    assertThrows(NullPointerException.class, () -> foreignKeyBuilder.referentialAction(null));
     assertThrows(IllegalStateException.class, () -> foreignKeyBuilder.build());
     ForeignKey foreignKey =
         foreignKeyBuilder.name("fk").table("table1").referencedTable("table2").build();
@@ -792,6 +939,53 @@ public class DdlTest {
     ForeignKey foreignKey1 =
         ForeignKey.builder().name("fk").table("table1").referencedTable("table2").build();
     assertTrue(foreignKey.equals(foreignKey1));
+  }
+
+  @Test
+  public void testForeignKeyBuilderActions() {
+    ForeignKey fkBase =
+        ForeignKey.builder().name("fk").table("Users").referencedTable("AllowedNames").build();
+    ForeignKey.Builder fkWithDeleteCascade1Builder =
+        ForeignKey.builder().name("fk_odc").table("Users").referencedTable("AllowedNames");
+    fkWithDeleteCascade1Builder.columnsBuilder().add("first_name", "last_name");
+    fkWithDeleteCascade1Builder.referencedColumnsBuilder().add("first_name", "last_name");
+    fkWithDeleteCascade1Builder.referentialAction(Optional.of(ReferentialAction.ON_DELETE_CASCADE));
+    ForeignKey fkWithDeleteCascade1 = fkWithDeleteCascade1Builder.build();
+    assertTrue(fkWithDeleteCascade1.equals(fkWithDeleteCascade1));
+    assertFalse(fkBase.equals(fkWithDeleteCascade1));
+
+    ForeignKey.Builder fkWithDeleteCascade2Builder =
+        ForeignKey.builder().name("fk_odc").table("Users").referencedTable("AllowedNames");
+    fkWithDeleteCascade2Builder.columnsBuilder().add("first_name", "last_name");
+    fkWithDeleteCascade2Builder.referencedColumnsBuilder().add("first_name", "last_name");
+    fkWithDeleteCascade2Builder.referentialAction(Optional.of(ReferentialAction.ON_DELETE_CASCADE));
+    ForeignKey fkWithDeleteCascade2 = fkWithDeleteCascade2Builder.build();
+    assertTrue(fkWithDeleteCascade1.equals(fkWithDeleteCascade2));
+
+    ForeignKey.Builder fkWithDeleteNoActionBuilder =
+        ForeignKey.builder().name("fk_odna").table("Users").referencedTable("AllowedNames");
+    fkWithDeleteNoActionBuilder.columnsBuilder().add("first_name", "last_name");
+    fkWithDeleteNoActionBuilder.referencedColumnsBuilder().add("first_name", "last_name");
+    fkWithDeleteNoActionBuilder.referentialAction(
+        Optional.of(ReferentialAction.ON_DELETE_NO_ACTION));
+    ForeignKey fkWithDeleteNoAction = fkWithDeleteNoActionBuilder.build();
+    assertTrue(fkWithDeleteNoAction.equals(fkWithDeleteNoAction));
+    assertFalse(fkWithDeleteCascade1.equals(fkWithDeleteNoAction));
+  }
+
+  @Test
+  public void testUnsupportedForeignKeyBuilderActionThrowsError() {
+    ForeignKey.Builder fkWithUnsupportedActionBuilder =
+        ForeignKey.builder().name("fk_odsn").table("Users").referencedTable("AllowedNames");
+    fkWithUnsupportedActionBuilder.columnsBuilder().add("first_name", "last_name");
+    fkWithUnsupportedActionBuilder.referencedColumnsBuilder().add("first_name", "last_name");
+    fkWithUnsupportedActionBuilder.referentialAction(
+        Optional.of(ReferentialAction.ON_DELETE_SET_NULL));
+    ForeignKey fkWithUnsupportedAction = fkWithUnsupportedActionBuilder.build();
+    Throwable exception =
+        assertThrows(IllegalArgumentException.class, () -> fkWithUnsupportedAction.prettyPrint());
+    assertThat(exception.getMessage())
+        .matches("Foreign Key action not supported: ON DELETE SET NULL");
   }
 
   @Test

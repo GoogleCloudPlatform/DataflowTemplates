@@ -51,7 +51,7 @@ public class FailedPubsubMessageToPubsubTopicFn
     PubsubMessage pubsubMessage = failsafeElement.getOriginalPayload();
     String message =
         pubsubMessage.getPayload().length > 0
-            ? new String(pubsubMessage.getPayload())
+            ? new String(pubsubMessage.getPayload(), StandardCharsets.UTF_8)
             : pubsubMessage.getAttributeMap().toString();
 
     // Format the timestamp for insertion

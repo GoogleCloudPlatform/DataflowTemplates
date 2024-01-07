@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -57,8 +57,8 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Splitter;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Throwables;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.slf4j.Logger;
@@ -163,7 +163,7 @@ public class CsvConverters {
   }
 
   /**
-   * Gets Csv format accoring to <a
+   * Gets Csv format according to <a
    * href="https://javadoc.io/doc/org.apache.commons/commons-csv">Apache Commons CSV</a>. If user
    * passed invalid format error is thrown.
    */
@@ -180,10 +180,11 @@ public class CsvConverters {
 
   /** Necessary {@link PipelineOptions} options for Csv Pipelines. */
   public interface CsvPipelineOptions extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "The input filepattern to read from.",
-        helpText = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv")
+        helpText = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"})
     String getInputFileSpec();
 
     void setInputFileSpec(String inputFileSpec);
@@ -314,6 +315,9 @@ public class CsvConverters {
     public abstract String udfFunctionName();
 
     @Nullable
+    public abstract Integer udfReloadIntervalMinutes();
+
+    @Nullable
     public abstract String jsonSchemaPath();
 
     @Nullable
@@ -346,6 +350,7 @@ public class CsvConverters {
             FailsafeJavascriptUdf.<String>newBuilder()
                 .setFileSystemPath(udfFileSystemPath())
                 .setFunctionName(udfFunctionName())
+                .setReloadIntervalMinutes(udfReloadIntervalMinutes())
                 .setSuccessTag(udfOutputTag())
                 .setFailureTag(udfDeadletterTag())
                 .build());
@@ -365,6 +370,10 @@ public class CsvConverters {
       }
 
       // Run if using headers
+      if (!lines.has(headerTag())) {
+        throw new IllegalArgumentException(
+            "Headers are not provided for CSV import. Either provide a JSON schema, or set the 'containsHeader' parameter to true.");
+      }
       headersView = lines.get(headerTag()).apply(Sample.any(1)).apply(View.asSingleton());
 
       PCollectionView<String> finalHeadersView = headersView;
@@ -403,6 +412,8 @@ public class CsvConverters {
       public abstract Builder setUdfFileSystemPath(String udfFileSystemPath);
 
       public abstract Builder setUdfFunctionName(String udfFunctionName);
+
+      public abstract Builder setUdfReloadIntervalMinutes(int udfReloadIntervalMinutes);
 
       public abstract Builder setJsonSchemaPath(String jsonSchemaPath);
 

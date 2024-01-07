@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.auto.value.AutoValue;
@@ -25,6 +25,8 @@ import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTrans
 import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO.Write.FieldValueExtractFn;
+import com.google.cloud.teleport.v2.utils.KMSUtils;
+import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import java.util.Optional;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -86,6 +88,7 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
       public abstract StringFieldValueExtractFn build();
     }
   }
+
   /** Convert provided long to {@link Duration}. */
   private static Duration getDuration(Long milliseconds) {
     return new Duration(milliseconds);
@@ -122,7 +125,29 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
               .withUsername(options().getElasticsearchUsername())
               .withPassword(options().getElasticsearchPassword());
     } else {
-      config = config.withApiKey(options().getApiKey());
+      switch (options().getApiKeySource()) {
+        case "PLAINTEXT":
+          config = config.withApiKey(options().getApiKey());
+          break;
+        case "KMS":
+          config =
+              config.withApiKey(
+                  KMSUtils.maybeDecrypt(
+                          options().getApiKey(), options().getApiKeyKMSEncryptionKey())
+                      .get());
+          break;
+        case "SECRET_MANAGER":
+          config = config.withApiKey(SecretManagerUtils.getSecret(options().getApiKeySecretId()));
+          break;
+      }
+    }
+
+    if (options().getTrustSelfSignedCerts() != null) {
+      config = config.withTrustSelfSignedCerts(options().getTrustSelfSignedCerts());
+    }
+
+    if (options().getDisableCertificateValidation() != null) {
+      config = config.withDisableCertificateValidation(options().getDisableCertificateValidation());
     }
 
     ElasticsearchIO.Write elasticsearchWriter =

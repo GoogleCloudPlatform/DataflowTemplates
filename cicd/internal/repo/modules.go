@@ -28,16 +28,18 @@ const (
 	ProjectRoot = "."
 	ClassicRoot = "v1"
 	FlexRoot    = "v2"
-	SyndeoRoot  = "syndeo-template"
 	ItRoot      = "it"
 )
 
 // Gets all the unique modules for files whose path from the root directory is in `paths`. Example paths:
-//		pom.xml -> Mapped to Classic root
-//		v2/cdc-parent/pom.xml -> Mapped to cdc-parent under Flex Templates
+//
+//	pom.xml -> Mapped to Classic root
+//	v2/cdc-parent/pom.xml -> Mapped to cdc-parent under Flex Templates
+//
 // The return value has the following properties:
-//		Key: The path of the root module, equivalent to ClassicRoot, FlexRoot, etc.
-//		Value: List of modules (e.g. cdc-parent, cdc-parent/cdc-common). An empty entry represents the root itself.
+//
+//	Key: The path of the root module, equivalent to ClassicRoot, FlexRoot, etc.
+//	Value: List of modules (e.g. cdc-parent, cdc-parent/cdc-common). An empty entry represents the root itself.
 func GetModulesForPaths(paths []string) map[string][]string {
 	if len(paths) == 0 {
 		return make(map[string][]string)
@@ -49,7 +51,6 @@ func GetModulesForPaths(paths []string) map[string][]string {
 	it := fmt.Sprintf("it%s", string(os.PathSeparator))
 	v1 := fmt.Sprintf("v1%s", string(os.PathSeparator))
 	v2 := fmt.Sprintf("v2%s", string(os.PathSeparator))
-	syndeo := fmt.Sprintf("syndeo-template%s", string(os.PathSeparator))
 
 	for _, path := range paths {
 		if strings.HasPrefix(path, v1) {
@@ -58,8 +59,6 @@ func GetModulesForPaths(paths []string) map[string][]string {
 			flex = append(flex, strings.TrimPrefix(path, v2))
 		} else if strings.HasPrefix(path, it) {
 			m[ItRoot] = make([]string, 0)
-		} else if strings.HasPrefix(path, syndeo) {
-			m[SyndeoRoot] = make([]string, 0)
 		} else {
 			// TODO(zhoufek): Make this more granular, especially separating .github and cicd code
 			// into separate "modules"
@@ -147,8 +146,9 @@ func flexModulesAsTrie() *moduleTrieNode {
 }
 
 // Returns a map of roots to their modules. Properties are:
-// 		Key: The root module, equivalent to one of the const values (e.g. ClassicRoot)
-//		Value: All the submodules, sometimes nested under another parent that is also in the slice
+//
+//	Key: The root module, equivalent to one of the const values (e.g. ClassicRoot)
+//	Value: All the submodules, sometimes nested under another parent that is also in the slice
 func getModuleMapping() map[string][]string {
 	m := make(map[string][]string)
 	m[ProjectRoot] = make([]string, 0)

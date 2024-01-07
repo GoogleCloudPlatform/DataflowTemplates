@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.spanner.ExportPipeline.ExportPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -34,15 +35,42 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 
-/** Dataflow template that exports a Cloud Spanner database to Avro files in GCS. */
+/**
+ * Dataflow template that exports a Cloud Spanner database to Avro files in GCS.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_Spanner_to_GCS_Avro.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Cloud_Spanner_to_GCS_Avro",
     category = TemplateCategory.BATCH,
     displayName = "Cloud Spanner to Avro Files on Cloud Storage",
-    description =
-        "A pipeline to export a Cloud Spanner database to a set of Avro files in Cloud Storage.",
+    description = {
+      "The Cloud Spanner to Avro Files on Cloud Storage template is a batch pipeline that exports a whole Cloud Spanner database to Cloud Storage in Avro format. "
+          + "Exporting a Cloud Spanner database creates a folder in the bucket you select. The folder contains:\n"
+          + "- A `spanner-export.json` file.\n"
+          + "- A `TableName-manifest.json` file for each table in the database you exported.\n"
+          + "- One or more `TableName.avro-#####-of-#####` files.\n",
+      "For example, exporting a database with two tables, Singers and Albums, creates the following file set:\n"
+          + "- `Albums-manifest.json`\n"
+          + "- `Albums.avro-00000-of-00002`\n"
+          + "- `Albums.avro-00001-of-00002`\n"
+          + "- `Singers-manifest.json`\n"
+          + "- `Singers.avro-00000-of-00003`\n"
+          + "- `Singers.avro-00001-of-00003`\n"
+          + "- `Singers.avro-00002-of-00003`\n"
+          + "- `spanner-export.json`"
+    },
     optionsClass = ExportPipelineOptions.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-to-avro",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Cloud Spanner database must exist.",
+      "The output Cloud Storage bucket must exist.",
+      "In addition to the Identity and Access Management (IAM) roles necessary to run Dataflow jobs, you must also have the <a href=\"https://cloud.google.com/spanner/docs/export#iam\">appropriate IAM roles</a> for reading your Cloud Spanner data and writing to your Cloud Storage bucket."
+    })
 public class ExportPipeline {
 
   /** Options for Export pipeline. */
@@ -50,8 +78,8 @@ public class ExportPipeline {
     @TemplateParameter.Text(
         order = 1,
         regexes = {"[a-z][a-z0-9\\-]*[a-z0-9]"},
-        description = "Cloud Spanner instance id",
-        helpText = "The instance id of the Cloud Spanner database that you want to export.")
+        description = "Cloud Spanner instance ID",
+        helpText = "The instance ID of the Cloud Spanner database that you want to export.")
     ValueProvider<String> getInstanceId();
 
     void setInstanceId(ValueProvider<String> value);
@@ -59,8 +87,8 @@ public class ExportPipeline {
     @TemplateParameter.Text(
         order = 2,
         regexes = {"[a-z][a-z0-9_\\-]*[a-z0-9]"},
-        description = "Cloud Spanner database id",
-        helpText = "The database id of the Cloud Spanner database that you want to export.")
+        description = "Cloud Spanner database ID",
+        helpText = "The database ID of the Cloud Spanner database that you want to export.")
     ValueProvider<String> getDatabaseId();
 
     void setDatabaseId(ValueProvider<String> value);
@@ -69,7 +97,8 @@ public class ExportPipeline {
         order = 3,
         description = "Cloud Storage output directory",
         helpText =
-            "The Cloud Storage path where the Avro files should be exported to. A new directory will be created under this path that contains the export.",
+            "The Cloud Storage path where the Avro files should be exported to. A new directory"
+                + " will be created under this path that contains the export.",
         example = "gs://your-bucket/your-path")
     ValueProvider<String> getOutputDir();
 
@@ -80,7 +109,8 @@ public class ExportPipeline {
         optional = true,
         description = "Cloud Storage temp directory for storing Avro files",
         helpText =
-            "The Cloud Storage path where the temporary Avro files can be created. Ex: gs://your-bucket/your-path")
+            "The Cloud Storage path where the temporary Avro files can be created. Ex:"
+                + " gs://your-bucket/your-path")
     ValueProvider<String> getAvroTempDirectory();
 
     void setAvroTempDirectory(ValueProvider<String> value);
@@ -118,7 +148,10 @@ public class ExportPipeline {
         },
         description = "Snapshot time",
         helpText =
-            "Specifies the snapshot time as RFC 3339 format in UTC time without the timezone offset(always ends in 'Z'). Timestamp must be in the past and Maximum timestamp staleness applies. See https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness",
+            "Specifies the snapshot time as RFC 3339 format in UTC time without the timezone"
+                + " offset(always ends in 'Z'). Timestamp must be in the past and Maximum timestamp"
+                + " staleness applies. See"
+                + " https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness",
         example = "1990-12-31T23:59:59Z")
     @Default.String(value = "")
     ValueProvider<String> getSnapshotTime();
@@ -129,7 +162,7 @@ public class ExportPipeline {
         order = 8,
         optional = true,
         description = "Cloud Spanner Project Id",
-        helpText = "The project id of the Cloud Spanner instance.")
+        helpText = "The project ID of the Cloud Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
@@ -139,7 +172,8 @@ public class ExportPipeline {
         optional = true,
         description = "Export Timestamps as Timestamp-micros type",
         helpText =
-            "If true, Timestamps are exported as timestamp-micros type. Timestamps are exported as ISO8601 strings at nanosecond precision by default.")
+            "If true, Timestamps are exported as timestamp-micros type. Timestamps are exported as"
+                + " ISO8601 strings at nanosecond precision by default.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getShouldExportTimestampAsLogicalType();
 
@@ -151,7 +185,10 @@ public class ExportPipeline {
         regexes = {"^[a-zA-Z0-9_]+(,[a-zA-Z0-9_]+)*$"},
         description = "Cloud Spanner table name(s).",
         helpText =
-            "If provided, only this comma separated list of tables are exported. Ancestor tables and tables that are referenced via foreign keys are required. If not explicitly listed, the `shouldExportRelatedTables` flag must be set for a successful export.")
+            "If provided, only this comma separated list of tables are exported. Ancestor tables"
+                + " and tables that are referenced via foreign keys are required. If not explicitly"
+                + " listed, the `shouldExportRelatedTables` flag must be set for a successful"
+                + " export.")
     @Default.String(value = "")
     ValueProvider<String> getTableNames();
 
@@ -162,7 +199,10 @@ public class ExportPipeline {
         optional = true,
         description = "Export necessary Related Spanner tables.",
         helpText =
-            "Used in conjunction with `tableNames`. If true, add related tables necessary for the export, such as interleaved parent tables and foreign keys tables.  If `tableNames` is specified but doesn't include related tables, this option must be set to true for a successful export.")
+            "Used in conjunction with `tableNames`. If true, add related tables necessary for the"
+                + " export, such as interleaved parent tables and foreign keys tables.  If"
+                + " `tableNames` is specified but doesn't include related tables, this option must"
+                + " be set to true for a successful export.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getShouldExportRelatedTables();
 
@@ -170,14 +210,32 @@ public class ExportPipeline {
 
     @TemplateParameter.Enum(
         order = 12,
-        enumOptions = {"LOW", "MEDIUM", "HIGH"},
+        enumOptions = {
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
+        },
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
+            "The request priority for Cloud Spanner calls. The value must be one of:"
+                + " [HIGH,MEDIUM,LOW].")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
+
+    @TemplateParameter.Boolean(
+        order = 13,
+        optional = true,
+        description = "Use independent compute resource (Spanner DataBoost).",
+        helpText =
+            "Use Spanner on-demand compute so the export job will run on independent compute"
+                + " resources and have no impact to current Spanner workloads. This will incur"
+                + " additional charges in Spanner.")
+    @Default.Boolean(false)
+    ValueProvider<Boolean> getDataBoostEnabled();
+
+    void setDataBoostEnabled(ValueProvider<Boolean> value);
   }
 
   /**
@@ -208,7 +266,8 @@ public class ExportPipeline {
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId())
-            .withRpcPriority(options.getSpannerPriority());
+            .withRpcPriority(options.getSpannerPriority())
+            .withDataBoostEnabled(options.getDataBoostEnabled());
     p.begin()
         .apply(
             "Run Export",

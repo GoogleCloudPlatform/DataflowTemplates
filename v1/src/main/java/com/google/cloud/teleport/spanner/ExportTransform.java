@@ -23,6 +23,8 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.Model;
+import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
@@ -51,6 +53,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -61,11 +65,11 @@ import org.apache.avro.io.DatumWriter;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO;
+import org.apache.beam.sdk.extensions.avro.io.DynamicAvroDestinations;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
-import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.DefaultFilenamePolicy;
-import org.apache.beam.sdk.io.DynamicAvroDestinations;
 import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
@@ -142,10 +146,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         spannerConfig,
         outputDir,
         testJobId,
-        /*snapshotTime=*/ ValueProvider.StaticValueProvider.of(""),
-        /*tableNames=*/ ValueProvider.StaticValueProvider.of(""),
-        /*exportRelatedTables=*/ ValueProvider.StaticValueProvider.of(false),
-        /*shouldExportTimestampAsLogicalType=*/ ValueProvider.StaticValueProvider.of(false),
+        /* snapshotTime= */ ValueProvider.StaticValueProvider.of(""),
+        /* tableNames= */ ValueProvider.StaticValueProvider.of(""),
+        /* exportRelatedTables= */ ValueProvider.StaticValueProvider.of(false),
+        /* shouldExportTimestampAsLogicalType= */ ValueProvider.StaticValueProvider.of(false),
         outputDir);
   }
 
@@ -299,6 +303,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<String> allModelNames =
+        ddl.apply(
+            "List all model names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (Model model : ddl.models()) {
+                      c.output(model.name());
+                    }
+                  }
+                }));
+
     PCollection<String> allChangeStreamNames =
         ddl.apply(
             "List all change stream names",
@@ -310,6 +329,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     Ddl ddl = c.element();
                     for (ChangeStream changeStream : ddl.changeStreams()) {
                       c.output(changeStream.name());
+                    }
+                  }
+                }));
+
+    PCollection<String> allSequenceNames =
+        ddl.apply(
+            "List all sequence names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (Sequence sequence : ddl.sequences()) {
+                      c.output(sequence.name());
                     }
                   }
                 }));
@@ -426,6 +460,23 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<KV<String, Iterable<String>>> models =
+        allModelNames.apply(
+            "Export models",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String modelName = c.element();
+                    LOG.info("Exporting model: " + modelName);
+                    // This file will contain the schema definition for the model.
+                    c.output(
+                        KV.of(
+                            modelName, Collections.singleton(modelName + ".avro-00000-of-00001")));
+                  }
+                }));
+
     PCollection<KV<String, Iterable<String>>> changeStreams =
         allChangeStreamNames.apply(
             "Export change streams",
@@ -444,11 +495,31 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
-    // Empty tables, views and change streams are handled together, because we export them as empty
-    // Avro files that only contain the Avro schemas.
+    PCollection<KV<String, Iterable<String>>> sequences =
+        allSequenceNames.apply(
+            "Export sequences",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String sequenceName = c.element();
+                    LOG.info("Exporting sequence: " + sequenceName);
+                    // This file will contain the schema definition for the sequence.
+                    c.output(
+                        KV.of(
+                            sequenceName,
+                            Collections.singleton(sequenceName + ".avro-00000-of-00001")));
+                  }
+                }));
+
+    // Empty tables, views, models, change streams and sequences are handled together,
+    // because we export them as empty Avro files that only contain the Avro schemas.
     PCollection<KV<String, Iterable<String>>> emptySchemaFiles =
         PCollectionList.of(emptyTablesAndViews)
+            .and(models)
             .and(changeStreams)
+            .and(sequences)
             .apply("Combine all empty schema files", Flatten.pCollections());
 
     emptySchemaFiles =
@@ -598,6 +669,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     private final PCollectionView<String> uniqueIdView;
     private final PCollectionView<Dialect> dialectView;
     private final ValueProvider<ResourceId> baseDir;
+    private transient ConcurrentMap<String, SpannerRecordConverter> recordConverters;
 
     SchemaBasedDynamicDestinations(
         PCollectionView<Map<String, SerializableSchemaSupplier>> avroSchemas,
@@ -658,10 +730,18 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     @Override
     public GenericRecord formatRecord(Struct record) {
-      String table = record.getString(0);
-      Schema schema = sideInput(avroSchemas).get(table).get();
-      Dialect dialect = sideInput(dialectView);
-      return new SpannerRecordConverter(schema, dialect).convert(record);
+      synchronized (this) {
+        if (recordConverters == null) {
+          recordConverters = new ConcurrentHashMap<>();
+        }
+      }
+      return recordConverters
+          .computeIfAbsent(
+              record.getString(0),
+              (String table) ->
+                  new SpannerRecordConverter(
+                      sideInput(avroSchemas).get(table).get(), sideInput(dialectView)))
+          .convert(record);
     }
   }
 
@@ -775,6 +855,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       for (Export.Table obj : exportMetadata) {
         if (ddl.changeStream(obj.getName()) != null) {
           exportManifest.addChangeStreams(obj);
+        } else if (ddl.sequence(obj.getName()) != null) {
+          exportManifest.addSequences(obj);
         } else {
           exportManifest.addTables(obj);
         }

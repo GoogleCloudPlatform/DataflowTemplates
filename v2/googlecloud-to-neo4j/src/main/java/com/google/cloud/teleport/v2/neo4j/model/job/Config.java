@@ -15,51 +15,85 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.AvroType;
 import java.io.Serializable;
-import lombok.Getter;
-import lombok.Setter;
 import org.json.JSONObject;
 
 /** Global configuration options. */
-@Getter
-@Setter
 public class Config implements Serializable {
 
   private Boolean resetDb = false;
   private Boolean indexAllProperties = false;
 
-  private AvroType avroType = AvroType.parquet;
-
   private Integer nodeParallelism = 5;
   private Integer edgeParallelism = 1;
+  private Integer customQueryParallelism = 1;
   private Integer nodeBatchSize = 5000;
   private Integer edgeBatchSize = 1000;
+  private Integer customQueryBatchSize = 1000;
 
   public Config() {}
 
   public Config(JSONObject jsonObject) {
     resetDb = jsonObject.has("reset_db") && jsonObject.getBoolean("reset_db");
     nodeParallelism =
-        jsonObject.has("node_write_batch_size")
-            ? jsonObject.getInt("node_write_batch_size")
-            : nodeParallelism;
-    edgeParallelism =
-        jsonObject.has("edge_write_batch_size")
-            ? jsonObject.getInt("edge_write_batch_size")
-            : edgeParallelism;
-    // not currently implemented
-    nodeBatchSize =
         jsonObject.has("node_write_parallelism")
             ? jsonObject.getInt("node_write_parallelism")
-            : nodeBatchSize;
-    edgeBatchSize =
+            : nodeParallelism;
+    edgeParallelism =
         jsonObject.has("edge_write_parallelism")
             ? jsonObject.getInt("edge_write_parallelism")
+            : edgeParallelism;
+    customQueryParallelism =
+        jsonObject.has("custom_query_parallelism")
+            ? jsonObject.getInt("custom_query_parallelism")
+            : customQueryParallelism;
+    nodeBatchSize =
+        jsonObject.has("node_write_batch_size")
+            ? jsonObject.getInt("node_write_batch_size")
+            : nodeBatchSize;
+    edgeBatchSize =
+        jsonObject.has("edge_write_batch_size")
+            ? jsonObject.getInt("edge_write_batch_size")
+            : edgeBatchSize;
+    customQueryBatchSize =
+        jsonObject.has("custom_query_batch_size")
+            ? jsonObject.getInt("custom_query_batch_size")
             : edgeBatchSize;
     indexAllProperties =
         jsonObject.has("index_all_properties")
             ? jsonObject.getBoolean("index_all_properties")
             : indexAllProperties;
+  }
+
+  public Boolean getResetDb() {
+    return resetDb;
+  }
+
+  public Boolean getIndexAllProperties() {
+    return indexAllProperties;
+  }
+
+  public Integer getNodeParallelism() {
+    return nodeParallelism;
+  }
+
+  public Integer getEdgeParallelism() {
+    return edgeParallelism;
+  }
+
+  public Integer getCustomQueryParallelism() {
+    return customQueryParallelism;
+  }
+
+  public Integer getNodeBatchSize() {
+    return nodeBatchSize;
+  }
+
+  public Integer getEdgeBatchSize() {
+    return edgeBatchSize;
+  }
+
+  public Integer getCustomQueryBatchSize() {
+    return customQueryBatchSize;
   }
 }

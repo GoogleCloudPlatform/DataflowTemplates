@@ -32,14 +32,14 @@ import org.apache.beam.sdk.options.ValueProvider;
 
 /** Dataflow template which copies Datastore Entities to a BigQuery table. */
 public class DatastoreToBigQuery {
-  interface DatastoreToBigQueryOptions
+  public interface DatastoreToBigQueryOptions
       extends PipelineOptions, DatastoreReadOptions, JavascriptTextTransformerOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format "
-                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
+                + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
     ValueProvider<String> getOutputTableSpec();
 
     void setOutputTableSpec(ValueProvider<String> value);

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.mongodb.templates;
 
+import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.metadata.Template;
@@ -41,16 +43,28 @@ import org.bson.Document;
 /**
  * The {@link MongoDbToBigQuery} pipeline is a batch pipeline which ingests data from MongoDB and
  * outputs the resulting records to BigQuery.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/mongodb-to-googlecloud/README_MongoDB_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "MongoDB_to_BigQuery",
     category = TemplateCategory.BATCH,
     displayName = "MongoDB to BigQuery",
     description =
-        "A batch pipeline which reads data documents from MongoDB and writes them to BigQuery.",
+        "The MongoDB to BigQuery template is a batch pipeline that reads documents from MongoDB and writes them to "
+            + "BigQuery as specified by the <code>userOption</code> parameter.",
     optionsClass = Options.class,
     flexContainerName = "mongodb-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/mongodb-to-bigquery",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The target BigQuery dataset must exist.",
+      "The source MongoDB instance must be accessible from the Dataflow worker machines."
+    })
 public class MongoDbToBigQuery {
   /**
    * Options supported by {@link MongoDbToBigQuery}
@@ -89,11 +103,14 @@ public class MongoDbToBigQuery {
 
     TableSchema bigquerySchema;
 
+    // Get MongoDbUri plain text or base64 encrypted with a specific KMS encryption key
+    String mongoDbUri = maybeDecrypt(options.getMongoDbUri(), options.getKMSEncryptionKey()).get();
+
     if (options.getJavascriptDocumentTransformFunctionName() != null
         && options.getJavascriptDocumentTransformGcsPath() != null) {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchemaForUDF(
-              options.getMongoDbUri(),
+              mongoDbUri,
               options.getDatabase(),
               options.getCollection(),
               options.getJavascriptDocumentTransformGcsPath(),
@@ -102,17 +119,14 @@ public class MongoDbToBigQuery {
     } else {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchema(
-              options.getMongoDbUri(),
-              options.getDatabase(),
-              options.getCollection(),
-              options.getUserOption());
+              mongoDbUri, options.getDatabase(), options.getCollection(), options.getUserOption());
     }
 
     pipeline
         .apply(
             "Read Documents",
             MongoDbIO.read()
-                .withUri(options.getMongoDbUri())
+                .withUri(mongoDbUri)
                 .withDatabase(options.getDatabase())
                 .withCollection(options.getCollection()))
         .apply(

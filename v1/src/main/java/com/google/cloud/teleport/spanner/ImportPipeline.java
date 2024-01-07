@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.spanner.ImportPipeline.Options;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -34,15 +35,29 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 
-/** Avro to Cloud Spanner Import pipeline. */
+/**
+ * Avro to Cloud Spanner Import pipeline.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Avro_to_Cloud_Spanner.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "GCS_Avro_to_Cloud_Spanner",
     category = TemplateCategory.BATCH,
     displayName = "Avro Files on Cloud Storage to Cloud Spanner",
     description =
-        "A pipeline to import a Cloud Spanner database from a set of Avro files in Cloud Storage.",
+        "The Cloud Storage Avro files to Cloud Spanner template is a batch pipeline that reads Avro files exported from "
+            + "Cloud Spanner stored in Cloud Storage and imports them to a Cloud Spanner database.",
     optionsClass = Options.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-cloud-spanner",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The target Cloud Spanner database must exist and must be empty.",
+      "You must have read permissions for the Cloud Storage bucket and write permissions for the target Cloud Spanner database.",
+      "The input Cloud Storage path must exist, and it must include a <a href=\"https://cloud.google.com/spanner/docs/import-non-spanner#create-export-json\">spanner-export.json</a> file that contains a JSON description of files to import."
+    })
 public class ImportPipeline {
 
   /** Options for {@link ImportPipeline}. */
@@ -51,8 +66,8 @@ public class ImportPipeline {
     @TemplateParameter.Text(
         order = 1,
         regexes = {"^[a-z0-9\\-]+$"},
-        description = "Cloud Spanner instance id",
-        helpText = "The instance id of the Cloud Spanner database that you want to import to.")
+        description = "Cloud Spanner instance ID",
+        helpText = "The instance ID of the Cloud Spanner database that you want to import to.")
     ValueProvider<String> getInstanceId();
 
     void setInstanceId(ValueProvider<String> value);
@@ -60,9 +75,10 @@ public class ImportPipeline {
     @TemplateParameter.Text(
         order = 2,
         regexes = {"^[a-z_0-9\\-]+$"},
-        description = "Cloud Spanner database id",
+        description = "Cloud Spanner database ID",
         helpText =
-            "The database id of the Cloud Spanner database that you want to import into (must already exist).")
+            "The database ID of the Cloud Spanner database that you want to import into (must"
+                + " already exist).")
     ValueProvider<String> getDatabaseId();
 
     void setDatabaseId(ValueProvider<String> value);
@@ -92,9 +108,8 @@ public class ImportPipeline {
         description = "Wait for Indexes",
         helpText =
             "By default the import pipeline is not blocked on index creation, and it "
-                + "may complete with indexes still being created in the background. In testing, it may "
-                + "be useful to set this option to false so that the pipeline waits until indexes are "
-                + "finished.")
+                + "may complete with indexes still being created in the background. If true, the "
+                + "pipeline waits until indexes are created.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForIndexes();
 
@@ -105,10 +120,9 @@ public class ImportPipeline {
         optional = true,
         description = "Wait for Foreign Keys",
         helpText =
-            "By default the import pipeline is not blocked on foreign key creation, and it may complete"
-                + " with foreign keys still being created in the background. In testing, it may be"
-                + " useful to set this option to false so that the pipeline waits until foreign keys"
-                + " are finished.")
+            "By default the import pipeline is not blocked on foreign key creation, and it may"
+                + " complete with foreign keys still being created in the background. If true, the"
+                + " pipeline waits until foreign keys are created.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForForeignKeys();
 
@@ -117,7 +131,7 @@ public class ImportPipeline {
     @TemplateParameter.Boolean(
         order = 7,
         optional = true,
-        description = "Wait for Foreign Keys",
+        description = "Wait for Change Streams",
         helpText =
             "By default the import pipeline is blocked on change stream creation. If false, it may"
                 + " complete with change streams still being created in the background.")
@@ -127,13 +141,26 @@ public class ImportPipeline {
     void setWaitForChangeStreams(ValueProvider<Boolean> value);
 
     @TemplateParameter.Boolean(
+        order = 7,
+        optional = true,
+        description = "Wait for Sequences",
+        helpText =
+            "By default the import pipeline is blocked on sequence creation. If false, it may"
+                + " complete with sequences still being created in the background.")
+    @Default.Boolean(true)
+    ValueProvider<Boolean> getWaitForSequences();
+
+    void setWaitForSequences(ValueProvider<Boolean> value);
+
+    @TemplateParameter.Boolean(
         order = 8,
         optional = true,
         description = "Create Indexes early",
         helpText =
-            "Flag to turn off early index creation if there are many indexes. Indexes and Foreign keys are created after dataload. If there are more than "
-                + "40 DDL statements to be executed after dataload, it is preferable to create the "
-                + "indexes before datalod. This is the flag to turn the feature off.")
+            "Flag to turn off early index creation if there are many indexes. Indexes and Foreign"
+                + " keys are created after dataload. If there are more than 40 DDL statements to be"
+                + " executed after dataload, it is preferable to create the indexes before dataload."
+                + " This is the flag to turn the feature off.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getEarlyIndexCreateFlag();
 
@@ -148,7 +175,7 @@ public class ImportPipeline {
         order = 9,
         optional = true,
         description = "Cloud Spanner Project Id",
-        helpText = "The project id of the Cloud Spanner instance.")
+        helpText = "The project ID of the Cloud Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
@@ -162,17 +189,22 @@ public class ImportPipeline {
         description = "DDL Creation timeout in minutes",
         helpText = "DDL Creation timeout in minutes.")
     @Default.Integer(30)
-    ValueProvider<Integer> getDDLCreationTimeoutInMinutes();
+    ValueProvider<Integer> getDdlCreationTimeoutInMinutes();
 
-    void setDDLCreationTimeoutInMinutes(ValueProvider<Integer> value);
+    void setDdlCreationTimeoutInMinutes(ValueProvider<Integer> value);
 
     @TemplateParameter.Enum(
         order = 11,
-        enumOptions = {"LOW", "MEDIUM", "HIGH"},
+        enumOptions = {
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
+        },
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
+            "The request priority for Cloud Spanner calls. The value must be one of:"
+                + " [HIGH,MEDIUM,LOW].")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
@@ -209,8 +241,9 @@ public class ImportPipeline {
             options.getWaitForIndexes(),
             options.getWaitForForeignKeys(),
             options.getWaitForChangeStreams(),
+            options.getWaitForSequences(),
             options.getEarlyIndexCreateFlag(),
-            options.getDDLCreationTimeoutInMinutes()));
+            options.getDdlCreationTimeoutInMinutes()));
 
     PipelineResult result = p.run();
 

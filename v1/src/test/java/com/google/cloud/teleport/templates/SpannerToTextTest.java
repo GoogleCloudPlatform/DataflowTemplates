@@ -58,7 +58,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An end to end test that exports a database at different times and verfies the behavior of export
+ * An end to end test that exports a database at different times and verifies the behavior of export
  * with timestamp and without timestamp. This requires an active GCP project with a Spanner
  * instance. Hence this test can only be run locally with a project set up using 'gcloud config'.
  */

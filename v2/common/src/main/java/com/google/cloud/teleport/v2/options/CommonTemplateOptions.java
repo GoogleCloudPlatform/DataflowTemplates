@@ -26,7 +26,10 @@ public interface CommonTemplateOptions extends PipelineOptions {
       optional = true,
       description = "Disabled algorithms to override jdk.tls.disabledAlgorithms",
       helpText =
-          "Comma separated algorithms to disable. If this value is set to \"none\" then dk.tls.disabledAlgorithms is set to \"\". Use with care, as the algorithms disabled by default are known to have either vulnerabilities or performance issues. For example: SSLv3, RC4.")
+          "Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. "
+              + "Use with care, because the algorithms that are disabled by default are known to have either "
+              + "vulnerabilities or performance issues.",
+      example = "SSLv3, RC4")
   String getDisabledAlgorithms();
 
   void setDisabledAlgorithms(String disabledAlgorithms);
@@ -40,8 +43,7 @@ public interface CommonTemplateOptions extends PipelineOptions {
       description = "Extra files to stage in the workers",
       helpText =
           "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage "
-              + "in the worker. These files will be saved under the `/extra_files` directory in each "
-              + "worker.",
+              + "in the worker. These files will be saved under the `/extra_files` directory in each worker",
       example =
           "gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id")
   String getExtraFilesToStage();

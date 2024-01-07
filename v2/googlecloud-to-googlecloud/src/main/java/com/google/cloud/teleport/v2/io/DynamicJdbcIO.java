@@ -34,27 +34,18 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.util.List;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
-import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
-import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.Reshuffle;
-import org.apache.beam.sdk.transforms.SerializableFunctions;
-import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.MimeTypes;
-import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.dbcp2.DataSourceConnectionFactory;
 import org.apache.commons.dbcp2.PoolableConnectionFactory;
@@ -65,17 +56,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * DynamicJdbcIO provides a {@link DynamicRead} class to allow templatized pipelines to read data
- * from a JDBC datasource using a driver class that is provided at runtime.
+ * DynamicJdbcIO provides a {@link DynamicWrite} class to allow template pipelines to write data to
+ * a JDBC datasource using a driver class that is provided at runtime.
  *
  * <p>Since all possible JDBC drivers are not known at template creation time, the driver jars
- * cannot be prestaged in the template.
+ * cannot be pre-staged in the template.
  *
  * <p>In order to provide the flexibility for the users to specify any JDBC driver class, the {@link
- * DynamicRead} and the {@link DynamicDataSourceConfiguration} classes allow the user to provide the
- * GCS path(s) for the JDBC driver jars.
+ * DynamicWrite} and the {@link DynamicDataSourceConfiguration} classes allow the user to provide
+ * the GCS path(s) for the JDBC driver jars.
  *
- * <p>These jars are then localized on the worker machines in the {@link DynamicReadFn#setup()}
+ * <p>These jars are then localized on the worker machines in the {@link DynamicWriteFn#setup()}
  * method of the {@link DoFn}.
  *
  * <p>A new {@link URLClassLoader} is then created with the localized JDBC jar urls in the {@link
@@ -89,86 +80,8 @@ public class DynamicJdbcIO {
 
   private static final Logger LOG = LoggerFactory.getLogger(DynamicJdbcIO.class);
 
-  public static <T> DynamicRead<T> read() {
-    return new AutoValue_DynamicJdbcIO_DynamicRead.Builder<T>().build();
-  }
-
   public static <T> DynamicWrite<T> write() {
     return new AutoValue_DynamicJdbcIO_DynamicWrite.Builder<T>().build();
-  }
-
-  /** Implementation of {@link #read()}. */
-  @AutoValue
-  public abstract static class DynamicRead<T> extends PTransform<PBegin, PCollection<T>> {
-    @Nullable
-    abstract DynamicDataSourceConfiguration getDynamicDataSourceConfiguration();
-
-    @Nullable
-    abstract String getQuery();
-
-    @Nullable
-    abstract JdbcIO.RowMapper<T> getRowMapper();
-
-    @Nullable
-    abstract Coder<T> getCoder();
-
-    abstract Builder<T> toBuilder();
-
-    @AutoValue.Builder
-    abstract static class Builder<T> {
-      abstract Builder<T> setDynamicDataSourceConfiguration(DynamicDataSourceConfiguration config);
-
-      abstract Builder<T> setQuery(String query);
-
-      abstract Builder<T> setRowMapper(JdbcIO.RowMapper<T> rowMapper);
-
-      abstract Builder<T> setCoder(Coder<T> coder);
-
-      abstract DynamicRead<T> build();
-    }
-
-    public DynamicRead<T> withDataSourceConfiguration(
-        DynamicDataSourceConfiguration configuration) {
-      checkArgument(
-          configuration != null,
-          "withDataSourceConfiguration(configuration) called with null configuration");
-      return toBuilder().setDynamicDataSourceConfiguration(configuration).build();
-    }
-
-    public DynamicRead<T> withQuery(String query) {
-      checkArgument(query != null, "withQuery(query) called with null query");
-      return toBuilder().setQuery(query).build();
-    }
-
-    public DynamicRead<T> withRowMapper(JdbcIO.RowMapper<T> rowMapper) {
-      checkArgument(rowMapper != null, ".withRowMapper(rowMapper) called with null rowMapper");
-      return toBuilder().setRowMapper(rowMapper).build();
-    }
-
-    public DynamicRead<T> withCoder(Coder<T> coder) {
-      checkArgument(coder != null, "withCoder(coder) called with null coder");
-      return toBuilder().setCoder(coder).build();
-    }
-
-    @Override
-    public PCollection<T> expand(PBegin input) {
-      return input
-          .apply(Create.of((Void) null))
-          .apply(
-              ParDo.of(
-                  new DynamicReadFn<>(
-                      getDynamicDataSourceConfiguration(), getQuery(), getRowMapper())))
-          .setCoder(getCoder())
-          .apply(new Reparallelize<>());
-    }
-
-    @Override
-    public void populateDisplayData(DisplayData.Builder builder) {
-      super.populateDisplayData(builder);
-      builder.add(DisplayData.item("query", getQuery()));
-      builder.add(DisplayData.item("rowMapper", getRowMapper().getClass().getName()));
-      builder.add(DisplayData.item("coder", getCoder().getClass().getName()));
-    }
   }
 
   /** Implementation of {@link #write()}. */
@@ -412,51 +325,6 @@ public class DynamicJdbcIO {
     }
   }
 
-  /** A {@link DoFn} executing the SQL query to read from the database. */
-  private static class DynamicReadFn<X, T> extends DoFn<X, T> {
-
-    private final DynamicDataSourceConfiguration dataSourceConfiguration;
-    private final String query;
-    private final JdbcIO.RowMapper<T> rowMapper;
-
-    private DataSource dataSource;
-    private Connection connection;
-
-    private DynamicReadFn(
-        DynamicDataSourceConfiguration dataSourceConfiguration,
-        String query,
-        JdbcIO.RowMapper<T> rowMapper) {
-      this.dataSourceConfiguration = dataSourceConfiguration;
-      this.query = query;
-      this.rowMapper = rowMapper;
-    }
-
-    @Setup
-    public void setup() throws Exception {
-      dataSource = dataSourceConfiguration.buildDatasource();
-      connection = dataSource.getConnection();
-    }
-
-    @ProcessElement
-    public void processElement(ProcessContext context) throws Exception {
-      try (PreparedStatement statement = connection.prepareStatement(query)) {
-        try (ResultSet resultSet = statement.executeQuery()) {
-          while (resultSet.next()) {
-            context.output(rowMapper.mapRow(resultSet));
-          }
-        }
-      }
-    }
-
-    @Teardown
-    public void teardown() throws Exception {
-      connection.close();
-      if (dataSource instanceof AutoCloseable) {
-        ((AutoCloseable) dataSource).close();
-      }
-    }
-  }
-
   /** A {@link DoFn} executing the SQL query to write to the database. */
   private static class DynamicWriteFn<T> extends DoFn<T, FailsafeElement<T, T>> {
 
@@ -507,38 +375,6 @@ public class DynamicJdbcIO {
       if (dataSource instanceof AutoCloseable) {
         ((AutoCloseable) dataSource).close();
       }
-    }
-  }
-
-  private static class Reparallelize<T> extends PTransform<PCollection<T>, PCollection<T>> {
-    @Override
-    public PCollection<T> expand(PCollection<T> input) {
-      // See https://issues.apache.org/jira/browse/BEAM-2803
-      // We use a combined approach to "break fusion" here:
-      // (see https://cloud.google.com/dataflow/service/dataflow-service-desc#preventing-fusion)
-      // 1) force the data to be materialized by passing it as a side input to an identity fn,
-      // then 2) reshuffle it with a random key. Initial materialization provides some parallelism
-      // and ensures that data to be shuffled can be generated in parallel, while reshuffling
-      // provides perfect parallelism.
-      // In most cases where a "fusion break" is needed, a simple reshuffle would be sufficient.
-      // The current approach is necessary only to support the particular case of JdbcIO where
-      // a single query may produce many gigabytes of query results.
-      PCollectionView<Iterable<T>> empty =
-          input
-              .apply("Consume", Filter.by(SerializableFunctions.constant(false)))
-              .apply(View.asIterable());
-      PCollection<T> materialized =
-          input.apply(
-              "Identity",
-              ParDo.of(
-                      new DoFn<T, T>() {
-                        @ProcessElement
-                        public void process(ProcessContext c) {
-                          c.output(c.element());
-                        }
-                      })
-                  .withSideInputs(empty));
-      return materialized.apply(Reshuffle.viaRandomKey());
     }
   }
 }

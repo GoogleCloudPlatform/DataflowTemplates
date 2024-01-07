@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,43 +15,56 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.connection;
 
-import com.google.cloud.teleport.v2.neo4j.utils.FileSystemUtils;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 import java.io.Serializable;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Objects;
+import org.neo4j.driver.AuthToken;
 
-/** Helper object for connection params. */
-public class ConnectionParams implements Serializable {
+@JsonTypeInfo(use = Id.NAME, property = "auth_type", defaultImpl = BasicConnectionParams.class)
+@JsonSubTypes({
+  @JsonSubTypes.Type(value = BasicConnectionParams.class, name = "basic"),
+  @JsonSubTypes.Type(value = NoAuthConnectionParams.class, name = "none"),
+  @JsonSubTypes.Type(value = KerberosConnectionParams.class, name = "kerberos"),
+  @JsonSubTypes.Type(value = BearerConnectionParams.class, name = "bearer"),
+  @JsonSubTypes.Type(value = CustomConnectionParams.class, name = "custom")
+})
+public abstract class ConnectionParams implements Serializable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ConnectionParams.class);
+  private final String serverUrl;
+  private final String database;
 
-  public String serverUrl, database, authType, username, password;
+  public ConnectionParams(String serverUrl, String database) {
+    this.serverUrl = serverUrl;
+    this.database = database == null ? "neo4j" : database;
+  }
 
-  public ConnectionParams(String neoConnectionUri) {
+  public String getServerUrl() {
+    return serverUrl;
+  }
 
-    String neoConnectionJsonStr = "{}";
-    try {
-      neoConnectionJsonStr = FileSystemUtils.getPathContents(neoConnectionUri);
-    } catch (Exception e) {
-      LOG.error("Unable to read {} neo4j configuration: ", neoConnectionUri, e);
+  public String getDatabase() {
+    return database;
+  }
+
+  public abstract AuthToken asAuthToken();
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
     }
 
-    try {
-      JSONObject neoConnectionJson = new JSONObject(neoConnectionJsonStr);
-      serverUrl = neoConnectionJson.getString("server_url");
-      if (neoConnectionJson.has("auth_type")) {
-        authType = neoConnectionJson.getString("auth_type");
-      } else {
-        authType = "basic";
-      }
-      database =
-          neoConnectionJson.has("database") ? neoConnectionJson.getString("database") : "neo4j";
-      username = neoConnectionJson.getString("username");
-      password = neoConnectionJson.getString("pwd");
+    ConnectionParams that = (ConnectionParams) o;
+    return Objects.equals(serverUrl, that.serverUrl) && Objects.equals(database, that.database);
+  }
 
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(serverUrl, database);
   }
 }

@@ -35,13 +35,20 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 
-/** A template that counts words in text files. */
+/**
+ * A template that counts words in text files.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Word_Count.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Word_Count",
     category = TemplateCategory.GET_STARTED,
     displayName = "Word Count",
     description =
-        "Batch pipeline. Reads text from Cloud Storage, tokenizes text lines into individual words, and performs frequency count on each of the words.",
+        "Batch pipeline. Reads text from Cloud Storage, tokenizes text lines into individual words,"
+            + " and performs frequency count on each of the words.",
     optionsClass = WordCountOptions.class,
     contactInformation = "https://cloud.google.com/support")
 public class WordCount {
@@ -51,8 +58,10 @@ public class WordCount {
 
     @ProcessElement
     public void processElement(ProcessContext c) {
+      // Check if the line is empty.
       if (c.element().trim().isEmpty()) {
         emptyLines.inc();
+        return;
       }
 
       // Split the line into words.
@@ -101,13 +110,14 @@ public class WordCount {
    */
   public interface WordCountOptions extends PipelineOptions {
 
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "Input file(s) in Cloud Storage",
         helpText =
             "The input file pattern Dataflow reads from. Use the example file "
                 + "(gs://dataflow-samples/shakespeare/kinglear.txt) or enter the path to your own "
-                + "using the same format: gs://your-bucket/your-file.txt")
+                + "using the same format: gs://your-bucket/your-file.txt",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"})
     ValueProvider<String> getInputFile();
 
     void setInputFile(ValueProvider<String> value);

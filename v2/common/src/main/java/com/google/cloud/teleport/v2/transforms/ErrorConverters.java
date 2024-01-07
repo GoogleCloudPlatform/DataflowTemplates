@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
@@ -55,7 +55,7 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Ascii;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Ascii;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Duration;
 import org.joda.time.format.DateTimeFormat;
@@ -331,7 +331,7 @@ public class ErrorConverters {
       PubsubMessage pubsubMessage = failsafeElement.getOriginalPayload();
       String message =
           pubsubMessage.getPayload().length > 0
-              ? new String(pubsubMessage.getPayload())
+              ? new String(pubsubMessage.getPayload(), StandardCharsets.UTF_8)
               : pubsubMessage.getAttributeMap().toString();
 
       // Format the timestamp for insertion

@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.utils;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkState;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -48,8 +48,6 @@ import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 import javax.annotation.Nonnull;
 import javax.net.ssl.SSLContext;
-import org.apache.beam.sdk.annotations.Experimental;
-import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.BoundedSource;
@@ -66,8 +64,8 @@ import org.apache.beam.sdk.util.Sleeper;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.apache.http.ConnectionClosedException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -85,6 +83,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 import org.apache.http.nio.entity.NStringEntity;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.elasticsearch.client.Request;
@@ -157,7 +156,6 @@ import org.slf4j.LoggerFactory;
  * socket timeout of 30000ms. {@code withConnectTimeout()} can be used to override the default
  * connect timeout of 1000ms.
  */
-@Experimental(Kind.SOURCE_SINK)
 @SuppressWarnings({
   "nullness" // TODO(https://issues.apache.org/jira/browse/BEAM-10402)
 })
@@ -270,6 +268,8 @@ public class ElasticsearchIO {
 
     public abstract boolean isTrustSelfSignedCerts();
 
+    public abstract boolean isDisableCertificateValidation();
+
     abstract Builder builder();
 
     @AutoValue.Builder
@@ -298,6 +298,8 @@ public class ElasticsearchIO {
 
       abstract Builder setTrustSelfSignedCerts(boolean trustSelfSignedCerts);
 
+      abstract Builder setDisableCertificateValidation(boolean disableCertificateValidation);
+
       abstract ConnectionConfiguration build();
     }
 
@@ -319,6 +321,7 @@ public class ElasticsearchIO {
           .setIndex(index)
           .setType(type)
           .setTrustSelfSignedCerts(false)
+          .setDisableCertificateValidation(false)
           .build();
     }
 
@@ -412,6 +415,19 @@ public class ElasticsearchIO {
     }
 
     /**
+     * If Elasticsearch uses SSL/TLS then configure whether to ignore any certificate validation or
+     * not. The default is false.
+     *
+     * @param disableCertificateValidation Whether to trust self signed certs
+     * @return a {@link ConnectionConfiguration} describes a connection configuration to
+     *     Elasticsearch.
+     */
+    public ConnectionConfiguration withDisableCertificateValidation(
+        boolean disableCertificateValidation) {
+      return builder().setDisableCertificateValidation(disableCertificateValidation).build();
+    }
+
+    /**
      * If set, overwrites the default max retry timeout (30000ms) in the Elastic {@link RestClient}
      * and the default socket timeout (30000ms) in the {@link RequestConfig} of the Elastic {@link
      * RestClient}.
@@ -475,17 +491,33 @@ public class ElasticsearchIO {
         restClientBuilder.setDefaultHeaders(
             new Header[] {new BasicHeader("Authorization", "Bearer " + getBearerToken())});
       }
-      if (getKeystorePath() != null && !getKeystorePath().isEmpty()) {
+
+      if (isDisableCertificateValidation()) {
+        try {
+          final SSLContext sslContext =
+              SSLContextBuilder.create()
+                  .loadTrustMaterial((TrustStrategy) (chain, authType) -> true)
+                  .build();
+          final SSLIOSessionStrategy sessionStrategy = new SSLIOSessionStrategy(sslContext);
+          restClientBuilder.setHttpClientConfigCallback(
+              httpClientBuilder ->
+                  httpClientBuilder.setSSLContext(sslContext).setSSLStrategy(sessionStrategy));
+        } catch (Exception e) {
+          throw new IOException("Can't create context to ignore certificate", e);
+        }
+      } else if (getKeystorePath() != null && !getKeystorePath().isEmpty()) {
         try {
           KeyStore keyStore = KeyStore.getInstance("jks");
           try (InputStream is = new FileInputStream(new File(getKeystorePath()))) {
             String keystorePassword = getKeystorePassword();
             keyStore.load(is, (keystorePassword == null) ? null : keystorePassword.toCharArray());
           }
+
           final TrustStrategy trustStrategy =
               isTrustSelfSignedCerts() ? new TrustSelfSignedStrategy() : null;
-          final SSLContext sslContext =
+          SSLContext sslContext =
               SSLContexts.custom().loadTrustMaterial(keyStore, trustStrategy).build();
+
           final SSLIOSessionStrategy sessionStrategy = new SSLIOSessionStrategy(sslContext);
           restClientBuilder.setHttpClientConfigCallback(
               httpClientBuilder ->
@@ -494,6 +526,7 @@ public class ElasticsearchIO {
           throw new IOException("Can't load the client certificate from the keystore", e);
         }
       }
+
       restClientBuilder.setRequestConfigCallback(
           new RestClientBuilder.RequestConfigCallback() {
             @Override
@@ -568,7 +601,7 @@ public class ElasticsearchIO {
     public Read withQuery(String query) {
       checkArgument(query != null, "query can not be null");
       checkArgument(!query.isEmpty(), "query can not be empty");
-      return withQuery(query);
+      return builder().setQuery(query).build();
     }
 
     /**
@@ -685,7 +718,7 @@ public class ElasticsearchIO {
         // shard.So we do not use desiredBundleSize because we cannot split shards.
         // With the slice API in ES 5.x+ we will be able to use desiredBundleSize.
         // Basically we will just ask the slice API to return data
-        // in nbBundles = estimatedSize / desiredBundleSize chuncks.
+        // in nbBundles = estimatedSize / desiredBundleSize chunks.
         // So each beam source will read around desiredBundleSize volume of data.
 
         JsonNode statsJson = BoundedElasticsearchSource.getStats(connectionConfiguration, true);
@@ -973,6 +1006,7 @@ public class ElasticsearchIO {
       return source;
     }
   }
+
   /**
    * A POJO encapsulating a configuration for retry behavior when issuing requests to ES. A retry
    * will be attempted until the maxAttempts or maxDuration is exceeded, whichever comes first, for
@@ -1214,7 +1248,7 @@ public class ElasticsearchIO {
     /**
      * Provide a function to extract the target type from the document allowing for dynamic document
      * routing. Should the function throw an Exception then the batch will fail and the exception
-     * propagated. Users are encouraged to consider carefully if multipe types are a sensible model
+     * propagated. Users are encouraged to consider carefully if multiple types are a sensible model
      * <a
      * href="https://www.elastic.co/blog/index-type-parent-child-join-now-future-in-elasticsearch">as
      * discussed in this blog</a>.
@@ -1408,6 +1442,7 @@ public class ElasticsearchIO {
           gen.writeEndObject();
         }
       }
+
       /**
        * Extracts the components that comprise the document address from the document using the
        * {@link FieldValueExtractFn} configured. This allows any or all of the index, type and

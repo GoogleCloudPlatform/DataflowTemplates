@@ -28,7 +28,7 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
 
   @TemplateParameter.GcsReadFile(
       order = 1,
-      description = "Path to job configuration file",
+      description = "Path to the job specification file",
       helpText =
           "The path to the job specification file, which contains the configuration for source and target metadata.")
   @Validation.Required
@@ -38,37 +38,53 @@ public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
 
   @TemplateParameter.GcsReadFile(
       order = 2,
-      description = "Path to Neo4j connection metadata",
-      helpText = "Path to Neo4j connection metadata JSON file.")
-  @Validation.Required
+      optional = true,
+      description = "Path to the Neo4j connection metadata",
+      helpText =
+          "The path to Neo4j connection metadata JSON file. This is an alternative to the secret option.")
+  @Validation.Required(groups = "connection")
   String getNeo4jConnectionUri();
 
   void setNeo4jConnectionUri(String value);
 
   @TemplateParameter.Text(
       order = 3,
+      optional = true,
+      description = "Secret ID for the Neo4j connection metadata",
+      helpText =
+          "The secret ID for the Neo4j connection metadata. This is an alternative to the GCS path option.")
+  @Validation.Required(groups = "connection")
+  String getNeo4jConnectionSecretId();
+
+  void setNeo4jConnectionSecretId(String value);
+
+  @TemplateParameter.Text(
+      order = 4,
+      optional = true,
       description = "Options JSON",
       helpText = "Options JSON. Use runtime tokens.",
       example = "{token1:value1,token2:value2}")
+  @Default.String("")
   String getOptionsJson();
 
   void setOptionsJson(String value);
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 5,
       optional = true,
       description = "Query SQL",
-      helpText = "Override SQL query (optional).")
+      helpText = "Override SQL query.")
   @Default.String("")
   String getReadQuery();
 
   void setReadQuery(String value);
 
-  @TemplateParameter.GcsReadFile(
-      order = 5,
+  @TemplateParameter.Text(
+      order = 6,
       optional = true,
       description = "Path to Text File",
-      helpText = "Override text file pattern (optional)",
+      helpText = "Override text file pattern",
+      regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
       example = "gs://your-bucket/path/*.json")
   @Default.String("")
   String getInputFilePattern();

@@ -1,0 +1,14 @@
+{
+    "type": "record",
+    "name": "AvroProductKafkaRecord",
+    "fields": [
+        {
+            "name": "productId",
+            "type": "int"
+        },
+        {
+            "name": "productName",
+            "type": "string"
+        }
+    ]
+}

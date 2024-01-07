@@ -50,11 +50,11 @@
                     <java>
                         <toggleOffOn />
                         <googleJavaFormat>
-                            <version>1.8</version>
+                            <version>1.17.0</version>
                             <style>GOOGLE</style>
                         </googleJavaFormat>
                         <licenseHeader>
-                            <file>JAVA_LICENSE_HEADER</file>
+                            <file>../JAVA_LICENSE_HEADER</file>
                         </licenseHeader>
                     </java>
                 </configuration>

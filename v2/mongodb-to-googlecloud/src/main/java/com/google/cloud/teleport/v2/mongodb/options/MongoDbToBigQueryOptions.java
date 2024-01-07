@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.mongodb.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -31,8 +32,7 @@ public class MongoDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 1,
         description = "MongoDB Connection URI",
-        helpText = "URI to connect to MongoDB Atlas.")
-    @Default.String("mongouri")
+        helpText = "MongoDB connection URI in the format `mongodb+srv://:@`.")
     String getMongoDbUri();
 
     void setMongoDbUri(String getMongoDbUri);
@@ -51,21 +51,33 @@ public class MongoDbToBigQueryOptions {
         description = "MongoDB collection",
         helpText = "Name of the collection inside MongoDB database.",
         example = "my-collection")
-    @Default.String("collection")
     String getCollection();
 
     void setCollection(String collection);
 
     @TemplateParameter.Enum(
         order = 4,
-        enumOptions = {"FLATTEN", "NONE"},
+        enumOptions = {@TemplateEnumOption("FLATTEN"), @TemplateEnumOption("NONE")},
         description = "User option",
         helpText =
-            "User option: FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.")
+            "User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string.")
     @Default.String("NONE")
     String getUserOption();
 
     void setUserOption(String userOption);
+
+    @TemplateParameter.KmsEncryptionKey(
+        order = 5,
+        optional = true,
+        description = "Google Cloud KMS key",
+        helpText =
+            "Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is "
+                + "passed in, the mongodb uri connection string must all be passed in encrypted.",
+        example =
+            "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
+    String getKMSEncryptionKey();
+
+    void setKMSEncryptionKey(String keyName);
   }
 
   /** Options for reading from PubSub. */
@@ -89,8 +101,7 @@ public class MongoDbToBigQueryOptions {
         order = 1,
         description = "BigQuery output table",
         helpText =
-            "BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.")
-    @Default.String("bqtable")
+            "BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String outputTableSpec);
@@ -98,12 +109,14 @@ public class MongoDbToBigQueryOptions {
 
   /** UDF options. */
   public interface JavascriptDocumentTransformerOptions extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         optional = true,
-        description = "Path to the UDF stored in the GCS bucket.",
-        helpText = "Enter the gcs path in format gs://<bucket-name>/<js-file>.js .",
-        example = "gs://test-bucket/test.js")
+        description = "JavaScript UDF path in Cloud Storage.",
+        helpText =
+            "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
+        example = "gs://your-bucket/your-transforms/*.js")
     String getJavascriptDocumentTransformGcsPath();
 
     void setJavascriptDocumentTransformGcsPath(String javascriptDocumentTransformGcsPath);
@@ -111,8 +124,9 @@ public class MongoDbToBigQueryOptions {
     @TemplateParameter.Text(
         order = 2,
         optional = true,
-        description = "UDF function name stored in the GCS bucket.",
-        helpText = "Enter the Name of the User defined function .",
+        description = "The name of the JavaScript function to call as your UDF.",
+        helpText =
+            "The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'.",
         example = "transform")
     String getJavascriptDocumentTransformFunctionName();
 

@@ -35,41 +35,63 @@
 
     <!-- Plugins -->
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
-    <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
-    <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
+    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+    <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
-    <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
+    <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
     <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
-    <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
-    <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
+    <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+    <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.44.0</beam.version>
-    <cloud-libraries-bom.version>26.1.5</cloud-libraries-bom.version>
+    <beam.version>2.52.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->
-    <autovalue.version>1.8.2</autovalue.version>
+    <autovalue.version>1.10.4</autovalue.version>
+    <avro.version>1.11.3</avro.version>
+    <caffeine.version>3.1.8</caffeine.version>
     <checkstyle.version>10.7.0</checkstyle.version>
-    <commons-codec.version>1.15</commons-codec.version>
+    <commons-codec.version>1.16.0</commons-codec.version>
     <commons-io.version>2.11.0</commons-io.version>
+    <commons-lang3.version>3.12.0</commons-lang3.version>
     <conscrypt.version>2.5.2</conscrypt.version>
-    <hadoop.version>2.10.2</hadoop.version>
+    <derby.version>10.14.2.0</derby.version>
+    <grpc.gen.version>1.13.1</grpc.gen.version>
+    <guava.version>32.0.1-jre</guava.version>
+    <hadoop.version>3.3.6</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
-    <guava.version>31.0.1-jre</guava.version>
+    <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
     <log4j-2.version>2.17.2</log4j-2.version>
-    <json.version>20200518</json.version>
-    <junit.version>4.13.1</junit.version>
+    <jettison.version>1.5.4</jettison.version>
+    <json.version>20231013</json.version>
+    <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
-    <slf4j.version>1.7.25</slf4j.version>
-    <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
+    <slf4j.version>1.7.36</slf4j.version>
+    <snakeyaml.version>2.0</snakeyaml.version>
+    <snappy.version>1.1.10.4</snappy.version>
+    <spotless-maven-plugin.version>2.40.0</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
-    <truth.version>1.0.1</truth.version>
-    <integration.tests>
-      com.google.cloud.teleport.metadata.TemplateIntegrationTest
-    </integration.tests>
+    <truth.version>1.1.5</truth.version>
+
+    <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
+    <plexus-archiver.version>4.8.0</plexus-archiver.version>
+
+    <!-- JDBC driver / Connector versions -->
+    <!-- Note: File it/src/main/java/com/google/cloud/teleport/it/common/JDBCBaseIT.java -->
+    <!-- should be updated when these versions are changed. -->
+    <mysql-connector-java.version>8.0.30</mysql-connector-java.version>
+    <postgresql.version>42.6.0</postgresql.version>
+    <ojdbc8.version>23.2.0.0</ojdbc8.version>
+    <mssql-jdbc.version>12.2.0.jre11</mssql-jdbc.version>
+    <neo4j-driver.version>4.4.12</neo4j-driver.version>
+
+    <!-- Test categories -->
+    <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
+    <load.tests>com.google.cloud.teleport.metadata.TemplateLoadTest</load.tests>
+    <direct-runner.tests>com.google.cloud.teleport.metadata.DirectRunnerTest</direct-runner.tests>
     <excluded.spanner.tests></excluded.spanner.tests>
 
     <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
@@ -79,15 +101,8 @@
     <dependencies>
       <dependency>
         <groupId>org.apache.beam</groupId>
-        <artifactId>beam-sdks-java-bom</artifactId>
+        <artifactId>beam-sdks-java-google-cloud-platform-bom</artifactId>
         <version>${beam.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>com.google.cloud</groupId>
-        <artifactId>libraries-bom</artifactId>
-        <version>${cloud-libraries-bom.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -113,7 +128,13 @@
         <artifactId>commons-io</artifactId>
         <version>${commons-io.version}</version>
       </dependency>
-      <!-- If any module uses log4j 2.x, enforce it is patched by default -->
+      <dependency>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro</artifactId>
+        <version>${avro.version}</version>
+      </dependency>
+
+      <!-- If any module uses log4j 2.x, enforce patched versions -->
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j</artifactId>
@@ -129,6 +150,34 @@
         <artifactId>log4j-core</artifactId>
         <version>${log4j-2.version}</version>
       </dependency>
+
+      <!-- Enforce updated version of SnakeYAML -->
+      <dependency>
+        <groupId>org.yaml</groupId>
+        <artifactId>snakeyaml</artifactId>
+        <version>${snakeyaml.version}</version>
+      </dependency>
+
+      <!-- Enforce non-vulnerable version of jettison -->
+      <dependency>
+        <groupId>org.codehaus.jettison</groupId>
+        <artifactId>jettison</artifactId>
+        <version>${jettison.version}</version>
+      </dependency>
+
+      <!-- Enforce updated version of Neo4j driver -->
+      <dependency>
+        <groupId>org.neo4j.driver</groupId>
+        <artifactId>neo4j-java-driver</artifactId>
+        <version>${neo4j-driver.version}</version>
+      </dependency>
+
+      <!-- Enforce non-vulnerable version of snappy-java -->
+      <dependency>
+        <groupId>org.xerial.snappy</groupId>
+        <artifactId>snappy-java</artifactId>
+        <version>${snappy.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -136,8 +185,28 @@
     <pluginManagement>
       <plugins>
         <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-dependency-plugin</artifactId>
+          <version>${maven-dependency-plugin.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.codehaus.plexus</groupId>
+              <artifactId>plexus-archiver</artifactId>
+              <version>${plexus-archiver.version}</version>
+            </dependency>
+          </dependencies>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-source-plugin</artifactId>
           <version>${maven-source-plugin.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.codehaus.plexus</groupId>
+              <artifactId>plexus-archiver</artifactId>
+              <version>${plexus-archiver.version}</version>
+            </dependency>
+          </dependencies>
           <executions>
             <execution>
               <id>attach-sources</id>
@@ -146,6 +215,18 @@
               </goals>
             </execution>
           </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>${maven-jar-plugin.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.codehaus.plexus</groupId>
+              <artifactId>plexus-archiver</artifactId>
+              <version>${plexus-archiver.version}</version>
+            </dependency>
+          </dependencies>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -160,6 +241,11 @@
           They can be run manually using 'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
           <excludedGroups>${integration.tests}</excludedGroups>
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
+          <trimStackTrace>false</trimStackTrace>
+          <systemPropertyVariables>
+            <!-- Allow this project to be tested with JDK 21 -->
+            <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
+          </systemPropertyVariables>
         </configuration>
       </plugin>
       <plugin>
@@ -186,7 +272,7 @@
             </excludes>
             <toggleOffOn/>
             <googleJavaFormat>
-              <version>1.8</version>
+              <version>1.17.0</version>
               <style>GOOGLE</style>
             </googleJavaFormat>
             <licenseHeader>
@@ -251,10 +337,11 @@
       <properties>
         <!-- Skip coverage checks, unit tests are skipped -->
         <jacoco.skip>true</jacoco.skip>
-        <!-- Skip shade for faster runs -->
-        <skipShade>true</skipShade>
         <!-- Some modules may yield no integration tests -->
         <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
       </properties>
       <build>
         <plugins>
@@ -266,10 +353,45 @@
               <includes>
                 <include>**/*IT.java</include>
               </includes>
+              <excludedGroups>${direct-runner.tests}</excludedGroups>
+              <groups>
+                ${integration.tests}
+              </groups>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
+              <trimStackTrace>false</trimStackTrace>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>templatesLoadTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Some modules may yield no load tests -->
+        <failIfNoTests>false</failIfNoTests>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*LT.java</include>
+              </includes>
               <excludedGroups></excludedGroups>
               <groups>
-                com.google.cloud.teleport.metadata.TemplateIntegrationTest
+                ${load.tests}
               </groups>
+              <trimStackTrace>false</trimStackTrace>
             </configuration>
           </plugin>
         </plugins>
@@ -287,6 +409,9 @@
         <skipShade>true</skipShade>
         <!-- Some modules may yield no integration tests -->
         <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
       </properties>
       <build>
         <plugins>
@@ -302,7 +427,8 @@
                 com.google.cloud.teleport.metadata.SkipDirectRunnerTest
               </excludedGroups>
               <groups>
-                com.google.cloud.teleport.metadata.TemplateIntegrationTest
+                ${integration.tests}
+                ${direct-runner.tests}
               </groups>
               <systemProperties>
                 <!-- Pass on the flag directRunnerTest to the templates test base -->
@@ -311,6 +437,48 @@
                   <value>true</value>
                 </property>
               </systemProperties>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
+              <trimStackTrace>false</trimStackTrace>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>templatesIntegrationSmokeTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Some modules may not have integration tests -->
+        <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*IT.java</include>
+              </includes>
+              <groups>
+                ${direct-runner.tests}
+                org.apache.beam.it.testcontainers.TestContainersIntegrationTest
+                org.apache.beam.it.gcp.GoogleCloudIntegrationTest
+              </groups>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
+              <trimStackTrace>false</trimStackTrace>
             </configuration>
           </plugin>
         </plugins>
@@ -325,16 +493,75 @@
         <directory>${project.basedir}/target/plugin/${pluginRunId}</directory>
       </build>
     </profile>
+    <!-- The following snapshot profile allows us to test Templates with
+     unreleased Apache Beam versions, for example:
+     mvn test -Psnapshot -Dbeam.version=2.50.0-SNAPSHOT -->
     <profile>
-      <id>oss-build</id>
+      <id>snapshot</id>
+      <repositories>
+        <repository>
+          <id>apache.snapshots</id>
+          <url>https://repository.apache.org/content/repositories/snapshots</url>
+        </repository>
+      </repositories>
+    </profile>
+    <profile>
+      <id>splunkDeps</id>
       <activation>
         <activeByDefault>true</activeByDefault>
       </activation>
-      <modules>
-        <module>syndeo-template</module>
-      </modules>
+      <repositories>
+        <repository>
+          <id>splunk-artifactory</id>
+          <name>Splunk Releases</name>
+          <url>https://splunk.jfrog.io/splunk/ext-releases-local</url>
+        </repository>
+        <repository>
+          <id>ossrh</id>
+          <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>ossrh</id>
+          <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+    <profile>
+      <!-- mvn clean deploy -Prelease -pl plugins/templates-maven-plugin -pl v2/common -am -->
+      <id>release</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+            <version>1.6.13</version>
+            <extensions>true</extensions>
+            <configuration>
+              <serverId>ossrh</serverId>
+              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+              <autoReleaseAfterClose>true</autoReleaseAfterClose>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
   </profiles>
+
+  <distributionManagement>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+    </repository>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
 
   <modules>
     <module>metadata</module>
@@ -344,5 +571,6 @@
     <module>v2</module>
     <module>structured-logging</module>
     <module>plaintext-logging</module>
+    <module>python</module>
   </modules>
 </project>

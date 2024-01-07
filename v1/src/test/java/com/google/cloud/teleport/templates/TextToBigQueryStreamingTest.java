@@ -23,9 +23,10 @@ import com.google.api.services.bigquery.model.TableDataInsertAllResponse.InsertE
 import com.google.api.services.bigquery.model.TableReference;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.values.FailsafeElement;
+import com.google.common.collect.ImmutableList;
+import com.google.gson.Gson;
+import com.google.gson.JsonParser;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
-import org.apache.beam.vendor.grpc.v1p48p1.com.google.gson.Gson;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -67,8 +68,9 @@ public class TextToBigQueryStreamingTest {
     String actualPayload = wrappedValue.getPayload();
     String actualErrorMessage = wrappedValue.getErrorMessage();
 
-    assertThat(actualOriginalPayload).isEqualTo(expected);
-    assertThat(actualPayload).isEqualTo(expected);
+    assertThat(JsonParser.parseString(actualOriginalPayload))
+        .isEqualTo(JsonParser.parseString(expected));
+    assertThat(JsonParser.parseString(actualPayload)).isEqualTo(JsonParser.parseString(expected));
     assertThat(actualErrorMessage).isEqualTo(GSON.toJson(insertErrors));
   }
 

@@ -35,7 +35,7 @@
       {
         "helpText": "CSV format according to Apache Commons CSV format. See: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html. Default: DEFAULT",
         "isOptional": true,
-        "label": "CSV delimiter",
+        "label": "CSV format",
         "name": "csvFormat",
         "paramType": "TEXT"
       },
@@ -77,10 +77,34 @@
         ]
       },
       {
-        "helpText": "Splunk Http Event Collector (HEC) authentication token.",
+        "helpText": "Source of the token. One of PLAINTEXT, KMS or SECRET_MANAGER. If tokenSource is set to KMS, tokenKMSEncryptionKey and encrypted token must be provided. If tokenSource is set to SECRET_MANAGER, tokenSecretId must be provided. If tokenSource is set to PLAINTEXT, token must be provided.",
         "isOptional": false,
+        "label": "Source of the token passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
+        "name": "tokenSource",
+        "paramType": "TEXT",
+        "regexes": [
+          "^(PLAINTEXT|KMS|SECRET_MANAGER)$"
+        ]
+      },
+      {
+        "helpText": "Splunk Http Event Collector (HEC) authentication token.",
+        "isOptional": true,
         "label": "HEC Authentication token.",
         "name": "token",
+        "paramType": "TEXT"
+      },
+      {
+        "helpText": "The Cloud KMS key to decrypt the HEC token string. This parameter must be provided if the tokenSource is set to KMS. If this parameter is provided, token string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).",
+        "isOptional": true,
+        "label": "Google Cloud KMS encryption key for the token",
+        "name": "tokenKMSEncryptionKey",
+        "paramType": "TEXT"
+      },
+      {
+        "helpText": "Secret Manager secret ID for the token. This parameter should be provided if the tokenSource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).",
+        "isOptional": true,
+        "label": "Google Cloud Secret Manager ID",
+        "name": "tokenSecretId",
         "paramType": "TEXT"
       },
       {
@@ -92,7 +116,7 @@
       },
       {
         "helpText": "Batch size for sending multiple events to Splunk HEC. Default: 1 (no batching).",
-        "isOptional": false,
+        "isOptional": true,
         "label": "Batch size for sending multiple events to Splunk HEC.",
         "name": "batchCount",
         "paramType": "TEXT",
@@ -102,7 +126,7 @@
       },
       {
         "helpText": "Maximum number of parallel requests. Default: 1 (no parallelism).",
-        "isOptional": false,
+        "isOptional": true,
         "label": "Maximum number of parallel requests.",
         "name": "parallelism",
         "paramType": "TEXT",
@@ -112,9 +136,36 @@
       },
       {
         "helpText": "Disable SSL certificate validation (true/false). Default: false (validation enabled). If true, the certificates are not validated (all certificates are trusted).",
-        "isOptional": false,
+        "isOptional": true,
         "label": "Disable SSL certificate validation.",
         "name": "disableCertificateValidation",
+        "paramType": "TEXT",
+        "regexes": [
+          "^(true|false)$"
+        ]
+      },
+      {
+        "helpText": "The full URL to root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and may be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file will be fetched and added to Dataflow worker's trust store in order to verify Splunk HEC endpoint's SSL certificate which is signed by that private CA. If this parameter is not provided, the default trust store is used. (Example: gs://mybucket/mycerts/privateCA.crt).",
+        "isOptional": true,
+        "label": "Cloud Storage path to root CA certificate",
+        "name": "rootCaCertificatePath",
+        "paramType": "TEXT"
+      },
+      {
+        "helpText": "Parameter which specifies if logs should be enabled for batches written to Splunk. Defaults to: true.",
+        "isOptional": true,
+        "label": "Enable logs for batches written to Splunk",
+        "name": "enableBatchLogs",
+        "paramType": "TEXT",
+        "regexes": [
+          "^(true|false)$"
+        ]
+      },
+      {
+        "helpText": "Parameter which specifies if HTTP requests sent to Splunk HEC should be GZIP encoded. Defaults to: true.",
+        "isOptional": true,
+        "label": "Enable compression (gzip content encoding) in HTTP requests sent to Splunk HEC",
+        "name": "enableGzipHttpCompression",
         "paramType": "TEXT",
         "regexes": [
           "^(true|false)$"

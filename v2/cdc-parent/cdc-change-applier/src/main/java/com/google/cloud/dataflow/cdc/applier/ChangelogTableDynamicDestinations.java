@@ -96,7 +96,7 @@ class ChangelogTableDynamicDestinations extends DynamicDestinations<TableRow, St
             .setTableId(changelogTableName)
             .setDatasetId(changeLogDataset)
             .setProjectId(gcpProjectId);
-    String description = String.format("Changelog Table for {}", targetTable);
+    String description = String.format("Changelog Table for %s", targetTable);
 
     return new TableDestination(tableRef, description);
   }

@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.spanner.TextImportPipeline.Options;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -71,32 +72,34 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  *  PRIMARY KEY(Id)
  * </pre>
  *
- * <pre>
- * {@code mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.TextImportPipeline \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --runner=DataflowRunner \
- * --importManifest=gs://IMPORT_MANIFEST_FILE \
- * --spannerInstance=SPANNER_INSTANCE_NAME \
- * --databaseName=DATABASE_NAME \
- * --tableName=TABLE_NAME \
- * --columnDelimiter=',' \
- * --fieldQualifier='"'
- * }
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Text_to_Cloud_Spanner.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Text_to_Cloud_Spanner",
     category = TemplateCategory.BATCH,
     displayName = "Text Files on Cloud Storage to Cloud Spanner",
     description =
-        "A pipeline to import a Cloud Spanner database from a set of Text (CSV) files in Cloud"
-            + " Storage.",
+        "The Cloud Storage Text to Cloud Spanner template is a batch pipeline that reads CSV text"
+            + " files from Cloud Storage and imports them to a Cloud Spanner database.",
     optionsClass = Options.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-cloud-spanner",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The target Cloud Spanner database and table must exist.",
+      "You must have read permissions for the Cloud Storage bucket and write permissions for the"
+          + " target Cloud Spanner database.",
+      "The input Cloud Storage path containing the CSV files must exist.",
+      "You must create an import manifest file containing a JSON description of the CSV files, and"
+          + " you must store that manifest file in Cloud Storage.",
+      "If the target Cloud Spanner database already has a schema, any columns specified in the"
+          + " manifest file must have the same data types as their corresponding columns in the"
+          + " target database's schema.",
+      // TODO: convey all the information
+      "The manifest file, encoded in ASCII or UTF-8, must match the following format: ... TODO ..."
+    })
 public class TextImportPipeline {
 
   /** Options for {@link TextImportPipeline}. */
@@ -105,8 +108,8 @@ public class TextImportPipeline {
     @TemplateParameter.Text(
         order = 1,
         regexes = {"^[a-z0-9\\-]+$"},
-        description = "Cloud Spanner instance id",
-        helpText = "The instance id of the Cloud Spanner database that you want to import to.")
+        description = "Cloud Spanner instance ID",
+        helpText = "The instance ID of the Cloud Spanner database that you want to import to.")
     ValueProvider<String> getInstanceId();
 
     void setInstanceId(ValueProvider<String> value);
@@ -114,9 +117,9 @@ public class TextImportPipeline {
     @TemplateParameter.Text(
         order = 2,
         regexes = {"^[a-z_0-9\\-]+$"},
-        description = "Cloud Spanner database id",
+        description = "Cloud Spanner database ID",
         helpText =
-            "The database id of the Cloud Spanner database that you want to import into (must"
+            "The database ID of the Cloud Spanner database that you want to import into (must"
                 + " already exist, and with the destination tables created).")
     ValueProvider<String> getDatabaseId();
 
@@ -160,9 +163,9 @@ public class TextImportPipeline {
         optional = true,
         description = "Field qualifier used by the source file",
         helpText =
-            "The field qualifier used by the source file. It should be used when character needs to"
-                + " be escaped. Field qualifier should be used when character needs to be escaped."
-                + " The default value is double quotes.")
+            "The field qualifier used by the source file. This is the character to wrap"
+                + " together text that should be kept as one value. The default value is double"
+                + " quotes.")
     @Default.Character('"')
     ValueProvider<Character> getFieldQualifier();
 
@@ -187,7 +190,9 @@ public class TextImportPipeline {
         optional = true,
         description = "Escape character",
         helpText =
-            "The escape character. The default value is NULL (not using the escape character).")
+            "The escape character. The default value is null i.e. no custom escape character. Note:"
+                + " CSV rows are always default quoted with '\"'. This escape character is an"
+                + " additional escape character.")
     ValueProvider<Character> getEscape();
 
     void setEscape(ValueProvider<Character> value);
@@ -197,8 +202,8 @@ public class TextImportPipeline {
         optional = true,
         description = "Null String",
         helpText =
-            "The string that represents the NULL value. The default value is null (not using the"
-                + " null string).")
+            "The string that represents the NULL value. The default value is an empty string.")
+    @Default.String("")
     ValueProvider<String> getNullString();
 
     void setNullString(ValueProvider<String> value);
@@ -245,14 +250,18 @@ public class TextImportPipeline {
         order = 13,
         optional = true,
         description = "Cloud Spanner Project Id",
-        helpText = "The project id of the Cloud Spanner instance.")
+        helpText = "The project ID of the Cloud Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
 
     @TemplateParameter.Enum(
         order = 14,
-        enumOptions = {"LOW", "MEDIUM", "HIGH"},
+        enumOptions = {
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
+        },
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
@@ -273,6 +282,17 @@ public class TextImportPipeline {
     ValueProvider<Boolean> getHandleNewLine();
 
     void setHandleNewLine(ValueProvider<Boolean> value);
+
+    @TemplateParameter.GcsWriteFolder(
+        order = 16,
+        description = "Invalid rows output path",
+        optional = true,
+        helpText = "Cloud Storage path where to write rows that cannot be imported.",
+        example = "gs://your-bucket/your-path")
+    @Default.String("")
+    ValueProvider<String> getInvalidOutputPath();
+
+    void setInvalidOutputPath(ValueProvider<String> value);
   }
 
   public static void main(String[] args) {
@@ -299,7 +319,9 @@ public class TextImportPipeline {
             .withDatabaseId(options.getDatabaseId())
             .withRpcPriority(options.getSpannerPriority());
 
-    p.apply(new TextImportTransform(spannerConfig, options.getImportManifest()));
+    p.apply(
+        new TextImportTransform(
+            spannerConfig, options.getImportManifest(), options.getInvalidOutputPath()));
 
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()

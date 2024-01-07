@@ -76,7 +76,7 @@ public class PythonTextTransformerTest {
       Resources.getResource(RESOURCES_DIR + "transform.py").getPath();
 
   /**
-   * Test {@link PythonRuntime#invoke(String)} returns transformed data when a good python transform
+   * Test {@link PythonRuntime#invoke} returns transformed data when a good python transform
    * function given. Requires installed python3 on local worker.
    */
   @Ignore

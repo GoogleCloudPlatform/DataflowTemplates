@@ -15,12 +15,8 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -72,9 +68,8 @@ public class DataCastingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(DataCastingUtils.class);
 
   private static final DateTimeFormatter jsDateTimeFormatter =
-      DateTimeFormat.forPattern("YYYY-MM-DD HH:mm:ssZ");
-  private static final DateTimeFormatter jsDateFormatter = DateTimeFormat.forPattern("YYYY-MM-DD");
-  private static final SimpleDateFormat jsTimeFormatter = new SimpleDateFormat("HH:mm:ss");
+      DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ssZ");
+  private static final DateTimeFormatter jsDateFormatter = DateTimeFormat.forPattern("YYYY-MM-dd");
 
   public static List<Object> sourceTextToTargetObjects(Row row, Target target) {
     Schema targetSchema = BeamUtils.toBeamSchema(target);
@@ -104,29 +99,30 @@ public class DataCastingUtils {
         continue;
       }
 
+      TypeName typeName = type.getTypeName();
       try {
-        if (type.getTypeName().isNumericType()) {
-          if (type.getTypeName() == TypeName.INT16 || type.getTypeName() == TypeName.INT32) {
+        if (typeName.isNumericType()) {
+          if (typeName == TypeName.INT16 || typeName == TypeName.INT32) {
             castVals.add(asInteger(objVal));
-          } else if (type.getTypeName() == TypeName.DECIMAL) {
+          } else if (typeName == TypeName.DECIMAL) {
             castVals.add(asBigDecimal(objVal));
-          } else if (type.getTypeName() == TypeName.FLOAT) {
+          } else if (typeName == TypeName.FLOAT) {
             castVals.add(asFloat(objVal));
-          } else if (type.getTypeName() == TypeName.DOUBLE) {
+          } else if (typeName == TypeName.DOUBLE) {
             castVals.add(asDouble(objVal));
           } else {
             castVals.add(asLong(objVal));
           }
-        } else if (type.getTypeName().isLogicalType()) {
+        } else if (typeName == TypeName.BOOLEAN) {
           castVals.add(asBoolean(objVal));
-        } else if (type.getTypeName().isDateType()) {
+        } else if (typeName.isDateType()) {
           castVals.add(toZonedDateTime(asDateTime(objVal)));
         } else {
           castVals.add(objVal);
         }
       } catch (Exception e) {
         castVals.add(null);
-        LOG.warn("Exception casting {} ({}): {}", fieldName, type.getTypeName().toString(), objVal);
+        LOG.warn("Exception casting {} ({}): {}", fieldName, typeName.toString(), objVal);
       }
     }
 
@@ -212,8 +208,6 @@ public class DataCastingUtils {
       if (listFullOfNulls(row.getValues())) {
         continue;
       }
-      String fieldName = m.getField();
-      PropertyType targetMappingType = m.getType();
       // lookup data type
       if (StringUtils.isNotEmpty(m.getConstant())) {
         if (StringUtils.isNotEmpty(m.getName())) {
@@ -264,22 +258,13 @@ public class DataCastingUtils {
         .collect(Collectors.joining(", ", "{", "}"));
   }
 
-  static byte[] asBytes(Object obj) throws IOException {
-    try (ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(bytesOut)) {
-      oos.writeObject(obj);
-      oos.flush();
-      return bytesOut.toByteArray();
-    }
-  }
-
   static DateTime asDateTime(Object o) {
     if (o == null) {
       return null;
     }
     DateTime val;
     if (o instanceof DateTime) {
-      val = ((DateTime) o).toDateTime();
+      val = ((DateTime) o);
     } else if (o instanceof Instant) {
       val = ((Instant) o).toDateTime();
     } else if (o instanceof java.time.Instant) {

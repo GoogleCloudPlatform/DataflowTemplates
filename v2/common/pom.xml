@@ -18,8 +18,8 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-      <groupId>com.google.cloud.teleport.v2</groupId>
-      <artifactId>dynamic-templates</artifactId>
+        <groupId>com.google.cloud.teleport.v2</groupId>
+        <artifactId>dynamic-templates</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -27,15 +27,10 @@
     <artifactId>common</artifactId>
 
     <properties>
-        <avro.version>1.8.2</avro.version>
-        <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.10.0</commons-text.version>
-        <hbase.client.version>1.4.12</hbase.client.version>
         <nashorn.version>15.4</nashorn.version>
-        <protoc.version>3.15.8</protoc.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
-        <secretmanager.version>2.1.2</secretmanager.version>
     </properties>
 
     <dependencies>
@@ -111,57 +106,18 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-bigquery</artifactId>
-            <version>${bigquery.version}</version>
-            <exclusions>
-              <exclusion>
-                <groupId>com.google.protobuf</groupId>
-                <artifactId>*</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>com.google.apis</groupId>
-                <artifactId>google-api-services-bigquery</artifactId>
-              </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
-          <groupId>org.apache.hbase</groupId>
-          <artifactId>hbase-shaded-client</artifactId>
-          <version>${hbase.client.version}</version>
-          <exclusions>
-            <exclusion>
-              <groupId>org.slf4j</groupId>
-              <artifactId>*</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>log4j</groupId>
-              <artifactId>*</artifactId>
-            </exclusion>
-          </exclusions>
+          <groupId>com.google.cloud</groupId>
+          <artifactId>google-cloud-storage</artifactId>
         </dependency>
         <dependency>
           <groupId>com.google.cloud</groupId>
           <artifactId>google-cloud-secretmanager</artifactId>
-          <version>${secretmanager.version}</version>
-          <exclusions>
-            <exclusion>
-              <groupId>io.grpc</groupId>
-              <artifactId>*</artifactId>
-            </exclusion>
-          </exclusions>
         </dependency>
         <dependency>
           <groupId>com.google.cloud</groupId>
           <artifactId>google-cloud-kms</artifactId>
-          <exclusions>
-            <exclusion>
-              <groupId>io.grpc</groupId>
-              <artifactId>*</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>com.google.cloud</groupId>
-              <artifactId>google-cloud-core-grpc</artifactId>
-            </exclusion>
-          </exclusions>
         </dependency>
 
         <!-- UDFs -->
@@ -169,6 +125,11 @@
           <groupId>org.openjdk.nashorn</groupId>
           <artifactId>nashorn-core</artifactId>
           <version>${nashorn.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>${caffeine.version}</version>
         </dependency>
 
         <!-- Test dependencies -->
@@ -196,37 +157,10 @@
               </exclusion>
             </exclusions>
         </dependency>
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongo-java-driver</artifactId>
-            <version>3.12.11</version>
-            <scope>compile</scope>
-        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-          <plugin>
-              <groupId>org.xolstice.maven.plugins</groupId>
-              <artifactId>protobuf-maven-plugin</artifactId>
-              <version>0.6.1</version>
-              <configuration>
-                <protocArtifact>com.google.protobuf:protoc:${protoc.version}:exe:${os.detected.classifier}</protocArtifact>
-                <writeDescriptorSet>true</writeDescriptorSet>
-                <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>
-                <descriptorSetFileName>schema.pb</descriptorSetFileName>
-                <!-- This path must be unique, or else it may delete existing files. -->
-                <descriptorSetOutputDirectory>${basedir}/target/generated-test-sources/protobuf/schema</descriptorSetOutputDirectory>
-              </configuration>
-              <executions>
-                <execution>
-                  <goals>
-                    <goal>compile</goal>
-                    <goal>test-compile</goal>
-                  </goals>
-                </execution>
-              </executions>
-            </plugin>
           <plugin>
             <groupId>com.google.cloud.tools</groupId>
             <artifactId>jib-maven-plugin</artifactId>
@@ -234,7 +168,7 @@
               <!-- Skip container creation of common module -->
               <execution>
                 <id>jib</id>
-                <phase>deploy</phase>
+                <phase>none</phase>
               </execution>
             </executions>
           </plugin>

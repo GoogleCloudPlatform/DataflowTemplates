@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -249,6 +250,35 @@ public class InformationSchemaScannerIT {
 
     // Verify pretty print.
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(allTypes));
+  }
+
+  @Test
+  public void simpleModel() throws Exception {
+    String modelDef =
+        "CREATE MODEL `Iris` INPUT ( `f1` FLOAT64, `f2` FLOAT64, `f3` FLOAT64, `f4` FLOAT64, )"
+            + " OUTPUT ( `classes` ARRAY<STRING(MAX)>, `scores` ARRAY<FLOAT64>, ) REMOTE OPTIONS"
+            + " (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\")";
+
+    spannerServer.createDatabase(dbId, Arrays.asList(modelDef));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.models(), hasSize(1));
+    Model model = ddl.model("Iris");
+    assertThat(model, notNullValue());
+    assertThat(ddl.model("iriS"), sameInstance(model));
+    assertThat(model.inputColumns(), hasSize(4));
+    assertThat(model.inputColumns().get(0).name(), is("f1"));
+    assertThat(model.inputColumns().get(0).type(), is(Type.float64()));
+    assertThat(model.inputColumns().get(0).columnOptions(), hasSize(1));
+    assertThat(model.inputColumns().get(0).columnOptions(), hasItems("required=TRUE"));
+    assertThat(model.outputColumns(), hasSize(2));
+    assertThat(model.remote(), equalTo(true));
+    assertThat(
+        model.options(),
+        hasItems(
+            "endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\""));
+
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(modelDef));
   }
 
   @Test
@@ -498,7 +528,7 @@ public class InformationSchemaScannerIT {
 
   @Test
   public void foreignKeys() throws Exception {
-    List<String> statements =
+    List<String> dbCreationStatements =
         Arrays.asList(
             "CREATE TABLE `Ref` ("
                 + " `id1`                               INT64 NOT NULL,"
@@ -512,14 +542,30 @@ public class InformationSchemaScannerIT {
             " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
                 + " REFERENCES `Ref` (`id2`, `id1`)");
 
-    spannerServer.createDatabase(dbId, statements);
+    List<String> dbVerificationStatements =
+        Arrays.asList(
+            "CREATE TABLE `Ref` ("
+                + " `id1`                               INT64 NOT NULL,"
+                + " `id2`                               INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`id1` ASC, `id2` ASC)",
+            " CREATE TABLE `Tab` ("
+                + " `key`                               INT64 NOT NULL,"
+                + " `id1`                               INT64 NOT NULL,"
+                + " `id2`                               INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`key` ASC)",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
+                // Unspecified DELETE action defaults to "NO ACTION"
+                + " REFERENCES `Ref` (`id2`, `id1`) ON DELETE NO ACTION");
+
+    spannerServer.createDatabase(dbId, dbCreationStatements);
     Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    assertThat(
+        ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", dbVerificationStatements)));
   }
 
   @Test
   public void pgForeignKeys() throws Exception {
-    List<String> statements =
+    List<String> dbCreationStatements =
         Arrays.asList(
             "CREATE TABLE \"Ref\" ("
                 + " \"id1\"                               bigint NOT NULL,"
@@ -534,10 +580,27 @@ public class InformationSchemaScannerIT {
                 + " )",
             " ALTER TABLE \"Tab\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"id1\", \"id2\")"
                 + " REFERENCES \"Ref\" (\"id2\", \"id1\")");
+    List<String> dbVerificationStatements =
+        Arrays.asList(
+            "CREATE TABLE \"Ref\" ("
+                + " \"id1\"                               bigint NOT NULL,"
+                + " \"id2\"                               bigint NOT NULL,"
+                + " PRIMARY KEY (\"id1\", \"id2\")"
+                + " )",
+            " CREATE TABLE \"Tab\" ("
+                + " \"key\"                               bigint NOT NULL,"
+                + " \"id1\"                               bigint NOT NULL,"
+                + " \"id2\"                               bigint NOT NULL,"
+                + " PRIMARY KEY (\"key\")"
+                + " )",
+            " ALTER TABLE \"Tab\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"id1\", \"id2\")"
+                // Unspecified DELETE action defaults to "NO ACTION"
+                + " REFERENCES \"Ref\" (\"id2\", \"id1\") ON DELETE NO ACTION");
 
-    spannerServer.createPgDatabase(dbId, statements);
+    spannerServer.createPgDatabase(dbId, dbCreationStatements);
     Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    assertThat(
+        ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", dbVerificationStatements)));
   }
 
   // TODO: enable this test once CHECK constraints are enabled
@@ -583,6 +646,19 @@ public class InformationSchemaScannerIT {
 
     spannerServer.createDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+  }
+
+  @Test
+  public void pgCommitTimestamp() throws Exception {
+    String statement =
+        "CREATE TABLE \"Users\" ("
+            + " \"id\"                                    bigint NOT NULL,"
+            + " \"birthday\"                              spanner.commit_timestamp NOT NULL,"
+            + " PRIMARY KEY (\"id\") )";
+
+    spannerServer.createPgDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
 
@@ -739,5 +815,65 @@ public class InformationSchemaScannerIT {
     spannerServer.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void sequences() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE SEQUENCE `MySequence` OPTIONS (" + "sequence_kind = \"bit_reversed_positive\")",
+            "CREATE SEQUENCE `MySequence2` OPTIONS ("
+                + "sequence_kind = \"bit_reversed_positive\","
+                + "skip_range_min = 1,"
+                + "skip_range_max = 1000,"
+                + "start_with_counter = 100)",
+            "CREATE TABLE `Account` ("
+                + " `id`        INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE MySequence)),"
+                + " `balanceId` INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`id` ASC)");
+
+    spannerServer.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    String expectedDdl =
+        "\nCREATE SEQUENCE `MySequence`\n\tOPTIONS "
+            + "(sequence_kind=\"bit_reversed_positive\")\n"
+            + "CREATE SEQUENCE `MySequence2`\n\tOPTIONS "
+            + "(sequence_kind=\"bit_reversed_positive\","
+            + " skip_range_max=1000,"
+            + " skip_range_min=1,"
+            + " start_with_counter=100)"
+            + "CREATE TABLE `Account` ("
+            + "\n\t`id`                                    INT64 DEFAULT"
+            + "  (GET_NEXT_SEQUENCE_VALUE(SEQUENCE MySequence)),"
+            + "\n\t`balanceId`                             INT64 NOT NULL,"
+            + "\n) PRIMARY KEY (`id` ASC)\n\n";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
+
+  @Test
+  public void pgSequences() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE",
+            "CREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"
+                + " SKIP RANGE 1 1000 START COUNTER WITH 100",
+            "CREATE TABLE \"Account\" ("
+                + " \"id\"        bigint DEFAULT nextval('\"MyPGSequence\"'),"
+                + " \"balanceId\" bigint NOT NULL,"
+                + " PRIMARY KEY (\"id\"))");
+
+    spannerServer.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    String expectedDdl =
+        "\nCREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE"
+            + " START COUNTER WITH 1"
+            + "\nCREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"
+            + " SKIP RANGE 1 1000 START COUNTER WITH 100"
+            + "CREATE TABLE \"Account\" ("
+            + "\n\t\"id\"                                    bigint NOT NULL"
+            + " DEFAULT nextval('\"MyPGSequence\"'::text),\n\t"
+            + "\"balanceId\"                             bigint NOT NULL,"
+            + "\n\tPRIMARY KEY (\"id\")\n)\n\n";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
   }
 }

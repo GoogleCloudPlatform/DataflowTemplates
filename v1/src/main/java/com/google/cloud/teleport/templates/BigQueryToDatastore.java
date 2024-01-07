@@ -33,13 +33,19 @@ import org.apache.beam.sdk.values.TupleTag;
 /**
  * Dataflow template which reads BigQuery data and writes it to Datastore. The source data can be
  * either a BigQuery table or a SQL query.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_BigQuery_to_Cloud_Datastore.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_BigQuery_to_Cloud_Datastore",
     category = TemplateCategory.BATCH,
     displayName = "BigQuery to Datastore",
-    description =
-        "A pipeline that reads rows from BigQuery and writes entities to Datastore. (NOTE: Nested and repeated BigQuery columns are currently not supported.)",
+    description = {
+      "A pipeline that reads rows from BigQuery and writes entities to Datastore.",
+      "Note: Nested and repeated BigQuery columns are currently not supported."
+    },
     optionsClass = BigQueryToDatastoreOptions.class,
     skipOptions = {
       "firestoreWriteProjectId",
@@ -47,7 +53,8 @@ import org.apache.beam.sdk.values.TupleTag;
       "firestoreWriteNamespace",
       "firestoreHintNumWorkers"
     },
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public class BigQueryToDatastore {
 
   /** Custom PipelineOptions. */

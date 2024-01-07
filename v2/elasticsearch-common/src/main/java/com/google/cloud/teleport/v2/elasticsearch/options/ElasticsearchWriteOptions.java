@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.elasticsearch.utils.BulkInsertMethod.BulkInsertMethodOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -226,7 +227,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   @TemplateParameter.Enum(
       order = 21,
-      enumOptions = {"INDEX", "CREATE"},
+      enumOptions = {@TemplateEnumOption("INDEX"), @TemplateEnumOption("CREATE")},
       optional = true,
       description = "Build insert method",
       helpText =
@@ -235,4 +236,79 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   BulkInsertMethodOptions getBulkInsertMethod();
 
   void setBulkInsertMethod(BulkInsertMethodOptions bulkInsertMethod);
+
+  @TemplateParameter.Boolean(
+      order = 22,
+      optional = true,
+      description = "Trust self-signed certificate",
+      helpText =
+          "Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to True to by-pass the validation on SSL certificate. (default is False)")
+  @Default.Boolean(false)
+  Boolean getTrustSelfSignedCerts();
+
+  void setTrustSelfSignedCerts(Boolean trustSelfSignedCerts);
+
+  @TemplateParameter.Boolean(
+      order = 23,
+      optional = true,
+      description = "Disable SSL certificate validation.",
+      helpText =
+          "Disable SSL certificate validation (true/false). Default false (validation "
+              + "enabled). If true, all certificates are considered trusted.")
+  @Default.Boolean(false)
+  Boolean getDisableCertificateValidation();
+
+  void setDisableCertificateValidation(Boolean disableCertificateValidation);
+
+  @TemplateParameter.Text(
+      order = 24,
+      optional = true,
+      regexes = {
+        "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/keyRings\\/[^\\n\\r\\/]+\\/cryptoKeys\\/[^\\n\\r\\/]+$"
+      },
+      description = "Google Cloud KMS encryption key for the API key",
+      helpText =
+          "The Cloud KMS key to decrypt the API key. This parameter must be "
+              + "provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey "
+              + "string should be passed in encrypted. Encrypt parameters using the KMS API encrypt "
+              + "endpoint. The Key should be in the format "
+              + "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. "
+              + "See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt ",
+      example =
+          "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name")
+  String getApiKeyKMSEncryptionKey();
+
+  void setApiKeyKMSEncryptionKey(String keyName);
+
+  @TemplateParameter.Text(
+      order = 25,
+      optional = true,
+      regexes = {"^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$"},
+      description = "Google Cloud Secret Manager ID.",
+      helpText =
+          "Secret Manager secret ID for the apiKey. This parameter should be provided if the apiKeySource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}.",
+      example = "projects/your-project-id/secrets/your-secret/versions/your-secret-version")
+  String getApiKeySecretId();
+
+  void setApiKeySecretId(String secretId);
+
+  @TemplateParameter.Enum(
+      order = 26,
+      optional = true,
+      enumOptions = {
+        @TemplateEnumOption("PLAINTEXT"),
+        @TemplateEnumOption("KMS"),
+        @TemplateEnumOption("SECRET_MANAGER")
+      },
+      description = "Source of the API key passed. One of PLAINTEXT, KMS or SECRET_MANAGER.",
+      helpText =
+          "Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter "
+              + "must be provided if secret manager or KMS is used. If apiKeySource is set to KMS, "
+              + "apiKeyKMSEncryptionKey and encrypted apiKey must be provided. If apiKeySource is set to "
+              + "SECRET_MANAGER, apiKeySecretId must be provided. If apiKeySource is set to PLAINTEXT, "
+              + "apiKey must be provided.")
+  @Default.String("PLAINTEXT")
+  String getApiKeySource();
+
+  void setApiKeySource(String apiKeySource);
 }

@@ -34,17 +34,28 @@ import org.bson.Document;
 /**
  * The {@link BigQueryToMongoDb} pipeline is a batch pipeline which reads data from BigQuery and
  * outputs the resulting records to MongoDB.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-mongodb/README_BigQuery_to_MongoDB.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "BigQuery_to_MongoDB",
     category = TemplateCategory.BATCH,
     displayName = "BigQuery to MongoDB",
     description =
-        "A batch pipeline which reads data rows from BigQuery and writes them to MongoDB as"
-            + " documents.",
+        "The BigQuery to MongoDB template is a batch pipeline that reads rows from a BigQuery and writes them to MongoDB as documents. "
+            + "Currently each row is stored as a document.",
     optionsClass = Options.class,
     flexContainerName = "bigquery-to-mongodb",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-mongodb",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The source BigQuery table must exist.",
+      "The target MongoDB instance should be accessible from the Dataflow worker machines."
+    })
 public class BigQueryToMongoDb {
   /**
    * Options supported by {@link BigQueryToMongoDb}
@@ -83,7 +94,7 @@ public class BigQueryToMongoDb {
                     TableRow row = c.element();
                     row.forEach(
                         (key, value) -> {
-                          if (key != "_id") {
+                          if (!key.equals("_id")) {
                             doc.append(key, value);
                           }
                         });

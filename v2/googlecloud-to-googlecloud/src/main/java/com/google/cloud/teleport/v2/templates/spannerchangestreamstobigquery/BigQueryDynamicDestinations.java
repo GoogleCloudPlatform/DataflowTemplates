@@ -26,8 +26,8 @@ import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
-import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerUtils;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
@@ -50,6 +50,7 @@ public final class BigQueryDynamicDestinations
 
   private final Map<String, TrackedSpannerTable> spannerTableByName;
   private final String bigQueryProject, bigQueryDataset, bigQueryTableTemplate;
+  private final Boolean useStorageWriteApi;
   private final ImmutableSet<String> ignoreFields;
 
   public static BigQueryDynamicDestinations of(
@@ -58,7 +59,7 @@ public final class BigQueryDynamicDestinations
     try (SpannerAccessor spannerAccessor =
         SpannerAccessor.getOrCreate(bigQueryDynamicDestinationsOptions.getSpannerConfig())) {
       Map<String, TrackedSpannerTable> spannerTableByName =
-          new SpannerUtils(
+          new SpannerChangeStreamsUtils(
                   spannerAccessor.getDatabaseClient(),
                   bigQueryDynamicDestinationsOptions.getChangeStreamName(),
                   dialect)
@@ -76,6 +77,7 @@ public final class BigQueryDynamicDestinations
     this.bigQueryProject = bigQueryDynamicDestinationsOptions.getBigQueryProject();
     this.bigQueryDataset = bigQueryDynamicDestinationsOptions.getBigQueryDataset();
     this.bigQueryTableTemplate = bigQueryDynamicDestinationsOptions.getBigQueryTableTemplate();
+    this.useStorageWriteApi = bigQueryDynamicDestinationsOptions.getUseStorageWriteApi();
   }
 
   private TableId getTableId(String bigQueryTableTemplate, TableRow tableRow) {
@@ -164,11 +166,13 @@ public final class BigQueryDynamicDestinations
             .setName(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_NUMBER_OF_PARTITIONS_IN_TRANSACTION)
             .setType(StandardSQLTypeName.INT64.name())
             .setMode(requiredMode));
-    fields.add(
-        new TableFieldSchema()
-            .setName(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_BIGQUERY_COMMIT_TIMESTAMP)
-            .setType(StandardSQLTypeName.TIMESTAMP.name())
-            .setMode(requiredMode));
+    if (!useStorageWriteApi) {
+      fields.add(
+          new TableFieldSchema()
+              .setName(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_BIGQUERY_COMMIT_TIMESTAMP)
+              .setType(StandardSQLTypeName.TIMESTAMP.name())
+              .setMode(requiredMode));
+    }
 
     return fields;
   }
@@ -191,6 +195,8 @@ public final class BigQueryDynamicDestinations
 
     public abstract String getBigQueryTableTemplate();
 
+    public abstract Boolean getUseStorageWriteApi();
+
     static Builder builder() {
       return new AutoValue_BigQueryDynamicDestinations_BigQueryDynamicDestinationsOptions.Builder();
     }
@@ -208,6 +214,8 @@ public final class BigQueryDynamicDestinations
       abstract Builder setBigQueryDataset(String bigQueryDataset);
 
       abstract Builder setBigQueryTableTemplate(String bigQueryTableTemplate);
+
+      abstract Builder setUseStorageWriteApi(Boolean useStorageWriteApi);
 
       abstract BigQueryDynamicDestinationsOptions build();
     }

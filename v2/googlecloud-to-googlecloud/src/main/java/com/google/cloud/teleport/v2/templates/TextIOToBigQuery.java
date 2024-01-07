@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.common.annotations.VisibleForTesting;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -53,17 +54,74 @@ import org.json.JSONObject;
 
 /**
  * Templated pipeline to read text from TextIO, apply a javascript UDF to it, and write it to GCS.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_GCS_Text_to_BigQuery_Flex.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Text_to_BigQuery_Flex",
     category = TemplateCategory.BATCH,
     displayName = "Text Files on Cloud Storage to BigQuery with BigQuery Storage API support",
     description =
-        "Batch pipeline. Reads text files stored in Cloud Storage, transforms them using a"
-            + " JavaScript user-defined function (UDF), and outputs the result to BigQuery.",
+        "The Cloud Storage Text to BigQuery pipeline is a batch pipeline that allows you to read text files stored in "
+            + "Cloud Storage, transform them using a JavaScript User Defined Function (UDF) that you provide, and append the result to a BigQuery table.",
     optionsClass = TextIOToBigQuery.Options.class,
+    skipOptions = {"javascriptTextTransformReloadIntervalMinutes"},
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery",
     flexContainerName = "text-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "Create a JSON file that describes your {{bigquery_name_short}} schema.\n"
+          + "    <p>Ensure that there is a top-level JSON array titled <code>BigQuery Schema</code> and that its\n"
+          + "      contents follow the pattern <code>{\"name\": \"COLUMN_NAME\", \"type\": \"DATA_TYPE\"}</code>.</p>\n"
+          + "    <p>The following JSON describes an example BigQuery schema:</p>\n"
+          + "<pre class=\"prettyprint lang-json\">\n"
+          + "{\n"
+          + "  \"BigQuery Schema\": [\n"
+          + "    {\n"
+          + "      \"name\": \"location\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"name\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"age\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"color\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"name\": \"coffee\",\n"
+          + "      \"type\": \"STRING\"\n"
+          + "    }\n"
+          + "  ]\n"
+          + "}\n"
+          + "</pre>",
+      "Create a JavaScript (<code>.js</code>) file with your UDF function that supplies the logic\n"
+          + "    to transform the lines of text. Your function must return a JSON string.\n"
+          + "    <p>For example, this function splits each line of a CSV file and returns a JSON string after\n"
+          + "      transforming the values.</p>\n"
+          + "<pre class=\"prettyprint\" suppresswarning>\n"
+          + "function transform(line) {\n"
+          + "var values = line.split(',');\n"
+          + "\n"
+          + "var obj = new Object();\n"
+          + "obj.location = values[0];\n"
+          + "obj.name = values[1];\n"
+          + "obj.age = values[2];\n"
+          + "obj.color = values[3];\n"
+          + "obj.coffee = values[4];\n"
+          + "var jsonString = JSON.stringify(obj);\n"
+          + "\n"
+          + "return jsonString;\n"
+          + "}</pre>"
+    })
 public class TextIOToBigQuery {
 
   /** Options supported by {@link TextIOToBigQuery}. */
@@ -148,6 +206,8 @@ public class TextIOToBigQuery {
   private static final String NAME = "name";
   private static final String TYPE = "type";
   private static final String MODE = "mode";
+  private static final String RECORD_TYPE = "RECORD";
+  private static final String FIELDS_ENTRY = "fields";
 
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
@@ -175,6 +235,7 @@ public class TextIOToBigQuery {
             TransformTextViaJavascript.newBuilder()
                 .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                 .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setReloadIntervalMinutes(options.getJavascriptTextTransformReloadIntervalMinutes())
                 .build())
         .apply(
             MapElements.via(
@@ -205,33 +266,48 @@ public class TextIOToBigQuery {
   private static TableSchema parseSchema(String jsonPath) {
     TableSchema tableSchema = new TableSchema();
     List<TableFieldSchema> fields = new ArrayList<>();
-    JSONObject jsonSchema;
 
-    try {
+    JSONObject jsonSchema = parseJson(jsonPath);
 
-      jsonSchema = parseJson(jsonPath);
+    JSONArray bqSchemaJsonArray = jsonSchema.getJSONArray(BIGQUERY_SCHEMA);
 
-      JSONArray bqSchemaJsonArray = jsonSchema.getJSONArray(BIGQUERY_SCHEMA);
-
-      for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
-        JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
-        TableFieldSchema field =
-            new TableFieldSchema()
-                .setName(inputField.getString(NAME))
-                .setType(inputField.getString(TYPE));
-
-        if (inputField.has(MODE)) {
-          field.setMode(inputField.getString(MODE));
-        }
-
-        fields.add(field);
-      }
-      tableSchema.setFields(fields);
-
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
+      JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
+      fields.add(convertToTableFieldSchema(inputField));
     }
+    tableSchema.setFields(fields);
+
     return tableSchema;
+  }
+
+  /**
+   * Convert a JSONObject from the Schema JSON to a TableFieldSchema. In case of RECORD, it handles
+   * it recursively.
+   *
+   * @param inputField Input field to convert.
+   * @return TableFieldSchema instance to populate the schema.
+   */
+  private static TableFieldSchema convertToTableFieldSchema(JSONObject inputField) {
+    TableFieldSchema field =
+        new TableFieldSchema()
+            .setName(inputField.getString(NAME))
+            .setType(inputField.getString(TYPE));
+
+    if (inputField.has(MODE)) {
+      field.setMode(inputField.getString(MODE));
+    }
+
+    if (inputField.getString(TYPE) != null && inputField.getString(TYPE).equals(RECORD_TYPE)) {
+      List<TableFieldSchema> nestedFields = new ArrayList<>();
+      JSONArray fieldsArr = inputField.getJSONArray(FIELDS_ENTRY);
+      for (int i = 0; i < fieldsArr.length(); i++) {
+        JSONObject nestedJSON = fieldsArr.getJSONObject(i);
+        nestedFields.add(convertToTableFieldSchema(nestedJSON));
+      }
+      field.setFields(nestedFields);
+    }
+
+    return field;
   }
 
   /**
@@ -249,7 +325,8 @@ public class TextIOToBigQuery {
           FileSystems.open(FileSystems.matchNewResource(pathToJson, false));
       String json =
           new String(
-              StreamUtils.getBytesWithoutClosing(Channels.newInputStream(readableByteChannel)));
+              StreamUtils.getBytesWithoutClosing(Channels.newInputStream(readableByteChannel)),
+              StandardCharsets.UTF_8);
       return new JSONObject(json);
     } catch (Exception e) {
       throw new RuntimeException(e);

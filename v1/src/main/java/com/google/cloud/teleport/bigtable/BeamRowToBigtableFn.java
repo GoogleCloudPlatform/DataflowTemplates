@@ -35,9 +35,9 @@ import org.apache.beam.sdk.schemas.Schema.TypeName;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.BaseEncoding;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.BaseEncoding;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.joda.time.ReadableInstant;
 import org.slf4j.Logger;
@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  *     The Cassandra Row Key </a>
  */
 public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutation>>> {
-  private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BeamRowToBigtableFn.class);
 
   public static final int MAX_MUTATION_PER_REQUEST = 100000;
   private static final boolean DEFAULT_SPLIT_LARGE_ROWS = false;

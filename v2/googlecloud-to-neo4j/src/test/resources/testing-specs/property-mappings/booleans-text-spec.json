@@ -1,0 +1,34 @@
+{
+  "source": {
+    "type": "text",
+    "format": "EXCEL",
+    "name": "booleans",
+    "data": [
+      ["bool-1", false],
+      ["bool-2", true],
+      ["bool-3", true],
+      ["bool-4", false]
+    ],
+    "ordered_field_names": "id,truthy"
+  },
+  "targets": [
+    {
+      "node": {
+        "name": "Boolean Nodes",
+        "source": "booleans",
+        "mode": "append",
+        "mappings": {
+          "label": "\"Boolean\"",
+          "properties": {
+            "keys": {
+              "id": "id"
+            },
+            "booleans": [{
+              "truthy": "truthy"
+            }]
+          }
+        }
+      }
+    }
+  ]
+}

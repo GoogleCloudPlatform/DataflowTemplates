@@ -15,14 +15,12 @@
  */
 package com.google.cloud.teleport.splunk;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.annotations.Experimental;
-import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.coders.BigEndianIntegerCoder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -31,7 +29,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +37,6 @@ import org.slf4j.LoggerFactory;
  * The {@link SplunkIO} class provides a {@link PTransform} that allows writing {@link SplunkEvent}
  * messages into a Splunk HTTP Event Collector end point.
  */
-@Experimental(Kind.SOURCE_SINK)
 public class SplunkIO {
 
   private static final Logger LOG = LoggerFactory.getLogger(SplunkIO.class);
@@ -268,7 +265,8 @@ public class SplunkIO {
       }
 
       /**
-       * Same as {@link Builder#withRootCaPath(ValueProvider)} but without a {@link ValueProvider}.
+       * Same as {@link Builder#withRootCaCertificatePath(ValueProvider)} but without a {@link
+       * ValueProvider}.
        *
        * @param rootCaCertificatePath Path to self-signed certificate
        * @return {@link Builder}

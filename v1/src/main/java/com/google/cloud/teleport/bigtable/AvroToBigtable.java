@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -45,15 +45,27 @@ import org.slf4j.LoggerFactory;
  * Bigtable table must be created before running the pipeline and must have a compatible table
  * schema. For example, if {@link BigtableCell} from the Avro files has a 'family' of "f1", the
  * Bigtable table should have a column family of "f1".
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Avro_to_Cloud_Bigtable.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Avro_to_Cloud_Bigtable",
     category = TemplateCategory.BATCH,
     displayName = "Avro Files on Cloud Storage to Cloud Bigtable",
     description =
-        "A pipeline which reads data from Avro files in Cloud Storage and writes it to Cloud Bigtable table.",
+        "The Cloud Storage Avro to Bigtable template is a pipeline that reads data from Avro files in a Cloud Storage bucket and writes the data to a Bigtable table. "
+            + "You can use the template to copy data from Cloud Storage to Bigtable.",
     optionsClass = Options.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-bigtable",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Bigtable table must exist and have the same column families as exported in the Avro files.",
+      "The input Avro files must exist in a Cloud Storage bucket before running the pipeline.",
+      "Bigtable expects a specific <a href=\"https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/src/main/resources/schema/avro/bigtable.avsc\">schema</a> from the input Avro files.",
+    })
 public final class AvroToBigtable {
   private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);
 
@@ -94,10 +106,11 @@ public final class AvroToBigtable {
     @SuppressWarnings("unused")
     void setBigtableTableId(ValueProvider<String> tableId);
 
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 5,
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-files/*.avro")
     ValueProvider<String> getInputFilePattern();
 

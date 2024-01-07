@@ -985,6 +985,7 @@ public class BigQueryConvertersTest {
     assertEquals(entityKind.get(), outputEntity.getKey().getPath(0).getKind());
     assertEquals(namespace.get(), outputEntity.getKey().getPartitionId().getNamespaceId());
   }
+
   /** Generates an Avro record with a single field. */
   private Record generateSingleFieldAvroRecord(
       String name, String type, String description, Object value) {

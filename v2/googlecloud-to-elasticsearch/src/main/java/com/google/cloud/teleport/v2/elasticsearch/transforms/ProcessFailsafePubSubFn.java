@@ -20,11 +20,12 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
+import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Throwables;
 
 /**
  * The {@link ProcessFailsafePubSubFn} class processes a {@link FailsafeElement} containing an
@@ -54,7 +55,9 @@ public class ProcessFailsafePubSubFn
 
     try {
       if (pubsubMessage.getPayload().length > 0) {
-        messageObject = gson.fromJson(new String(pubsubMessage.getPayload()), JsonObject.class);
+        messageObject =
+            gson.fromJson(
+                new String(pubsubMessage.getPayload(), StandardCharsets.UTF_8), JsonObject.class);
       }
 
       // If message attributes are present they will be serialized along with the message payload
@@ -67,7 +70,7 @@ public class ProcessFailsafePubSubFn
 
     } catch (JsonSyntaxException e) {
       context.output(
-          PubSubToElasticsearch.TRANSFORM_ERROROUTPUT_OUT,
+          PubSubToElasticsearch.TRANSFORM_ERROR_OUTPUT_OUT,
           FailsafeElement.of(context.element())
               .setErrorMessage(e.getMessage())
               .setStacktrace(Throwables.getStackTraceAsString(e)));

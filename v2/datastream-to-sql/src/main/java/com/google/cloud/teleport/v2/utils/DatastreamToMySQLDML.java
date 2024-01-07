@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import com.google.cloud.teleport.v2.io.CdcJdbcIO.DataSourceConfiguration;
-import com.google.cloud.teleport.v2.values.DatastreamRow;
+import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
+import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

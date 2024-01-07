@@ -69,6 +69,8 @@ public class FormatMessageTransform {
               JavascriptTextTransformer.FailsafeJavascriptUdf.<String>newBuilder()
                   .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                   .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                  .setReloadIntervalMinutes(
+                      options.getJavascriptTextTransformReloadIntervalMinutes())
                   .setLoggingEnabled(true)
                   .setSuccessTag(PubsubKafkaConstants.UDF_OUT)
                   .setFailureTag(PubsubKafkaConstants.UDF_DEADLETTER_OUT)

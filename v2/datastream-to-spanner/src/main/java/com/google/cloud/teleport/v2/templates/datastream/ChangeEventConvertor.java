@@ -19,11 +19,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.v2.templates.spanner.common.Type;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Column;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.IndexColumn;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.collect.ImmutableList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -153,54 +153,56 @@ public class ChangeEventConvertor {
           case PG_BOOL:
             pk.append(
                 ChangeEventTypeConvertor.toBoolean(
-                    changeEvent, keyColName, /*requiredField=*/ true));
+                    changeEvent, keyColName, /* requiredField= */ true));
             break;
           case INT64:
           case PG_INT8:
             pk.append(
-                ChangeEventTypeConvertor.toLong(changeEvent, keyColName, /*requiredField=*/ true));
+                ChangeEventTypeConvertor.toLong(
+                    changeEvent, keyColName, /* requiredField= */ true));
             break;
           case FLOAT64:
           case PG_FLOAT8:
             pk.append(
                 ChangeEventTypeConvertor.toDouble(
-                    changeEvent, keyColName, /*requiredField=*/ true));
+                    changeEvent, keyColName, /* requiredField= */ true));
             break;
           case STRING:
           case PG_VARCHAR:
           case PG_TEXT:
             pk.append(
                 ChangeEventTypeConvertor.toString(
-                    changeEvent, keyColName, /*requiredField=*/ true));
+                    changeEvent, keyColName, /* requiredField= */ true));
             break;
           case NUMERIC:
           case PG_NUMERIC:
             pk.append(
                 ChangeEventTypeConvertor.toNumericBigDecimal(
-                    changeEvent, keyColName, /*requiredField=*/ true));
+                    changeEvent, keyColName, /* requiredField= */ true));
             break;
           case JSON:
           case PG_JSONB:
             pk.append(
                 ChangeEventTypeConvertor.toString(
-                    changeEvent, keyColName, /*requiredField=*/ true));
+                    changeEvent, keyColName, /* requiredField= */ true));
             break;
           case BYTES:
           case PG_BYTEA:
             pk.append(
                 ChangeEventTypeConvertor.toByteArray(
-                    changeEvent, keyColName, /*requiredField=*/ true));
+                    changeEvent, keyColName, /* requiredField= */ true));
             break;
           case TIMESTAMP:
           case PG_TIMESTAMPTZ:
             pk.append(
                 ChangeEventTypeConvertor.toTimestamp(
-                    changeEvent, keyColName, /*requiredField=*/ true));
+                    changeEvent, keyColName, /* requiredField= */ true));
             break;
           case DATE:
           case PG_DATE:
             pk.append(
-                ChangeEventTypeConvertor.toDate(changeEvent, keyColName, /*requiredField=*/ true));
+                ChangeEventTypeConvertor.toDate(
+                    changeEvent, keyColName, /* requiredField= */ true));
             break;
             // TODO(b/179070999) -  Add support for other data types.
           default:

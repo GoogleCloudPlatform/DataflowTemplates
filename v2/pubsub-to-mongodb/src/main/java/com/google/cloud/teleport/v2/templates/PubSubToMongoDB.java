@@ -54,7 +54,7 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Throwables;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,44 +72,30 @@ import org.slf4j.LoggerFactory;
  *   <li>The MongoDB is up and running
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_NAME=my-project
- * BUCKET_NAME=my-bucket
- * INPUT_SUBSCRIPTION=my-subscription
- * MONGODB_DATABASE_NAME=testdb
- * MONGODB_HOSTNAME=my-host:port
- * MONGODB_COLLECTION_NAME=testCollection
- * DEADLETTERTABLE=project:dataset.deadletter_table_name
- *
- * mvn compile exec:java \
- *  -Dexec.mainClass=com.google.cloud.teleport.v2.templates.PubSubToMongoDB \
- *  -Dexec.cleanupDaemonThreads=false \
- *  -Dexec.args=" \
- *  --project=${PROJECT_NAME} \
- *  --stagingLocation=gs://${BUCKET_NAME}/staging \
- *  --tempLocation=gs://${BUCKET_NAME}/temp \
- *  --runner=DataflowRunner \
- *  --inputSubscription=${INPUT_SUBSCRIPTION} \
- *  --mongoDBUri=${MONGODB_HOSTNAME} \
- *  --database=${MONGODB_DATABASE_NAME} \
- *  --collection=${MONGODB_COLLECTION_NAME} \
- *  --deadletterTable=${DEADLETTERTABLE}"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-to-mongodb/README_Cloud_PubSub_to_MongoDB.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_PubSub_to_MongoDB",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to MongoDB",
     description =
-        "Streaming pipeline that reads JSON encoded messages from a Pub/Sub subscription,"
-            + " transforms them using a JavaScript user-defined function (UDF), and writes them to"
-            + " a MongoDB as documents.",
+        "The Pub/Sub to MongoDB template is a streaming pipeline that reads JSON-encoded messages from a Pub/Sub subscription and writes them to MongoDB as documents. "
+            + "If required, this pipeline supports additional transforms that can be included using a JavaScript user-defined function (UDF). "
+            + "Any errors occurred due to schema mismatch, malformed JSON, or while executing transforms are recorded in a BigQuery table for unprocessed messages along with input message. "
+            + "If a table for unprocessed records does not exist prior to execution, the pipeline automatically creates this table.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-to-mongodb",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-mongodb",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The Pub/Sub Subscription must exist and the messages must be encoded in a valid JSON format.",
+      "The MongoDB cluster must exist and should be accessible from the Dataflow worker machines."
+    },
+    streaming = true)
 public class PubSubToMongoDB {
   /**
    * Options supported by {@link PubSubToMongoDB}
@@ -160,7 +146,7 @@ public class PubSubToMongoDB {
     @TemplateParameter.Text(
         order = 2,
         description = "MongoDB Connection URI",
-        helpText = "List of Mongo DB nodes separated by comma.",
+        helpText = "Comma separated list of MongoDB servers.",
         example = "host1:port,host2:port,host3:port")
     @Validation.Required
     String getMongoDBUri();
@@ -180,7 +166,7 @@ public class PubSubToMongoDB {
     @TemplateParameter.Text(
         order = 4,
         description = "MongoDB collection",
-        helpText = "Name of the collection inside MongoDB database to put the documents to.",
+        helpText = "Name of the collection inside MongoDB database to insert the documents.",
         example = "my-collection")
     @Validation.Required
     String getCollection();
@@ -191,10 +177,9 @@ public class PubSubToMongoDB {
         order = 5,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
-                + " schema, malformed json) are written to this table. If it doesn't exist, it will"
-                + " be created during pipeline execution. If not specified,"
-                + " \"outputTableSpec_error_records\" is used instead.",
+            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
+                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
         example = "your-project-id:your-dataset.your-table-name")
     @Validation.Required
     String getDeadletterTable();
@@ -215,9 +200,7 @@ public class PubSubToMongoDB {
         order = 7,
         optional = true,
         description = "Batch Size in Bytes",
-        helpText =
-            "Batch Size in bytes used for batch insertion of documents into MongoDB. Default:"
-                + " 5242880 (5mb)")
+        helpText = "Batch Size in bytes used for batch insertion of documents into MongoDB.")
     @Default.Long(5242880)
     Long getBatchSizeBytes();
 
@@ -343,6 +326,8 @@ public class PubSubToMongoDB {
                     .setJavascriptTextTransformFunctionName(
                         options.getJavascriptTextTransformFunctionName())
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
+                    .setJavascriptTextTransformReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .build());
 
     /*
@@ -358,7 +343,7 @@ public class PubSubToMongoDB {
             "Put to MongoDB",
             MongoDbIO.write()
                 .withBatchSize(options.getBatchSize())
-                .withUri(String.format("mongodb://%s", options.getMongoDBUri()))
+                .withUri(prefixMongoDb(options.getMongoDBUri()))
                 .withDatabase(options.getDatabase())
                 .withCollection(options.getCollection())
                 .withIgnoreSSLCertificate(options.getIgnoreSSLCertificate())
@@ -381,6 +366,14 @@ public class PubSubToMongoDB {
 
     // Execute the pipeline and return the result.
     return pipeline.run();
+  }
+
+  /** Add the MongoDB protocol prefix only if the given uri doesn't have it. */
+  private static String prefixMongoDb(String mongoDBUri) {
+    if (mongoDBUri.startsWith("mongodb://") || mongoDBUri.startsWith("mongodb+srv://")) {
+      return mongoDBUri;
+    }
+    return String.format("mongodb://%s", mongoDBUri);
   }
 
   /**
@@ -414,6 +407,9 @@ public class PubSubToMongoDB {
     @Nullable
     public abstract String javascriptTextTransformFunctionName();
 
+    @Nullable
+    public abstract Integer javascriptTextTransformReloadIntervalMinutes();
+
     @Override
     public PCollectionTuple expand(PCollection<PubsubMessage> input) {
 
@@ -429,6 +425,7 @@ public class PubSubToMongoDB {
             JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
                 .setFileSystemPath(javascriptTextTransformGcsPath())
                 .setFunctionName(javascriptTextTransformFunctionName())
+                .setReloadIntervalMinutes(javascriptTextTransformReloadIntervalMinutes())
                 .setSuccessTag(TRANSFORM_OUT)
                 .setFailureTag(TRANSFORM_DEADLETTER_OUT)
                 .build());
@@ -448,6 +445,9 @@ public class PubSubToMongoDB {
 
       public abstract Builder setJavascriptTextTransformFunctionName(
           String javascriptTextTransformFunctionName);
+
+      public abstract Builder setJavascriptTextTransformReloadIntervalMinutes(
+          Integer javascriptTextTransformReloadIntervalMinutes);
 
       public abstract PubSubMessageToJsonDocument build();
     }
@@ -481,7 +481,9 @@ public class PubSubToMongoDB {
 
       try {
         if (pubsubMessage.getPayload().length > 0) {
-          messageObject = gson.fromJson(new String(pubsubMessage.getPayload()), JsonObject.class);
+          messageObject =
+              gson.fromJson(
+                  new String(pubsubMessage.getPayload(), StandardCharsets.UTF_8), JsonObject.class);
         }
 
         // If message attributes are present they will be serialized along with the message payload

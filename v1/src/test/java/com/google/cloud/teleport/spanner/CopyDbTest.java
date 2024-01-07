@@ -523,7 +523,7 @@ public class CopyDbTest {
             .setOptionName("optimizer_version")
             .setOptionValue("1")
             .build());
-    // Misformed database option
+    // Malformed database option
     dbOptionList.add(
         Export.DatabaseOption.newBuilder()
             .setOptionName("123version")
@@ -603,7 +603,7 @@ public class CopyDbTest {
             .setOptionName("optimizer_version")
             .setOptionValue("1")
             .build());
-    // Misformed database option
+    // Malformed database option
     dbOptionList.add(
         Export.DatabaseOption.newBuilder()
             .setOptionName("123version")
@@ -762,6 +762,30 @@ public class CopyDbTest {
   }
 
   @Test
+  public void models() throws Exception {
+    // spotless:off
+    String endpoint =
+        "//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760";
+    Ddl ddl =
+        Ddl.builder()
+            .createModel("Iris")
+            .remote(true)
+            .options(ImmutableList.of("endpoint=\"" + endpoint + "\""))
+            .inputColumn("f1").type(Type.float64()).size(-1).endInputColumn()
+            .inputColumn("f2").type(Type.float64()).size(-1).endInputColumn()
+            .inputColumn("f3").type(Type.float64()).size(-1).endInputColumn()
+            .inputColumn("f4").type(Type.float64()).size(-1).endInputColumn()
+            .outputColumn("classes").type(Type.array(Type.string())).size(-1).endOutputColumn()
+            .outputColumn("scores").type(Type.array(Type.float64())).size(-1).endOutputColumn()
+            .endModel()
+            .build();
+    // spotless:on
+
+    createAndPopulate(ddl, 0);
+    runTest();
+  }
+
+  @Test
   public void changeStreams() throws Exception {
     Ddl ddl =
         Ddl.builder()
@@ -853,6 +877,55 @@ public class CopyDbTest {
   }
 
   @Test
+  public void sequences() throws Exception {
+    Ddl ddl =
+        Ddl.builder()
+            .createSequence("Sequence1")
+            .options(
+                ImmutableList.of(
+                    "sequence_kind=\"bit_reversed_positive\"",
+                    "skip_range_min=0",
+                    "skip_range_max=1000",
+                    "start_with_counter=50"))
+            .endSequence()
+            .createSequence("Sequence2")
+            .options(
+                ImmutableList.of(
+                    "sequence_kind=\"bit_reversed_positive\"", "start_with_counter=9999"))
+            .endSequence()
+            .createSequence("Sequence3")
+            .options(ImmutableList.of("sequence_kind=\"bit_reversed_positive\""))
+            .endSequence()
+            .build();
+
+    createAndPopulate(ddl, 0);
+    runTest();
+  }
+
+  @Test
+  public void pgSequences() throws Exception {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createSequence("PGSequence1")
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(Long.valueOf(50))
+            .skipRangeMin(Long.valueOf(0))
+            .skipRangeMax(Long.valueOf(1000))
+            .endSequence()
+            .createSequence("PGSequence2")
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(Long.valueOf(9999))
+            .endSequence()
+            .createSequence("PGSequence3")
+            .sequenceKind("bit_reversed_positive")
+            .endSequence()
+            .build();
+
+    createAndPopulate(ddl, 0);
+    runTest(Dialect.POSTGRESQL);
+  }
+
+  @Test
   public void randomSchema() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
     createAndPopulate(ddl, 100);
@@ -904,6 +977,7 @@ public class CopyDbTest {
         new ImportTransform(
             destConfig,
             source,
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),

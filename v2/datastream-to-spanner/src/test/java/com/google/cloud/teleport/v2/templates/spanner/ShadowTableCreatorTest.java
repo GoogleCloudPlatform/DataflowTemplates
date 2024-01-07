@@ -20,9 +20,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.v2.templates.spanner.common.Type;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;

@@ -18,21 +18,30 @@ package com.google.cloud.teleport.plugin.model;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameterNameFromMethod;
 
 import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateCreationParameters;
+import com.google.cloud.teleport.metadata.TemplateIgnoreParameter;
+import com.google.cloud.teleport.metadata.auto.AutoTemplate;
+import com.google.cloud.teleport.metadata.auto.AutoTemplate.ExecutionBlock;
 import com.google.cloud.teleport.metadata.util.MetadataUtils;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.options.Default;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +79,12 @@ public class TemplateDefinitions {
   }
 
   public boolean isClassic() {
+
+    // Python implies Flex
+    if (templateAnnotation.type() == TemplateType.PYTHON) {
+      return false;
+    }
+
     return templateAnnotation.flexContainerName() == null
         || templateAnnotation.flexContainerName().isEmpty();
   }
@@ -83,21 +98,40 @@ public class TemplateDefinitions {
     ImageSpec imageSpec = new ImageSpec();
 
     SdkInfo sdkInfo = new SdkInfo();
-    sdkInfo.setLanguage("JAVA");
+    sdkInfo.setLanguage(templateAnnotation.type().toString());
     imageSpec.setSdkInfo(sdkInfo);
 
     ImageSpecMetadata metadata = new ImageSpecMetadata();
+    metadata.setInternalName(templateAnnotation.name());
     metadata.setName(templateAnnotation.displayName());
-    metadata.setDescription(templateAnnotation.description());
+    metadata.setDescription(
+        List.of(templateAnnotation.description()).stream().collect(Collectors.joining("\n\n")));
+    metadata.setCategory(
+        new ImageSpecCategory(
+            templateAnnotation.category().getName(),
+            templateAnnotation.category().getDisplayName()));
+    metadata.setModule(getClassModule());
+    metadata.setDocumentationLink(templateAnnotation.documentation());
+    metadata.setGoogleReleased(
+        templateAnnotation.documentation() != null
+            && templateAnnotation.documentation().contains("cloud.google.com"));
+    metadata.setHidden(templateAnnotation.hidden());
+    metadata.setPreview(templateAnnotation.preview());
+    metadata.setRequirements(Arrays.asList(templateAnnotation.requirements()));
 
-    if (isClassic()) {
+    metadata.setAdditionalDocumentation(
+        Arrays.stream(templateAnnotation.additionalDocumentation())
+            .map(
+                block ->
+                    new ImageSpecAdditionalDocumentation(
+                        block.name(), Arrays.asList(block.content())))
+            .collect(Collectors.toList()));
 
-      if (templateAnnotation.placeholderClass() != null
-          && templateAnnotation.placeholderClass() != void.class) {
-        metadata.setMainClass(templateAnnotation.placeholderClass().getName());
-      } else {
-        metadata.setMainClass(templateClass.getName());
-      }
+    if (templateAnnotation.placeholderClass() != null
+        && templateAnnotation.placeholderClass() != void.class) {
+      metadata.setMainClass(templateAnnotation.placeholderClass().getName());
+    } else {
+      metadata.setMainClass(templateClass.getName());
     }
 
     LOG.info(
@@ -111,10 +145,30 @@ public class TemplateDefinitions {
     Map<Class<?>, Integer> classOrder = new HashMap<>();
 
     Class<?> optionsClass = templateAnnotation.optionsClass();
+    if (optionsClass == void.class) {
+      optionsClass = templateClass;
+    }
 
     if (templateAnnotation.optionsOrder() != null) {
       for (Class<?> options : templateAnnotation.optionsOrder()) {
         classOrder.putIfAbsent(options, order++);
+      }
+    }
+
+    // If blocks were defined, go through each block's option class
+    if (templateAnnotation.blocks()[0] != void.class) {
+      try {
+        List<ExecutionBlock> executionBlocks = AutoTemplate.buildExecutionBlocks(templateClass);
+        for (ExecutionBlock block : executionBlocks) {
+          classOrder.putIfAbsent(block.getBlockInstance().getOptionsClass(), order++);
+        }
+        optionsClass =
+            AutoTemplate.createNewOptionsClass(
+                executionBlocks,
+                templateClass.getClassLoader(),
+                AutoTemplate.getDlqInstance(templateClass));
+      } catch (Exception e) {
+        throw new RuntimeException("Error parsing template blocks", e);
       }
     }
 
@@ -125,6 +179,11 @@ public class TemplateDefinitions {
     Method[] methods = optionsClass.getMethods();
     for (Method method : methods) {
       method.setAccessible(true);
+
+      // Ignore the method if it contains @TemplateIgnoreParameter
+      if (method.getAnnotation(TemplateIgnoreParameter.class) != null) {
+        continue;
+      }
 
       classOrder.putIfAbsent(method.getDeclaringClass(), order++);
 
@@ -165,20 +224,16 @@ public class TemplateDefinitions {
           }
         }
 
-        // Ignore non-annotated params in this criteria
+        // Ignore non-annotated params in this criteria (non-options params)
         if (runtime
             || methodName.startsWith("set")
             || IGNORED_FIELDS.contains(methodName)
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.sdk")
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.runners")
+            || method.getReturnType() == void.class
             || IGNORED_DECLARING_CLASSES.contains(method.getDeclaringClass().getSimpleName())) {
           continue;
         }
-
-        LOG.warn(
-            "Method {} (declared at {}) does not have an annotation",
-            methodName,
-            method.getDeclaringClass().getName());
 
         if (validateFlag && method.getAnnotation(Deprecated.class) == null) {
           throw new IllegalArgumentException(
@@ -212,6 +267,13 @@ public class TemplateDefinitions {
       if (optionalOptionsSet.contains(parameter.getName())) {
         parameter.setOptional(true);
       }
+
+      // Set the default value, if any
+      Object defaultVal = getDefault(method.getDefiningMethod());
+      if (defaultVal != null) {
+        parameter.setDefaultValue(String.valueOf(defaultVal));
+      }
+
       if (parameterNames.add(parameter.getName())) {
         metadata.getParameters().add(parameter);
       } else {
@@ -222,9 +284,9 @@ public class TemplateDefinitions {
       }
     }
 
-    boolean isFlex =
-        templateAnnotation.flexContainerName() == null
-            || templateAnnotation.flexContainerName().isEmpty();
+    boolean isFlex = StringUtils.isNotEmpty(templateAnnotation.flexContainerName());
+    metadata.setFlexTemplate(isFlex);
+
     imageSpec.setDefaultEnvironment(
         Map.of(
             "additionalUserLabels",
@@ -236,7 +298,28 @@ public class TemplateDefinitions {
     imageSpec.setImage("gcr.io/{project-id}/" + templateAnnotation.flexContainerName());
     imageSpec.setMetadata(metadata);
 
+    metadata.setUdfSupport(
+        metadata.getParameters().stream()
+            .anyMatch(
+                parameter ->
+                    parameter.getName().contains("javascriptTextTransformGcsPath")
+                        || parameter.getName().contains("javascriptTextTransformFunctionName")));
+
     return imageSpec;
+  }
+
+  private String getClassModule() {
+    URL resource = templateClass.getResource(templateClass.getSimpleName() + ".class");
+    if (resource == null) {
+      return null;
+    }
+
+    Pattern pattern = Pattern.compile(".*/(.*?)/target");
+    Matcher matcher = pattern.matcher(resource.getPath());
+    if (matcher.find()) {
+      return matcher.group(1);
+    }
+    return null;
   }
 
   private ImageSpecParameter getImageSpecParameter(
@@ -251,7 +334,13 @@ public class TemplateDefinitions {
       if (!helpText.endsWith(".")) {
         helpText += ".";
       }
-      helpText += " Defaults to: " + defaultValue;
+
+      if (defaultValue instanceof String && defaultValue.equals("")) {
+        helpText += " Defaults to empty.";
+      } else {
+        helpText += " Defaults to: " + defaultValue + ".";
+      }
+
       parameter.setHelpText(helpText);
     }
 

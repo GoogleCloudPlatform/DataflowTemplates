@@ -1,0 +1,48 @@
+{
+  "name": "AstraDB to BigQuery",
+  "description": "A pipeline reads from AstraDB and writes to BigQuery.",
+  "parameters": [
+    {
+      "name": "astraToken",
+      "label": "Astra Token",
+      "helpText": "Astra Token secret resource id",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "astraSecureConnectBundle",
+      "label": "Connect Bundle Zip archive secret resource id",
+      "helpText": "Stored as a secret, this zip contains X509 certificate and private key to connect to AstraDB",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "astraKeyspace",
+      "label": "AstraDB Keyspace",
+      "helpText": "Name of the keyspace in Astra",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "astraTable",
+      "label": "AstraDB table",
+      "helpText": "Name of the Table in Astra",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "astraQuery",
+      "label": "AstraDB query",
+      "helpText": "Query to filter some records from Astra",
+      "is_optional": true,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputTableSpec",
+      "label": "BigQuery table spec to write the data",
+      "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
+      "is_optional": true,
+      "paramType": "TEXT"
+    }
+  ]
+}

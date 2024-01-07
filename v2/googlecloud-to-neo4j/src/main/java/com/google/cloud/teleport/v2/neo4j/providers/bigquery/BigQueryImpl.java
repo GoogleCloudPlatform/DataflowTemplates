@@ -17,14 +17,13 @@ package com.google.cloud.teleport.v2.neo4j.providers.bigquery;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SourceQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.SqlQuerySpec;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.SqlQuerySpec.SqlQuerySpecBuilder;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -41,16 +40,12 @@ public class BigQueryImpl implements Provider {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryImpl.class);
 
-  private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
-  private JobSpec jobSpec;
   private OptionsParams optionsParams;
 
   public BigQueryImpl() {}
 
   @Override
   public void configure(OptionsParams optionsParams, JobSpec jobSpecRequest) {
-    this.jobSpec = jobSpecRequest;
     this.optionsParams = optionsParams;
   }
 
@@ -68,17 +63,17 @@ public class BigQueryImpl implements Provider {
 
   @Override
   public PTransform<PBegin, PCollection<Row>> querySourceBeamRows(SourceQuerySpec sourceQuerySpec) {
-    return new BqQueryToRow(optionsParams, getSourceQueryBeamSpec(sourceQuerySpec));
+    return new BqQueryToRow(getSourceQueryBeamSpec(sourceQuerySpec));
   }
 
   @Override
   public PTransform<PBegin, PCollection<Row>> queryTargetBeamRows(TargetQuerySpec targetQuerySpec) {
-    return new BqQueryToRow(optionsParams, getTargetQueryBeamSpec(targetQuerySpec));
+    return new BqQueryToRow(getTargetQueryBeamSpec(targetQuerySpec));
   }
 
   @Override
   public PTransform<PBegin, PCollection<Row>> queryMetadata(Source source) {
-    return new BqQueryToRow(optionsParams, getMetadataQueryBeamSpec(source));
+    return new BqQueryToRow(getMetadataQueryBeamSpec(source));
   }
 
   /**
@@ -96,7 +91,7 @@ public class BigQueryImpl implements Provider {
     String zeroRowSql = "SELECT * FROM (" + baseQuery + ") LIMIT 0";
     LOG.info("Reading BQ metadata with query: {}", zeroRowSql);
 
-    return SqlQuerySpec.builder()
+    return new SqlQuerySpecBuilder()
         .readDescription("Read from BQ " + source.getName())
         .castDescription("Cast to BeamRow " + source.getName())
         .sql(zeroRowSql)
@@ -109,7 +104,7 @@ public class BigQueryImpl implements Provider {
    * @return helper object includes metadata and SQL
    */
   public SqlQuerySpec getSourceQueryBeamSpec(SourceQuerySpec sourceQuerySpec) {
-    return SqlQuerySpec.builder()
+    return new SqlQuerySpecBuilder()
         .castDescription("Cast to BeamRow " + sourceQuerySpec.getSource().getName())
         .readDescription("Read from BQ " + sourceQuerySpec.getSource().getName())
         .sql(getBaseQuery(sourceQuerySpec.getSource()))
@@ -125,8 +120,8 @@ public class BigQueryImpl implements Provider {
     Set<String> sourceFieldSet = ModelUtils.getBeamFieldSet(targetQuerySpec.getSourceBeamSchema());
     String baseSql = getBaseQuery(targetQuerySpec.getSource());
     String targetSpecificSql =
-        ModelUtils.getTargetSql(sourceFieldSet, targetQuerySpec.getTarget(), true, baseSql);
-    return SqlQuerySpec.builder()
+        ModelUtils.getTargetSql(sourceFieldSet, targetQuerySpec, true, baseSql);
+    return new SqlQuerySpecBuilder()
         .readDescription(
             targetQuerySpec.getTarget().getSequence()
                 + ": Read from BQ "

@@ -15,10 +15,14 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.options.BigQueryCommonOptions;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.TransformTextViaJavascript;
@@ -35,24 +39,41 @@ import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 
-/** Dataflow template which copies Firestore Entities to a BigQuery table. */
+/**
+ * Dataflow template which copies Firestore Entities to a BigQuery table.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Firestore_to_BigQuery_Flex.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Firestore_to_BigQuery_Flex",
     category = TemplateCategory.BATCH,
     displayName = "Firestore (Datastore mode) to BigQuery",
     description = "Batch pipeline. Reads Firestore entities and writes them to BigQuery.",
     optionsClass = FirestoreToBigQuery.FirestoreToBigQueryOptions.class,
+    skipOptions = {
+      "datastoreReadNamespace",
+      "datastoreReadGqlQuery",
+      "datastoreReadProjectId",
+      "javascriptTextTransformReloadIntervalMinutes"
+    },
     flexContainerName = "firestore-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true)
 public class FirestoreToBigQuery {
-  interface FirestoreToBigQueryOptions
-      extends PipelineOptions, FirestoreReadOptions, JavascriptTextTransformerOptions {
+  public interface FirestoreToBigQueryOptions
+      extends PipelineOptions,
+          FirestoreReadOptions,
+          JavascriptTextTransformerOptions,
+          BigQueryStorageApiBatchOptions,
+          BigQueryCommonOptions.WriteOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format "
-                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
+                + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String value);
@@ -66,6 +87,42 @@ public class FirestoreToBigQuery {
     String getBigQueryLoadingTemporaryDirectory();
 
     void setBigQueryLoadingTemporaryDirectory(String directory);
+
+    @TemplateParameter.GcsReadFile(
+        order = 3,
+        optional = true,
+        description = "Cloud Storage path to BigQuery JSON schema",
+        helpText =
+            "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is not set, or set to CREATE_IF_NEEDED, this parameter must be specified.",
+        example = "gs://your-bucket/your-schema.json")
+    String getBigQuerySchemaPath();
+
+    void setBigQuerySchemaPath(String path);
+  }
+
+  private static BigQueryIO.Write<TableRow> writeToBigQuery(FirestoreToBigQueryOptions options) {
+    BigQueryIO.Write<TableRow> write =
+        BigQueryIO.writeTableRows()
+            .withoutValidation()
+            .to(options.getOutputTableSpec())
+            .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
+            .withCustomGcsTempLocation(
+                StaticValueProvider.of(options.getBigQueryLoadingTemporaryDirectory()));
+
+    if (CreateDisposition.valueOf(options.getCreateDisposition())
+        == CreateDisposition.CREATE_NEVER) {
+      write = write.withCreateDisposition(CreateDisposition.CREATE_NEVER);
+    } else {
+      write =
+          write
+              .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+              .withJsonSchema(getGcsFileAsString(options.getBigQuerySchemaPath()));
+    }
+    if (options.getUseStorageWriteApi()) {
+      write = write.withMethod(BigQueryIO.Write.Method.STORAGE_WRITE_API);
+    }
+
+    return write;
   }
 
   /**
@@ -101,16 +158,7 @@ public class FirestoreToBigQuery {
                     return BigQueryConverters.convertJsonToTableRow(json);
                   }
                 }))
-        .apply(
-            "WriteBigQuery",
-            BigQueryIO.writeTableRows()
-                .withoutValidation()
-                .withCreateDisposition(CreateDisposition.CREATE_NEVER)
-                .to(options.getOutputTableSpec())
-                .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                .withWriteDisposition(WriteDisposition.WRITE_TRUNCATE)
-                .withCustomGcsTempLocation(
-                    StaticValueProvider.of(options.getBigQueryLoadingTemporaryDirectory())));
+        .apply("WriteBigQuery", writeToBigQuery(options));
 
     pipeline.run();
   }

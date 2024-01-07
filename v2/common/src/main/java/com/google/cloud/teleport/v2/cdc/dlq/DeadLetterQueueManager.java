@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.cdc.dlq;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.io.Serializable;
@@ -28,8 +30,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,7 @@ public class DeadLetterQueueManager implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(DeadLetterQueueManager.class);
 
-  private static final String DATETIME_FILEPATH_SUFFIX = "YYYY/MM/DD/HH/mm/";
+  private static final String DATETIME_FILEPATH_SUFFIX = "YYYY/MM/dd/HH/mm/";
   private final String retryDlqDirectory;
   private final String severeDlqDirectory;
   private final int maxRetries;
@@ -75,12 +75,22 @@ public class DeadLetterQueueManager implements Serializable {
     return new DeadLetterQueueManager(retryDlqUri, severeDlqUri, maxRetries);
   }
 
+  public static DeadLetterQueueManager create(
+      String dlqDirectory, String retryDlqUri, int maxRetries) {
+
+    String severeDlqUri =
+        FileSystems.matchNewResource(dlqDirectory, true)
+            .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
+            .toString();
+    return new DeadLetterQueueManager(retryDlqUri, severeDlqUri, maxRetries);
+  }
+
   public String getRetryDlqDirectory() {
     return retryDlqDirectory;
   }
 
   public String getSevereDlqDirectory() {
-    return retryDlqDirectory;
+    return severeDlqDirectory;
   }
 
   public String getRetryDlqDirectoryWithDateTime() {

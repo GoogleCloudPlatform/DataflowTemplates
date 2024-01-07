@@ -62,7 +62,7 @@ public class TextTargetToRow extends PTransform<PBegin, PCollection<Row>> {
 
     // conditionally apply sql to rows.
     if (ModelUtils.targetHasTransforms(target)) {
-      String sql = getRewritten(ModelUtils.getTargetSql(sourceFieldSet, target, false));
+      String sql = getRewritten(ModelUtils.getTargetSql(sourceFieldSet, targetQuerySpec, false));
       LOG.info("Target schema: {}", targetSchema);
       LOG.info("Executing SQL on PCOLLECTION: {}", sql);
       PCollection<Row> sqlDataRow =

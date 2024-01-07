@@ -34,8 +34,8 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TimestampedValue;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.Resources;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableMap;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.Resources;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Instant;
@@ -72,17 +72,20 @@ public class PubSubCdcToBigQueryTest {
     // Parameters
     String transformPath = TRANSFORM_FILE_PATH;
     String transformFunction = "transform";
+    Integer reloadInterval = 0;
 
     PubSubCdcToBigQuery.Options options =
         PipelineOptionsFactory.create().as(PubSubCdcToBigQuery.Options.class);
 
     options.setJavascriptTextTransformGcsPath(transformPath);
     options.setJavascriptTextTransformFunctionName(transformFunction);
+    options.setJavascriptTextTransformReloadIntervalMinutes(reloadInterval);
 
     InputUDFToTableRow<String> deadletterHandler =
         new InputUDFToTableRow<String>(
             options.getJavascriptTextTransformGcsPath(),
             options.getJavascriptTextTransformFunctionName(),
+            options.getJavascriptTextTransformReloadIntervalMinutes(),
             options.getPythonTextTransformGcsPath(),
             options.getPythonTextTransformFunctionName(),
             options.getRuntimeRetries(),

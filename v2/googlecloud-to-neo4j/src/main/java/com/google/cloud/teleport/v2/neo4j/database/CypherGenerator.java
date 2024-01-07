@@ -15,21 +15,22 @@
  */
 package com.google.cloud.teleport.v2.neo4j.database;
 
+import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.filterProperties;
+
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
-import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
-import org.apache.commons.lang3.RandomStringUtils;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Generates cypher based on model metadata.
@@ -37,121 +38,102 @@ import org.slf4j.LoggerFactory;
  * <p>TODO: Needs to be refactored to use DSL.
  */
 public class CypherGenerator {
-
-  private static final Logger LOG = LoggerFactory.getLogger(CypherGenerator.class);
   private static final String CONST_ROW_VARIABLE_NAME = "rows";
 
   public static String getUnwindCreateCypher(Target target) {
+    TargetType targetType = target.getType();
+    if (targetType != TargetType.edge && targetType != TargetType.node) {
+      throw new RuntimeException("Unhandled target type: " + targetType);
+    }
+
+    SaveMode saveMode = target.getSaveMode();
+    if (saveMode != SaveMode.merge && saveMode != SaveMode.append) {
+      throw new RuntimeException("Unhandled save mode: " + saveMode);
+    }
+
+    if (targetType == TargetType.edge) {
+      return unwindRelationships(target);
+    }
+
+    if (saveMode == SaveMode.merge) {
+      return unwindMergeNodes(target);
+    }
+    return unwindCreateNodes(target);
+  }
+
+  private static String unwindCreateNodes(Target target) {
     StringBuilder sb = new StringBuilder();
-    // Model node creation statement
-    //  "UNWIND $rows AS row CREATE(c:Customer { id : row.id, name: row.name, firstName:
-    // row.firstName })
-    String nodeAlias = "N_" + RandomStringUtils.randomAlphanumeric(8);
+    sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
+    sb.append("CREATE (")
+        .append(
+            getLabelsPropertiesListCypherFragment(
+                "n", FragmentType.node, Arrays.asList(RoleType.key, RoleType.property), target))
+        .append(")");
+    return sb.toString();
+  }
 
-    /// RELATIONSHIP TYPE
-    if (target.getType() == TargetType.edge) {
-
-      // Verb
-      if (target.getSaveMode() == SaveMode.merge) { // merge
-        sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
-        // MERGE (variable1:Label1 {nodeProperties1})-[:REL_TYPE]->
-        // (variable2:Label2 {nodeProperties2})
-        // MATCH before MERGE
-        sb.append(" MATCH (")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "source", true, FragmentType.source, Arrays.asList(RoleType.key), target))
-            .append(")");
-        sb.append(" MATCH (")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "target", true, FragmentType.target, Arrays.asList(RoleType.key), target))
-            .append(")");
-        sb.append(" MERGE (source)");
-        sb.append(" -[")
-            .append(getRelationshipTypePropertiesListFragment("rel", false, target))
-            .append("]-> ");
-        sb.append("(target)");
-        // SET properties...
-      } else if (target.getSaveMode() == SaveMode.append) { // Fast, blind create
-        sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row CREATE ");
-        sb.append("(")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "source",
-                    false,
-                    FragmentType.source,
-                    Arrays.asList(RoleType.key, RoleType.property),
-                    target))
-            .append(")");
-        sb.append(" -[")
-            .append(getRelationshipTypePropertiesListFragment("rel", false, target))
-            .append("]-> ");
-        sb.append("(")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "target",
-                    false,
-                    FragmentType.target,
-                    Arrays.asList(RoleType.key, RoleType.property),
-                    target))
-            .append(")");
-      } else {
-        LOG.error("Unhandled saveMode: " + target.getSaveMode());
-      }
-
-      // NODE TYPE
-    } else if (target.getType() == TargetType.node) {
-
-      // Verb
-      if (target.getSaveMode() == SaveMode.merge) { // merge
-        sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
-        // MERGE clause represents matching properties
-        // MERGE (charlie {name: 'Charlie Sheen', age: 10})  A new node with the name 'Charlie
-        // Sheen' will be created since not all properties matched the existing 'Charlie Sheen'
-        // node.
-        sb.append("MERGE (")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "n", false, FragmentType.node, Arrays.asList(RoleType.key), target))
-            .append(")");
-        String nodePropertyMapStr =
-            getPropertiesListCypherFragment(
-                FragmentType.node, false, Arrays.asList(RoleType.property), target);
-        if (nodePropertyMapStr.length() > 0) {
-          sb.append(" SET n+=").append(nodePropertyMapStr);
-        }
-      } else if (target.getSaveMode() == SaveMode.append) { // fast create
-        sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
-        sb.append("CREATE (")
-            .append(
-                getLabelsPropertiesListCypherFragment(
-                    "n",
-                    false,
-                    FragmentType.node,
-                    Arrays.asList(RoleType.key, RoleType.property),
-                    target))
-            .append(")");
-      } else {
-        LOG.error("Unhandled saveMode: " + target.getSaveMode());
-      }
-    } else {
-      throw new RuntimeException("Unhandled target type: " + target.getType());
+  private static String unwindMergeNodes(Target target) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
+    // MERGE clause represents matching properties
+    // MERGE (charlie {name: 'Charlie Sheen', age: 10})  A new node with the name 'Charlie
+    // Sheen' will be created since not all properties matched the existing 'Charlie Sheen'
+    // node.
+    sb.append("MERGE (")
+        .append(
+            getLabelsPropertiesListCypherFragment(
+                "n", FragmentType.node, List.of(RoleType.key), target))
+        .append(")");
+    String nodePropertyMapStr =
+        getPropertiesListCypherFragment(FragmentType.node, List.of(RoleType.property), target);
+    if (nodePropertyMapStr.length() > 0) {
+      sb.append(" SET n+=").append(nodePropertyMapStr);
     }
     return sb.toString();
   }
 
-  public static String getLabelsPropertiesListCypherFragment(
-      String alias,
-      boolean onlyIndexedProperties,
-      FragmentType entityType,
-      List<RoleType> roleTypes,
-      Target target) {
+  private static String unwindRelationships(Target edge) {
+    String edgeClause;
+    String nodeClause;
+    if (edge.getSaveMode() == SaveMode.merge) {
+      edgeClause = "MERGE";
+      nodeClause = edge.getEdgeNodesMatchMode() == EdgeNodesSaveMode.merge ? "MERGE" : "MATCH";
+    } else {
+      edgeClause = "CREATE";
+      nodeClause = edge.getEdgeNodesMatchMode() == EdgeNodesSaveMode.merge ? "MERGE" : "CREATE";
+    }
+
+    StringBuilder query = new StringBuilder();
+    query.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
+    query
+        .append(String.format(" %s (", nodeClause))
+        .append(
+            getLabelsPropertiesListCypherFragment(
+                "source", FragmentType.source, List.of(RoleType.key), edge))
+        .append(")");
+    query
+        .append(String.format(" %s (", nodeClause))
+        .append(
+            getLabelsPropertiesListCypherFragment(
+                "target", FragmentType.target, List.of(RoleType.key), edge))
+        .append(")");
+    query.append(String.format(" %s (source)", edgeClause));
+    query.append("-[").append(getRelationshipTypePropertiesListFragment("rel", edge)).append("]->");
+    query.append("(target)");
+    String relPropertyMap =
+        getPropertiesListCypherFragment(FragmentType.rel, List.of(RoleType.property), edge);
+    if (!relPropertyMap.isEmpty()) {
+      query.append(" SET rel += ").append(relPropertyMap);
+    }
+    return query.toString();
+  }
+
+  private static String getLabelsPropertiesListCypherFragment(
+      String alias, FragmentType entityType, List<RoleType> roleTypes, Target target) {
     StringBuilder sb = new StringBuilder();
     List<String> labels =
         ModelUtils.getStaticOrDynamicLabels(CONST_ROW_VARIABLE_NAME, entityType, target);
-    String propertiesKeyListStr =
-        getPropertiesListCypherFragment(entityType, onlyIndexedProperties, roleTypes, target);
+    String propertiesKeyListStr = getPropertiesListCypherFragment(entityType, roleTypes, target);
     // Labels
     if (labels.size() > 0) {
       sb.append(alias);
@@ -170,16 +152,13 @@ public class CypherGenerator {
     return sb.toString();
   }
 
-  public static String getPropertiesListCypherFragment(
-      FragmentType entityType,
-      boolean onlyIndexedProperties,
-      List<RoleType> roleTypes,
-      Target target) {
+  private static String getPropertiesListCypherFragment(
+      FragmentType entityType, List<RoleType> roleTypes, Target target) {
     StringBuilder sb = new StringBuilder();
     int targetColCount = 0;
     for (Mapping m : target.getMappings()) {
       if (m.getFragmentType() == entityType) {
-        if (roleTypes.contains(m.getRole()) && (!onlyIndexedProperties || m.isIndexed())) {
+        if (roleTypes.contains(m.getRole())) {
           if (targetColCount > 0) {
             sb.append(",");
           }
@@ -203,21 +182,49 @@ public class CypherGenerator {
     return "";
   }
 
-  public static List<String> getNodeIndexAndConstraintsCypherStatements(
-      Config config, Target target) {
+  /**
+   * Generates the Cypher schema statements for the given target.
+   *
+   * @param target a target validated by {@link
+   *     com.google.cloud.teleport.v2.neo4j.model.InputValidator} and transformed by {@link
+   *     com.google.cloud.teleport.v2.neo4j.model.InputRefactoring}
+   * @return a list of Cypher schema statements
+   */
+  public static Set<String> getIndexAndConstraintsCypherStatements(Target target) {
+    TargetType type = target.getType();
+    switch (type) {
+      case node:
+        return getNodeIndexAndConstraintsCypherStatements(target);
+      case edge:
+        return getRelationshipIndexAndConstraintsCypherStatements(target);
+      default:
+        throw new IllegalArgumentException(String.format("unexpected target type: %s", type));
+    }
+  }
 
-    List<String> cyphers = new ArrayList<>();
-    // Model node creation statement
-    //  "UNWIND $rows AS row CREATE(c:Customer { id : row.id, name: row.name, firstName:
-    // row.firstName })
-    // derive labels
+  private static Set<String> getNodeIndexAndConstraintsCypherStatements(Target target) {
     List<String> labels = ModelUtils.getStaticLabels(FragmentType.node, target);
-    List<String> indexedProperties =
-        ModelUtils.getIndexedProperties(config.getIndexAllProperties(), FragmentType.node, target);
-    List<String> uniqueProperties = ModelUtils.getUniqueProperties(FragmentType.node, target);
-    List<String> mandatoryProperties = ModelUtils.getRequiredProperties(FragmentType.node, target);
-    List<String> nodeKeyProperties = ModelUtils.getNodeKeyProperties(FragmentType.node, target);
+    Set<String> keyProperties =
+        filterProperties(
+            target,
+            (mapping) ->
+                mapping.getFragmentType() == FragmentType.node
+                    && mapping.getRole() == RoleType.key);
+    Set<String> uniqueProperties =
+        filterProperties(
+            target,
+            (mapping) -> isEntityProperty(mapping, FragmentType.node) && mapping.isUnique());
+    Set<String> mandatoryProperties =
+        filterProperties(
+            target,
+            (mapping) -> isEntityProperty(mapping, FragmentType.node) && mapping.isMandatory());
+    Set<String> indexedProperties =
+        filterProperties(
+            target,
+            (mapping) -> isEntityProperty(mapping, FragmentType.node) && mapping.isIndexed());
 
+    Set<String> cyphers =
+        new LinkedHashSet<>(getEntityKeyConstraintStatements(labels, keyProperties));
     for (String uniqueProperty : uniqueProperties) {
       cyphers.add(
           "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
@@ -234,15 +241,6 @@ public class CypherGenerator {
               + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(mandatoryProperty)
               + " IS NOT NULL");
     }
-    for (String nodeKeyProperty : nodeKeyProperties) {
-      cyphers.add(
-          "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
-              + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
-              + ") REQUIRE n."
-              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(nodeKeyProperty)
-              + " IS NODE KEY");
-    }
-    // constraints must be created last
     for (String indexedProperty : indexedProperties) {
       cyphers.add(
           "CREATE INDEX IF NOT EXISTS FOR (t:"
@@ -255,19 +253,115 @@ public class CypherGenerator {
     return cyphers;
   }
 
-  public static String getRelationshipTypePropertiesListFragment(
-      String prefix, boolean onlyIndexedProperties, Target target) {
+  // TODO: no-op if < 5.7 || not EE for some or all
+
+  private static Set<String> getRelationshipIndexAndConstraintsCypherStatements(Target target) {
+
+    Set<String> cyphers = new LinkedHashSet<>();
+    if (target.getEdgeNodesMatchMode() == EdgeNodesSaveMode.merge) {
+      cyphers.addAll(
+          getEntityKeyConstraintStatements(
+              ModelUtils.getStaticLabels(FragmentType.source, target),
+              filterProperties(
+                  target,
+                  (mapping) ->
+                      mapping.getFragmentType() == FragmentType.source
+                          && mapping.getRole() == RoleType.key)));
+      cyphers.addAll(
+          getEntityKeyConstraintStatements(
+              ModelUtils.getStaticLabels(FragmentType.target, target),
+              filterProperties(
+                  target,
+                  (mapping) ->
+                      mapping.getFragmentType() == FragmentType.target
+                          && mapping.getRole() == RoleType.key)));
+    }
+    String type = ModelUtils.getStaticType(target);
+    Set<String> keyProperties =
+        filterProperties(
+            target,
+            (mapping) ->
+                mapping.getFragmentType() == FragmentType.rel && mapping.getRole() == RoleType.key);
+    Set<String> uniqueProperties =
+        filterProperties(
+            target, (mapping) -> isEntityProperty(mapping, FragmentType.rel) && mapping.isUnique());
+    Set<String> mandatoryProperties =
+        filterProperties(
+            target,
+            (mapping) -> isEntityProperty(mapping, FragmentType.rel) && mapping.isMandatory());
+    Set<String> indexedProperties =
+        filterProperties(
+            target,
+            (mapping) -> isEntityProperty(mapping, FragmentType.rel) && mapping.isIndexed());
+
+    String escapedType = ModelUtils.makeSpaceSafeValidNeo4jIdentifier(type);
+    for (String relKeyProperty : keyProperties) {
+      cyphers.add(
+          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() REQUIRE r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(relKeyProperty)
+              + " IS RELATIONSHIP KEY");
+    }
+    for (String uniqueProperty : uniqueProperties) {
+      cyphers.add(
+          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() REQUIRE r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(uniqueProperty)
+              + " IS UNIQUE");
+    }
+    for (String mandatoryProperty : mandatoryProperties) {
+      cyphers.add(
+          "CREATE CONSTRAINT IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() REQUIRE r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(mandatoryProperty)
+              + " IS NOT NULL");
+    }
+    for (String indexedProperty : indexedProperties) {
+      cyphers.add(
+          "CREATE INDEX IF NOT EXISTS FOR ()-[r:"
+              + escapedType
+              + "]-() ON (r."
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(indexedProperty)
+              + ")");
+    }
+
+    return cyphers;
+  }
+
+  private static List<String> getEntityKeyConstraintStatements(
+      List<String> labels, Set<String> nodeKeyProperties) {
+    List<String> statements = new ArrayList<>(labels.size());
+    for (String label : labels) {
+      String escapedLabel = ModelUtils.makeSpaceSafeValidNeo4jIdentifier(label);
+      // TODO: distinguish keys vs key mapping
+      for (String nodeKeyProperty : nodeKeyProperties) {
+        String escapedProperty = ModelUtils.makeSpaceSafeValidNeo4jIdentifier(nodeKeyProperty);
+        statements.add(
+            String.format(
+                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:%s) REQUIRE n.%s IS NODE KEY",
+                escapedLabel, escapedProperty));
+      }
+    }
+    return statements;
+  }
+
+  private static String getRelationshipTypePropertiesListFragment(String prefix, Target target) {
     StringBuilder sb = new StringBuilder();
     List<String> relType =
         ModelUtils.getStaticOrDynamicRelationshipType(CONST_ROW_VARIABLE_NAME, target);
     sb.append(prefix).append(":").append(StringUtils.join(relType, ":"));
-    sb.append(" ")
-        .append(
-            getPropertiesListCypherFragment(
-                FragmentType.rel,
-                onlyIndexedProperties,
-                Arrays.asList(RoleType.key, RoleType.property),
-                target));
+    String properties =
+        getPropertiesListCypherFragment(FragmentType.rel, List.of(RoleType.key), target);
+    if (!properties.isEmpty()) {
+      sb.append(" ").append(properties);
+    }
     return sb.toString();
+  }
+
+  private static boolean isEntityProperty(Mapping mapping, FragmentType entityType) {
+    return mapping.getFragmentType() == entityType && mapping.getRole() == RoleType.property;
   }
 }

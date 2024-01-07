@@ -16,12 +16,14 @@
 package com.google.cloud.teleport.metadata.util;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import java.beans.Introspector;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** Utilities for working with template metadata. */
 public final class MetadataUtils {
@@ -31,8 +33,10 @@ public final class MetadataUtils {
         TemplateParameter.BigQueryTable.class,
         TemplateParameter.Boolean.class,
         TemplateParameter.DateTime.class,
+        TemplateParameter.Double.class,
         TemplateParameter.Duration.class,
         TemplateParameter.Enum.class,
+        TemplateParameter.Float.class,
         TemplateParameter.GcsReadFile.class,
         TemplateParameter.GcsReadFolder.class,
         TemplateParameter.GcsWriteFile.class,
@@ -46,6 +50,7 @@ public final class MetadataUtils {
         TemplateParameter.PubsubTopic.class,
         TemplateParameter.Text.class
       };
+  public static final String BIGQUERY_TABLE_PATTERN = ".+[\\.:].+\\..+";
 
   private MetadataUtils() {}
 
@@ -162,9 +167,21 @@ public final class MetadataUtils {
       case "Long":
         TemplateParameter.Long longParam = (TemplateParameter.Long) parameterAnnotation;
         return List.of("^[0-9]+$");
+      case "Float":
+        TemplateParameter.Float floatParam = (TemplateParameter.Float) parameterAnnotation;
+        return List.of("^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][-+]?[0-9]+)?$");
+      case "Double":
+        TemplateParameter.Double doubleParam = (TemplateParameter.Double) parameterAnnotation;
+        return List.of("^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][-+]?[0-9]+)?$");
       case "Enum":
         TemplateParameter.Enum enumParam = (TemplateParameter.Enum) parameterAnnotation;
-        return List.of("^(" + String.join("|", enumParam.enumOptions()) + ")$");
+
+        String optionsRegex =
+            Arrays.stream(enumParam.enumOptions())
+                .map(TemplateEnumOption::value)
+                .collect(Collectors.joining("|"));
+
+        return List.of("^(" + optionsRegex + ")$");
       case "DateTime":
         TemplateParameter.DateTime dateTimeParam = (TemplateParameter.DateTime) parameterAnnotation;
         return List.of(
@@ -172,7 +189,7 @@ public final class MetadataUtils {
       case "BigQueryTable":
         TemplateParameter.BigQueryTable bigQueryTableParam =
             (TemplateParameter.BigQueryTable) parameterAnnotation;
-        return List.of(".+:.+\\..+");
+        return List.of(BIGQUERY_TABLE_PATTERN);
       case "KmsEncryptionKey":
         TemplateParameter.KmsEncryptionKey kmsEncryptionKeyParam =
             (TemplateParameter.KmsEncryptionKey) parameterAnnotation;

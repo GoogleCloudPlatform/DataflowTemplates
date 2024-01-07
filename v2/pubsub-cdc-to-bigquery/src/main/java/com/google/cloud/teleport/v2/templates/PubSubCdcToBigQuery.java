@@ -62,6 +62,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
@@ -70,7 +71,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,47 +90,9 @@ import org.slf4j.LoggerFactory;
  *   <li>The BigQuery output table exists or auto-mapping parameter is enabled.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=project-id
- * BUCKET_NAME=gs://bucket-name
- * PIPELINE_FOLDER=${BUCKET_NAME}/dataflow/pipelines/pubsub-to-bigquery
- * SUBSCRIPTION=projects/${PROJECT}/subscriptions/pubsub-subscription-name
- * AUTOMAP_TABLES=false or true depedning if automatic new table/column handling is required.
- * DATASET_TEMPLATE=dataset-name
- * TABLE_NAME_TEMPLATE=table-name
- * DEADLETTER_TABLE=${PROJECT}:${DATASET_TEMPLATE}.dead_letter
- *
- * # Set containerization vars
- * IMAGE_NAME=pubsub-cdc-to-bigquery
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
- * BASE_CONTAINER_IMAGE_VERSION=latest
- * APP_ROOT=/template/pubsub-cdc-to-bigquery
- * DATAFLOW_JAVA_COMMAND_SPEC=${APP_ROOT}/resources/pubsub-cdc-to-bigquery-command-spec.json
- * TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/pubsub-cdc-to-bigquery-image-spec.json
- *
- * # Build and upload image
- * mvn clean package \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${DATAFLOW_JAVA_COMMAND_SPEC} \
- * -am -pl pubsub-cdc-to-bigquery
- *
- * # Create a template spec containing the details of image location and metadata in GCS
- *   as specified in README.md file
- *
- * # Execute template:
- * JOB_NAME="pubsub-cdc-to-bigquery-`date +%Y%m%d-%H%M%S-%N`"
- * gcloud beta dataflow flex-template run ${JOB_NAME} \
- *      --project=${PROJECT} --region=us-central1 \
- *      --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
- *      --parameters inputSubscription=${SUBSCRIPTION},outputDatasetTemplate=${DATASET_TEMPLATE},outputTableNameTemplate=${TABLE_NAME_TEMPLATE},autoMapTables=${AUTOMAP_TABLES}
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-cdc-to-bigquery/README_PubSub_CDC_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "PubSub_CDC_to_BigQuery",
@@ -141,7 +104,9 @@ import org.slf4j.LoggerFactory;
             + " BigQuery table as BigQuery elements.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-cdc-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true,
+    streaming = true)
 public class PubSubCdcToBigQuery {
 
   /** The log to output status messages to. */
@@ -164,6 +129,7 @@ public class PubSubCdcToBigQuery {
    */
   public interface Options
       extends PipelineOptions, InputUDFOptions, BigQueryStorageApiStreamingOptions {
+
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
@@ -177,6 +143,7 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.Boolean(
         order = 2,
+        optional = true,
         description = "Auto Map Tables",
         helpText =
             "Determines if new columns and tables should be automatically created in BigQuery")
@@ -219,22 +186,23 @@ public class PubSubCdcToBigQuery {
 
     @TemplateParameter.BigQueryTable(
         order = 6,
+        optional = true,
         description = "BigQuery output table (Deprecated)",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format "
-                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
+                + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String value);
 
     @TemplateParameter.BigQueryTable(
         order = 7,
+        optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
-                + " schema, malformed json) are written to this table. If it doesn't exist, it will"
-                + " be created during pipeline execution. If not specified,"
-                + " \"outputTableSpec_error_records\" is used instead.",
+            "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
+                + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
         example = "your-project-id:your-dataset.your-table-name")
     String getOutputDeadletterTable();
 
@@ -323,6 +291,7 @@ public class PubSubCdcToBigQuery {
         new InputUDFToTableRow<String>(
             options.getJavascriptTextTransformGcsPath(),
             options.getJavascriptTextTransformFunctionName(),
+            options.getJavascriptTextTransformReloadIntervalMinutes(),
             options.getPythonTextTransformGcsPath(),
             options.getPythonTextTransformFunctionName(),
             options.getRuntimeRetries(),
@@ -330,10 +299,10 @@ public class PubSubCdcToBigQuery {
 
     BigQueryTableConfigManager bqConfigManager =
         new BigQueryTableConfigManager(
-            (String) options.as(GcpOptions.class).getProject(),
-            (String) options.getOutputDatasetTemplate(),
-            (String) options.getOutputTableNameTemplate(),
-            (String) options.getOutputTableSpec());
+            options.as(GcpOptions.class).getProject(),
+            options.getOutputDatasetTemplate(),
+            options.getOutputTableNameTemplate(),
+            options.getOutputTableSpec());
 
     /*
      * Steps:
@@ -552,13 +521,12 @@ public class PubSubCdcToBigQuery {
   }
 
   /**
-   * The {@link PubsubMessageToTableRow} class is a {@link PTransform} which transforms incoming
-   * {@link PubsubMessage} objects into {@link TableRow} objects for insertion into BigQuery while
-   * applying an optional UDF to the input. The executions of the UDF and transformation to {@link
-   * TableRow} objects is done in a fail-safe way by wrapping the element with it's original payload
-   * inside the {@link FailsafeElement} class. The {@link PubsubMessageToTableRow} transform will
-   * output a {@link PCollectionTuple} which contains all output and dead-letter {@link
-   * PCollection}.
+   * The class is a {@link PTransform} which transforms incoming {@link PubsubMessage} objects into
+   * {@link TableRow} objects for insertion into BigQuery while applying an optional UDF to the
+   * input. The executions of the UDF and transformation to {@link TableRow} objects is done in a
+   * fail-safe way by wrapping the element with it's original payload inside the {@link
+   * FailsafeElement} class. The transform transform will output a {@link PCollectionTuple} which
+   * contains all output and dead-letter {@link PCollection}.
    *
    * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
    *

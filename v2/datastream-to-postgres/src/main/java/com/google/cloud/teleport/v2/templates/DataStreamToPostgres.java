@@ -16,12 +16,12 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.io.CdcJdbcIO;
+import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
+import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
+import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.transforms.CreateDml;
 import com.google.cloud.teleport.v2.transforms.ProcessDml;
-import com.google.cloud.teleport.v2.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.sql.SQLException;
 import org.apache.beam.sdk.Pipeline;
@@ -81,10 +81,11 @@ public class DataStreamToPostgres {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "Cloud Storage Input File(s)",
         helpText = "Path of the file pattern glob to read from.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/path/*.avro")
     String getInputFilePattern();
 
@@ -93,7 +94,7 @@ public class DataStreamToPostgres {
     @Description(
         "The Pub/Sub subscription with DataStream file notifications."
             + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
+            + "`projects/<project-id>/subscriptions/<subscription-name>`.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);

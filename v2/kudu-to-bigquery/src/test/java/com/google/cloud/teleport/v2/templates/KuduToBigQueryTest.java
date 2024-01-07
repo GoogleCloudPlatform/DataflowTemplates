@@ -24,7 +24,7 @@ import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.Schema;
 import org.apache.kudu.Type;
@@ -67,13 +67,13 @@ public class KuduToBigQueryTest {
     Mockito.doReturn("string").when(kuduResult).getObject(7);
     Mockito.doReturn(1586422251000000000L).when(kuduResult).getLong(8);
 
-    // Convert using KuduConterters Class
+    // Convert using KuduConverters Class
     KuduToBigQuery.KuduConverters kuduConverters = new KuduToBigQuery.KuduConverters();
     TableRow convertedTableRow = kuduConverters.apply(kuduResult);
     List<TableRow> rows = ImmutableList.of(convertedTableRow);
     PCollection<TableRow> resultRows = pipeline.apply("CreateInput", Create.of(rows));
 
-    // Check if TableRow expected equal to convertion result
+    // Check if TableRow expected equal to conversion result
     assertThat(convertedTableRow, equalTo(expectedTableRow));
     PAssert.that(resultRows)
         .satisfies(

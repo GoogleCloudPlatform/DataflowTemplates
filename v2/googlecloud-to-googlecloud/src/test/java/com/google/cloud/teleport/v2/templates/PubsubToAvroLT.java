@@ -1,0 +1,220 @@
+/*
+ * Copyright (C) 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates;
+
+import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+
+import com.google.cloud.teleport.metadata.TemplateLoadTest;
+import com.google.common.base.MoreObjects;
+import com.google.pubsub.v1.SubscriptionName;
+import com.google.pubsub.v1.TopicName;
+import java.io.IOException;
+import java.text.ParseException;
+import java.time.Duration;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateLoadTestBase;
+import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
+import org.apache.beam.it.gcp.datagenerator.DataGenerator;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+/** Performance tests for {@link PubsubToAvro} PubSub to GCS Avro template. */
+@Category(TemplateLoadTest.class)
+@TemplateLoadTest(PubsubToAvro.class)
+@RunWith(JUnit4.class)
+public class PubsubToAvroLT extends TemplateLoadTestBase {
+
+  private static final String SPEC_PATH =
+      MoreObjects.firstNonNull(
+          TestProperties.specPath(),
+          "gs://dataflow-templates/latest/flex/Cloud_PubSub_to_Avro_Flex");
+  private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
+  private static final String TEST_ROOT_DIR = PubsubToAvroLT.class.getSimpleName();
+  private static final String AVRO_TEMP_DIR = "avro_tmp";
+  private static final String INPUT_PCOLLECTION = "Read PubSub Events/MapElements/Map.out0";
+  private static final String OUTPUT_PCOLLECTION = "5m Window/Window.Assign.out0";
+  private static final String AVRO_OUTPUT_FILENAME_PREFIX = "topic-output-";
+  // 35,000,000 messages of the given schema make up approximately 10GB
+  private static final long NUM_MESSAGES_FOR_10_GB_TEST = 35000000L;
+  private static final long TIMEOUT_FOR_10_GB_TEST_IN_MINUTES = 60;
+  private static final long TIMEOUT_FOR_1_HOUR_TEST_MINUTES = 60;
+  private static final Pattern EXPECTED_PATTERN =
+      Pattern.compile(".*" + AVRO_OUTPUT_FILENAME_PREFIX + ".*");
+
+  private static PubsubResourceManager pubsubResourceManager;
+  private static GcsResourceManager gcsResourceManager;
+
+  @Before
+  public void setup() throws IOException {
+    // Set up resource managers
+    pubsubResourceManager =
+        PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER).build();
+
+    gcsResourceManager =
+        GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR, CREDENTIALS).build();
+  }
+
+  @After
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(pubsubResourceManager, gcsResourceManager);
+  }
+
+  @Test
+  public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
+    testBacklog(
+        this::disableRunnerV2, NUM_MESSAGES_FOR_10_GB_TEST, TIMEOUT_FOR_10_GB_TEST_IN_MINUTES);
+  }
+
+  @Test
+  public void testSteadyState1hr() throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(this::disableRunnerV2);
+  }
+
+  @Test
+  public void testSteadyState1hrUsingStreamingEngine()
+      throws IOException, ParseException, InterruptedException {
+    testSteadyState1hr(this::enableStreamingEngine);
+  }
+
+  private void testBacklog(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder,
+      long numMessages,
+      long timeoutMin)
+      throws IOException, InterruptedException, ParseException {
+    TopicName backlogTopic = pubsubResourceManager.createTopic("backlog-input");
+    SubscriptionName backlogSubscription =
+        pubsubResourceManager.createSubscription(backlogTopic, "backlog-subscription");
+
+    DataGenerator dataGenerator =
+        DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
+            .setQPS("1000000")
+            .setMessagesLimit(String.valueOf(numMessages))
+            .setTopic(backlogTopic.toString())
+            .setNumWorkers("50")
+            .setMaxNumWorkers("100")
+            .build();
+
+    String outputDirectoryPath =
+        ArtifactUtils.getFullGcsPath(
+            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsResourceManager.runId(), testName);
+    String tempDirectoryPath =
+        ArtifactUtils.getFullGcsPath(
+            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsResourceManager.runId(), AVRO_TEMP_DIR);
+
+    PipelineLauncher.LaunchConfig options =
+        paramsAdder
+            .apply(
+                PipelineLauncher.LaunchConfig.builder(testName, SPEC_PATH)
+                    .addEnvironment("maxWorkers", 7)
+                    .addEnvironment("numWorkers", 4)
+                    .addParameter("numShards", "20")
+                    .addParameter("inputSubscription", backlogSubscription.toString())
+                    .addParameter("outputDirectory", outputDirectoryPath)
+                    .addParameter("avroTempDirectory", tempDirectoryPath)
+                    .addParameter("outputFilenamePrefix", AVRO_OUTPUT_FILENAME_PREFIX))
+            .build();
+
+    // Act
+    dataGenerator.execute(Duration.ofMinutes(timeoutMin));
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    assertThatPipeline(info).isRunning();
+
+    PipelineOperator.Result result =
+        pipelineOperator.waitForConditionAndFinish(
+            createConfig(info, Duration.ofMinutes(timeoutMin)),
+            () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, numMessages));
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+    assertThat(gcsResourceManager.listArtifacts(testName + "/", EXPECTED_PATTERN)).isNotEmpty();
+
+    // export results
+    exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
+  }
+
+  private void testSteadyState1hr(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder)
+      throws IOException, ParseException, InterruptedException {
+    // Creates a topic on Pub/Sub.
+    TopicName backlogTopic = pubsubResourceManager.createTopic("backlog-input");
+    SubscriptionName backlogSubscription =
+        pubsubResourceManager.createSubscription(backlogTopic, "backlog-subscription");
+
+    DataGenerator dataGenerator =
+        DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
+            .setQPS("100000")
+            .setTopic(backlogTopic.toString())
+            .setNumWorkers("10")
+            .setMaxNumWorkers("100")
+            .build();
+
+    String outputDirectoryPath =
+        ArtifactUtils.getFullGcsPath(
+            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsResourceManager.runId(), testName);
+    String tempDirectoryPath =
+        ArtifactUtils.getFullGcsPath(
+            ARTIFACT_BUCKET, getClass().getSimpleName(), gcsResourceManager.runId(), AVRO_TEMP_DIR);
+
+    PipelineLauncher.LaunchConfig options =
+        paramsAdder
+            .apply(
+                PipelineLauncher.LaunchConfig.builder(testName, SPEC_PATH)
+                    .addEnvironment("maxWorkers", 10)
+                    .addEnvironment("numWorkers", 7)
+                    .addParameter("numShards", "20")
+                    .addParameter("inputSubscription", backlogSubscription.toString())
+                    .addParameter("outputDirectory", outputDirectoryPath)
+                    .addParameter("avroTempDirectory", tempDirectoryPath)
+                    .addParameter("outputFilenamePrefix", AVRO_OUTPUT_FILENAME_PREFIX))
+            .build();
+
+    // Act
+    PipelineLauncher.LaunchInfo info = pipelineLauncher.launch(project, region, options);
+    assertThatPipeline(info).isRunning();
+
+    // Executes the data generator and return approximate number of messages
+    // ElementCount metric in dataflow is approximate, allow for 1% difference
+    long expectedMessages =
+        (long) (dataGenerator.execute(Duration.ofMinutes(TIMEOUT_FOR_1_HOUR_TEST_MINUTES)) * 0.99);
+
+    PipelineOperator.Result result =
+        pipelineOperator.waitForConditionAndCancel(
+            createConfig(info, Duration.ofMinutes(TIMEOUT_FOR_1_HOUR_TEST_MINUTES)),
+            () -> waitForNumMessages(info.jobId(), INPUT_PCOLLECTION, expectedMessages));
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+    assertThat(gcsResourceManager.listArtifacts(testName + "/", EXPECTED_PATTERN)).isNotEmpty();
+
+    // export results
+    exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
+  }
+}

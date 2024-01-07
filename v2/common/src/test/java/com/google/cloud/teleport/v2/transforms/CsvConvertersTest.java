@@ -31,10 +31,10 @@ import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -292,6 +292,7 @@ public class CsvConvertersTest {
     options.setDelimiter(",");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setJavascriptTextTransformFunctionName("transform");
+    options.setJavascriptTextTransformReloadIntervalMinutes(0);
 
     PCollectionTuple failsafe =
         linesTuple.apply(
@@ -300,6 +301,8 @@ public class CsvConvertersTest {
                 .setDelimiter(options.getDelimiter())
                 .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
                 .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setUdfReloadIntervalMinutes(
+                    options.getJavascriptTextTransformReloadIntervalMinutes())
                 .setJsonSchemaPath(options.getJsonSchemaPath())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
@@ -437,9 +440,9 @@ public class CsvConvertersTest {
    */
   @Test
   public void testCsvFormatWithDelimiter() {
-    String delim = ";";
-    CSVFormat csvFormat = CsvConverters.getCsvFormat("Excel", delim);
-    assertEquals(delim, String.valueOf(csvFormat.getDelimiter()));
+    String delimiter = ";";
+    CSVFormat csvFormat = CsvConverters.getCsvFormat("Excel", delimiter);
+    assertEquals(delimiter, String.valueOf(csvFormat.getDelimiter()));
   }
 
   /** Tests {@link CsvConverters#buildJsonString(List, List, String)} creates proper string. */
@@ -559,8 +562,8 @@ public class CsvConvertersTest {
 
   /**
    * Tests {@link CsvConverters.StringToGenericRecordFn} throws an exception if incorrect header
-   * information is provided. (for e.g. if a Csv file containing headers is passed and hasHeaders is
-   * set to false.)
+   * information is provided. (for example, if a Csv file containing headers is passed and
+   * hasHeaders is set to false.)
    */
   @Test(expected = RuntimeException.class)
   public void testIncorrectHeaderInformation() {

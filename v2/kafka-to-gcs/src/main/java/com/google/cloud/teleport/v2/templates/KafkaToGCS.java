@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -58,60 +58,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p><b>Example Usage</b>
  *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=my-project
- * BUCKET_NAME=my-bucket
- *
- * # Set containerization vars
- * IMAGE_NAME=my-image-name
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=my-base-container-image
- * BASE_CONTAINER_IMAGE_VERSION=my-base-container-image-version
- * APP_ROOT=/path/to/app-root
- * COMMAND_SPEC=/path/to/command-spec
- *
- * # Build and upload image
- * mvn clean package \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${COMMAND_SPEC}
- *
- * # Create an image spec in GCS that contains the path to the image
- * {
- *    "docker_template_spec": {
- *       "docker_image": $TARGET_GCR_IMAGE
- *     }
- *  }
- *
- * # Execute template:
- * API_ROOT_URL="https://dataflow.googleapis.com"
- * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
- * JOB_NAME="kafka-to-gcs-`date +%Y%m%d-%H%M%S-%N`"
- *
- * time curl -X POST -H "Content-Type: application/json"     \
- *     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
- *     "${TEMPLATES_LAUNCH_API}"`
- *     `"?validateOnly=false"`
- *     `"&dynamicTemplate.gcsPath=${BUCKET_NAME}/path/to/image-spec"`
- *     `"&dynamicTemplate.stagingLocation=${BUCKET_NAME}/staging" \
- *     -d '
- *      {
- *       "jobName":"'$JOB_NAME'",
- *       "parameters": {
- *           "bootstrapServers":"broker_1:9092,broker_2:9092",
- *           "inputTopics":"topic1,topic2",
- *           "outputDirectory":"'$BUCKET_NAME/path/to/output-location'",
- *           "outputFileFormat":"text",
- *           "outputFilenamePrefix":"output",
- *           "windowDuration":"5m",
- *           "numShards":"5"
- *        }
- *       }
- *      '
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/kafka-to-gcs/README_Kafka_to_GCS.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Kafka_to_GCS",
@@ -122,7 +71,9 @@ import org.slf4j.LoggerFactory;
             + " Storage bucket with a variety of file types.",
     optionsClass = KafkaToGCSOptions.class,
     flexContainerName = "kafka-to-gcs",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    hidden = true,
+    streaming = true)
 public class KafkaToGCS {
 
   /* Logger for class. */

@@ -1,0 +1,40 @@
+{
+  "config": {
+    "reset_db": false,
+    "index_all_properties": false
+  },
+  "sources": [
+    {
+      "type": "text",
+      "format": "EXCEL",
+      "name": "persons",
+      "ordered_field_names": "id",
+      "data": [
+        ["person0"],
+        ["person1"],
+        ["person2"],
+        ["person3"],
+        ["person4"]
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "node": {
+        "source": "persons",
+        "name": "person import",
+        "mode": "merge",
+        "mappings": {
+          "labels": [
+            "\"Person\""
+          ],
+          "properties": {
+            "keys": [
+              {"id": "id"}
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

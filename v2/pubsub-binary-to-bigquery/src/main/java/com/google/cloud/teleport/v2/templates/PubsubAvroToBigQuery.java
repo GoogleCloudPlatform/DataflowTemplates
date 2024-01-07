@@ -32,7 +32,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -46,17 +46,30 @@ import org.apache.beam.sdk.values.Row;
  *
  * <p>Any persistent failures while writing to BigQuery will be written to a Pub/Sub dead-letter
  * topic.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/pubsub-binary-to-bigquery/README_PubSub_Avro_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "PubSub_Avro_to_BigQuery",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub Avro to BigQuery",
     description =
-        "A streaming pipeline which inserts Avro records from a Pub/Sub subscription into a"
-            + " BigQuery table.",
+        "The Pub/Sub Avro to BigQuery template is a streaming pipeline that ingests Avro data from a Pub/Sub "
+            + "subscription into a BigQuery table. Any errors which occur while writing to the BigQuery table are streamed into a Pub/Sub unprocessed topic.",
     optionsClass = PubsubAvroToBigQueryOptions.class,
     flexContainerName = "pubsub-avro-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-avro-to-bigquery",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The input Pub/Sub subscription must exist.",
+      "The schema file for the Avro records must exist on Cloud Storage.",
+      "The unprocessed Pub/Sub topic must exist.",
+      "The output BigQuery dataset must exist."
+    },
+    streaming = true)
 public final class PubsubAvroToBigQuery {
   /**
    * Validates input flags and executes the Dataflow pipeline.

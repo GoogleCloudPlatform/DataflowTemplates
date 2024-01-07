@@ -26,8 +26,8 @@ import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsCons
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.MAX_INCLUSIVE_END_AT;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.THROUGHPUT_WINDOW_SECONDS;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.NameGenerator.generatePartitionMetadataTableName;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.gax.rpc.StatusCode.Code;
@@ -64,8 +64,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.beam.runners.core.metrics.GcpResourceIdentifiers;
 import org.apache.beam.runners.core.metrics.MonitoringInfoConstants;
 import org.apache.beam.runners.core.metrics.ServiceCallMetric;
-import org.apache.beam.sdk.annotations.Experimental;
-import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics;
@@ -119,13 +117,13 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Stopwatch;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableSet;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Iterables;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.primitives.UnsignedBytes;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Stopwatch;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableSet;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.Iterables;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.primitives.UnsignedBytes;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -281,7 +279,7 @@ import org.slf4j.LoggerFactory;
  *
  * <h3>Monitoring</h3>
  *
- * <p>Several counters are provided for monitoring purpooses:
+ * <p>Several counters are provided for monitoring purposes:
  *
  * <ul>
  *   <li><tt>batchable_mutation_groups</tt><br>
@@ -358,7 +356,6 @@ import org.slf4j.LoggerFactory;
  * <p>{@link Write} can be used as a streaming sink, however as with batch mode note that the write
  * order of individual {@link Mutation}/{@link MutationGroup} objects is not guaranteed.
  */
-@Experimental(Kind.SOURCE_SINK)
 @SuppressWarnings({
   "nullness" // TODO(https://issues.apache.org/jira/browse/BEAM-10402)
 })
@@ -405,7 +402,6 @@ public class LocalSpannerIO {
    * TimestampBound#strong()} transaction is created, to override this use {@link
    * CreateTransaction#withTimestampBound(TimestampBound)}.
    */
-  @Experimental
   public static CreateTransaction createTransaction() {
     return new AutoValue_LocalSpannerIO_CreateTransaction.Builder()
         .setSpannerConfig(SpannerConfig.create())
@@ -418,7 +414,6 @@ public class LocalSpannerIO {
    * configured with a {@link Write#withInstanceId} and {@link Write#withDatabaseId} that identify
    * the Cloud Spanner database being written.
    */
-  @Experimental
   public static Write write() {
     return new AutoValue_LocalSpannerIO_Write.Builder()
         .setSpannerConfig(SpannerConfig.create())
@@ -436,7 +431,6 @@ public class LocalSpannerIO {
    * Cloud Spanner database being written. It must also be configured with the start time and the
    * change stream name.
    */
-  @Experimental
   public static ReadChangeStream readChangeStream() {
     return new AutoValue_LocalSpannerIO_ReadChangeStream.Builder()
         .setSpannerConfig(SpannerConfig.create())
@@ -788,11 +782,10 @@ public class LocalSpannerIO {
     }
 
     SerializableFunction<Struct, Row> getFormatFn() {
-      return (SerializableFunction<Struct, Row>)
-          input ->
-              Row.withSchema(Schema.builder().addInt64Field("Key").build())
-                  .withFieldValue("Key", 3L)
-                  .build();
+      return input ->
+          Row.withSchema(Schema.builder().addInt64Field("Key").build())
+              .withFieldValue("Key", 3L)
+              .build();
     }
   }
 
@@ -1164,10 +1157,10 @@ public class LocalSpannerIO {
     @Override
     public void populateDisplayData(DisplayData.Builder builder) {
       super.populateDisplayData(builder);
-      populateDisplayDataWithParamaters(builder);
+      populateDisplayDataWithParameters(builder);
     }
 
-    private void populateDisplayDataWithParamaters(DisplayData.Builder builder) {
+    private void populateDisplayDataWithParameters(DisplayData.Builder builder) {
       getSpannerConfig().populateDisplayData(builder);
       builder.add(
           DisplayData.item("batchSizeBytes", getBatchSizeBytes())
@@ -1241,7 +1234,7 @@ public class LocalSpannerIO {
     @Override
     public void populateDisplayData(DisplayData.Builder builder) {
       super.populateDisplayData(builder);
-      spec.populateDisplayDataWithParamaters(builder);
+      spec.populateDisplayDataWithParameters(builder);
     }
 
     @Override
@@ -1522,7 +1515,7 @@ public class LocalSpannerIO {
       checkArgument(
           getInclusiveStartAt() != null,
           "LocalSpannerIO.readChangeStream() requires the start time to be set.");
-      // Inclusive end at is defaulted to ChangeStreamsContants.MAX_INCLUSIVE_END_AT
+      // Inclusive end at is defaulted to ChangeStreamsConstants.MAX_INCLUSIVE_END_AT
       checkArgument(
           getInclusiveEndAt() != null,
           "LocalSpannerIO.readChangeStream() requires the end time to be set. If you'd like to"

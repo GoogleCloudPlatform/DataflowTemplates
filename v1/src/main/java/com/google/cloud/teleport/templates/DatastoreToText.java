@@ -32,27 +32,53 @@ import org.apache.beam.sdk.options.ValueProvider;
 
 /**
  * Dataflow template which copies Datastore Entities to a Text sink. Text is encoded using JSON
- * encoded entity in the v1/Entity rest format:
- * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
+ * encoded entity in the v1/Entity rest format: <a
+ * href="https://cloud.google.com/datastore/docs/reference/rest/v1/Entity">Entity</a>
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Datastore_to_GCS_Text.md">README_Datastore_to_GCS_Text</a>
+ * or <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Firestore_to_GCS_Text.md">README_Firestore_to_GCS_Text</a>
+ * for instructions on how to use or change this template.
  */
 @Template(
     name = "Datastore_to_GCS_Text",
-    category = TemplateCategory.BATCH,
+    category = TemplateCategory.LEGACY,
     displayName = "Datastore to Text Files on Cloud Storage [Deprecated]",
     description =
-        "Batch pipeline. Reads Datastore entities and writes them to Cloud Storage as text files.",
+        "The Datastore to Cloud Storage Text template is a batch pipeline that reads Datastore entities and writes them "
+            + "to Cloud Storage as text files. You can provide a function to process each entity as a JSON string. "
+            + "If you don't provide such a function, every line in the output file will be a JSON-serialized entity.",
     optionsClass = DatastoreToTextOptions.class,
-    skipOptions = {"firestoreReadNamespace", "firestoreReadGqlQuery", "firestoreReadProjectId"},
-    contactInformation = "https://cloud.google.com/support")
+    skipOptions = {
+      "firestoreReadNamespace",
+      "firestoreReadGqlQuery",
+      "firestoreReadProjectId",
+      "javascriptTextTransformReloadIntervalMinutes"
+    },
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastore-to-cloud-storage",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {"Datastore must be set up in the project before running the pipeline."})
 @Template(
     name = "Firestore_to_GCS_Text",
     category = TemplateCategory.BATCH,
     displayName = "Firestore (Datastore mode) to Text Files on Cloud Storage",
     description =
-        "Batch pipeline. Reads Firestore entities and writes them to Cloud Storage as text files.",
+        "The Firestore to Cloud Storage Text template is a batch pipeline that reads Firestore entities and writes them "
+            + "to Cloud Storage as text files. You can provide a function to process each entity as a JSON string. "
+            + "If you don't provide such a function, every line in the output file will be a JSON-serialized entity.",
     optionsClass = DatastoreToTextOptions.class,
-    skipOptions = {"datastoreReadNamespace", "datastoreReadGqlQuery", "datastoreReadProjectId"},
-    contactInformation = "https://cloud.google.com/support")
+    skipOptions = {
+      "datastoreReadNamespace",
+      "datastoreReadGqlQuery",
+      "datastoreReadProjectId",
+      "javascriptTextTransformReloadIntervalMinutes"
+    },
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/firestore-to-cloud-storage",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {"Firestore must be set up in the project before running the pipeline."})
 public class DatastoreToText {
 
   public static ValueProvider<String> selectProvidedInput(

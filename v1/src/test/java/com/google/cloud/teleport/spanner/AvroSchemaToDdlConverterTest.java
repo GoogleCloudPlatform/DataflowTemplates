@@ -146,6 +146,9 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"spannerForeignKey_0\" : "
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`) "
             + "  REFERENCES `AllowedNames` (`first_name`)\","
+            + "  \"spannerForeignKey_1\" : "
+            + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`) "
+            + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE\","
             + "  \"spannerCheckConstraint_0\" : "
             + "  \"CONSTRAINT `ck` CHECK(`first_name` != 'last_name')\""
             + "}";
@@ -183,7 +186,10 @@ public class AvroSchemaToDdlConverterTest {
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk`"
-                + " FOREIGN KEY (`first_name`) REFERENCES `AllowedNames` (`first_name`)"));
+                + " FOREIGN KEY (`first_name`) REFERENCES `AllowedNames` (`first_name`)"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odc`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ON DELETE CASCADE"));
   }
 
   @Test
@@ -266,6 +272,10 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"type\" : [ \"null\", \"string\" ],"
             + "    \"sqlType\" : \"timestamp with time zone\""
             + "  }, {"
+            + "    \"name\" : \"commit_time\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"spanner.commit_timestamp\""
+            + "  }, {"
             + "    \"name\" : \"date\","
             + "    \"type\" : [ \"null\", \"string\" ],"
             + "    \"sqlType\" : \"date\""
@@ -298,7 +308,11 @@ public class AvroSchemaToDdlConverterTest {
             + "   \"CREATE INDEX \\\"UsersByFirstName\\\" ON \\\"Users\\\" (\\\"first_name\\\")\", "
             + " \"spannerForeignKey_0\" :   \"ALTER TABLE \\\"Users\\\" ADD CONSTRAINT \\\"fk\\\""
             + " FOREIGN KEY (\\\"first_name\\\")   REFERENCES \\\"AllowedNames\\\""
-            + " (\\\"first_name\\\")\",  \"spannerCheckConstraint_0\" :   \"CONSTRAINT \\\"ck\\\""
+            + " (\\\"first_name\\\")\", "
+            + " \"spannerForeignKey_1\" :   \"ALTER TABLE \\\"Users\\\" ADD CONSTRAINT "
+            + "\\\"fk_odc\\\" FOREIGN KEY (\\\"last_name\\\")   REFERENCES \\\"AllowedNames\\\""
+            + " (\\\"last_name\\\") ON DELETE CASCADE\", "
+            + " \"spannerCheckConstraint_0\" :   \"CONSTRAINT \\\"ck\\\""
             + " CHECK(\\\"first_name\\\" != \\\"last_name\\\")\"}";
 
     Schema schema = new Schema.Parser().parse(avroString);
@@ -329,6 +343,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"bytes\" bytea,"
                 + " \"text\" text,"
                 + " \"timestamptz\" timestamp with time zone,"
+                + " \"commit_time\"     spanner.commit_timestamp,"
                 + " \"date\" date,"
                 + " \"varcharArr1\"     character varying[],"
                 + " \"varcharArr2\"     character varying[],"
@@ -341,7 +356,96 @@ public class AvroSchemaToDdlConverterTest {
                 + " )"
                 + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
-                + " REFERENCES \"AllowedNames\" (\"first_name\")"));
+                + " REFERENCES \"AllowedNames\" (\"first_name\")"
+                + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
+                + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"));
+  }
+
+  @Test
+  public void models() {
+    String modelAllString =
+        "{"
+            + "\"type\":\"record\","
+            + "\"name\":\"ModelAll\","
+            + "\"namespace\":\"spannertest\","
+            + "\"googleFormatVersion\":\"booleans\","
+            + "\"googleStorage\":\"CloudSpanner\", "
+            + "\"spannerEntity\":\"Model\", "
+            + "\"spannerRemote\":\"true\", "
+            + "\"spannerOption_0\":\"endpoint=\\\"test\\\"\", "
+            + "\"fields\":["
+            + "  {\"name\":\"Input\","
+            + "   \"type\":"
+            + "     {\"type\":\"record\","
+            + "      \"name\":\"ModelAll_Input\","
+            + "      \"fields\":["
+            + "        {\"name\":\"i1\","
+            + "         \"type\":\"boolean\","
+            + "         \"sqlType\":\"BOOL\","
+            + "         \"spannerOption_0\":\"required=FALSE\"},"
+            + "        {\"name\":\"i2\","
+            + "         \"type\":\"string\","
+            + "         \"sqlType\":\"STRING(MAX)\"}]}},"
+            + "  {\"name\":\"Output\","
+            + "   \"type\":"
+            + "     {\"type\":\"record\","
+            + "      \"name\":\"ModelAll_Output\","
+            + "      \"fields\":["
+            + "        {\"name\":\"o1\","
+            + "         \"type\":\"long\","
+            + "         \"sqlType\":\"INT64\","
+            + "         \"spannerOption_0\":\"required=TRUE\"},"
+            + "        {\"name\":\"o2\", "
+            + "         \"type\":\"double\", "
+            + "         \"sqlType\":\"FLOAT64\"}]}}] "
+            + "}";
+    String modelMinString =
+        "{"
+            + "\"type\":\"record\","
+            + "\"name\":\"ModelMin\","
+            + "\"namespace\":\"spannertest\","
+            + "\"googleFormatVersion\":\"booleans\","
+            + "\"googleStorage\":\"CloudSpanner\", "
+            + "\"spannerEntity\":\"Model\", "
+            + "\"spannerRemote\":\"false\", "
+            + "\"fields\":["
+            + "  {\"name\":\"Input\","
+            + "   \"type\":"
+            + "     {\"type\":\"record\","
+            + "      \"name\":\"ModelMin_Input\","
+            + "      \"fields\":[{\"name\":\"i1\", \"type\":\"boolean\", \"sqlType\":\"BOOL\"}]}},"
+            + "  {\"name\":\"Output\","
+            + "   \"type\":"
+            + "     {\"type\":\"record\","
+            + "      \"name\":\"ModelMin_Output\","
+            + "      \"fields\":["
+            + "        {\"name\":\"o1\", \"type\":\"long\", \"sqlType\":\"INT64\"}]}}] "
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(modelAllString));
+    schemas.add(parser.parse(modelMinString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.models(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE MODEL `ModelAll`"
+                + " INPUT ("
+                + "  `i1` BOOL OPTIONS (required=FALSE),"
+                + "  `i2` STRING(MAX),"
+                + " )"
+                + " OUTPUT ("
+                + " `o1` INT64 OPTIONS (required=TRUE),"
+                + " `o2` FLOAT64,"
+                + " )"
+                + " REMOTE OPTIONS (endpoint=\"test\")"
+                + " CREATE MODEL `ModelMin`"
+                + " INPUT ( `i1` BOOL, )"
+                + " OUTPUT ( `o1` INT64, )"));
   }
 
   @Test
@@ -393,6 +497,58 @@ public class AvroSchemaToDdlConverterTest {
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE VIEW \"Names\" SQL SECURITY INVOKER AS SELECT first_name, last_name FROM"
+                + " Users"));
+  }
+
+  @Test
+  public void definerRightsView() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Names\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerViewSecurity\" : \"DEFINER\","
+            + "  \"spannerViewQuery\" : \"SELECT first_name, last_name FROM Users\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.views(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE VIEW `Names` SQL SECURITY DEFINER AS SELECT first_name, last_name FROM Users"));
+  }
+
+  @Test
+  public void pgDefinerRightsView() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Names\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerViewSecurity\" : \"DEFINER\","
+            + "  \"spannerViewQuery\" : \"SELECT first_name, last_name FROM Users\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertEquals(ddl.dialect(), Dialect.POSTGRESQL);
+    assertThat(ddl.views(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE VIEW \"Names\" SQL SECURITY DEFINER AS SELECT first_name, last_name FROM"
                 + " Users"));
   }
 
@@ -549,6 +705,120 @@ public class AvroSchemaToDdlConverterTest {
                 + " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
                 + " FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"
                 + " WITH (retention_period='24h')"));
+  }
+
+  @Test
+  public void sequences() {
+    String avroString1 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence1\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceOption_0\" : \"sequence_kind=\\\"bit_reversed_positive\\\"\","
+            + "  \"sequenceOption_1\" : \"skip_range_min=0\","
+            + "  \"sequenceOption_2\" : \"skip_range_max=1000\","
+            + "  \"sequenceOption_3\" : \"start_with_counter=50\""
+            + "}";
+    String avroString2 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence2\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceOption_0\" : \"sequence_kind=\\\"bit_reversed_positive\\\"\","
+            + "  \"sequenceOption_1\" : \"start_with_counter=9999\""
+            + "}";
+    String avroString3 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence3\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceOption_0\" : \"sequence_kind=\\\"bit_reversed_positive\\\"\""
+            + "}";
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString1));
+    schemas.add(parser.parse(avroString2));
+    schemas.add(parser.parse(avroString3));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.sequences(), hasSize(3));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE SEQUENCE `Sequence1`\n\t"
+                + "OPTIONS (sequence_kind=\"bit_reversed_positive\", "
+                + "skip_range_min=0, skip_range_max=1000, start_with_counter=50)\n"
+                + "CREATE SEQUENCE `Sequence2`\n\t"
+                + "OPTIONS (sequence_kind=\"bit_reversed_positive\", "
+                + "start_with_counter=9999)\n"
+                + "CREATE SEQUENCE `Sequence3`\n\t"
+                + "OPTIONS (sequence_kind=\"bit_reversed_positive\")"));
+  }
+
+  @Test
+  public void pgSequences() {
+    String avroString1 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence1\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceKind\" : \"bit_reversed_positive\","
+            + "  \"skipRangeMin\" : \"1\","
+            + "  \"skipRangeMax\" : \"1000\","
+            + "  \"counterStartValue\" : \"50\""
+            + "}";
+    String avroString2 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence2\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceKind\" : \"bit_reversed_positive\","
+            + "  \"counterStartValue\" : \"9999\""
+            + "}";
+    String avroString3 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Sequence3\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"sequenceKind\" : \"bit_reversed_positive\""
+            + "}";
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString1));
+    schemas.add(parser.parse(avroString2));
+    schemas.add(parser.parse(avroString3));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertEquals(ddl.dialect(), Dialect.POSTGRESQL);
+    assertThat(ddl.sequences(), hasSize(3));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE SEQUENCE \"Sequence1\" BIT_REVERSED_POSITIVE "
+                + "SKIP RANGE 1 1000 START COUNTER WITH 50"
+                + "\nCREATE SEQUENCE \"Sequence2\" BIT_REVERSED_POSITIVE "
+                + "START COUNTER WITH 9999"
+                + "\nCREATE SEQUENCE \"Sequence3\" BIT_REVERSED_POSITIVE"));
   }
 
   @Test

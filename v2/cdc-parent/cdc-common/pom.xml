@@ -48,19 +48,8 @@
   </dependencyManagement>
   <dependencies>
     <dependency>
-      <groupId>com.google.api.grpc</groupId>
-      <artifactId>proto-google-cloud-datacatalog-v1beta1</artifactId>
-      <version>${data-catalog.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.api.grpc</groupId>
-      <artifactId>grpc-google-cloud-datacatalog-v1beta1</artifactId>
-      <version>${data-catalog.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-datacatalog</artifactId>
-      <version>${data-catalog.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>

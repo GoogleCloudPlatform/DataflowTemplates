@@ -67,7 +67,9 @@ public class FirestoreConverters {
 
   /** Options for Reading Firestore Entities. */
   public interface FirestoreReadOptions extends PipelineOptions {
-    /** @deprecated Please use getFirestoreReadGqlQuery() instead. */
+    /**
+     * @deprecated Please use getFirestoreReadGqlQuery() instead.
+     */
     @TemplateParameter.Text(
         order = 1,
         regexes = {"^.+$"},
@@ -77,12 +79,16 @@ public class FirestoreConverters {
     @Deprecated
     ValueProvider<String> getDatastoreReadGqlQuery();
 
-    /** @deprecated Please use setFirestoreReadGqlQuery(value) instead. */
+    /**
+     * @deprecated Please use setFirestoreReadGqlQuery(value) instead.
+     */
     @Hidden
     @Deprecated
     void setDatastoreReadGqlQuery(ValueProvider<String> datastoreReadGqlQuery);
 
-    /** @deprecated Please use getFirestoreReadProjectId() instead. */
+    /**
+     * @deprecated Please use getFirestoreReadProjectId() instead.
+     */
     @TemplateParameter.ProjectId(
         order = 2,
         description = "Project ID",
@@ -91,12 +97,16 @@ public class FirestoreConverters {
     @Deprecated
     ValueProvider<String> getDatastoreReadProjectId();
 
-    /** @deprecated Please use setFirestoreReadProjectId(value) instead. */
+    /**
+     * @deprecated Please use setFirestoreReadProjectId(value) instead.
+     */
     @Hidden
     @Deprecated
     void setDatastoreReadProjectId(ValueProvider<String> datastoreReadProjectId);
 
-    /** @deprecated Please use getFirestoreReadNamespace() instead. */
+    /**
+     * @deprecated Please use getFirestoreReadNamespace() instead.
+     */
     @TemplateParameter.Text(
         order = 3,
         regexes = {"^[0-9A-Za-z._-]{0,100}$"},
@@ -107,10 +117,12 @@ public class FirestoreConverters {
     @Deprecated
     ValueProvider<String> getDatastoreReadNamespace();
 
-    /** @deprecated Please use setFirestoreReadNamespace(value) instead. */
+    /**
+     * @deprecated Please use setFirestoreReadNamespace(value) instead.
+     */
     @Hidden
     @Deprecated
-    void setDatastoreReadNamespace(ValueProvider<String> datstoreReadNamespace);
+    void setDatastoreReadNamespace(ValueProvider<String> datastoreReadNamespace);
 
     @TemplateParameter.Text(
         order = 4,
@@ -143,7 +155,9 @@ public class FirestoreConverters {
 
   /** Options for writing Datastore Entities. */
   public interface DatastoreWriteOptions extends PipelineOptions {
-    /** @deprecated Please use getFirestoreWriteProjectId() instead. */
+    /**
+     * @deprecated Please use getFirestoreWriteProjectId() instead.
+     */
     @TemplateParameter.ProjectId(
         order = 1,
         description = "Project ID",
@@ -152,12 +166,16 @@ public class FirestoreConverters {
     @Deprecated
     ValueProvider<String> getDatastoreWriteProjectId();
 
-    /** @deprecated Please use setFirestoreWriteProjectId(value) instead. */
+    /**
+     * @deprecated Please use setFirestoreWriteProjectId(value) instead.
+     */
     @Hidden
     @Deprecated
-    void setDatastoreWriteProjectId(ValueProvider<String> datstoreWriteProjectId);
+    void setDatastoreWriteProjectId(ValueProvider<String> datastoreWriteProjectId);
 
-    /** @deprecated Please use getFirestoreWriteEntityKind() instead. */
+    /**
+     * @deprecated Please use getFirestoreWriteEntityKind() instead.
+     */
     @TemplateParameter.Text(
         order = 2,
         description = "Datastore entity kind",
@@ -168,12 +186,16 @@ public class FirestoreConverters {
     @Deprecated
     ValueProvider<String> getDatastoreWriteEntityKind();
 
-    /** @deprecated Please use setFirestoreWriteEntityKind(value) instead. */
+    /**
+     * @deprecated Please use setFirestoreWriteEntityKind(value) instead.
+     */
     @Hidden
     @Deprecated
     void setDatastoreWriteEntityKind(ValueProvider<String> value);
 
-    /** @deprecated Please use getFirestoreWriteNamespace() instead. */
+    /**
+     * @deprecated Please use getFirestoreWriteNamespace() instead.
+     */
     @TemplateParameter.Text(
         order = 3,
         optional = true,
@@ -185,12 +207,16 @@ public class FirestoreConverters {
     @Deprecated
     ValueProvider<String> getDatastoreWriteNamespace();
 
-    /** @deprecated Please use setFirestoreWriteNamespace(value) instead. */
+    /**
+     * @deprecated Please use setFirestoreWriteNamespace(value) instead.
+     */
     @Hidden
     @Deprecated
     void setDatastoreWriteNamespace(ValueProvider<String> value);
 
-    /** @deprecated Please use getFirestoreHintNumWorkers() instead. */
+    /**
+     * @deprecated Please use getFirestoreHintNumWorkers() instead.
+     */
     @TemplateParameter.Text(
         order = 4,
         optional = true,
@@ -203,7 +229,9 @@ public class FirestoreConverters {
     @Deprecated
     ValueProvider<Integer> getDatastoreHintNumWorkers();
 
-    /** @deprecated Please use setFirestoreHintNumWorkers(value) instead. */
+    /**
+     * @deprecated Please use setFirestoreHintNumWorkers(value) instead.
+     */
     @Hidden
     @Deprecated
     void setDatastoreHintNumWorkers(ValueProvider<Integer> value);
@@ -252,7 +280,9 @@ public class FirestoreConverters {
 
   /** Options for deleting Datastore Entities. */
   public interface DatastoreDeleteOptions extends PipelineOptions {
-    /** @deprecated Please use getFirestoreDeleteProjectId() instead. */
+    /**
+     * @deprecated Please use getFirestoreDeleteProjectId() instead.
+     */
     @TemplateParameter.ProjectId(
         order = 1,
         description =
@@ -263,12 +293,16 @@ public class FirestoreConverters {
     @Deprecated
     ValueProvider<String> getDatastoreDeleteProjectId();
 
-    /** @deprecated Please use setFirestoreDeleteProjectId(value) instead. */
+    /**
+     * @deprecated Please use setFirestoreDeleteProjectId(value) instead.
+     */
     @Hidden
     @Deprecated
     void setDatastoreDeleteProjectId(ValueProvider<String> datastoreDeleteProjectId);
 
-    /** @deprecated Please use getFirestoreHintNumWorkers() instead. */
+    /**
+     * @deprecated Please use getFirestoreHintNumWorkers() instead.
+     */
     @TemplateParameter.Text(
         order = 2,
         optional = true,
@@ -281,7 +315,9 @@ public class FirestoreConverters {
     @Deprecated
     ValueProvider<Integer> getDatastoreHintNumWorkers();
 
-    /** @deprecated Please use setFirestoreHintNumWorkers(value) instead. */
+    /**
+     * @deprecated Please use setFirestoreHintNumWorkers(value) instead.
+     */
     @Hidden
     @Deprecated
     void setDatastoreHintNumWorkers(ValueProvider<Integer> value);
@@ -594,7 +630,7 @@ public class FirestoreConverters {
       entityJsonPrinter = new EntityJsonPrinter();
     }
 
-    /** Processes Datstore entity into json. */
+    /** Processes Datastore entity into json. */
     @ProcessElement
     public void processElement(ProcessContext c) throws InvalidProtocolBufferException {
       Entity entity = c.element();
@@ -771,9 +807,9 @@ public class FirestoreConverters {
     }
 
     public Entity parse(String json) throws InvalidProtocolBufferException {
-      Entity.Builder entityBuilter = Entity.newBuilder();
-      merge(json, entityBuilter);
-      return entityBuilter.build();
+      Entity.Builder entityBuilder = Entity.newBuilder();
+      merge(json, entityBuilder);
+      return entityBuilder.build();
     }
   }
 
@@ -822,7 +858,7 @@ public class FirestoreConverters {
       // same entity more than once in the same commit is not supported (error "A non-transactional
       // commit may not contain multiple mutations affecting the same entity). Messages with the
       // same key are thus not written to Datastore and instead routed to an error PCollection for
-      // further handlig downstream.
+      // further handling downstream.
       PCollectionTuple entities =
           entity.apply(
               "CheckSameKey",

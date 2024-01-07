@@ -50,7 +50,7 @@ public class TemplatesSpecMojo extends TemplatesBaseMojo {
       }
 
       TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
-      generator.generateSpecs(loader, targetDirectory);
+      generator.generateSpecs(loader, baseDirectory, targetDirectory);
 
     } catch (DependencyResolutionRequiredException e) {
       throw new MojoExecutionException("Dependency resolution failed", e);

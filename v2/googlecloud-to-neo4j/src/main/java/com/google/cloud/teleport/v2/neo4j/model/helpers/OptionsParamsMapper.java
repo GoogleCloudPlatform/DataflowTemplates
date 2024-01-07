@@ -18,26 +18,22 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Helper class for parsing json into OptionsParams model object. */
 public class OptionsParamsMapper {
 
-  private static final Logger LOG = LoggerFactory.getLogger(OptionsParamsMapper.class);
-
   public static OptionsParams fromPipelineOptions(Neo4jFlexTemplateOptions pipelineOptions) {
     OptionsParams optionsParams = new OptionsParams();
     try {
-
       if (StringUtils.isNotEmpty(pipelineOptions.getReadQuery())) {
         optionsParams.setReadQuery(pipelineOptions.getReadQuery());
       }
       if (StringUtils.isNotEmpty(pipelineOptions.getInputFilePattern())) {
         optionsParams.setInputFilePattern(pipelineOptions.getInputFilePattern());
       }
-      optionsParams.overlayTokens(pipelineOptions.getOptionsJson());
-
+      if (StringUtils.isNotEmpty(pipelineOptions.getOptionsJson())) {
+        optionsParams.overlayTokens(pipelineOptions.getOptionsJson());
+      }
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

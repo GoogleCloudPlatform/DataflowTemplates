@@ -102,6 +102,7 @@ public class BigQueryConverters {
     @TemplateParameter.GcsWriteFolder(
         order = 3,
         description = "Invalid rows output path",
+        optional = true,
         helpText =
             "Cloud Storage path where to write BigQuery rows that cannot be converted to target entities.",
         example = "gs://your-bucket/your-path")
@@ -116,7 +117,7 @@ public class BigQueryConverters {
   }
 
   /** Converts UTF8 encoded Json records to TableRow records. */
-  private static class JsonToTableRow
+  protected static class JsonToTableRow
       extends PTransform<PCollection<String>, PCollection<TableRow>> {
 
     @Override
@@ -181,7 +182,7 @@ public class BigQueryConverters {
                                 .setStacktrace(Throwables.getStackTraceAsString(e)));
                         return;
                       }
-                      // The call to ouput should be outside of the try/catch block to prevent
+                      // The call to output should be outside of the try/catch block to prevent
                       // catching errors from downstream transforms.
                       context.output(row);
                     }
@@ -368,7 +369,7 @@ public class BigQueryConverters {
               "Column [%s] with NULL value cannot be set as Entity name.", column.getName()));
     }
 
-    // Entity key names cannot exceed 1500 bytes, the maximum size of an idex-able Datastore
+    // Entity key names cannot exceed 1500 bytes, the maximum size of an indexable Datastore
     // string property: https://cloud.google.com/datastore/docs/concepts/limits
     if (column.getType().equals("STRING")
         && columnValue.toString().getBytes().length > MAX_STRING_SIZE_BYTES) {

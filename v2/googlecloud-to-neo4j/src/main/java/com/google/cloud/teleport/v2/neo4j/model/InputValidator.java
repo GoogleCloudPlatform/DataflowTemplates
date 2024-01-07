@@ -15,50 +15,45 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model;
 
-import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.secretmanager.v1.SecretVersionName;
+import com.google.cloud.teleport.v2.neo4j.model.Json.ParsingResult;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.EdgeNodesSaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.SaveMode;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
-import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
-import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.networknt.schema.JsonSchema;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** A helper class to validate DataFlow run-time inputs. */
 public class InputValidator {
-
-  // Note: options are future functionality
-  private static final Set<String> validOptions =
-      Sets.newHashSet(
-          "relationship",
-          "relationship.save.strategy",
-          "relationship.source.labels",
-          "relationship.source.save.mode",
-          "relationship.source.node.keys",
-          "relationship.target.labels",
-          "relationship.target.node.keys",
-          "relationship.target.node.properties",
-          "relationship.target.save.mode");
 
   private static final Pattern ORDER_BY_PATTERN = Pattern.compile(".*ORDER\\sBY.*");
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -67,12 +62,24 @@ public class InputValidator {
   public static List<String> validateNeo4jPipelineOptions(
       Neo4jFlexTemplateOptions pipelineOptions) {
 
-    List<String> validationMessages = new ArrayList<>();
+    List<String> validationMessages = new ArrayList<>(2);
 
-    if (StringUtils.isEmpty(pipelineOptions.getNeo4jConnectionUri())) {
-      validationMessages.add("Neo4j connection URI not provided.");
+    String neo4jConnectionUri = pipelineOptions.getNeo4jConnectionUri();
+    String neo4jConnectionSecret = pipelineOptions.getNeo4jConnectionSecretId();
+    if (StringUtils.isEmpty(neo4jConnectionUri) && StringUtils.isEmpty(neo4jConnectionSecret)) {
+      validationMessages.add(
+          "Neither Neo4j connection URI nor Neo4j connection secret were provided.");
     }
-
+    if (!StringUtils.isEmpty(neo4jConnectionUri) && !StringUtils.isEmpty(neo4jConnectionSecret)) {
+      validationMessages.add(
+          "Both Neo4j connection URI and Neo4j connection secret were provided: only one must be set.");
+    }
+    if (!StringUtils.isEmpty(neo4jConnectionSecret)
+        && !(SecretVersionName.isParsableFrom(neo4jConnectionSecret))) {
+      validationMessages.add(
+          "Neo4j connection secret must be in the form"
+              + " projects/{project}/secrets/{secret}/versions/{secret_version}");
+    }
     if (StringUtils.isEmpty(pipelineOptions.getJobSpecUri())) {
       validationMessages.add("Job spec URI not provided.");
     }
@@ -80,23 +87,14 @@ public class InputValidator {
     return validationMessages;
   }
 
-  public static List<String> validateNeo4jConnection(ConnectionParams connectionParams) {
-    List<String> validationMessages = new ArrayList<>();
-    if (StringUtils.isEmpty(connectionParams.serverUrl)) {
-      validationMessages.add("Missing connection server URL");
-    }
-    if (StringUtils.isEmpty(connectionParams.username)) {
-      validationMessages.add("Missing connection username");
-    }
-    if (StringUtils.isEmpty(connectionParams.password)) {
-      validationMessages.add("Missing connection password");
-    }
-    return validationMessages;
+  public static ParsingResult validateNeo4jConnection(String json) {
+    JsonSchema connectionSchema =
+        Json.SCHEMA_FACTORY.getSchema(
+            InputValidator.class.getResourceAsStream("/schemas/connection.v1.0.json"));
+    return Json.parseAndValidate(json, connectionSchema);
   }
 
   public static List<String> validateJobSpec(JobSpec jobSpec) {
-
-    Config config = jobSpec.getConfig();
 
     List<String> validationMessages = new ArrayList<>();
 
@@ -122,9 +120,14 @@ public class InputValidator {
       }
     }
 
+    boolean activeTargetFound = false;
     Set<String> targetNames = new HashSet<>();
     // Target validation
     for (Target target : jobSpec.getTargets()) {
+      if (!target.isActive()) {
+        continue;
+      }
+      activeTargetFound = true;
       // Check that all targets have names
       if (StringUtils.isBlank(target.getName())) {
         validationMessages.add("Targets must include a 'name' attribute.");
@@ -155,67 +158,22 @@ public class InputValidator {
           }
         }
       }
-      if (target.getType() == TargetType.edge) {
-        for (Mapping mapping : target.getMappings()) {
-          if (mapping.getFragmentType() == FragmentType.node) {
-            validationMessages.add(
-                "Invalid fragment type "
-                    + mapping.getFragmentType()
-                    + " for node mapping: "
-                    + mapping.getName());
-          }
-          boolean missingLabel = false;
-          if (mapping.getFragmentType() == FragmentType.target
-              || mapping.getFragmentType() == FragmentType.source) {
-            if (mapping.getRole() != RoleType.key && mapping.getRole() != RoleType.label) {
-              validationMessages.add(
-                  "Invalid role "
-                      + mapping.getRole()
-                      + " on relationship: "
-                      + mapping.getFragmentType());
-            }
-          }
-        }
 
-        // relationship validation checks..
-        if (StringUtils.isBlank(
-            ModelUtils.getFirstFieldOrConstant(
-                target, FragmentType.source, Arrays.asList(RoleType.key)))) {
-          validationMessages.add(
-              "Could not find target key field for relationship: " + target.getName());
-        }
-        if (StringUtils.isBlank(
-            ModelUtils.getFirstFieldOrConstant(
-                target, FragmentType.target, Arrays.asList(RoleType.key)))) {
-          validationMessages.add(
-              "Could not find target key field for relationship: " + target.getName());
-        }
-        if (StringUtils.isBlank(
-            ModelUtils.getFirstFieldOrConstant(
-                target, FragmentType.rel, Arrays.asList(RoleType.type)))) {
-          validationMessages.add("Could not find relationship type: " + target.getName());
-        }
-      } else if (target.getType() == TargetType.node) {
-        for (Mapping mapping : target.getMappings()) {
-          if (mapping.getFragmentType() != FragmentType.node) {
-            validationMessages.add(
-                "Invalid fragment type "
-                    + mapping.getFragmentType()
-                    + " for node mapping: "
-                    + mapping.getName());
-          }
-        }
-        if (StringUtils.isBlank(
-            ModelUtils.getFirstFieldOrConstant(
-                target, FragmentType.node, Arrays.asList(RoleType.label)))) {
-          LOG.info("Invalid target: {}", gson.toJson(target));
-          validationMessages.add("Missing label in node: " + target.getName());
-        }
-        if (StringUtils.isBlank(
-            ModelUtils.getFirstFieldOrConstant(
-                target, FragmentType.node, Arrays.asList(RoleType.key)))) {
-          validationMessages.add("Missing key field in node: " + target.getName());
-        }
+      Map<PropertyMappingKey, PropertyMapping> propertyMappings =
+          new LinkedHashMap<>(target.getMappings().size());
+      TargetType targetType = target.getType();
+      switch (targetType) {
+        case node:
+          validateNodeTarget(target, propertyMappings, validationMessages);
+          break;
+        case edge:
+          validateEdgeTarget(target, propertyMappings, validationMessages);
+          break;
+        case custom_query:
+          validateCustomTarget(target, validationMessages);
+          break;
+        default:
+          throw new IllegalArgumentException(String.format("Unknown target type: %s", targetType));
       }
       // check that calculated fields are used
       if (target.getTransform() != null && !target.getTransform().getAggregations().isEmpty()) {
@@ -226,17 +184,14 @@ public class InputValidator {
           }
         }
       }
+      List<String> propertyMappingErrorMessages =
+          propertyMappings.values().stream()
+              .flatMap(PropertyMapping::validate)
+              .collect(Collectors.toList());
+      validationMessages.addAll(propertyMappingErrorMessages);
     }
-
-    if (jobSpec.getOptions().size() > 0) {
-      // check valid options
-      Iterator<String> optionIt = jobSpec.getOptions().keySet().iterator();
-      while (optionIt.hasNext()) {
-        String option = optionIt.next();
-        if (!validOptions.contains(option)) {
-          validationMessages.add("Invalid option specified: " + option);
-        }
-      }
+    if (!activeTargetFound) {
+      validationMessages.add("The job spec must define at least 1 active target, none found");
     }
 
     Set<String> actionNames = new HashSet<>();
@@ -274,7 +229,105 @@ public class InputValidator {
     return validationMessages;
   }
 
-  public static boolean fieldIsMapped(Target target, String fieldName) {
+  private static void validateNodeTarget(
+      Target target,
+      Map<PropertyMappingKey, PropertyMapping> propertyMappings,
+      List<String> validationMessages) {
+    for (Mapping mapping : target.getMappings()) {
+      String property = mapping.getName();
+      if (mapping.getFragmentType() != FragmentType.node) {
+        validationMessages.add(
+            "Invalid fragment type "
+                + mapping.getFragmentType()
+                + " for node mapping: "
+                + mapping.getName());
+      }
+      propertyMappings
+          .computeIfAbsent(
+              new PropertyMappingKey(FragmentType.node, property),
+              (prop) ->
+                  new PropertyMapping(
+                      target.getName(), prop.getPropertyName(), prop.getFragmentType()))
+          .add(mapping);
+    }
+    if (StringUtils.isBlank(
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.node, List.of(RoleType.label)))) {
+      LOG.info("Invalid target: {}", gson.toJson(target));
+      validationMessages.add("Missing label in node: " + target.getName());
+    }
+    if (StringUtils.isBlank(
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.node, List.of(RoleType.key)))) {
+      validationMessages.add("Missing key field in node: " + target.getName());
+    }
+  }
+
+  private static void validateEdgeTarget(
+      Target target,
+      Map<PropertyMappingKey, PropertyMapping> propertyMappings,
+      List<String> validationMessages) {
+    for (Mapping mapping : target.getMappings()) {
+      if (mapping.getFragmentType() == FragmentType.node) {
+        validationMessages.add(
+            "Invalid fragment type "
+                + mapping.getFragmentType()
+                + " for node mapping: "
+                + mapping.getName());
+      }
+      if (mapping.getFragmentType() == FragmentType.target
+          || mapping.getFragmentType() == FragmentType.source) {
+        if (mapping.getRole() != RoleType.key && mapping.getRole() != RoleType.label) {
+          validationMessages.add(
+              "Invalid role "
+                  + mapping.getRole()
+                  + " on relationship: "
+                  + mapping.getFragmentType());
+        }
+      }
+      propertyMappings
+          .computeIfAbsent(
+              new PropertyMappingKey(mapping.getFragmentType(), mapping.getName()),
+              (prop) ->
+                  new PropertyMapping(
+                      target.getName(), prop.getPropertyName(), prop.getFragmentType()))
+          .add(mapping);
+    }
+
+    if (StringUtils.isBlank(
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.source, List.of(RoleType.key)))) {
+      validationMessages.add(
+          "Could not find target key field for relationship: " + target.getName());
+    }
+    if (StringUtils.isBlank(
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.target, List.of(RoleType.key)))) {
+      validationMessages.add(
+          "Could not find target key field for relationship: " + target.getName());
+    }
+    if (StringUtils.isBlank(
+        ModelUtils.getFirstFieldOrConstant(target, FragmentType.rel, List.of(RoleType.type)))) {
+      validationMessages.add("Could not find relationship type: " + target.getName());
+    }
+    if (target.getSaveMode() == SaveMode.merge
+        && target.getEdgeNodesMatchMode() == EdgeNodesSaveMode.create) {
+      validationMessages.add(
+          "Edge target "
+              + target.getName()
+              + " uses incompatible save modes: either change the target's save mode to create or the edge node mode to match or merge");
+    }
+  }
+
+  private static void validateCustomTarget(Target target, List<String> validationMessages) {
+    if (StringUtils.isBlank(target.getCustomQuery())) {
+      validationMessages.add("Custom target must define a query");
+    }
+    if (!target.getMappings().isEmpty()) {
+      validationMessages.add("Custom target must not define any mapping");
+    }
+    if (!target.getTransform().isDefault()) {
+      validationMessages.add("Custom target must not define any transform");
+    }
+  }
+
+  private static boolean fieldIsMapped(Target target, String fieldName) {
     if (fieldName == null) {
       return false;
     }
@@ -284,5 +337,91 @@ public class InputValidator {
       }
     }
     return false;
+  }
+}
+
+class PropertyMapping {
+  private final Set<String> sourceFields = new LinkedHashSet<>();
+  private final Set<String> types = new LinkedHashSet<>();
+  private final String targetName;
+  private final String propertyName;
+  private final FragmentType fragmentType;
+
+  public PropertyMapping(String targetName, String propertyName, FragmentType fragmentType) {
+    this.targetName = targetName;
+    this.propertyName = propertyName;
+    this.fragmentType = fragmentType;
+  }
+
+  public void add(Mapping mapping) {
+    if (mapping.getRole() != RoleType.key && mapping.getRole() != RoleType.property) {
+      return;
+    }
+    sourceFields.add(mapping.getField());
+    PropertyType type = mapping.getType();
+    if (type != null) {
+      types.add(type.name());
+    }
+  }
+
+  public Stream<String> validate() {
+    List<String> errorMessages = new ArrayList<>();
+    if (sourceFields.size() > 1) {
+      String msg =
+          String.format(
+              "Property %s%s in target %s is mapped to too many source fields: %s",
+              propertyName, fragmentDescription(), targetName, String.join(", ", sourceFields));
+      errorMessages.add(msg);
+    }
+    if (types.size() > 1) {
+      String msg =
+          String.format(
+              "Property %s in target %s is mapped to too many types: %s",
+              propertyName, targetName, String.join(", ", types));
+      errorMessages.add(msg);
+    }
+    return errorMessages.stream();
+  }
+
+  private String fragmentDescription() {
+    switch (fragmentType) {
+      case source:
+        return " of the source node";
+      case target:
+        return " of the target node";
+      case rel:
+        return " of the relationship";
+      default:
+        return "";
+    }
+  }
+}
+
+class PropertyMappingKey {
+
+  private final FragmentType fragmentType;
+  private final String propertyName;
+
+  public PropertyMappingKey(FragmentType fragmentType, String propertyName) {
+    this.fragmentType = fragmentType;
+    this.propertyName = propertyName;
+  }
+
+  public FragmentType getFragmentType() {
+    return fragmentType;
+  }
+
+  public String getPropertyName() {
+    return propertyName;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return EqualsBuilder.reflectionEquals(this, o);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fragmentType, propertyName);
   }
 }

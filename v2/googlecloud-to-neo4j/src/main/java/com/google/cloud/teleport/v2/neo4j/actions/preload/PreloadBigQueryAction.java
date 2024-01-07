@@ -24,21 +24,15 @@ import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Query action handler. */
 public class PreloadBigQueryAction implements PreloadAction {
 
-  private static final Logger LOG = LoggerFactory.getLogger(PreloadBigQueryAction.class);
-
   private Action action;
-  private ActionContext context;
 
   @Override
   public void configure(Action action, ActionContext context) {
     this.action = action;
-    this.context = context;
   }
 
   @Override

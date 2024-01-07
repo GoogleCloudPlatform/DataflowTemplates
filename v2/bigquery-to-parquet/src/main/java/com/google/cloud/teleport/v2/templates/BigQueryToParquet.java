@@ -27,6 +27,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.BigQueryToParquet.BigQueryToParquetOptions;
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.Arrays;
@@ -35,7 +36,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -47,7 +48,6 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,77 +55,26 @@ import org.slf4j.LoggerFactory;
  * The {@link BigQueryToParquet} pipeline exports data from a BigQuery table to Parquet file(s) in a
  * Google Cloud Storage bucket.
  *
- * <p><b>Pipeline Requirements</b>
- *
- * <ul>
- *   <li>BigQuery Table exists.
- *   <li>Google Cloud Storage bucket exists.
- * </ul>
- *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=my-project
- * BUCKET_NAME=my-bucket
- * TABLE={$PROJECT}:my-dataset.my-table
- *
- * # Set containerization vars
- * IMAGE_NAME=my-image-name
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=my-base-container-image
- * BASE_CONTAINER_IMAGE_VERSION=my-base-container-image-version
- * APP_ROOT=/path/to/app-root
- * COMMAND_SPEC=/path/to/command-spec
- *
- * # Build and upload image
- * mvn clean package \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${COMMAND_SPEC}
- *
- * # Create an image spec in GCS that contains the path to the image
- * {
- *    "docker_template_spec": {
- *       "docker_image": $TARGET_GCR_IMAGE
- *     }
- *  }
- *
- * # Execute template:
- * API_ROOT_URL="https://dataflow.googleapis.com"
- * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
- * JOB_NAME="bigquery-to-parquet-`date +%Y%m%d-%H%M%S-%N`"
- *
- * time curl -X POST -H "Content-Type: application/json"     \
- *     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
- *     "${TEMPLATES_LAUNCH_API}"`
- *     `"?validateOnly=false"`
- *     `"&dynamicTemplate.gcsPath=${BUCKET_NAME}/path/to/image-spec"`
- *     `"&dynamicTemplate.stagingLocation=${BUCKET_NAME}/staging" \
- *     -d '
- *      {
- *       "jobName":"'$JOB_NAME'",
- *       "parameters": {
- *           "tableRef":"'$TABLE'",
- *           "bucket":"'$BUCKET_NAME/results'",
- *           "numShards":"5",
- *           "fields":"field1,field2"
- *        }
- *       }
- *      '
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/bigquery-to-parquet/README_BigQuery_to_Parquet.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "BigQuery_to_Parquet",
     category = TemplateCategory.BATCH,
     displayName = "BigQuery export to Parquet (via Storage API)",
     description =
-        "A pipeline to export a BigQuery table into Parquet files using the BigQuery Storage API.",
+        "The BigQuery export to Parquet template is a batch pipeline that reads data from a BigQuery table and writes it to a Cloud Storage bucket in Parquet format. "
+            + "This template utilizes the <a href=\"https://cloud.google.com/bigquery/docs/reference/storage\">BigQuery Storage API</a> to export the data.",
     optionsClass = BigQueryToParquetOptions.class,
     flexContainerName = "bigquery-to-parquet",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-parquet",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The input BigQuery table must exist before running the pipeline.",
+      "The output Cloud Storage bucket must exist before running the pipeline."
+    })
 public class BigQueryToParquet {
 
   /* Logger for class. */

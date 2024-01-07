@@ -102,61 +102,55 @@ import org.slf4j.LoggerFactory;
  *   <li>The BigQuery Dataset exists
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * BUCKET_NAME=BUCKET NAME HERE
- * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/dlp-text-to-bigquery
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.DLPTextToBigQueryStreaming \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}"
- *
- * # Execute the template
- * JOB_NAME=dlp-text-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputFilePattern=gs://{bucketName}/{fileName}.csv, batchSize=15,datasetName={BQDatasetId},
- *  dlpProjectId={projectId},
- *  deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Stream_DLP_GCS_Text_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Stream_DLP_GCS_Text_to_BigQuery",
     category = TemplateCategory.STREAMING,
     displayName = "Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP)",
-    description =
-        "An example pipeline that reads CSV files from Cloud Storage, uses Cloud DLP API to mask and tokenize data based on the DLP templates provided and stores output in BigQuery. Note, not all configuration settings are available in this default template. You may need to deploy a custom template to accommodate your specific environment and data needs. More details here: https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp",
+    description = {
+      "The Data Masking/Tokenization from Cloud Storage to BigQuery template uses <a href=\"https://cloud.google.com/dlp/docs\">Sensitive Data Protection</a> and creates a streaming pipeline that does the following steps:\n"
+          + "1. Reads CSV files from a Cloud Storage bucket.\n"
+          + "2. Calls the Cloud Data Loss Prevention API (part of Sensitive Data Protection) for de-identification.\n"
+          + "3. Writes the de-identified data into the specified BigQuery table.",
+      "The template supports using both a Sensitive Data Protection <a href=\"https://cloud.google.com/dlp/docs/creating-templates\">inspection template</a> and a Sensitive Data Protection <a href=\"https://cloud.google.com/dlp/docs/creating-templates-deid\">de-identification template</a>. As a result, the template supports both of the following tasks:\n"
+          + "- Inspect for potentially sensitive information and de-identify the data.\n"
+          + "- De-identify structured data where columns are specified to be de-identified and no inspection is needed.",
+      "Note: This template does not support a regional path for de-identification template location. Only a global path is supported."
+    },
     optionsClass = TokenizePipelineOptions.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/dlp-text-to-bigquery",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The input data to tokenize must exist.",
+      "The Sensitive Data Protection templates must exist (for example, DeidentifyTemplate and InspectTemplate). For more details, see <a href=\"https://cloud.google.com/dlp/docs/concepts-templates\">Sensitive Data Protection templates</a>.",
+      "The BigQuery dataset must exist."
+    },
+    streaming = true,
+    hidden = true)
 public class DLPTextToBigQueryStreaming {
 
   public static final Logger LOG = LoggerFactory.getLogger(DLPTextToBigQueryStreaming.class);
+
   /** Default interval for polling files in GCS. */
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(30);
+
   /** Expected only CSV file in GCS bucket. */
   private static final String ALLOWED_FILE_EXTENSION = String.valueOf("csv");
+
   /** Regular expression that matches valid BQ table IDs. */
   private static final Pattern TABLE_REGEXP = Pattern.compile("[-\\w$@]{1,1024}");
+
   /** Default batch size if value not provided in execution. */
   private static final Integer DEFAULT_BATCH_SIZE = 100;
+
   /** Regular expression that matches valid BQ column name . */
   private static final Pattern COLUMN_NAME_REGEXP = Pattern.compile("^[A-Za-z_]+[A-Za-z_0-9]*$");
+
   /** Default window interval to create side inputs for header records. */
   private static final Duration WINDOW_INTERVAL = Duration.standardSeconds(30);
 
@@ -187,7 +181,7 @@ public class DLPTextToBigQueryStreaming {
     /*
      * Steps:
      *   1) Read from the text source continuously based on default interval e.g. 30 seconds
-     *       - Setup a window for 30 secs to capture the list of files emited.
+     *       - Setup a window for 30 secs to capture the list of files emitted.
      *       - Group by file name as key and ReadableFile as a value.
      *   2) Output each readable file for content processing.
      *   3) Split file contents based on batch size for parallel processing.
@@ -200,7 +194,7 @@ public class DLPTextToBigQueryStreaming {
         p
             /*
              * 1) Read from the text source continuously based on default interval e.g. 300 seconds
-             *     - Setup a window for 30 secs to capture the list of files emited.
+             *     - Setup a window for 30 secs to capture the list of files emitted.
              *     - Group by file name as key and ReadableFile as a value.
              */
             .apply(
@@ -257,7 +251,7 @@ public class DLPTextToBigQueryStreaming {
                               }
                             }))))
 
-            // 4) Create a DLP Table content request and invoke DLP API for each processsing
+            // 4) Create a DLP Table content request and invoke DLP API for each processing
             .apply(
                 "DLP-Tokenization",
                 ParDo.of(
@@ -292,10 +286,11 @@ public class DLPTextToBigQueryStreaming {
    */
   public interface TokenizePipelineOptions extends DataflowPipelineOptions {
 
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-files/*.csv")
     ValueProvider<String> getInputFilePattern();
 
@@ -373,6 +368,7 @@ public class DLPTextToBigQueryStreaming {
 
     private ValueProvider<Integer> batchSize;
     private PCollectionView<List<KV<String, List<String>>>> headerMap;
+
     /** This counter is used to track number of lines processed against batch size. */
     private Integer lineCount;
 
@@ -476,8 +472,8 @@ public class DLPTextToBigQueryStreaming {
     }
 
     /**
-     * SDF needs to define a @SplitRestriction method that can split the intital restricton to a
-     * number of smaller restrictions. For example: a intital rewstriction of (x, N) as input and
+     * SDF needs to define a @SplitRestriction method that can split the initial restriction to a
+     * number of smaller restrictions. For example: a initial restriction of (x, N) as input and
      * produces pairs (x, 0), (x, 1), …, (x, N-1) as output.
      */
     @SplitRestriction
@@ -525,7 +521,7 @@ public class DLPTextToBigQueryStreaming {
    * The {@link DLPTokenizationDoFn} class executes tokenization request by calling DLP api. It uses
    * DLP table as a content item as CSV file contains fully structured data. DLP templates (e.g.
    * de-identify, inspect) need to exist before this pipeline runs. As response from the API is
-   * received, this DoFn ouptputs KV of new table with table id as key.
+   * received, this DoFn outputs KV of new table with table id as key.
    */
   static class DLPTokenizationDoFn extends DoFn<KV<String, Table>, KV<String, Table>> {
     private ValueProvider<String> dlpProjectId;

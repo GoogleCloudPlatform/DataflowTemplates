@@ -15,13 +15,11 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Iterator;
-import lombok.Getter;
-import lombok.Setter;
-import org.apache.commons.lang3.StringUtils;
-import org.codehaus.jackson.annotate.JsonIgnore;
+import java.util.Map;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,8 +28,6 @@ import org.slf4j.LoggerFactory;
  * Runtime options object that coalesces well-known (readQuery, inputFilePattern) and arbitrary
  * options.
  */
-@Getter
-@Setter
 public class OptionsParams implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(OptionsParams.class);
@@ -44,20 +40,38 @@ public class OptionsParams implements Serializable {
 
   @JsonIgnore
   public void overlayTokens(String optionsJsonStr) {
-    if (!StringUtils.isEmpty(optionsJsonStr)) {
-      LOG.info("Pipeline options: {}", optionsJsonStr);
-      JSONObject optionsJson = new JSONObject(optionsJsonStr);
-      Iterator<String> optionsKeys = optionsJson.keys();
-      while (optionsKeys.hasNext()) {
-        String optionsKey = optionsKeys.next();
-        this.tokenMap.put(optionsKey, String.valueOf(optionsJson.opt(optionsKey)));
-        if ("readQuery".equals(optionsKey)) {
-          this.readQuery = optionsJson.getString("readQuery");
-        } else if ("inputFilePattern".equals(optionsKey)) {
-          this.inputFilePattern = optionsJson.getString("inputFilePattern");
-        }
-        LOG.info("{}: {}", optionsKey, optionsJson.opt(optionsKey));
+    LOG.info("Pipeline options: {}", optionsJsonStr);
+    JSONObject optionsJson = new JSONObject(optionsJsonStr);
+    Iterator<String> optionsKeys = optionsJson.keys();
+    while (optionsKeys.hasNext()) {
+      String optionsKey = optionsKeys.next();
+      this.tokenMap.put(optionsKey, String.valueOf(optionsJson.opt(optionsKey)));
+      if ("readQuery".equals(optionsKey)) {
+        this.readQuery = optionsJson.getString("readQuery");
+      } else if ("inputFilePattern".equals(optionsKey)) {
+        this.inputFilePattern = optionsJson.getString("inputFilePattern");
       }
+      LOG.info("{}: {}", optionsKey, optionsJson.opt(optionsKey));
     }
+  }
+
+  public String getReadQuery() {
+    return readQuery;
+  }
+
+  public void setReadQuery(String readQuery) {
+    this.readQuery = readQuery;
+  }
+
+  public String getInputFilePattern() {
+    return inputFilePattern;
+  }
+
+  public void setInputFilePattern(String inputFilePattern) {
+    this.inputFilePattern = inputFilePattern;
+  }
+
+  public Map<String, String> getTokenMap() {
+    return tokenMap;
   }
 }

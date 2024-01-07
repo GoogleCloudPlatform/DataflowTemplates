@@ -17,9 +17,10 @@ package com.google.cloud.teleport.v2.utils;
 
 import static org.junit.Assert.assertEquals;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
+import java.util.Map;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,9 +50,8 @@ public class DatabaseMigrationUtilsTest {
   }
 
   /**
-   * Test whether {@link DatabaseMigrationUtils#getValueSql(rowObj, columnName, tableSchema)}
-   * converts data into correct strings. String columnValue = getValueSql(rowObj, columnName,
-   * tableSchema);
+   * Test whether {@link DatabaseMigrationUtils#getValueSql(JsonNode, String, Map)} converts data
+   * into correct strings. String columnValue = getValueSql(rowObj, columnName, tableSchema);
    */
   @Test
   public void testGetValueSql() {
@@ -75,7 +75,7 @@ public class DatabaseMigrationUtilsTest {
   }
 
   /**
-   * Test whether {@link DatabaseMigrationUtils#getPostgresSchemaName(rowObj)} converts the Oracle
+   * Test whether {@link DatabaseMigrationUtils#getPostgresSchemaName(JsonNode)} converts the Oracle
    * schema into the correct Postgres schema.
    */
   @Test
@@ -88,7 +88,7 @@ public class DatabaseMigrationUtilsTest {
   }
 
   /**
-   * Test whether {@link DatabaseMigrationUtils#getPostgresTableName(rowObj)} converts the Oracle
+   * Test whether {@link DatabaseMigrationUtils#getPostgresTableName(JsonNode)} converts the Oracle
    * table into the correct Postgres table.
    */
   @Test

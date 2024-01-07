@@ -42,7 +42,7 @@ runs:
     - name: Setup Java
       uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
       with:
-        distribution: 'zulu'
+        distribution: 'temurin'
         java-version: ${{ inputs.java-version }}
     - name: Prepare Key
       shell: bash

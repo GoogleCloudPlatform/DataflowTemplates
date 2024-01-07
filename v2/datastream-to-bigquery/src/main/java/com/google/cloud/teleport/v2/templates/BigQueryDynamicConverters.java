@@ -114,8 +114,8 @@ public class BigQueryDynamicConverters {
 
   /**
    * Class {@link BigQueryDynamicDestination} Class BigQueryDynamicDestination loads into BigQuery
-   * tables in a dynamic fashion. The desitination table is based on the TableId supplied by
-   * previous steps.
+   * tables in a dynamic fashion. The destination table is based on the TableId supplied by previous
+   * steps.
    */
   public static class BigQueryDynamicDestination
       extends DynamicDestinations<KV<TableId, TableRow>, KV<TableId, TableRow>> {
@@ -136,7 +136,7 @@ public class BigQueryDynamicConverters {
       String tableName =
           String.format("%s:%s.%s", tableId.getProject(), tableId.getDataset(), tableId.getTable());
       TableDestination dest =
-          new TableDestination(tableName, "Name of table pulled from datafields");
+          new TableDestination(tableName, "Name of table pulled from data fields");
 
       return dest;
     }

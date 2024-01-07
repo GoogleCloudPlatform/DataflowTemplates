@@ -29,15 +29,17 @@ var (
 	dArtifactBucket string
 	dStageBucket    string
 	dHostIp         string
+	dReleaseMode    bool
 )
 
 // Registers all common flags. Must be called before flag.Parse().
 func RegisterItFlags() {
 	flag.StringVar(&dRegion, "it-region", "", "The GCP region to use for storing test artifacts")
-	flag.StringVar(&dProject, "it-project", "", "The GCP region to run the integration tests in")
+	flag.StringVar(&dProject, "it-project", "", "The GCP project to run the integration tests in")
 	flag.StringVar(&dArtifactBucket, "it-artifact-bucket", "", "A GCP bucket to store test artifacts")
 	flag.StringVar(&dStageBucket, "it-stage-bucket", "", "(optional) A GCP bucket to stage templates")
-	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on)")
+	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on")
+	flag.BoolVar(&dReleaseMode, "it-release", false, "(optional) Set if tests are being executed for a release")
 }
 
 func Region() string {
@@ -60,13 +62,23 @@ func StageBucket() string {
 }
 
 func HostIp() string {
-	if dHostIp == "" {
+	if len(dHostIp) == 0 {
 		gcloudCmd := "gcloud compute instances list | grep $(hostname) | awk '{print $4}'"
-		if hostIp, err := exec.Command("bash", "-c", gcloudCmd).Output(); err != nil {
+		if hostIP, err := exec.Command("bash", "-c", gcloudCmd).Output(); err != nil || len(hostIP) == 0 {
 			panic(fmt.Errorf("failed to get gitactions runner host ip: %v", err))
 		} else {
-			return "-DhostIp=" + string(hostIp)[:len(hostIp)-1]
+			return "-DhostIp=" + string(hostIP)[:len(hostIP)-1]
 		}
 	}
 	return "-DhostIp=" + dHostIp
+}
+
+func FailureMode() string {
+	// Fail releases fast
+	if dReleaseMode {
+		return "-ff"
+	}
+
+	// Fail PRs at the end
+	return "-fae"
 }

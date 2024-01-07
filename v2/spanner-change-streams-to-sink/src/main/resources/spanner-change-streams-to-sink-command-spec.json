@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToSink",
+  "classPath": "/template/spanner-change-streams-to-sink/spanner-change-streams-to-sink-conscrypt.jar:/template/spanner-change-streams-to-sink/*:/template/spanner-to-spanner/libs/*:/template/spanner-change-streams-to-sink/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"spanner_change_streams_to_sink\"}"
+  }
+}

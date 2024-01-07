@@ -33,6 +33,18 @@
             <artifactId>elasticsearch-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Testing -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-google-cloud-platform</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-elasticsearch</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

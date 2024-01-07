@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.FileFormatConversion.FileFormatConversionOptions;
 import com.google.cloud.teleport.v2.transforms.AvroConverters.AvroOptions;
@@ -50,81 +51,29 @@ import org.slf4j.LoggerFactory;
  *   <li>Google Cloud Storage output bucket exists.
  * </ul>
  *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=my-project
- * BUCKET_NAME=my-bucket
- *
- * # Set containerization vars
- * IMAGE_NAME=my-image-name
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=my-base-container-image
- * BASE_CONTAINER_IMAGE_VERSION=my-base-container-image-version
- * APP_ROOT=/path/to/app-root
- * COMMAND_SPEC=/path/to/command-spec
- *
- * # Set vars for execution
- * export INPUT_FILE_FORMAT=Csv
- * export OUTPUT_FILE_FORMAT=Avro
- * export AVRO_SCHEMA_PATH=gs://path/to/avro/schema
- * export HEADERS=false
- * export DELIMITER=","
- *
- * # Build and upload image
- * mvn clean package \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${COMMAND_SPEC}
- *
- * # Create an image spec in GCS that contains the path to the image
- * {
- *    "docker_template_spec": {
- *       "docker_image": $TARGET_GCR_IMAGE
- *     }
- *  }
- *
- * # Execute template:
- * API_ROOT_URL="https://dataflow.googleapis.com"
- * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
- * JOB_NAME="csv-to-avro-`date +%Y%m%d-%H%M%S-%N`"
- *
- * time curl -X POST -H "Content-Type: application/json"     \
- *     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
- *     "${TEMPLATES_LAUNCH_API}"`
- *     `"?validateOnly=false"`
- *     `"&dynamicTemplate.gcsPath=${BUCKET_NAME}/path/to/image-spec"`
- *     `"&dynamicTemplate.stagingLocation=${BUCKET_NAME}/staging" \
- *     -d '
- *      {
- *       "jobName":"'$JOB_NAME'",
- *       "parameters": {
- *            "inputFileFormat":"'$INPUT_FILE_FORMAT'",
- *            "outputFileFormat":"'$OUTPUT_FILE_FORMAT'",
- *            "inputFileSpec":"'$BUCKET_NAME/path/to/input-file'",
- *            "outputBucket":"'$BUCKET_NAME/path/to/output-location/'",
- *            "containsHeaders":"'$HEADERS'",
- *            "schema":"'$AVRO_SCHEMA_PATH'",
- *            "outputFilePrefix":"output-file",
- *            "numShards":"3",
- *            "delimiter":"'$DELIMITER'"
- *         }
- *       }
- *      '
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/file-format-conversion/README_File_Format_Conversion.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "File_Format_Conversion",
     category = TemplateCategory.UTILITIES,
     displayName = "Convert file formats between Avro, Parquet & CSV",
-    description = "A pipeline to convert file formats between Avro, Parquet & csv.",
+    description = {
+      "The File Format Conversion template is a batch pipeline that converts files stored on Cloud Storage from one supported format to another.\n",
+      "The following format conversions are supported:\n"
+          + "- CSV to Avro\n"
+          + "- CSV to Parquet\n"
+          + "- Avro to Parquet\n"
+          + "- Parquet to Avro"
+    },
     optionsClass = FileFormatConversionOptions.class,
     optionalOptions = {"deadletterTable"},
     flexContainerName = "file-format-conversion",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/file-format-conversion",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {"The output Cloud Storage bucket must exist before running the pipeline."})
 public class FileFormatConversion {
 
   /** Logger for class. */
@@ -141,7 +90,11 @@ public class FileFormatConversion {
       extends PipelineOptions, CsvPipelineOptions, AvroOptions, ParquetOptions {
     @TemplateParameter.Enum(
         order = 1,
-        enumOptions = {"avro", "csv", "parquet"},
+        enumOptions = {
+          @TemplateEnumOption("avro"),
+          @TemplateEnumOption("csv"),
+          @TemplateEnumOption("parquet")
+        },
         description = "File format of the input files.",
         helpText = "File format of the input files. Needs to be either avro, parquet or csv.")
     @Required
@@ -151,7 +104,7 @@ public class FileFormatConversion {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"avro", "parquet"},
+        enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("parquet")},
         description = "File format of the output files.",
         helpText = "File format of the output files. Needs to be either avro or parquet.")
     @Required

@@ -637,6 +637,76 @@ public class SpannerRecordConverterTest {
   }
 
   @Test
+  public void pgCommitTimestamp() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("users")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("ts1")
+            .pgSpannerCommitTimestamp()
+            .endColumn()
+            .column("ts2")
+            .pgSpannerCommitTimestamp()
+            .endColumn()
+            .column("ts3")
+            .pgSpannerCommitTimestamp()
+            .endColumn()
+            .column("ts4")
+            .pgSpannerCommitTimestamp()
+            .endColumn()
+            .column("ts5")
+            .pgSpannerCommitTimestamp()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    Struct struct =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("ts1")
+            .to(Timestamp.ofTimeMicroseconds(1))
+            .set("ts2")
+            .to(Timestamp.ofTimeSecondsAndNanos(10, 1000))
+            .set("ts3")
+            .to(Timestamp.parseTimestamp("1970-01-01T00:00:00Z"))
+            .set("ts4")
+            .to(Timestamp.MIN_VALUE)
+            .set("ts5")
+            .to(Timestamp.MAX_VALUE)
+            .build();
+
+    // By default, export timestamps as strings.
+    Schema schema = converter.convert(ddl).iterator().next();
+    SpannerRecordConverter recordConverter = new SpannerRecordConverter(schema, Dialect.POSTGRESQL);
+    GenericRecord avroRecord = recordConverter.convert(struct);
+    assertThat(avroRecord.get("id"), equalTo(1L));
+    assertThat(avroRecord.get("ts1"), equalTo("1970-01-01T00:00:00.000001000Z"));
+    assertThat(avroRecord.get("ts2"), equalTo("1970-01-01T00:00:10.000001000Z"));
+    assertThat(avroRecord.get("ts3"), equalTo("1970-01-01T00:00:00Z"));
+    assertThat(avroRecord.get("ts4"), equalTo("0001-01-01T00:00:00Z"));
+    assertThat(avroRecord.get("ts5"), equalTo("9999-12-31T23:59:59.999999999Z"));
+
+    // Export timestamps as timestamp-micros logical type.
+    Schema schemaLogicalType = logicalTypeConverter.convert(ddl).iterator().next();
+    SpannerRecordConverter recordConverterLogicalType =
+        new SpannerRecordConverter(schemaLogicalType, Dialect.POSTGRESQL);
+    GenericRecord avroRecordLogicalType = recordConverterLogicalType.convert(struct);
+    assertThat(avroRecordLogicalType.get("id"), equalTo(1L));
+    assertThat(avroRecordLogicalType.get("ts1"), equalTo(1L));
+    assertThat(avroRecordLogicalType.get("ts2"), equalTo(10000001L));
+    assertThat(avroRecordLogicalType.get("ts3"), equalTo(0L));
+    assertThat(avroRecordLogicalType.get("ts4"), equalTo(-62135596800000000L));
+    assertThat(avroRecordLogicalType.get("ts5"), equalTo(253402300799999999L));
+  }
+
+  @Test
   public void pgNumerics() {
     Ddl ddl =
         Ddl.builder(Dialect.POSTGRESQL)
@@ -844,5 +914,19 @@ public class SpannerRecordConverterTest {
 
     assertEquals(1L, avroRecord.get("id"));
     assertNull(avroRecord.get("generatedInt"));
+  }
+
+  @Test
+  public void dateToString() {
+    List<Date> dates =
+        Arrays.asList(
+            Date.fromYearMonthDay(10, 9, 5),
+            Date.fromYearMonthDay(500, 3, 4),
+            Date.fromYearMonthDay(2016, 12, 31),
+            Date.fromYearMonthDay(1, 1, 1));
+
+    for (Date date : dates) {
+      assertEquals(SpannerRecordConverter.dateToString(date), date.toString());
+    }
   }
 }

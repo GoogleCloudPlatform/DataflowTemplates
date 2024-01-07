@@ -21,9 +21,9 @@ import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.TimestampBound;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.InformationSchemaScanner;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.List;
 import java.util.Set;
@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -78,7 +78,7 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
 
   static class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
     private final SpannerConfig spannerConfig;
-    private transient ExposedSpannerAccessor spannerAccessor;
+    private transient SpannerAccessor spannerAccessor;
     private transient Dialect dialect;
     private final Boolean shouldCreateShadowTables;
     private final String shadowTablePrefix;
@@ -101,7 +101,7 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
 
     @Setup
     public void setup() throws Exception {
-      spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
+      spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
       DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
       dialect =
           databaseAdminClient

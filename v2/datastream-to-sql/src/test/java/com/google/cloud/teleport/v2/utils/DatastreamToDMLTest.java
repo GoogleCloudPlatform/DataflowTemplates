@@ -18,13 +18,13 @@ package com.google.cloud.teleport.v2.utils;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL;
-import com.google.cloud.teleport.v2.values.DatastreamRow;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,9 +54,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Test whether {@link DatastreamToPostgresDML#getValueSql(rowObj, columnName, tableSchema)}
-   * converts data into correct strings. String columnValue = getValueSql(rowObj, columnName,
-   * tableSchema);
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts data
+   * into correct strings. String columnValue = getValueSql(rowObj, columnName, tableSchema);
    */
   @Test
   public void testGetValueSql() {
@@ -84,8 +83,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Test whether {@link DatastreamToDML#getTargetSchemaName(row)} converts the Oracle schema into
-   * the correct Postgres schema.
+   * Test whether {@link DatastreamToDML#getTargetSchemaName} converts the Oracle schema into the
+   * correct Postgres schema.
    */
   @Test
   public void testGetPostgresSchemaName() {
@@ -99,8 +98,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Test whether {@link DatastreamToPostgresDML#getTargetTableName(row)} converts the Oracle table
-   * into the correct Postgres table.
+   * Test whether {@link DatastreamToPostgresDML#getTargetTableName} converts the Oracle table into
+   * the correct Postgres table.
    */
   @Test
   public void testGetPostgresTableName() {

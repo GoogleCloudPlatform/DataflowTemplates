@@ -26,12 +26,12 @@ import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearc
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.io.Resources;
+import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
-import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.junit.Rule;
@@ -50,7 +50,6 @@ public class GCSToElasticsearchTest {
       Resources.getResource(CSV_RESOURCES_DIR + "with_headers.csv").getPath();
   private static final String JSON_SCHEMA_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "testSchema.json").getPath();
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
   /** Tests the {@link GCSToElasticsearch} pipeline using a Udf to parse the Csv. */
@@ -64,6 +63,7 @@ public class GCSToElasticsearchTest {
         FailsafeElementCoder.of(
             NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
+    Pipeline pipeline = Pipeline.create();
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
@@ -72,6 +72,7 @@ public class GCSToElasticsearchTest {
 
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setJavascriptTextTransformFunctionName("transform");
+    options.setJavascriptTextTransformReloadIntervalMinutes(0);
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
     options.setApiKey("key");
@@ -96,6 +97,8 @@ public class GCSToElasticsearchTest {
                     .setDelimiter(options.getDelimiter())
                     .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setUdfReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .setJsonSchemaPath(options.getJsonSchemaPath())
                     .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
                     .setLineTag(GCSToElasticsearch.CSV_LINES)
@@ -128,6 +131,7 @@ public class GCSToElasticsearchTest {
         FailsafeElementCoder.of(
             NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
+    Pipeline pipeline = Pipeline.create();
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
@@ -190,6 +194,7 @@ public class GCSToElasticsearchTest {
         FailsafeElementCoder.of(
             NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
+    Pipeline pipeline = Pipeline.create();
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
@@ -261,6 +266,8 @@ public class GCSToElasticsearchTest {
     options.setMaxRetryAttempts(5);
     options.setMaxRetryDuration(null);
     options.setApiKey("key");
+
+    Pipeline pipeline = Pipeline.create();
     pipeline
         .apply(Create.of("{}").withCoder(StringUtf8Coder.of()))
         .apply(

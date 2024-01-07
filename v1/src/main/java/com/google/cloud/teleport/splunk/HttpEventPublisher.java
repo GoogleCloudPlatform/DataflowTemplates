@@ -50,8 +50,8 @@ import javax.annotation.Nullable;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Joiner;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Joiner;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
@@ -163,7 +163,7 @@ public abstract class HttpEventPublisher {
     return new ExponentialBackOff.Builder().setMaxElapsedTimeMillis(maxElapsedMillis()).build();
   }
 
-  /** Shutsdown connection manager and releases all resources. */
+  /** Shutdown connection manager and releases all resources. */
   public void close() throws IOException {
     if (transport() != null) {
       LOG.info("Closing publisher transport.");
@@ -320,8 +320,11 @@ public abstract class HttpEventPublisher {
      * @return {@link HttpEventPublisher}
      */
     public HttpEventPublisher build()
-        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException,
-            CertificateException, IOException {
+        throws NoSuchAlgorithmException,
+            KeyStoreException,
+            KeyManagementException,
+            CertificateException,
+            IOException {
 
       checkNotNull(token(), "Authentication token needs to be specified via withToken(token).");
       checkNotNull(genericUrl(), "URL needs to be specified via withUrl(url).");
@@ -369,8 +372,11 @@ public abstract class HttpEventPublisher {
      */
     private CloseableHttpClient getHttpClient(
         int maxConnections, boolean disableCertificateValidation, byte[] rootCaCertificate)
-        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException,
-            CertificateException, IOException {
+        throws NoSuchAlgorithmException,
+            KeyStoreException,
+            KeyManagementException,
+            CertificateException,
+            IOException {
 
       HttpClientBuilder builder = ApacheHttpTransport.newDefaultHttpClientBuilder();
 

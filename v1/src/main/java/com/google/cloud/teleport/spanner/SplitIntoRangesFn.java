@@ -77,8 +77,7 @@ class SplitIntoRangesFn extends DoFn<ReadableFile, FileShard> {
     this.desiredBundleSize = desiredBundleSize;
     this.quoteChar = quoteChar;
     this.columnDelimiter = columnDelimiter;
-    this.escapeChar =
-        (escapeChar == null) ? ValueProvider.StaticValueProvider.of((char) 0) : escapeChar;
+    this.escapeChar = escapeChar;
     this.handleNewLine = handleNewLine;
   }
 
@@ -114,6 +113,9 @@ class SplitIntoRangesFn extends DoFn<ReadableFile, FileShard> {
       ReadableByteChannel channel = FileSystems.open(metadata.resourceId());
       InputStream stream = Channels.newInputStream(channel);
       Reader reader = new InputStreamReader(stream);
+      char escape =
+          (escapeChar == null || escapeChar.get() == null) ? ((char) 0) : escapeChar.get();
+
       int data = 0, prevData = 0;
       // We need to store the record count to know when to stop reading the shard as the CSVParser
       // library does not provide a way to use the end of shard position(in bytes) directly.
@@ -155,7 +157,7 @@ class SplitIntoRangesFn extends DoFn<ReadableFile, FileShard> {
             data = reader.read();
             bytesRead++;
             // If prev char is escaped, do nothing.
-            if ((char) prevData == escapeChar.get()) {
+            if ((char) prevData == escape) {
               prevData = data;
               continue;
             }
@@ -187,9 +189,10 @@ class SplitIntoRangesFn extends DoFn<ReadableFile, FileShard> {
           continue;
         } else {
           // If the first column character is a quote, we assume the whole data value is quoted. If
-          // the quote is escaped by another quote, the value is still assumed to be quoted.
-          // However, if the quote is escaped by the escape character, then the value is treated as
-          // unquoted. In the quoted case, we know our value ends when we reach an unescaped quote,
+          // the quote is followed by another quote, the value is still assumed to be quoted
+          // (""abc" is quoted "abc, ""abc would throw an error as it would treat it as character
+          // after a closed quote).
+          // In the quoted case, we know our value ends when we reach an unescaped quote,
           // after which only whitespaces are allowed.  We throw an error if we find any character
           // other  than a whitespace. We ignore any newlines or delimiters inside quotes.
           while (data != -1) {
@@ -197,7 +200,7 @@ class SplitIntoRangesFn extends DoFn<ReadableFile, FileShard> {
             data = reader.read();
             bytesRead++;
             // CSV quotes can be escaped via the escape character or the quote itself.
-            if ((char) data == escapeChar.get() || (char) data == quoteChar.get()) {
+            if ((char) data == escape || (char) data == quoteChar.get()) {
               prevData = data;
               data = reader.read();
               bytesRead++;

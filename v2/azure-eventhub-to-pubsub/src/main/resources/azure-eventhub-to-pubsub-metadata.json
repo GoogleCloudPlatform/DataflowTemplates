@@ -1,0 +1,36 @@
+{
+  "name": "Azure Eventhub to Pub/Sub",
+  "description": "Streaming pipeline. Ingests data from Azure Eventhub to a Pub/Sub topic using KafkaIO of Apache Beam",
+  "parameters": [
+    {
+      "name": "brokerServer",
+      "label": "Azure Event Hub endpoint",
+      "helpText": "Server IP or DNS for Azure Eventhub Endpoint, ex: mynamespace.servicebus.windows.net:9093",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "inputTopic",
+      "label": "Azure Eventhub input topic",
+      "helpText": "Azure Eventhub topic(s) to read the input from",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputTopic",
+      "label": "Pub/Sub output topic",
+      "helpText": "Pub/Sub topic to write the output, in the format of 'projects/yourproject/topics/yourtopic'",
+      "regexes": [
+        "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "secret",
+      "label": "Version of secret to be used",
+      "helpText": "Secret Version follows the pattern of projects/{project}/secrets/{secret}/versions/{secret_version}",
+      "regexes": ["^projects/(.*)/secrets/(.*)/versions/(.*)$"],
+      "paramType": "TEXT"
+    }
+  ]
+}

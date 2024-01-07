@@ -18,13 +18,14 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.io.CdcJdbcIO;
+import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
+import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
+import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL.Options;
 import com.google.cloud.teleport.v2.transforms.CreateDml;
 import com.google.cloud.teleport.v2.transforms.ProcessDml;
-import com.google.cloud.teleport.v2.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
 import java.sql.SQLException;
@@ -44,44 +45,45 @@ import org.slf4j.LoggerFactory;
 /**
  * This pipeline ingests DataStream data from GCS. The data is then cleaned and converted from JSON
  * objects into DML statements. The DML is applied to the desired target database, which can be one
- * of MySQL or POstgreSQL. Replication maintains a 1:1 match between source and target by default.
+ * of MySQL or PostgreSQL. Replication maintains a 1:1 match between source and target by default.
  * No DDL is supported in the current version of this pipeline.
  *
- * <p>NOTE: Future versiosn will support: Pub/Sub, GCS, or Kafka as per DataStream
+ * <p>NOTE: Future versions will support: Pub/Sub, GCS, or Kafka as per DataStream
  *
- * <p>Example Usage: TODO: FIX EXMAPLE USAGE
- *
- * <pre>
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --templateLocation=gs://$BUCKET_NAME/templates/${PIPELINE_NAME}.json \
- * --gcsPubSubSubscription="projects/{project-id}/subscriptions/{subscription-name}" \
- * --inputFilePattern=${GCS_AVRO_FILE_PATTERN} \
- * --outputProjectId=${OUTPUT_PROJECT_ID} \
- * --runner=(DirectRunner|DataflowRunner)"
- *
- * OPTIONAL Dataflow Params:
- * --autoscalingAlgorithm=THROUGHPUT_BASED \
- * --numWorkers=2 \
- * --maxNumWorkers=10 \
- * --workerMachineType=n1-highcpu-4 \
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-sql/README_Cloud_Datastream_to_SQL.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_Datastream_to_SQL",
     category = TemplateCategory.STREAMING,
     displayName = "Datastream to SQL",
-    description =
-        "Streaming pipeline. Ingests messages from a stream in Cloud Datastream, transforms them,"
-            + " and writes them to a set of pre-defined Postgres tables.",
+    description = {
+      "The Datastream to SQL template is a streaming pipeline that reads <a href=\"https://cloud.google.com/datastream/docs\">Datastream</a> data and replicates it into any MySQL or PostgreSQL database. "
+          + "The template reads data from Cloud Storage using Pub/Sub notifications and replicates this data into SQL replica tables.\n",
+      "The template does not support data definition language (DDL) and expects that all tables already exist in the database. "
+          + "Replication uses Dataflow stateful transforms to filter stale data and ensure consistency in out of order data. "
+          + "For example, if a more recent version of a row has already passed through, a late arriving version of that row is ignored. "
+          + "The data manipulation language (DML) that executes is a best attempt to perfectly replicate source to target data. The DML statements executed follow the following rules:\n",
+      "If a primary key exists, insert and update operations use upsert syntax (ie. <code>INSERT INTO table VALUES (...) ON CONFLICT (...) DO UPDATE</code>).\n"
+          + "If primary keys exist, deletes are replicated as a delete DML.\n"
+          + "If no primary key exists, both insert and update operations are inserted into the table.\n"
+          + "If no primary keys exist, deletes are ignored.\n"
+          + "If you are using the Oracle to Postgres utilities, add <code>ROWID</code> in SQL as the primary key when none exists."
+    },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-sql",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-sql",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "A Datastream stream that is ready to or already replicating data.",
+      "<a href=\"https://cloud.google.com/storage/docs/reporting-changes\">Cloud Storage Pub/Sub notifications</a> are enabled for the Datastream data.",
+      "A PostgreSQL database was seeded with the required schema.",
+      "Network access between Dataflow workers and PostgreSQL is set up."
+    },
+    streaming = true)
 public class DataStreamToSQL {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSQL.class);
@@ -118,7 +120,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Enum(
         order = 3,
-        enumOptions = {"avro", "json"},
+        enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
@@ -169,7 +171,7 @@ public class DataStreamToSQL {
     @TemplateParameter.Enum(
         order = 7,
         optional = true,
-        enumOptions = {"postgres", "mysql"},
+        enumOptions = {@TemplateEnumOption("postgres"), @TemplateEnumOption("mysql")},
         description = "SQL Database Type (postgres or mysql).",
         helpText = "The database type to write to (for example, Postgres).")
     @Default.String("postgres")

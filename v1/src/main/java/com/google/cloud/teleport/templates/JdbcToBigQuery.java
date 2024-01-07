@@ -16,15 +16,16 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.api.services.bigquery.model.TableRow;
-import com.google.cloud.teleport.io.DynamicJdbcIO;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.templates.common.JdbcConverters;
+import com.google.cloud.teleport.util.GCSAwareValueProvider;
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
+import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.slf4j.Logger;
@@ -32,15 +33,31 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Jdbc_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Jdbc_to_BigQuery",
     category = TemplateCategory.BATCH,
-    displayName = "JDBC to BigQuery",
+    displayName = "JDBC to BigQuery (Legacy)",
     description =
-        "A pipeline that reads from a JDBC source and writes to a BigQuery table. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\"  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\" -H \"Authorization: Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type: application/json\"",
+        "The JDBC to BigQuery template is a batch pipeline that copies data from a relational database table into an existing BigQuery table. "
+            + "This pipeline uses JDBC to connect to the relational database. You can use this template to copy data from any relational database with available JDBC drivers into BigQuery. "
+            + "For an extra layer of protection, you can also pass in a Cloud KMS key along with a Base64-encoded username, password, and connection string parameters encrypted with the Cloud KMS key. "
+            + "See the <a href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud KMS API encryption endpoint</a> for additional details on encrypting your username, password, and connection string parameters.",
     optionsClass = JdbcConverters.JdbcToBigQueryOptions.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-bigquery",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The JDBC drivers for the relational database must be available.",
+      "The BigQuery table must exist before pipeline execution.",
+      "The BigQuery table must have a compatible schema.",
+      "The relational database must be accessible from the subnet where Dataflow runs."
+    })
 public class JdbcToBigQuery {
 
   private static final Logger LOG = LoggerFactory.getLogger(JdbcToBigQuery.class);
@@ -83,6 +100,19 @@ public class JdbcToBigQuery {
      * Steps: 1) Read records via JDBC and convert to TableRow via RowMapper
      *        2) Append TableRow to BigQuery via BigQueryIO
      */
+    JdbcIO.DataSourceConfiguration dataSourceConfiguration =
+        JdbcIO.DataSourceConfiguration.create(
+                options.getDriverClassName(),
+                maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
+            .withUsername(maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
+            .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
+            .withDriverJars(options.getDriverJars());
+
+    if (options.getConnectionProperties() != null) {
+      dataSourceConfiguration =
+          dataSourceConfiguration.withConnectionProperties(options.getConnectionProperties());
+    }
+
     pipeline
         /*
          * Step 1: Read records via JDBC and convert to TableRow
@@ -90,18 +120,9 @@ public class JdbcToBigQuery {
          */
         .apply(
             "Read from JdbcIO",
-            DynamicJdbcIO.<TableRow>read()
-                .withDataSourceConfiguration(
-                    DynamicJdbcIO.DynamicDataSourceConfiguration.create(
-                            options.getDriverClassName(),
-                            maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
-                        .withUsername(
-                            maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
-                        .withPassword(
-                            maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
-                        .withDriverJars(options.getDriverJars())
-                        .withConnectionProperties(options.getConnectionProperties()))
-                .withQuery(options.getQuery())
+            JdbcIO.<TableRow>read()
+                .withDataSourceConfiguration(dataSourceConfiguration)
+                .withQuery(new GCSAwareValueProvider(options.getQuery()))
                 .withCoder(TableRowJsonCoder.of())
                 .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())))
         /*

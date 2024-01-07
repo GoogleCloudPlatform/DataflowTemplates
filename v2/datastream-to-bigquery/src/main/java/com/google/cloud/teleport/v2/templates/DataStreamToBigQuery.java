@@ -22,16 +22,17 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.mappers.BigQueryDefaultSchemas;
-import com.google.cloud.teleport.v2.cdc.mappers.DataStreamMapper;
-import com.google.cloud.teleport.v2.cdc.mappers.MergeInfoMapper;
 import com.google.cloud.teleport.v2.cdc.merge.BigQueryMerger;
 import com.google.cloud.teleport.v2.cdc.merge.MergeConfiguration;
-import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.datastream.mappers.DataStreamMapper;
+import com.google.cloud.teleport.v2.datastream.mappers.MergeInfoMapper;
+import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.DataStreamToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -77,46 +78,41 @@ import org.slf4j.LoggerFactory;
  * BigQuery Table. If new columns or tables appear, they are automatically added to BigQuery. The
  * data is then inserted into BigQuery staging tables and Merged into a final replica table.
  *
- * <p>NOTE: Future versiosn will support: Pub/Sub, GCS, or Kafka as per DataStream
+ * <p>NOTE: Future versions are planned to support: Pub/Sub, GCS, or Kafka as per DataStream
  *
- * <p>Example Usage: TODO: FIX EXAMPLE USAGE
- *
- * <pre>
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --templateLocation=gs://$BUCKET_NAME/templates/${PIPELINE_NAME}.json \
- * --inputFilePattern=${GCS_AVRO_FILE_PATTERN} \
- * --outputProjectId=${OUTPUT_PROJECT_ID} \
- * --outputStagingDatasetTemplate=${BQ_STAGING_DATASET_TEMPLATE} \
- * --outputStagingTableNameTemplate=${BQ_STAGING_TABLE_NAME_TEMPLATE} \
- * --outputDatasetTemplate=${BQ_DATASET_TEMPLATE} \
- * --outputTableNameTemplate=${BQ_TABLE_NAME_TEMPLATE} \
- * --deadLetterQueueDirectory=${DLQ_GCS_PATH} \
- * --runner=(DirectRunner|DataflowRunner)"
- * inputFileFormat
- * OPTIONAL Dataflow Params:
- * --inputFileFormat=${GCS_FILE_FORMAT}\
- * --autoscalingAlgorithm=THROUGHPUT_BASED \
- * --numWorkers=1 \
- * --maxNumWorkers=10 \
- * --workerMachineType=n1-highcpu-16 \
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-bigquery/README_Cloud_Datastream_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_Datastream_to_BigQuery",
     category = TemplateCategory.STREAMING,
     displayName = "Datastream to BigQuery",
-    description =
-        "Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and"
-            + " writes them to a pre-existing BigQuery dataset as a set of tables.",
+    description = {
+      "The Datastream to BigQuery template is a streaming pipeline that reads <a href=\"https://cloud.google.com/datastream/docs\">Datastream</a> data and replicates it into BigQuery. "
+          + "The template reads data from Cloud Storage using Pub/Sub notifications and replicates it into a time partitioned BigQuery staging table. "
+          + "Following replication, the template executes a MERGE in BigQuery to upsert all change data capture (CDC) changes into a replica of the source table.\n",
+      "The template handles creating and updating the BigQuery tables managed by the replication. "
+          + "When data definition language (DDL) is required, a callback to Datastream extracts the source table schema and translates it into BigQuery data types. Supported operations include the following:\n"
+          + "- New tables are created as data is inserted.\n"
+          + "- New columns are added to BigQuery tables with null initial values.\n"
+          + "- Dropped columns are ignored in BigQuery and future values are null.\n"
+          + "- Renamed columns are added to BigQuery as new columns.\n"
+          + "- Type changes are not propagated to BigQuery."
+    },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-bigquery",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-bigquery",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "A Datastream stream that is ready to or already replicating data.",
+      "<a href=\"https://cloud.google.com/storage/docs/reporting-changes\">Cloud Storage Pub/Sub notifications</a> are enabled for the Datastream data.",
+      "BigQuery destination datasets are created and the Compute Engine Service Account has been granted admin access to them.",
+      "A primary key is necessary in the source table for the destination replica table to be created.",
+      "A MySQL or Oracle source database. PostgreSQL databases are not supported."
+    },
+    streaming = true)
 public class DataStreamToBigQuery {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToBigQuery.class);
@@ -157,7 +153,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"avro", "json"},
+        enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         description = "Datastream output file format (avro/json).",
         helpText =
             "The format of the output files produced by Datastream. Value can be 'avro' or 'json'.")
@@ -278,7 +274,7 @@ public class DataStreamToBigQuery {
         helpText = "Fields to ignore in BigQuery (comma separator).",
         example = "_metadata_stream,_metadata_schema")
     @Default.String(
-        "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,"
+        "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,"
             + "_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,"
             + "_metadata_error,_metadata_retry_count")
     String getIgnoreFields();
@@ -430,6 +426,7 @@ public class DataStreamToBigQuery {
         new InputUDFToTableRow<String>(
             options.getJavascriptTextTransformGcsPath(),
             options.getJavascriptTextTransformFunctionName(),
+            options.getJavascriptTextTransformReloadIntervalMinutes(),
             options.getPythonTextTransformGcsPath(),
             options.getPythonTextTransformFunctionName(),
             options.getRuntimeRetries(),

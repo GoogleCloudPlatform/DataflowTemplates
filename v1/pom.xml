@@ -34,8 +34,7 @@
   </description>
 
   <properties>
-    <autovalue.service.version>1.0-rc6</autovalue.service.version>
-    <avro.version>1.8.2</avro.version>
+    <autovalue.service.version>1.0.2</autovalue.service.version>
     <extra.enforcer.rules.version>1.3</extra.enforcer.rules.version>
     <mock-server-netty.version>5.14.0</mock-server-netty.version>
     <open-census.version>0.24.0</open-census.version>
@@ -47,15 +46,12 @@
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
     <commons-csv.version>1.8</commons-csv.version>
     <commons-text.version>1.10.0</commons-text.version>
-    <google-cloud-bigquery.version>1.108.0</google-cloud-bigquery.version>
-    <grpc.gen.version>1.13.1</grpc.gen.version>
-    <derby.version>10.14.2.0</derby.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
     <threetenbp.version>1.4.4</threetenbp.version>
     <spring.version>5.2.22.RELEASE</spring.version>
     <tensorflow.version>1.15.0</tensorflow.version>
     <dlp.version>2.1.0</dlp.version>
-    <hbase.version>1.4.5</hbase.version>
+    <hbase.version>2.5.3-hadoop3</hbase.version>
     <scassandra.version>1.1.2</scassandra.version>
     <cassandra.driver.version>3.6.0</cassandra.driver.version>
     <kms.version>1.40.0</kms.version>
@@ -66,6 +62,13 @@
 
   <dependencyManagement>
       <dependencies>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-spanner-bom</artifactId>
+            <version>6.45.3</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
         <dependency>
           <groupId>org.apache.beam</groupId>
           <artifactId>beam-sdks-java-bom</artifactId>
@@ -96,6 +99,15 @@
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-extensions-avro</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.avro</groupId>
+      <artifactId>avro</artifactId>
+      <version>${avro.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
       <exclusions>
         <exclusion>
@@ -103,6 +115,10 @@
           <artifactId>junit</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-spanner</artifactId>
     </dependency>
     <dependency>
       <groupId>org.threeten</groupId>
@@ -205,6 +221,11 @@
       <artifactId>auto-service</artifactId>
       <version>${autovalue.service.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons-lang3.version}</version>
+    </dependency>
 
     <!-- Dependencies needed for Splunk -->
     <dependency>
@@ -222,19 +243,39 @@
       <artifactId>nashorn-core</artifactId>
       <version>${nashorn.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
+      <version>3.1.8</version>
+    </dependency>
 
     <!-- Test -->
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>integration-testing-lib</artifactId>
+      <artifactId>it-google-cloud-platform</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-simple</artifactId>
-        </exclusion>
-      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-jdbc</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-cassandra</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-splunk</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-datadog</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.hamcrest</groupId>
@@ -317,6 +358,32 @@
       </exclusions>
     </dependency>
 
+    <!-- Drivers to test JDBC -->
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>${mysql-connector-java.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.oracle.database.jdbc</groupId>
+      <artifactId>ojdbc8</artifactId>
+      <version>${ojdbc8.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>${mssql-jdbc.version}</version>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
       <!-- Used to unit-test Cassandra IO -->
       <groupId>org.scassandra</groupId>
@@ -350,7 +417,10 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-bigquery</artifactId>
-      <version>${google-cloud-bigquery.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-bigtable</artifactId>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
@@ -364,11 +434,6 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.json</groupId>
-      <artifactId>json</artifactId>
-      <version>${json.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.google.auto.value</groupId>
       <artifactId>auto-value</artifactId>
       <version>${autovalue.version}</version>
@@ -380,21 +445,10 @@
       <version>${autovalue.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-core-asl</artifactId>
-      <version>${codehaus-jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-mapper-asl</artifactId>
-      <version>${codehaus-jackson.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
       <version>${commons-csv.version}</version>
     </dependency>
-
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-text</artifactId>
@@ -507,7 +561,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
-        <version>${maven-dependency-plugin.version}</version>
         <executions>
           <execution>
             <id>copy-dependencies</id>
@@ -516,7 +569,7 @@
               <goal>copy-dependencies</goal>
             </goals>
             <configuration>
-              <outputDirectory>${basedir}/target/extra_libs</outputDirectory>
+              <outputDirectory>${project.build.directory}/extra_libs</outputDirectory>
               <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
               <stripVersion>true</stripVersion>
             </configuration>
@@ -530,7 +583,7 @@
             <configuration>
               <!-- Ignore runtime-only dependencies in analysis -->
               <ignoreNonCompile>true</ignoreNonCompile>
-              <failOnWarning>true</failOnWarning>
+              <failOnWarning>false</failOnWarning>
               <ignoredUsedUndeclaredDependencies>
                 <ignoredUsedUndeclaredDependency>
                   com.google.cloud:google-cloud-storage
@@ -662,7 +715,6 @@
               </ignoredUsedUndeclaredDependencies>
               <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
-                <ignoredUnusedDeclaredDependency>org.json:json</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-common</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-core-asl</ignoredUnusedDeclaredDependency>
@@ -691,16 +743,8 @@
       </plugin>
 
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
-        <version>${maven-source-plugin.version}</version>
-        <executions>
-          <execution>
-            <id>attach-sources</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
 
       <plugin>
@@ -725,7 +769,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>${maven-jar-plugin.version}</version>
       </plugin>
 
       <plugin>
@@ -790,7 +833,7 @@
       <plugin>
         <groupId>org.xolstice.maven.plugins</groupId>
         <artifactId>protobuf-maven-plugin</artifactId>
-        <version>0.5.1</version>
+        <version>0.6.1</version>
         <configuration>
           <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
           <pluginId>grpc-java</pluginId>
@@ -831,6 +874,12 @@
         <artifactId>jacoco-maven-plugin</artifactId>
         <version>${jacoco.version}</version>
         <configuration>
+          <excludes>
+            <!-- Excluding classes covered only by integration tests. -->
+            <exclude>**/*InformationSchemaScanner.*</exclude>
+            <!-- Excluding auto-generated classes. -->
+            <exclude>**/*AutoValue_*</exclude>
+          </excludes>
           <rules>
             <rule>
               <element>PACKAGE</element>
@@ -839,6 +888,8 @@
                 <include>com.google.cloud.teleport.spanner.**</include>
               </includes>
               <excludes>
+                <!-- Excluding classes covered by integration tests. -->
+                <exclude>com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner</exclude>
                 <!-- Excluding generated proto java files -->
                 <exclude>com.google.cloud.teleport.spanner.proto</exclude>
               </excludes>
@@ -889,20 +940,6 @@
   </build>
 
   <profiles>
-    <!-- The following snapshot profile allows us to test teleport with
-         unreleased apache sw. E.g. to test with a snapshot version of beam we
-         could do
-              mvn test -Psnapshot -Dbeam.version=A.B.C-SNAPSHOT
-      -->
-    <profile>
-      <id>snapshot</id>
-      <repositories>
-        <repository>
-          <id>apache.snapshots</id>
-          <url>https://repository.apache.org/content/repositories/snapshots</url>
-        </repository>
-      </repositories>
-    </profile>
     <profile>
       <id>missing-artifact-repos</id>
       <activation>
@@ -940,12 +977,10 @@
                 <configuration>
                   <extraDirectories>
                     <paths>
-                      <path>${basedir}/target/extra_libs</path>
+                      <path>${project.build.directory}/extra_libs</path>
                     </paths>
                   </extraDirectories>
-                  <dependencyReducedPomLocation>
-                    ${basedir}/target/dependency-reduced-pom.xml
-                  </dependencyReducedPomLocation>
+                  <createDependencyReducedPom>false</createDependencyReducedPom>
                   <shadeTestJar>true</shadeTestJar>
                   <artifactSet>
                     <excludes>
@@ -1070,7 +1105,7 @@
         <activeByDefault>false</activeByDefault>
       </activation>
       <properties>
-        <jib.skip>true</jib.skip>
+        <jib.skip>false</jib.skip>
       </properties>
       <build>
         <plugins>
@@ -1082,6 +1117,13 @@
                 <phase>package</phase>
                 <goals>
                   <goal>release</goal>
+                </goals>
+              </execution>
+              <execution>
+                <id>finish</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>release-finish</goal>
                 </goals>
               </execution>
             </executions>

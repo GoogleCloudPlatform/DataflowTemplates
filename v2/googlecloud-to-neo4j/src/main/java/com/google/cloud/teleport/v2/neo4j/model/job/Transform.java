@@ -18,12 +18,8 @@ package com.google.cloud.teleport.v2.neo4j.model.job;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.Getter;
-import lombok.Setter;
 
 /** Transform metadata. */
-@Getter
-@Setter
 public class Transform implements Serializable {
 
   private String sql = "";
@@ -32,4 +28,57 @@ public class Transform implements Serializable {
   private String orderBy = "";
   private String where = "";
   private int limit = -1;
+
+  public String getSql() {
+    return sql;
+  }
+
+  public List<Aggregation> getAggregations() {
+    return aggregations;
+  }
+
+  public void setAggregations(List<Aggregation> aggregations) {
+    this.aggregations = aggregations;
+  }
+
+  public boolean isGroup() {
+    return group;
+  }
+
+  public void setGroup(boolean group) {
+    this.group = group;
+  }
+
+  public String getOrderBy() {
+    return orderBy;
+  }
+
+  public void setOrderBy(String orderBy) {
+    this.orderBy = orderBy;
+  }
+
+  public String getWhere() {
+    return where;
+  }
+
+  public void setWhere(String where) {
+    this.where = where;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  public boolean isDefault() {
+    return sql.isEmpty()
+        && aggregations.isEmpty()
+        && !group
+        && orderBy.isEmpty()
+        && where.isEmpty()
+        && limit == -1;
+  }
 }

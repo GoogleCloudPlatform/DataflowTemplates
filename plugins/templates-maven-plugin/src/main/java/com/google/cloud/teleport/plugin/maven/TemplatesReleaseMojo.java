@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOn
 
 import com.google.api.gax.rpc.InvalidArgumentException;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
+import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import java.net.MalformedURLException;
@@ -66,11 +67,24 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${artifactRegion}", readonly = true, required = false)
   protected String artifactRegion;
 
+  @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
+  protected String gcpTempLocation;
+
   @Parameter(
       name = "baseContainerImage",
-      defaultValue = "gcr.io/dataflow-templates-base/java11-template-launcher-base:latest",
+      defaultValue =
+          "gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless:latest",
       required = false)
   protected String baseContainerImage;
+
+  @Parameter(
+      name = "basePythonContainerImage",
+      defaultValue = "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest",
+      required = false)
+  protected String basePythonContainerImage;
+
+  @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
+  protected boolean unifiedWorker;
 
   public void execute() throws MojoExecutionException {
 
@@ -80,11 +94,12 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
     try {
       URLClassLoader loader = buildClassloader();
+      TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
 
       BuildPluginManager pluginManager =
           (BuildPluginManager) session.lookup("org.apache.maven.plugin.BuildPluginManager");
 
-      LOG.info("Staging Templates to bucket {}...", bucketNameOnly(bucketName));
+      LOG.info("Releasing Templates to bucket '{}'...", bucketNameOnly(bucketName));
 
       List<TemplateDefinitions> templateDefinitions =
           TemplateDefinitionsParser.scanDefinitions(loader);
@@ -130,11 +145,21 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 stagePrefix,
                 useRegion,
                 artifactRegion,
-                baseContainerImage);
+                gcpTempLocation,
+                baseContainerImage,
+                basePythonContainerImage,
+                unifiedWorker);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
         LOG.info("Template staged: {}", templatePath);
+
+        // Export the specs for collection
+        generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
+        if (definition.isFlex()) {
+          generator.saveImageSpec(definition, imageSpec, targetDirectory);
+        }
       }
+
     } catch (DependencyResolutionRequiredException e) {
       throw new MojoExecutionException("Dependency resolution failed", e);
     } catch (MalformedURLException e) {

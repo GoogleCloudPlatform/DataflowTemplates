@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -37,7 +38,7 @@ public final class BigQueryCommonOptions {
         description = "BigQuery output table",
         helpText =
             "BigQuery table location to write the output to. The name should be in the format "
-                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
+                + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
     @Required
     String getOutputTableSpec();
 
@@ -45,7 +46,11 @@ public final class BigQueryCommonOptions {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"WRITE_APPEND", "WRITE_EMPTY", "WRITE_TRUNCATE"},
+        enumOptions = {
+          @TemplateEnumOption("WRITE_APPEND"),
+          @TemplateEnumOption("WRITE_EMPTY"),
+          @TemplateEnumOption("WRITE_TRUNCATE")
+        },
         optional = true,
         description = "Write Disposition to use for BigQuery",
         helpText =
@@ -57,7 +62,10 @@ public final class BigQueryCommonOptions {
 
     @TemplateParameter.Enum(
         order = 3,
-        enumOptions = {"CREATE_IF_NEEDED", "CREATE_NEVER"},
+        enumOptions = {
+          @TemplateEnumOption("CREATE_IF_NEEDED"),
+          @TemplateEnumOption("CREATE_NEVER")
+        },
         optional = true,
         description = "Create Disposition to use for BigQuery",
         helpText = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER.")
@@ -66,7 +74,9 @@ public final class BigQueryCommonOptions {
 
     void setCreateDisposition(String createDisposition);
 
-    /** @deprecated Not being used. */
+    /**
+     * @deprecated Not being used.
+     */
     @Description(
         "Set partition type to use for BigQuery.  "
             + "Currently 'None' or 'Time' can be available"
@@ -75,17 +85,23 @@ public final class BigQueryCommonOptions {
     @Deprecated
     String getPartitionType();
 
-    /** @deprecated Not being used. */
+    /**
+     * @deprecated Not being used.
+     */
     @Deprecated
     void setPartitionType(String partitionType);
 
-    /** @deprecated Not being used. */
+    /**
+     * @deprecated Not being used.
+     */
     @Description("Set partition column name.  " + "Default: _PARTITIONTIME")
     @Default.String("_PARTITIONTIME")
     @Deprecated
     String getPartitionCol();
 
-    /** @deprecated Not being used. */
+    /**
+     * @deprecated Not being used.
+     */
     @Deprecated
     void setPartitionCol(String partitionCol);
   }

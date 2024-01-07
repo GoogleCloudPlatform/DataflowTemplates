@@ -33,37 +33,38 @@ import org.apache.beam.sdk.options.ValueProvider;
  * pipeline reads each file row-by-row and publishes each record as a string message. At the moment,
  * publishing messages with attributes is unsupported.
  *
- * <p>Example Usage:
- *
- * <pre>
- * {@code mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.TextToPubsub \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --runner=DataflowRunner \
- * --inputFilePattern=gs://path/to/demo_file.csv \
- * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
- * }
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_Text_to_Cloud_PubSub.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "GCS_Text_to_Cloud_PubSub",
     category = TemplateCategory.BATCH,
     displayName = "Cloud Storage Text File to Pub/Sub (Batch)",
-    description =
-        "Batch pipeline. Reads records from text files stored in Cloud Storage and publishes them to a Pub/Sub topic.",
+    description = {
+      "This template creates a batch pipeline that reads records from text files stored in Cloud Storage and publishes them to a Pub/Sub topic. "
+          + "The template can be used to publish records in a newline-delimited file containing JSON records or CSV file to a Pub/Sub topic for real-time processing. "
+          + "You can use this template to replay data to Pub/Sub.\n",
+      "This template does not set any timestamp on the individual records. The event time is equal to the publishing time during execution. "
+          + "If your pipeline relies on an accurate event time for processing, you must not use this pipeline."
+    },
     optionsClass = Options.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-pubsub",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The files to read need to be in newline-delimited JSON or CSV format. Records spanning multiple lines in the source files might cause issues downstream because each line within the files will be published as a message to Pub/Sub.",
+      "The Pub/Sub topic must exist before running the pipeline."
+    })
 public class TextToPubsub {
 
   /** The custom options supported by the pipeline. Inherits standard configuration options. */
   public interface Options extends PipelineOptions {
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         description = "Cloud Storage Input File(s)",
         helpText = "Path of the file pattern glob to read from.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/path/*.txt")
     @Required
     ValueProvider<String> getInputFilePattern();

@@ -15,37 +15,37 @@
  */
 package com.google.cloud.teleport.spanner;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.storage.Storage;
-import com.google.cloud.teleport.it.DataGenerator;
-import com.google.cloud.teleport.it.TemplateLoadTestBase;
-import com.google.cloud.teleport.it.TestProperties;
-import com.google.cloud.teleport.it.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
-import com.google.cloud.teleport.it.spanner.DefaultSpannerResourceManager;
-import com.google.cloud.teleport.it.spanner.SpannerResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
-import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
 import java.util.function.Function;
+import java.util.regex.Pattern;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateLoadTestBase;
+import org.apache.beam.it.gcp.artifacts.ArtifactClient;
+import org.apache.beam.it.gcp.datagenerator.DataGenerator;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Performance tests for {@link ExportPipeline Spanner to GCS Avro} template. */
+@Category(TemplateLoadTest.class)
 @TemplateLoadTest(ExportPipeline.class)
 @RunWith(JUnit4.class)
 public class ExportPipelineLT extends TemplateLoadTestBase {
@@ -55,49 +55,41 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
   private static final String TEST_ROOT_DIR = ExportPipelineLT.class.getSimpleName().toLowerCase();
   // 35,000,000 messages of the given schema make up approximately 10GB
-
   private static final String NUM_MESSAGES = "35000000";
   private static final String INPUT_PCOLLECTION =
       "Run Export/Read all rows from Spanner/Read from Cloud Spanner/Read from Partitions.out0";
   private static final String OUTPUT_PCOLLECTION =
       "Run Export/Store Avro files/Write/RewindowIntoGlobal/Window.Assign.out0";
   private static SpannerResourceManager spannerResourceManager;
-  private static ArtifactClient artifactClient;
+  private static ArtifactClient gcsClient;
 
   @Before
   public void setup() throws IOException {
     // Set up resource managers
-    spannerResourceManager =
-        DefaultSpannerResourceManager.builder(testName.getMethodName(), PROJECT, REGION).build();
-    Storage gcsClient = createGcsClient(CREDENTIALS);
-    artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    spannerResourceManager = SpannerResourceManager.builder(testName, project, region).build();
+    gcsClient = GcsResourceManager.builder(ARTIFACT_BUCKET, TEST_ROOT_DIR, CREDENTIALS).build();
   }
 
   @After
-  public void teardown() {
-    if (spannerResourceManager != null) {
-      spannerResourceManager.cleanupAll();
-    }
-    if (artifactClient != null) {
-      artifactClient.cleanupRun();
-    }
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(spannerResourceManager, gcsClient);
   }
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(Function.identity());
+    testBacklog(this::disableRunnerV2);
   }
 
   @Test
-  public void testBacklog10gbUsingStreamingEngine()
+  public void testBacklog10gbUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
-    testBacklog10gb(config -> config.addEnvironment("enableStreamingEngine", true));
+    testBacklog(this::enableRunnerV2);
   }
 
-  public void testBacklog10gb(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+  public void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
     // Arrange
-    String name = testName.getMethodName();
+    String tableName = testName;
     // create spanner table
     String createTableStatement =
         String.format(
@@ -112,17 +104,17 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
                 + "  score INT64,\n"
                 + "  completed BOOL,\n"
                 + ") PRIMARY KEY(eventId)",
-            name);
-    spannerResourceManager.createTable(createTableStatement);
+            tableName);
+    spannerResourceManager.executeDdlStatement(createTableStatement);
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(NUM_MESSAGES)
             .setSinkType("SPANNER")
-            .setProjectId(PROJECT)
+            .setProjectId(project)
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
-            .setSpannerTableName(name)
+            .setSpannerTableName(tableName)
             .setNumWorkers("50")
             .setMaxNumWorkers("100")
             .build();
@@ -137,21 +129,20 @@ public class ExportPipelineLT extends TemplateLoadTestBase {
             .build();
 
     // Act
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    LaunchInfo info = pipelineLauncher.launch(project, region, options);
     assertThatPipeline(info).isRunning();
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 
     // Assert
     assertThatResult(result).isLaunchFinished();
-    // check to see if messages reached the output topic
-    assertThat(artifactClient.listArtifacts(name, Pattern.compile(".*"))).isNotEmpty();
+    // check to see if messages reached the output bucket
+    assertThat(gcsClient.listArtifacts(testName, Pattern.compile(".*"))).isNotEmpty();
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
   private String getTestMethodDirPath() {
-    return getFullGcsPath(
-        ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testName.getMethodName());
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, gcsClient.runId(), testName);
   }
 }

@@ -71,12 +71,15 @@ public class PubsubToBigQueryTest {
     // Parameters
     ValueProvider<String> transformPath = pipeline.newProvider(TRANSFORM_FILE_PATH);
     ValueProvider<String> transformFunction = pipeline.newProvider("transform");
+    ValueProvider<Boolean> functionReload = pipeline.newProvider(false);
+    ValueProvider<Integer> functionReloadInterval = pipeline.newProvider(1);
 
     PubSubToBigQuery.Options options =
         PipelineOptionsFactory.create().as(PubSubToBigQuery.Options.class);
 
     options.setJavascriptTextTransformGcsPath(transformPath);
     options.setJavascriptTextTransformFunctionName(transformFunction);
+    options.setJavascriptTextTransformReloadIntervalMinutes(functionReloadInterval);
 
     // Build pipeline
     PCollectionTuple transformOut =

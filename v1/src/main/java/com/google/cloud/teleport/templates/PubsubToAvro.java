@@ -26,7 +26,7 @@ import com.google.cloud.teleport.templates.PubsubToAvro.Options;
 import com.google.cloud.teleport.util.DurationUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -65,73 +65,24 @@ import org.apache.beam.sdk.values.PCollection;
  *   }
  * </pre>
  *
- * <p>Example Usage:
- *
- * <pre>
- * # Set the pipeline vars
- * PIPELINE_NAME=PubsubToAvro
- * PROJECT_ID=PROJECT ID HERE
- * PIPELINE_BUCKET=TEMPLATE STORAGE BUCKET NAME HERE
- * OUTPUT_BUCKET=JOB OUTPUT BUCKET NAME HERE
- * USE_SUBSCRIPTION=true or false depending on whether the pipeline should read
- *                  from a Pub/Sub Subscription or a Pub/Sub Topic.
- * PIPELINE_FOLDER=gs://${PIPELINE_BUCKET}/dataflow/pipelines/pubsub-to-gcs-avro
- *
- * # Set the runner
- * RUNNER=DataflowRunner
- *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER} \
- * --useSubscription=${USE_SUBSCRIPTION}"
- *
- * # Execute the template
- * JOB_NAME=pubsub-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
- *
- * # Execute a pipeline to read from a Topic.
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputTopic=projects/${PROJECT_ID}/topics/input-topic-name,\
- * windowDuration=5m,\
- * numShards=1,\
- * userTempLocation=gs://${OUTPUT_BUCKET}/tmp/,\
- * outputDirectory=gs://${OUTPUT_BUCKET}/output/,\
- * outputFilenamePrefix=windowed-file,\
- * outputFilenameSuffix=.txt"
- *
- * # Execute a pipeline to read from a Subscription.
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputSubscription=projects/${PROJECT_ID}/subscriptions/input-subscription-name,\
- * windowDuration=5m,\
- * numShards=1,\
- * userTempLocation=gs://${OUTPUT_BUCKET}/tmp/,\
- * outputDirectory=gs://${OUTPUT_BUCKET}/output/,\
- * outputFilenamePrefix=windowed-file,\
- * outputFilenameSuffix=.avro"
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_PubSub_to_Avro.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_PubSub_to_Avro",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Avro Files on Cloud Storage",
     description =
-        "Streaming pipeline. Reads from a Pub/Sub subscription and outputs windowed Avro files to"
-            + " the specified directory.",
+        "The Pub/Sub to Avro files on Cloud Storage template is a streaming pipeline that reads data from a Pub/Sub "
+            + "topic and writes Avro files into the specified Cloud Storage bucket.",
     optionsClass = Options.class,
     skipOptions = "inputSubscription",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-avro",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {"The input Pub/Sub topic must exist prior to pipeline execution."},
+    streaming = true)
 public class PubsubToAvro {
 
   /**
@@ -183,8 +134,10 @@ public class PubsubToAvro {
 
     @TemplateParameter.Text(
         order = 5,
+        optional = true,
         description = "Output filename prefix of the files to write",
-        helpText = "The prefix to place on each windowed file.")
+        helpText = "The prefix to place on each windowed file.",
+        regexes = "^[a-zA-Z\\-]+$")
     @Default.String("output")
     ValueProvider<String> getOutputFilenamePrefix();
 
@@ -296,7 +249,7 @@ public class PubsubToAvro {
 
   /**
    * Converts an incoming {@link PubsubMessage} to the {@link AvroPubsubMessageRecord} class by
-   * copying it's fields and the timestamp of the message.
+   * copying its fields and the timestamp of the message.
    */
   static class PubsubMessageToArchiveDoFn extends DoFn<PubsubMessage, AvroPubsubMessageRecord> {
     @ProcessElement

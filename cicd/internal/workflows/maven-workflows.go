@@ -30,11 +30,12 @@ import (
 
 const (
 	// mvn commands
-	cleanInstallCmd  = "clean install"
-	cleanVerifyCmd   = "clean verify"
-	cleanTestCmd     = "clean test"
-	verifyCmd        = "verify"
-	spotlessCheckCmd = "spotless:check"
+	cleanInstallCmd    = "clean install"
+	cleanVerifyCmd     = "clean verify"
+	cleanTestCmd       = "clean test"
+	verifyCmd          = "verify"
+	spotlessCheckCmd   = "spotless:check"
+	checkstyleCheckCmd = "checkstyle:check"
 
 	// regexes
 	javaFileRegex     = "\\.java$"
@@ -57,10 +58,16 @@ type MavenFlags interface {
 	SkipTests() string
 	SkipJacoco() string
 	SkipShade() string
+	SkipSpotlessCheck() string
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
 	RunIntegrationTests() string
+	RunIntegrationSmokeTests() string
+	RunLoadTests() string
 	ThreadCount(int) string
+	IntegrationTestParallelism(int) string
+	StaticBigtableInstance(string) string
+	StaticSpannerInstance(string) string
 }
 
 type mvnFlags struct{}
@@ -97,6 +104,10 @@ func (*mvnFlags) SkipShade() string {
 	return "-DskipShade"
 }
 
+func (*mvnFlags) SkipSpotlessCheck() string {
+	return "-Dspotless.check.skip"
+}
+
 func (*mvnFlags) SkipIntegrationTests() string {
 	return "-DskipIntegrationTests"
 }
@@ -106,11 +117,31 @@ func (*mvnFlags) FailAtTheEnd() string {
 }
 
 func (*mvnFlags) RunIntegrationTests() string {
-	return "-PtemplatesIntegrationTests"
+	return "-PtemplatesIntegrationTests,splunkDeps"
+}
+
+func (*mvnFlags) RunIntegrationSmokeTests() string {
+	return "-PtemplatesIntegrationSmokeTests,splunkDeps"
+}
+
+func (*mvnFlags) RunLoadTests() string {
+	return "-PtemplatesLoadTests,splunkDeps"
 }
 
 func (*mvnFlags) ThreadCount(count int) string {
 	return "-T" + strconv.Itoa(count)
+}
+
+func (*mvnFlags) IntegrationTestParallelism(count int) string {
+	return "-DitParallelism=" + strconv.Itoa(count)
+}
+
+func (*mvnFlags) StaticBigtableInstance(instanceID string) string {
+	return "-DbigtableInstanceId=" + instanceID
+}
+
+func (*mvnFlags) StaticSpannerInstance(instanceID string) string {
+	return "-DspannerInstanceId=" + instanceID
 }
 
 func NewMavenFlags() MavenFlags {
@@ -125,6 +156,16 @@ func MvnCleanInstall() Workflow {
 
 func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanInstallCmd, args...)
+}
+
+type mvnCleanInstallAllWorkflow struct{}
+
+func MvnCleanInstallAll() Workflow {
+	return &mvnCleanInstallAllWorkflow{}
+}
+
+func (*mvnCleanInstallAllWorkflow) Run(args ...string) error {
+	return op.RunMavenOnPom(unifiedPom, cleanInstallCmd, args...)
 }
 
 type mvnCleanTestWorkflow struct{}
@@ -168,11 +209,7 @@ func RunForChangedModules(cmd string, args ...string) error {
 
 	// We need to append the base dependency modules, because they are needed to build all
 	// other modules.
-	build_syndeo := false
 	for root, children := range repo.GetModulesForPaths(changed) {
-		if root == "syndeo-template" {
-			build_syndeo = true
-		}
 		if len(children) == 0 {
 			modules = append(modules, root)
 			continue
@@ -204,13 +241,29 @@ func RunForChangedModules(cmd string, args ...string) error {
 		log.Println("All modules were filtered out.")
 		return nil
 	}
-	modules = append(modules, "plugins/templates-maven-plugin")
 
-	if !build_syndeo {
-		args = append(args, "-P-oss-build")
-	} else {
-		args = append(args, "-Poss-build")
+	has_it := false
+	has_common := false
+	has_v2 := false
+	for _, module := range modules {
+		if len(module) > 1 && module[:2] == "it" {
+			has_it = true
+		}
+		if module == "v2/common" {
+			has_common = true
+		}
+		if module == "v2" {
+			has_v2 = true
+		}
 	}
+	if has_it && !has_common {
+		modules = append(modules, "v2/common")
+	}
+	if (has_v2 || has_common) && !has_it {
+		modules = append(modules, "it")
+	}
+
+	modules = append(modules, "plugins/templates-maven-plugin")
 
 	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), args...)
 }
@@ -222,7 +275,17 @@ func SpotlessCheck() Workflow {
 }
 
 func (*spotlessCheckWorkflow) Run(args ...string) error {
-	return RunForChangedModules(spotlessCheckCmd, args...)
+	return op.RunMavenOnPom(unifiedPom, spotlessCheckCmd, args...)
+}
+
+type checkstyleCheckWorkflow struct{}
+
+func CheckstyleCheck() Workflow {
+	return &checkstyleCheckWorkflow{}
+}
+
+func (*checkstyleCheckWorkflow) Run(args ...string) error {
+	return op.RunMavenOnPom(unifiedPom, checkstyleCheckCmd, args...)
 }
 
 // Removes root and returns results. This may reorder the input.

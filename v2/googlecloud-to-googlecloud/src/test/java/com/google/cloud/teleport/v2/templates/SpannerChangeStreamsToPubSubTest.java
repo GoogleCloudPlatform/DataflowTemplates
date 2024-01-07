@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
 import com.google.cloud.teleport.v2.spanner.SpannerTestHelper;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreamsToPubSub;
 import com.google.gson.Gson;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -35,8 +36,8 @@ import java.util.Set;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.Pipeline.PipelineExecutionException;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.CoderException;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.TestPubsubSignal;
@@ -54,7 +55,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Supplier;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.joda.time.Duration;
 import org.junit.After;
@@ -72,6 +73,7 @@ import org.slf4j.LoggerFactory;
 /** Test class for {@link SpannerChangeStreamsToPubSubTest}. */
 @RunWith(JUnit4.class)
 public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
+
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToPubSubTest.class);
 
@@ -88,11 +90,12 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
 
   @Rule public transient TestPubsubSignal signal = TestPubsubSignal.create();
 
+  private static final String TEST_LABEL = "cs2pubsub";
   private static final String TEST_PROJECT = "span-cloud-testing";
   private static final String TEST_INSTANCE = "change-stream-test";
-  private static final String TEST_DATABASE_PREFIX = "testdbchangestreams";
   private static final String TEST_TABLE = "Users";
   private static final String TEST_CHANGE_STREAM = "UsersStream";
+  private static final String TEST_ROLE = "test_role";
   private static final int MAX_TABLE_NAME_LENGTH = 29;
   private static final int MAX_SPANNER_STRING_SIZE = 2621440;
   private static String outputTopicName;
@@ -103,6 +106,10 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
   private static final String NATIVE_CLIENT = "native_client";
   private static final String AVRO = "AVRO";
   private static final String JSON = "JSON";
+
+  public SpannerChangeStreamsToPubSubTest() {
+    super(TEST_LABEL);
+  }
 
   @Before
   public void setUp() throws Exception {
@@ -122,6 +129,7 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
   private static class VerifyDataChangeRecordAvro
       implements SerializableFunction<
           Iterable<com.google.cloud.teleport.v2.DataChangeRecord>, Void> {
+
     @Override
     public Void apply(Iterable<com.google.cloud.teleport.v2.DataChangeRecord> actualIter) {
       // Make sure actual is the right length, and is a
@@ -150,6 +158,7 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
   @SuppressWarnings("DefaultAnnotationParam")
   private static class VerifyDataChangeRecordText
       implements SerializableFunction<Iterable<String>, Void> {
+
     @Override
     public Void apply(Iterable<String> actualIter) {
       // Make sure actual is the right length, and is a
@@ -173,16 +182,10 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
     }
   }
 
-  private String generateDatabaseName() {
-    return TEST_DATABASE_PREFIX
-        + "_"
-        + RandomStringUtils.randomNumeric(
-            MAX_TABLE_NAME_LENGTH - 1 - TEST_DATABASE_PREFIX.length());
-  }
-
   /**
-   * Test whether {@link FileFormatFactory} maps the output file format to the transform to be
-   * carried out. And throws illegal argument exception if invalid file format is passed.
+   * Test whether {@link FileFormatFactorySpannerChangeStreamsToPubSub} maps the output file format
+   * to the transform to be carried out. And throws illegal argument exception if invalid file
+   * format is passed.
    */
   @Test
   @Category(IntegrationTest.class)
@@ -238,14 +241,40 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
     testWriteToPubSubAvro(PUBSUBIO);
   }
 
-  private void testWriteToPubSubAvro(String pubsubAPI) throws Exception {
-    // Create a test database.
-    String testDatabase = generateDatabaseName();
+  @Test
+  @Category(IntegrationTest.class)
+  // This test can only be run locally with the following command:
+  // mvn -Dexcluded.spanner.tests="" -Dtest=SpannerChangeStreamsToPubSubTest test
+  public void testWriteToPubSubAvroNativeClientWithRole() throws Exception {
+    testWriteToPubSubAvro(NATIVE_CLIENT, TEST_ROLE);
+  }
 
+  @Test
+  @Category(IntegrationTest.class)
+  // This test can only be run locally with the following command:
+  // mvn -Dexcluded.spanner.tests="" -Dtest=SpannerChangeStreamsToPubSubTest test
+  public void testWriteToPubSubAvroPubsubIOWithRole() throws Exception {
+    testWriteToPubSubAvro(PUBSUBIO, TEST_ROLE);
+  }
+
+  private void testWriteToPubSubAvro(String pubsubAPI) throws Exception {
+    testWriteToPubSubAvro(pubsubAPI, null);
+  }
+
+  private void testWriteToPubSubAvro(String pubsubAPI, String role) throws Exception {
+    // Create a test primary and metadata databases.
+    String testSuffix = generateUniqueTestSuffix();
+    String testDatabase = testDatabasePrefix + "_" + testSuffix;
+    String testMetadataDatabase = testMetadatadbPrefix + "_" + testSuffix;
+
+    spannerServer.dropDatabase(testMetadataDatabase);
     spannerServer.dropDatabase(testDatabase);
 
-    // Create a table.
+    // Create metadata database.
     List<String> statements = new ArrayList<>();
+    spannerServer.createDatabase(testMetadataDatabase, statements);
+
+    // Create databse, table, change stream, etc.
     final String createTable =
         "CREATE TABLE "
             + TEST_TABLE
@@ -253,72 +282,104 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
             + "user_id INT64 NOT NULL,"
             + "name STRING(MAX) "
             + ") PRIMARY KEY(user_id)";
-    final String createChangeStream = "CREATE CHANGE STREAM " + TEST_CHANGE_STREAM + " FOR Users";
+    final String createChangeStream =
+        "CREATE CHANGE STREAM " + TEST_CHANGE_STREAM + " FOR " + TEST_TABLE;
     statements.add(createTable);
     statements.add(createChangeStream);
+    if (role != null) {
+      // Set up roles and privileges.
+      final String createRole = "CREATE ROLE " + role;
+      final String grantCSPrivilege =
+          "GRANT SELECT ON CHANGE STREAM " + TEST_CHANGE_STREAM + " TO ROLE " + role;
+      final String grantTVFPrivilege =
+          "GRANT EXECUTE ON TABLE FUNCTION READ_" + TEST_CHANGE_STREAM + " TO ROLE " + role;
+      statements.add(createRole);
+      statements.add(grantCSPrivilege);
+      statements.add(grantTVFPrivilege);
+    }
     spannerServer.createDatabase(testDatabase, statements);
 
-    Timestamp startTimestamp = Timestamp.now();
-
-    // Create a mutation for the table that will generate 1 data change record.
-    List<Mutation> mutations = new ArrayList<>();
-    mutations.add(
-        Mutation.newInsertBuilder(TEST_TABLE).set("user_id").to(1).set("name").to("Name1").build());
-    mutations.add(
-        Mutation.newInsertBuilder(TEST_TABLE).set("user_id").to(2).set("name").to("Name2").build());
-
-    spannerServer.getDbClient(testDatabase).write(mutations);
-
-    Timestamp endTimestamp = Timestamp.now();
-
-    SpannerChangeStreamsToPubSubOptions options =
-        PipelineOptionsFactory.create().as(SpannerChangeStreamsToPubSubOptions.class);
-    options.setSpannerProjectId(TEST_PROJECT);
-    options.setSpannerInstanceId(TEST_INSTANCE);
-    options.setSpannerDatabase(testDatabase);
-    options.setSpannerMetadataInstanceId(TEST_INSTANCE);
-    options.setSpannerMetadataDatabase(testDatabase);
-    options.setSpannerChangeStreamName(TEST_CHANGE_STREAM);
-    options.setPubsubTopic(outputTopicName);
-    options.setStartTimestamp(startTimestamp.toString());
-    options.setEndTimestamp(endTimestamp.toString());
-    List<String> experiments = new ArrayList<>();
-    options.setExperiments(experiments);
-
-    options.setOutputDataFormat(AVRO);
-    options.setPubsubAPI(pubsubAPI);
-    // Run the pipeline.
-    PipelineResult result = run(options);
-    result.waitUntilFinish();
-    pipeline.getOptions().as(TestPipelineOptions.class).setBlockOnRun(false);
-    // Read from the output PubsubMessage with data in Avro to assert that 1 data change record has
-    // been generated.
-    PCollection<PubsubMessage> receivedPubsubMessages =
-        pipeline.apply(
-            "Read From Pub/Sub Subscription",
-            PubsubIO.readMessages().fromSubscription(subscriptionPath));
-    // Convert PubsubMessage to DataChangeRecord
-    PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
-        receivedPubsubMessages.apply(ParDo.of(new PubsubMessageToDataChangeRecordDoFn()));
-    dataChangeRecords.apply(
-        "waitForAnyMessage",
-        signal.signalSuccessWhen(dataChangeRecords.getCoder(), new SignalFunction<>(true)));
-    Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(1));
-    pipeline.apply(signal.signalStart());
-
-    PAssert.that(dataChangeRecords).satisfies(new VerifyDataChangeRecordAvro());
-    PipelineResult job = pipeline.run();
-    start.get();
-    signal.waitForSuccess(Duration.standardMinutes(5));
-    // A runner may not support cancel
     try {
-      job.cancel();
-      System.out.println("Called cancel");
-    } catch (UnsupportedOperationException exc) {
-      // noop
+
+      Timestamp startTimestamp = Timestamp.now();
+
+      // Create a mutation for the table that will generate 1 data change record.
+      List<Mutation> mutations = new ArrayList<>();
+      mutations.add(
+          Mutation.newInsertBuilder(TEST_TABLE)
+              .set("user_id")
+              .to(1)
+              .set("name")
+              .to("Name1")
+              .build());
+      mutations.add(
+          Mutation.newInsertBuilder(TEST_TABLE)
+              .set("user_id")
+              .to(2)
+              .set("name")
+              .to("Name2")
+              .build());
+
+      spannerServer.getDbClient(testDatabase).write(mutations);
+
+      Timestamp endTimestamp = Timestamp.now();
+
+      SpannerChangeStreamsToPubSubOptions options =
+          PipelineOptionsFactory.create().as(SpannerChangeStreamsToPubSubOptions.class);
+      options.setSpannerProjectId(TEST_PROJECT);
+      options.setSpannerInstanceId(TEST_INSTANCE);
+      options.setSpannerDatabase(testDatabase);
+      options.setSpannerMetadataInstanceId(TEST_INSTANCE);
+      options.setSpannerMetadataDatabase(testMetadataDatabase);
+      options.setSpannerChangeStreamName(TEST_CHANGE_STREAM);
+      options.setPubsubTopic(outputTopicName);
+      options.setStartTimestamp(startTimestamp.toString());
+      options.setEndTimestamp(endTimestamp.toString());
+      List<String> experiments = new ArrayList<>();
+      options.setExperiments(experiments);
+
+      options.setOutputDataFormat(AVRO);
+      options.setPubsubAPI(pubsubAPI);
+      if (role != null) {
+        options.setSpannerDatabaseRole(role);
+      }
+      // Run the pipeline.
+      PipelineResult result = run(options);
+      result.waitUntilFinish();
+      pipeline.getOptions().as(TestPipelineOptions.class).setBlockOnRun(false);
+      // Read from the output PubsubMessage with data in Avro to assert that 1 data change record
+      // has
+      // been generated.
+      PCollection<PubsubMessage> receivedPubsubMessages =
+          pipeline.apply(
+              "Read From Pub/Sub Subscription",
+              PubsubIO.readMessages().fromSubscription(subscriptionPath));
+      // Convert PubsubMessage to DataChangeRecord
+      PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
+          receivedPubsubMessages.apply(ParDo.of(new PubsubMessageToDataChangeRecordDoFn()));
+      dataChangeRecords.apply(
+          "waitForAnyMessage",
+          signal.signalSuccessWhen(dataChangeRecords.getCoder(), new SignalFunction<>(true)));
+      Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(1));
+      pipeline.apply(signal.signalStart());
+
+      PAssert.that(dataChangeRecords).satisfies(new VerifyDataChangeRecordAvro());
+      PipelineResult job = pipeline.run();
+      start.get();
+      signal.waitForSuccess(Duration.standardMinutes(5));
+      // A runner may not support cancel
+      try {
+        job.cancel();
+        System.out.println("Called cancel");
+      } catch (UnsupportedOperationException exc) {
+        // noop
+      }
+    } finally {
+      // Drop the database.
+      spannerServer.dropDatabase(testDatabase);
+      // Drop the metadata database.
+      spannerServer.dropDatabase(testMetadataDatabase);
     }
-    // Drop the database.
-    spannerServer.dropDatabase(testDatabase);
   }
 
   @Test
@@ -337,16 +398,42 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
     testWriteToPubSubJson(PUBSUBIO);
   }
 
+  @Test
+  @Category(IntegrationTest.class)
   // This test can only be run locally with the following command:
   // mvn -Dexcluded.spanner.tests="" -Dtest=SpannerChangeStreamsToPubSubTest test
-  private void testWriteToPubSubJson(String pubsubAPI) throws Exception {
-    // Create a test database.
-    String testDatabase = generateDatabaseName();
+  public void testWriteToPubSubJsonNativeClientWithRole() throws Exception {
+    testWriteToPubSubJson(NATIVE_CLIENT, TEST_ROLE);
+  }
 
+  @Test
+  @Category(IntegrationTest.class)
+  // This test can only be run locally with the following command:
+  // mvn -Dexcluded.spanner.tests="" -Dtest=SpannerChangeStreamsToPubSubTest test
+  public void testWriteToPubSubJsonPubsubIOWithRole() throws Exception {
+    testWriteToPubSubJson(PUBSUBIO, TEST_ROLE);
+  }
+
+  private void testWriteToPubSubJson(String pubsubAPI) throws Exception {
+    testWriteToPubSubJson(pubsubAPI, null);
+  }
+
+  // This test can only be run locally with the following command:
+  // mvn -Dexcluded.spanner.tests="" -Dtest=SpannerChangeStreamsToPubSubTest test
+  private void testWriteToPubSubJson(String pubsubAPI, String role) throws Exception {
+    // Create a test primary and metadata databases.
+    String testSuffix = generateUniqueTestSuffix();
+    String testDatabase = testDatabasePrefix + "_" + testSuffix;
+    String testMetadataDatabase = testMetadatadbPrefix + "_" + testSuffix;
+
+    spannerServer.dropDatabase(testMetadataDatabase);
     spannerServer.dropDatabase(testDatabase);
 
-    // Create a table.
+    // Create metadata database.
     List<String> statements = new ArrayList<>();
+    spannerServer.createDatabase(testMetadataDatabase, statements);
+
+    // Create database, table, change stream, etc.
     final String createTable =
         "CREATE TABLE "
             + TEST_TABLE
@@ -354,72 +441,103 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
             + "user_id INT64 NOT NULL,"
             + "name STRING(MAX) "
             + ") PRIMARY KEY(user_id)";
-    final String createChangeStream = "CREATE CHANGE STREAM " + TEST_CHANGE_STREAM + " FOR Users";
+    final String createChangeStream =
+        "CREATE CHANGE STREAM " + TEST_CHANGE_STREAM + " FOR " + TEST_TABLE;
     statements.add(createTable);
     statements.add(createChangeStream);
+    if (role != null) {
+      // Set up roles and privileges.
+      final String createRole = "CREATE ROLE " + role;
+      final String grantCSPrivilege =
+          "GRANT SELECT ON CHANGE STREAM " + TEST_CHANGE_STREAM + " TO ROLE " + role;
+      final String grantTVFPrivilege =
+          "GRANT EXECUTE ON TABLE FUNCTION READ_" + TEST_CHANGE_STREAM + " TO ROLE " + role;
+      statements.add(createRole);
+      statements.add(grantCSPrivilege);
+      statements.add(grantTVFPrivilege);
+    }
     spannerServer.createDatabase(testDatabase, statements);
 
-    Timestamp startTimestamp = Timestamp.now();
-
-    // Create a mutation for the table that will generate 1 data change record.
-    List<Mutation> mutations = new ArrayList<>();
-    mutations.add(
-        Mutation.newInsertBuilder(TEST_TABLE).set("user_id").to(1).set("name").to("Name1").build());
-    mutations.add(
-        Mutation.newInsertBuilder(TEST_TABLE).set("user_id").to(2).set("name").to("Name2").build());
-
-    spannerServer.getDbClient(testDatabase).write(mutations);
-
-    Timestamp endTimestamp = Timestamp.now();
-
-    SpannerChangeStreamsToPubSubOptions options =
-        PipelineOptionsFactory.create().as(SpannerChangeStreamsToPubSubOptions.class);
-    options.setSpannerProjectId(TEST_PROJECT);
-    options.setSpannerInstanceId(TEST_INSTANCE);
-    options.setSpannerDatabase(testDatabase);
-    options.setSpannerMetadataInstanceId(TEST_INSTANCE);
-    options.setSpannerMetadataDatabase(testDatabase);
-    options.setSpannerChangeStreamName(TEST_CHANGE_STREAM);
-    options.setPubsubTopic(outputTopicName);
-    options.setStartTimestamp(startTimestamp.toString());
-    options.setEndTimestamp(endTimestamp.toString());
-    List<String> experiments = new ArrayList<>();
-    options.setExperiments(experiments);
-
-    options.setOutputDataFormat(JSON);
-    options.setPubsubAPI(pubsubAPI);
-    // Run the pipeline.
-    PipelineResult result = run(options);
-    result.waitUntilFinish();
-
-    pipeline.getOptions().as(TestPipelineOptions.class).setBlockOnRun(false);
-    PCollection<PubsubMessage> receivedPubsubMessages =
-        pipeline.apply(
-            "readFromPubSubSubscription",
-            PubsubIO.readMessagesWithAttributes().fromSubscription(subscriptionPath));
-
-    PCollection<String> dataChangeRecords =
-        receivedPubsubMessages.apply(
-            MapElements.into(TypeDescriptors.strings()).via(new PubsubMessageToString()));
-
-    dataChangeRecords.apply(
-        "waitForAnyMessage",
-        signal.signalSuccessWhen(dataChangeRecords.getCoder(), new SignalFunction<>(true)));
-    Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(1));
-    pipeline.apply(signal.signalStart());
-    PAssert.that(dataChangeRecords).satisfies(new VerifyDataChangeRecordText());
-    PipelineResult job = pipeline.run();
-    start.get();
-    signal.waitForSuccess(Duration.standardMinutes(5));
-    // A runner may not support cancel
     try {
-      job.cancel();
-      System.out.println("Called cancel");
-    } catch (UnsupportedOperationException exc) {
-      // noop
+
+      Timestamp startTimestamp = Timestamp.now();
+
+      // Create a mutation for the table that will generate 1 data change record.
+      List<Mutation> mutations = new ArrayList<>();
+      mutations.add(
+          Mutation.newInsertBuilder(TEST_TABLE)
+              .set("user_id")
+              .to(1)
+              .set("name")
+              .to("Name1")
+              .build());
+      mutations.add(
+          Mutation.newInsertBuilder(TEST_TABLE)
+              .set("user_id")
+              .to(2)
+              .set("name")
+              .to("Name2")
+              .build());
+
+      spannerServer.getDbClient(testDatabase).write(mutations);
+
+      Timestamp endTimestamp = Timestamp.now();
+
+      SpannerChangeStreamsToPubSubOptions options =
+          PipelineOptionsFactory.create().as(SpannerChangeStreamsToPubSubOptions.class);
+      options.setSpannerProjectId(TEST_PROJECT);
+      options.setSpannerInstanceId(TEST_INSTANCE);
+      options.setSpannerDatabase(testDatabase);
+      options.setSpannerMetadataInstanceId(TEST_INSTANCE);
+      options.setSpannerMetadataDatabase(testMetadataDatabase);
+      options.setSpannerChangeStreamName(TEST_CHANGE_STREAM);
+      options.setPubsubTopic(outputTopicName);
+      options.setStartTimestamp(startTimestamp.toString());
+      options.setEndTimestamp(endTimestamp.toString());
+      List<String> experiments = new ArrayList<>();
+      options.setExperiments(experiments);
+
+      options.setOutputDataFormat(JSON);
+      options.setPubsubAPI(pubsubAPI);
+      if (role != null) {
+        options.setSpannerDatabaseRole(role);
+      }
+      // Run the pipeline.
+      PipelineResult result = run(options);
+      result.waitUntilFinish();
+
+      pipeline.getOptions().as(TestPipelineOptions.class).setBlockOnRun(false);
+      PCollection<PubsubMessage> receivedPubsubMessages =
+          pipeline.apply(
+              "readFromPubSubSubscription",
+              PubsubIO.readMessagesWithAttributes().fromSubscription(subscriptionPath));
+
+      PCollection<String> dataChangeRecords =
+          receivedPubsubMessages.apply(
+              MapElements.into(TypeDescriptors.strings()).via(new PubsubMessageToString()));
+
+      dataChangeRecords.apply(
+          "waitForAnyMessage",
+          signal.signalSuccessWhen(dataChangeRecords.getCoder(), new SignalFunction<>(true)));
+      Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(1));
+      pipeline.apply(signal.signalStart());
+      PAssert.that(dataChangeRecords).satisfies(new VerifyDataChangeRecordText());
+      PipelineResult job = pipeline.run();
+      start.get();
+      signal.waitForSuccess(Duration.standardMinutes(5));
+      // A runner may not support cancel
+      try {
+        job.cancel();
+        System.out.println("Called cancel");
+      } catch (UnsupportedOperationException exc) {
+        // noop
+      }
+    } finally {
+      // Drop the database.
+      spannerServer.dropDatabase(testDatabase);
+      // Drop the metadata database.
+      spannerServer.dropDatabase(testMetadataDatabase);
     }
-    // Drop the database.
-    spannerServer.dropDatabase(testDatabase);
   }
 
   @Test
@@ -441,7 +559,7 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
   private void oversizedRecordTest(String pubsubAPI) throws Exception {
     exception.expect(PipelineExecutionException.class);
     // Create a test database.
-    String testDatabase = generateDatabaseName();
+    String testDatabase = testDatabasePrefix + "_" + generateUniqueTestSuffix();
     spannerServer.dropDatabase(testDatabase);
 
     // Create a table.
@@ -458,7 +576,8 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
             + "col4 STRING(MAX), "
             + "col5 STRING(MAX) "
             + ") PRIMARY KEY(user_id)";
-    final String createChangeStream = "CREATE CHANGE STREAM " + TEST_CHANGE_STREAM + " FOR Users";
+    final String createChangeStream =
+        "CREATE CHANGE STREAM " + TEST_CHANGE_STREAM + " FOR " + TEST_TABLE;
     statements.add(createTable);
     statements.add(createChangeStream);
     spannerServer.createDatabase(testDatabase, statements);
@@ -488,61 +607,66 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
             .build());
     spannerServer.getDbClient(testDatabase).write(mutations);
 
-    Timestamp endTimestamp = Timestamp.now();
-
-    SpannerChangeStreamsToPubSubOptions options =
-        PipelineOptionsFactory.create().as(SpannerChangeStreamsToPubSubOptions.class);
-    options.setSpannerProjectId(TEST_PROJECT);
-    options.setSpannerInstanceId(TEST_INSTANCE);
-    options.setSpannerDatabase(testDatabase);
-    options.setSpannerMetadataInstanceId(TEST_INSTANCE);
-    options.setSpannerMetadataDatabase(testDatabase);
-    options.setSpannerChangeStreamName(TEST_CHANGE_STREAM);
-    options.setPubsubTopic(outputTopicName);
-    options.setStartTimestamp(startTimestamp.toString());
-    options.setEndTimestamp(endTimestamp.toString());
-    List<String> experiments = new ArrayList<>();
-    options.setExperiments(experiments);
-
-    options.setOutputDataFormat(AVRO);
-    options.setPubsubAPI(pubsubAPI);
-    // Run the pipeline.
-    PipelineResult result = run(options);
-    result.waitUntilFinish();
-    pipeline.getOptions().as(TestPipelineOptions.class).setBlockOnRun(false);
-    // Read from the output PubsubMessage with data in Avro to assert that 1 data change record has
-    // been generated.
-    PCollection<PubsubMessage> receivedPubsubMessages =
-        pipeline.apply(
-            "Read From Pub/Sub Subscription",
-            PubsubIO.readMessages().fromSubscription(subscriptionPath));
-    // Convert PubsubMessage to DataChangeRecord
-    PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
-        receivedPubsubMessages.apply(ParDo.of(new PubsubMessageToDataChangeRecordDoFn()));
-    dataChangeRecords.apply(
-        "waitForAnyMessage",
-        signal.signalSuccessWhen(dataChangeRecords.getCoder(), new SignalFunction<>(true)));
-    Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(1));
-    pipeline.apply(signal.signalStart());
-
-    PAssert.that(dataChangeRecords).satisfies(new VerifyDataChangeRecordAvro());
-    PipelineResult job = null;
     try {
-      job = pipeline.run();
-    } catch (PipelineExecutionException e) {
-      throw e;
+
+      Timestamp endTimestamp = Timestamp.now();
+
+      SpannerChangeStreamsToPubSubOptions options =
+          PipelineOptionsFactory.create().as(SpannerChangeStreamsToPubSubOptions.class);
+      options.setSpannerProjectId(TEST_PROJECT);
+      options.setSpannerInstanceId(TEST_INSTANCE);
+      options.setSpannerDatabase(testDatabase);
+      options.setSpannerMetadataInstanceId(TEST_INSTANCE);
+      options.setSpannerMetadataDatabase(testDatabase);
+      options.setSpannerChangeStreamName(TEST_CHANGE_STREAM);
+      options.setPubsubTopic(outputTopicName);
+      options.setStartTimestamp(startTimestamp.toString());
+      options.setEndTimestamp(endTimestamp.toString());
+      List<String> experiments = new ArrayList<>();
+      options.setExperiments(experiments);
+
+      options.setOutputDataFormat(AVRO);
+      options.setPubsubAPI(pubsubAPI);
+      // Run the pipeline.
+      PipelineResult result = run(options);
+      result.waitUntilFinish();
+      pipeline.getOptions().as(TestPipelineOptions.class).setBlockOnRun(false);
+      // Read from the output PubsubMessage with data in Avro to assert that 1 data change record
+      // has
+      // been generated.
+      PCollection<PubsubMessage> receivedPubsubMessages =
+          pipeline.apply(
+              "Read From Pub/Sub Subscription",
+              PubsubIO.readMessages().fromSubscription(subscriptionPath));
+      // Convert PubsubMessage to DataChangeRecord
+      PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
+          receivedPubsubMessages.apply(ParDo.of(new PubsubMessageToDataChangeRecordDoFn()));
+      dataChangeRecords.apply(
+          "waitForAnyMessage",
+          signal.signalSuccessWhen(dataChangeRecords.getCoder(), new SignalFunction<>(true)));
+      Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(1));
+      pipeline.apply(signal.signalStart());
+
+      PAssert.that(dataChangeRecords).satisfies(new VerifyDataChangeRecordAvro());
+      PipelineResult job = null;
+      try {
+        job = pipeline.run();
+      } catch (PipelineExecutionException e) {
+        throw e;
+      }
+      start.get();
+      signal.waitForSuccess(Duration.standardMinutes(5));
+      // A runner may not support cancel
+      try {
+        job.cancel();
+        System.out.println("Called cancel");
+      } catch (UnsupportedOperationException exc) {
+        // noop
+      }
+    } finally {
+      // Drop the database.
+      spannerServer.dropDatabase(testDatabase);
     }
-    start.get();
-    signal.waitForSuccess(Duration.standardMinutes(5));
-    // A runner may not support cancel
-    try {
-      job.cancel();
-      System.out.println("Called cancel");
-    } catch (UnsupportedOperationException exc) {
-      // noop
-    }
-    // Drop the database.
-    spannerServer.dropDatabase(testDatabase);
   }
 
   static class SignalFunction<T> implements SerializableFunction<Set<T>, Boolean> {
@@ -561,6 +685,7 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
 
   private static class PubsubMessageToDataChangeRecordDoFn
       extends DoFn<PubsubMessage, com.google.cloud.teleport.v2.DataChangeRecord> {
+
     @ProcessElement
     public void processElement(ProcessContext context) {
       PubsubMessage message = context.element();
@@ -578,9 +703,10 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
 
   private static class PubsubMessageToString
       implements SerializableFunction<PubsubMessage, String> {
+
     @Override
     public String apply(PubsubMessage message) {
-      return new String(message.getPayload());
+      return new String(message.getPayload(), StandardCharsets.UTF_8);
     }
   }
 }

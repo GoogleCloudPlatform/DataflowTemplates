@@ -110,8 +110,8 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   /**
-   * The function {@link withDefaultSchemaFromGCS} reads a BigQuery Schema file from GCS and stores
-   * it to be used in the Mapper schema logic.
+   * This function reads a BigQuery Schema file from GCS and stores it to be used in the Mapper
+   * schema logic.
    *
    * @param filePath path to file in GCS
    */
@@ -134,8 +134,8 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   /**
-   * The function {@link withDayPartitioning} sets a boolean value dictating if day partitioning
-   * shoud be applied to new tables created in BigQuery.
+   * This function sets a boolean value dictating if day partitioning should be applied to new
+   * tables created in BigQuery.
    *
    * @param dayPartitioning A boolean value if day partitioning should be applied.
    */
@@ -145,8 +145,7 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   /**
-   * The function {@link withIgnoreFields} sets a list of fields to be ignored when mapping new
-   * columns to a BigQuery Table.
+   * This function sets a list of fields to be ignored when mapping new columns to a BigQuery Table.
    *
    * @param fields A Set of fields to ignore.
    */
@@ -257,7 +256,6 @@ public class BigQueryMapper<InputT, OutputT>
    *
    * @param tableId a TableId referencing the BigQuery table to be loaded to.
    * @param row a TableRow with the raw data to be loaded into BigQuery.
-   * @param inputSchema The source schema lookup to be used in mapping.
    * @param retries Number of remaining retries before error is raised.
    */
   private void applyMapperToTableRow(TableId tableId, TableRow row, int retries) {
@@ -291,7 +289,6 @@ public class BigQueryMapper<InputT, OutputT>
    *
    * @param tableId a TableId referencing the BigQuery table to be loaded to.
    * @param row a TableRow with the raw data to be loaded into BigQuery.
-   * @param inputSchema The source schema lookup to be used in mapping.
    */
   private void updateTableIfRequired(TableId tableId, TableRow row) {
     Table table = this.tableCache.getOrCreateBigQueryTable(tableId, this.dayPartitioning);

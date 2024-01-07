@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import java.util.ArrayList;
 import java.util.Arrays;
 import org.apache.beam.sdk.coders.RowCoder;
@@ -28,7 +27,6 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.apache.commons.csv.CSVFormat;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -40,10 +38,8 @@ public class ListOfStringToRowFnTest {
   @Test
   public void testTransform() {
     // Arrange
-    Source source = new Source();
     Schema sourceSchema =
         Schema.of(Field.of("id", FieldType.STRING), Field.of("name", FieldType.STRING));
-    CSVFormat csvFormat = CSVFormat.DEFAULT;
 
     // Act
     PCollection<Row> convertedRow =

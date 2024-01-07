@@ -23,13 +23,14 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,15 +48,50 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     this.target = target;
   }
 
+  @NonNull
   @Override
-  public PCollection<Row> expand(PCollection<Row> input) {
+  public PCollection<Row> expand(@NonNull PCollection<Row> input) {
+    TargetType targetType = target.getType();
+    if (targetType != TargetType.custom_query) {
+      createIndicesAndConstraints();
+    }
 
     Config config = jobSpec.getConfig();
-    // indices and constraints
-    List<String> cyphers =
-        CypherGenerator.getNodeIndexAndConstraintsCypherStatements(config, target);
-    if (!cyphers.isEmpty()) {
-      Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection);
+    int batchSize;
+    int parallelism;
+    switch (targetType) {
+      case node:
+        batchSize = config.getNodeBatchSize();
+        parallelism = config.getNodeParallelism();
+        break;
+      case edge:
+        batchSize = config.getEdgeBatchSize();
+        parallelism = config.getEdgeParallelism();
+        break;
+      case custom_query:
+        batchSize = config.getCustomQueryBatchSize();
+        parallelism = config.getCustomQueryParallelism();
+        break;
+      default:
+        throw new IllegalStateException(String.format("Unsupported target type: %s", targetType));
+    }
+
+    Neo4jBlockingUnwindFn neo4jUnwindFn =
+        new Neo4jBlockingUnwindFn(
+            neoConnection, getCypherQuery(), batchSize, false, "rows", getRowCastingFunction());
+
+    return input
+        .apply("Create KV pairs", CreateKvTransform.of(parallelism))
+        .apply(target.getSequence() + ": Neo4j write " + target.getName(), ParDo.of(neo4jUnwindFn))
+        .setRowSchema(input.getSchema());
+  }
+
+  private void createIndicesAndConstraints() {
+    Set<String> cyphers = generateIndexAndConstraints();
+    if (cyphers.isEmpty()) {
+      return;
+    }
+    try (Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection)) {
       LOG.info("Adding {} indices and constraints", cyphers.size());
       for (String cypher : cyphers) {
         LOG.info("Executing cypher: {}", cypher);
@@ -66,37 +102,21 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
         }
       }
     }
+  }
 
-    // set batch sizes
-    int batchSize = jobSpec.getConfig().getNodeBatchSize();
-    int parallelism = jobSpec.getConfig().getNodeParallelism();
-
-    if (target.getType() == TargetType.edge) {
-      batchSize = jobSpec.getConfig().getEdgeBatchSize();
-      parallelism = jobSpec.getConfig().getEdgeParallelism();
+  private String getCypherQuery() {
+    if (target.getType() == TargetType.custom_query) {
+      String cypher = target.getCustomQuery();
+      LOG.info("Custom cypher query: {}", cypher);
+      return cypher;
     }
-
-    // data loading
     String unwindCypher = CypherGenerator.getUnwindCreateCypher(target);
     LOG.info("Unwind cypher: {}", unwindCypher);
+    return unwindCypher;
+  }
 
-    Neo4jConnection neo4jConnection = new Neo4jConnection(neoConnection);
-    Row emptyRow = Row.nullRow(input.getSchema());
-
-    Neo4jBlockingUnwindFn neo4jUnwindFn =
-        new Neo4jBlockingUnwindFn(
-            neo4jConnection,
-            emptyRow,
-            unwindCypher,
-            batchSize,
-            false,
-            "rows",
-            getRowCastingFunction());
-
-    return input
-        .apply("Create KV pairs", CreateKvTransform.of(parallelism))
-        .apply(target.getSequence() + ": Neo4j write " + target.getName(), ParDo.of(neo4jUnwindFn))
-        .setRowSchema(input.getSchema());
+  private Set<String> generateIndexAndConstraints() {
+    return CypherGenerator.getIndexAndConstraintsCypherStatements(target);
   }
 
   private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {

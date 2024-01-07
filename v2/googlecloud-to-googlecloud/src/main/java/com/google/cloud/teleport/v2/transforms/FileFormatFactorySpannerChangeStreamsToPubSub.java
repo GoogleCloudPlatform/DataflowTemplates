@@ -19,8 +19,8 @@ import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToAv
 import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToJson.DataChangeRecordToJsonTextFn;
 
 import com.google.auto.value.AutoValue;
-import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.CoderException;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
@@ -34,9 +34,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link FileFormatFactorySpannerChangeStreamsPubSub} class is a {@link PTransform} that takes
- * in {@link PCollection} of DataChangeRecords. The transform writes each record to PubsubMessage in
- * user specified format.
+ * The {@link FileFormatFactorySpannerChangeStreamsToPubSub} class is a {@link PTransform} that
+ * takes in {@link PCollection} of DataChangeRecords. The transform writes each record to
+ * PubsubMessage in user specified format.
  */
 @AutoValue
 public abstract class FileFormatFactorySpannerChangeStreamsToPubSub

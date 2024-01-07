@@ -25,9 +25,9 @@ import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.InformationSchemaScanner;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -112,7 +112,7 @@ public class ProcessInformationSchemaIntegrationTest {
     testPipeline.apply(
         "Process Information Schema",
         new ProcessInformationSchema(
-            sourceConfig, /*shouldCreateShadowTables=*/ true, "shadow", "oracle"));
+            sourceConfig, /* shouldCreateShadowTables= */ true, "shadow", "oracle"));
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();
     Ddl finalDdl = readDdl(testDb);
@@ -142,7 +142,7 @@ public class ProcessInformationSchemaIntegrationTest {
     testPipeline.apply(
         "Read Information Schema",
         new ProcessInformationSchema(
-            sourceConfig, /*shouldCreateShadowTables=*/ false, "shadow", "oracle"));
+            sourceConfig, /* shouldCreateShadowTables= */ false, "shadow", "oracle"));
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();
     Ddl finalDdl = readDdl(testDb);
@@ -176,7 +176,7 @@ public class ProcessInformationSchemaIntegrationTest {
     testPipeline.apply(
         "Process Information Schema",
         new ProcessInformationSchema(
-            sourceConfig, /*shouldCreateShadowTables=*/ true, "shadow", "oracle"));
+            sourceConfig, /* shouldCreateShadowTables= */ true, "shadow", "oracle"));
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();
     Ddl finalDdl = readDdl(testDb);

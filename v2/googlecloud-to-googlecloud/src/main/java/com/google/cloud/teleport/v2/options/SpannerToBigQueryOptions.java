@@ -16,49 +16,81 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.Validation.Required;
 
 /** Custom options for {@link com.google.cloud.teleport.v2.templates.SpannerToBigQuery} pipeline. */
 public interface SpannerToBigQueryOptions
     extends PipelineOptions, WriteOptions, BigQueryStorageApiBatchOptions {
-  @Description("Spanner table to read data from.")
-  @Required
-  String getSpannerTableId();
 
-  void setSpannerTableId(String spannerTableId);
+  @TemplateParameter.ProjectId(
+      order = 1,
+      optional = true,
+      description = "Spanner Project ID",
+      helpText =
+          "The project where the Spanner instance to read from is located. The default for this parameter is the project "
+              + "where the Dataflow pipeline is running.")
+  @Default.String("")
+  String getSpannerProjectId();
 
-  @Description("Instance id for spanner table.")
-  @Required
+  void setSpannerProjectId(String projectId);
+
+  @TemplateParameter.Text(
+      order = 2,
+      description = "Spanner instance ID",
+      helpText = "The Spanner instance to read from.")
   String getSpannerInstanceId();
 
   void setSpannerInstanceId(String spannerInstanceId);
 
-  @Description("Database containing the spanner table.")
-  @Required
+  @TemplateParameter.Text(
+      order = 3,
+      description = "Spanner database ID",
+      helpText = "The Spanner database to read from.")
   String getSpannerDatabaseId();
 
   void setSpannerDatabaseId(String spannerDatabaseId);
 
-  @Description(
-      "The priority of Spanner job. Must be one of the following: [HIGH, MEDIUM, LOW]. Default is"
-          + " HIGH.")
-  @Default.Enum("HIGH")
+  @TemplateParameter.Text(
+      order = 4,
+      description = "Spanner table name",
+      helpText = "The Spanner table to read from.")
+  String getSpannerTableId();
+
+  void setSpannerTableId(String spannerTableId);
+
+  @TemplateParameter.Enum(
+      order = 5,
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("HIGH"),
+        @TemplateParameter.TemplateEnumOption("MEDIUM"),
+        @TemplateParameter.TemplateEnumOption("LOW")
+      },
+      optional = true,
+      description = "Priority for Spanner RPC invocations",
+      helpText =
+          "The priority of Spanner job. Must be one of the following: [HIGH, MEDIUM, LOW]. Default is HIGH.")
   RpcPriority getSpannerRpcPriority();
 
   void setSpannerRpcPriority(RpcPriority spannerRpcPriority);
 
-  @Description("Required. Query used to read from Spanner table.")
-  @Required
+  @TemplateParameter.Text(
+      order = 6,
+      description = "Spanner query",
+      helpText = "Query used to read Spanner table.")
   String getSqlQuery();
 
   void setSqlQuery(String sqlQuery);
 
-  @Description("Required. GCS Path to JSON file containing BigQuery table schema.")
-  @Required
+  @TemplateParameter.GcsReadFile(
+      order = 7,
+      optional = true,
+      description = "Cloud Storage path to BigQuery JSON schema",
+      helpText =
+          "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is not set, or set to CREATE_IF_NEEDED, this parameter must be specified.",
+      example = "gs://your-bucket/your-schema.json")
   String getBigQuerySchemaPath();
 
   void setBigQuerySchemaPath(String bigQuerySchemaPath);

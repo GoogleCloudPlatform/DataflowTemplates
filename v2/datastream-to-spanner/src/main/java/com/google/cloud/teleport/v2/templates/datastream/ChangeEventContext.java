@@ -18,14 +18,14 @@ package com.google.cloud.teleport.v2.templates.datastream;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * ChangeEventContext class converts change events to Cloud Spanner mutations and stores all
- * intermediatory objects prior to applying them to Cloud Spanner.
+ * intermediary objects prior to applying them to Cloud Spanner.
  */
 public abstract class ChangeEventContext {
 

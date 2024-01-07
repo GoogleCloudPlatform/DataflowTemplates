@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -73,12 +73,13 @@ public abstract class PythonTextTransformer implements Serializable {
   /** Necessary CLI options for running UDF function. */
   public interface PythonTextTransformerOptions extends PipelineOptions {
 
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Text(
         order = 1,
         optional = true,
         description = "Gcs path to python UDF source",
         helpText =
             "The Cloud Storage path pattern for the Python code containing your user-defined functions.",
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-transforms/*.py")
     String getPythonTextTransformGcsPath();
 
@@ -118,6 +119,7 @@ public abstract class PythonTextTransformer implements Serializable {
   /** Grabs code from a FileSystem, loads into ProcessBuilder. */
   @AutoValue
   public abstract static class PythonRuntime {
+
     @Nullable
     public abstract String fileSystemPath();
 
@@ -142,6 +144,7 @@ public abstract class PythonTextTransformer implements Serializable {
     /** Builder for {@link PythonTextTransformer}. */
     @AutoValue.Builder
     public abstract static class Builder {
+
       public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder setRuntimeVersion(@Nullable String runtimeVersion);
@@ -181,7 +184,7 @@ public abstract class PythonTextTransformer implements Serializable {
         FileWriter writer = new FileWriter(functionName());
         if (scripts.size() == 0) {
           throw new IllegalArgumentException(
-              String.format("Python UDF Transform: file {} not valid.", fileSystemPath()));
+              String.format("Python UDF Transform: file %s not valid.", fileSystemPath()));
         }
         for (String str : scripts) {
           writer.write(str + System.lineSeparator());
@@ -193,16 +196,12 @@ public abstract class PythonTextTransformer implements Serializable {
       return process;
     }
 
-    /**
-     * Factory method for making a new Invocable.
-     *
-     * @param scripts
-     */
+    /** Factory method for making a new Invocable. */
     @Nullable
     private static ProcessBuilder newProcess() {
       ProcessBuilder pb = new ProcessBuilder();
 
-      return (ProcessBuilder) pb;
+      return pb;
     }
 
     /**
@@ -323,7 +322,7 @@ public abstract class PythonTextTransformer implements Serializable {
      * Loads into memory scripts from a File System from a given path. Supports any file system that
      * {@link FileSystems} supports.
      *
-     * @return a collection of scripts loaded as UF8 Strings
+     * @return a collection of scripts loaded as UTF8 Strings
      */
     private static Collection<String> getScripts(String path) throws IOException {
       MatchResult result = FileSystems.match(path);
@@ -360,6 +359,7 @@ public abstract class PythonTextTransformer implements Serializable {
   @AutoValue
   public abstract static class FailsafePythonUdf<T>
       extends PTransform<PCollection<FailsafeElement<T, String>>, PCollectionTuple> {
+
     public abstract @Nullable String fileSystemPath();
 
     public abstract @Nullable String runtimeVersion();
@@ -388,6 +388,7 @@ public abstract class PythonTextTransformer implements Serializable {
     /** Builder for {@link FailsafePythonUdf}. */
     @AutoValue.Builder
     public abstract static class Builder<T> {
+
       public abstract Builder<T> setFileSystemPath(@Nullable String fileSystemPath);
 
       public abstract Builder<T> setRuntimeVersion(@Nullable String runtimeVersion);

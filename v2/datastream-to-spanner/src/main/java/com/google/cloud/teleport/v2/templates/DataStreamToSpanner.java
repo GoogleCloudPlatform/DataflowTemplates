@@ -19,19 +19,22 @@ import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
-import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
+import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
-import com.google.cloud.teleport.v2.templates.session.ReadSessionFile;
-import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
-import com.google.cloud.teleport.v2.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -39,7 +42,8 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerConfig;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -48,12 +52,14 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,42 +67,42 @@ import org.slf4j.LoggerFactory;
  * This pipeline ingests DataStream data from GCS as events. The events are written to Cloud
  * Spanner.
  *
- * <p>NOTE: Future versiosn will support: Pub/Sub, GCS, or Kafka as per DataStream
+ * <p>NOTE: Future versions will support: Pub/Sub, GCS, or Kafka as per DataStream
  *
- * <p>Example Usage: TODO: FIX EXMAPLE USAGE
- *
- * <pre>
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- * --templateLocation=gs://$BUCKET_NAME/templates/${PIPELINE_NAME}.json \
- * --instanceId=test-instance \
- * --databaseId=test-database \
- * --inputFilePattern=${GCS_AVRO_FILE_PATTERN} \
- * --deadLetterQueueDirectory=${DLQ_GCS_PATH} \
- * --runner=(DirectRunner|DataflowRunner)"
- *
- * OPTIONAL Dataflow Params:
- * --autoscalingAlgorithm=THROUGHPUT_BASED \
- * --numWorkers=2 \
- * --maxNumWorkers=10 \
- * --workerMachineType=n1-highcpu-4 \
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_Datastream_to_Spanner",
     category = TemplateCategory.STREAMING,
     displayName = "Datastream to Cloud Spanner",
-    description =
-        "Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and"
-            + " writes them to a pre-existing set of tables in Cloud Spanner.",
+    description = {
+      "The Datastream to Cloud Spanner template is a streaming pipeline that reads <a href=\"https://cloud.google.com/datastream/docs\">Datastream</a> events from a Cloud Storage bucket and writes them to a Cloud Spanner database. "
+          + "It is intended for data migration from Datastream sources to Cloud Spanner.\n",
+      "All tables required for migration must exist in the destination Cloud Spanner database prior to template execution. "
+          + "Hence schema migration from a source database to destination Cloud Spanner must be completed prior to data migration. "
+          + "Data can exist in the tables prior to migration. This template does not propagate Datastream schema changes to the Cloud Spanner database.\n",
+      "Data consistency is guaranteed only at the end of migration when all data has been written to Cloud Spanner. "
+          + "To store ordering information for each record written to Cloud Spanner, this template creates an additional table (called a shadow table) for each table in the Cloud Spanner database. "
+          + "This is used to ensure consistency at the end of migration. The shadow tables are not deleted after migration and can be used for validation purposes at the end of migration.\n",
+      "Any errors that occur during operation, such as schema mismatches, malformed JSON files, or errors resulting from executing transforms, are recorded in an error queue. "
+          + "The error queue is a Cloud Storage folder which stores all the Datastream events that had encountered errors along with the error reason in text format. "
+          + "The errors can be transient or permanent and are stored in appropriate Cloud Storage folders in the error queue. "
+          + "The transient errors are retried automatically while the permanent errors are not. "
+          + "In case of permanent errors, you have the option of making corrections to the change events and moving them to the retriable bucket while the template is running."
+    },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-spanner",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-cloud-spanner",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "A Datastream stream in Running or Not started state.",
+      "A Cloud Storage bucket where Datastream events are replicated.",
+      "A Cloud Spanner database with existing tables. These tables can be empty or contain data.",
+    },
+    streaming = true)
 public class DataStreamToSpanner {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpanner.class);
@@ -122,7 +128,7 @@ public class DataStreamToSpanner {
 
     @TemplateParameter.Enum(
         order = 2,
-        enumOptions = {"avro", "json"},
+        enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
@@ -296,13 +302,73 @@ public class DataStreamToSpanner {
         order = 18,
         optional = true,
         description = "Datastream source type (only required for testing)",
-        helpText = "This is the type of source used for Datastream. Example - mysql/oracle.")
+        helpText =
+            "This is the type of source database that Datastream connects to. Example -"
+                + " mysql/oracle. Need to be set when testing without an actual running"
+                + " Datastream.")
     String getDatastreamSourceType();
 
     void setDatastreamSourceType(String value);
+
+    @TemplateParameter.Boolean(
+        order = 19,
+        optional = true,
+        description =
+            "If true, rounds the decimal values in json columns to a number that can be stored"
+                + " without loss of precision.",
+        helpText =
+            "This flag if set, rounds the decimal values in json columns to a number that can be"
+                + " stored without loss of precision.")
+    @Default.Boolean(false)
+    Boolean getRoundJsonDecimals();
+
+    void setRoundJsonDecimals(Boolean value);
+
+    @TemplateParameter.Enum(
+        order = 20,
+        optional = true,
+        description = "Run mode - currently supported are : regular or retryDLQ",
+        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
+        helpText = "This is the run mode type, whether regular or with retryDLQ.")
+    @Default.String("regular")
+    String getRunMode();
+
+    void setRunMode(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 21,
+        optional = true,
+        helpText =
+            "Transformation context file path in cloud storage used to populate data used in"
+                + " transformations performed during migrations   Eg: The shard id to db name to"
+                + " identify the db from which a row was migrated",
+        description = "Transformation context file path in cloud storage")
+    String getTransformationContextFilePath();
+
+    void setTransformationContextFilePath(String value);
+
+    @TemplateParameter.Integer(
+        order = 22,
+        optional = true,
+        description = "Directory watch duration in minutes. Default: 10 minutes",
+        helpText =
+            "The Duration for which the pipeline should keep polling a directory in GCS. Datastream"
+                + "output files are arranged in a directory structure which depicts the timestamp "
+                + "of the event grouped by minutes. This parameter should be approximately equal to"
+                + "maximum delay which could occur between event occurring in source database and "
+                + "the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes")
+    @Default.Integer(10)
+    Integer getDirectoryWatchDurationInMinutes();
+
+    void setDirectoryWatchDurationInMinutes(Integer value);
   }
 
   private static void validateSourceType(Options options) {
+    boolean isRetryMode = "retryDLQ".equals(options.getRunMode());
+    if (isRetryMode) {
+      // retry mode does not read from Datastream
+      return;
+    }
     String sourceType = getSourceType(options);
     if (!DatastreamConstants.SUPPORTED_DATASTREAM_SOURCES.contains(sourceType)) {
       throw new IllegalArgumentException(
@@ -384,8 +450,8 @@ public class DataStreamToSpanner {
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
-    // Ingest session file into memory.
-    Session session = (new ReadSessionFile(options.getSessionFilePath())).getSession();
+    // Ingest session file into schema object.
+    Schema schema = SessionFileReader.read(options.getSessionFilePath());
     /*
      * Stage 1: Ingest/Normalize Data to FailsafeElement with JSON Strings and
      * read Cloud Spanner information schema.
@@ -396,7 +462,7 @@ public class DataStreamToSpanner {
      */
     // Prepare Spanner config
     SpannerConfig spannerConfig =
-        ExposedSpannerConfig.create()
+        SpannerConfig.create()
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
@@ -416,15 +482,7 @@ public class DataStreamToSpanner {
                 options.getDatastreamSourceType()));
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
-    PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
-        pipeline.apply(
-            new DataStreamIO(
-                    options.getStreamName(),
-                    options.getInputFilePattern(),
-                    options.getInputFileFormat(),
-                    options.getGcsPubSubSubscription(),
-                    options.getRfcStartDateTime())
-                .withFileReadConcurrency(options.getFileReadConcurrency()));
+    PCollection<FailsafeElement<String, String>> jsonRecords = null;
 
     // Elements sent to the Dead Letter Queue are to be reconsumed.
     // A DLQManager is to be created using PipelineOptions, and it is in charge
@@ -437,24 +495,60 @@ public class DataStreamToSpanner {
             .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-    PCollection<FailsafeElement<String, String>> jsonRecords =
-        PCollectionList.of(datastreamJsonRecords)
-            .and(dlqJsonRecords)
-            .apply(Flatten.pCollections())
-            .apply("Reshuffle", Reshuffle.viaRandomKey());
+    boolean isRegularMode = "regular".equals(options.getRunMode());
+
+    if (isRegularMode) {
+
+      LOG.info("Regular Datastream flow");
+
+      PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
+          pipeline.apply(
+              new DataStreamIO(
+                      options.getStreamName(),
+                      options.getInputFilePattern(),
+                      options.getInputFileFormat(),
+                      options.getGcsPubSubSubscription(),
+                      options.getRfcStartDateTime())
+                  .withFileReadConcurrency(options.getFileReadConcurrency())
+                  .withDirectoryWatchDuration(
+                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
+
+      jsonRecords =
+          PCollectionList.of(datastreamJsonRecords)
+              .and(dlqJsonRecords)
+              .apply(Flatten.pCollections())
+              .apply("Reshuffle", Reshuffle.viaRandomKey());
+    } else {
+
+      LOG.info("DLQ retry flow");
+
+      jsonRecords =
+          PCollectionList.of(dlqJsonRecords)
+              .apply(Flatten.pCollections())
+              .apply("Reshuffle", Reshuffle.viaRandomKey());
+    }
 
     /*
      * Stage 2: Write records to Cloud Spanner
      */
+
+    // Ingest transformation context file into memory.
+    TransformationContext transformationContext =
+        TransformationContextReader.getTransformationContext(
+            options.getTransformationContextFilePath());
+
     SpannerTransactionWriter.Result spannerWriteResults =
         jsonRecords.apply(
             "Write events to Cloud Spanner",
             new SpannerTransactionWriter(
                 spannerConfig,
                 ddlView,
-                session,
+                schema,
+                transformationContext,
                 options.getShadowTablePrefix(),
-                options.getDatastreamSourceType()));
+                options.getDatastreamSourceType(),
+                options.getRoundJsonDecimals(),
+                isRegularMode));
 
     /*
      * Stage 3: Write failures to GCS Dead Letter Queue
@@ -486,7 +580,9 @@ public class DataStreamToSpanner {
             .apply(Flatten.pCollections())
             .apply("Reshuffle", Reshuffle.viaRandomKey());
 
+    // increment the metrics
     permanentErrors
+        .apply("Update metrics", ParDo.of(new MetricUpdaterDoFn(isRegularMode)))
         .apply(
             "DLQ: Write Severe errors to GCS",
             MapElements.via(new StringDeadLetterQueueSanitizer()))
@@ -515,6 +611,15 @@ public class DataStreamToSpanner {
             : options.getDeadLetterQueueDirectory();
 
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
-    return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
+    if ("regular".equals(options.getRunMode())) {
+      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
+    } else {
+      String retryDlqUri =
+          FileSystems.matchNewResource(dlqDirectory, true)
+              .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
+              .toString();
+      LOG.info("Dead-letter retry directory: {}", retryDlqUri);
+      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
+    }
   }
 }

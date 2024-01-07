@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.templates;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.Template;
@@ -42,15 +42,31 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A template that copies messages from one Pubsub subscription to another Pubsub topic. */
+/**
+ * A template that copies messages from one Pubsub subscription to another Pubsub topic. Allows
+ * filtering specific messages.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_PubSub_to_Cloud_PubSub.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "Cloud_PubSub_to_Cloud_PubSub",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Pub/Sub",
     description =
-        "Streaming pipeline. Reads from a Pub/Sub subscription and writes to a Pub/Sub topic. ",
+        "The Pub/Sub to Pub/Sub template is a streaming pipeline that reads messages from a Pub/Sub subscription and "
+            + "writes the messages to another Pub/Sub topic. The pipeline also accepts an optional message attribute key and a value that can be used to filter the messages that should be written to the Pub/Sub topic. You can use this template to copy messages from a Pub/Sub subscription to another Pub/Sub topic with an optional message filter.",
     optionsClass = Options.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-pubsub",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The source Pub/Sub subscription must exist prior to execution.",
+      "The source Pub/Sub subscription must be a <a href=\"https://cloud.google.com/pubsub/docs/pull\">pull subscription</a>.",
+      "The destination Pub/Sub topic must exist prior to execution."
+    },
+    streaming = true)
 public class PubsubToPubsub {
 
   /**
@@ -78,11 +94,15 @@ public class PubsubToPubsub {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
-    /**
-     * Steps: 1) Read PubSubMessage with attributes from input PubSub subscription. 2) Apply any
-     * filters if an attribute=value pair is provided. 3) Write each PubSubMessage to output PubSub
-     * topic.
-     */
+    /*
+     Steps:
+
+     <p>1) Read PubSubMessage with attributes from input PubSub subscription.
+
+     <p>2) Apply any filters if an attribute=value pair is provided.
+
+     <p>3) Write each PubSubMessage to output PubSub topic.
+    */
     pipeline
         .apply(
             "Read PubSub Events",

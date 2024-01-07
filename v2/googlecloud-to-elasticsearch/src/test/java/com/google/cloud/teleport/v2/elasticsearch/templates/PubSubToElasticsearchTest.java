@@ -66,7 +66,7 @@ public class PubSubToElasticsearchTest {
   }
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     Map<String, String> testAttributeMap1 =
         new HashMap<String, String>() {
           {
@@ -182,6 +182,7 @@ public class PubSubToElasticsearchTest {
     options.setErrorOutputTopic("projects/test/topics/test-error-topic");
     options.setJavascriptTextTransformFunctionName("transform");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
+    options.setJavascriptTextTransformReloadIntervalMinutes(0);
     options.setApiKey("key");
 
     PCollectionTuple pc =
@@ -192,6 +193,8 @@ public class PubSubToElasticsearchTest {
                     .setJavascriptTextTransformFunctionName(
                         options.getJavascriptTextTransformFunctionName())
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
+                    .setJavascriptTextTransformReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
                     .build());
 
     PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_OUT))
@@ -237,7 +240,7 @@ public class PubSubToElasticsearchTest {
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
                     .build());
 
-    PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_ERROROUTPUT_OUT))
+    PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_ERROR_OUTPUT_OUT))
         .satisfies(
             collection -> {
               FailsafeElement<PubsubMessage, String> element = collection.iterator().next();

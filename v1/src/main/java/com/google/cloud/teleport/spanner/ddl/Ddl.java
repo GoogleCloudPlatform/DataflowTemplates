@@ -45,8 +45,10 @@ public class Ddl implements Serializable {
   private static final long serialVersionUID = -4153759448351855360L;
 
   private ImmutableSortedMap<String, Table> tables;
+  private ImmutableSortedMap<String, Model> models;
   private ImmutableSortedMap<String, View> views;
   private ImmutableSortedMap<String, ChangeStream> changeStreams;
+  private ImmutableSortedMap<String, Sequence> sequences;
   private TreeMultimap<String, String> parents;
   // This is only populated by InformationSchemaScanner and not while reading from AVRO files.
   private TreeMultimap<String, String> referencedTables;
@@ -55,15 +57,19 @@ public class Ddl implements Serializable {
 
   private Ddl(
       ImmutableSortedMap<String, Table> tables,
+      ImmutableSortedMap<String, Model> models,
       ImmutableSortedMap<String, View> views,
       ImmutableSortedMap<String, ChangeStream> changeStreams,
+      ImmutableSortedMap<String, Sequence> sequences,
       TreeMultimap<String, String> parents,
       TreeMultimap<String, String> referencedTables,
       ImmutableList<Export.DatabaseOption> databaseOptions,
       Dialect dialect) {
     this.tables = tables;
+    this.models = models;
     this.views = views;
     this.changeStreams = changeStreams;
+    this.sequences = sequences;
     this.parents = parents;
     this.referencedTables = referencedTables;
     this.databaseOptions = databaseOptions;
@@ -124,6 +130,14 @@ public class Ddl implements Serializable {
     return tables.get(tableName.toLowerCase());
   }
 
+  public Collection<Model> models() {
+    return models.values();
+  }
+
+  public Model model(String modelName) {
+    return models.get(modelName.toLowerCase());
+  }
+
   public Collection<View> views() {
     return views.values();
   }
@@ -140,6 +154,14 @@ public class Ddl implements Serializable {
     return changeStreams.get(changeStreamName.toLowerCase());
   }
 
+  public Collection<Sequence> sequences() {
+    return sequences.values();
+  }
+
+  public Sequence sequence(String sequenceName) {
+    return sequences.get(sequenceName.toLowerCase());
+  }
+
   public ImmutableList<Export.DatabaseOption> databaseOptions() {
     return databaseOptions;
   }
@@ -148,6 +170,11 @@ public class Ddl implements Serializable {
     for (Export.DatabaseOption databaseOption : databaseOptions()) {
       appendable.append(getDatabaseOptionsStatements(databaseOption, "%db_name%", dialect));
       appendable.append("\n");
+    }
+
+    for (Sequence sequence : sequences()) {
+      appendable.append("\n");
+      sequence.prettyPrint(appendable);
     }
 
     LinkedList<String> stack = Lists.newLinkedList();
@@ -176,6 +203,11 @@ public class Ddl implements Serializable {
       }
     }
 
+    for (Model model : models()) {
+      appendable.append("\n");
+      model.prettyPrint(appendable);
+    }
+
     for (View view : views()) {
       appendable.append("\n");
       view.prettyPrint(appendable);
@@ -192,8 +224,10 @@ public class Ddl implements Serializable {
         .addAll(createTableStatements())
         .addAll(createIndexStatements())
         .addAll(addForeignKeyStatements())
+        .addAll(createModelStatements())
         .addAll(createViewStatements())
         .addAll(createChangeStreamStatements())
+        .addAll(createSequenceStatements())
         .addAll(setOptionsStatements("%db_name%"))
         .build();
   }
@@ -244,6 +278,14 @@ public class Ddl implements Serializable {
     return result;
   }
 
+  public List<String> createModelStatements() {
+    List<String> result = new ArrayList<>(models.size());
+    for (Model model : models.values()) {
+      result.add(model.prettyPrint());
+    }
+    return result;
+  }
+
   public List<String> createViewStatements() {
     List<String> result = new ArrayList<>(views.size());
     for (View view : views.values()) {
@@ -256,6 +298,14 @@ public class Ddl implements Serializable {
     List<String> result = new ArrayList<>(changeStreams.size());
     for (ChangeStream changeStream : changeStreams()) {
       result.add(changeStream.prettyPrint());
+    }
+    return result;
+  }
+
+  public List<String> createSequenceStatements() {
+    List<String> result = new ArrayList<>(sequences.size());
+    for (Sequence sequence : sequences()) {
+      result.add(sequence.prettyPrint());
     }
     return result;
   }
@@ -339,8 +389,10 @@ public class Ddl implements Serializable {
   public static class Builder {
 
     private Map<String, Table> tables = Maps.newLinkedHashMap();
+    private Map<String, Model> models = Maps.newLinkedHashMap();
     private Map<String, View> views = Maps.newLinkedHashMap();
     private Map<String, ChangeStream> changeStreams = Maps.newLinkedHashMap();
+    private Map<String, Sequence> sequences = Maps.newLinkedHashMap();
     private TreeMultimap<String, String> parents = TreeMultimap.create();
     private TreeMultimap<String, String> referencedTables = TreeMultimap.create();
     private ImmutableList<Export.DatabaseOption> databaseOptions = ImmutableList.of();
@@ -372,6 +424,22 @@ public class Ddl implements Serializable {
 
     public Collection<Table> tables() {
       return tables.values();
+    }
+
+    public Model.Builder createModel(String name) {
+      Model model = models.get(name.toLowerCase());
+      if (model == null) {
+        return Model.builder(dialect).name(name).ddlBuilder(this);
+      }
+      return model.toBuilder().ddlBuilder(this);
+    }
+
+    public void addModel(Model model) {
+      models.put(model.name().toLowerCase(), model);
+    }
+
+    public boolean hasModel(String name) {
+      return models.containsKey(name.toLowerCase());
     }
 
     public View.Builder createView(String name) {
@@ -406,6 +474,22 @@ public class Ddl implements Serializable {
       return changeStreams.containsKey(name.toLowerCase());
     }
 
+    public Sequence.Builder createSequence(String name) {
+      Sequence sequence = sequences.get(name.toLowerCase());
+      if (sequence == null) {
+        return Sequence.builder(dialect).name(name).ddlBuilder(this);
+      }
+      return sequence.toBuilder().ddlBuilder(this);
+    }
+
+    public void addSequence(Sequence sequence) {
+      sequences.put(sequence.name().toLowerCase(), sequence);
+    }
+
+    public boolean hasSequence(String name) {
+      return sequences.containsKey(name.toLowerCase());
+    }
+
     public void mergeDatabaseOptions(List<Export.DatabaseOption> databaseOptions) {
       List<Export.DatabaseOption> allowedDatabaseOptions = new ArrayList<>();
       List<String> existingOptionNames = new ArrayList<>();
@@ -428,8 +512,10 @@ public class Ddl implements Serializable {
     public Ddl build() {
       return new Ddl(
           ImmutableSortedMap.copyOf(tables),
+          ImmutableSortedMap.copyOf(models),
           ImmutableSortedMap.copyOf(views),
           ImmutableSortedMap.copyOf(changeStreams),
+          ImmutableSortedMap.copyOf(sequences),
           parents,
           referencedTables,
           databaseOptions,
@@ -440,8 +526,10 @@ public class Ddl implements Serializable {
   public Builder toBuilder() {
     Builder builder = new Builder(dialect);
     builder.tables.putAll(tables);
+    builder.models.putAll(models);
     builder.views.putAll(views);
     builder.changeStreams.putAll(changeStreams);
+    builder.sequences.putAll(sequences);
     builder.parents.putAll(parents);
     builder.referencedTables.putAll(referencedTables);
     builder.databaseOptions = databaseOptions;
@@ -473,12 +561,18 @@ public class Ddl implements Serializable {
         : ddl.referencedTables != null) {
       return false;
     }
+    if (models != null ? !models.equals(ddl.models) : ddl.models != null) {
+      return false;
+    }
     if (views != null ? !views.equals(ddl.views) : ddl.views != null) {
       return false;
     }
     if (changeStreams != null
         ? !changeStreams.equals(ddl.changeStreams)
         : ddl.changeStreams != null) {
+      return false;
+    }
+    if (sequences != null ? !sequences.equals(ddl.sequences) : ddl.sequences != null) {
       return false;
     }
     return databaseOptions.equals(ddl.databaseOptions);
@@ -490,8 +584,10 @@ public class Ddl implements Serializable {
     result = 31 * result + (tables != null ? tables.hashCode() : 0);
     result = 31 * result + (parents != null ? parents.hashCode() : 0);
     result = 31 * result + (referencedTables != null ? referencedTables.hashCode() : 0);
+    result = 31 * result + (models != null ? models.hashCode() : 0);
     result = 31 * result + (views != null ? views.hashCode() : 0);
     result = 31 * result + (changeStreams != null ? changeStreams.hashCode() : 0);
+    result = 31 * result + (sequences != null ? sequences.hashCode() : 0);
     result = 31 * result + (databaseOptions != null ? databaseOptions.hashCode() : 0);
     return result;
   }

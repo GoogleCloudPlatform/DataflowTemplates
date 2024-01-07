@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.Map;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.io.AvroSource;
+import org.apache.beam.sdk.extensions.avro.io.AvroSource;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;

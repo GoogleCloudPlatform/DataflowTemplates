@@ -150,7 +150,7 @@ public class TextToSpannerTest {
 
   // Test unsupported data types
   @Test(expected = IllegalArgumentException.class)
-  public void testValidateDataTypeSupportUnsupport() {
+  public void testValidateDataTypeSupportUnsupported() {
     SpannerSchema testSchema = new SpannerSchema();
     testSchema.addEntry("col1", "ARRAY");
     testSchema.addEntry("col2", "BYTES");

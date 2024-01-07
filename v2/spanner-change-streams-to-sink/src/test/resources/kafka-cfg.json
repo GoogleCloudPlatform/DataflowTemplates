@@ -1,0 +1,5 @@
+{
+  "bootstrapServer" : "10.240.0.204:9092",
+  "dataTopic" : "dataTopic",
+  "errorTopic" : "errorTopic"
+}

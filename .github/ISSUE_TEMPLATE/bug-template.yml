@@ -13,7 +13,14 @@ body:
     id: template
     attributes:
       label: Related Template(s)
-      description: "Which template(s) is this bug affecting?"
+      description: "Which template(s) is this bug affecting? (Job label 'goog-dataflow-provided-template-name')"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Template Version
+      description: What version of the template are you using? (Job label 'goog-dataflow-provided-template-version')
     validations:
       required: true
   - type: textarea
@@ -22,25 +29,6 @@ body:
       label: What happened?
       description: Please share what you expected and what happened!
       placeholder: Tell us what you see!
-    validations:
-      required: true
-  - type: dropdown
-    id: version
-    attributes:
-      label: Beam Version
-      description: What version of beam are you using?
-      options:
-        - Newer than 2.43.0
-        - 2.43.0
-        - 2.42.0
-        - 2.41.0
-        - 2.40.0
-        - 2.39.0
-        - 2.38.0
-        - 2.37.0
-        - 2.36.0
-        - 2.35.0
-        - Older than 2.35.0
     validations:
       required: true
   - type: textarea

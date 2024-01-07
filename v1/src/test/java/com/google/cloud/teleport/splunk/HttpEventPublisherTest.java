@@ -99,8 +99,12 @@ public class HttpEventPublisherTest {
   /** Test whether payload is stringified as expected. */
   @Test
   public void stringPayloadTest()
-      throws UnsupportedEncodingException, NoSuchAlgorithmException, KeyStoreException,
-          KeyManagementException, CertificateException, IOException {
+      throws UnsupportedEncodingException,
+          NoSuchAlgorithmException,
+          KeyStoreException,
+          KeyManagementException,
+          CertificateException,
+          IOException {
 
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
@@ -125,8 +129,12 @@ public class HttpEventPublisherTest {
   /** Test whether {@link HttpContent} is created from the list of {@link SplunkEvent}s. */
   @Test
   public void contentTest()
-      throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException,
-          CertificateException, IOException {
+      throws NoSuchAlgorithmException,
+          KeyStoreException,
+          KeyManagementException,
+          IOException,
+          CertificateException,
+          IOException {
 
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
@@ -170,7 +178,10 @@ public class HttpEventPublisherTest {
 
   @Test
   public void configureBackOffDefaultTest()
-      throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException,
+      throws NoSuchAlgorithmException,
+          KeyStoreException,
+          KeyManagementException,
+          IOException,
           CertificateException {
 
     HttpEventPublisher publisherDefaultBackOff =
@@ -188,7 +199,10 @@ public class HttpEventPublisherTest {
 
   @Test
   public void configureBackOffCustomTest()
-      throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException,
+      throws NoSuchAlgorithmException,
+          KeyStoreException,
+          KeyManagementException,
+          IOException,
           CertificateException {
 
     int timeoutInMillis = 600000; // 10 minutes

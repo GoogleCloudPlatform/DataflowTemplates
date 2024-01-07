@@ -39,26 +39,31 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link PubsubToJdbc} streaming pipeline reads data from Google Cloud PubSub and publishes to
- * JDBC. <br>
+ * JDBC.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Pubsub_to_Jdbc.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Pubsub_to_Jdbc",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to JDBC",
     description =
-        "A streaming pipeline which ingests data in the form of json strings from Pub/Sub"
-            + " subscription and writes to a JDBC table. JDBC connection string, user name and"
-            + " password can be passed in directly as plaintext or encrypted using the Google Cloud"
-            + " KMS API.  If the parameter KMSEncryptionKey is specified, connectionUrl, username,"
-            + " and password should be all in encrypted format. A sample curl command for the KMS"
-            + " API encrypt endpoint: curl -s -X POST"
-            + " \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\""
-            + "  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\"  -H \"Authorization:"
-            + " Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type:"
-            + " application/json\"",
+        "The Pub/Sub to Java Database Connectivity (JDBC) template is a streaming pipeline that ingests data from a "
+            + "pre-existing Cloud Pub/Sub subscription as JSON strings, and writes the resulting records to JDBC.",
     optionsClass = PubsubToJdbcOptions.class,
     flexContainerName = "pubsub-to-jdbc",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-jdbc",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The Cloud Pub/Sub subscription must exist prior to running the pipeline.",
+      "The JDBC source must exist prior to running the pipeline.",
+      "The Cloud Pub/Sub output deadletter topic must exist prior to running the pipeline.",
+    },
+    streaming = true)
 public class PubsubToJdbc {
 
   /* Logger for class.*/
@@ -108,17 +113,17 @@ public class PubsubToJdbc {
     DynamicJdbcIO.DynamicDataSourceConfiguration dataSourceConfiguration =
         DynamicJdbcIO.DynamicDataSourceConfiguration.create(
                 options.getDriverClassName(),
-                maybeDecrypt(options.getConnectionUrl(), options.getKMSEncryptionKey()))
+                maybeDecrypt(options.getConnectionUrl(), options.getKMSEncryptionKey()).get())
             .withDriverJars(options.getDriverJars());
     if (options.getUsername() != null) {
       dataSourceConfiguration =
           dataSourceConfiguration.withUsername(
-              maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()));
+              maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()).get());
     }
     if (options.getPassword() != null) {
       dataSourceConfiguration =
           dataSourceConfiguration.withPassword(
-              maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()));
+              maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()).get());
     }
     if (options.getConnectionProperties() != null) {
       dataSourceConfiguration =
@@ -149,6 +154,6 @@ public class PubsubToJdbc {
     int startIndex = statement.indexOf("(");
     int endIndex = statement.indexOf(")");
     String data = statement.substring(startIndex + 1, endIndex);
-    return Splitter.on(',').splitToList(data);
+    return Splitter.on(',').trimResults().splitToList(data);
   }
 }

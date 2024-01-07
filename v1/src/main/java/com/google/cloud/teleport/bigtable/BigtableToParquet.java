@@ -33,7 +33,7 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
@@ -48,15 +48,26 @@ import org.apache.beam.sdk.values.PCollection;
 /**
  * Dataflow pipeline that exports data from a Cloud Bigtable table to Parquet files in GCS.
  * Currently, filtering on Cloud Bigtable table is not supported.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_Bigtable_to_GCS_Parquet.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_Bigtable_to_GCS_Parquet",
     category = TemplateCategory.BATCH,
     displayName = "Cloud Bigtable to Parquet Files on Cloud Storage",
     description =
-        "A pipeline which reads in Cloud Bigtable table and writes it to Cloud Storage in Parquet format.",
+        "The Bigtable to Cloud Storage Parquet template is a pipeline that reads data from a Bigtable table and writes it to a Cloud Storage bucket in Parquet format. "
+            + "You can use the template to move data from Bigtable to Cloud Storage.",
     optionsClass = Options.class,
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-parquet",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Bigtable table must exist.",
+      "The output Cloud Storage bucket must exist before running the pipeline."
+    })
 public class BigtableToParquet {
 
   /** Options for the export pipeline. */
@@ -107,7 +118,7 @@ public class BigtableToParquet {
         order = 5,
         description = "Parquet file prefix",
         helpText = "The prefix of the Parquet file name. For example, \"table1-\"")
-    @Default.String("output")
+    @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
     @SuppressWarnings("unused")
@@ -121,7 +132,7 @@ public class BigtableToParquet {
             "The maximum number of output shards produced when writing. A higher number of "
                 + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
                 + "data aggregation cost across shards when processing output Cloud Storage files. "
-                + "Default value is decided by the runner.")
+                + "Default value is decided by Dataflow.")
     @Default.Integer(0)
     ValueProvider<Integer> getNumShards();
 

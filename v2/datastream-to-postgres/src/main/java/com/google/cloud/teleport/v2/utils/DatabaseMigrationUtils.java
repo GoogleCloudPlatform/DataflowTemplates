@@ -15,10 +15,12 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
-import com.google.cloud.teleport.v2.io.CdcJdbcIO.DataSourceConfiguration;
-import com.google.cloud.teleport.v2.values.DmlInfo;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
+import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -34,12 +36,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.values.KV;
 import org.apache.commons.lang3.StringUtils;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -236,12 +237,12 @@ public class DatabaseMigrationUtils implements Serializable {
   }
 
   public static String getPostgresSchemaName(JsonNode rowObj) {
-    String oracleSchemaName = rowObj.get("_metadata_schema").getTextValue();
+    String oracleSchemaName = rowObj.get("_metadata_schema").textValue();
     return oracleSchemaName.toLowerCase();
   }
 
   public static String getPostgresTableName(JsonNode rowObj) {
-    String oracleTableName = rowObj.get("_metadata_table").getTextValue();
+    String oracleTableName = rowObj.get("_metadata_table").textValue();
     return oracleTableName.toLowerCase();
   }
 
@@ -256,7 +257,7 @@ public class DatabaseMigrationUtils implements Serializable {
     }
 
     if (columnObj.isTextual()) {
-      columnValue = "\'" + cleanSql(columnObj.getTextValue()) + "\'";
+      columnValue = "\'" + cleanSql(columnObj.textValue()) + "\'";
     } else {
       columnValue = columnObj.toString();
     }
@@ -294,7 +295,7 @@ public class DatabaseMigrationUtils implements Serializable {
   public String getColumnsListSql(JsonNode rowObj) {
     String columnsListSql = "";
 
-    for (Iterator<String> fieldNames = rowObj.getFieldNames(); fieldNames.hasNext(); ) {
+    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
       if (ignoreFields.contains(columnName)) {
         continue;
@@ -302,7 +303,7 @@ public class DatabaseMigrationUtils implements Serializable {
 
       // Add column name
       String quotedColumnName = quoteColumn(columnName);
-      if (columnsListSql == "") {
+      if (columnsListSql.equals("")) {
         columnsListSql = quotedColumnName;
       } else {
         columnsListSql = columnsListSql + "," + quotedColumnName;
@@ -315,14 +316,14 @@ public class DatabaseMigrationUtils implements Serializable {
   public String getColumnsValuesSql(JsonNode rowObj, Map<String, String> tableSchema) {
     String valuesInsertSql = "";
 
-    for (Iterator<String> fieldNames = rowObj.getFieldNames(); fieldNames.hasNext(); ) {
+    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
       if (ignoreFields.contains(columnName)) {
         continue;
       }
 
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
-      if (valuesInsertSql == "") {
+      if (Objects.equals(valuesInsertSql, "")) {
         valuesInsertSql = columnValue;
       } else {
         valuesInsertSql = valuesInsertSql + "," + columnValue;
@@ -334,7 +335,7 @@ public class DatabaseMigrationUtils implements Serializable {
 
   public String getColumnsUpdateSql(JsonNode rowObj, Map<String, String> tableSchema) {
     String onUpdateSql = "";
-    for (Iterator<String> fieldNames = rowObj.getFieldNames(); fieldNames.hasNext(); ) {
+    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
       if (ignoreFields.contains(columnName)) {
         continue;
@@ -462,8 +463,8 @@ public class DatabaseMigrationUtils implements Serializable {
    * cache for each worker thread.
    *
    * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
-   * behavior to ensure reliabillity, and easy cache reloads. Open Question: Does the class require
-   * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
+   * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
+   * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
    * continuous.
    */
   public static class JdbcTableCache extends MappedObjectCache<List<String>, Map<String, String>> {
@@ -532,8 +533,8 @@ public class DatabaseMigrationUtils implements Serializable {
    * cache for each worker thread.
    *
    * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
-   * behavior to ensure reliabillity, and easy cache reloads. Open Question: Does the class require
-   * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
+   * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
+   * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
    * continuous.
    */
   public static class JdbcPrimaryKeyCache extends MappedObjectCache<List<String>, List<String>> {

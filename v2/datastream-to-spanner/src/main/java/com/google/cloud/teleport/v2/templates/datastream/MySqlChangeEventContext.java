@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates.datastream;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 
 /**
  * MySql implementation of ChangeEventContext that provides implementation of the
@@ -49,7 +49,7 @@ class MySqlChangeEventContext extends ChangeEventContext {
     // Add timestamp information to shadow table mutation
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
-            changeEvent, DatastreamConstants.MYSQL_TIMESTAMP_KEY, /*requiredField=*/ true);
+            changeEvent, DatastreamConstants.MYSQL_TIMESTAMP_KEY, /* requiredField= */ true);
     builder
         .set(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft())
         .to(Value.int64(changeEventTimestamp));
@@ -59,7 +59,7 @@ class MySqlChangeEventContext extends ChangeEventContext {
      */
     String logFile =
         ChangeEventTypeConvertor.toString(
-            changeEvent, DatastreamConstants.MYSQL_LOGFILE_KEY, /*requiredField=*/ false);
+            changeEvent, DatastreamConstants.MYSQL_LOGFILE_KEY, /* requiredField= */ false);
     if (logFile == null) {
       logFile = "";
     }
@@ -68,7 +68,7 @@ class MySqlChangeEventContext extends ChangeEventContext {
 
     Long logPosition =
         ChangeEventTypeConvertor.toLong(
-            changeEvent, DatastreamConstants.MYSQL_LOGPOSITION_KEY, /*requiredField=*/ false);
+            changeEvent, DatastreamConstants.MYSQL_LOGPOSITION_KEY, /* requiredField= */ false);
     if (logPosition == null) {
       logPosition = new Long(-1);
     }

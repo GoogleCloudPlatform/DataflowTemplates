@@ -15,44 +15,39 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
+import static org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts.assertThatBigQueryRecords;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
-import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.conditions.BigQueryRowsCheck;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
-import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
-import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.util.Map;
 import java.util.function.Function;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
+import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link TextToBigQueryStreaming} (GCS_Text_to_BigQuery_Flex). */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(TextToBigQueryStreaming.class)
 @RunWith(JUnit4.class)
 public class TextToBigQueryStreamingIT extends TemplateTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(TextToBigQueryStreamingIT.class);
 
   private static final String SCHEMA_PATH = "TextToBigQueryStreamingIT/schema.json";
   private static final String INPUT_PATH = "TextToBigQueryStreamingIT/input.txt";
@@ -61,24 +56,14 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
 
   private BigQueryResourceManager bigQueryClient;
 
-  @Rule public final TestName testName = new TestName();
-
   @Before
   public void setup() throws IOException {
-    bigQueryClient =
-        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
-            .setCredentials(credentials)
-            .build();
+    bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
 
   @After
-  public void tearDownClass() {
-    try {
-      bigQueryClient.cleanupAll();
-    } catch (Exception e) {
-      LOG.error("Failed to delete BigQuery resources.", e);
-      throw new IllegalStateException("Failed to delete resources. Check above for errors.");
-    }
+  public void tearDown() {
+    ResourceManagerUtils.cleanResources(bigQueryClient);
   }
 
   @Test
@@ -87,7 +72,7 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
   }
 
   @Test
-  public void testTextToBigQueryWithStorageApi() throws IOException, InterruptedException {
+  public void testTextToBigQueryWithStorageApi() throws IOException {
     testTextToBigQuery(
         b ->
             b.addParameter("useStorageWriteApi", "true")
@@ -98,10 +83,9 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
   private void testTextToBigQuery(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
     // Arrange
-    String bqTable = testName.getMethodName();
-
-    artifactClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
-    artifactClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
+    String bqTable = testName;
+    gcsClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
+    gcsClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
 
     bigQueryClient.createDataset(REGION);
     TableId tableId =
@@ -120,11 +104,11 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
                     .addParameter("inputFilePattern", getGcsPath("input.txt"))
                     .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                     .addParameter("javascriptTextTransformFunctionName", "identity")
-                    .addParameter("outputTable", toTableSpec(tableId))
+                    .addParameter("outputTable", toTableSpecLegacy(tableId))
                     .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp"))));
     assertThatPipeline(info).isRunning();
 
-    artifactClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
+    gcsClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
 
     Result result =
         pipelineOperator()
@@ -135,6 +119,6 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).meetsConditions();
-    assertThatRecords(bigQueryClient.readTable(bqTable)).hasRecord(EXPECTED);
+    assertThatBigQueryRecords(bigQueryClient.readTable(bqTable)).hasRecord(EXPECTED);
   }
 }

@@ -53,14 +53,18 @@ func main() {
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
-		mvnFlags.FailAtTheEnd(),
+		mvnFlags.SkipShade(),
 		mvnFlags.RunIntegrationTests(),
-		mvnFlags.ThreadCount(8),
+		mvnFlags.ThreadCount(4),
+		mvnFlags.IntegrationTestParallelism(3),
+		mvnFlags.StaticBigtableInstance("teleport"),
+		mvnFlags.StaticSpannerInstance("teleport"),
 		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
-		flags.HostIp())
+		flags.HostIp(),
+		flags.FailureMode())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

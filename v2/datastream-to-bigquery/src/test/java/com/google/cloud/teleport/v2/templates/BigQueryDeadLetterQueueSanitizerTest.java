@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.Failsaf
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertErrorCoder;
 import org.apache.beam.sdk.testing.NeedsRunner;
@@ -33,7 +34,7 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.Lists;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -76,7 +77,7 @@ public class BigQueryDeadLetterQueueSanitizerTest implements Serializable {
   /**
    * Generates a {@link BigQueryInsertError} with the {@link GenericRecord} and error message.
    *
-   * @param record payload to be used for the test
+   * @param tableRow payload to be used for the test
    * @param errorMessage error message for the test
    */
   private static BigQueryInsertError getBigQueryInsertError(

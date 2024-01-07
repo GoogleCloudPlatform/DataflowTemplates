@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSAvro;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSParquet;
 import com.google.cloud.teleport.v2.transforms.WriteToGCSText;
@@ -59,7 +60,11 @@ public interface KafkaToGCSOptions
 
   @TemplateParameter.Enum(
       order = 3,
-      enumOptions = {"TEXT, AVRO, PARQUET"},
+      enumOptions = {
+        @TemplateEnumOption("TEXT"),
+        @TemplateEnumOption("AVRO"),
+        @TemplateEnumOption("PARQUET")
+      },
       optional = false,
       description = "File format of the desired output files. (TEXT, AVRO or PARQUET)",
       helpText =

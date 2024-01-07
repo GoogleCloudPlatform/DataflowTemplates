@@ -57,9 +57,13 @@ public class MethodDefinitions implements Comparable<MethodDefinitions> {
     try {
       Integer thisOrder =
           (Integer)
-              this.templateParameter.getClass().getMethod("order").invoke(this.templateParameter);
+              this.templateParameter
+                  .annotationType()
+                  .getMethod("order")
+                  .invoke(this.templateParameter);
       Integer oOrder =
-          (Integer) o.templateParameter.getClass().getMethod("order").invoke(o.templateParameter);
+          (Integer)
+              o.templateParameter.annotationType().getMethod("order").invoke(o.templateParameter);
 
       int annotationCompare = Integer.compare(thisOrder, oOrder);
       if (annotationCompare != 0) {

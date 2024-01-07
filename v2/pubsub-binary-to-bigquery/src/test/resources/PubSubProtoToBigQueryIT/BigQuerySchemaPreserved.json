@@ -1,0 +1,53 @@
+{
+  "fields": [
+    {
+      "name": "name",
+      "type": "STRING"
+    },
+    {
+      "name": "tier",
+      "type": "STRING"
+    },
+    {
+      "name": "email",
+      "type": "STRING",
+      "mode": "Nullable"
+    },
+    {
+      "name": "phone_number",
+      "type": "STRING",
+      "mode": "Nullable"
+    },
+    {
+      "name": "address",
+      "type": "RECORD",
+      "fields": [
+        {
+          "name": "street",
+          "type": "STRING",
+          "mode": "Nullable"
+        },
+        {
+          "name": "apartment_number",
+          "type": "INT64",
+          "mode": "Nullable"
+        },
+        {
+          "name": "city",
+          "type": "STRING",
+          "mode": "Nullable"
+        },
+        {
+          "name": "state",
+          "type": "STRING",
+          "mode": "Nullable"
+        },
+        {
+          "name": "zip_code",
+          "type": "INT64",
+          "mode": "Nullable"
+        }
+      ]
+    }
+  ]
+}

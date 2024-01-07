@@ -17,19 +17,39 @@ package com.google.cloud.teleport.metadata;
 
 /** Category that can be used on Dataflow Templates. */
 public enum TemplateCategory {
-  GET_STARTED("get_started", "Get Started"),
+  GET_STARTED(1, "get_started", "Get Started"),
 
-  STREAMING("STREAMING", "Process Data Continuously (stream)"),
+  STREAMING(2, "streaming_data_processing", "Process Data Continuously (stream)"),
 
-  BATCH("BATCH", "Process Data in Bulk (batch)"),
+  BATCH(3, "batch_data_processing", "Process Data in Bulk (batch)"),
 
-  UTILITIES("utilities", "Utilities");
+  UTILITIES(4, "utilities", "Utilities"),
 
+  LEGACY(5, "legacy", "Legacy Templates");
+
+  public static final TemplateCategory[] ORDERED = {
+    GET_STARTED, STREAMING, BATCH, UTILITIES, LEGACY
+  };
+
+  final int order;
   final String name;
   final String displayName;
 
-  TemplateCategory(String name, String displayName) {
+  TemplateCategory(int order, String name, String displayName) {
+    this.order = order;
     this.name = name;
     this.displayName = displayName;
+  }
+
+  public int getOrder() {
+    return order;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public String getDisplayName() {
+    return displayName;
   }
 }

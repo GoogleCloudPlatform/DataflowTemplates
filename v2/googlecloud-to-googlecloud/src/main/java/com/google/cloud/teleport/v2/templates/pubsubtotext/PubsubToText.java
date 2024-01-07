@@ -42,103 +42,28 @@ import org.apache.beam.sdk.values.PCollection;
  * This pipeline ingests incoming data from a Cloud Pub/Sub topic and outputs the raw data into
  * windowed files at the specified output directory.
  *
- * <p>Example Usage:
- *
- * <pre>
- * # Set the pipeline vars
- * export PROJECT={project id}
- * export TEMPLATE_MODULE=googlecloud-to-googlecloud
- * export TEMPLATE_NAME=pubsub-to-text
- * export BUCKET_NAME=gs://{bucket name}
- * export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${TEMPLATE_NAME}-image
- * export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
- * export BASE_CONTAINER_IMAGE_VERSION=latest
- * export APP_ROOT=/template/${TEMPLATE_NAME}
- * export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_NAME}-command-spec.json
- * export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_NAME}-image-spec.json
- *
- * gcloud config set project ${PROJECT}
- *
- * # Build and push image to Google Container Repository
- * mvn package \
- *   -Dimage=${TARGET_GCR_IMAGE} \
- *   -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- *   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- *   -Dapp-root=${APP_ROOT} \
- *   -Dcommand-spec=${COMMAND_SPEC} \
- *   -Djib.applicationCache=/tmp/jib-cache \
- *   -am -pl ${TEMPLATE_MODULE}
- *
- * # Create and upload image spec
- * echo '{
- *  "image":"'${TARGET_GCR_IMAGE}'",
- *  "metadata":{
- *    "name":"Pub/Sub to text",
- *    "description":"Write Pub/Sub messages to GCS text files.",
- *    "parameters":[
- *        {
- *            "name":"inputSubscription",
- *            "label":"Pub/Sub subscription to read from",
- *            "paramType":"TEXT",
- *            "isOptional":true
- *        },
- *        {
- *            "name":"inputTopic",
- *            "label":"Pub/Sub topic to read from",
- *            "paramType":"TEXT",
- *            "isOptional":true
- *        },
- *        {
- *            "name":"outputDirectory",
- *            "label":"Directory to output files to",
- *            "paramType":"TEXT",
- *            "isOptional":false
- *        },
- *        {
- *            "name":"outputFilenamePrefix",
- *            "label":"The filename prefix of the files to write to",
- *            "paramType":"TEXT",
- *            "isOptional":false
- *        },
- *        {
- *            "name":"outputFilenameSuffix",
- *            "label":"The suffix of the files to write to",
- *            "paramType":"TEXT",
- *            "isOptional":true
- *        },
- *        {
- *            "name":"userTempLocation",
- *            "label":"The directory to output temporary files to",
- *            "paramType":"TEXT",
- *            "isOptional":true
- *        }
- *    ]
- *  },
- *  "sdk_info":{"language":"JAVA"}
- * }' > image_spec.json
- * gsutil cp image_spec.json ${TEMPLATE_IMAGE_SPEC}
- * rm image_spec.json
- *
- * # Run template
- * export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
- * gcloud beta dataflow flex-template run ${JOB_NAME} \
- *       --project=${PROJECT} --region=us-central1 \
- *       --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
- *       --parameters inputTopic={topic},outputDirectory={directory},outputFilenamePrefix={prefix}
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Cloud_PubSub_to_GCS_Text_Flex.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_PubSub_to_GCS_Text_Flex",
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub Subscription or Topic to Text Files on Cloud Storage",
     description =
-        "Streaming pipeline. Reads records from Pub/Sub Subscription or Topic and writes them to"
-            + " Cloud Storage, creating a text file for each five minute window. Note that this"
-            + " pipeline assumes no newlines in the body of the Pub/Sub message and thus each"
-            + " message becomes a single line in the output file.",
+        "The Pub/Sub Topic or Subscription to Cloud Storage Text template is a streaming pipeline that reads records "
+            + "from Pub/Sub and saves them as a series of Cloud Storage files in text format. The template can be used as a quick way to save data in Pub/Sub for future use. By default, the template generates a new file every 5 minutes.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-to-text",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-topic-subscription-to-text",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Pub/Sub topic or subscription must exist prior to execution.",
+      "The messages published to the topic must be in text format.",
+      "The messages published to the topic must not contain any newlines. Note that each Pub/Sub message is saved as a single line in the output file."
+    },
+    streaming = true)
 public class PubsubToText {
 
   /**

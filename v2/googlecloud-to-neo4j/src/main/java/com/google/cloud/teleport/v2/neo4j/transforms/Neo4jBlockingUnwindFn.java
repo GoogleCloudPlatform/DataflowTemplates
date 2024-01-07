@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
+import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,9 +28,9 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
-import org.neo4j.driver.Result;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
+import org.neo4j.driver.summary.ResultSummary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,19 +48,19 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
   private long elementsInput;
   private boolean loggingDone;
   private List<Map<String, Object>> unwindList;
+  private ConnectionParams connectionParams;
   private Neo4jConnection neo4jConnection;
 
   private Neo4jBlockingUnwindFn() {}
 
   public Neo4jBlockingUnwindFn(
-      Neo4jConnection neo4jConnection,
-      Row returnEmpty,
+      ConnectionParams connectionParams,
       String cypher,
       long batchSize,
       boolean logCypher,
       String unwindMapName,
       SerializableFunction<Row, Map<String, Object>> parametersFunction) {
-    this.neo4jConnection = neo4jConnection;
+    this.connectionParams = connectionParams;
     this.cypher = cypher;
     this.parametersFunction = parametersFunction;
     this.logCypher = logCypher;
@@ -69,6 +70,11 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     unwindList = new ArrayList<>();
     elementsInput = 0;
     loggingDone = false;
+  }
+
+  @Setup
+  public void setup() {
+    this.neo4jConnection = new Neo4jConnection(this.connectionParams);
   }
 
   @ProcessElement
@@ -99,6 +105,11 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     executeCypherUnwindStatement();
   }
 
+  @Teardown
+  public void tearDown() {
+    this.neo4jConnection.close();
+  }
+
   private void executeCypherUnwindStatement() {
     // In case of errors and no actual input read (error in mapper) we don't have input
     // So we don't want to execute any cypher in this case.  There's no need to generate even more
@@ -117,16 +128,9 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     // Every "write" transaction writes a batch of elements to Neo4j.
     // The changes to the database are automatically committed.
     //
-    TransactionWork<Void> transactionWork =
+    TransactionWork<ResultSummary> transactionWork =
         transaction -> {
-          Result result = transaction.run(cypher, parametersMap);
-          while (result.hasNext()) {
-            // This just consumes any output but the function basically has no output
-            // To be revisited based on requirements.
-            //
-            result.next();
-          }
-          return null;
+          return transaction.run(cypher, parametersMap).consume();
         };
 
     if (logCypher && !loggingDone) {
@@ -140,7 +144,8 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     }
 
     try {
-      neo4jConnection.writeTransaction(transactionWork, transactionConfig);
+      ResultSummary summary = neo4jConnection.writeTransaction(transactionWork, transactionConfig);
+      LOG.debug("Batch transaction of {} rows completed: {}", unwindList.size(), summary);
     } catch (Exception e) {
       throw new RuntimeException(
           "Error writing " + unwindList.size() + " rows to Neo4j with Cypher: " + cypher, e);

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -36,6 +37,7 @@ public class UdfSamplesTest {
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(getSamplePath("enrich.js"))
             .setFunctionName("process")
+            .setReloadIntervalMinutes(0)
             .build();
     assertEquals("{\"id\":5,\"source\":\"pos\"}", javascriptRuntime.invoke("{\"id\": 5}"));
     assertEquals("{\"source\":\"pos\"}", javascriptRuntime.invoke("{\"source\": \"sauce\"}"));
@@ -47,6 +49,7 @@ public class UdfSamplesTest {
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(getSamplePath("enrich_log.js"))
             .setFunctionName("process")
+            .setReloadIntervalMinutes(0)
             .build();
     assertEquals(
         "{\"insertId\":5,\"inputSubscription\":\"audit_logs_subscription\"}",
@@ -62,6 +65,7 @@ public class UdfSamplesTest {
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(getSamplePath("filter.js"))
             .setFunctionName("process")
+            .setReloadIntervalMinutes(0)
             .build();
     assertEquals(
         "{\"insertId\":5,\"severity\":\"INFO\"}",
@@ -75,6 +79,7 @@ public class UdfSamplesTest {
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(getSamplePath("route.js"))
             .setFunctionName("process")
+            .setReloadIntervalMinutes(0)
             .build();
     assertEquals(
         "{\"insertId\":5,\"severity\":\"INFO\"}",
@@ -83,7 +88,9 @@ public class UdfSamplesTest {
         "{\"insertId\":5,\"severity\":\"DEBUG\"}",
         javascriptRuntime.invoke("{\"insertId\":5,\"severity\":\"DEBUG\"}"));
 
-    assertThrows(ScriptException.class, () -> javascriptRuntime.invoke("{\"insertId\":5}"));
+    ScriptException scriptException =
+        assertThrows(ScriptException.class, () -> javascriptRuntime.invoke("{\"insertId\":5}"));
+    assertThat(scriptException).hasMessageThat().contains("Unrecognized event. eventId=");
   }
 
   @Test
@@ -92,6 +99,7 @@ public class UdfSamplesTest {
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(getSamplePath("transform.js"))
             .setFunctionName("process")
+            .setReloadIntervalMinutes(0)
             .build();
     assertEquals(
         "{\"insertId\":5,\"source\":\"unknown\"}", javascriptRuntime.invoke("{\"insertId\":5}"));
@@ -112,6 +120,7 @@ public class UdfSamplesTest {
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(getSamplePath("transform_csv.js"))
             .setFunctionName("process")
+            .setReloadIntervalMinutes(0)
             .build();
     assertEquals(
         "{"

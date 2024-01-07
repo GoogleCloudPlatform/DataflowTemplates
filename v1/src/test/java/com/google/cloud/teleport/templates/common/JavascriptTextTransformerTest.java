@@ -36,7 +36,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import javax.script.ScriptException;
+import java.util.concurrent.CompletionException;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
@@ -106,8 +106,9 @@ public class JavascriptTextTransformerTest {
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(SCRIPT_PARSE_EXCEPTION_FILE_PATH)
             .setFunctionName("transform")
+            .setReloadIntervalMinutes(0)
             .build();
-    thrown.expect(ScriptException.class);
+    thrown.expect(CompletionException.class);
     thrown.expectMessage("Invalid JSON");
     javascriptRuntime.invoke("{\"answerToLife\": 42}");
   }
@@ -122,6 +123,7 @@ public class JavascriptTextTransformerTest {
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(TRANSFORM_FILE_PATH)
             .setFunctionName("transform")
+            .setReloadIntervalMinutes(0)
             .build();
     String data = javascriptRuntime.invoke("{\"answerToLife\": 42}");
     assertEquals("{\"answerToLife\":42,\"someProp\":\"someValue\"}", data);
@@ -137,6 +139,7 @@ public class JavascriptTextTransformerTest {
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(ES6_TRANSFORM_FILE_PATH)
             .setFunctionName("transform")
+            .setReloadIntervalMinutes(0)
             .build();
     String data = javascriptRuntime.invoke("{\"answerToLife\": 42}");
     assertEquals("{\"answerToLife\":42,\"someProp\":\"someValue\"}", data);
@@ -152,6 +155,7 @@ public class JavascriptTextTransformerTest {
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(TRANSFORM_FILE_PATH)
             .setFunctionName("transformWithFilter")
+            .setReloadIntervalMinutes(0)
             .build();
     String data = javascriptRuntime.invoke("{\"answerToLife\": 43}");
     assertNull(data);
@@ -174,6 +178,7 @@ public class JavascriptTextTransformerTest {
                 TransformTextViaJavascript.newBuilder()
                     .setFileSystemPath(StaticValueProvider.of(TRANSFORM_FILE_PATH))
                     .setFunctionName(StaticValueProvider.of("transform"))
+                    .setReloadIntervalMinutes(StaticValueProvider.of(0))
                     .build());
 
     PAssert.that(transformedJson).containsInAnyOrder(expectedJson);
@@ -264,6 +269,63 @@ public class JavascriptTextTransformerTest {
                 TransformTextViaJavascript.newBuilder()
                     .setFileSystemPath(StaticValueProvider.of(TRANSFORM_FILE_PATH))
                     .setFunctionName(StaticValueProvider.of("transformWithFilter"))
+                    .setReloadIntervalMinutes(StaticValueProvider.of(0))
+                    .build());
+
+    PAssert.that(transformedJson).containsInAnyOrder(expectedJson);
+
+    pipeline.run();
+  }
+
+  /**
+   * Test {@link TransformTextViaJavascript} allows for script to test when there's computation /
+   * concurrency.
+   */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testDoFnWithComputation() {
+    List<String> inJson = Arrays.asList("A,B", "C,D", "E,F", "G,H");
+    List<String> expectedJson =
+        Arrays.asList(
+            "{\"name\":\"A\",\"model\":\"B\",\"sum\":499999500000}",
+            "{\"name\":\"C\",\"model\":\"D\",\"sum\":499999500000}",
+            "{\"name\":\"E\",\"model\":\"F\",\"sum\":499999500000}",
+            "{\"name\":\"G\",\"model\":\"H\",\"sum\":499999500000}");
+
+    PCollection<String> transformedJson =
+        pipeline
+            .apply("Create", Create.of(inJson))
+            .apply(
+                TransformTextViaJavascript.newBuilder()
+                    .setFileSystemPath(StaticValueProvider.of(TRANSFORM_FILE_PATH))
+                    .setFunctionName(StaticValueProvider.of("transformSlow"))
+                    .setReloadIntervalMinutes(StaticValueProvider.of(0))
+                    .build());
+
+    PAssert.that(transformedJson).containsInAnyOrder(expectedJson);
+
+    pipeline.run();
+  }
+
+  @Test
+  @Category(NeedsRunner.class)
+  public void testDoFnWithComputationAndReload() {
+    List<String> inJson = Arrays.asList("A,B", "C,D", "E,F", "G,H");
+    List<String> expectedJson =
+        Arrays.asList(
+            "{\"name\":\"A\",\"model\":\"B\",\"sum\":499999500000}",
+            "{\"name\":\"C\",\"model\":\"D\",\"sum\":499999500000}",
+            "{\"name\":\"E\",\"model\":\"F\",\"sum\":499999500000}",
+            "{\"name\":\"G\",\"model\":\"H\",\"sum\":499999500000}");
+
+    PCollection<String> transformedJson =
+        pipeline
+            .apply("Create", Create.of(inJson))
+            .apply(
+                TransformTextViaJavascript.newBuilder()
+                    .setFileSystemPath(StaticValueProvider.of(TRANSFORM_FILE_PATH))
+                    .setFunctionName(StaticValueProvider.of("transformSlow"))
+                    .setReloadIntervalMinutes(StaticValueProvider.of(1))
                     .build());
 
     PAssert.that(transformedJson).containsInAnyOrder(expectedJson);
@@ -278,6 +340,7 @@ public class JavascriptTextTransformerTest {
     // Test input
     final ValueProvider<String> fileSystemPath = pipeline.newProvider(TRANSFORM_FILE_PATH);
     final ValueProvider<String> functionName = pipeline.newProvider("transform");
+    final ValueProvider<Integer> reloadInterval = pipeline.newProvider(0);
 
     final String payload = "{\"ticker\": \"GOOGL\", \"price\": 1006.94}";
     final Map<String, String> attributes = ImmutableMap.of("id", "0xDb12", "type", "stock");
@@ -302,6 +365,7 @@ public class JavascriptTextTransformerTest {
                 FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
                     .setFileSystemPath(fileSystemPath)
                     .setFunctionName(functionName)
+                    .setReloadIntervalMinutes(reloadInterval)
                     .setSuccessTag(SUCCESS_TAG)
                     .setFailureTag(FAILURE_TAG)
                     .build());
@@ -340,6 +404,7 @@ public class JavascriptTextTransformerTest {
     // Test input
     final ValueProvider<String> fileSystemPath = pipeline.newProvider(TRANSFORM_FILE_PATH);
     final ValueProvider<String> functionName = pipeline.newProvider("transform");
+    final ValueProvider<Integer> reloadInterval = pipeline.newProvider(0);
 
     final String payload = "\"ticker\": \"GOOGL\", \"price\": 1006.94";
     final Map<String, String> attributes = ImmutableMap.of("id", "0xDb12", "type", "stock");
@@ -364,6 +429,7 @@ public class JavascriptTextTransformerTest {
                 FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
                     .setFileSystemPath(fileSystemPath)
                     .setFunctionName(functionName)
+                    .setReloadIntervalMinutes(reloadInterval)
                     .setSuccessTag(SUCCESS_TAG)
                     .setFailureTag(FAILURE_TAG)
                     .build());

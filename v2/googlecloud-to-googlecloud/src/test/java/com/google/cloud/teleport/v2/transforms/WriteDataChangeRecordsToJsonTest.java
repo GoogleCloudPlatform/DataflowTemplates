@@ -42,11 +42,13 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Test cases for the {@link WriteDataChangeRecordsToPubSubJsonTest} class. */
+/** Test cases for the {@link WriteDataChangeRecordsToJsonTest} class. */
 @RunWith(JUnit4.class)
 public class WriteDataChangeRecordsToJsonTest {
+
   /** Rule for pipeline testing. */
   @Rule public final transient TestPipeline testPipeline = TestPipeline.create();
+
   /** Rule for exception testing. */
   @Rule public ExpectedException expectedException = ExpectedException.none();
 

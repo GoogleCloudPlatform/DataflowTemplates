@@ -38,14 +38,11 @@ public abstract class MappedObjectCache<KeyT, ValueT> implements Serializable {
   public Cache<KeyT, ValueT> cachedObjects =
       CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).<KeyT, ValueT>build();
   private int maxNumRetries = 0;
+
   // private Integer cacheResetTimeUnitValue = 5;
   // private TimeUnit cacheResetTimeUnit = TimeUnit.MINUTES;
 
-  /**
-   * Create an instance of a {@link MappedObjectCache} to track table schemas.
-   *
-   * @param client A Client which is required to pull the ValueT.
-   */
+  /** Create an instance of a {@link MappedObjectCache} to track table schemas. */
   public MappedObjectCache() {}
 
   /**
@@ -64,7 +61,7 @@ public abstract class MappedObjectCache<KeyT, ValueT> implements Serializable {
    * Set the number of retries {@code MappedObjectCache} will use each time it attempt to reset the
    * cache.
    *
-   * @param value The number of minutes before reseting a cached value.
+   * @param numRetries The number of retries before resetting a cached value.
    */
   public MappedObjectCache withCacheNumRetries(int numRetries) {
     this.maxNumRetries = numRetries;

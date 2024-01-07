@@ -19,7 +19,7 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueSanitizer;
-import com.google.cloud.teleport.v2.values.DatastreamRow;
+import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.util.List;
@@ -30,7 +30,6 @@ import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
 import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.StateId;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
@@ -102,8 +101,8 @@ public class StatefulRowCleaner extends PTransform<PCollection<TableRow>, PColle
    * The {@code StatefulCleanDatastreamRowFn} class statefully processes and filters data based on
    * the supplied primary keys and sort keys in the TableRow.
    *
-   * <p>The core usecase is to ensure Oracle transaction rollbacks are supplemented with the correct
-   * primary key values.
+   * <p>The core use case is to ensure Oracle transaction rollbacks are supplemented with the
+   * correct primary key values.
    */
   public static class StatefulCleanDatastreamRowFn extends DoFn<KV<String, TableRow>, TableRow> {
 

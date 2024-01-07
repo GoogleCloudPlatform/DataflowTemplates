@@ -87,7 +87,7 @@ public abstract class FileFormatFactorySpannerChangeStreams
     return output;
   }
 
-  /** Builder for {@link FileFormatFactory}. */
+  /** Builder for {@link FileFormatFactorySpannerChangeStreams}. */
   @AutoValue.Builder
   public abstract static class WriteToGcsBuilder {
 

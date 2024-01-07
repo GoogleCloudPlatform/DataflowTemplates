@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /cicd
+    schedule:
+      interval: daily
+
+  - package-ecosystem: pip
+    directory: /v1/src/main/python
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /v2/flex-wordcount-python
+    schedule:
+      interval: daily
+
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: daily

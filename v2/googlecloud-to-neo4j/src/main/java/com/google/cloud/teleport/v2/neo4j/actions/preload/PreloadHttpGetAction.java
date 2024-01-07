@@ -31,12 +31,10 @@ public class PreloadHttpGetAction implements PreloadAction {
   private static final Logger LOG = LoggerFactory.getLogger(PreloadHttpGetAction.class);
 
   private Action action;
-  private ActionContext context;
 
   @Override
   public void configure(Action action, ActionContext context) {
     this.action = action;
-    this.context = context;
   }
 
   @Override

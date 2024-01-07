@@ -26,8 +26,6 @@ import org.junit.rules.ExpectedException;
 /** Test cases for the {@link WriteToElasticsearch} class. */
 public class WriteToElasticsearchTest {
 
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
-
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
   /**
@@ -45,6 +43,7 @@ public class WriteToElasticsearchTest {
     options.setConnectionUrl(null);
     options.setApiKey("key");
 
+    TestPipeline pipeline = TestPipeline.create();
     pipeline
         .apply("CreateInput", Create.of("test"))
         .apply(WriteToElasticsearch.newBuilder().setOptions(options).build());
@@ -64,6 +63,7 @@ public class WriteToElasticsearchTest {
     options.setConnectionUrl("https://host.domain");
     options.setApiKey("key");
 
+    TestPipeline pipeline = TestPipeline.create();
     pipeline
         .apply("CreateInput", Create.of("test"))
         .apply(WriteToElasticsearch.newBuilder().setOptions(options).build());
@@ -87,6 +87,7 @@ public class WriteToElasticsearchTest {
     options.setIndex("index");
     options.setApiKey("key");
 
+    TestPipeline pipeline = TestPipeline.create();
     pipeline
         .apply("CreateInput", Create.of("test"))
         .apply(
@@ -113,6 +114,7 @@ public class WriteToElasticsearchTest {
     options.setMaxRetryDuration(500L);
     options.setMaxRetryAttempts(null);
 
+    TestPipeline pipeline = TestPipeline.create();
     pipeline
         .apply("CreateInput", Create.of("test"))
         .apply(
@@ -139,6 +141,7 @@ public class WriteToElasticsearchTest {
     options.setMaxRetryDuration(null);
     options.setMaxRetryAttempts(3);
 
+    TestPipeline pipeline = TestPipeline.create();
     pipeline
         .apply("CreateInput", Create.of("test"))
         .apply(

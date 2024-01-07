@@ -40,17 +40,40 @@ import org.slf4j.LoggerFactory;
  * The {@link SpannerChangeStreamsToGcs} pipeline streams change stream record(s) and stores to
  * Google Cloud Storage bucket in user specified format. The sink data can be stored in a Text or
  * Avro file format.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-googlecloud/README_Spanner_Change_Streams_to_Google_Cloud_Storage.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Spanner_Change_Streams_to_Google_Cloud_Storage",
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Spanner change streams to Cloud Storage",
-    description =
-        "Streaming pipeline. Streams Spanner change stream data records and writes them into a"
-            + " Cloud Storage bucket using Dataflow Runner V2.",
+    description = {
+      "The Cloud Spanner change streams to Cloud Storage template is a streaming pipeline that streams Spanner data change records and writes them into a Cloud Storage bucket using Dataflow Runner V2.\n",
+      "The pipeline groups Spanner change stream records into windows based on their timestamp, with each window representing a time duration whose length you can configure with this template. "
+          + "All records with timestamps belonging to the window are guaranteed to be in the window; there can be no late arrivals. "
+          + "You can also define a number of output shards; the pipeline creates one Cloud Storage output file per window per shard. "
+          + "Within an output file, records are unordered. Output files can be written in either JSON or AVRO format, depending on the user configuration.\n",
+      "Note that you can minimize network latency and network transport costs by running the Dataflow job from the same region as your Cloud Spanner instance or Cloud Storage bucket. "
+          + "If you use sources, sinks, staging file locations, or temporary file locations that are located outside of your job's region, your data might be sent across regions. "
+          + "See more about <a href=\"https://cloud.google.com/dataflow/docs/concepts/regional-endpoints\">Dataflow regional endpoints</a>.\n",
+      "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change streams</a>, <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to build change streams Dataflow pipelines</a>, and <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
+    },
     optionsClass = SpannerChangeStreamsToGcsOptions.class,
     flexContainerName = "spanner-changestreams-to-gcs",
-    contactInformation = "https://cloud.google.com/support")
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-cloud-storage",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Cloud Spanner instance must exist prior to running the pipeline.",
+      "The Cloud Spanner database must exist prior to running the pipeline.",
+      "The Cloud Spanner metadata instance must exist prior to running the pipeline.",
+      "The Cloud Spanner metadata database must exist prior to running the pipeline.",
+      "The Cloud Spanner change stream must exist prior to running the pipeline.",
+      "The Cloud Storage output bucket must exist prior to running the pipeline."
+    },
+    streaming = true)
 public class SpannerChangeStreamsToGcs {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToGcs.class);
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
@@ -114,15 +137,24 @@ public class SpannerChangeStreamsToGcs {
             : options.getSpannerMetadataTableName();
 
     final RpcPriority rpcPriority = options.getRpcPriority();
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+            .withProjectId(projectId)
+            .withInstanceId(instanceId)
+            .withDatabaseId(databaseId);
+    // Propagate database role for fine-grained access control on change stream.
+    if (options.getSpannerDatabaseRole() != null) {
+      LOG.info("Setting database role on SpannerConfig: " + options.getSpannerDatabaseRole());
+      spannerConfig =
+          spannerConfig.withDatabaseRole(
+              ValueProvider.StaticValueProvider.of(options.getSpannerDatabaseRole()));
+    }
+    LOG.info("Created SpannerConfig: " + spannerConfig);
     pipeline
         .apply(
             SpannerIO.readChangeStream()
-                .withSpannerConfig(
-                    SpannerConfig.create()
-                        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-                        .withProjectId(projectId)
-                        .withInstanceId(instanceId)
-                        .withDatabaseId(databaseId))
+                .withSpannerConfig(spannerConfig)
                 .withMetadataInstance(metadataInstanceId)
                 .withMetadataDatabase(metadataDatabaseId)
                 .withChangeStreamName(changeStreamName)
