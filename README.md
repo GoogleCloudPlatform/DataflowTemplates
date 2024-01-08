@@ -447,9 +447,27 @@ mvn clean prepare-package \
   -PtemplatesSpec
 ```
 
-## Releasing Maven artifacts
+## Release Process
 
-As part of the Templates development process, we only release the common artifacts to Maven Central, not
+Templates are released in a weekly basis (best-effort) as part of the efforts to
+keep [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates) updated with latest fixes and improvements.
+
+In case desired, you can stage and use your own changes using the `Staging (Deploying) Templates` steps.
+
+To execute the release of multiple templates, we provide a single Maven command to release Templates, which is a shortcut to
+stage all templates while running additional validations.
+
+```shell
+mvn clean verify -PtemplatesRelease \
+  -DprojectId="{projectId}" \
+  -DbucketName="{bucketName}" \
+  -DlibrariesBucketName="{bucketName}-libraries" \
+  -DstagePrefix="$(date +%Y_%m_%d)-00_RC00"
+```
+
+## Maven artifacts
+
+As part of the Templates development process, we release the common artifact snapshots to Maven Central, not
 modules that contain finalized templates. This allows users to consume those resources and modules without forking the
 entire project, while keeping artifacts at a reasonable size.
 
@@ -494,24 +512,6 @@ If you intend to use those resources in an external project, your `pom.xml` shou
     <url>https://oss.sonatype.org/content/repositories/snapshots</url>
   </pluginRepository>
 </pluginRepositories>
-```
-
-## Release Process
-
-Templates are released in a weekly basis (best-effort) as part of the efforts to
-keep [Google-provided Templates](https://cloud.google.com/dataflow/docs/guides/templates/provided-templates) updated with latest fixes and improvements.
-
-In case desired, you can stage and use your own changes using the `Staging (Deploying) Templates` steps.
-
-To execute the release of multiple templates, we provide a single Maven command to release Templates, which is a shortcut to
-stage all templates while running additional validations.
-
-```shell
-mvn clean verify -PtemplatesRelease \
-  -DprojectId="{projectId}" \
-  -DbucketName="{bucketName}" \
-  -DlibrariesBucketName="{bucketName}-libraries" \
-  -DstagePrefix="$(date +%Y_%m_%d)-00_RC00"
 ```
 
 ## More Information
