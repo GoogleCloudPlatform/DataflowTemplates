@@ -80,6 +80,65 @@ public class ExportPipelineIT extends TemplateTestBase {
                   + "  ]\n"
                   + "}");
 
+  private static final Schema MODEL_STRUCT_SCHEMA =
+      new Schema.Parser()
+          .parse(
+              "{"
+                  + "  \"type\": \"record\","
+                  + "  \"name\": \"ModelStruct\","
+                  + "  \"namespace\": \"com.google.cloud.teleport.spanner\","
+                  + "  \"fields\": ["
+                  + "    { \"name\": \"Input\", "
+                  + "      \"type\": { "
+                  + "        \"type\": \"record\", "
+                  + "        \"name\":\"ModelStruct_Input\", "
+                  + "        \"fields\":["
+                  + "          {"
+                  + "            \"name\":\"content\","
+                  + "            \"type\":\"string\","
+                  + "            \"sqlType\":\"STRING(MAX)\","
+                  + "            \"spannerOption_0\":\"required=TRUE\""
+                  + "          }"
+                  + "        ]"
+                  + "      }"
+                  + "    },"
+                  + "    { \"name\": \"Output\", "
+                  + "      \"type\": {"
+                  + "        \"type\": \"record\", "
+                  + "        \"name\":\"ModelStruct_Output\", "
+                  + "        \"fields\":["
+                  + "          {"
+                  + "            \"name\":\"embeddings\","
+                  + "            \"type\":{"
+                  + "              \"type\":\"record\","
+                  + "              \"name\":\"ModelStruct_struct_output_0\","
+                  + "              \"namespace\":\"\","
+                  + "              \"fields\":["
+                  + "                {"
+                  + "                  \"name\":\"statistics\","
+                  + "                  \"type\":{"
+                  + "                    \"type\":\"record\","
+                  + "                    \"name\":\"ModelStruct_struct_output_0_1\","
+                  + "                    \"fields\":["
+                  + "                      {\"name\":\"truncated\",\"type\":\"boolean\"},"
+                  + "                      {\"name\":\"token_count\",\"type\":\"double\"}"
+                  + "                    ]"
+                  + "                  }"
+                  + "                },"
+                  + "                {"
+                  + "                  \"name\":\"values\","
+                  + "                  \"type\":{\"type\":\"array\",\"items\":[\"null\",\"double\"]}"
+                  + "                }"
+                  + "              ]"
+                  + "            },"
+                  + "            \"sqlType\":\"STRUCT<statistics STRUCT<truncated BOOL, token_count FLOAT64>, values ARRAY<FLOAT64>>\","
+                  + "            \"spannerOption_0\":\"required=TRUE\""
+                  + "          }"
+                  + "        ]"
+                  + "      }"
+                  + "    }"
+                  + "  ]"
+                  + "}");
   private SpannerResourceManager googleSqlResourceManager;
   private SpannerResourceManager postgresResourceManager;
 
@@ -114,9 +173,17 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             testName);
+    String createModelStructStatement =
+        String.format(
+            "CREATE MODEL `%s_ModelStruct`\n"
+                + " INPUT(content STRING(MAX)) \n"
+                + " OUTPUT (embeddings STRUCT<statistics STRUCT<truncated BOOL, token_count FLOAT64>, values ARRAY<FLOAT64>>) \n"
+                + " REMOTE OPTIONS (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/publishers/google/models/textembedding-gecko\")",
+            testName);
 
     googleSqlResourceManager.executeDdlStatement(createEmptyTableStatement);
     googleSqlResourceManager.executeDdlStatement(createSingersTableStatement);
+    googleSqlResourceManager.executeDdlStatement(createModelStructStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
     googleSqlResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
@@ -140,15 +207,23 @@ public class ExportPipelineIT extends TemplateTestBase {
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Empty")));
+    List<Artifact> modelStructArtifacts =
+        gcsClient.listArtifacts(
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "ModelStruct")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
+    assertThat(modelStructArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
+    List<GenericRecord> modelStructRecords =
+        extractArtifacts(modelStructArtifacts, MODEL_STRUCT_SCHEMA);
 
     assertThatGenericRecords(singersRecords)
         .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
     assertThatGenericRecords(emptyRecords).hasRows(0);
+    assertThatGenericRecords(modelStructRecords).hasRows(0);
   }
 
   @Test
