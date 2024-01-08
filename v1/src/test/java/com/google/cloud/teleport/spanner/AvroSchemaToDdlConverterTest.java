@@ -440,7 +440,7 @@ public class AvroSchemaToDdlConverterTest {
             + "         \"sqlType\":\"STRUCT<a BOOL>\","
             + "         \"type\": "
             + "           {\"type\":\"record\","
-            + "            \"name\":\"struct_1\","
+            + "            \"name\":\"ModelStruct_struct_input_0\","
             + "            \"fields\":[{\"name\":\"a\",\"type\":\"boolean\"}]}}]}},"
             + "  {\"name\":\"Output\","
             + "   \"type\":"
@@ -451,7 +451,7 @@ public class AvroSchemaToDdlConverterTest {
             + "         \"sqlType\":\"STRUCT<a BOOL, b ARRAY<STRUCT<c STRING(MAX), d ARRAY<FLOAT64>>>, e STRUCT<f STRUCT<g INT64>>>\","
             + "         \"type\": "
             + "           {\"type\":\"record\","
-            + "            \"name\":\"struct_2\","
+            + "            \"name\":\"ModelStruct_struct_output_0\","
             + "            \"fields\":[{\"name\":\"a\",\"type\":\"boolean\"}]}}]}}]"
             + "}";
 

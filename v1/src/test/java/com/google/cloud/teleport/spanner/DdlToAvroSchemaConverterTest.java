@@ -1103,7 +1103,7 @@ public class DdlToAvroSchemaConverterTest {
         s.getFields().get(0).schema().getFields().get(0).schema(),
         equalTo(
             SchemaBuilder.builder()
-                .record("struct_0")
+                .record("struct_ModelStruct_input_0")
                 .fields()
                 .name("a")
                 .type()
@@ -1115,10 +1115,10 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(s.getFields().get(1).schema().getFields(), hasSize(1));
     assertThat(s.getFields().get(1).schema().getFields().get(0).name(), equalTo("o1"));
     assertThat(
-        s.getFields().get(1).schema().getFields().get(0).schema(),
+        s.getFields().get(1).schema().getFields().get(0).schema().toString(),
         equalTo(
             SchemaBuilder.builder() //
-                .record("struct_1")
+                .record("struct_ModelStruct_output_0")
                 .fields()
                 .name("a")
                 .type()
@@ -1131,7 +1131,7 @@ public class DdlToAvroSchemaConverterTest {
                 .unionOf()
                 .nullType()
                 .and()
-                .record("struct_2")
+                .record("struct_ModelStruct_output_0_1")
                 .fields()
                 .name("c")
                 .type()
@@ -1152,11 +1152,11 @@ public class DdlToAvroSchemaConverterTest {
                 .noDefault()
                 .name("e")
                 .type()
-                .record("struct_3")
+                .record("struct_ModelStruct_output_0_2")
                 .fields()
                 .name("f")
                 .type()
-                .record("struct_4")
+                .record("struct_ModelStruct_output_0_2_0")
                 .fields()
                 .name("g")
                 .type()
@@ -1166,7 +1166,8 @@ public class DdlToAvroSchemaConverterTest {
                 .noDefault()
                 .endRecord()
                 .noDefault()
-                .endRecord()));
+                .endRecord()
+                .toString()));
 
     assertThat(iterator.hasNext(), equalTo(false));
   }

@@ -62,14 +62,15 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.SchemaBuilder.FieldBuilder;
 import org.apache.avro.SchemaBuilder.RecordDefault;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Converts a Spanner {@link Ddl} to Avro {@link Schema}. */
 public class DdlToAvroSchemaConverter {
+  private static final Logger LOG = LoggerFactory.getLogger(DdlToAvroSchemaConverter.class);
   private final String namespace;
   private final String version;
   private final Boolean shouldExportTimestampAsLogicalType;
-  // Counter to track how many structs were created and give each Avro record a unique name.
-  private int structCounter = 0;
 
   public DdlToAvroSchemaConverter(
       String namespace, String version, Boolean shouldExportTimestampAsLogicalType) {
@@ -126,6 +127,7 @@ public class DdlToAvroSchemaConverter {
         recordBuilder.prop(SPANNER_CHECK_CONSTRAINT + i, table.checkConstraints().get(i));
       }
       SchemaBuilder.FieldAssembler<Schema> fieldsAssembler = recordBuilder.fields();
+      int columnOrdinal = 0;
       for (Column cm : table.columns()) {
         SchemaBuilder.FieldBuilder<Schema> fieldBuilder = fieldsAssembler.name(cm.name());
         fieldBuilder.prop(SQL_TYPE, cm.typeString());
@@ -143,7 +145,7 @@ public class DdlToAvroSchemaConverter {
           if (cm.defaultExpression() != null) {
             fieldBuilder.prop(DEFAULT_EXPRESSION, cm.defaultExpression());
           }
-          Schema avroType = avroType(cm.type());
+          Schema avroType = avroType(cm.type(), table.name() + "_" + columnOrdinal++);
           if (!cm.notNull()) {
             avroType = wrapAsNullable(avroType);
           }
@@ -176,13 +178,14 @@ public class DdlToAvroSchemaConverter {
               .record(model.name() + "_" + INPUT)
               .namespace(this.namespace)
               .fields();
+      int inputColumnOrdinal = 0;
       for (ModelColumn c : model.inputColumns()) {
         FieldBuilder<RecordDefault<Schema>> fieldBuilder = inputBuilder.name(c.name());
         fieldBuilder.prop(SQL_TYPE, c.typeString());
         for (int i = 0; i < c.columnOptions().size(); i++) {
           fieldBuilder.prop(SPANNER_OPTION + i, c.columnOptions().get(i));
         }
-        Schema avroType = avroType(c.type());
+        Schema avroType = avroType(c.type(), model.name() + "_input_" + inputColumnOrdinal++);
         fieldBuilder.type(avroType).noDefault();
       }
       inputBuilder.endRecord().noDefault();
@@ -194,13 +197,14 @@ public class DdlToAvroSchemaConverter {
               .record(model.name() + "_" + OUTPUT)
               .namespace(this.namespace)
               .fields();
+      int outputColumnOrdinal = 0;
       for (ModelColumn c : model.outputColumns()) {
         FieldBuilder<RecordDefault<Schema>> fieldBuilder = outputBuilder.name(c.name());
         fieldBuilder.prop(SQL_TYPE, c.typeString());
         for (int i = 0; i < c.columnOptions().size(); i++) {
           fieldBuilder.prop(SPANNER_OPTION + i, c.columnOptions().get(i));
         }
-        Schema avroType = avroType(c.type());
+        Schema avroType = avroType(c.type(), model.name() + "_output_" + outputColumnOrdinal++);
         fieldBuilder.type(avroType).noDefault();
       }
       outputBuilder.endRecord().noDefault();
@@ -268,7 +272,17 @@ public class DdlToAvroSchemaConverter {
     return schemas;
   }
 
-  private Schema avroType(com.google.cloud.teleport.spanner.common.Type spannerType) {
+  /**
+   * Converts a Spanner type into Avro type.
+   *
+   * <p>All generated record types must have unique names per Avro schema requirements. In order to
+   * ensure that, structSuffix should contain a unique schema entity name (e.g. table name) and a
+   * column ordinal number. The former prevents conflicts across different entities in the schema,
+   * while the latter generates unique names for each column.
+   */
+  private Schema avroType(
+      com.google.cloud.teleport.spanner.common.Type spannerType, String structSuffix) {
+    LOG.error("avroType type={} suffix={}", spannerType.toString(), structSuffix);
     switch (spannerType.getCode()) {
       case BOOL:
       case PG_BOOL:
@@ -304,14 +318,18 @@ public class DdlToAvroSchemaConverter {
             .addToSchema(SchemaBuilder.builder().bytesType());
       case ARRAY:
       case PG_ARRAY:
-        Schema avroItemsType = avroType(spannerType.getArrayElementType());
+        Schema avroItemsType = avroType(spannerType.getArrayElementType(), structSuffix);
         return SchemaBuilder.builder().array().items().type(wrapAsNullable(avroItemsType));
       case STRUCT:
         SchemaBuilder.FieldAssembler<Schema> fields =
-            SchemaBuilder.builder().record("struct_" + structCounter++).fields();
+            SchemaBuilder.builder().record("struct_" + structSuffix).fields();
+        int fieldCounter = 0;
         for (com.google.cloud.teleport.spanner.common.Type.StructField structField :
             spannerType.getStructFields()) {
-          fields.name(structField.getName()).type(avroType(structField.getType())).noDefault();
+          fields
+              .name(structField.getName())
+              .type(avroType(structField.getType(), structSuffix + "_" + fieldCounter++))
+              .noDefault();
         }
         return fields.endRecord();
       default:

@@ -1069,11 +1069,11 @@ public class ImportFromAvroTest {
                 "sqlType",
                 "STRUCT<statistics STRUCT<truncated BOOL, token_count FLOAT64>, values ARRAY<FLOAT64>>")
             .type()
-            .record("struct_1")
+            .record("struct_ModelStruct_output_0")
             .fields()
             .name("statistics")
             .type()
-            .record("struct_2")
+            .record("struct_ModelStruct_output_0_1")
             .fields()
             .name("truncated")
             .type()
