@@ -290,11 +290,10 @@ public class DLPTextToBigQueryStreaming {
   public interface TokenizePipelineOptions
       extends BigQueryStorageApiStreamingOptions, DataflowPipelineOptions {
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-files/*.csv")
     String getInputFilePattern();
 

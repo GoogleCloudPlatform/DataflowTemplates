@@ -106,11 +106,10 @@ public final class AvroToBigtable {
     @SuppressWarnings("unused")
     void setBigtableTableId(ValueProvider<String> tableId);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 5,
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-files/*.avro")
     ValueProvider<String> getInputFilePattern();
 

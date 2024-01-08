@@ -115,11 +115,10 @@ public class TextIOToBigQuery {
   /** Options supported by {@link TextIOToBigQuery}. */
   public interface Options extends DataflowPipelineOptions, JavascriptTextTransformerOptions {
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
         description = "Cloud Storage Input File(s)",
         helpText = "Path of the file pattern glob to read from.",
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/path/*.csv")
     ValueProvider<String> getInputFilePattern();
 

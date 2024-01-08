@@ -73,13 +73,12 @@ public abstract class PythonTextTransformer implements Serializable {
   /** Necessary CLI options for running UDF function. */
   public interface PythonTextTransformerOptions extends PipelineOptions {
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
         optional = true,
         description = "Gcs path to python UDF source",
         helpText =
             "The Cloud Storage path pattern for the Python code containing your user-defined functions.",
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-transforms/*.py")
     String getPythonTextTransformGcsPath();
 
