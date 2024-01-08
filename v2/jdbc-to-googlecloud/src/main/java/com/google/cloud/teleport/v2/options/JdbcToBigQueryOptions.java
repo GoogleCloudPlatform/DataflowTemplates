@@ -243,4 +243,29 @@ public interface JdbcToBigQueryOptions
   Integer getFetchSize();
 
   void setFetchSize(Integer fetchSize);
+
+  @TemplateParameter.Enum(
+      order = 19,
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("CREATE_IF_NEEDED"),
+        @TemplateParameter.TemplateEnumOption("CREATE_NEVER")
+      },
+      optional = true,
+      description = "Create Disposition to use for BigQuery",
+      helpText = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER.")
+  @Default.String("CREATE_NEVER")
+  String getCreateDisposition();
+
+  void setCreateDisposition(String createDisposition);
+
+  @TemplateParameter.GcsReadFile(
+      order = 20,
+      optional = true,
+      description = "Cloud Storage path to BigQuery JSON schema",
+      helpText =
+          "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to CREATE_IF_NEEDED, this parameter must be specified.",
+      example = "gs://your-bucket/your-schema.json")
+  String getBigQuerySchemaPath();
+
+  void setBigQuerySchemaPath(String path);
 }
