@@ -47,7 +47,7 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
   private static final Logger LOG = LoggerFactory.getLogger(TemplatesTerraformMojo.class);
 
   private static final String TERRAFORM = "terraform";
-  private static final String TF_JSON_FILE_NAME = "dataflow_job.tf.json";
+  private static final String TF_JSON_FILE_NAME = "dataflow_job.tf";
 
   @Override
   public void execute() throws MojoExecutionException {
