@@ -41,6 +41,9 @@ public class ImageSpecMetadata {
   private boolean flexTemplate;
   private String sourceFilePath;
   private boolean hidden;
+  private boolean streaming;
+  private boolean supportsAtLeastOnce;
+  private boolean supportsExactlyOnce;
 
   public String getDescription() {
     return description;
@@ -177,6 +180,30 @@ public class ImageSpecMetadata {
 
   public void setHidden(boolean hidden) {
     this.hidden = hidden;
+  }
+
+  public boolean isStreaming() {
+    return streaming;
+  }
+
+  public void setStreaming(boolean streaming) {
+    this.streaming = streaming;
+  }
+
+  public boolean isSupportsAtLeastOnce() {
+    return supportsAtLeastOnce;
+  }
+
+  public void setSupportsAtLeastOnce(boolean supportsAtLeastOnce) {
+    this.supportsAtLeastOnce = supportsAtLeastOnce;
+  }
+
+  public boolean isSupportsExactlyOnce() {
+    return supportsExactlyOnce;
+  }
+
+  public void setSupportsExactlyOnce(boolean supportsExactlyOnce) {
+    this.supportsExactlyOnce = supportsExactlyOnce;
   }
 
   public Optional<ImageSpecParameter> getParameter(String name) {
