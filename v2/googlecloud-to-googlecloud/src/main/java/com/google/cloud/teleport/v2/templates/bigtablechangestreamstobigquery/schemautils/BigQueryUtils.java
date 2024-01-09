@@ -40,12 +40,15 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery rows.
  */
 public class BigQueryUtils implements Serializable {
 
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryUtils.class);
   public static final String ANY_COLUMN_FAMILY = "*";
 
   private static final EnumMap<ChangelogColumn, BigQueryValueFormatter> FORMATTERS =
@@ -237,6 +240,8 @@ public class BigQueryUtils implements Serializable {
   public boolean setTableRowFields(Mod mod, TableRow tableRow) throws Exception {
     JSONObject changeJsonParsed = new JSONObject(mod.getChangeJson());
 
+    LOG.info("changeJson: {}", changeJsonParsed.toString());
+
     String columnFamily = null;
     if (hasIgnoredColumnFamilies() && changeJsonParsed.has(ChangelogColumn.COLUMN_FAMILY.name())) {
       columnFamily = Objects.toString(changeJsonParsed.get(ChangelogColumn.COLUMN_FAMILY.name()));
@@ -261,12 +266,14 @@ public class BigQueryUtils implements Serializable {
       Object value = formatter.format(this, changeJsonParsed);
 
       if (value == null) {
+        LOG.info("Column `{}` has null value.", column.getBqColumnName());
         if (column.isRequired()) {
           throw new IllegalArgumentException(
               "Cannot find value for column " + column.getBqColumnName());
         }
         // Skip setting column for null value.
       } else {
+        LOG.info("Setting column `{}` to value `{}`", column.getBqColumnName(), value);
         tableRow.set(column.getBqColumnName(), value);
       }
     }
