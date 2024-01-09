@@ -47,7 +47,7 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
   private static final Logger LOG = LoggerFactory.getLogger(TemplatesTerraformMojo.class);
 
   private static final String TERRAFORM = "terraform";
-  private static final String TF_JSON_FILE_NAME = "dataflow_job.tf";
+  private static final String TF_FILE_NAME = "dataflow_job.tf";
 
   @Override
   public void execute() throws MojoExecutionException {
@@ -90,19 +90,19 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
       throws MalformedURLException, DependencyResolutionRequiredException, MojoExecutionException {
     URLClassLoader loader = buildClassloader();
 
+    LOG.info("Generating Template Specs, saving at target: {}", targetDirectory);
+
     return TemplateDefinitionsParser.scanDefinitions(loader);
   }
 
   private File modulePath(TemplateDefinitions definition) {
     if (definition.isFlex()) {
-      return Path.of(baseDirectory.toURI())
-          .resolve(Paths.get(TERRAFORM, TF_JSON_FILE_NAME))
-          .toFile();
+      return Path.of(baseDirectory.toURI()).resolve(Paths.get(TERRAFORM, TF_FILE_NAME)).toFile();
     }
 
     // definition.isClassic()
     return Path.of(baseDirectory.toURI())
-        .resolve(Paths.get(TERRAFORM, definition.getTemplateAnnotation().name(), TF_JSON_FILE_NAME))
+        .resolve(Paths.get(TERRAFORM, definition.getTemplateAnnotation().name(), TF_FILE_NAME))
         .toFile();
   }
 }
