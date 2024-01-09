@@ -31,10 +31,19 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
     flexContainerName = "yaml-template",
     contactInformation = "https://cloud.google.com/support")
 public interface YAMLTemplate {
-  @TemplateParameter.GcsReadFile(
+  @TemplateParameter.Text(
       order = 1,
-      name = "yaml",
-      description = "Input YAML file in Cloud Storage.",
-      helpText = "The input YAML file Dataflow reads from.")
-  String getYaml();
+      name = "yaml_pipeline",
+      optional = true,
+      description = "Input YAML pipeline spec.",
+      helpText = "A yaml description of the pipeline to run.")
+  String getYamlPipeline();
+
+  @TemplateParameter.GcsReadFile(
+      order = 2,
+      name = "yaml_pipeline_file",
+      optional = true,
+      description = "Input YAML pipeline spec file in Cloud Storage.",
+      helpText = "A file in Cloud Storage containing a yaml description of the pipeline to run.")
+  String getYamlPipelineFile();
 }
