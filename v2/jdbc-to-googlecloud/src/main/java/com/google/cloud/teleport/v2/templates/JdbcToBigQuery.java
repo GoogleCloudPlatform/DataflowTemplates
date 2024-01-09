@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
 import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
 
 import com.google.api.services.bigquery.model.TableRow;
@@ -141,8 +142,7 @@ public class JdbcToBigQuery {
       }
 
       if (options.getFetchSize() != null && options.getFetchSize() > 0) {
-        // TODO: uncomment this line once https://github.com/apache/beam/pull/28999 is released.
-        // readIO = readIO.withFetchSize(options.getFetchSize());
+        readIO = readIO.withFetchSize(options.getFetchSize());
       }
 
       rows = pipeline.apply("Read from JDBC with Partitions", readIO);
@@ -175,15 +175,23 @@ public class JdbcToBigQuery {
    */
   @VisibleForTesting
   static Write<TableRow> writeToBQTransform(JdbcToBigQueryOptions options) {
-    return BigQueryIO.writeTableRows()
-        .withoutValidation()
-        .withCreateDisposition(Write.CreateDisposition.CREATE_NEVER)
-        .withWriteDisposition(
-            options.getIsTruncate()
-                ? Write.WriteDisposition.WRITE_TRUNCATE
-                : Write.WriteDisposition.WRITE_APPEND)
-        .withCustomGcsTempLocation(
-            StaticValueProvider.of(options.getBigQueryLoadingTemporaryDirectory()))
-        .to(options.getOutputTable());
+    Write<TableRow> write =
+        BigQueryIO.writeTableRows()
+            .withoutValidation()
+            .withCreateDisposition(Write.CreateDisposition.valueOf(options.getCreateDisposition()))
+            .withWriteDisposition(
+                options.getIsTruncate()
+                    ? Write.WriteDisposition.WRITE_TRUNCATE
+                    : Write.WriteDisposition.WRITE_APPEND)
+            .withCustomGcsTempLocation(
+                StaticValueProvider.of(options.getBigQueryLoadingTemporaryDirectory()))
+            .to(options.getOutputTable());
+
+    if (Write.CreateDisposition.valueOf(options.getCreateDisposition())
+        != Write.CreateDisposition.CREATE_NEVER) {
+      write = write.withJsonSchema(getGcsFileAsString(options.getBigQuerySchemaPath()));
+    }
+
+    return write;
   }
 }
