@@ -1,4 +1,4 @@
-{{/*
+{{- /*
  * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -12,35 +12,29 @@
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under
  * the License.
-*/}}
-{{/*
+*/ -}}
+{{- /*
     Produces terraform variable blocks from a map[string]*tfjson.SchemaAttribute{}.
 
     Input:  map[string]*tfjson.SchemaAttribute{}
     Output: terraform variable block for each key/value map pair
             See https://developer.hashicorp.com/terraform/language/values/variables
-*/}}
-{{define "variables" }}
-    {{/* $name: string */}}
-    {{/* $attr: *tfson.SchemaAttribute */}}
-    {{range $name, $attr := . }}
-        {{/* Encode the name / attr pair as a terraform input variable. */}}
-        variable "{{$name}}" {
-        {{/* Conditional tests whether tfjson.SchemaAttribute's AttributeType is not cty.NilType. */}}
-        {{if .AttributeType | isAttributeTypeNil | not }}
-            {{/* Calls the extractAttributeType func to convert the .AttributeType to a string. */}}
-            type = {{.AttributeType | extractAttributeType}}
-        {{ end}}
-        {{/* Conditional tests whether .Description is zero value. */}}
-        {{with .Description }}
-            description = "{{. | sanitize}}"
-        {{ end}}
-        {{if .Optional}}
-            default = null
-        {{end}}
-        {{if .Sensitive}}
-            sensitive = true
-        {{end}}
-        }
-    {{ end}}
-{{ end}}
+*/ -}}
+{{- define "variables" -}}
+{{- /* $name: string */ -}}
+{{- /* $attr: *tfson.SchemaAttribute */ -}}
+{{range $name, $attr := . }}
+{{- /* Encode the name / attr pair as a terraform input variable. */ -}}
+variable "{{$name}}" {
+{{- /* Conditional tests whether tfjson.SchemaAttribute's AttributeType is not cty.NilType. */ -}}
+{{- if .AttributeType | isAttributeTypeNil | not -}}{{println}}
+    {{- /* Calls the extractAttributeType func to convert the .AttributeType to a string. */ -}}
+    {{print "\t"}}type = {{.AttributeType | extractAttributeType}}
+{{- end}}
+{{- /* Conditional tests whether .Description is zero value. */ -}}
+{{- with .Description}}{{print "\n\t"}}description = "{{. | sanitize}}"{{- end}}
+{{- if .Optional}}{{print "\n\t"}}default = null{{- end}}
+{{- if .Sensitive}}{{print "\n\t"}}sensitive = true{{- end}}
+}{{println}}
+{{end -}}
+{{end -}}

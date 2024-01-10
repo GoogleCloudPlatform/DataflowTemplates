@@ -24,15 +24,13 @@ import (
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/terraform/schemas"
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 var (
-	timeout               = time.Second * 3
-	provider              string
-	resource              string
-	in                    []byte
-	includeParameterExtra bool
+	provider     string
+	resource     string
+	in           []byte
+	includeExtra bool
 
 	freemarkerCmd = &cobra.Command{
 		Use:   "freemarker",
@@ -70,12 +68,30 @@ var (
 		consts_vars.GoogleBeta: schemas.GoogleBeta,
 	}
 
+	providerExtras = map[string]terraform.Extra{
+		consts_vars.Google:     terraform.GoogleProviderExtra,
+		consts_vars.GoogleBeta: terraform.GoogleProviderBetaExtra,
+	}
+
+	templatePathExtras = map[string]terraform.Extra{
+		consts_vars.ResourceDataflowJob:             terraform.TemplatePathClassic,
+		consts_vars.ResourceDataflowFlexTemplateJob: terraform.TemplatePathFlex,
+	}
+
 	attrMatcher = &terraform.And[*tfjson.SchemaAttribute]{
 		terraform.Not[*tfjson.SchemaAttribute](&terraform.Or[*tfjson.SchemaAttribute]{
-			terraform.MatchName[*tfjson.SchemaAttribute]("parameters"),
-			terraform.MatchName[*tfjson.SchemaAttribute]("job_id"),
+			terraform.MatchName[*tfjson.SchemaAttribute]("container_spec_gcs_path"),
+			terraform.MatchName[*tfjson.SchemaAttribute]("effective_labels"),
 			terraform.MatchName[*tfjson.SchemaAttribute]("id"),
+			terraform.MatchName[*tfjson.SchemaAttribute]("job_id"),
+			terraform.MatchName[*tfjson.SchemaAttribute]("on_delete"),
+			terraform.MatchName[*tfjson.SchemaAttribute]("parameters"),
+			terraform.MatchName[*tfjson.SchemaAttribute]("project"),
+			terraform.MatchName[*tfjson.SchemaAttribute]("region"),
 			terraform.MatchName[*tfjson.SchemaAttribute]("state"),
+			terraform.MatchName[*tfjson.SchemaAttribute]("template_gcs_path"),
+			terraform.MatchName[*tfjson.SchemaAttribute]("terraform_labels"),
+			terraform.MatchName[*tfjson.SchemaAttribute]("transform_name_mapping"),
 			terraform.MatchName[*tfjson.SchemaAttribute]("type"),
 		}),
 		terraform.MatchIsDeprecated(false),
@@ -88,7 +104,7 @@ func init() {
 	freemarkerCmd.AddCommand(googleCmd, googleBetaCmd)
 	Command.AddCommand(freemarkerCmd)
 
-	Command.PersistentFlags().BoolVar(&includeParameterExtra, "include_extra", true, "Flags whether to include the freemarker parameters snippets")
+	Command.PersistentFlags().BoolVar(&includeExtra, "include_extra", true, "Flags whether to include the freemarker snippets")
 }
 
 func freemarkerPreRunE(cmd *cobra.Command, _ []string) error {
@@ -121,8 +137,20 @@ func freemarkerRunE(_ *cobra.Command, _ []string) error {
 	data = filter(data, dataFilter, attrFilter)
 
 	var extra []terraform.Extra
-	if includeParameterExtra {
-		extra = append(extra, terraform.FreemarkerParameterVariableExtra, terraform.FreemarkerParameterResourceExtra)
+	providerExtra, ok := providerExtras[provider]
+	if !ok {
+		return fmt.Errorf("could not acquire template extra from provider: %s", provider)
+	}
+
+	templatePathExtra, ok := templatePathExtras[resource]
+	if !ok {
+		return fmt.Errorf("could not acquire template extra from resource: %s", resource)
+	}
+
+	extra = append(extra, providerExtra, templatePathExtra)
+
+	if includeExtra {
+		extra = append(extra, terraform.FreemarkerPreResourceExtra, terraform.FreemarkerResourceExtra)
 	}
 
 	enc := terraform.ModuleEncoder(extra...)

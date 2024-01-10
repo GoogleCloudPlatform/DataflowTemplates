@@ -44,25 +44,57 @@ var (
 		extraFnName:            func(string) string { return "" },
 	}
 
-	FreemarkerParameterVariableExtra Extra = &extraImpl{
-		key:   "parameter_variable",
-		value: freemarkerParameterVariableExtra,
+	FreemarkerPreResourceExtra Extra = &extraImpl{
+		key:   "freemarker_preresource",
+		value: freemarkerPreResourceExtra,
 	}
 
-	FreemarkerParameterResourceExtra Extra = &extraImpl{
-		key:   "parameter_resource",
-		value: freemarkerParameterResourceExtra,
+	FreemarkerResourceExtra Extra = &extraImpl{
+		key:   "freemarker_resource",
+		value: freemarkerResourceExtra,
+	}
+
+	GoogleProviderExtra Extra = &extraImpl{
+		key:   "provider",
+		value: googleProviderExtra,
+	}
+
+	GoogleProviderBetaExtra Extra = &extraImpl{
+		key:   "provider",
+		value: googleProviderBetaExtra,
+	}
+
+	TemplatePathClassic Extra = &extraImpl{
+		key:   "template_path",
+		value: freemarkerTemplatePathClassic,
+	}
+
+	TemplatePathFlex Extra = &extraImpl{
+		key:   "template_path",
+		value: freemarkerTemplatePathFlex,
 	}
 )
 
 //go:embed header.tmpl module.tmpl variable.tmpl
 var tmplFS embed.FS
 
-//go:embed freemarker_parameter_variable_extra.ftl
-var freemarkerParameterVariableExtra string
+//go:embed freemarker_preresource_extra.ftl
+var freemarkerPreResourceExtra string
 
-//go:embed freemarker_parameter_resource_extra.ftl
-var freemarkerParameterResourceExtra string
+//go:embed freemarker_resource_extra.ftl
+var freemarkerResourceExtra string
+
+//go:embed provider_google.tmpl
+var googleProviderExtra string
+
+//go:embed provider_google_beta.tmpl
+var googleProviderBetaExtra string
+
+//go:embed freemarker_template_path_classic.ftl
+var freemarkerTemplatePathClassic string
+
+//go:embed freemarker_template_path_flex.ftl
+var freemarkerTemplatePathFlex string
 
 func ModuleEncoder(extra ...Extra) *Encoder[*tfjson.Schema] {
 	lookup := map[string]string{}

@@ -19,15 +19,16 @@
     Output: terraform module containing variable and resource blocks
             See https://developer.hashicorp.com/terraform/language/modules
 */}}
-{{define "module"}}
-{{"parameter_variable" | extra}}
-    {{range $resourceName, $resourceSchema := .}}
-        {{template "variables" $resourceSchema.Block.Attributes}}
-        resource "{{$resourceName}}" "generated" {
-            {{"parameter_resource" | extra}}
-            {{range $attrName, $attr := $resourceSchema.Block.Attributes}}
-                {{$attrName}} = var.{{$attrName}}
-            {{end}}
-        }
-    {{end}}
+{{define "module" }}
+{{template "header" .}}
+{{"freemarker_preresource" | extra}}
+{{"provider" | extra}}
+{{range $resourceName, $resourceSchema := . }}
+{{- template "variables" $resourceSchema.Block.Attributes -}}
+resource "{{$resourceName}}" "generated" {
+    {{"template_path" | extra}}
+    {{"freemarker_resource" | extra}}
+    {{range $attrName, $attr := $resourceSchema.Block.Attributes}}{{print "\n\t"}}{{$attrName}} = var.{{$attrName}}{{end}}
+}
+{{end}}
 {{end}}
