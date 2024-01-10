@@ -112,7 +112,9 @@ import org.slf4j.LoggerFactory;
       "A primary key is necessary in the source table for the destination replica table to be created.",
       "A MySQL or Oracle source database. PostgreSQL databases are not supported."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true,
+    supportsExactlyOnce = false)
 public class DataStreamToBigQuery {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToBigQuery.class);
