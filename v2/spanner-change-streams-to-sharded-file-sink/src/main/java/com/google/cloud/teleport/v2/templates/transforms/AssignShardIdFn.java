@@ -56,6 +56,8 @@ import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
+import org.apache.beam.sdk.metrics.Distribution;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.util.MimeTypes;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Splitter;
@@ -194,7 +196,19 @@ public class AssignShardIdFn
         }
         ShardIdRequest shardIdRequest = new ShardIdRequest(record.getTableName(), spannerRecord);
 
-        ShardIdResponse shardIdResponse = shardIdFetcher.getShardId(shardIdRequest);
+        ShardIdResponse shardIdResponse;
+        if (!customJarPath.isEmpty() && !shardingCustomClassName.isEmpty()) {
+          Distribution getShardIdResponseTimeMetric =
+              Metrics.distribution(AssignShardIdFn.class, "custom_shard_id_impl_latency_ms");
+          Instant startTimestamp = Instant.now();
+          shardIdResponse = shardIdFetcher.getShardId(shardIdRequest);
+          Instant endTimestamp = Instant.now();
+          getShardIdResponseTimeMetric.update(
+              new Duration(startTimestamp, endTimestamp).getMillis());
+        } else {
+          shardIdResponse = shardIdFetcher.getShardId(shardIdRequest);
+        }
+
         String logicalShardId = shardIdResponse.getLogicalShardId();
         if (logicalShardId == null || logicalShardId.isEmpty() || logicalShardId.contains("/")) {
           throw new IllegalArgumentException(
@@ -253,7 +267,7 @@ public class AssignShardIdFn
       }
     }
     // else return the core implementation
-    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schema);
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schema, skipDirName);
     return shardIdFetcher;
   }
 

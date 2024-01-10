@@ -109,7 +109,9 @@ import org.slf4j.LoggerFactory;
       "The Splunk HEC endpoint must be accessible from the Dataflow workers' network.",
       "The Splunk HEC token must be generated and available."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true,
+    supportsExactlyOnce = true)
 public class PubSubToSplunk {
 
   /** String/String Coder for FailsafeElement. */

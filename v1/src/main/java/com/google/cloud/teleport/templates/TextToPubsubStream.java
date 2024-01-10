@@ -58,7 +58,9 @@ import org.joda.time.Duration;
       "The Pub/Sub topic must exist prior to execution.",
       "The pipeline runs indefinitely and needs to be terminated manually.",
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true,
+    supportsExactlyOnce = true)
 public class TextToPubsubStream {
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);
 

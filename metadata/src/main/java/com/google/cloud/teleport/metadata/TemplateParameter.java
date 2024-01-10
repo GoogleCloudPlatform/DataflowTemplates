@@ -269,6 +269,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing Cloud Storage folder to read. */

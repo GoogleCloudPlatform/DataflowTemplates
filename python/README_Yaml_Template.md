@@ -14,10 +14,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required Parameters
 
-* **yaml** (Input YAML file in Cloud Storage.): The input YAML file Dataflow reads from.
 
 ### Optional Parameters
 
+* **yaml_pipeline** (Input YAML pipeline spec.): A yaml description of the pipeline to run.
+* **yaml_pipeline_file** (Input YAML pipeline spec file in Cloud Storage.): A file in Cloud Storage containing a yaml description of the pipeline to run.
 
 
 
@@ -39,7 +40,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
+. Install the plugin with the following command before proceeding:
+
+```shell
+mvn clean install -pl plugins/templates-maven-plugin -am
+```
 
 ### Building Template
 
@@ -65,7 +71,8 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Yaml_Template" \
--f python
+-pl python \
+-am
 ```
 
 
@@ -96,15 +103,17 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Yaml_Template"
 
 ### Required
-export YAML=<yaml>
 
 ### Optional
+export YAML_PIPELINE=<yaml_pipeline>
+export YAML_PIPELINE_FILE=<yaml_pipeline_file>
 
 gcloud dataflow flex-template run "yaml-template-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "yaml=$YAML"
+  --parameters "yaml_pipeline=$YAML_PIPELINE" \
+  --parameters "yaml_pipeline_file=$YAML_PIPELINE_FILE"
 ```
 
 For more information about the command, please check:
@@ -123,9 +132,10 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export YAML=<yaml>
 
 ### Optional
+export YAML_PIPELINE=<yaml_pipeline>
+export YAML_PIPELINE_FILE=<yaml_pipeline_file>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -134,8 +144,9 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="yaml-template-job" \
 -DtemplateName="Yaml_Template" \
--Dparameters="yaml=$YAML" \
--f python
+-Dparameters="yaml_pipeline=$YAML_PIPELINE,yaml_pipeline_file=$YAML_PIPELINE_FILE" \
+-pl python \
+-am
 ```
 
 ## Terraform
@@ -164,7 +175,8 @@ resource "google_dataflow_flex_template_job" "yaml_template" {
   name              = "yaml-template"
   region            = var.region
   parameters        = {
-    yaml = "<yaml>"
+    # yaml_pipeline = "<yaml_pipeline>"
+    # yaml_pipeline_file = "<yaml_pipeline_file>"
   }
 }
 ```
