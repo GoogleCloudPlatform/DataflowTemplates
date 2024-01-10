@@ -1,0 +1,222 @@
+{
+    "name": "Cloud Bigtable Change Streams to BigQuery",
+    "description": "Streaming pipeline. Streams Bigtable data change records and writes them into BigQuery using Dataflow Runner V2.",
+    "mainClass": "com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.BigtableChangeStreamsToBigQuery",
+    "parameters": [
+        {
+            "name": "bigQueryDataset",
+            "label": "BigQuery dataset",
+            "helpText": "The BigQuery dataset for change streams output.",
+            "paramType": "TEXT"
+        },
+        {
+            "name": "writeRowkeyAsBytes",
+            "label": "Write rowkeys as BigQuery BYTES",
+            "helpText": "When set true rowkeys are written to BYTES column, otherwise to STRING column. Defaults to false.",
+            "isOptional": true,
+            "regexes": [
+                "^(true|false)$"
+            ],
+            "paramType": "BOOLEAN",
+            "defaultValue": "false"
+        },
+        {
+            "name": "writeValuesAsBytes",
+            "label": "Write values as BigQuery BYTES",
+            "helpText": "When set true values are written to BYTES column, otherwise to STRING column. Defaults to false.",
+            "isOptional": true,
+            "regexes": [
+                "^(true|false)$"
+            ],
+            "paramType": "BOOLEAN",
+            "defaultValue": "false"
+        },
+        {
+            "name": "writeNumericTimestamps",
+            "label": "Write Bigtable timestamp as BigQuery INT",
+            "helpText": "When set true values are written to INT column, otherwise to TIMESTAMP column. Columns affected: `timestamp`, `timestamp_from`, `timestamp_to`. Defaults to false. When set to true the value is a number of microseconds since midnight of 01-JAN-1970",
+            "isOptional": true,
+            "regexes": [
+                "^(true|false)$"
+            ],
+            "paramType": "BOOLEAN",
+            "defaultValue": "false"
+        },
+        {
+            "name": "bigQueryProjectId",
+            "label": "BigQuery project ID",
+            "helpText": "The BigQuery Project. Default is the project for the Dataflow job.",
+            "isOptional": true,
+            "regexes": [
+                "[a-z0-9\\-\\.\\:]+"
+            ],
+            "paramType": "TEXT",
+            "defaultValue": ""
+        },
+        {
+            "name": "bigQueryChangelogTableName",
+            "label": "BigQuery changelog table name",
+            "helpText": "The BigQuery table name that contains the changelog records. Default: {bigtableTableId}_changelog",
+            "isOptional": true,
+            "paramType": "TEXT",
+            "defaultValue": ""
+        },
+        {
+            "name": "bigQueryChangelogTablePartitionGranularity",
+            "label": "Changelog table will be partitioned at specified granularity",
+            "helpText": "When set, table partitioning will be in effect. Accepted values: `HOUR`, `DAY`, `MONTH`, `YEAR`. Default is no partitioning.",
+            "isOptional": true,
+            "paramType": "TEXT",
+            "defaultValue": ""
+        },
+        {
+            "name": "bigQueryChangelogTablePartitionExpirationMs",
+            "label": "Sets partition expiration time in milliseconds",
+            "helpText": "When set true partitions older than specified number of milliseconds will be deleted. Default is no expiration.",
+            "isOptional": true,
+            "regexes": [
+                "^[0-9]+$"
+            ],
+            "paramType": "NUMBER"
+        },
+        {
+            "name": "bigQueryChangelogTableFieldsToIgnore",
+            "label": "Optional changelog table columns to be disabled",
+            "helpText": "A comma-separated list of the changelog columns which will not be created and populated if specified. Supported values should be from the following list: `is_gc`, `source_instance`, `source_cluster`, `source_table`, `tiebreaker`, `big_query_commit_timestamp`. Defaults to all columns to be populated",
+            "isOptional": true,
+            "paramType": "TEXT"
+        },
+        {
+            "name": "dlqDirectory",
+            "label": "Dead letter queue directory",
+            "helpText": "The file path to store any unprocessed records with the reason they failed to be processed. Default is a directory under the Dataflow job\u0027s temp location. The default value is enough under most conditions.",
+            "isOptional": true,
+            "regexes": [
+                "^gs:\\/\\/[^\\n\\r]+$"
+            ],
+            "paramType": "GCS_WRITE_FOLDER",
+            "defaultValue": ""
+        },
+        {
+            "name": "bigtableChangeStreamMetadataInstanceId",
+            "label": "Cloud Bigtable change streams metadata instance ID",
+            "helpText": "The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty.",
+            "isOptional": true,
+            "paramType": "TEXT",
+            "defaultValue": ""
+        },
+        {
+            "name": "bigtableChangeStreamMetadataTableTableId",
+            "label": "Cloud Bigtable change streams metadata table ID",
+            "helpText": "The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty.",
+            "isOptional": true,
+            "paramType": "TEXT",
+            "defaultValue": ""
+        },
+        {
+            "name": "bigtableChangeStreamAppProfile",
+            "label": "Cloud Bigtable application profile ID",
+            "helpText": "The application profile is used to distinguish workload in Cloud Bigtable",
+            "regexes": [
+                "[a-z][a-z0-9\\-_]+[a-z0-9]"
+            ],
+            "paramType": "TEXT"
+        },
+        {
+            "name": "bigtableChangeStreamCharset",
+            "label": "Bigtable change streams charset name when reading values and column qualifiers",
+            "helpText": "Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8",
+            "isOptional": true,
+            "paramType": "TEXT",
+            "defaultValue": "UTF-8"
+        },
+        {
+            "name": "bigtableChangeStreamStartTimestamp",
+            "label": "The timestamp to read change streams from",
+            "helpText": "The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts.",
+            "isOptional": true,
+            "regexes": [
+                "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\\\.[0-9]+)?)Z$"
+            ],
+            "paramType": "TEXT",
+            "defaultValue": ""
+        },
+        {
+            "name": "bigtableChangeStreamIgnoreColumnFamilies",
+            "label": "Cloud Bigtable change streams column families to ignore",
+            "helpText": "A comma-separated list of column family names changes to which won\u0027t be captured. Defaults to empty.",
+            "isOptional": true,
+            "paramType": "TEXT",
+            "defaultValue": ""
+        },
+        {
+            "name": "bigtableChangeStreamIgnoreColumns",
+            "label": "Cloud Bigtable change streams columns to ignore",
+            "helpText": "A comma-separated list of column names changes to which won\u0027t be captured. Defaults to empty.",
+            "isOptional": true,
+            "paramType": "TEXT",
+            "defaultValue": ""
+        },
+        {
+            "name": "bigtableChangeStreamName",
+            "label": "A unique name of the client pipeline",
+            "helpText": "Allows to resume processing from the point where a previously running pipeline stopped",
+            "isOptional": true,
+            "paramType": "TEXT"
+        },
+        {
+            "name": "bigtableChangeStreamResume",
+            "label": "Resume streaming with the same change stream name",
+            "helpText": "When set to true\u003c a new pipeline will resume processing from the point at which a previously running pipeline with the same bigtableChangeStreamName stopped. If pipeline with the given bigtableChangeStreamName never ran in the past, a new pipeline will fail to start. When set to false a new pipeline will be started. If pipeline with the same bigtableChangeStreamName already ran in the past for the given source, a new pipeline will fail to start. Defaults to false",
+            "isOptional": true,
+            "regexes": [
+                "^(true|false)$"
+            ],
+            "paramType": "BOOLEAN",
+            "defaultValue": "false"
+        },
+        {
+            "name": "bigtableReadInstanceId",
+            "label": "Source Bigtable Instance ID",
+            "helpText": "The ID of the Cloud Bigtable instance that contains the table",
+            "regexes": [
+                "[a-z][a-z0-9\\-]+[a-z0-9]"
+            ],
+            "paramType": "TEXT"
+        },
+        {
+            "name": "bigtableReadTableId",
+            "label": "Source Cloud Bigtable table ID",
+            "helpText": "The Cloud Bigtable table to read from.",
+            "paramType": "TEXT"
+        },
+        {
+            "name": "bigtableReadProjectId",
+            "label": "Source Cloud Bigtable Project ID",
+            "helpText": "Project to read Cloud Bigtable data from. The default for this parameter is the project where the Dataflow pipeline is running.",
+            "isOptional": true,
+            "regexes": [
+                "[a-z0-9\\-\\.\\:]+"
+            ],
+            "paramType": "TEXT",
+            "defaultValue": ""
+        }
+    ],
+    "runtimeParameters": {},
+    "category": {
+        "name": "streaming_data_processing",
+        "displayName": "Process Data Continuously (stream)"
+    },
+    "internalName": "Bigtable_Change_Streams_to_BigQuery",
+    "module": "googlecloud-to-googlecloud",
+    "documentationLink": "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-bigtable-change-streams-to-bigquery",
+    "requirements": [
+        ""
+    ],
+    "additionalDocumentation": [],
+    "googleReleased": true,
+    "preview": false,
+    "udfSupport": false,
+    "flexTemplate": true,
+    "hidden": false
+}
