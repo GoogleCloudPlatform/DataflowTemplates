@@ -25,10 +25,14 @@ public abstract class TerraformModule {
     return new AutoValue_TerraformModule.Builder();
   }
 
+  public abstract String getTemplateName();
+
   public abstract List<TerraformVariable> getParameters();
 
   @AutoValue.Builder
   abstract static class Builder {
+
+    abstract Builder setTemplateName(String value);
 
     abstract Builder setParameters(List<TerraformVariable> value);
 

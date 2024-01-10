@@ -70,7 +70,9 @@ public class TemplateTerraformGenerator {
   }
 
   private static TerraformModule moduleOf(ImageSpec imageSpec) {
-    return TerraformModule.builder().setParameters(variablesOf(imageSpec.getMetadata())).build();
+    return TerraformModule.builder()
+            .setTemplateName(imageSpec.getMetadata().getInternalName())
+            .setParameters(variablesOf(imageSpec.getMetadata())).build();
   }
 
   private static List<TerraformVariable> variablesOf(ImageSpecMetadata metadata) {
