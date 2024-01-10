@@ -166,7 +166,11 @@ public class SpannerRecordConverter {
   public GenericRecord convert(Struct row) {
     synchronized (this.fields) {
       if (!fieldsColumnIndicesInitialized) {
-        this.fields.stream().forEach(fieldInfo -> fieldInfo.setColumnIndex(row));
+        this.fields.stream().forEach(fieldInfo -> {
+          if(!fieldInfo.generated) {
+            fieldInfo.setColumnIndex(row);
+          }
+        });
         fieldsColumnIndicesInitialized = true;
       }
     }
