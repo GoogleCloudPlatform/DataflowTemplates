@@ -171,7 +171,7 @@ func (d *downloader) initTerraform(ctx context.Context) error {
 
 	cli, err := tfexec.NewTerraform(d.workingDir, d.execPath)
 	if err != nil {
-		return fmt.Errorf("error intantiating terraform in workingDir: %s and execPath: %s, err %w", d.workingDir, d.execPath)
+		return fmt.Errorf("error intantiating terraform in workingDir: %s and execPath: %s, err %w", d.workingDir, d.execPath, err)
 	}
 
 	d.cli = cli
