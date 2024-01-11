@@ -40,12 +40,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin)
-. Install the plugin with the following command before proceeding:
-
-```shell
-mvn clean install -pl plugins/templates-maven-plugin -am
-```
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
 
 ### Building Template
 
@@ -71,8 +66,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Yaml_Template" \
--pl python \
--am
+-f python
 ```
 
 
@@ -145,8 +139,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="yaml-template-job" \
 -DtemplateName="Yaml_Template" \
 -Dparameters="yaml_pipeline=$YAML_PIPELINE,yaml_pipeline_file=$YAML_PIPELINE_FILE" \
--pl python \
--am
+-f python
 ```
 
 ## Terraform
