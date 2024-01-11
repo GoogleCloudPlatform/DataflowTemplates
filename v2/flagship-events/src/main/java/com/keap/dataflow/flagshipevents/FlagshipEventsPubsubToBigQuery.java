@@ -68,7 +68,10 @@ public class FlagshipEventsPubsubToBigQuery {
         pipeline
             .apply("Read messages from Pub/Sub", PubsubIO.readStrings().fromTopic(topic))
             .apply("Parse JSON into Maps", MapElements.into(TypeDescriptors.maps(TypeDescriptors.strings(), TypeDescriptors.strings()))
-                    .via(message -> GSON.fromJson(message, new TypeToken<Map<String, String>>() {}.getType())))
+                    .via(message -> {
+                        LOG.debug(message);
+                        return GSON.fromJson(message, new TypeToken<Map<String, String>>() {}.getType());
+                    }))
             .apply("Translate to TableRow and set Schemas", MapElements.into(TypeDescriptor.of(TableContent.class))
                     .via(FlagshipEventsPubsubToBigQuery::buildTableContentFromMap))
             .apply("Write to BigQuery", ParDo.of(new DoFn<TableContent, Void>() {

@@ -33,9 +33,11 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.google.cloud.teleport.v2</groupId>
-            <artifactId>common</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-google-cloud-platform-bom</artifactId>
+            <version>${beam.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -48,53 +50,5 @@
             <version>1.18.30</version>
             <scope>compile</scope>
         </dependency>
-
-<!--        <dependency>-->
-<!--            <groupId>org.slf4j</groupId>-->
-<!--            <artifactId>slf4j-jdk14</artifactId>-->
-<!--            <version>${slf4j.version}</version>-->
-<!--            <scope>runtime</scope>-->
-<!--        </dependency>-->
-
-        <!-- Apache Beam
-          To run on another of the Beam runners, add its module to this pom.xml
-          according to the runner-specific setup instructions on the Beam website:
-            http://beam.apache.org/documentation/#runners
-        -->
-<!--        <dependency>-->
-<!--            <groupId>org.apache.beam</groupId>-->
-<!--            <artifactId>beam-sdks-java-core</artifactId>-->
-<!--            <version>${beam.version}</version>-->
-<!--        </dependency>-->
-
-        <!-- Direct Runner -->
-<!--        <dependency>-->
-<!--            <groupId>org.apache.beam</groupId>-->
-<!--            <artifactId>beam-runners-direct-java</artifactId>-->
-<!--            <version>${beam.version}</version>-->
-<!--            <scope>runtime</scope>-->
-<!--        </dependency>-->
-
-        <!-- Dataflow Runner -->
-<!--        <dependency>-->
-<!--            <groupId>org.apache.beam</groupId>-->
-<!--            <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>-->
-<!--            <version>${beam.version}</version>-->
-<!--            <scope>runtime</scope>-->
-<!--        </dependency>-->
-
-        <!-- Google Cloud I/O - BigQuery, Bigtable, Datastore, Pub/Sub, Spanner -->
-<!--        <dependency>-->
-<!--            <groupId>org.apache.beam</groupId>-->
-<!--            <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>-->
-<!--            <version>${beam.version}</version>-->
-<!--        </dependency>-->
-
-        <!-- Beam SQL extension -->
-<!--        <dependency>-->
-<!--            <groupId>org.apache.beam</groupId>-->
-<!--            <artifactId>beam-sdks-java-extensions-sql</artifactId>-->
-<!--            <version>${beam.version}</version>-->
-<!--        </dependency>-->
     </dependencies>
 </project>

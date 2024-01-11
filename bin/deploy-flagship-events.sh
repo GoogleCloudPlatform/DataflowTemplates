@@ -77,7 +77,7 @@ main() {
 
   gcloud dataflow flex-template run "flagshipevents-`date +%Y%m%d-%H%M%S`" \
     --template-file-gcs-location "gs://is-events-dataflow-${ENVIRONMENT}/templates/flagship-events.json" \
-    --parameters env="${ENV}"
+    --parameters env="${ENVIRONMENT}"
 
 }
 
