@@ -66,6 +66,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerIT extends TemplateTestBase {
 
+  // Test
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerIT.class);
 
   private static final Integer NUM_EVENTS = 10;
