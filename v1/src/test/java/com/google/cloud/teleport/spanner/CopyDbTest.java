@@ -906,8 +906,21 @@ public class CopyDbTest {
             .createSequence("Sequence3")
             .options(ImmutableList.of("sequence_kind=\"bit_reversed_positive\""))
             .endSequence()
+            .createTable("UsersWithSequenceId")
+            .column("id")
+            .int64()
+            .notNull()
+            .defaultExpression("GET_NEXT_SEQUENCE_VALUE(SEQUENCE Sequence3)")
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
             .build();
-
     createAndPopulate(ddl, 0);
     runTest();
   }
@@ -929,6 +942,20 @@ public class CopyDbTest {
             .createSequence("PGSequence3")
             .sequenceKind("bit_reversed_positive")
             .endSequence()
+            .createTable("PGUsersWithSequenceId")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .defaultExpression("nextval('\"PGSequence3\"')")
+            .endColumn()
+            .column("first_name")
+            .pgVarchar()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
             .build();
 
     createAndPopulate(ddl, 0);
