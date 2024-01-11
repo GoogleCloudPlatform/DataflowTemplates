@@ -360,6 +360,37 @@ public class ErrorConverters {
   }
 
   /**
+   * A {@link PTransform} to write {@link FailsafeElement} wrapped errors to a Pub/Sub deadletter
+   * sink.
+   */
+  @AutoValue
+  public abstract static class WritePubsubMessageErrorsToPubSub
+      extends PTransform<PCollection<FailsafeElement<PubsubMessage, String>>, PDone> {
+
+    public static Builder newBuilder() {
+      return new AutoValue_ErrorConverters_WritePubsubMessageErrorsToPubSub.Builder();
+    }
+
+    public abstract ValueProvider<String> errorRecordsTopic();
+
+    @Override
+    public PDone expand(PCollection<FailsafeElement<PubsubMessage, String>> failedRecords) {
+
+      return failedRecords
+          .apply("FailedRecordToPubSubMessage", ParDo.of(new FailedPubsubMessageFn()))
+          .apply("WriteFailedRecordsToPubSub", PubsubIO.writeMessages().to(errorRecordsTopic()));
+    }
+
+    /** Builder for {@link WritePubsubMessageErrorsToPubSub}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setErrorRecordsTopic(ValueProvider<String> errorRecordsTopic);
+
+      public abstract WritePubsubMessageErrorsToPubSub build();
+    }
+  }
+
+  /**
    * A {@link DoFn} to convert {@link FailsafeElement} wrapped errors into a Pub/Sub message that
    * can be published to a Pub/Sub deadletter topic.
    */
@@ -396,6 +427,56 @@ public class ErrorConverters {
       }
 
       final PubsubMessage pubsubMessage = new PubsubMessage(message.getBytes(), attributes);
+
+      ERROR_MESSAGES_COUNTER.inc();
+
+      context.output(pubsubMessage);
+    }
+  }
+
+  /**
+   * A {@link DoFn} to convert {@link FailsafeElement} wrapped errors into a Pub/Sub message that
+   * can be published to a Pub/Sub deadletter topic.
+   */
+  @VisibleForTesting
+  protected static class FailedPubsubMessageFn
+      extends DoFn<FailsafeElement<PubsubMessage, String>, PubsubMessage> {
+
+    @VisibleForTesting protected static final String ERROR_MESSAGE = "errorMessage";
+    @VisibleForTesting protected static final String TIMESTAMP = "timestamp";
+
+    @VisibleForTesting
+    protected static final DateTimeFormatter TIMESTAMP_FORMATTER =
+        DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+
+    /** Counter to track total failed messages. */
+    private static final Counter ERROR_MESSAGES_COUNTER =
+        Metrics.counter(FailedStringToPubsubMessageFn.class, "total-failed-messages");
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      FailsafeElement<PubsubMessage, String> failsafeElement = context.element();
+
+      // Format the timestamp for insertion
+      String timestamp =
+          TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
+
+      PubsubMessage originalMessage = failsafeElement.getOriginalPayload();
+
+      Map<String, String> attributes = new HashMap<>(originalMessage.getAttributeMap());
+      attributes.put(TIMESTAMP, timestamp);
+
+      if (failsafeElement.getErrorMessage() != null) {
+        attributes.put(ERROR_MESSAGE, failsafeElement.getErrorMessage());
+      }
+
+      final PubsubMessage pubsubMessage =
+          new PubsubMessage(
+                  originalMessage.getPayload(),
+                  attributes,
+                  originalMessage.getMessageId(),
+                  originalMessage.getOrderingKey())
+              .withTopic(originalMessage.getTopic());
 
       ERROR_MESSAGES_COUNTER.inc();
 

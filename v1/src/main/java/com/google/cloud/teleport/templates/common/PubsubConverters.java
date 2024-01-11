@@ -16,10 +16,17 @@
 package com.google.cloud.teleport.templates.common;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.values.FailsafeElement;
+import java.nio.charset.StandardCharsets;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
 
 /** Options for Teleport PubsubIO. */
 public class PubsubConverters {
@@ -64,5 +71,36 @@ public class PubsubConverters {
     ValueProvider<String> getOutputDeadletterTopic();
 
     void setOutputDeadletterTopic(ValueProvider<String> deadletterTopic);
+  }
+
+  public static class FailsafeMessageStringToPubsubMessage
+      extends PTransform<
+          PCollection<FailsafeElement<PubsubMessage, String>>, PCollection<PubsubMessage>> {
+
+    @Override
+    public PCollection<PubsubMessage> expand(
+        PCollection<FailsafeElement<PubsubMessage, String>> input) {
+
+      return input.apply(
+          "ConvertToPubsubMessage",
+          ParDo.of(
+              new DoFn<FailsafeElement<PubsubMessage, String>, PubsubMessage>() {
+                @ProcessElement
+                public void processElement(ProcessContext context) {
+                  PubsubMessage original = context.element().getOriginalPayload();
+                  String input = context.element().getPayload();
+
+                  PubsubMessage message =
+                      new PubsubMessage(
+                              input.getBytes(StandardCharsets.UTF_8),
+                              original.getAttributeMap(),
+                              original.getMessageId(),
+                              original.getOrderingKey())
+                          .withTopic(original.getTopic());
+
+                  context.output(message);
+                }
+              }));
+    }
   }
 }

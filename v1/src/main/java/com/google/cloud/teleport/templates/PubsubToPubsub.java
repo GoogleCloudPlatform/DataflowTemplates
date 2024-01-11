@@ -19,17 +19,28 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.templates.PubsubToPubsub.Options;
+import com.google.cloud.teleport.templates.common.ErrorConverters;
+import com.google.cloud.teleport.templates.common.JavascriptTextTransformer;
+import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.templates.common.PubsubConverters;
+import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubWriteDeadletterTopicOptions;
+import com.google.cloud.teleport.values.FailsafeElement;
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.CoderRegistry;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesAndMessageIdCoder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -38,7 +49,11 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +86,19 @@ import org.slf4j.LoggerFactory;
     supportsExactlyOnce = true)
 public class PubsubToPubsub {
 
+  /** String/String Coder for FailsafeElement. */
+  public static final FailsafeElementCoder<PubsubMessage, String> FAILSAFE_ELEMENT_CODER =
+      FailsafeElementCoder.of(
+          PubsubMessageWithAttributesAndMessageIdCoder.of(), StringUtf8Coder.of());
+
+  /** The tag for the main output for the UDF. */
+  private static final TupleTag<FailsafeElement<PubsubMessage, String>> UDF_OUT =
+      new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+
+  /** The tag for the dead-letter output of the udf. */
+  private static final TupleTag<FailsafeElement<PubsubMessage, String>> UDF_DEADLETTER_OUT =
+      new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+
   /**
    * Main entry point for executing the pipeline.
    *
@@ -96,6 +124,11 @@ public class PubsubToPubsub {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
+    // Register coders.
+    CoderRegistry registry = pipeline.getCoderRegistry();
+    registry.registerCoderForType(
+        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
+
     /*
      Steps:
 
@@ -105,18 +138,56 @@ public class PubsubToPubsub {
 
      <p>3) Write each PubSubMessage to output PubSub topic.
     */
-    pipeline
+    PCollection<PubsubMessage> filteredMessages =
+        pipeline
+            .apply(
+                "Read PubSub Events",
+                PubsubIO.readMessagesWithAttributes()
+                    .fromSubscription(options.getInputSubscription()))
+            .apply(
+                "Filter Events If Enabled",
+                ParDo.of(
+                    ExtractAndFilterEventsFn.newBuilder()
+                        .withFilterKey(options.getFilterKey())
+                        .withFilterValue(options.getFilterValue())
+                        .build()));
+
+    PCollectionTuple transformedOutput =
+        filteredMessages
+            .apply(
+                "ConvertToFailsafeElement",
+                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                    .via(
+                        input ->
+                            FailsafeElement.of(
+                                input, new String(input.getPayload(), StandardCharsets.UTF_8))))
+
+            // 3) Apply user provided UDF (if any) on the input strings.
+            .apply(
+                "ApplyUDFTransformation",
+                JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
+                    .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                    .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setReloadIntervalMinutes(
+                        options.getJavascriptTextTransformReloadIntervalMinutes())
+                    .setLoggingEnabled(ValueProvider.StaticValueProvider.of(true))
+                    .setSuccessTag(UDF_OUT)
+                    .setFailureTag(UDF_DEADLETTER_OUT)
+                    .build());
+
+    transformedOutput
+        .get(UDF_OUT)
         .apply(
-            "Read PubSub Events",
-            PubsubIO.readMessagesWithAttributes().fromSubscription(options.getInputSubscription()))
-        .apply(
-            "Filter Events If Enabled",
-            ParDo.of(
-                ExtractAndFilterEventsFn.newBuilder()
-                    .withFilterKey(options.getFilterKey())
-                    .withFilterValue(options.getFilterValue())
-                    .build()))
+            "ConvertToPubsubMessage", new PubsubConverters.FailsafeMessageStringToPubsubMessage())
         .apply("Write PubSub Events", PubsubIO.writeMessages().to(options.getOutputTopic()));
+
+    transformedOutput
+        .get(UDF_DEADLETTER_OUT)
+        .apply(
+            "WriteFailedRecords",
+            ErrorConverters.WritePubsubMessageErrorsToPubSub.newBuilder()
+                .setErrorRecordsTopic(options.getOutputDeadletterTopic())
+                .build());
 
     // Execute the pipeline and return the result.
     return pipeline.run();
@@ -127,7 +198,11 @@ public class PubsubToPubsub {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions {
+  public interface Options
+      extends PipelineOptions,
+          StreamingOptions,
+          JavascriptTextTransformerOptions,
+          PubsubWriteDeadletterTopicOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
