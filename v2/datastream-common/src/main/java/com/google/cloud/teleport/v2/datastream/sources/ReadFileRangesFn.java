@@ -94,7 +94,9 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
         }
       } catch (RuntimeException e) {
         if (exceptionHandler.apply(file, null, e)) {
-          throw e;
+          throw new RuntimeException(
+                  String.format("Encountered an error while reading from file %s:",
+                          resourceId.getFilename()), e);
         }
       }
     } catch (FileNotFoundException e) {
