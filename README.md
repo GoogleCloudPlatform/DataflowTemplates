@@ -220,6 +220,49 @@ Notes:
 - Change `-pl v2/googlecloud-to-googlecloud` and `-DtemplateName` to point to the specific Maven module where your template is located. Even though `-pl` is not required, it allows the command to run considerably faster.
 - In case `-DtemplateName` is not specified, all templates for the module will be staged.
 
+### Generating Template's Terraform module
+
+This repository can generate a [terraform module](https://developer.hashicorp.com/terraform/language/modules)
+that prompts users for template specific parameters and launch a Dataflow Job.
+To generate a template specific terraform module, see the instructions for classic
+and flex templates below.
+
+#### Plugin artifact dependencies
+
+The required plugin artifact dependencies are listed below:
+- [plugins/core-plugin/src/main/resources/terraform-classic-template.tf](plugins/core-plugin/src/main/resources/terraform-classic-template.tf)
+- [plugins/core-plugin/src/main/resources/terraform-classic-template.tf](plugins/core-plugin/src/main/resources/terraform-classic-template.tf)
+
+These are outputs from the [cicd/cmd/run-terraform-schema](cicd/cmd/run-terraform-schema).
+See [cicd/cmd/run-terraform-schema/README.md](cicd/cmd/run-terraform-schema/README.md)
+for further details.
+
+#### For Classic templates:
+
+```shell
+mvn clean prepare-package \
+  -DskipTests \
+  -PtemplatesTerraform \
+  -pl v1 -am
+```
+
+The resulting terraform modules are generated in [v1/terraform](v1/terraform).
+
+#### For Flex templates:
+
+```shell
+mvn clean prepare-package \
+  -DskipTests \
+  -PtemplatesTerraform \
+  -pl v2/googlecloud-togooglecloud -am
+```
+
+The resulting terraform modules are generated in `v2/<source>-to-<sink>/terraform`,
+for example [v2/bigquery-to-bigtable/terraform](v2/bigquery-to-bigtable/terraform).
+
+Notes:
+- Change `-pl v2/googlecloud-to-googlecloud` and `-DtemplateName` to point to the specific Maven module where your template is located.
+
 ### Running a Template
 
 A template can also be executed on Dataflow, directly from the command line. The
