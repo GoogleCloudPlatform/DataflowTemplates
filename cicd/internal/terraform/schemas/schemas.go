@@ -19,8 +19,20 @@ package schemas
 
 import _ "embed"
 
+// Google is the JSON schema of the terraform provider: https://github.com/hashicorp/terraform-provider-google
+// It is the output of
+// go run ./cmd/run-terraform-command download /path/to/download.json
+// and
+// go run ./cmd/run-terraform-command describe google google_dataflow_job /path/to/download.json
+//
 //go:embed google.json
 var Google []byte
 
+// GoogleBeta is the JSON schema of the terraform provider: https://github.com/hashicorp/terraform-provider-google-beta
+// It is the output of
+// go run ./cmd/run-terraform-command download /path/to/download.json
+// and
+// go run ./cmd/run-terraform-command describe google-beta google_dataflow_flex_template_job /path/to/download.json
+//
 //go:embed google-beta.json
 var GoogleBeta []byte

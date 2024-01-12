@@ -44,31 +44,37 @@ var (
 		extraFnName:            func(string) string { return "" },
 	}
 
+	// FreemarkerPreResourceExtra applies Extra template blocks using {{template "freemarker_preresource"}} in a *template.Template.
 	FreemarkerPreResourceExtra Extra = &extraImpl{
 		key:   "freemarker_preresource",
 		value: freemarkerPreResourceExtra,
 	}
 
+	// FreemarkerResourceExtra applies Extra template blocks using {{template "freemarker_resource"}} in a *template.Template.
 	FreemarkerResourceExtra Extra = &extraImpl{
 		key:   "freemarker_resource",
 		value: freemarkerResourceExtra,
 	}
 
+	// GoogleProviderExtra applies Extra template blocks using {{template "provider"}} in a *template.Template.
 	GoogleProviderExtra Extra = &extraImpl{
 		key:   "provider",
 		value: googleProviderExtra,
 	}
 
+	// GoogleProviderBetaExtra applies Extra template blocks using {{template "provider"}} in a *template.Template.
 	GoogleProviderBetaExtra Extra = &extraImpl{
 		key:   "provider",
 		value: googleProviderBetaExtra,
 	}
 
+	// TemplatePathClassic applies Extra template blocks using {{template "template_path"}} in a *template.Template.
 	TemplatePathClassic Extra = &extraImpl{
 		key:   "template_path",
 		value: freemarkerTemplatePathClassic,
 	}
 
+	// TemplatePathFlex applies Extra template blocks using {{template "template_path"}} in a *template.Template.
 	TemplatePathFlex Extra = &extraImpl{
 		key:   "template_path",
 		value: freemarkerTemplatePathFlex,
@@ -96,6 +102,7 @@ var freemarkerTemplatePathClassic string
 //go:embed freemarker_template_path_flex.ftl
 var freemarkerTemplatePathFlex string
 
+// ModuleEncoder instantiates an Encoder for *tfjson.Schema data with optional Extra extras.
 func ModuleEncoder(extra ...Extra) *Encoder[*tfjson.Schema] {
 	lookup := map[string]string{}
 	for _, ex := range extra {
@@ -119,11 +126,13 @@ type Schema interface {
 	*tfjson.ProviderSchema | *tfjson.Schema | *tfjson.SchemaAttribute
 }
 
+// Encoder encodes a map[string]Schema using a *template.Template.
 type Encoder[S Schema] struct {
 	tmplName string
 	tmpls    *template.Template
 }
 
+// Encode a map[string]Schema using a *template.Template.
 func (enc *Encoder[S]) Encode(w io.Writer, data map[string]S) error {
 	if enc.tmpls == nil {
 		enc.tmpls = template.Must(template.New("templates").Funcs(funcs).ParseFS(tmplFS, "*.tmpl"))

@@ -16,16 +16,19 @@
 
 package terraform
 
+// Filter applies to a map[string]Schema to include data matching a Matcher.
 type Filter[S Schema] struct {
 	matcher Matcher[S]
 }
 
+// NewFilter instantiates a Filter from a Matcher.
 func NewFilter[S Schema](matcher Matcher[S]) *Filter[S] {
 	return &Filter[S]{
 		matcher: matcher,
 	}
 }
 
+// Apply the Filter's Matcher on the data. Returns a map[string]S that satisfies the Matcher.
 func (filter *Filter[S]) Apply(data map[string]S) map[string]S {
 	result := map[string]S{}
 	for k, v := range data {

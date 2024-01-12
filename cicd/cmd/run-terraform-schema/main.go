@@ -26,7 +26,7 @@ import (
 var (
 	rootCmd = &cobra.Command{
 		Use:   "run-terraform-schema",
-		Short: "Downloads and describes terraform provider schemas",
+		Short: "Downloads, describes, and manages tasks related to terraform provider schemas",
 	}
 )
 
