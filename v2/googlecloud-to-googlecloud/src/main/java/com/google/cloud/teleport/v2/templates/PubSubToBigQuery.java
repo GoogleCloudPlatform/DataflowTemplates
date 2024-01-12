@@ -27,7 +27,7 @@ import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.PubSubToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
+import com.google.cloud.teleport.v2.transforms.JSONTransformer;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
@@ -363,12 +363,8 @@ public class PubSubToBigQuery {
               // across multiple transforms.
               .apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()))
               .apply(
-                  "InvokeUDF",
-                  FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
-                      .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                      .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                      .setReloadIntervalMinutes(
-                          options.getJavascriptTextTransformReloadIntervalMinutes())
+                      "InvokeJSONTransformer",
+                      JSONTransformer.<PubsubMessage>newBuilder()
                       .setSuccessTag(UDF_OUT)
                       .setFailureTag(UDF_DEADLETTER_OUT)
                       .build());
