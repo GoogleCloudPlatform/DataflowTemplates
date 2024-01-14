@@ -65,6 +65,9 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore(
+    "Flaky test, investigate & re-enable. Keeps failing with 'We can't connect to the data source using the hostname "
+        + "that you provided. Make sure that the hostname is correct.' despite database being up.")
 public class DataStreamToSpannerIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerIT.class);
