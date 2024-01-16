@@ -220,14 +220,15 @@ public class Ddl implements Serializable {
   }
 
   public List<String> statements() {
+    // CREATE SEQUENCE statements have to be before CREATE TABLE statements.
     return ImmutableList.<String>builder()
+        .addAll(createSequenceStatements())
         .addAll(createTableStatements())
         .addAll(createIndexStatements())
         .addAll(addForeignKeyStatements())
         .addAll(createModelStatements())
         .addAll(createViewStatements())
         .addAll(createChangeStreamStatements())
-        .addAll(createSequenceStatements())
         .addAll(setOptionsStatements("%db_name%"))
         .build();
   }

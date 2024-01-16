@@ -484,8 +484,9 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("field3", "2020-12-30T12:12:12.123Z");
     changeEvent.put("field4", "2020-12-30T12:12:12");
     changeEvent.put("field5", "2020-12-30T12:12:12.1");
-    changeEvent.put("field6", "2020-12-30T12:12:12.123");
-    changeEvent.put("field7", JSONObject.NULL);
+    changeEvent.put("field6", "2020-12-30T12:12:12.12345");
+    changeEvent.put("field7", "2023-12-22T15:26:01.769602");
+    changeEvent.put("field8", JSONObject.NULL);
     JsonNode ce = getJsonNode(changeEvent.toString());
 
     assertEquals(
@@ -505,8 +506,11 @@ public final class ChangeEventTypeConvertorTest {
         Timestamp.parseTimestamp("2020-12-30T12:12:12.1Z"));
     assertEquals(
         ChangeEventTypeConvertor.toTimestamp(ce, "field6", /* requiredField= */ true),
-        Timestamp.parseTimestamp("2020-12-30T12:12:12.123Z"));
-    assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "field7", /* requiredField= */ false));
+        Timestamp.parseTimestamp("2020-12-30T12:12:12.12345Z"));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field7", /* requiredField= */ true),
+        Timestamp.parseTimestamp("2023-12-22T15:26:01.769602"));
+    assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "field8", /* requiredField= */ false));
   }
 
   @Test(expected = ChangeEventConvertorException.class)

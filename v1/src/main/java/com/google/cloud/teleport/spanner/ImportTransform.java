@@ -200,10 +200,6 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         createTableOutput
             .get(CreateTables.getPendingChangeStreamsTag())
             .apply("As change streams view", View.asSingleton());
-    final PCollectionView<List<String>> pendingSequences =
-        createTableOutput
-            .get(CreateTables.getPendingSequencesTag())
-            .apply("As sequences view", View.asSingleton());
 
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
@@ -288,10 +284,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
             new ApplyDDLTransform(spannerConfig, pendingForeignKeys, waitForForeignKeys))
         .apply(
             "Create Change Streams",
-            new ApplyDDLTransform(spannerConfig, pendingChangeStreams, waitForChangeStreams))
-        .apply(
-            "Create Sequences",
-            new ApplyDDLTransform(spannerConfig, pendingSequences, waitForSequences));
+            new ApplyDDLTransform(spannerConfig, pendingChangeStreams, waitForChangeStreams));
     return PDone.in(begin.getPipeline());
   }
 
@@ -432,17 +425,11 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       return pendingChangeStreamsTag;
     }
 
-    public static TupleTag<List<String>> getPendingSequencesTag() {
-      return pendingSequencesTag;
-    }
-
     private static final TupleTag<Ddl> ddlObjectTag = new TupleTag<Ddl>() {};
     private static final TupleTag<List<String>> pendingIndexesTag = new TupleTag<List<String>>() {};
     private static final TupleTag<List<String>> pendingForeignKeysTag =
         new TupleTag<List<String>>() {};
     private static final TupleTag<List<String>> pendingChangeStreamsTag =
-        new TupleTag<List<String>>() {};
-    private static final TupleTag<List<String>> pendingSequencesTag =
         new TupleTag<List<String>>() {};
 
     public CreateTables(
@@ -535,6 +522,20 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 newDdl.setOptionsStatements(spannerConfig.getDatabaseId().get()));
                           }
 
+                          // CREATE SEQUENCE statements have to be placed before
+                          // table and view statements, since tables and views
+                          // may use sequences.
+                          if (!missingSequences.isEmpty()) {
+                            Ddl.Builder builder = Ddl.builder(dialect);
+                            for (KV<String, Schema> kv : missingSequences) {
+                              Sequence sequence = converter.toSequence(kv.getKey(), kv.getValue());
+                              builder.addSequence(sequence);
+                              mergedDdl.addSequence(sequence);
+                            }
+                            Ddl newDdl = builder.build();
+                            ddlStatements.addAll(newDdl.createSequenceStatements());
+                          }
+
                           if (!missingTables.isEmpty()
                               || !missingModels.isEmpty()
                               || !missingViews.isEmpty()) {
@@ -595,17 +596,6 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           }
                           c.output(pendingChangeStreamsTag, createChangeStreamStatements);
 
-                          if (!missingSequences.isEmpty()) {
-                            Ddl.Builder builder = Ddl.builder(dialect);
-                            for (KV<String, Schema> kv : missingSequences) {
-                              Sequence sequence = converter.toSequence(kv.getKey(), kv.getValue());
-                              builder.addSequence(sequence);
-                            }
-                            Ddl newDdl = builder.build();
-                            createSequenceStatements.addAll(newDdl.createSequenceStatements());
-                          }
-                          c.output(pendingSequencesTag, createSequenceStatements);
-
                           LOG.info(
                               "Applying DDL statements for tables, models and views: {}",
                               ddlStatements);
@@ -641,8 +631,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                       ddlObjectTag,
                       TupleTagList.of(pendingIndexesTag)
                           .and(pendingForeignKeysTag)
-                          .and(pendingChangeStreamsTag)
-                          .and(pendingSequencesTag)));
+                          .and(pendingChangeStreamsTag)));
     }
   }
 

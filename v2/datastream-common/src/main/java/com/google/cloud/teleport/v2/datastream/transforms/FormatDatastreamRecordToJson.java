@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.apache.avro.Conversions.DecimalConversion;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
@@ -431,16 +432,27 @@ public class FormatDatastreamRecordToJson
             FormatDatastreamRecordToJson.DECIMAL_CONVERSION.fromBytes(
                 (ByteBuffer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
         jsonObject.put(fieldName, bigDecimal.toPlainString());
-      } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros
-          || fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
-        Integer factor = fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis ? 1 : 1000;
-        Duration duration = Duration.ofMillis(((Long) element.get(fieldName)) / factor);
+      } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
+        Long nanoseconds = (Long) element.get(fieldName) * TimeUnit.MICROSECONDS.toNanos(1);
+        Duration duration =
+            Duration.ofSeconds(
+                TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
+                nanoseconds % TimeUnit.SECONDS.toNanos(1));
         jsonObject.put(fieldName, duration.toString());
-      } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMicros
-          || fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
-        Integer factor =
-            fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis ? 1 : 1000;
-        Instant timestamp = Instant.ofEpochMilli(((Long) element.get(fieldName)) / factor);
+      } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
+        Duration duration = Duration.ofMillis(((Long) element.get(fieldName)));
+        jsonObject.put(fieldName, duration.toString());
+      } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMicros) {
+        Long nanoseconds = (Long) element.get(fieldName) * TimeUnit.MICROSECONDS.toNanos(1);
+        Instant timestamp =
+            Instant.ofEpochSecond(
+                TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
+                nanoseconds % TimeUnit.SECONDS.toNanos(1));
+        jsonObject.put(
+            fieldName,
+            timestamp.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+      } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
+        Instant timestamp = Instant.ofEpochMilli(((Long) element.get(fieldName)));
         jsonObject.put(
             fieldName,
             timestamp.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
@@ -485,7 +497,11 @@ public class FormatDatastreamRecordToJson
           break;
         case "timestampTz":
           // Timestamp comes in microseconds
-          Instant timestamp = Instant.ofEpochMilli(((Long) element.get("timestamp")) / 1000);
+          Long nanoseconds = (Long) element.get("timestamp") * TimeUnit.MICROSECONDS.toNanos(1);
+          Instant timestamp =
+              Instant.ofEpochSecond(
+                  TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
+                  nanoseconds % TimeUnit.SECONDS.toNanos(1));
           // Offset comes in milliseconds
           ZoneOffset offset =
               ZoneOffset.ofTotalSeconds(((Number) element.get("offset")).intValue() / 1000);
