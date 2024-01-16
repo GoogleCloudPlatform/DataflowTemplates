@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import net.jcip.annotations.NotThreadSafe;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -66,6 +67,7 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(KafkaToBigQuery.class)
 @RunWith(JUnit4.class)
+@NotThreadSafe
 public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableResourceManager.class);
