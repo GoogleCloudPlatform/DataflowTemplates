@@ -167,12 +167,12 @@ public class SpannerRecordConverter {
     synchronized (this.fields) {
       if (!fieldsColumnIndicesInitialized) {
         this.fields.stream()
-                .forEach(
-                        fieldInfo -> {
-                          if (!fieldInfo.generated) {
-                            fieldInfo.setColumnIndex(row);
-                          }
-                        });
+            .forEach(
+                fieldInfo -> {
+                  if (!fieldInfo.generated) {
+                    fieldInfo.setColumnIndex(row);
+                  }
+                });
         fieldsColumnIndicesInitialized = true;
       }
     }
