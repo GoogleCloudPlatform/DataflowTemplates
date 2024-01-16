@@ -152,7 +152,8 @@ public class ChangeEventTypeConvertor {
     }
     try {
       String timeString = changeEvent.get(key).asText();
-      return Timestamp.of(parseTimestamp(timeString));
+      Instant instant = parseTimestamp(timeString);
+      return Timestamp.ofTimeSecondsAndNanos(instant.getEpochSecond(), instant.getNano());
     } catch (Exception e) {
       throw new ChangeEventConvertorException(
           "Unable to convert field " + key + " to Timestamp", e);
@@ -265,9 +266,8 @@ public class ChangeEventTypeConvertor {
     }
   }
 
-  private static java.util.Date parseTimestamp(String timestamp) {
+  private static Instant parseTimestamp(String timestamp) {
     ZonedDateTime zonedDateTime = convertToZonedDateTime(timestamp);
-    Instant result = Instant.from(zonedDateTime);
-    return java.util.Date.from(result);
+    return Instant.from(zonedDateTime);
   }
 }

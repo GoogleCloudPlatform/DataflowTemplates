@@ -41,8 +41,9 @@ public class FormatDatastreamRecordToJsonTest {
   private static final String EXPECTED_FIRST_RECORD =
       "{\"LOCATION_ID\":1000.0,\"STREET_ADDRESS\":\"1297 Via Cola di Rie\","
           + "\"POSTAL_CODE\":\"00989\",\"CITY\":\"Roma\",\"STATE_PROVINCE\":null,"
-          + "\"COUNTRY_ID\":\"IT\","
-          + "\"timestamp_with_tz\":\"2022-10-13T14:30:00Z\","
+          + "\"COUNTRY_ID\":\"IT\",\"timestamp_with_tz\":\"2022-10-13T14:30:00.000056Z\","
+          + "\"update_timestamp_micros\":1705320821122571751,\"update_timestamp_millis\":1705320821122571751,"
+          + "\"update_time_micros\":1705320821122571751,\"update_time_millis\":1705320821122571751,"
           + "\"_metadata_stream\":\"projects/596161805475/locations/us-central1/streams/dylan-stream-20200810test2\","
           + "\"_metadata_timestamp\":1597101230,\"_metadata_read_timestamp\":1597101230,"
           + "\"_metadata_read_method\":\"oracle_dump\",\"_metadata_source_type\":\"oracle_dump\","
