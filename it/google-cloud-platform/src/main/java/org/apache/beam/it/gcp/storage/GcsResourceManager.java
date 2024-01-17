@@ -136,7 +136,7 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
    * @throws IOException if there is an error reading the file at the specified local path.
    */
   public Artifact copyFileToGcs(Path localPath, String objectName) throws IOException {
-    return createArtifact(objectName, Files.readAllBytes(localPath));
+    return handleCreate(objectName, Files.readAllBytes(localPath));
   }
 
   /**
