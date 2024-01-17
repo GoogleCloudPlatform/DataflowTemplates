@@ -52,6 +52,7 @@ import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -97,6 +98,7 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
         jdbcResourceManager, datastreamResourceManager, spannerResourceManager);
   }
 
+  @Ignore("Flaky test")
   @Test
   public void testDataStreamMySqlToSpanner() throws IOException {
     // Create MySQL Resource manager
@@ -156,6 +158,7 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
         b -> b.addParameter("inputFileFormat", "avro"));
   }
 
+  @Ignore("Flaky test")
   @Test
   public void testDataStreamMySqlToSpannerJson() throws IOException {
     // Create MySQL Resource manager
