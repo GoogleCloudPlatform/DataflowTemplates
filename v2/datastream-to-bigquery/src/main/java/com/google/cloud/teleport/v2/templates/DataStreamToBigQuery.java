@@ -37,6 +37,7 @@ import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.DataStreamToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.StatefulRowCleaner;
+import com.google.cloud.teleport.v2.transforms.StatefulRowCleaner.RowCleanerDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
@@ -357,6 +358,21 @@ public class DataStreamToBigQuery {
     Integer getPartitionRetentionDays();
 
     void setPartitionRetentionDays(Integer value);
+
+    @TemplateParameter.Boolean(
+        order = 20,
+        optional = true,
+        description = "Use at at-least-once semantics in BigQuery Storage Write API",
+        helpText =
+            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
+                + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
+                + " exactly-once semantics will be used.",
+        hiddenUi = true)
+    @Default.Boolean(false)
+    @Override
+    Boolean getUseStorageWriteApiAtLeastOnce();
+
+    void setUseStorageWriteApiAtLeastOnce(Boolean value);
   }
 
   /**
