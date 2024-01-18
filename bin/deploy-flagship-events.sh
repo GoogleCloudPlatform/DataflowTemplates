@@ -56,15 +56,7 @@ main() {
 
   gcloud config set project "is-events-dataflow-${ENVIRONMENT}"
 
-  mvn clean package -pl v2/flagship-events -am
-
-  gcloud dataflow flex-template build "gs://is-events-dataflow-${ENVIRONMENT}/templates/flagship-events.json" \
-    --image-gcr-path "us-west1-docker.pkg.dev/is-events-dataflow-${ENVIRONMENT}/default/dataflow/flagship-events:latest" \
-    --sdk-language "JAVA" \
-    --flex-template-base-image JAVA11 \
-    --metadata-file "v2/flagship-events/metadata.json" \
-    --jar "v2/flagship-events/target/flagship-events-1.0-SNAPSHOT.jar" \
-    --env FLEX_TEMPLATE_JAVA_MAIN_CLASS="com.keap.dataflow.flagshipevents.FlagshipEventsPubsubToBigQuery"
+### Build and directly stage the template
 
   mvn clean package -PtemplatesStage  \
     -DskipTests \
@@ -74,6 +66,18 @@ main() {
     -DtemplateName="flagship-events" \
     -pl v2/flagship-events \
     -am
+
+### Build using Cloud Build and stage the template
+
+#  mvn clean package -pl v2/flagship-events -am
+#
+#  gcloud dataflow flex-template build "gs://is-events-dataflow-${ENVIRONMENT}/templates/flagship-events.json" \
+#    --image-gcr-path "us-west1-docker.pkg.dev/is-events-dataflow-${ENVIRONMENT}/default/dataflow/flagship-events:latest" \
+#    --sdk-language "JAVA" \
+#    --flex-template-base-image JAVA11 \
+#    --metadata-file "v2/flagship-events/metadata.json" \
+#    --jar "v2/flagship-events/target/flagship-events-1.0-SNAPSHOT.jar" \
+#    --env FLEX_TEMPLATE_JAVA_MAIN_CLASS="com.keap.dataflow.flagshipevents.FlagshipEventsPubsubToBigQuery"
 
   gcloud dataflow flex-template run "flagshipevents-`date +%Y%m%d-%H%M%S`" \
     --template-file-gcs-location "gs://is-events-dataflow-${ENVIRONMENT}/templates/flagship-events.json" \

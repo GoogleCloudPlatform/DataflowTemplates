@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.keap.dataflow.flagshipevents.FlagshipEventsPubsubToBigQuery",
+  "classPath": "/template/flagship-events/flagship-events-conscrypt.jar:/template/flagship-events/libs/conscrypt-openjdk-uber.jar:/template/flagship-events/libs/*:/template/flagship-events/classes:/template/flagship-events/classpath/*",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"flagship-events\"}"
+  }
+}

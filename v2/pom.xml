@@ -701,6 +701,8 @@
         <module>spanner-migrations-sdk</module>
         <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
+
+        <module>flagship-events</module>
  </modules>
 
 </project>
