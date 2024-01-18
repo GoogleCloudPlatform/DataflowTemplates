@@ -16,11 +16,13 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.templates.common.JdbcConverters;
 import com.google.cloud.teleport.util.GCSAwareValueProvider;
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
+import com.google.cloud.teleport.util.SecretManagerValueProvider;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -62,9 +64,12 @@ public class JdbcToBigQuery {
 
   private static final Logger LOG = LoggerFactory.getLogger(JdbcToBigQuery.class);
 
-  private static ValueProvider<String> maybeDecrypt(
-      ValueProvider<String> unencryptedValue, ValueProvider<String> kmsKey) {
-    return new KMSEncryptedNestedValueProvider(unencryptedValue, kmsKey);
+  private static ValueProvider<String> maybeSecretOrDecrypt(
+      ValueProvider<String> valueProvider, ValueProvider<String> kmsKey) {
+    if (SecretVersionName.isParsableFrom(valueProvider.get())) {
+      return new SecretManagerValueProvider(valueProvider);
+    }
+    return new KMSEncryptedNestedValueProvider(valueProvider, kmsKey);
   }
 
   /**
@@ -103,9 +108,9 @@ public class JdbcToBigQuery {
     JdbcIO.DataSourceConfiguration dataSourceConfiguration =
         JdbcIO.DataSourceConfiguration.create(
                 options.getDriverClassName(),
-                maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
-            .withUsername(maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
-            .withPassword(maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
+                maybeSecretOrDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
+            .withUsername(maybeSecretOrDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
+            .withPassword(maybeSecretOrDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
             .withDriverJars(options.getDriverJars());
 
     if (options.getConnectionProperties() != null) {
