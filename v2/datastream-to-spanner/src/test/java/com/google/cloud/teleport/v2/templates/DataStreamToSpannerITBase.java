@@ -17,6 +17,9 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.cloud.datastream.v1.DestinationConfig;
+import com.google.cloud.datastream.v1.SourceConfig;
+import com.google.cloud.datastream.v1.Stream;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -31,8 +34,13 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
+import org.apache.beam.it.gcp.datastream.DatastreamResourceManager.DestinationOutputFormat;
+import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.jdbc.CustomMySQLResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 
 /**
  * Base class for DataStreamToSpanner integration tests. It provides helper functions related to
@@ -52,6 +60,13 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   public SpannerResourceManager setUpSpannerResourceManager() {
     return SpannerResourceManager.builder(testName, PROJECT, REGION)
         .maybeUseStaticInstance()
+        .build();
+  }
+
+  public DatastreamResourceManager setUpDataStreamResourceManager() throws IOException {
+    return DatastreamResourceManager.builder(testName, PROJECT, REGION)
+        .setCredentialsProvider(credentialsProvider)
+        .setPrivateConnectivity("datastream-private-connect-us-central1")
         .build();
   }
 
@@ -77,6 +92,60 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   }
 
   /**
+   * Helper function for creating schema in source DB.
+   *
+   * @param schemaMap Map with table name as Key and table's schema as
+   *     JDBCResourceManager.JDBCSchema object
+   * @param jdbcResourceManager
+   */
+  public void createSourceSchema(
+      Map<String, JDBCResourceManager.JDBCSchema> schemaMap,
+      JDBCResourceManager jdbcResourceManager) {
+    if (schemaMap != null) {
+      for (Entry<String, JDBCResourceManager.JDBCSchema> schema : schemaMap.entrySet()) {
+        jdbcResourceManager.createTable(schema.getKey(), schema.getValue());
+      }
+    }
+  }
+
+  /**
+   * Helper function for creating all DataStream resources required by DataStreamToSpanner template.
+   * Source connection profile, Destination connection profile, Create and start Stream.
+   *
+   * @param datastreamResourceManager Initialized PubSubResourceManager instance
+   * @param sourceDatabase Initialized CustomMySQLResourceManager instance
+   */
+  public Stream createDataStreamResources(
+      DatastreamResourceManager datastreamResourceManager,
+      CustomMySQLResourceManager sourceDatabase,
+      DestinationOutputFormat fileFormat) {
+    MySQLSource mySQLSource =
+        MySQLSource.builder(
+                sourceDatabase.getHost(),
+                sourceDatabase.getUsername(),
+                sourceDatabase.getPassword(),
+                sourceDatabase.getPort())
+            .build();
+
+    // Create Datastream JDBC Source Connection profile and config
+    SourceConfig sourceConfig =
+        datastreamResourceManager.buildJDBCSourceConfig("mysql-profile", mySQLSource);
+
+    // Create Datastream GCS Destination Connection profile and config
+    String gcsPrefix = getGcsPath("cdc/").replace("gs://" + artifactBucketName, "");
+    DestinationConfig destinationConfig =
+        datastreamResourceManager.buildGCSDestinationConfig(
+            "gcs-profile", artifactBucketName, gcsPrefix, fileFormat);
+
+    // Create and start Datastream stream
+    Stream stream =
+        datastreamResourceManager.createStream("stream1", sourceConfig, destinationConfig);
+    datastreamResourceManager.startStream(stream);
+
+    return stream;
+  }
+
+  /**
    * Helper function for creating all pubsub resources required by DataStreamToSpanner template.
    * PubSub topic, Subscription and notification setup on a GCS bucket with gcsPrefix filter.
    *
@@ -97,6 +166,44 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     }
     gcsClient.createNotification(topic.toString(), prefix);
     return subscription;
+  }
+
+  /**
+   * Helper function for constructing a ConditionCheck whose check() method applies DML statements
+   * on the JDBC database from the given sql file resource.
+   *
+   * @return A ConditionCheck containing the JDBC mutate operation.
+   */
+  public ConditionCheck applyDML(JDBCResourceManager jdbcResourceManager, String resourceName) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return "Send initial JDBC events.";
+      }
+
+      @Override
+      protected CheckResult check() {
+        String dml = null;
+        try {
+          dml =
+              String.join(
+                  " ",
+                  Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+
+        dml = dml.trim();
+        String[] dmls = dml.split(";");
+        for (String d : dmls) {
+          if (!d.isBlank()) {
+            jdbcResourceManager.runSQLUpdate(d);
+          }
+        }
+
+        return new CheckResult(true, String.format("Sent %d updates to source DB.", dmls.length));
+      }
+    };
   }
 
   /**
