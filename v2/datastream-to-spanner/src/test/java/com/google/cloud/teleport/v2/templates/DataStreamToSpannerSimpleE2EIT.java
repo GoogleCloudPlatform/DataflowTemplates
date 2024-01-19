@@ -159,7 +159,7 @@ public class DataStreamToSpannerSimpleE2EIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void migrationTestWithUpdatesAndDeletes() throws IOException {
+  public void updatesAndDeletes() throws IOException {
     // Construct a ChainedConditionCheck with 4 stages.
     // 1. Send initial wave of events to JDBC
     // 2. Wait on Spanner to merge events to destination
@@ -194,7 +194,7 @@ public class DataStreamToSpannerSimpleE2EIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void migrationTestWithInsertsOnly() {
+  public void insertsOnly() {
     // Construct a ChainedConditionCheck with 4 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
