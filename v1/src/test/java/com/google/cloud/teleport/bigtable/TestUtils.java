@@ -39,6 +39,11 @@ final class TestUtils {
   // cell if no existing cell is found.
   static Row upsertBigtableCell(
       Row row, String family, String qualifier, long timestamp, String value) {
+    return upsertBigtableCell(row, family, qualifier, timestamp, toByteString(value));
+  }
+
+  static Row upsertBigtableCell(
+      Row row, String family, String qualifier, long timestamp, ByteString value) {
     Row.Builder rowBuilder = row.toBuilder();
 
     Family.Builder existingFamilyBuilder = null;
@@ -78,7 +83,7 @@ final class TestUtils {
       existingCellBuilder = existingColumnBuilder.addCellsBuilder().setTimestampMicros(timestamp);
     }
 
-    existingCellBuilder.setValue(toByteString(value));
+    existingCellBuilder.setValue(value);
 
     return rowBuilder.build();
   }
