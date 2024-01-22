@@ -134,7 +134,7 @@ public class BigtableToVectorEmbeddings {
         order = 6,
         description = "ID column",
         helpText =
-            "The fully qualified column name where the ID is stored. In the format cf:col or rowkey.")
+            "The fully qualified column name where the ID is stored. In the format cf:col or row_key.")
     ValueProvider<String> getIdColumn();
 
     @SuppressWarnings("unused")
@@ -144,7 +144,7 @@ public class BigtableToVectorEmbeddings {
         order = 7,
         description = "Embedding column",
         helpText =
-            "The fully qualified column name where the embeddings are stored. In the format cf:col or rowkey.")
+            "The fully qualified column name where the embeddings are stored. In the format cf:col or row_key.")
     ValueProvider<String> getEmbeddingColumn();
 
     @SuppressWarnings("unused")
@@ -155,7 +155,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Crowding tag column",
         helpText =
-            "The fully qualified column name where the crowding tag is stored. In the format cf:col or rowkey.")
+            "The fully qualified column name where the crowding tag is stored. In the format cf:col or row_key.")
     ValueProvider<String> getCrowdingTagColumn();
 
     @SuppressWarnings("unused")
@@ -165,7 +165,8 @@ public class BigtableToVectorEmbeddings {
         order = 9,
         optional = true,
         description = "The byte size of the embeddings array. Can be 4 or 8.",
-        helpText = "The Cloud Storage path where the output JSON files can be stored.")
+        helpText =
+            "The byte size of each entry in the embeddings array. Use 4 for Float, and 8 for Double.")
     @Default.Integer(4)
     ValueProvider<Integer> getEmbeddingByteSize();
 
@@ -465,7 +466,7 @@ public class BigtableToVectorEmbeddings {
     private VectorEmbeddings buildObject(Row row) {
       VectorEmbeddings vectorEmbeddings = new VectorEmbeddings();
 
-      maybeAddToObject(vectorEmbeddings, "rowkey", row.getKey());
+      maybeAddToObject(vectorEmbeddings, "row_key", row.getKey());
       for (Family family : row.getFamiliesList()) {
         String familyName = family.getName();
         for (Column column : family.getColumnsList()) {
