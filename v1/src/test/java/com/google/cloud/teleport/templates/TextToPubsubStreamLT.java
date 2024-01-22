@@ -26,6 +26,7 @@ import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -106,6 +107,17 @@ public class TextToPubsubStreamLT extends TemplateLoadTestBase {
   public void testSteadyState1hrUsingStreamingEngine()
       throws IOException, ParseException, InterruptedException {
     testSteadyState1hr(this::enableStreamingEngine);
+  }
+
+  @Test
+  public void testSteadyState1hrUsingAtLeastOnceMode()
+      throws ParseException, IOException, InterruptedException {
+    ArrayList<String> experiments = new ArrayList<>();
+    experiments.add("streaming_mode_at_least_once");
+    testSteadyState1hr(
+        b ->
+            b.addEnvironment("additionalExperiments", experiments)
+                .addEnvironment("enableStreamingEngine", true));
   }
 
   private void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
