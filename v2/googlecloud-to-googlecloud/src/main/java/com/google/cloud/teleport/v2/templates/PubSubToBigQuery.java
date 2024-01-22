@@ -49,6 +49,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -183,6 +184,21 @@ public class PubSubToBigQuery {
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String value);
+
+    @TemplateParameter.Boolean(
+        order = 5,
+        optional = true,
+        description = "Use at at-least-once semantics in BigQuery Storage Write API",
+        helpText =
+            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
+                + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
+                + " exactly-once semantics will be used.",
+        hiddenUi = true)
+    @Default.Boolean(false)
+    @Override
+    Boolean getUseStorageWriteApiAtLeastOnce();
+
+    void setUseStorageWriteApiAtLeastOnce(Boolean value);
   }
 
   /**

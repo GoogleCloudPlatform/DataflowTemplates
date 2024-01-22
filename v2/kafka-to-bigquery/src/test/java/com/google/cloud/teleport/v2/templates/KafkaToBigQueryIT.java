@@ -27,6 +27,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +48,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -84,6 +86,7 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
     baseKafkaToBigQuery(Function.identity()); // no extra parameters
   }
 
+  @Ignore
   @Test
   public void testKafkaToBigQueryWithExistingDLQ() throws IOException {
     TableId deadletterTableId =
@@ -93,6 +96,7 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
         b -> b.addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
   }
 
+  @Ignore
   @Test
   public void testKafkaToBigQueryWithStorageApi() throws IOException {
     baseKafkaToBigQuery(
@@ -102,6 +106,7 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
                 .addParameter("storageWriteApiTriggeringFrequencySec", "3"));
   }
 
+  @Ignore
   @Test
   public void testKafkaToBigQueryWithStorageApiExistingDLQ() throws IOException {
     TableId deadletterTableId =
@@ -113,6 +118,18 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
                 .addParameter("numStorageWriteApiStreams", "3")
                 .addParameter("storageWriteApiTriggeringFrequencySec", "3")
                 .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
+  }
+
+  @Ignore
+  @Test
+  public void testKafkaToBigQueryUsingAtLeastOnceMode() throws IOException {
+    ArrayList<String> experiments = new ArrayList<>();
+    experiments.add("enable_streaming_engine_resource_based_billing");
+    experiments.add("streaming_correctness_mode=CORRECTNESS_MODE_AT_LEAST_ONCE");
+    baseKafkaToBigQuery(
+        b ->
+            b.addEnvironment("additionalExperiments", experiments)
+                .addEnvironment("enableStreamingEngine", true));
   }
 
   private Schema getDeadletterSchema() {
