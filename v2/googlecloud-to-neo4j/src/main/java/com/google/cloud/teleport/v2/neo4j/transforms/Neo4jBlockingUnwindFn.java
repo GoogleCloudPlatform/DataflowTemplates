@@ -28,7 +28,6 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
-import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
 import org.neo4j.driver.summary.ResultSummary;
 import org.slf4j.Logger;
@@ -39,7 +38,6 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jBlockingUnwindFn.class);
   private final Counter numRecords = Metrics.counter(Neo4jBlockingUnwindFn.class, "norecords");
-  protected TransactionConfig transactionConfig = TransactionConfig.empty();
   private String cypher;
   private SerializableFunction<Row, Map<String, Object>> parametersFunction = null;
   private boolean logCypher;
@@ -144,7 +142,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     }
 
     try {
-      ResultSummary summary = neo4jConnection.writeTransaction(transactionWork, transactionConfig);
+      ResultSummary summary = neo4jConnection.writeTransaction(transactionWork);
       LOG.debug("Batch transaction of {} rows completed: {}", unwindList.size(), summary);
     } catch (Exception e) {
       throw new RuntimeException(
