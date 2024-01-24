@@ -193,6 +193,7 @@ public class ChangeEventConvertor {
                     changeEvent, keyColName, /* requiredField= */ true));
             break;
           case TIMESTAMP:
+          case PG_COMMIT_TIMESTAMP:
           case PG_TIMESTAMPTZ:
             pk.append(
                 ChangeEventTypeConvertor.toTimestamp(
@@ -308,6 +309,7 @@ public class ChangeEventConvertor {
                   ChangeEventTypeConvertor.toByteArray(changeEvent, colName, requiredField));
           break;
         case TIMESTAMP:
+        case PG_COMMIT_TIMESTAMP:
         case PG_TIMESTAMPTZ:
           columnValue =
               Value.timestamp(
