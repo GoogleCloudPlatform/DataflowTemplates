@@ -29,6 +29,7 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import net.jcip.annotations.NotThreadSafe;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.TestProperties;
@@ -47,6 +48,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(GoogleCloudToNeo4j.class)
 @RunWith(JUnit4.class)
+@NotThreadSafe
 public class PropertyMappingsIT extends TemplateTestBase {
   private BigQueryResourceManager bigQueryClient;
   private Neo4jResourceManager neo4jClient;
