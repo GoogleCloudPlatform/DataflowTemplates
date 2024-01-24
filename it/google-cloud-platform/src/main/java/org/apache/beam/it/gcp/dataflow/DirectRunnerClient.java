@@ -102,16 +102,22 @@ public class DirectRunnerClient implements PipelineLauncher {
 
   @Override
   public Job getJob(String project, String region, String jobId) {
-    return managedJobs.get(jobId).getJob();
+    return getJob(project, region, jobId, "JOB_VIEW_UNKNOWN");
   }
 
   @Override
   public Job getJob(String project, String region, String jobId, String jobView) {
+    if (managedJobs.get(jobId) == null) {
+      return null;
+    }
     return managedJobs.get(jobId).getJob();
   }
 
   @Override
   public JobState getJobStatus(String project, String region, String jobId) {
+    if (managedJobs.get(jobId) == null) {
+      return JobState.UNKNOWN;
+    }
     return managedJobs.get(jobId).getJobState();
   }
 
