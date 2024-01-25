@@ -85,7 +85,7 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
         "import json\n"
             + "def uppercaseName(value):\n"
             + "  data = json.loads(value)\n"
-            + "  data.name = data.name.upper()\n"
+            + "  data['name'] = data['name'].upper()\n"
             + "  return json.dumps(data)");
   }
 
@@ -95,11 +95,13 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(value = PubSubToBigQuery.class, template = "PubSub_to_BigQuery_Flex")
   public void testPubsubToBigQuery() throws IOException, InterruptedException {
     basePubsubToBigQuery(Function.identity()); // no extra parameters
   }
 
   @Test
+  @TemplateIntegrationTest(value = PubSubToBigQuery.class, template = "PubSub_to_BigQuery_Flex")
   public void testPubsubToBigQueryWithStorageApi() throws IOException, InterruptedException {
     basePubsubToBigQuery(
         b ->
@@ -109,11 +111,13 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
+  @TemplateIntegrationTest(value = PubSubToBigQuery.class, template = "PubSub_to_BigQuery_Flex")
   public void testPubsubToBigQueryWithReload() throws IOException, InterruptedException {
     basePubsubToBigQueryWithReload(Function.identity());
   }
 
   @Test
+  @TemplateIntegrationTest(value = PubSubToBigQuery.class, template = "PubSub_to_BigQuery_Xlang")
   public void testPubsubToBigQueryWithPythonUdf() throws IOException, InterruptedException {
     pubsubToBigQueryWithPythonUdf(Function.identity()); // no extra parameters
   }
@@ -366,7 +370,6 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
         .hasRecordsUnordered(List.of(Map.of("id", 1, "job", testName, "name", "MESSAGE")));
 
     TableResult dlqRecords = bigQueryResourceManager.readTable(dlqTable);
-    assertThat(dlqRecords.getValues().iterator().next().toString())
-        .contains("Expected json literal but found");
+    assertThat(dlqRecords.getValues().iterator().next().toString()).contains("Expecting value: ");
   }
 }

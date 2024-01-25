@@ -99,7 +99,14 @@ public class TemplateDefinitions {
     ImageSpec imageSpec = new ImageSpec();
 
     SdkInfo sdkInfo = new SdkInfo();
-    sdkInfo.setLanguage(templateAnnotation.type().toString());
+
+    // Xlang templates require the java language.
+    if (templateAnnotation.type() == TemplateType.XLANG) {
+      sdkInfo.setLanguage("JAVA");
+    } else {
+      sdkInfo.setLanguage(templateAnnotation.type().toString());
+    }
+
     imageSpec.setSdkInfo(sdkInfo);
 
     ImageSpecMetadata metadata = new ImageSpecMetadata();
