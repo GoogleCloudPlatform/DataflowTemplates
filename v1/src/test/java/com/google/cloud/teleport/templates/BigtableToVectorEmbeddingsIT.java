@@ -57,7 +57,7 @@ public class BigtableToVectorEmbeddingsIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     bigtableResourceManager =
-        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider)
+        BigtableResourceManager.builder(getShortTestName(), PROJECT, credentialsProvider)
             .maybeUseStaticInstance()
             .build();
   }
@@ -70,7 +70,7 @@ public class BigtableToVectorEmbeddingsIT extends TemplateTestBase {
   @Test
   public void testBigtableToVectorEmbeddings() throws IOException {
     // Arrange
-    String tableId = generateTableId(testName);
+    String tableId = generateTableId(getShortTestName());
     bigtableResourceManager.createTable(tableId, ImmutableList.of("cf", "cf1", "cf2"));
 
     long timestamp = System.currentTimeMillis() * 1000;
@@ -198,7 +198,7 @@ public class BigtableToVectorEmbeddingsIT extends TemplateTestBase {
   @Test
   public void testBigtableToVectorEmbeddings_timestamp() throws IOException {
     // Arrange
-    String tableId = generateTableId(testName);
+    String tableId = generateTableId(getShortTestName());
     bigtableResourceManager.createTable(tableId, ImmutableList.of("cf", "cf1", "cf2"));
 
     long timestamp = System.currentTimeMillis() * 1000;
@@ -297,5 +297,9 @@ public class BigtableToVectorEmbeddingsIT extends TemplateTestBase {
 
   static ByteString toByteString(String string) {
     return ByteString.copyFrom(string.getBytes(Charset.forName("UTF-8")));
+  }
+
+  private String getShortTestName() {
+    return testName.replace("BigtableToVectorEmbeddings", "bt2vec");
   }
 }
