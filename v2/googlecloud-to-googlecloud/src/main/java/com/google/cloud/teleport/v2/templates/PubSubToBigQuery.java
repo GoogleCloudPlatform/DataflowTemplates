@@ -27,15 +27,22 @@ import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.PubSubToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.PythonExternalTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.FailsafeRowPythonExternalUdf;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer;
+import com.google.cloud.teleport.v2.transforms.PythonExternalTextTransformer.FailsafePythonExternalUdf;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
+import org.apache.beam.sdk.extensions.python.PythonExternalTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -57,10 +64,8 @@ import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionList;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.util.PythonCallableSource;
+import org.apache.beam.sdk.values.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -139,8 +144,8 @@ public class PubSubToBigQuery {
    */
   public interface Options
       extends PipelineOptions,
-          JavascriptTextTransformerOptions,
           BigQueryStorageApiStreamingOptions,
+          PythonExternalTextTransformerOptions,
           DataflowPipelineWorkerPoolOptions {
     @TemplateParameter.BigQueryTable(
         order = 1,
@@ -375,21 +380,47 @@ public class PubSubToBigQuery {
     @Override
     public PCollectionTuple expand(PCollection<PubsubMessage> input) {
 
-      PCollectionTuple udfOut =
-          input
-              // Map the incoming messages into FailsafeElements so we can recover from failures
-              // across multiple transforms.
-              .apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()))
-              .apply(
-                  "InvokeUDF",
-                  FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
-                      .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                      .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                      .setReloadIntervalMinutes(
-                          options.getJavascriptTextTransformReloadIntervalMinutes())
-                      .setSuccessTag(UDF_OUT)
-                      .setFailureTag(UDF_DEADLETTER_OUT)
-                      .build());
+      boolean useJavascriptUdf = !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());
+      boolean usePythonUdf = !Strings.isNullOrEmpty(options.getPythonExternalTextTransformGcsPath());
+      if (useJavascriptUdf == usePythonUdf) {
+        throw new IllegalArgumentException(
+            "Either javascript or Python gcs path must be provided, but not both.");
+      }
+      PCollectionTuple udfOut;
+      if (usePythonUdf) {
+        //PCollection<Row> udfRowsOut =
+        udfOut = input
+                // Map the incoming messages into FailsafeElements so we can recover from failures
+                // across multiple transforms.
+                .apply("MapToRecord", FailsafeRowPythonExternalUdf.getMappingFunction("pubsub")).setRowSchema(FailsafeRowPythonExternalUdf.ROW_SCHEMA)
+                .apply(
+                    "InvokeUDF",
+                    FailsafePythonExternalUdf.<PubsubMessage>newBuilder()
+                        .setFileSystemPath(options.getPythonExternalTextTransformGcsPath())
+                        .setFunctionName(options.getPythonExternalTextTransformFunctionName())
+                        .setSuccessTag(UDF_OUT)
+                        .setFailureTag(UDF_DEADLETTER_OUT)
+                        .build())
+            .apply("MapRowsToFailsafeElements", ParDo.of(new TableRowToFailsafeElementFn()).withOutputTags(UDF_OUT, TupleTagList.of(UDF_DEADLETTER_OUT)));
+        //udfOut = udfRowsOut.apply("MapRowsToFailsafeElements", ParDo.of(new TableRowToFailsafeElementFn()).withOutputTags(UDF_OUT, TupleTagList.of(UDF_DEADLETTER_OUT)));
+      }
+      else {
+        udfOut =
+            input
+                // Map the incoming messages into FailsafeElements so we can recover from failures
+                // across multiple transforms.
+                .apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()))
+                .apply(
+                    "InvokeUDF",
+                    FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
+                        .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                        .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                        .setReloadIntervalMinutes(
+                            options.getJavascriptTextTransformReloadIntervalMinutes())
+                        .setSuccessTag(UDF_OUT)
+                        .setFailureTag(UDF_DEADLETTER_OUT)
+                        .build());
+      }
 
       // Convert the records which were successfully processed by the UDF into TableRow objects.
       PCollectionTuple jsonToTableRowOut =
@@ -409,7 +440,6 @@ public class PubSubToBigQuery {
           .and(TRANSFORM_DEADLETTER_OUT, jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT));
     }
   }
-
   /**
    * The {@link PubsubMessageToFailsafeElementFn} wraps an incoming {@link PubsubMessage} with the
    * {@link FailsafeElement} class so errors can be recovered from and the original message can be
@@ -422,6 +452,39 @@ public class PubSubToBigQuery {
       PubsubMessage message = context.element();
       context.output(
           FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8)));
+    }
+  }
+
+  static class TableRowToFailsafeElementFn
+      extends DoFn<Row, FailsafeElement<PubsubMessage, String>> {
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      Row element = context.element();
+      assert element != null;
+      PubsubMessage originalMessage = rowToPubSubMessage(element.getValue("original"));
+      if(!Strings.isNullOrEmpty(element.getValue("error_message")) || !Strings.isNullOrEmpty(element.getValue("stack_trace"))) {
+        context.output(
+            UDF_DEADLETTER_OUT,
+            FailsafeElement.of(originalMessage, new String(originalMessage.getPayload(), StandardCharsets.UTF_8))
+                .setStacktrace(element.getValue("stack_trace"))
+                .setErrorMessage("error_message")
+        );
+      } else {
+        PubsubMessage transformedMessage = rowToPubSubMessage(element.getValue("transformed_messsage"));
+        context.output(
+            UDF_OUT,
+            FailsafeElement.of(originalMessage, new String(transformedMessage.getPayload(), StandardCharsets.UTF_8))
+        );
+      }
+    }
+    public PubsubMessage rowToPubSubMessage(Row row) {
+      assert row != null;
+      String messageId = row.getValue("messageId");
+      String payload = row.getValue("message");
+      Map<String, String> attributeMap = row.getValue("attributes");
+
+      assert payload != null;
+      return new PubsubMessage(payload.getBytes(), attributeMap, messageId);
     }
   }
 }

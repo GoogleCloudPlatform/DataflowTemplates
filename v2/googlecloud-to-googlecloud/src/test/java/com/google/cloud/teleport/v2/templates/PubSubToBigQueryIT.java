@@ -79,6 +79,14 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
             + "  data.name = data.name.toUpperCase();\n"
             + "  return JSON.stringify(data);\n"
             + "}");
+
+    gcsClient.createArtifact(
+        "pyudf.py",
+        "import json\n"
+            + "def uppercaseName(value):\n"
+            + "  data = json.loads(value)\n"
+            + "  data.name = data.name.upper()\n"
+            + "  return json.dumps(data)");
   }
 
   @After
@@ -103,6 +111,11 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
   @Test
   public void testPubsubToBigQueryWithReload() throws IOException, InterruptedException {
     basePubsubToBigQueryWithReload(Function.identity());
+  }
+
+  @Test
+  public void testPubsubToBigQueryWithPythonUdf() throws IOException, InterruptedException {
+    pubsubToBigQueryWithPythonUdf(Function.identity()); // no extra parameters
   }
 
   private void basePubsubToBigQuery(
@@ -284,5 +297,76 @@ public class PubSubToBigQueryIT extends TemplateTestBase {
     // Make sure record can be read and UDF changed name to uppercase
     assertThatBigQueryRecords(reloadedRecords)
         .hasRecordsUnordered(List.of(Map.of("id", 11, "job", testName, "name", "alower: message")));
+  }
+
+  private void pubsubToBigQueryWithPythonUdf(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+      throws IOException, InterruptedException {
+    // Arrange
+    List<Field> bqSchemaFields =
+        Arrays.asList(
+            Field.of("id", StandardSQLTypeName.INT64),
+            Field.of("job", StandardSQLTypeName.STRING),
+            Field.of("name", StandardSQLTypeName.STRING));
+    Schema bqSchema = Schema.of(bqSchemaFields);
+
+    String nameSuffix = RandomStringUtils.randomAlphanumeric(8);
+    TopicName topic = pubsubResourceManager.createTopic("input-" + nameSuffix);
+    bigQueryResourceManager.createDataset(REGION);
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, "sub-1-" + nameSuffix);
+    TableId table = bigQueryResourceManager.createTable(testName, bqSchema);
+    TableId dlqTable =
+        TableId.of(
+            PROJECT,
+            table.getDataset(),
+            table.getTable() + PubSubToBigQuery.DEFAULT_DEADLETTER_TABLE_SUFFIX);
+
+    LaunchConfig.Builder options =
+        paramsAdder.apply(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("inputSubscription", subscription.toString())
+                .addParameter("outputTableSpec", toTableSpecLegacy(table))
+                .addParameter("pythonExternalTextTransformGcsPath", getGcsPath("pyudf.py"))
+                .addParameter("pythonExternalTextTransformFunctionName", "uppercaseName"));
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    for (int i = 1; i <= MESSAGES_COUNT; i++) {
+      Map<String, Object> message = Map.of("id", i, "job", testName, "name", "message");
+      ByteString messageData = ByteString.copyFromUtf8(new JSONObject(message).toString());
+      pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+    }
+
+    for (int i = 1; i <= BAD_MESSAGES_COUNT; i++) {
+      ByteString messageData = ByteString.copyFromUtf8("bad id " + i);
+      pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+    }
+
+    Result result =
+        pipelineOperator()
+            .waitForConditionsAndFinish(
+                createConfig(info),
+                BigQueryRowsCheck.builder(bigQueryResourceManager, table)
+                    .setMinRows(MESSAGES_COUNT)
+                    .build(),
+                BigQueryRowsCheck.builder(bigQueryResourceManager, dlqTable)
+                    .setMinRows(BAD_MESSAGES_COUNT)
+                    .build());
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+
+    TableResult records = bigQueryResourceManager.readTable(table);
+
+    // Make sure record can be read and UDF changed name to uppercase
+    assertThatBigQueryRecords(records)
+        .hasRecordsUnordered(List.of(Map.of("id", 1, "job", testName, "name", "MESSAGE")));
+
+    TableResult dlqRecords = bigQueryResourceManager.readTable(dlqTable);
+    assertThat(dlqRecords.getValues().iterator().next().toString())
+        .contains("Expected json literal but found");
   }
 }

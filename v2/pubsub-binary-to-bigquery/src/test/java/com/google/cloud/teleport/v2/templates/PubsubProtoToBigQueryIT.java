@@ -99,6 +99,15 @@ public final class PubsubProtoToBigQueryIT extends TemplateTestBase {
             + "  data.name = data.name.toUpperCase();\n"
             + "  return JSON.stringify(data);\n"
             + "}");
+
+    gcsClient.createArtifact(
+            "pyudf.py",
+            "import json\n"
+            + "def uppercaseName(value):\n"
+            + "  data = json.loads(value)\n"
+            + "  data.name = data.name.upper()\n"
+            + "  return json.dumps(data)"
+    );
   }
 
   @After
