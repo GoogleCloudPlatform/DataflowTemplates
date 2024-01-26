@@ -134,7 +134,7 @@ public class BigtableToVectorEmbeddings {
         order = 6,
         description = "ID column",
         helpText =
-            "The fully qualified column name where the ID is stored. In the format cf:col or row_key.")
+            "The fully qualified column name where the ID is stored. In the format cf:col or _key.")
     ValueProvider<String> getIdColumn();
 
     @SuppressWarnings("unused")
@@ -144,7 +144,7 @@ public class BigtableToVectorEmbeddings {
         order = 7,
         description = "Embedding column",
         helpText =
-            "The fully qualified column name where the embeddings are stored. In the format cf:col or row_key.")
+            "The fully qualified column name where the embeddings are stored. In the format cf:col or _key.")
     ValueProvider<String> getEmbeddingColumn();
 
     @SuppressWarnings("unused")
@@ -155,7 +155,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Crowding tag column",
         helpText =
-            "The fully qualified column name where the crowding tag is stored. In the format cf:col or row_key.")
+            "The fully qualified column name where the crowding tag is stored. In the format cf:col or _key.")
     ValueProvider<String> getCrowdingTagColumn();
 
     @SuppressWarnings("unused")
@@ -466,7 +466,7 @@ public class BigtableToVectorEmbeddings {
     private VectorEmbeddings buildObject(Row row) {
       VectorEmbeddings vectorEmbeddings = new VectorEmbeddings();
 
-      maybeAddToObject(vectorEmbeddings, "row_key", row.getKey());
+      maybeAddToObject(vectorEmbeddings, "_key", row.getKey());
       for (Family family : row.getFamiliesList()) {
         String familyName = family.getName();
         for (Column column : family.getColumnsList()) {
