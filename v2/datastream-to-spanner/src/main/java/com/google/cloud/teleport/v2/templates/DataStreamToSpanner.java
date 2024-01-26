@@ -463,6 +463,7 @@ public class DataStreamToSpanner {
     // Prepare Spanner config
     SpannerConfig spannerConfig =
         SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));

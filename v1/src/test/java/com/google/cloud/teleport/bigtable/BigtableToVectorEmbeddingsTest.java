@@ -74,7 +74,7 @@ public final class BigtableToVectorEmbeddingsTest {
                 "Transform to JSON",
                 MapElements.via(
                     new BigtableToVectorEmbeddingsFn(
-                        StaticValueProvider.of("row_key"),
+                        StaticValueProvider.of("_key"),
                         StaticValueProvider.of("cf1:embedding"),
                         StaticValueProvider.of(4),
                         StaticValueProvider.of("cf2:crowding"),
@@ -121,7 +121,7 @@ public final class BigtableToVectorEmbeddingsTest {
                 "Transform to JSON",
                 MapElements.via(
                     new BigtableToVectorEmbeddingsFn(
-                        StaticValueProvider.of("row_key"),
+                        StaticValueProvider.of("_key"),
                         StaticValueProvider.of("cf1:embedding"),
                         StaticValueProvider.of(8),
                         StaticValueProvider.of("cf2:crowding"),
@@ -218,7 +218,7 @@ public final class BigtableToVectorEmbeddingsTest {
                 "Transform to JSON",
                 MapElements.via(
                     new BigtableToVectorEmbeddingsFn(
-                        StaticValueProvider.of("row_key"),
+                        StaticValueProvider.of("_key"),
                         StaticValueProvider.of("cf1:embedding"),
                         StaticValueProvider.of(8),
                         StaticValueProvider.of("cf2:crowding"),
@@ -279,7 +279,7 @@ public final class BigtableToVectorEmbeddingsTest {
             "Transform to JSON",
             MapElements.via(
                 new BigtableToVectorEmbeddingsFn(
-                    StaticValueProvider.of("row_key"),
+                    StaticValueProvider.of("_key"),
                     StaticValueProvider.of("cf1:embedding"),
                     StaticValueProvider.of(8),
                     StaticValueProvider.of(""),
@@ -306,7 +306,7 @@ public final class BigtableToVectorEmbeddingsTest {
             "Transform to JSON",
             MapElements.via(
                 new BigtableToVectorEmbeddingsFn(
-                    StaticValueProvider.of("row_key"),
+                    StaticValueProvider.of("_key"),
                     StaticValueProvider.of("cf1:embedding"),
                     StaticValueProvider.of(4),
                     StaticValueProvider.of(""),
@@ -333,7 +333,7 @@ public final class BigtableToVectorEmbeddingsTest {
             "Transform to JSON",
             MapElements.via(
                 new BigtableToVectorEmbeddingsFn(
-                    StaticValueProvider.of("row_key"),
+                    StaticValueProvider.of("_key"),
                     StaticValueProvider.of("cf1:embedding"),
                     StaticValueProvider.of(5),
                     StaticValueProvider.of(""),

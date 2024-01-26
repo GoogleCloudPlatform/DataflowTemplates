@@ -37,11 +37,6 @@
       <artifactId>beam-sdks-java-extensions-sql</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.neo4j</groupId>
-      <artifactId>neo4j-cypher-dsl</artifactId>
-      <version>2022.4.0</version>
-    </dependency>
-    <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-neo4j</artifactId>
     </dependency>

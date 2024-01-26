@@ -303,7 +303,7 @@ public final class Type implements Serializable {
     PG_TIMESTAMPTZ("timestamp with time zone", Dialect.POSTGRESQL),
     PG_DATE("date", Dialect.POSTGRESQL),
     PG_ARRAY("array", Dialect.POSTGRESQL),
-    PG_COMMIT_TIMESTAMP("SPANNER.COMMIT_TIMESTAMP", Dialect.POSTGRESQL);
+    PG_COMMIT_TIMESTAMP("spanner.commit_timestamp", Dialect.POSTGRESQL);
 
     private final String name;
     private final Dialect dialect;
