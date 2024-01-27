@@ -77,7 +77,7 @@ func addProviderCommands() {
 
 func addResourceCommand(parent *cobra.Command, providerUri string, resource string) {
 	cmd := &cobra.Command{
-		Use:   fmt.Sprintf(fmt.Sprintf("%s [FILE]", resource)),
+		Use:   fmt.Sprintf("%s [FILE]", resource),
 		Short: fmt.Sprintf("Describe terraform resource %s schema from FILE. Reads from STDIN if no FILE provided.", resource),
 		Args:  fileArgs,
 		RunE:  runE,
