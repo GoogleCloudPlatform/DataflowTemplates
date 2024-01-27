@@ -9,7 +9,7 @@ usage should be infrequent.
 
 # Why was it made?
 
-The purpose of `run-terraform-schema` is to generate artifacts that are dependencies autogenerate terraform modules.
+The purpose of `run-terraform-schema` is to generate artifacts that are dependencies to autogenerate terraform modules.
 While `run-terraform-schema` is intended for infrequent use, the Dataflow related resources have
 numerous arguments making the generation of said artifact dependencies error-prone when done manually.
 
