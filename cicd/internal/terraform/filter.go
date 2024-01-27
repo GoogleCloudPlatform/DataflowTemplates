@@ -29,10 +29,10 @@ func NewFilter[S Schema](matcher Matcher[S]) *Filter[S] {
 }
 
 // Apply the Filter's Matcher on the data. Returns a map[string]S that satisfies the Matcher.
-func (filter *Filter[S]) Apply(data map[string]S) map[string]S {
+func (f *Filter[S]) Apply(data map[string]S) map[string]S {
 	result := map[string]S{}
 	for k, v := range data {
-		if filter.matcher.Match(k, v) {
+		if f.matcher.Match(k, v) {
 			result[k] = v
 		}
 	}
