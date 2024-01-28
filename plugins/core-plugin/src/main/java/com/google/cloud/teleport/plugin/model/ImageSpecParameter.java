@@ -31,6 +31,7 @@ public class ImageSpecParameter {
   private String label;
   private String helpText;
   private Boolean isOptional;
+  private Boolean isHiddenUi;
   private List<String> regexes;
   private List<ImageSpecParameterEnumOption> enumOptions;
   private ImageSpecParameterType paramType;
@@ -72,11 +73,23 @@ public class ImageSpecParameter {
     return isOptional;
   }
 
+  public Boolean isHiddenUi() {
+    return isHiddenUi;
+  }
+
   public void setOptional(Boolean optional) {
     if (optional == null || !optional) {
       isOptional = null;
     } else {
       isOptional = true;
+    }
+  }
+
+  public void setHiddenUi(Boolean hiddenUi) {
+    if (hiddenUi == null || !hiddenUi) {
+      isHiddenUi = null;
+    } else {
+      isHiddenUi = true;
     }
   }
 
@@ -129,6 +142,7 @@ public class ImageSpecParameter {
             simpleTextParam.helpText(),
             simpleTextParam.example());
         this.setOptional(simpleTextParam.optional());
+        this.setHiddenUi(simpleTextParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
 
         break;
@@ -144,6 +158,7 @@ public class ImageSpecParameter {
             gcsReadFileParam.helpText(),
             gcsReadFileParam.example());
         this.setOptional(gcsReadFileParam.optional());
+        this.setHiddenUi(gcsReadFileParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.GCS_READ_FILE);
         break;
       case "GcsReadFolder":
@@ -158,6 +173,7 @@ public class ImageSpecParameter {
             gcsReadFolderParam.helpText(),
             gcsReadFolderParam.example());
         this.setOptional(gcsReadFolderParam.optional());
+        this.setHiddenUi(gcsReadFolderParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.GCS_READ_FOLDER);
         break;
       case "GcsWriteFile":
@@ -172,6 +188,7 @@ public class ImageSpecParameter {
             gcsWriteFileParam.helpText(),
             gcsWriteFileParam.example());
         this.setOptional(gcsWriteFileParam.optional());
+        this.setHiddenUi(gcsWriteFileParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.GCS_WRITE_FILE);
         break;
       case "GcsWriteFolder":
@@ -186,6 +203,7 @@ public class ImageSpecParameter {
             gcsWriteFolderParam.helpText(),
             gcsWriteFolderParam.example());
         this.setOptional(gcsWriteFolderParam.optional());
+        this.setHiddenUi(gcsWriteFolderParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.GCS_WRITE_FOLDER);
         break;
       case "PubsubSubscription":
@@ -200,6 +218,7 @@ public class ImageSpecParameter {
             pubsubSubscriptionParam.helpText(),
             pubsubSubscriptionParam.example());
         this.setOptional(pubsubSubscriptionParam.optional());
+        this.setHiddenUi(pubsubSubscriptionParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.PUBSUB_SUBSCRIPTION);
         break;
       case "PubsubTopic":
@@ -214,6 +233,7 @@ public class ImageSpecParameter {
             pubsubTopicParam.helpText(),
             pubsubTopicParam.example());
         this.setOptional(pubsubTopicParam.optional());
+        this.setHiddenUi(pubsubTopicParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.PUBSUB_TOPIC);
         break;
       case "Password":
@@ -227,6 +247,7 @@ public class ImageSpecParameter {
             passwordParam.helpText(),
             passwordParam.example());
         this.setOptional(passwordParam.optional());
+        this.setHiddenUi(passwordParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
       case "ProjectId":
@@ -241,6 +262,7 @@ public class ImageSpecParameter {
             projectIdParam.helpText(),
             projectIdParam.example());
         this.setOptional(projectIdParam.optional());
+        this.setHiddenUi(projectIdParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
       case "Boolean":
@@ -254,6 +276,7 @@ public class ImageSpecParameter {
             booleanParam.helpText(),
             booleanParam.example());
         this.setOptional(booleanParam.optional());
+        this.setHiddenUi(booleanParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.BOOLEAN);
         break;
       case "Integer":
@@ -267,6 +290,7 @@ public class ImageSpecParameter {
             integerParam.helpText(),
             integerParam.example());
         this.setOptional(integerParam.optional());
+        this.setHiddenUi(integerParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.NUMBER);
         break;
       case "Long":
@@ -280,6 +304,7 @@ public class ImageSpecParameter {
             longParam.helpText(),
             longParam.example());
         this.setOptional(longParam.optional());
+        this.setHiddenUi(longParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.NUMBER);
         break;
       case "Float":
@@ -293,6 +318,7 @@ public class ImageSpecParameter {
             floatParam.helpText(),
             floatParam.example());
         this.setOptional(floatParam.optional());
+        this.setHiddenUi(floatParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.NUMBER);
         break;
       case "Double":
@@ -306,6 +332,7 @@ public class ImageSpecParameter {
             doubleParam.helpText(),
             doubleParam.example());
         this.setOptional(doubleParam.optional());
+        this.setHiddenUi(doubleParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.NUMBER);
         break;
       case "Enum":
@@ -319,6 +346,7 @@ public class ImageSpecParameter {
             enumParam.helpText(),
             enumParam.example());
         this.setOptional(enumParam.optional());
+        this.setHiddenUi(enumParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.ENUM);
         this.setEnumOptions(buildEnumOptions(enumParam));
         break;
@@ -333,6 +361,7 @@ public class ImageSpecParameter {
             dateTimeParam.helpText(),
             dateTimeParam.example());
         this.setOptional(dateTimeParam.optional());
+        this.setHiddenUi(dateTimeParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
       case "BigQueryTable":
@@ -347,6 +376,7 @@ public class ImageSpecParameter {
             bigQueryTableParam.helpText(),
             bigQueryTableParam.example());
         this.setOptional(bigQueryTableParam.optional());
+        this.setHiddenUi(bigQueryTableParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.BIGQUERY_TABLE);
         break;
       case "KmsEncryptionKey":
@@ -361,6 +391,7 @@ public class ImageSpecParameter {
             kmsEncryptionKeyParam.helpText(),
             kmsEncryptionKeyParam.example());
         this.setOptional(kmsEncryptionKeyParam.optional());
+        this.setHiddenUi(kmsEncryptionKeyParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
       case "Duration":
@@ -374,6 +405,7 @@ public class ImageSpecParameter {
             durationParam.helpText(),
             durationParam.example());
         this.setOptional(durationParam.optional());
+        this.setHiddenUi(durationParam.hiddenUi());
         this.setParamType(ImageSpecParameterType.TEXT);
         break;
       default:

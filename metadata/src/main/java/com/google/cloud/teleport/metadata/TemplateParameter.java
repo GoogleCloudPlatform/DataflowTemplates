@@ -50,6 +50,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing password inputs. */
@@ -76,6 +79,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing a project ID. */
@@ -102,6 +108,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing enum options. */
@@ -131,6 +140,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   public @interface TemplateEnumOption {
@@ -165,6 +177,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing integer numerical inputs (64 bits). */
@@ -191,6 +206,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing floating point numerical inputs (32 bits). */
@@ -217,6 +235,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing floating point numerical inputs (64 bits). */
@@ -243,6 +264,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing logical inputs. */
@@ -298,6 +322,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing Cloud Storage folder to write. */
@@ -324,6 +351,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing Cloud Storage file to read. */
@@ -350,6 +380,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing Cloud Storage file to write. */
@@ -376,6 +409,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing a BigQuery table to read/write. */
@@ -402,6 +438,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing a Pub/Sub topic to read/write. */
@@ -428,6 +467,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing a Pub/Sub subscription to read. */
@@ -454,6 +496,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing a duration of time. */
@@ -480,6 +525,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing an encryption key. */
@@ -506,6 +554,9 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 
   /** Template Parameter containing a date/time input. */
@@ -532,5 +583,8 @@ public final class TemplateParameter {
 
     /** Example of the parameter. */
     String example() default "";
+
+    /** Parameter visibility in the UI. */
+    boolean hiddenUi() default false;
   }
 }
