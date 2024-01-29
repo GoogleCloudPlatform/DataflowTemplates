@@ -34,6 +34,7 @@
     <java.version>11</java.version>
 
     <!-- Plugins -->
+    <templates-maven-plugin.version>1.0-SNAPSHOT</templates-maven-plugin.version>
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
@@ -187,6 +188,11 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>com.google.cloud.teleport</groupId>
+          <artifactId>templates-maven-plugin</artifactId>
+          <version>${templates-maven-plugin.version}</version>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-dependency-plugin</artifactId>

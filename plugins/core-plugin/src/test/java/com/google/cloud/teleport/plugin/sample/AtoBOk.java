@@ -81,5 +81,13 @@ public class AtoBOk {
         example = "whatever")
     @Default.String("")
     String getEmpty();
+
+    @TemplateParameter.Text(
+        order = 7,
+        hiddenUi = true,
+        description = "N/A",
+        helpText = "String that is hidden in the UI")
+    @Default.String("")
+    String getHiddenParam();
   }
 }
