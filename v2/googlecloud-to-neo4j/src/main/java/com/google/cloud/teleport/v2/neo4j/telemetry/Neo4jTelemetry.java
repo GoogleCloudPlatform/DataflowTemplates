@@ -13,17 +13,21 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.neo4j.database;
+package com.google.cloud.teleport.v2.neo4j.telemetry;
 
-import com.google.cloud.teleport.v2.neo4j.model.enums.SourceType;
+import java.util.Map;
 import org.neo4j.driver.Config;
 
-public class RuntimeInformation {
+public class Neo4jTelemetry {
 
   public static String userAgent(String templateVersion) {
     return String.format(
         "neo4j-dataflow/%s (%s) %s %s",
         templateVersion, platform(), neo4jDriverVersion(), jreInformation());
+  }
+
+  public static Map<String, Object> transactionMetadata(Map<String, Object> metadata) {
+    return Map.of("app", "dataflow", "metadata", metadata);
   }
 
   private static String platform() {

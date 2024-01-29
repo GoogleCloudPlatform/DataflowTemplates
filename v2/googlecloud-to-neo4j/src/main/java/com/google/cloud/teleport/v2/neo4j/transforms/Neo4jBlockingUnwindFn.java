@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
+import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,6 +30,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
+import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
 import org.neo4j.driver.summary.ResultSummary;
 import org.slf4j.Logger;
@@ -47,10 +50,12 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
   private long elementsInput;
   private boolean loggingDone;
   private final List<Map<String, Object>> unwindList;
+  private final ReportedSourceType reportedSourceType;
   private final ConnectionParams connectionParams;
   private Neo4jConnection neo4jConnection;
 
   public Neo4jBlockingUnwindFn(
+      ReportedSourceType reportedSourceType,
       ConnectionParams connectionParams,
       String templateVersion,
       String cypher,
@@ -58,6 +63,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
       boolean logCypher,
       String unwindMapName,
       SerializableFunction<Row, Map<String, Object>> parametersFunction) {
+    this.reportedSourceType = reportedSourceType;
 
     this.connectionParams = connectionParams;
     this.templateVersion = templateVersion;
@@ -144,7 +150,14 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     }
 
     try {
-      ResultSummary summary = neo4jConnection.writeTransaction(transactionWork);
+      ResultSummary summary =
+          neo4jConnection.writeTransaction(
+              transactionWork,
+              TransactionConfig.builder()
+                  .withMetadata(
+                      Neo4jTelemetry.transactionMetadata(
+                          Map.of("sink", "neo4j", "source", reportedSourceType.format())))
+                  .build());
       LOG.debug("Batch transaction of {} rows completed: {}", unwindList.size(), summary);
     } catch (Exception e) {
       throw new RuntimeException(

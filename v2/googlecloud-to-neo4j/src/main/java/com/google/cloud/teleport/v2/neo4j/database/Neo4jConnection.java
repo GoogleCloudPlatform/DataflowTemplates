@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.database;
 
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import java.io.Serializable;
@@ -28,6 +29,7 @@ import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
+import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,9 +51,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
             GraphDatabase.driver(
                 settings.getServerUrl(),
                 settings.asAuthToken(),
-                Config.builder()
-                    .withUserAgent(RuntimeInformation.userAgent(templateVersion))
-                    .build()));
+                Config.builder().withUserAgent(Neo4jTelemetry.userAgent(templateVersion)).build()));
   }
 
   @VisibleForTesting
@@ -76,9 +76,9 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   }
 
   /** Write transaction. */
-  public <T> T writeTransaction(TransactionWork<T> transactionWork) {
+  public <T> T writeTransaction(TransactionWork<T> transactionWork, TransactionConfig txConfig) {
     try (Session session = getSession()) {
-      return session.writeTransaction(transactionWork);
+      return session.writeTransaction(transactionWork, txConfig);
     }
   }
 

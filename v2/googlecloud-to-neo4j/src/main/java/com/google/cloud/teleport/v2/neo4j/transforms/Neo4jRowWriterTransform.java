@@ -21,7 +21,9 @@ import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
+import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
 import java.util.Map;
 import java.util.Set;
@@ -81,6 +83,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
 
     Neo4jBlockingUnwindFn neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
+            determineReportedSourceType(),
             neoConnection,
             templateVersion,
             getCypherQuery(),
@@ -93,6 +96,12 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
         .apply("Create KV pairs", CreateKvTransform.of(parallelism))
         .apply(target.getSequence() + ": Neo4j write " + target.getName(), ParDo.of(neo4jUnwindFn))
         .setRowSchema(input.getSchema());
+  }
+
+  private ReportedSourceType determineReportedSourceType() {
+    String sourceName = target.getSource();
+    Source source = jobSpec.getSources().get(sourceName);
+    return ReportedSourceType.reportedSourceTypeOf(source);
   }
 
   private void createIndicesAndConstraints() {
