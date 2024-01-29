@@ -40,11 +40,14 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jRowWriterTransform.class);
   private final JobSpec jobSpec;
   private final ConnectionParams neoConnection;
+  private final String templateVersion;
   private final Target target;
 
-  public Neo4jRowWriterTransform(JobSpec jobSpec, ConnectionParams neoConnection, Target target) {
+  public Neo4jRowWriterTransform(
+      JobSpec jobSpec, ConnectionParams neoConnection, String templateVersion, Target target) {
     this.jobSpec = jobSpec;
     this.neoConnection = neoConnection;
+    this.templateVersion = templateVersion;
     this.target = target;
   }
 
@@ -78,7 +81,13 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
 
     Neo4jBlockingUnwindFn neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
-            neoConnection, getCypherQuery(), batchSize, false, "rows", getRowCastingFunction());
+            neoConnection,
+            templateVersion,
+            getCypherQuery(),
+            batchSize,
+            false,
+            "rows",
+            getRowCastingFunction());
 
     return input
         .apply("Create KV pairs", CreateKvTransform.of(parallelism))
@@ -91,7 +100,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     if (cyphers.isEmpty()) {
       return;
     }
-    try (Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection)) {
+    try (Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection, templateVersion)) {
       LOG.info("Adding {} indices and constraints", cyphers.size());
       for (String cypher : cyphers) {
         LOG.info("Executing cypher: {}", cypher);

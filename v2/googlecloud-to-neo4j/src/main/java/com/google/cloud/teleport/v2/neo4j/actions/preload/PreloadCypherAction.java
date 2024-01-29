@@ -29,12 +29,16 @@ public class PreloadCypherAction implements PreloadAction {
 
   private static final Logger LOG = LoggerFactory.getLogger(PreloadCypherAction.class);
 
-  private Action action;
+  private String cypher;
   private ActionContext context;
 
   @Override
   public void configure(Action action, ActionContext context) {
-    this.action = action;
+    String cypher = action.options.get("cypher");
+    if (StringUtils.isEmpty(cypher)) {
+      throw new RuntimeException("Options 'cypher' not provided for preload cypher action.");
+    }
+    this.cypher = cypher;
     this.context = context;
   }
 
@@ -42,11 +46,8 @@ public class PreloadCypherAction implements PreloadAction {
   public List<String> execute() {
     List<String> msgs = new ArrayList<>();
 
-    try (Neo4jConnection directConnect = new Neo4jConnection(this.context.neo4jConnectionParams)) {
-      String cypher = action.options.get("cypher");
-      if (StringUtils.isEmpty(cypher)) {
-        throw new RuntimeException("Options 'cypher' not provided for preload cypher action.");
-      }
+    try (Neo4jConnection directConnect =
+        new Neo4jConnection(this.context.neo4jConnectionParams, this.context.templateVersion)) {
       LOG.info("Executing cypher: {}", cypher);
       try {
         directConnect.executeCypher(cypher);

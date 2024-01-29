@@ -38,27 +38,29 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jBlockingUnwindFn.class);
   private final Counter numRecords = Metrics.counter(Neo4jBlockingUnwindFn.class, "norecords");
-  private String cypher;
+  private final String templateVersion;
+  private final String cypher;
   private SerializableFunction<Row, Map<String, Object>> parametersFunction = null;
-  private boolean logCypher;
-  private long batchSize;
-  private String unwindMapName;
+  private final boolean logCypher;
+  private final long batchSize;
+  private final String unwindMapName;
   private long elementsInput;
   private boolean loggingDone;
-  private List<Map<String, Object>> unwindList;
-  private ConnectionParams connectionParams;
+  private final List<Map<String, Object>> unwindList;
+  private final ConnectionParams connectionParams;
   private Neo4jConnection neo4jConnection;
-
-  private Neo4jBlockingUnwindFn() {}
 
   public Neo4jBlockingUnwindFn(
       ConnectionParams connectionParams,
+      String templateVersion,
       String cypher,
       long batchSize,
       boolean logCypher,
       String unwindMapName,
       SerializableFunction<Row, Map<String, Object>> parametersFunction) {
+
     this.connectionParams = connectionParams;
+    this.templateVersion = templateVersion;
     this.cypher = cypher;
     this.parametersFunction = parametersFunction;
     this.logCypher = logCypher;
@@ -72,7 +74,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
 
   @Setup
   public void setup() {
-    this.neo4jConnection = new Neo4jConnection(this.connectionParams);
+    this.neo4jConnection = new Neo4jConnection(this.connectionParams, this.templateVersion);
   }
 
   @ProcessElement

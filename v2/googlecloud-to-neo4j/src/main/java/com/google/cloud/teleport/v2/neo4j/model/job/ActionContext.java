@@ -24,4 +24,5 @@ public class ActionContext implements Serializable {
   public Action action;
   public ConnectionParams neo4jConnectionParams;
   public JobSpec jobSpec;
+  public String templateVersion;
 }

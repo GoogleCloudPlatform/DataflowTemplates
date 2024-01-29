@@ -29,24 +29,25 @@ public class CypherActionFn extends DoFn<Integer, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CypherActionFn.class);
 
-  private final ActionContext context;
   private final ConnectionParams connectionParams;
   private final String cypher;
+  private final String templateVersion;
 
   private Neo4jConnection directConnect;
 
   public CypherActionFn(ActionContext context) {
-    this.context = context;
-    this.connectionParams = context.neo4jConnectionParams;
-    this.cypher = this.context.action.options.get("cypher");
+    String cypher = context.action.options.get("cypher");
     if (StringUtils.isEmpty(cypher)) {
       throw new RuntimeException("Options 'cypher' not provided for cypher action transform.");
     }
+    this.connectionParams = context.neo4jConnectionParams;
+    this.cypher = cypher;
+    this.templateVersion = context.templateVersion;
   }
 
   @Setup
   public void setup() {
-    directConnect = new Neo4jConnection(connectionParams);
+    directConnect = new Neo4jConnection(connectionParams, templateVersion);
   }
 
   @ProcessElement

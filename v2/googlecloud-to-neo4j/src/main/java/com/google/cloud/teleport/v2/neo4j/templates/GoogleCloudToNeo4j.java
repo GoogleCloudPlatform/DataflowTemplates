@@ -55,6 +55,8 @@ import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.List;
+import java.util.Map;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.io.FileSystems;
@@ -122,6 +124,7 @@ public class GoogleCloudToNeo4j {
   private final ConnectionParams neo4jConnection;
   private final JobSpec jobSpec;
   private final Pipeline pipeline;
+  private final String templateVersion;
 
   /**
    * Main class for template. Initializes job using run-time on pipelineOptions.
@@ -144,6 +147,8 @@ public class GoogleCloudToNeo4j {
     processValidations(
         "Errors found validating pipeline options: ",
         InputValidator.validateNeo4jPipelineOptions(pipelineOptions));
+
+    this.templateVersion = readTemplateVersion(pipelineOptions);
 
     String neo4jConnectionJson = readConnectionSettings(pipelineOptions);
     ParsingResult parsingResult = InputValidator.validateNeo4jConnection(neo4jConnectionJson);
@@ -180,6 +185,15 @@ public class GoogleCloudToNeo4j {
 
     // Output debug log spec
     LOG.debug("Normalized JobSpec: {}", gson.toJson(this.jobSpec));
+  }
+
+  private static String readTemplateVersion(Neo4jFlexTemplateOptions options) {
+    Map<String, String> labels = options.as(DataflowPipelineOptions.class).getLabels();
+    String defaultVersion = "UNKNOWN";
+    if (labels == null) {
+      return defaultVersion;
+    }
+    return labels.getOrDefault("goog-dataflow-provided-template-version", defaultVersion);
   }
 
   private static String readConnectionSettings(Neo4jFlexTemplateOptions options) {
@@ -233,7 +247,8 @@ public class GoogleCloudToNeo4j {
 
   public void run() {
 
-    try (Neo4jConnection directConnect = new Neo4jConnection(this.neo4jConnection)) {
+    try (Neo4jConnection directConnect =
+        new Neo4jConnection(this.neo4jConnection, this.templateVersion)) {
       boolean resetDb = jobSpec.getConfig().getResetDb();
       if (!resetDb) {
         directConnect.verifyConnectivity();
@@ -316,7 +331,7 @@ public class GoogleCloudToNeo4j {
                 "Query " + nodeStepDescription, providerImpl.queryTargetBeamRows(targetQuerySpec));
 
         Neo4jRowWriterTransform targetWriterTransform =
-            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, nodeTarget);
+            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, templateVersion, nodeTarget);
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -370,7 +385,8 @@ public class GoogleCloudToNeo4j {
           preInsertBeamRows = nullableSourceBeamRows;
         }
         Neo4jRowWriterTransform targetWriterTransform =
-            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, relationshipTarget);
+            new Neo4jRowWriterTransform(
+                jobSpec, neo4jConnection, templateVersion, relationshipTarget);
 
         PCollection<Row> blockingReturn =
             preInsertBeamRows
@@ -412,7 +428,8 @@ public class GoogleCloudToNeo4j {
                 + customQueryTarget.getName()
                 + " (custom query)";
         Neo4jRowWriterTransform targetWriterTransform =
-            new Neo4jRowWriterTransform(jobSpec, neo4jConnection, customQueryTarget);
+            new Neo4jRowWriterTransform(
+                jobSpec, neo4jConnection, templateVersion, customQueryTarget);
 
         PCollection<Row> blockingReturn =
             nullableSourceBeamRows
@@ -486,6 +503,7 @@ public class GoogleCloudToNeo4j {
       context.action = action;
       context.jobSpec = this.jobSpec;
       context.neo4jConnectionParams = this.neo4jConnection;
+      context.templateVersion = this.templateVersion;
 
       // We have chosen a DoFn pattern applied to a single Integer row so that @ProcessElement
       // evaluates only once per invocation.
