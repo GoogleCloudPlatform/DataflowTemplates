@@ -79,17 +79,17 @@ public class ImageSpecParameter {
 
   public void setOptional(Boolean optional) {
     if (optional == null || !optional) {
-      isOptional = null;
+      this.isOptional = null;
     } else {
-      isOptional = true;
+      this.isOptional = true;
     }
   }
 
   public void setHiddenUi(Boolean hiddenUi) {
     if (hiddenUi == null || !hiddenUi) {
-      hiddenUi = null;
+      this.hiddenUi = null;
     } else {
-      hiddenUi = true;
+      this.hiddenUi = true;
     }
   }
 
