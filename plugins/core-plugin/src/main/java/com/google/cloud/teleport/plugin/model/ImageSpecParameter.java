@@ -31,7 +31,7 @@ public class ImageSpecParameter {
   private String label;
   private String helpText;
   private Boolean isOptional;
-  private Boolean isHiddenUi;
+  private Boolean hiddenUi;
   private List<String> regexes;
   private List<ImageSpecParameterEnumOption> enumOptions;
   private ImageSpecParameterType paramType;
@@ -73,8 +73,8 @@ public class ImageSpecParameter {
     return isOptional;
   }
 
-  public Boolean isHiddenUi() {
-    return isHiddenUi;
+  public Boolean hiddenUi() {
+    return hiddenUi;
   }
 
   public void setOptional(Boolean optional) {
@@ -87,9 +87,9 @@ public class ImageSpecParameter {
 
   public void setHiddenUi(Boolean hiddenUi) {
     if (hiddenUi == null || !hiddenUi) {
-      isHiddenUi = null;
+      hiddenUi = null;
     } else {
-      isHiddenUi = true;
+      hiddenUi = true;
     }
   }
 
