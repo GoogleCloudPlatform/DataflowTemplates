@@ -64,15 +64,15 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     this.logCypher = logCypher;
     this.batchSize = batchSize;
     this.unwindMapName = unwindMapName;
-
-    unwindList = new ArrayList<>();
-    elementsInput = 0;
-    loggingDone = false;
   }
 
   @Setup
   public void setup() {
     this.neo4jConnection = new Neo4jConnection(this.connectionParams);
+
+    unwindList = new ArrayList<>();
+    elementsInput = 0;
+    loggingDone = false;
   }
 
   @ProcessElement
