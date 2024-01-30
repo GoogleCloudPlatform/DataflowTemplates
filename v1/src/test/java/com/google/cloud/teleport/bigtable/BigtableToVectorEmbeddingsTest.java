@@ -78,11 +78,11 @@ public final class BigtableToVectorEmbeddingsTest {
                         StaticValueProvider.of("cf1:embedding"),
                         StaticValueProvider.of(4),
                         StaticValueProvider.of("cf2:crowding"),
-                        StaticValueProvider.of("cf:animal;animal"),
-                        StaticValueProvider.of("cf:color;color"),
-                        StaticValueProvider.of("cf:some_int_value;some_int_value"),
-                        StaticValueProvider.of("cf:some_float_value;some_float_value"),
-                        StaticValueProvider.of("cf:some_double_value;some_double_value"))))
+                        StaticValueProvider.of("cf:animal->animal"),
+                        StaticValueProvider.of("cf:color->color"),
+                        StaticValueProvider.of("cf:some_int_value->some_int_value"),
+                        StaticValueProvider.of("cf:some_float_value->some_float_value"),
+                        StaticValueProvider.of("cf:some_double_value->some_double_value"))))
             .setCoder(StringUtf8Coder.of());
 
     // Assert on the jsonRows.
@@ -125,11 +125,11 @@ public final class BigtableToVectorEmbeddingsTest {
                         StaticValueProvider.of("cf1:embedding"),
                         StaticValueProvider.of(8),
                         StaticValueProvider.of("cf2:crowding"),
-                        StaticValueProvider.of("cf:animal;animal"),
-                        StaticValueProvider.of("cf:color;color"),
-                        StaticValueProvider.of("cf:some_int_value;some_int_value"),
-                        StaticValueProvider.of("cf:some_float_value;some_float_value"),
-                        StaticValueProvider.of("cf:some_double_value;some_double_value"))))
+                        StaticValueProvider.of("cf:animal->animal"),
+                        StaticValueProvider.of("cf:color->color"),
+                        StaticValueProvider.of("cf:some_int_value->some_int_value"),
+                        StaticValueProvider.of("cf:some_float_value->some_float_value"),
+                        StaticValueProvider.of("cf:some_double_value->some_double_value"))))
             .setCoder(StringUtf8Coder.of());
 
     // Assert on the jsonRows.
@@ -143,7 +143,7 @@ public final class BigtableToVectorEmbeddingsTest {
     // Restricts
     testBigtableToVectorEmbeddings_restricts(
         "{\"id\":\"1\",\"embedding\":[3.14,2.71],\"crowding_tag\":\"crowd1\",\"restricts\":[{\"namespace\":\"animal\",\"allow\":[\"cat\"]}]}",
-        "cf:animal;animal",
+        "cf:animal->animal",
         "",
         "",
         "",
@@ -151,7 +151,7 @@ public final class BigtableToVectorEmbeddingsTest {
     testBigtableToVectorEmbeddings_restricts(
         "{\"id\":\"1\",\"embedding\":[3.14,2.71],\"crowding_tag\":\"crowd1\",\"restricts\":[{\"namespace\":\"color\",\"deny\":[\"white\"]}]}",
         "",
-        "cf:color;color",
+        "cf:color->color",
         "",
         "",
         "");
@@ -163,7 +163,7 @@ public final class BigtableToVectorEmbeddingsTest {
         "{\"id\":\"1\",\"embedding\":[3.14,2.71],\"crowding_tag\":\"crowd1\",\"numeric_restricts\":[{\"namespace\":\"some_int_value\",\"value_int\":5}]}",
         "",
         "",
-        "cf:some_int_value;some_int_value",
+        "cf:some_int_value->some_int_value",
         "",
         "");
     testBigtableToVectorEmbeddings_restricts(
@@ -171,7 +171,7 @@ public final class BigtableToVectorEmbeddingsTest {
         "",
         "",
         "",
-        "cf:some_float_value;some_float_value",
+        "cf:some_float_value->some_float_value",
         "");
     testBigtableToVectorEmbeddings_restricts(
         "{\"id\":\"1\",\"embedding\":[3.14,2.71],\"crowding_tag\":\"crowd1\",\"numeric_restricts\":[{\"namespace\":\"some_double_value\",\"value_double\":2.71}]}",
@@ -179,7 +179,7 @@ public final class BigtableToVectorEmbeddingsTest {
         "",
         "",
         "",
-        "cf:some_double_value;some_double_value");
+        "cf:some_double_value->some_double_value");
     testBigtableToVectorEmbeddings_restricts(
         "{\"id\":\"1\",\"embedding\":[3.14,2.71],\"crowding_tag\":\"crowd1\"}", "", "", "", "", "");
   }
