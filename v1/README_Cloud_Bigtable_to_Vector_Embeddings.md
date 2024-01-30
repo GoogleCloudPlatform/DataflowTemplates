@@ -30,11 +30,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputDirectory** (Cloud Storage directory for storing JSON files): The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/).
 * **crowdingTagColumn** (Crowding tag column): The fully qualified column name where the crowding tag is stored. In the format cf:col or _key.
 * **embeddingByteSize** (The byte size of the embeddings array. Can be 4 or 8.): The byte size of each entry in the embeddings array. Use 4 for Float, and 8 for Double. Defaults to: 4.
-* **allowRestrictsMappings** (Allow restricts mappings): The comma separated fully qualified column names of the columns that should be used as the `allow` restricts, with their alias. In the format cf:col;alias.
-* **denyRestrictsMappings** (Deny restricts mappings): The comma separated fully qualified column names of the columns that should be used as the `deny` restricts, with their alias. In the format cf:col;alias.
-* **intNumericRestrictsMappings** (Integer numeric restricts mappings): The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col;alias.
-* **floatNumericRestrictsMappings** (Float numeric restricts mappings): The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col;alias.
-* **doubleNumericRestrictsMappings** (Double numeric restricts mappings): The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col;alias.
+* **allowRestrictsMappings** (Allow restricts mappings): The comma separated fully qualified column names of the columns that should be used as the `allow` restricts, with their alias. In the format cf:col->alias.
+* **denyRestrictsMappings** (Deny restricts mappings): The comma separated fully qualified column names of the columns that should be used as the `deny` restricts, with their alias. In the format cf:col->alias.
+* **intNumericRestrictsMappings** (Integer numeric restricts mappings): The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col->alias.
+* **floatNumericRestrictsMappings** (Float numeric restricts mappings): The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
+* **doubleNumericRestrictsMappings** (Double numeric restricts mappings): The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias.
 
 
 
