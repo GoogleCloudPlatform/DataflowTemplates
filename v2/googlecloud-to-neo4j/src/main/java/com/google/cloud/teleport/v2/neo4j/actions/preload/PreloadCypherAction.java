@@ -16,11 +16,16 @@
 package com.google.cloud.teleport.v2.neo4j.actions.preload;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
+import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
-import java.util.ArrayList;
+import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
 import org.apache.commons.lang3.StringUtils;
+import org.neo4j.driver.TransactionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,9 +33,19 @@ import org.slf4j.LoggerFactory;
 public class PreloadCypherAction implements PreloadAction {
 
   private static final Logger LOG = LoggerFactory.getLogger(PreloadCypherAction.class);
+  private final BiFunction<ConnectionParams, String, Neo4jConnection> connectionProvider;
 
   private String cypher;
   private ActionContext context;
+
+  public PreloadCypherAction() {
+    this(Neo4jConnection::new);
+  }
+
+  @VisibleForTesting
+  PreloadCypherAction(BiFunction<ConnectionParams, String, Neo4jConnection> connectionProvider) {
+    this.connectionProvider = connectionProvider;
+  }
 
   @Override
   public void configure(Action action, ActionContext context) {
@@ -44,18 +59,25 @@ public class PreloadCypherAction implements PreloadAction {
 
   @Override
   public List<String> execute() {
-    List<String> msgs = new ArrayList<>();
-
     try (Neo4jConnection directConnect =
-        new Neo4jConnection(this.context.neo4jConnectionParams, this.context.templateVersion)) {
+        connectionProvider.apply(
+            this.context.neo4jConnectionParams, this.context.templateVersion)) {
       LOG.info("Executing cypher: {}", cypher);
       try {
-        directConnect.executeCypher(cypher);
+        TransactionConfig txConfig =
+            TransactionConfig.builder()
+                .withMetadata(
+                    Neo4jTelemetry.transactionMetadata(
+                        Map.of(
+                            "sink", "neo4j",
+                            "step", "cypher-preload-action")))
+                .build();
+        directConnect.executeCypher(cypher, txConfig);
       } catch (Exception e) {
         throw new RuntimeException(
             String.format("Exception running cypher, %s: %s", cypher, e.getMessage()), e);
       }
-      return msgs;
+      return List.of();
     }
   }
 }

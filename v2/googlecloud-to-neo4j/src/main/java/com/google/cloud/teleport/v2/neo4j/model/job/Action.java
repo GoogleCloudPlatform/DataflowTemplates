@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.ActionExecuteAfter;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.Map;
 
 /** Pre and post-load action model object. */
 public class Action implements Serializable {
@@ -29,8 +30,8 @@ public class Action implements Serializable {
   public String name = "";
   public String description = "";
   public ActionType type = ActionType.cypher;
-  public HashMap<String, String> options = new HashMap<>();
-  public HashMap<String, String> headers = new HashMap<>();
+  public Map<String, String> options = new HashMap<>();
+  public Map<String, String> headers = new HashMap<>();
 
   public ActionExecuteAfter executeAfter = ActionExecuteAfter.edges;
   public String executeAfterName = "";
