@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.api.services.datastream.v1.model.SourceConfig;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -361,6 +362,23 @@ public class DataStreamToSpanner {
     Integer getDirectoryWatchDurationInMinutes();
 
     void setDirectoryWatchDurationInMinutes(Integer value);
+
+    @TemplateParameter.Enum(
+        order = 23,
+        enumOptions = {
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
+        },
+        optional = true,
+        description = "Priority for Spanner RPC invocations",
+        helpText =
+            "The request priority for Cloud Spanner calls. The value must be one of:"
+                + " [HIGH,MEDIUM,LOW]. Defaults to HIGH")
+    @Default.Enum("HIGH")
+    RpcPriority getSpannerPriority();
+
+    void setSpannerPriority(RpcPriority value);
   }
 
   private static void validateSourceType(Options options) {
@@ -460,13 +478,15 @@ public class DataStreamToSpanner {
      *   c) Reconsume Dead Letter Queue data from GCS into JSON String FailsafeElements
      *   d) Flatten DataStream and DLQ Streams
      */
+
     // Prepare Spanner config
     SpannerConfig spannerConfig =
         SpannerConfig.create()
             .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
 
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database
