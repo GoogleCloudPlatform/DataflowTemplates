@@ -78,6 +78,7 @@ jobs:
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-private-connectivity="datastream-private-connect-us-central1" \
         --it-release=true
     - name: Run Integration Tests
       run: |
@@ -86,6 +87,7 @@ jobs:
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-private-connectivity="datastream-private-connect-us-central1" \
         --it-release=true
     - name: Upload Tests Report
       uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
