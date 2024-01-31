@@ -147,14 +147,11 @@ public class BigQueryDynamicConverters {
       TableRow bqRow = destination.getValue();
       TableSchema schema = new TableSchema();
       List<TableFieldSchema> fields = new ArrayList<TableFieldSchema>();
-      List<TableCell> cells = bqRow.getF();
-      /** currently all BQ data types are set to String */
-      for (Map<String, Object> object : cells) {
-        String header = object.keySet().iterator().next();
+      for (String field : bqRow.keySet()) {
         /** currently all BQ data types are set to String */
         // Why do we use checkHeaderName here and not elsewhere, TODO if we add this back in
         // fields.add(new TableFieldSchema().setName(checkHeaderName(header)).setType("STRING"));
-        fields.add(new TableFieldSchema().setName(header).setType("STRING"));
+        fields.add(new TableFieldSchema().setName(field).setType("STRING"));
       }
 
       schema.setFields(fields);
