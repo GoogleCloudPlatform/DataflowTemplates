@@ -250,4 +250,15 @@ public interface DataplexJdbcIngestionOptions
   Boolean getUseColumnAlias();
 
   void setUseColumnAlias(Boolean useColumnAlias);
+
+  @TemplateParameter.Integer(
+      order = 16,
+      optional = true,
+      description = "Set the data size going to be fetched and loaded in memory per Jdbc call.",
+      helpText =
+          "It should ONLY be used if the default value throws memory errors. If not set, using Beam's default "
+              + "fetch size.")
+  Integer getFetchSize();
+
+  void setFetchSize(Integer fetchSize);
 }
