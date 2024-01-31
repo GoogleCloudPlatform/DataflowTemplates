@@ -27,23 +27,23 @@ public class ImageSpecMetadata {
   private String name;
   private String description;
   private String mainClass;
-  private List<ImageSpecParameter> parameters = new ArrayList<>();
-  private Map<String, String> runtimeParameters = new HashMap<>();
+  private List<ImageSpecParameter> parameters;
+  private Map<String, String> runtimeParameters;
   private ImageSpecCategory category;
   private String internalName;
   private String module;
   private String documentationLink;
   private List<String> requirements;
   private List<ImageSpecAdditionalDocumentation> additionalDocumentation;
-  private boolean googleReleased;
-  private boolean preview;
-  private boolean udfSupport;
-  private boolean flexTemplate;
+  private Boolean googleReleased;
+  private Boolean preview;
+  private Boolean udfSupport;
+  private Boolean flexTemplate;
   private String sourceFilePath;
-  private boolean hidden;
-  private boolean streaming;
-  private boolean supportsAtLeastOnce;
-  private boolean supportsExactlyOnce;
+  private Boolean hidden;
+  private Boolean streaming;
+  private Boolean supportsAtLeastOnce;
+  private Boolean supportsExactlyOnce;
 
   public String getDescription() {
     return description;
@@ -70,6 +70,9 @@ public class ImageSpecMetadata {
   }
 
   public List<ImageSpecParameter> getParameters() {
+    if (parameters == null) {
+      parameters = new ArrayList<>();
+    }
     return parameters;
   }
 
@@ -78,6 +81,9 @@ public class ImageSpecMetadata {
   }
 
   public Map<String, String> getRuntimeParameters() {
+    if (runtimeParameters == null) {
+      runtimeParameters = new HashMap<>();
+    }
     return runtimeParameters;
   }
 
@@ -135,7 +141,7 @@ public class ImageSpecMetadata {
   }
 
   public boolean isGoogleReleased() {
-    return googleReleased;
+    return googleReleased != null && googleReleased;
   }
 
   public void setGoogleReleased(boolean googleReleased) {
@@ -143,7 +149,7 @@ public class ImageSpecMetadata {
   }
 
   public boolean isPreview() {
-    return preview;
+    return preview != null && preview;
   }
 
   public void setPreview(boolean preview) {
@@ -151,7 +157,7 @@ public class ImageSpecMetadata {
   }
 
   public boolean isUdfSupport() {
-    return udfSupport;
+    return udfSupport != null && udfSupport;
   }
 
   public void setUdfSupport(boolean udfSupport) {
@@ -159,7 +165,7 @@ public class ImageSpecMetadata {
   }
 
   public boolean isFlexTemplate() {
-    return flexTemplate;
+    return flexTemplate != null && flexTemplate;
   }
 
   public void setFlexTemplate(boolean flexTemplate) {
@@ -175,7 +181,7 @@ public class ImageSpecMetadata {
   }
 
   public boolean isHidden() {
-    return hidden;
+    return hidden != null && hidden;
   }
 
   public void setHidden(boolean hidden) {
@@ -183,7 +189,7 @@ public class ImageSpecMetadata {
   }
 
   public boolean isStreaming() {
-    return streaming;
+    return streaming != null && streaming;
   }
 
   public void setStreaming(boolean streaming) {
@@ -191,7 +197,7 @@ public class ImageSpecMetadata {
   }
 
   public boolean isSupportsAtLeastOnce() {
-    return supportsAtLeastOnce;
+    return supportsAtLeastOnce != null && supportsAtLeastOnce;
   }
 
   public void setSupportsAtLeastOnce(boolean supportsAtLeastOnce) {
@@ -199,7 +205,7 @@ public class ImageSpecMetadata {
   }
 
   public boolean isSupportsExactlyOnce() {
-    return supportsExactlyOnce;
+    return supportsExactlyOnce != null && supportsExactlyOnce;
   }
 
   public void setSupportsExactlyOnce(boolean supportsExactlyOnce) {
