@@ -76,7 +76,7 @@ func HostIp() string {
 }
 
 func PrivateConnectivity() string {
-	if dPrivateConnectivity == "" {
+	if dPrivateConnectivity != "" {
 		return "-DprivateConnectivity=" + dPrivateConnectivity
 	}
 	return ""
