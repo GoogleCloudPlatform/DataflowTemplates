@@ -61,6 +61,7 @@ func main() {
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
 		flags.HostIp(),
+		flags.PrivateConnectivity(),
 		flags.ExportProject(),
 		flags.ExportDataset(),
 		flags.ExportTable())
