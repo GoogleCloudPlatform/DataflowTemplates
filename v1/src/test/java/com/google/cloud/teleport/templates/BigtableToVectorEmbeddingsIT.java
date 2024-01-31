@@ -163,12 +163,12 @@ public class BigtableToVectorEmbeddingsIT extends TemplateTestBase {
             .addParameter("embeddingColumn", "cf1:embedding")
             .addParameter("crowdingTagColumn", "cf2:crowding")
             .addParameter("embeddingByteSize", "8")
-            .addParameter("allowRestrictsMappings", "cf:animal;animal")
-            .addParameter("denyRestrictsMappings", "cf:color;color")
-            .addParameter("intNumericRestrictsMappings", "cf:some_int_value;some_int_value")
-            .addParameter("floatNumericRestrictsMappings", "cf:some_float_value;some_float_value")
+            .addParameter("allowRestrictsMappings", "cf:animal->animal")
+            .addParameter("denyRestrictsMappings", "cf:color->color")
+            .addParameter("intNumericRestrictsMappings", "cf:some_int_value->some_int_value")
+            .addParameter("floatNumericRestrictsMappings", "cf:some_float_value->some_float_value")
             .addParameter(
-                "doubleNumericRestrictsMappings", "cf:some_double_value;some_double_value");
+                "doubleNumericRestrictsMappings", "cf:some_double_value->some_double_value");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -269,12 +269,12 @@ public class BigtableToVectorEmbeddingsIT extends TemplateTestBase {
             .addParameter("embeddingColumn", "cf1:embedding")
             .addParameter("crowdingTagColumn", "cf2:crowding")
             .addParameter("embeddingByteSize", "8")
-            .addParameter("allowRestrictsMappings", "cf:animal;animal")
-            .addParameter("denyRestrictsMappings", "cf:color;color")
-            .addParameter("intNumericRestrictsMappings", "cf:some_int_value;some_int_value")
-            .addParameter("floatNumericRestrictsMappings", "cf:some_float_value;some_float_value")
+            .addParameter("allowRestrictsMappings", "cf:animal->animal")
+            .addParameter("denyRestrictsMappings", "cf:color->color")
+            .addParameter("intNumericRestrictsMappings", "cf:some_int_value->some_int_value")
+            .addParameter("floatNumericRestrictsMappings", "cf:some_float_value->some_float_value")
             .addParameter(
-                "doubleNumericRestrictsMappings", "cf:some_double_value;some_double_value");
+                "doubleNumericRestrictsMappings", "cf:some_double_value->some_double_value");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

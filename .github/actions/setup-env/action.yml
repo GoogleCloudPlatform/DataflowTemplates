@@ -40,7 +40,7 @@ inputs:
     type: string
     description: 'The version of Go to install'
     required: false
-    default: '1.17'
+    default: '1.21'
 outputs:
   changed-files:
     description: 'Comma-separated list of files that were changed'
