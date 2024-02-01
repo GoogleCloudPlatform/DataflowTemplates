@@ -95,4 +95,9 @@ public class ShardIdFetcherImpl implements IShardIdFetcher {
     }
     return spTable.getColDefs().get(shardColId).getName();
   }
+
+  @Override
+  public void init(String parameters) {
+    LOG.info("init called with {}", parameters);
+  }
 }

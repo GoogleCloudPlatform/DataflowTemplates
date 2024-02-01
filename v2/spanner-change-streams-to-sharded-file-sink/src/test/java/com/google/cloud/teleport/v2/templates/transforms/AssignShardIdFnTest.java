@@ -106,6 +106,7 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             "",
+            "",
             "");
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber");
@@ -129,6 +130,7 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             "",
+            "",
             "");
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
@@ -147,6 +149,7 @@ public class AssignShardIdFnTest {
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
+            "",
             "",
             "");
 
@@ -174,6 +177,7 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             "",
+            "",
             "");
 
     record.setShard("shard1");
@@ -200,6 +204,7 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             "",
+            "",
             "");
 
     record.setShard("test");
@@ -223,7 +228,8 @@ public class AssignShardIdFnTest {
             "test",
             "skip",
             customJarPath,
-            shardingCustomClassName);
+            shardingCustomClassName,
+            "");
     assignShardIdFn.getShardIdFetcherImpl(customJarPath, shardingCustomClassName);
   }
 
