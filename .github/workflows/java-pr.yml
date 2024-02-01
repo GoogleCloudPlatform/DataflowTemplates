@@ -114,8 +114,7 @@ jobs:
           --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
-          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-private-connect-us-central1"
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
       - name: Upload Smoke Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
@@ -143,8 +142,7 @@ jobs:
           --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
-          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-private-connect-us-central1"
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
       - name: Upload Integration Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
@@ -173,7 +171,6 @@ jobs:
         --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env

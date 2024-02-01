@@ -24,13 +24,12 @@ import (
 
 // Avoid making these vars public.
 var (
-	dRegion              string
-	dProject             string
-	dArtifactBucket      string
-	dStageBucket         string
-	dHostIp              string
-	dPrivateConnectivity string
-	dReleaseMode         bool
+	dRegion         string
+	dProject        string
+	dArtifactBucket string
+	dStageBucket    string
+	dHostIp         string
+	dReleaseMode    bool
 )
 
 // Registers all common flags. Must be called before flag.Parse().
@@ -40,7 +39,6 @@ func RegisterItFlags() {
 	flag.StringVar(&dArtifactBucket, "it-artifact-bucket", "", "A GCP bucket to store test artifacts")
 	flag.StringVar(&dStageBucket, "it-stage-bucket", "", "(optional) A GCP bucket to stage templates")
 	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on")
-	flag.StringVar(&dPrivateConnectivity, "it-private-connectivity", "", "(optional) A GCP private connectivity endpoint")
 	flag.BoolVar(&dReleaseMode, "it-release", false, "(optional) Set if tests are being executed for a release")
 }
 
@@ -73,13 +71,6 @@ func HostIp() string {
 		}
 	}
 	return "-DhostIp=" + dHostIp
-}
-
-func PrivateConnectivity() string {
-	if dPrivateConnectivity == "" {
-		return "-DprivateConnectivity=" + dPrivateConnectivity
-	}
-	return ""
 }
 
 func FailureMode() string {

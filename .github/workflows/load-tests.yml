@@ -31,7 +31,6 @@ jobs:
         -Dproject=apache-beam-testing \
         -DartifactBucket=gs://apache-beam-testing-pranavbhandari \
         -DhostIp=${HOST_IP} \
-        -DprivateConnectivity="datastream-private-connect-us-central1" \
         -DexportProject=cloud-teleport-testing \
         -DexportDataset=performance_tests \
         -DexportTable=template_performance_metrics -e -fae
