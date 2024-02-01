@@ -305,6 +305,17 @@ public class SpannerChangeStreamsToShardedFileSink {
     String getShardingCustomClassName();
 
     void setShardingCustomClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 20,
+        optional = true,
+        description = "Custom sharding logic parameters",
+        helpText =
+            "String containing any custom parameters to be passed to the custom sharding class.")
+    @Default.String("")
+    String getShardingCustomParameters();
+
+    void setShardingCustomParameters(String value);
   }
 
   /**
@@ -415,7 +426,8 @@ public class SpannerChangeStreamsToShardedFileSink {
                     shards.get(0).getLogicalShardId(),
                     options.getSkipDirectoryName(),
                     options.getShardingCustomJarPath(),
-                    options.getShardingCustomClassName())))
+                    options.getShardingCustomClassName(),
+                    options.getShardingCustomParameters())))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(

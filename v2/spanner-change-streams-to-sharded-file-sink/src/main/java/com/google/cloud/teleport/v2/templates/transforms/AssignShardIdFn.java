@@ -96,6 +96,8 @@ public class AssignShardIdFn
 
   private final String shardingCustomClassName;
 
+  private final String shardingCustomParameters;
+
   private IShardIdFetcher shardIdFetcher;
 
   public AssignShardIdFn(
@@ -106,7 +108,8 @@ public class AssignShardIdFn
       String shardName,
       String skipDirName,
       String customJarPath,
-      String shardingCustomClassName) {
+      String shardingCustomClassName,
+      String shardingCustomParameters) {
     this.spannerConfig = spannerConfig;
     this.schema = schema;
     this.ddl = ddl;
@@ -115,6 +118,7 @@ public class AssignShardIdFn
     this.skipDirName = skipDirName;
     this.customJarPath = customJarPath;
     this.shardingCustomClassName = shardingCustomClassName;
+    this.shardingCustomParameters = shardingCustomParameters;
   }
 
   // setSpannerAccessor is added to be used by unit tests
@@ -261,6 +265,8 @@ public class AssignShardIdFn
                 + ": Took "
                 + (new Duration(startTime, endTime)).toString()
                 + " to load");
+        LOG.info("Invoking init of the custom class with input as {}", shardingCustomParameters);
+        shardFetcher.init(shardingCustomParameters);
         return shardFetcher;
       } catch (Exception e) {
         throw new RuntimeException("Error loading custom class : " + e.getMessage());
