@@ -592,9 +592,6 @@
                   com.google.api.grpc:proto-google-cloud-pubsub-v1
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
-                  org.apache.beam:beam-vendor-grpc-1_48_1
-                </ignoredUsedUndeclaredDependency>
-                <ignoredUsedUndeclaredDependency>
                   com.google.guava:guava
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
@@ -681,21 +678,12 @@
                 <ignoredUsedUndeclaredDependency>
                   org.apache.beam:beam-model-pipeline
                 </ignoredUsedUndeclaredDependency>
-                <ignoredUsedUndeclaredDependency>
-                  org.apache.beam:beam-vendor-guava-26_0-jre
-                </ignoredUsedUndeclaredDependency>
-                <ignoredUsedUndeclaredDependency>
-                  org.apache.beam:beam-vendor-grpc-1_36_0
-                </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>io.grpc:grpc-api</ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   org.apache.derby:derbytools
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   org.hamcrest:hamcrest
-                </ignoredUsedUndeclaredDependency>
-                <ignoredUsedUndeclaredDependency>
-                  org.apache.beam:beam-vendor-grpc-1_43_2
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   com.google.api.grpc:proto-google-cloud-secretmanager-v1
