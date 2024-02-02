@@ -42,8 +42,8 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.kms.KMSResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
-import org.apache.beam.it.splunk.SplunkResourceManager;
-import org.apache.beam.it.splunk.conditions.SplunkEventsCheck;
+import org.apache.beam.it.splunk.CustomSplunkResourceManager;
+import org.apache.beam.it.splunk.conditions.CustomSplunkEventsCheck;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.json.JSONObject;
@@ -54,17 +54,21 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for {@link PubSubToSplunk} classic template. */
+/**
+ * Integration test for {@link PubSubToSplunk} classic template.
+ *
+ * <p>TODO - Change CustomSplunkResourceManager back when Beam 2.55 is released
+ */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(PubSubToSplunk.class)
 @RunWith(JUnit4.class)
 public class PubSubToSplunkIT extends TemplateTestBase {
 
-  private static final int MESSAGES_COUNT = 100;
+  private static final int MESSAGES_COUNT = 200;
   private static final int BAD_MESSAGES_COUNT = 50;
 
   private PubsubResourceManager pubsubResourceManager;
-  private SplunkResourceManager splunkResourceManager;
+  private CustomSplunkResourceManager splunkResourceManager;
   private KMSResourceManager kmsResourceManager;
 
   private static final String KEYRING_ID = "PubSubToSplunkIT";
@@ -79,7 +83,7 @@ public class PubSubToSplunkIT extends TemplateTestBase {
   public void setUp() throws IOException {
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
-    splunkResourceManager = SplunkResourceManager.builder(testName).build();
+    splunkResourceManager = CustomSplunkResourceManager.builder(testName).build();
     kmsResourceManager = KMSResourceManager.builder(PROJECT, credentialsProvider).build();
 
     gcsClient.createArtifact(
@@ -153,12 +157,13 @@ public class PubSubToSplunkIT extends TemplateTestBase {
             .setMinMessages(allDlq ? MESSAGES_COUNT + BAD_MESSAGES_COUNT : BAD_MESSAGES_COUNT)
             .build();
 
-    String query = "search source=" + source + " sourcetype=" + sourceType + " host=" + host;
+    String query =
+        "search source=\"" + source + "\" sourcetype=\"" + sourceType + "\" host=\"" + host + "\"";
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForConditionsAndFinish(
                 createConfig(info),
-                SplunkEventsCheck.builder(splunkResourceManager)
+                CustomSplunkEventsCheck.builder(splunkResourceManager)
                     .setQuery(query)
                     .setMinEvents(allDlq ? 0 : MESSAGES_COUNT)
                     .build(),
