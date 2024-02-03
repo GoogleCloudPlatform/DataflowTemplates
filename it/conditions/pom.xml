@@ -29,10 +29,6 @@
     </properties>
     <dependencies>
         <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-it-conditions</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.google.auto.value</groupId>
             <artifactId>auto-value</artifactId>
             <version>${autovalue.version}</version>

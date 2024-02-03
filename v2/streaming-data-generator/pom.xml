@@ -88,8 +88,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-it-jdbc</artifactId>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-jdbc</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

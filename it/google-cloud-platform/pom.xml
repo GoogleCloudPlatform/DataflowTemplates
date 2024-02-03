@@ -35,12 +35,14 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-it-conditions</artifactId>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-conditions</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-it-truthmatchers</artifactId>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>truthmatchers</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <!-- File Formats -->
         <dependency>

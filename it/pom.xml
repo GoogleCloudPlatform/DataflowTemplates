@@ -197,7 +197,5 @@
     <module>testcontainers</module>
     <module>truthmatchers</module>
     <module>datadog</module>
-    <module>conditions</module>
-    <module>jdbc</module>
   </modules>
 </project>
