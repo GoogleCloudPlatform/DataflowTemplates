@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
-import com.google.cloud.teleport.v2.templates.common.SpannerToGcsJobMetadata;
+import com.google.cloud.teleport.v2.spanner.migrations.metadata.SpannerToGcsJobMetadata;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -24,6 +24,7 @@ import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.teleport.spanner.common.Type;
+import com.google.cloud.teleport.spanner.common.Type.StructField;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
 import com.google.cloud.teleport.spanner.ddl.RandomDdlGenerator;
@@ -764,19 +765,28 @@ public class CopyDbTest {
   @Test
   public void models() throws Exception {
     // spotless:off
-    String endpoint =
-        "//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760";
     Ddl ddl =
         Ddl.builder()
             .createModel("Iris")
             .remote(true)
-            .options(ImmutableList.of("endpoint=\"" + endpoint + "\""))
+            .options(ImmutableList.of(
+                "endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\""))
             .inputColumn("f1").type(Type.float64()).size(-1).endInputColumn()
             .inputColumn("f2").type(Type.float64()).size(-1).endInputColumn()
             .inputColumn("f3").type(Type.float64()).size(-1).endInputColumn()
             .inputColumn("f4").type(Type.float64()).size(-1).endInputColumn()
             .outputColumn("classes").type(Type.array(Type.string())).size(-1).endOutputColumn()
             .outputColumn("scores").type(Type.array(Type.float64())).size(-1).endOutputColumn()
+            .endModel()
+            .createModel("TextEmbeddingGecko")
+            .remote(true)
+            .options(ImmutableList.of(
+                "endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/publishers/google/models/textembedding-gecko\""))
+            .inputColumn("content").type(Type.string()).size(-1).endInputColumn()
+            .outputColumn("embeddings").type(Type.struct(
+                StructField.of("statistics", Type.struct(StructField.of("truncated", Type.bool()),
+                    StructField.of("token_count", Type.float64()))),
+                StructField.of("values", Type.array(Type.float64())))).size(-1).endOutputColumn()
             .endModel()
             .build();
     // spotless:on
@@ -896,8 +906,21 @@ public class CopyDbTest {
             .createSequence("Sequence3")
             .options(ImmutableList.of("sequence_kind=\"bit_reversed_positive\""))
             .endSequence()
+            .createTable("UsersWithSequenceId")
+            .column("id")
+            .int64()
+            .notNull()
+            .defaultExpression("GET_NEXT_SEQUENCE_VALUE(SEQUENCE Sequence3)")
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
             .build();
-
     createAndPopulate(ddl, 0);
     runTest();
   }
@@ -919,6 +942,20 @@ public class CopyDbTest {
             .createSequence("PGSequence3")
             .sequenceKind("bit_reversed_positive")
             .endSequence()
+            .createTable("PGUsersWithSequenceId")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .defaultExpression("nextval('\"PGSequence3\"')")
+            .endColumn()
+            .column("first_name")
+            .pgVarchar()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
             .build();
 
     createAndPopulate(ddl, 0);

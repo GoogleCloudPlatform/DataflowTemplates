@@ -109,13 +109,12 @@ public class MongoDbToBigQueryOptions {
 
   /** UDF options. */
   public interface JavascriptDocumentTransformerOptions extends PipelineOptions {
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
         optional = true,
         description = "JavaScript UDF path in Cloud Storage.",
         helpText =
             "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.",
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-transforms/*.js")
     String getJavascriptDocumentTransformGcsPath();
 

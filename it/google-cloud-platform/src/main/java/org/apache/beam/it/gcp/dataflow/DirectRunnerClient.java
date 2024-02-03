@@ -53,8 +53,8 @@ public class DirectRunnerClient implements PipelineLauncher {
     this.mainClass = builder.getMainClass();
   }
 
-  public static DirectRunnerClient.Builder builder(Class<?> mainClass) {
-    return new DirectRunnerClient.Builder(mainClass);
+  public static Builder builder(Class<?> mainClass) {
+    return new Builder(mainClass);
   }
 
   @Override
@@ -102,16 +102,22 @@ public class DirectRunnerClient implements PipelineLauncher {
 
   @Override
   public Job getJob(String project, String region, String jobId) {
-    return managedJobs.get(jobId).getJob();
+    return getJob(project, region, jobId, "JOB_VIEW_UNKNOWN");
   }
 
   @Override
   public Job getJob(String project, String region, String jobId, String jobView) {
+    if (managedJobs.get(jobId) == null) {
+      return null;
+    }
     return managedJobs.get(jobId).getJob();
   }
 
   @Override
   public JobState getJobStatus(String project, String region, String jobId) {
+    if (managedJobs.get(jobId) == null) {
+      return JobState.UNKNOWN;
+    }
     return managedJobs.get(jobId).getJobState();
   }
 
@@ -172,7 +178,7 @@ public class DirectRunnerClient implements PipelineLauncher {
       return mainClass;
     }
 
-    public DirectRunnerClient.Builder setCredentials(Credentials value) {
+    public Builder setCredentials(Credentials value) {
       credentials = value;
       return this;
     }

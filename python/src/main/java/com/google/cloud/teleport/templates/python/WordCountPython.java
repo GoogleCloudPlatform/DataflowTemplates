@@ -33,15 +33,14 @@ contactInformation = "https://cloud.google.com/support",
 hidden = true)*/
 public interface WordCountPython {
 
-  @TemplateParameter.Text(
+  @TemplateParameter.GcsReadFile(
       order = 1,
       name = "input",
       description = "Input file(s) in Cloud Storage",
       helpText =
           "The input file pattern Dataflow reads from. Use the example file "
               + "(gs://dataflow-samples/shakespeare/kinglear.txt) or enter the path to your own "
-              + "using the same format: gs://your-bucket/your-file.txt",
-      regexes = {"^gs:\\/\\/[^\\n\\r]+$"})
+              + "using the same format: gs://your-bucket/your-file.txt")
   String getInput();
 
   @TemplateParameter.GcsWriteFolder(

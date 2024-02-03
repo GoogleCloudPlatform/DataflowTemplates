@@ -24,8 +24,8 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
+import com.google.cloud.teleport.v2.spanner.migrations.metadata.SpannerToGcsJobMetadata;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
-import com.google.cloud.teleport.v2.templates.common.SpannerToGcsJobMetadata;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -86,21 +86,73 @@ public class SpannerDao {
                 .getDialect();
   }
 
-  public Map<String, ShardProgress> getShardProgress(String runId) {
+  public Map<String, ShardProgress> getShardProgressByRunIdAndStatus(
+      String runId, String inputStatus) {
     Map<String, ShardProgress> shardProgress = new HashMap<>();
     DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
     Statement statement;
     if (isPostgres) {
       String statementStr =
-          "SELECT shard, start, status from "
+          "SELECT shard, file_start_interval , status from "
               + shardFileProcessProgressTableName
-              + " where run_id=$1 and status='REPROCESS'";
+              + " where run_id=$1 and status=$2";
+      statement =
+          Statement.newBuilder(statementStr)
+              .bind("p1")
+              .to(runId)
+              .bind("p2")
+              .to(inputStatus)
+              .build();
+    } else {
+      String statementStr =
+          "SELECT shard, file_start_interval, status from "
+              + shardFileProcessProgressTableName
+              + " where run_id=@runId and status=@status";
+      statement =
+          Statement.newBuilder(statementStr)
+              .bind("runId")
+              .to(runId)
+              .bind("status")
+              .to(inputStatus)
+              .build();
+    }
+
+    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
+      ResultSet resultSet = tx.executeQuery(statement);
+
+      while (resultSet.next()) {
+        String shard = resultSet.getString(0);
+        Timestamp start = resultSet.getTimestamp(1);
+        String status = resultSet.getString(2);
+        ShardProgress rec = new ShardProgress(shard, start, status);
+        shardProgress.put(shard, rec);
+      }
+    } catch (Exception e) {
+
+      throw new RuntimeException(
+          "The "
+              + shardFileProcessProgressTableName
+              + " table could not be read. "
+              + e.getMessage());
+    }
+    return shardProgress;
+  }
+
+  public Map<String, ShardProgress> getAllShardProgressByRunId(String runId) {
+    Map<String, ShardProgress> shardProgress = new HashMap<>();
+    DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
+    Statement statement;
+    if (isPostgres) {
+      String statementStr =
+          "SELECT shard, file_start_interval , status from "
+              + shardFileProcessProgressTableName
+              + " where run_id=$1";
       statement = Statement.newBuilder(statementStr).bind("p1").to(runId).build();
     } else {
       String statementStr =
-          "SELECT shard, start, status from "
+          "SELECT shard, file_start_interval, status from "
               + shardFileProcessProgressTableName
-              + " where run_id=@runId and status='REPROCESS'";
+              + " where run_id=@runId ";
       statement = Statement.newBuilder(statementStr).bind("runId").to(runId).build();
     }
 
@@ -133,8 +185,8 @@ public class SpannerDao {
             .to(runId)
             .set("shard")
             .to(shardProgress.getShard())
-            .set("start")
-            .to(shardProgress.getStart())
+            .set("file_start_interval")
+            .to(shardProgress.getFileStartInterval())
             .set("status")
             .to(shardProgress.getStatus())
             .build());
@@ -163,15 +215,15 @@ public class SpannerDao {
           createTable =
               "create table "
                   + shardFileProcessProgressTableName
-                  + " (run_id character varying NOT NULL,shard character varying NOT NULL,start"
-                  + " timestamp with time zone NOT NULL,status character varying NOT NULL,PRIMARY"
-                  + " KEY(run_id,shard))";
+                  + " (run_id character varying NOT NULL, shard character varying NOT"
+                  + " NULL, file_start_interval timestamp with time zone NOT NULL, status character"
+                  + " varying NOT NULL, PRIMARY KEY(run_id, shard))";
         } else {
           createTable =
               "create table "
                   + shardFileProcessProgressTableName
-                  + " (run_id STRING(MAX) NOT NULL,shard STRING(MAX) NOT NULL,start TIMESTAMP"
-                  + " NOT NULL,status STRING(MAX) NOT NULL,) PRIMARY KEY(run_id,shard)";
+                  + " (run_id STRING(MAX) NOT NULL, shard STRING(MAX) NOT NULL, file_start_interval"
+                  + " TIMESTAMP NOT NULL, status STRING(MAX) NOT NULL,) PRIMARY KEY(run_id, shard)";
         }
         OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
             databaseAdminClient.updateDatabaseDdl(
@@ -212,9 +264,9 @@ public class SpannerDao {
           createTable =
               "create table "
                   + skippedFileTableName
-                  + " (id varchar(36) DEFAULT spanner.generate_uuid(),run_id character varying NOT"
-                  + " NULL,shard character varying NOT NULL,file_name character varying NOT"
-                  + " NULL,insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,PRIMARY"
+                  + " (id varchar(36) DEFAULT spanner.generate_uuid(), run_id character varying NOT"
+                  + " NULL, shard character varying NOT NULL, file_name character varying NOT"
+                  + " NULL, insert_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP, PRIMARY"
                   + " KEY(id))";
 
         } else {

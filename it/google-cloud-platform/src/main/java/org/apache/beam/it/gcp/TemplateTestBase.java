@@ -118,6 +118,7 @@ public abstract class TemplateTestBase {
 
   private boolean usingDirectRunner;
   protected PipelineLauncher pipelineLauncher;
+  protected boolean skipBaseCleanup;
 
   @Before
   public void setUpBase() throws ExecutionException {
@@ -343,10 +344,20 @@ public abstract class TemplateTestBase {
   }
 
   @After
+  public void baseCleanup() throws IOException {
+    if (!skipBaseCleanup) {
+      tearDownBase();
+    }
+  }
+
   public void tearDownBase() throws IOException {
     LOG.info("Invoking tearDownBase cleanups for {} - {}", testName, testId);
 
-    pipelineLauncher.cleanupAll();
+    if (pipelineLauncher != null) {
+      pipelineLauncher.cleanupAll();
+    } else {
+      LOG.error("pipelineLauncher was not initialized, there was an error triggering {}", testName);
+    }
     if (gcsClient != null) {
       gcsClient.cleanupAll();
     }
@@ -410,6 +421,10 @@ public abstract class TemplateTestBase {
       options.addEnvironment("workerMachineType", System.getProperty("workerMachineType"));
     }
 
+    if (System.getProperty("streamingAtLeastOnce") != null) {
+      appendExperiment(options, "streaming_mode_at_least_once");
+    }
+
     if (usingDirectRunner) {
       // For direct runner tests we need to explicitly add a tempLocation if missing
       if (options.getParameter("tempLocation") == null) {
@@ -467,8 +482,17 @@ public abstract class TemplateTestBase {
 
   /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */
   protected PipelineOperator.Config createConfig(LaunchInfo info) {
+    return createConfig(info, null);
+  }
+
+  /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */
+  protected PipelineOperator.Config createConfig(LaunchInfo info, Duration duration) {
     Config.Builder configBuilder =
         Config.builder().setJobId(info.jobId()).setProject(PROJECT).setRegion(REGION);
+
+    if (duration != null) {
+      configBuilder = configBuilder.setTimeoutAfter(duration);
+    }
 
     // For DirectRunner tests, reduce the max time and the interval, as there is no worker required
     if (usingDirectRunner) {

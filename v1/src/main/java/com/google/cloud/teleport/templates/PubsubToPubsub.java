@@ -65,7 +65,10 @@ import org.slf4j.LoggerFactory;
       "The source Pub/Sub subscription must exist prior to execution.",
       "The source Pub/Sub subscription must be a <a href=\"https://cloud.google.com/pubsub/docs/pull\">pull subscription</a>.",
       "The destination Pub/Sub topic must exist prior to execution."
-    })
+    },
+    streaming = true,
+    supportsAtLeastOnce = true,
+    supportsExactlyOnce = true)
 public class PubsubToPubsub {
 
   /**

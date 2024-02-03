@@ -27,7 +27,6 @@ import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
-import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,10 +69,9 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   }
 
   /** Write transaction. */
-  public <T> T writeTransaction(
-      TransactionWork<T> transactionWork, TransactionConfig transactionConfig) {
+  public <T> T writeTransaction(TransactionWork<T> transactionWork) {
     try (Session session = getSession()) {
-      return session.writeTransaction(transactionWork, transactionConfig);
+      return session.writeTransaction(transactionWork);
     }
   }
 

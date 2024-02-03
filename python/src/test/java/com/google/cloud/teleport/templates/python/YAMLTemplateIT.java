@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -46,18 +47,33 @@ import org.junit.runners.JUnit4;
 public final class YAMLTemplateIT extends TemplateTestBase {
 
   @Test
-  public void testSimpleComposite() throws IOException {
+  public void testSimpleCompositeSpec() throws IOException {
     // Arrange
-    String yamlMessage =
-        Files.readString(Paths.get(Resources.getResource("YamlTemplateIT.yaml").getPath()));
-    yamlMessage = yamlMessage.replaceAll("INPUT_PATH", getGcsBasePath() + "/input/test.csv");
-    yamlMessage = yamlMessage.replaceAll("OUTPUT_PATH", getGcsBasePath() + "/output");
-
-    gcsClient.createArtifact("input/test.csv", "num\n0\n1\n2\n4");
-    gcsClient.createArtifact("input/simple.yaml", yamlMessage);
+    String yamlMessage = createSimpleYamlMessage();
 
     // Act
-    runYamlTemplateTest("input/simple.yaml");
+    testSimpleComposite(params -> params.addParameter("yaml_pipeline", yamlMessage));
+  }
+
+  @Test
+  public void testSimpleCompositeSpecFile() throws IOException {
+    // Arrange
+    gcsClient.createArtifact("input/simple.yaml", createSimpleYamlMessage());
+
+    // Act
+    testSimpleComposite(
+        params -> params.addParameter("yaml_pipeline_file", getGcsPath("input/simple.yaml")));
+  }
+
+  private void testSimpleComposite(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder)
+      throws IOException {
+    // Arrange
+    gcsClient.createArtifact("input/test.csv", "num\n0\n1\n2\n4");
+
+    // Act
+    runYamlTemplateTest(paramsAdder);
 
     // Assert
     List<Artifact> goodArtifacts = gcsClient.listArtifacts("output/good-", Pattern.compile(".*"));
@@ -81,11 +97,20 @@ public final class YAMLTemplateIT extends TemplateTestBase {
     assertThat(badRecords).contains(divError);
   }
 
-  private void runYamlTemplateTest(String yamlGcsPath) throws IOException {
+  private String createSimpleYamlMessage() throws IOException {
+    String yamlMessage =
+        Files.readString(Paths.get(Resources.getResource("YamlTemplateIT.yaml").getPath()));
+    yamlMessage = yamlMessage.replaceAll("INPUT_PATH", getGcsBasePath() + "/input/test.csv");
+    return yamlMessage.replaceAll("OUTPUT_PATH", getGcsBasePath() + "/output");
+  }
+
+  private void runYamlTemplateTest(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder)
+      throws IOException {
     // Arrange
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(testName, specPath)
-            .addParameter("yaml", getGcsPath(yamlGcsPath));
+        paramsAdder.apply(PipelineLauncher.LaunchConfig.builder(testName, specPath));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

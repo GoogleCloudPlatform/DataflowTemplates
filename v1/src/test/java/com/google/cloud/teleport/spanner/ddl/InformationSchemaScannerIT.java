@@ -858,7 +858,7 @@ public class InformationSchemaScannerIT {
             "CREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"
                 + " SKIP RANGE 1 1000 START COUNTER WITH 100",
             "CREATE TABLE \"Account\" ("
-                + " \"id\"        bigint DEFAULT nextval('MyPGSequence'),"
+                + " \"id\"        bigint DEFAULT nextval('\"MyPGSequence\"'),"
                 + " \"balanceId\" bigint NOT NULL,"
                 + " PRIMARY KEY (\"id\"))");
 
@@ -871,7 +871,7 @@ public class InformationSchemaScannerIT {
             + " SKIP RANGE 1 1000 START COUNTER WITH 100"
             + "CREATE TABLE \"Account\" ("
             + "\n\t\"id\"                                    bigint NOT NULL"
-            + " DEFAULT nextval('MyPGSequence'::text),\n\t"
+            + " DEFAULT nextval('\"MyPGSequence\"'::text),\n\t"
             + "\"balanceId\"                             bigint NOT NULL,"
             + "\n\tPRIMARY KEY (\"id\")\n)\n\n";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));

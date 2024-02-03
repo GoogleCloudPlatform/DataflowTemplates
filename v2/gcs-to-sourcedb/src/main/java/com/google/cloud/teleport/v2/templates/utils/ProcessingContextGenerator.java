@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
+import com.google.cloud.teleport.v2.spanner.migrations.metadata.SpannerToGcsJobMetadata;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
@@ -22,7 +23,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
-import com.google.cloud.teleport.v2.templates.common.SpannerToGcsJobMetadata;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import java.util.HashMap;
 import java.util.List;
@@ -61,9 +62,10 @@ public class ProcessingContextGenerator {
               + sourceType
               + " is unsupported. Supported values are : mysql");
     }
+
+    Schema schema = SessionFileReader.read(sessionFilePath);
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
     List<Shard> shards = shardFileReader.getOrderedShardDetails(sourceShardsFilePath);
-    Schema schema = SessionFileReader.read(sessionFilePath);
 
     ShardProgressTracker shardProgressTracker =
         new ShardProgressTracker(
@@ -77,88 +79,175 @@ public class ProcessingContextGenerator {
     skippedFileTracker.init();
     skippedFileTracker.close();
 
+    Map<String, ProcessingContext> response = null;
+
+    if (runMode.equals(Constants.RUN_MODE_REGULAR)) {
+      response =
+          getProcessingContextForRegularMode(
+              sourceDbTimezoneOffset,
+              startTimestamp,
+              windowDuration,
+              gcsInputDirectoryPath,
+              spannerProjectId,
+              metadataInstance,
+              metadataDatabase,
+              tableSuffix,
+              runId,
+              shards,
+              schema);
+    } else {
+      response =
+          getProcessingContextForReprocessOrResumeModes(
+              sourceDbTimezoneOffset,
+              gcsInputDirectoryPath,
+              spannerProjectId,
+              metadataInstance,
+              metadataDatabase,
+              tableSuffix,
+              runId,
+              shards,
+              schema,
+              shardProgressTracker,
+              runMode);
+    }
+
+    shardProgressTracker.close();
+    return response;
+  }
+
+  private static Map<String, ProcessingContext> getProcessingContextForRegularMode(
+      String sourceDbTimezoneOffset,
+      String startTimestamp,
+      String windowDuration,
+      String gcsInputDirectoryPath,
+      String spannerProjectId,
+      String metadataInstance,
+      String metadataDatabase,
+      String tableSuffix,
+      String runId,
+      List<Shard> shards,
+      Schema schema) {
+
     Map<String, ProcessingContext> response = new HashMap<>();
-
-    /*
-    In regular mode, we process all shards.
-    In reprocess mode, we only process shards marked for REPROCESS in shard_progress table.*/
-    if ("regular".equals(runMode)) {
-
-      if (startTimestamp == null
-          || startTimestamp.isEmpty()
-          || windowDuration == null
-          || windowDuration.isEmpty()) {
-        // Get the start time and duration from spanner_to_gcs_metadata table
-        try {
-          SpannerToGcsJobMetadata spannerToGcsJobMetadata =
-              SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
-                  spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
-          windowDuration = spannerToGcsJobMetadata.getWindowDuration();
-          startTimestamp = spannerToGcsJobMetadata.getStartTimestamp();
-          LOG.info("The start timestamp  from Spanner to GCS job is : {}", startTimestamp);
-          LOG.info("The window duration from Spanner to GCS job is : {}", windowDuration);
-        } catch (Exception e) {
-          LOG.error("Unable to get data from spanner_to_gcs_metadata");
-          throw new RuntimeException("Unable to get data from spanner_to_gcs_metadata.", e);
-        }
-      }
-
-      for (Shard shard : shards) {
-        LOG.info(" The sorted shard is: {}", shard);
-
-        Duration duration = DurationUtils.parseDuration(windowDuration);
-        ProcessingContext taskContext =
-            new ProcessingContext(
-                shard,
-                schema,
-                sourceDbTimezoneOffset,
-                startTimestamp,
-                duration,
-                gcsInputDirectoryPath,
-                runId);
-        response.put(shard.getLogicalShardId(), taskContext);
-      }
-    } else if ("reprocess".equals(runMode)) {
-      Map<String, ShardProgress> shardProgressList = shardProgressTracker.getShardProgress();
-      if (windowDuration == null || windowDuration.isEmpty()) {
-        try {
-          SpannerToGcsJobMetadata spannerToGcsJobMetadata =
-              SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
-                  spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
-          windowDuration = spannerToGcsJobMetadata.getWindowDuration();
-          LOG.info("The window duration from Spanner to GCS job is : {}", windowDuration);
-        } catch (Exception e) {
-          LOG.error("Unable to get data from spanner_to_gcs_metadata");
-          throw new RuntimeException("Unable to get data from spanner_to_gcs_metadata.", e);
-        }
-      }
-
-      for (Shard shard : shards) {
-        LOG.info(" The sorted shard is: {}", shard);
-        ShardProgress shardProgress = shardProgressList.get(shard.getLogicalShardId());
-        String shardStartTime = startTimestamp;
-        if (shardProgress != null) {
-          Instant shardStartTimeInst = new Instant(shardProgress.getStart().toSqlTimestamp());
-          shardStartTime = shardStartTimeInst.toString();
-          LOG.info(" The shard startTime is : {}", shardStartTime);
-        } else {
-          LOG.info(" Skipping non-reprocess shard: {}", shard);
-          continue; // this shard was not marked for reprocess
-        }
-        Duration duration = DurationUtils.parseDuration(windowDuration);
-        ProcessingContext taskContext =
-            new ProcessingContext(
-                shard,
-                schema,
-                sourceDbTimezoneOffset,
-                shardStartTime,
-                duration,
-                gcsInputDirectoryPath,
-                runId);
-        response.put(shard.getLogicalShardId(), taskContext);
+    if (startTimestamp == null
+        || startTimestamp.isEmpty()
+        || windowDuration == null
+        || windowDuration.isEmpty()) {
+      // Get the start time and duration from spanner_to_gcs_metadata table
+      try {
+        SpannerToGcsJobMetadata spannerToGcsJobMetadata =
+            SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
+                spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
+        windowDuration = spannerToGcsJobMetadata.getWindowDuration();
+        startTimestamp = spannerToGcsJobMetadata.getStartTimestamp();
+        LOG.info("The start timestamp  from Spanner to GCS job is : {}", startTimestamp);
+        LOG.info("The window duration from Spanner to GCS job is : {}", windowDuration);
+      } catch (Exception e) {
+        LOG.error("Unable to get data from spanner_to_gcs_metadata");
+        throw new RuntimeException("Unable to get data from spanner_to_gcs_metadata.", e);
       }
     }
-    shardProgressTracker.close();
+
+    Duration duration = DurationUtils.parseDuration(windowDuration);
+
+    for (Shard shard : shards) {
+      LOG.info(" The sorted shard is: {}", shard);
+      ProcessingContext taskContext =
+          new ProcessingContext(
+              shard,
+              schema,
+              sourceDbTimezoneOffset,
+              startTimestamp,
+              duration,
+              gcsInputDirectoryPath,
+              runId);
+      response.put(shard.getLogicalShardId(), taskContext);
+    }
+
+    return response;
+  }
+
+  private static Map<String, ProcessingContext> getProcessingContextForReprocessOrResumeModes(
+      String sourceDbTimezoneOffset,
+      String gcsInputDirectoryPath,
+      String spannerProjectId,
+      String metadataInstance,
+      String metadataDatabase,
+      String tableSuffix,
+      String runId,
+      List<Shard> shards,
+      Schema schema,
+      ShardProgressTracker shardProgressTracker,
+      String runMode) {
+
+    String status = "";
+    switch (runMode) {
+      case Constants.RUN_MODE_RESUME_SUCCESS:
+        status = Constants.SHARD_PROGRESS_STATUS_SUCCESS;
+        break;
+      case Constants.RUN_MODE_RESUME_FAILED:
+        status = Constants.SHARD_PROGRESS_STATUS_ERROR;
+        break;
+      case Constants.RUN_MODE_REPROCESS:
+        status = Constants.SHARD_PROGRESS_STATUS_REPROCESS;
+        break;
+    }
+
+    Map<String, ShardProgress> shardProgressList = null;
+    if (runMode.equals(Constants.RUN_MODE_RESUME_ALL)) {
+      shardProgressList = shardProgressTracker.getAllShardProgress();
+    } else {
+      shardProgressList = shardProgressTracker.getShardProgressByStatus(status);
+    }
+
+    Map<String, ProcessingContext> response = new HashMap<>();
+    String windowDuration = null;
+    try {
+      SpannerToGcsJobMetadata spannerToGcsJobMetadata =
+          SpannerToGcsJobMetadataFetcher.getSpannerToGcsJobMetadata(
+              spannerProjectId, metadataInstance, metadataDatabase, tableSuffix, runId);
+      windowDuration = spannerToGcsJobMetadata.getWindowDuration();
+      LOG.info("The window duration from Spanner to GCS job is : {}", windowDuration);
+    } catch (Exception e) {
+      LOG.error("Unable to get data from spanner_to_gcs_metadata");
+      throw new RuntimeException("Unable to get data from spanner_to_gcs_metadata.", e);
+    }
+
+    Duration duration = DurationUtils.parseDuration(windowDuration);
+
+    for (Shard shard : shards) {
+      LOG.info(" The sorted shard is: {}", shard);
+      ShardProgress shardProgress = shardProgressList.get(shard.getLogicalShardId());
+
+      String shardStartTime = null;
+      if (shardProgress != null) {
+        Instant shardStartTimeInst =
+            new Instant(shardProgress.getFileStartInterval().toSqlTimestamp());
+        if ((runMode.equals(Constants.RUN_MODE_RESUME_SUCCESS)
+                || runMode.equals(Constants.RUN_MODE_RESUME_ALL))
+            && shardProgress.getStatus().equals(Constants.SHARD_PROGRESS_STATUS_SUCCESS)) {
+          // Advance the start time by window duration for successful shards
+          shardStartTimeInst = shardStartTimeInst.plus(duration);
+        }
+        shardStartTime = shardStartTimeInst.toString();
+
+        LOG.info(" The startTime for shard {} is : {}", shard, shardStartTime);
+      } else {
+        LOG.info(
+            " Skipping shard: {} as it does not qualify for given runMode {}.", shard, runMode);
+        continue;
+      }
+      ProcessingContext taskContext =
+          new ProcessingContext(
+              shard,
+              schema,
+              sourceDbTimezoneOffset,
+              shardStartTime,
+              duration,
+              gcsInputDirectoryPath,
+              runId);
+      response.put(shard.getLogicalShardId(), taskContext);
+    }
     return response;
   }
 }

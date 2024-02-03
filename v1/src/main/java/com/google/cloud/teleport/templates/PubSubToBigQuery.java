@@ -102,7 +102,10 @@ import org.slf4j.LoggerFactory;
     requirements = {
       "The <a href=\"https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage\">`data` field</a> of Pub/Sub messages must use the JSON format, described in this <a href=\"https://developers.google.com/api-client-library/java/google-http-java-client/json\">JSON guide</a>. For example, messages with values in the `data` field formatted as `{\"k1\":\"v1\", \"k2\":\"v2\"}` can be inserted into a BigQuery table with two columns, named `k1` and `k2`, with a string data type.",
       "The output table must exist prior to running the pipeline. The table schema must match the input JSON objects."
-    })
+    },
+    streaming = true,
+    supportsAtLeastOnce = true,
+    supportsExactlyOnce = true)
 @Template(
     name = "PubSub_to_BigQuery",
     category = TemplateCategory.STREAMING,
@@ -120,7 +123,8 @@ import org.slf4j.LoggerFactory;
       "The <a href=\"https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage\">`data` field</a> of Pub/Sub messages must use the JSON format, described in this <a href=\"https://developers.google.com/api-client-library/java/google-http-java-client/json\">JSON guide</a>. For example, messages with values in the `data` field formatted as `{\"k1\":\"v1\", \"k2\":\"v2\"}` can be inserted into a BigQuery table with two columns, named `k1` and `k2`, with a string data type.",
       "The output table must exist prior to running the pipeline. The table schema must match the input JSON objects."
     },
-    hidden = true)
+    hidden = true,
+    streaming = true)
 public class PubSubToBigQuery {
 
   /** The log to output status messages to. */

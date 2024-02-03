@@ -25,6 +25,7 @@ import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
+import com.google.cloud.teleport.v2.spanner.migrations.metadata.SpannerToGcsJobMetadata;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.ArrayList;
@@ -45,6 +46,8 @@ public class SpannerDao {
       shardFileCreateProgressTableName; // stores latest window of files created per shard
   private String
       spannerToGcsMetadataTableName; // stores the start time and duration supplied in input
+  private String
+      shardFileProcessProgressTableName; // stores the window until which shard has progressed
   private String dataSeenTableName; // stores the window end for change data records seen
   private boolean isPostgres;
   // Timeout for Cloud Spanner schema update.
@@ -59,11 +62,13 @@ public class SpannerDao {
     this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
     spannerToGcsMetadataTableName = "spanner_to_gcs_metadata";
     shardFileCreateProgressTableName = "shard_file_create_progress";
+    shardFileProcessProgressTableName = "shard_file_process_progress";
     dataSeenTableName = "data_seen";
     if (!tableSuffix.isEmpty()) {
       spannerToGcsMetadataTableName += "_" + tableSuffix;
       shardFileCreateProgressTableName += "_" + tableSuffix;
       dataSeenTableName += "_" + tableSuffix;
+      shardFileProcessProgressTableName += "_" + tableSuffix;
     }
     isPostgres =
         Dialect.POSTGRESQL
@@ -255,7 +260,7 @@ public class SpannerDao {
    * Writes the job's start time and window duration to the spanner_to_gcs_metadata table. The table
    * has one record per run.
    */
-  public void writeStartAndDuration(String start, String duration, String runId) {
+  public void upsertSpannerToGcsMetadata(String start, String duration, String runId) {
 
     // create the tables needed for the pipeline
     checkAndCreateMetadataTable();
@@ -336,6 +341,82 @@ public class SpannerDao {
                 transaction -> {
                   return transaction.executeUpdate(updateStatement);
                 });
+  }
+
+  public Timestamp getMinimumStartTimeAcrossAllShards(String runId) {
+    DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
+    Statement statement;
+    Timestamp start = null;
+    if (isPostgres) {
+      String statementStr =
+          "SELECT min(file_start_interval) from "
+              + shardFileProcessProgressTableName
+              + " where run_id=$1";
+      statement = Statement.newBuilder(statementStr).bind("p1").to(runId).build();
+    } else {
+      String statementStr =
+          "SELECT min(file_start_interval) from "
+              + shardFileProcessProgressTableName
+              + " where run_id=@runId";
+      statement = Statement.newBuilder(statementStr).bind("runId").to(runId).build();
+    }
+    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
+
+      ResultSet resultSet = tx.executeQuery(statement);
+      if (resultSet.next()) {
+        start = resultSet.getTimestamp(0);
+      }
+    } catch (Exception e) {
+      // When there are no records for a given run_id, the exception thrown has text contains NULL
+      // value
+      if (e.getMessage().contains("Table not found")
+          || e.getMessage().contains("contains NULL value")) {
+        return null;
+      } else {
+        throw new RuntimeException(
+            "The " + shardFileProcessProgressTableName + " table could not be read. ", e);
+      }
+    }
+    return start;
+  }
+
+  public SpannerToGcsJobMetadata getSpannerToGcsJobMetadata(String runId) {
+    DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
+    Statement statement;
+    if (isPostgres) {
+      String statementStr =
+          "SELECT start_time, duration from "
+              + spannerToGcsMetadataTableName
+              + " where run_id = $1";
+      statement = Statement.newBuilder(statementStr).bind("p1").to(runId).build();
+    } else {
+      String statementStr =
+          "SELECT start_time, duration from "
+              + spannerToGcsMetadataTableName
+              + " where run_id = @runId";
+      statement = Statement.newBuilder(statementStr).bind("runId").to(runId).build();
+    }
+
+    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
+      ResultSet resultSet = tx.executeQuery(statement);
+
+      if (resultSet.next()) {
+        String startTime = resultSet.getString(0);
+        String duration = resultSet.getString(1);
+
+        SpannerToGcsJobMetadata rec = new SpannerToGcsJobMetadata(startTime, duration);
+        return rec;
+      }
+    } catch (Exception e) {
+      if (e.getMessage().contains("Table not found")) {
+        return null;
+      } else {
+        throw new RuntimeException(
+            "The " + spannerToGcsMetadataTableName + " table could not be read. ", e);
+      }
+    }
+
+    return null;
   }
 
   public void close() {

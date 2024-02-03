@@ -979,15 +979,15 @@ public class ImportFromAvroTest {
 
   @Test
   public void models() throws Exception {
-    String endpoint =
-        "//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760";
     Map<String, Schema> avroFiles = new HashMap<>();
     avroFiles.put(
         "ModelAll.avro",
         SchemaBuilder.record("Iris")
             .prop("spannerEntity", "Model")
             .prop("spannerRemote", "true")
-            .prop("spannerOption_0", "endpoint=\"" + endpoint + "\"")
+            .prop(
+                "spannerOption_0",
+                "endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\"")
             .fields()
             // Input columns.
             .name("Input")
@@ -1034,6 +1034,68 @@ public class ImportFromAvroTest {
             .array()
             .items()
             .longType()
+            .noDefault()
+            .endRecord()
+            .noDefault()
+            .endRecord());
+    avroFiles.put(
+        "ModelStruct.avro",
+        SchemaBuilder.record("TextEmbeddingGecko")
+            .prop("spannerEntity", "Model")
+            .prop("spannerRemote", "true")
+            .prop(
+                "spannerOption_0",
+                "endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/publishers/google/models/textembedding-gecko\"")
+            .fields()
+            // Input columns.
+            .name("Input")
+            .type()
+            .record("TextEmbeddingGecko_Input")
+            .fields()
+            .name("content")
+            .prop("sqlType", "STRING(MAX)")
+            .type()
+            .stringType()
+            .noDefault()
+            .endRecord()
+            .noDefault()
+            // Output columns.
+            .name("Output")
+            .type()
+            .record("TextEmbeddingGecko_Output")
+            .fields()
+            .name("embeddings")
+            .prop(
+                "sqlType",
+                "STRUCT<statistics STRUCT<truncated BOOL, token_count FLOAT64>, values ARRAY<FLOAT64>>")
+            .type()
+            .record("struct_ModelStruct_output_0")
+            .fields()
+            .name("statistics")
+            .type()
+            .record("struct_ModelStruct_output_0_1")
+            .fields()
+            .name("truncated")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("token_count")
+            .type()
+            .doubleType()
+            .noDefault()
+            .endRecord()
+            .noDefault()
+            .name("values")
+            .type()
+            .array()
+            .items()
+            .unionOf()
+            .nullType()
+            .and()
+            .doubleType()
+            .endUnion()
+            .noDefault()
+            .endRecord()
             .noDefault()
             .endRecord()
             .noDefault()
@@ -1101,9 +1163,11 @@ public class ImportFromAvroTest {
                 + " CREATE MODEL `Iris`"
                 + " INPUT ( `f1` FLOAT64, `f2` FLOAT64, `f3` FLOAT64, `f4` FLOAT64, )"
                 + " OUTPUT ( `classes` ARRAY<STRING(MAX)>, `scores` ARRAY<FLOAT64>, )"
-                + " REMOTE OPTIONS (endpoint=\""
-                + endpoint
-                + "\")"));
+                + " REMOTE OPTIONS (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\")"
+                + " CREATE MODEL `TextEmbeddingGecko`"
+                + " INPUT ( `content` STRING(MAX), )"
+                + " OUTPUT ( `embeddings` STRUCT<statistics STRUCT<truncated BOOL, token_count FLOAT64>, values ARRAY<FLOAT64>>, )"
+                + " REMOTE OPTIONS (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/publishers/google/models/textembedding-gecko\")"));
   }
 
   @Test
@@ -1464,7 +1528,7 @@ public class ImportFromAvroTest {
             + " SKIP RANGE 0 1000 START COUNTER WITH 50";
     String tableDef =
         "CREATE TABLE \"T\" ("
-            + "\"id\" bigint NOT NULL DEFAULT nextval('PGSequence2'),"
+            + "\"id\" bigint NOT NULL DEFAULT nextval('\"PGSequence2\"'),"
             + "\"c\" bigint,"
             + "PRIMARY KEY (\"id\"))";
 
@@ -1498,7 +1562,7 @@ public class ImportFromAvroTest {
                 + " SKIP RANGE 0 1000 START COUNTER WITH 50"
                 + "CREATE TABLE \"T\" ("
                 + "\n\t\"id\"                                    bigint NOT NULL"
-                + " DEFAULT nextval('PGSequence2'::text),\n\t"
+                + " DEFAULT nextval('\"PGSequence2\"'::text),\n\t"
                 + "\"c\"                                     bigint,"
                 + "\n\tPRIMARY KEY (\"id\")\n)\n\n"));
   }

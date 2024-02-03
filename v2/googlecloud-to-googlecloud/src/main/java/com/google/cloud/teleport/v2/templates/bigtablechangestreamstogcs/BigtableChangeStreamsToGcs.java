@@ -82,7 +82,8 @@ import org.slf4j.LoggerFactory;
       "bigtableRpcTimeoutMs"
     },
     flexContainerName = "bigtable-changestreams-to-gcs",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    streaming = true)
 public class BigtableChangeStreamsToGcs {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToGcs.class);

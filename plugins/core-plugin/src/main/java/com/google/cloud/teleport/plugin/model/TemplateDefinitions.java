@@ -118,6 +118,9 @@ public class TemplateDefinitions {
     metadata.setHidden(templateAnnotation.hidden());
     metadata.setPreview(templateAnnotation.preview());
     metadata.setRequirements(Arrays.asList(templateAnnotation.requirements()));
+    metadata.setStreaming(templateAnnotation.streaming());
+    metadata.setSupportsAtLeastOnce(templateAnnotation.supportsAtLeastOnce());
+    metadata.setSupportsExactlyOnce(templateAnnotation.supportsExactlyOnce());
 
     metadata.setAdditionalDocumentation(
         Arrays.stream(templateAnnotation.additionalDocumentation())
@@ -287,14 +290,10 @@ public class TemplateDefinitions {
     boolean isFlex = StringUtils.isNotEmpty(templateAnnotation.flexContainerName());
     metadata.setFlexTemplate(isFlex);
 
-    imageSpec.setDefaultEnvironment(
-        Map.of(
-            "additionalUserLabels",
-            Map.of(
-                "goog-dataflow-provided-template-name",
-                templateAnnotation.name().toLowerCase(),
-                "goog-dataflow-provided-template-type",
-                isFlex ? "flex" : "classic")));
+    imageSpec.setAdditionalUserLabel(
+        "goog-dataflow-provided-template-name", templateAnnotation.name().toLowerCase());
+    imageSpec.setAdditionalUserLabel(
+        "goog-dataflow-provided-template-type", isFlex ? "flex" : "classic");
     imageSpec.setImage("gcr.io/{project-id}/" + templateAnnotation.flexContainerName());
     imageSpec.setMetadata(metadata);
 

@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
     contactInformation = "https://cloud.google.com/support",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/azure-eventhub-to-pubsub",
+    streaming = true,
     preview = true,
     hidden = true)
 public class AzureEventhubToPubsub {

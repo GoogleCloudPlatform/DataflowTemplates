@@ -36,7 +36,8 @@ import org.apache.beam.sdk.options.PipelineOptions;
     flexContainerName = "pubsub-to-bigquery-auto",
     contactInformation = "https://cloud.google.com/support",
     // TODO: replace the original template when we are ready to do it, and remove `hidden`.
-    hidden = true)
+    hidden = true,
+    streaming = true)
 public class PubSubToBigQueryAuto {
 
   public static void main(String[] args) {

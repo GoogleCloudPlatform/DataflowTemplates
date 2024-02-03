@@ -21,12 +21,12 @@ import com.google.cloud.Timestamp;
 public class ShardProgress {
 
   private String shard;
-  private Timestamp start;
+  private Timestamp fileStartInterval;
   private String status;
 
-  public ShardProgress(String shard, Timestamp start, String status) {
+  public ShardProgress(String shard, Timestamp fileStartInterval, String status) {
     this.shard = shard;
-    this.start = start;
+    this.fileStartInterval = fileStartInterval;
     this.status = status;
   }
 
@@ -34,8 +34,8 @@ public class ShardProgress {
     return shard;
   }
 
-  public Timestamp getStart() {
-    return start;
+  public Timestamp getFileStartInterval() {
+    return fileStartInterval;
   }
 
   public String getStatus() {

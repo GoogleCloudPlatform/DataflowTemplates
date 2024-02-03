@@ -697,6 +697,8 @@
         <module>spanner-change-streams-to-sharded-file-sink</module>
         <module>spanner-change-streams-to-sink</module>
         <module>spanner-common</module>
+        <module>spanner-custom-shard</module>
+        <module>spanner-migrations-sdk</module>
         <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
  </modules>

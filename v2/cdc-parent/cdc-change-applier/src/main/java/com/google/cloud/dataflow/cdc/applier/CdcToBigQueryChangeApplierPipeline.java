@@ -74,7 +74,8 @@ import org.slf4j.LoggerFactory;
     requirements = {
       "The Debezium connector must be <a href=\"https://github.com/GoogleCloudPlatform/DataflowTemplates/tree/master/v2/cdc-parent#deploying-the-connector\">deployed</a>.",
       "The Pub/Sub messages must be serialized in a <a href=\"https://beam.apache.org/releases/javadoc/current/org/apache/beam/sdk/values/Row.html\">Beam Row</a>."
-    })
+    },
+    streaming = true)
 public class CdcToBigQueryChangeApplierPipeline {
 
   public static final Integer SECONDS_PER_DAY = 24 * 60 * 60;

@@ -239,4 +239,17 @@ public class PubSubToSplunkIT extends TemplateTestBase {
             .addParameter("parallelism", "5");
     testPubSubToSplunkMain(parameters, false);
   }
+
+  @Test
+  public void testPubSubToSplunkUsingAtleastOnceMode() throws IOException {
+    ArrayList<String> experiments = new ArrayList<>();
+    experiments.add("streaming_mode_at_least_once");
+    PipelineLauncher.LaunchConfig.Builder parameters =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("token", splunkResourceManager.getHecToken())
+            .addParameter("batchCount", "1")
+            .addEnvironment("additionalExperiments", experiments)
+            .addEnvironment("enableStreamingEngine", true);
+    testPubSubToSplunkMain(parameters, false);
+  }
 }

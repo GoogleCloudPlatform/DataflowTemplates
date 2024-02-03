@@ -180,11 +180,10 @@ public class CsvConverters {
 
   /** Necessary {@link PipelineOptions} options for Csv Pipelines. */
   public interface CsvPipelineOptions extends PipelineOptions {
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
         description = "The input filepattern to read from.",
-        helpText = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv",
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"})
+        helpText = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv")
     String getInputFileSpec();
 
     void setInputFileSpec(String inputFileSpec);

@@ -165,7 +165,8 @@ import org.slf4j.LoggerFactory;
       "The Cloud Spanner metadata database must exist prior to running the pipeline.",
       "The Cloud Spanner change stream must exist prior to running the pipeline.",
       "The BigQuery dataset must exist prior to running the pipeline."
-    })
+    },
+    streaming = true)
 public final class SpannerChangeStreamsToBigQuery {
 
   /** String/String Coder for {@link FailsafeElement}. */

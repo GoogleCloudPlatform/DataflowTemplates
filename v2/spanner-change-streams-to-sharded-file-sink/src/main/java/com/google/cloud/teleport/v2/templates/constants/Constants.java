@@ -32,4 +32,10 @@ public class Constants {
 
   // Sharding Mode - multi_shard
   public static final String SHARDING_MODE_MULTI_SHARD = "multi_shard";
+
+  // Run Mode - regular
+  public static final String RUN_MODE_REGULAR = "regular";
+
+  // Run mode - resume
+  public static final String RUN_MODE_RESUME = "resume";
 }

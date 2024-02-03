@@ -34,6 +34,7 @@
     <java.version>11</java.version>
 
     <!-- Plugins -->
+    <templates-maven-plugin.version>1.0-SNAPSHOT</templates-maven-plugin.version>
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
@@ -45,7 +46,7 @@
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.52.0</beam.version>
+    <beam.version>2.53.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->
@@ -87,6 +88,9 @@
     <ojdbc8.version>23.2.0.0</ojdbc8.version>
     <mssql-jdbc.version>12.2.0.jre11</mssql-jdbc.version>
     <neo4j-driver.version>4.4.12</neo4j-driver.version>
+    <!-- Socket factory JARs for Cloud SQL -->
+    <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
+    <postgres-socket-factory.version>1.15.2</postgres-socket-factory.version>
 
     <!-- Test categories -->
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
@@ -184,6 +188,11 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>com.google.cloud.teleport</groupId>
+          <artifactId>templates-maven-plugin</artifactId>
+          <version>${templates-maven-plugin.version}</version>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-dependency-plugin</artifactId>

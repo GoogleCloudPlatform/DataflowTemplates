@@ -13,24 +13,4 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.common;
-
-/** Holds the job metadata of the Spanner to GCS job. */
-public class SpannerToGcsJobMetadata {
-
-  private String startTimestamp;
-  private String windowDuration;
-
-  public SpannerToGcsJobMetadata(String startTimestamp, String windowDuration) {
-    this.startTimestamp = startTimestamp;
-    this.windowDuration = windowDuration;
-  }
-
-  public String getStartTimestamp() {
-    return startTimestamp;
-  }
-
-  public String getWindowDuration() {
-    return windowDuration;
-  }
-}
+package com.google.cloud.teleport.v2.templates.constants;

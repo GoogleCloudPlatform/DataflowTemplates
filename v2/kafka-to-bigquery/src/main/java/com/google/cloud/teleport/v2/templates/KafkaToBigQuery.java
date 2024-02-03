@@ -121,7 +121,10 @@ import org.slf4j.LoggerFactory;
       "The output BigQuery table must exist.",
       "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
       "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
-    })
+    },
+    streaming = true,
+    supportsAtLeastOnce = true,
+    supportsExactlyOnce = true)
 public class KafkaToBigQuery {
 
   /* Logger for class. */
@@ -245,6 +248,21 @@ public class KafkaToBigQuery {
     String getAvroSchemaPath();
 
     void setAvroSchemaPath(String schemaPath);
+
+    @TemplateParameter.Boolean(
+        order = 7,
+        optional = true,
+        description = "Use at at-least-once semantics in BigQuery Storage Write API",
+        helpText =
+            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
+                + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
+                + " exactly-once semantics will be used.",
+        hiddenUi = true)
+    @Default.Boolean(false)
+    @Override
+    Boolean getUseStorageWriteApiAtLeastOnce();
+
+    void setUseStorageWriteApiAtLeastOnce(Boolean value);
   }
 
   /**

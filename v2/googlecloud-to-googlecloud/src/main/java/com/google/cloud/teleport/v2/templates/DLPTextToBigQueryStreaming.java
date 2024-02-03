@@ -142,7 +142,8 @@ import org.slf4j.LoggerFactory;
       "The input data to tokenize must exist.",
       "The Sensitive Data Protection templates must exist (for example, DeidentifyTemplate and InspectTemplate). For more details, see <a href=\"https://cloud.google.com/dlp/docs/concepts-templates\">Sensitive Data Protection templates</a>.",
       "The BigQuery dataset must exist."
-    })
+    },
+    streaming = true)
 public class DLPTextToBigQueryStreaming {
 
   public static final Logger LOG = LoggerFactory.getLogger(DLPTextToBigQueryStreaming.class);
@@ -289,11 +290,10 @@ public class DLPTextToBigQueryStreaming {
   public interface TokenizePipelineOptions
       extends BigQueryStorageApiStreamingOptions, DataflowPipelineOptions {
 
-    @TemplateParameter.Text(
+    @TemplateParameter.GcsReadFile(
         order = 1,
         description = "Input Cloud Storage File(s)",
         helpText = "The Cloud Storage location of the files you'd like to process.",
-        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
         example = "gs://your-bucket/your-files/*.csv")
     String getInputFilePattern();
 

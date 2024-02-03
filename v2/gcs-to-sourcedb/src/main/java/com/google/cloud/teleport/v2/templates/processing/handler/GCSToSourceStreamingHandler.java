@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.processing.handler;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
 import com.google.cloud.teleport.v2.templates.common.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dao.DaoFactory;
 import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
@@ -77,21 +78,13 @@ public class GCSToSourceStreamingHandler {
       LOG.info(
           "Shard " + shardId + ": Successfully processed batch of " + records.size() + " records.");
     } catch (Exception e) {
-      // TODO: Error handling and retry
-      /*
-      If we are here, it means we have exhausted all the retries
-      At this stage we dump the error records to error topic
-      and either halt the pipeline  or continue
-      as per the configuration
-      If writing to DLQ topic also fails - write to logs
-      */
       markShardFailure(taskContext, spannerDao);
-      throw new RuntimeException("Failure when processing records: " + e.getMessage());
+      throw new RuntimeException("Failure when processing records", e);
     }
   }
 
   private static void markShardSuccess(ProcessingContext taskContext, SpannerDao spannerDao) {
-    markShardProgress(taskContext, "SUCCESS", spannerDao);
+    markShardProgress(taskContext, Constants.SHARD_PROGRESS_STATUS_SUCCESS, spannerDao);
   }
 
   private static void markShardProgress(
@@ -108,6 +101,6 @@ public class GCSToSourceStreamingHandler {
   }
 
   private static void markShardFailure(ProcessingContext taskContext, SpannerDao spannerDao) {
-    markShardProgress(taskContext, "ERROR", spannerDao);
+    markShardProgress(taskContext, Constants.SHARD_PROGRESS_STATUS_ERROR, spannerDao);
   }
 }

@@ -1107,7 +1107,8 @@ public class InformationSchemaScanner {
           break;
         case POSTGRESQL:
           sequenceCounterStatement =
-              Statement.of("SELECT spanner.GET_INTERNAL_SEQUENCE_STATE('" + sequenceName + "')");
+              Statement.of(
+                  "SELECT spanner.GET_INTERNAL_SEQUENCE_STATE('\"" + sequenceName + "\"')");
           break;
         default:
           throw new IllegalArgumentException("Unrecognized dialect: " + dialect);

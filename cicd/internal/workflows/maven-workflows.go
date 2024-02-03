@@ -204,6 +204,13 @@ func RunForChangedModules(cmd string, args ...string) error {
 		return nil
 	}
 
+	parsedArgs := []string{}
+	for _, arg := range args {
+		if arg != "" {
+			parsedArgs = append(parsedArgs, arg)
+		}
+	}
+
 	// Collect the modules together for a single call. Maven can work out the install order.
 	modules := make([]string, 0)
 
@@ -265,7 +272,7 @@ func RunForChangedModules(cmd string, args ...string) error {
 
 	modules = append(modules, "plugins/templates-maven-plugin")
 
-	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), args...)
+	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), parsedArgs...)
 }
 
 type spotlessCheckWorkflow struct{}

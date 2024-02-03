@@ -39,7 +39,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@44e221478fc6847752e5c574fc7a7b3247b00fbf
         with:
-          go-version: '1.17'
+          go-version: '1.21'
       - name: Run Fmt
         run: |
           cd cicd
@@ -57,7 +57,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@44e221478fc6847752e5c574fc7a7b3247b00fbf
         with:
-          go-version: '1.17'
+          go-version: '1.21'
       # By nature, this also makes sure that everything builds
       - name: Run Tests
         run: |
