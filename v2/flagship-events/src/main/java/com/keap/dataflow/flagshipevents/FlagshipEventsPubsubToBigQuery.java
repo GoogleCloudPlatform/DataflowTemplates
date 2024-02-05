@@ -49,7 +49,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An Apache Beam streaming pipeline that reads JSON encoded messages from Pub/Sub and writes the results to one of several BigQuery tables.
+ * An Apache Beam streaming pipeline that reads JSON encoded messages from Pub/Sub and writes the
+ * results to one of several BigQuery tables.
  */
 public class FlagshipEventsPubsubToBigQuery {
   private static final Logger LOG = LoggerFactory.getLogger(FlagshipEventsPubsubToBigQuery.class);
