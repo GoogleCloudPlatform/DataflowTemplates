@@ -37,7 +37,7 @@ func RunMavenOnPom(pom string, cmd string, args ...string) error {
 //
 //	mvn -B {cmd} -f {pom} -pl {module} {args...}
 func RunMavenOnModule(pom string, cmd string, module string, args ...string) error {
-	fullArgs := []string{"-pl", module}
-	fullArgs = append(fullArgs, args...)
-	return RunMavenOnPom(pom, cmd, fullArgs...)
+	// fullArgs := []string{"-pl", module}
+	// fullArgs = append(fullArgs, args...)
+	return RunMavenOnPom(pom, cmd, args...)
 }

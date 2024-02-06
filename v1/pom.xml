@@ -249,6 +249,14 @@
       <version>3.1.8</version>
     </dependency>
 
+    <!-- Remove once https://github.com/apache/beam/pull/30200 is merged in Beam 2.55 -->
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-splunk</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+
     <!-- Test -->
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
