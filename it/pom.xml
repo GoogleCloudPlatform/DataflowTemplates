@@ -188,5 +188,6 @@
     <module>datadog</module>
     <module>conditions</module>
     <module>jdbc</module>
+    <module>splunk</module>
   </modules>
 </project>
