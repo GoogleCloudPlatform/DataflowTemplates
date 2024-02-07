@@ -253,5 +253,9 @@
       <version>${mysql-connector-java.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-aiplatform</artifactId>
+    </dependency>
   </dependencies>
 </project>

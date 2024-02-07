@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToGcs",
+  "classPath": "/template/spanner-changestreams-to-gcs/spanner-changestreams-to-gcs-conscrypt.jar:/template/spanner-changestreams-to-gcs/*:/template/spanner-changestreams-to-gcs/libs/*:/template/spanner-changestreams-to-gcs/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"spanner-changestreams-to-gcs\"}"
+  }
+}
