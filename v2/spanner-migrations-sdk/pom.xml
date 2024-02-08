@@ -25,14 +25,6 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <dependencies>
-        <dependency>
-            <groupId>com.google.cloud.teleport.v2</groupId>
-            <artifactId>common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
-
     <artifactId>spanner-migrations-sdk</artifactId>
     <build>
         <plugins>

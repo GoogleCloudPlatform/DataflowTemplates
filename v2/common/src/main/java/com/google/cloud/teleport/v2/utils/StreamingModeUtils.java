@@ -22,20 +22,21 @@ public class StreamingModeUtils {
   private StreamingModeUtils() {}
 
   public static void validate(DataflowPipelineOptions options) {
-    if (ExperimentalOptions.hasExperiment(options, "streaming_mode_at_least_once")
-        || (options.getDataflowServiceOptions() != null
-            && options.getDataflowServiceOptions().contains("streaming_mode_at_least_once"))) {
+    if (isAtLeastOnceEnabled(options)) {
       options.setEnableStreamingEngine(true);
     }
   }
 
   public static void validateBQOptions(DataflowPipelineOptions options) {
     validate(options);
-    if (ExperimentalOptions.hasExperiment(options, "streaming_mode_at_least_once")
-        || (options.getDataflowServiceOptions() != null
-            && options.getDataflowServiceOptions().contains("streaming_mode_at_least_once"))) {
-      options.setUseStorageWriteApi(true);
+    if (isAtLeastOnceEnabled(options) && options.getUseStorageWriteApi()) {
       options.setUseStorageWriteApiAtLeastOnce(true);
     }
+  }
+
+  private static boolean isAtLeastOnceEnabled(DataflowPipelineOptions options) {
+    return (ExperimentalOptions.hasExperiment(options, "streaming_mode_at_least_once")
+        || ((options.getDataflowServiceOptions() != null)
+            && options.getDataflowServiceOptions().contains("streaming_mode_at_least_once")));
   }
 }
