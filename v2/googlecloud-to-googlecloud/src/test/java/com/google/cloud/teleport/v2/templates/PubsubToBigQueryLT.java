@@ -122,8 +122,6 @@ public class PubsubToBigQueryLT extends TemplateLoadTestBase {
   public void testSteadyState1hrUsingAtLeastOnceMode()
       throws ParseException, IOException, InterruptedException {
     ArrayList<String> experiments = new ArrayList<>();
-    // experiments.add("enable_streaming_engine_resource_based_billing");
-    // experiments.add("streaming_correctness_mode=CORRECTNESS_MODE_AT_LEAST_ONCE");
     experiments.add("streaming_mode_at_least_once");
     testSteadyState1hr(
         b ->
