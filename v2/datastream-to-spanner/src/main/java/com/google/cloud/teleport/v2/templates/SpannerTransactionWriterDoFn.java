@@ -213,7 +213,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // Start transaction
       spannerAccessor
           .getDatabaseClient()
-          .readWriteTransaction(Options.tag(getTxnTag(c.getPipelineOptions())))
+          .readWriteTransaction(
+              Options.tag(getTxnTag(c.getPipelineOptions())),
+              Options.priority(spannerConfig.getRpcPriority().get()))
           .run(
               (TransactionCallable<Void>)
                   transaction -> {
