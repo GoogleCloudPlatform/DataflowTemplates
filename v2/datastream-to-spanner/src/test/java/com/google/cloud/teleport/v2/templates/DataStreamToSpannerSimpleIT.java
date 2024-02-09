@@ -265,9 +265,50 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
 
     // Assert Conditions
-    // assertThatResult(result).meetsConditions();
+    assertThatResult(result).meetsConditions();
 
     assertAllDatatypeColumnsTableBackfillContents();
+  }
+
+  @Test
+  public void migrationTestWithAllDatatypeConversionsWithUpdatesAndDeletes() {
+    // Construct a ChainedConditionCheck with 4 stages.
+    // 1. Send initial wave of events
+    // 2. Wait on Spanner to have events
+    // 3. Send second wave of events
+    // 4. Wait on Spanner to merge second wave of events
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE4,
+                        "backfill.jsonl",
+                        "DataStreamToSpannerSimpleIT/mysql-backfill-AllDatatypeColumns.jsonl"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE4)
+                        .setMinRows(2)
+                        .setMaxRows(2)
+                        .build(),
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE4,
+                        "cdc1.jsonl",
+                        "DataStreamToSpannerSimpleIT/mysql-cdc-AllDatatypeColumns.jsonl"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE4)
+                        .setMinRows(1)
+                        .setMaxRows(1)
+                        .build()))
+            .build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    assertAllDatatypeColumnsTableCdcContents();
   }
 
   @Test
@@ -536,6 +577,51 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
     row.put("binary_column", "62696e6172795f32");
     row.put("varbinary_column", "76617262696e6172795f646174615f32");
     row.put("bit_column", "25");
+    events.add(row);
+
+    SpannerAsserts.assertThatStructs(
+            spannerResourceManager.runQuery(
+                "select varchar_column, tinyint_column, text_column, date_column"
+                    + ", smallint_column, mediumint_column, int_column, bigint_column, float_column"
+                    + ", double_column, datetime_column, timestamp_column, time_column, year_column, char_column"
+                    + ", tinyblob_column, tinytext_column, blob_column, mediumblob_column, mediumtext_column, "
+                    + " longblob_column, longtext_column, enum_column, bool_column, other_bool_column, binary_column"
+                    + ", varbinary_column, bit_column from AllDatatypeColumns"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  private void assertAllDatatypeColumnsTableCdcContents() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("varchar_column", "value1");
+    row.put("tinyint_column", "15");
+    row.put("text_column", "dGV4dF9kYXRhXzEK");
+    row.put("date_column", "2024-02-08T00:00:00.000Z");
+    row.put("smallint_column", "50");
+    row.put("mediumint_column", "1000");
+    row.put("int_column", "50000");
+    row.put("bigint_column", "987654321");
+    row.put("float_column", "45.67");
+    row.put("double_column", "123.789");
+    row.put("datetime_column", "2024-02-08T08:15:30.000Z");
+    row.put("timestamp_column", "2024-02-08T08:15:30.000Z");
+    row.put("time_column", "29730000000");
+    row.put("year_column", "2022");
+    row.put("char_column", "Y2hhcjEK");
+    row.put("tinyblob_column", "74696e79626c6f625f646174615f31");
+    row.put("tinytext_column", "dGlueXRleHRfZGF0YV8xCg==");
+    row.put("blob_column", "626c6f625f646174615f31");
+    row.put("mediumblob_column", "6d656469756d626c6f625f646174615f31");
+    row.put("mediumtext_column", "bWVkaXVtdGV4dF9kYXRhXzE=");
+    row.put("longblob_column", "6c6f6e67626c6f625f646174615f31");
+    row.put("longtext_column", "bG9uZ3RleHRfZGF0YV8x");
+    row.put("enum_column", "2");
+    row.put("bool_column", 0);
+    row.put("other_bool_column", "1");
+    row.put("binary_column", "62696e6172795f31");
+    row.put("varbinary_column", "76617262696e6172795f646174615f31");
+    row.put("bit_column", "102");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
