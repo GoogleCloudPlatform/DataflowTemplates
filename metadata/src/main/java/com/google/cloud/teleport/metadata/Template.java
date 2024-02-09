@@ -87,7 +87,7 @@ public @interface Template {
   boolean streaming() default false;
 
   /** Indicates if the template supports at-least-once correctness. */
-  boolean supportsAtLeastOnce() default true;
+  boolean supportsAtLeastOnce() default false;
 
   /** Indicates if the template supports exactly-once correctness. */
   boolean supportsExactlyOnce() default true;
