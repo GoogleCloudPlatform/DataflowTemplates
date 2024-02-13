@@ -41,6 +41,7 @@ public final class BigQueryIOUtils {
   }
 
   public static void validateBQStorageApiOptionsStreaming(BigQueryOptions options) {
+    StreamingModeUtils.validateBQOptions(options.as(DataflowPipelineOptions.class));
     if (options.getUseStorageWriteApi()
         && !options.getUseStorageWriteApiAtLeastOnce()
         && (options.getNumStorageWriteApiStreams() < 1
@@ -51,7 +52,6 @@ public final class BigQueryIOUtils {
               + " (numStorageWriteApiStreams) and triggering frequency"
               + " (storageWriteApiTriggeringFrequencySec) must also be specified.");
     }
-    StreamingModeUtils.validateBQOptions(options.as(DataflowPipelineOptions.class));
     validateStorageWriteApiAtLeastOnce(options);
   }
 
