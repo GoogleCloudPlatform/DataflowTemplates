@@ -47,14 +47,20 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Templated pipeline to read CSV files from Cloud Storage, and write it to BigQuery. */
+/**
+ * Templated pipeline to read CSV files from Cloud Storage, and write it to BigQuery.
+ *
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_GCS_CSV_to_BigQuery.md">README</a>
+ * for instructions on how to use or modify this template.
+ */
 @Template(
     name = "GCS_CSV_to_BigQuery",
     category = TemplateCategory.BATCH,
     displayName = "CSV Files on Cloud Storage to BigQuery",
     description =
         "The Cloud Storage CSV to BigQuery pipeline is a batch pipeline that allows you to read CSV files stored in "
-            + "Cloud Storage, and append the result to a BigQuery table.",
+            + "Cloud Storage, and append the result to a BigQuery table. The CSV files can be uncompressed or compressed in formats listed in https://beam.apache.org/releases/javadoc/current/org/apache/beam/sdk/io/Compression.html.",
     optionsClass = Options.class,
     contactInformation = "https://cloud.google.com/support",
     requirements = {
