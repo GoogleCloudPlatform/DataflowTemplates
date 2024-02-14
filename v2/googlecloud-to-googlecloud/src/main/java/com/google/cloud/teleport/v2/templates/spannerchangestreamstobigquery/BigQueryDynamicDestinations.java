@@ -24,16 +24,13 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
-import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
@@ -47,32 +44,17 @@ import org.apache.beam.sdk.values.ValueInSingleWindow;
  */
 public final class BigQueryDynamicDestinations
     extends DynamicDestinations<TableRow, KV<TableId, TableRow>> {
-
-  private final Map<String, TrackedSpannerTable> spannerTableByName;
   private final String bigQueryProject, bigQueryDataset, bigQueryTableTemplate;
   private final Boolean useStorageWriteApi;
   private final ImmutableSet<String> ignoreFields;
 
   public static BigQueryDynamicDestinations of(
       BigQueryDynamicDestinationsOptions bigQueryDynamicDestinationsOptions) {
-    Dialect dialect = getDialect(bigQueryDynamicDestinationsOptions.getSpannerConfig());
-    try (SpannerAccessor spannerAccessor =
-        SpannerAccessor.getOrCreate(bigQueryDynamicDestinationsOptions.getSpannerConfig())) {
-      Map<String, TrackedSpannerTable> spannerTableByName =
-          new SpannerChangeStreamsUtils(
-                  spannerAccessor.getDatabaseClient(),
-                  bigQueryDynamicDestinationsOptions.getChangeStreamName(),
-                  dialect)
-              .getSpannerTableByName();
-      return new BigQueryDynamicDestinations(
-          bigQueryDynamicDestinationsOptions, spannerTableByName);
-    }
+    return new BigQueryDynamicDestinations(bigQueryDynamicDestinationsOptions);
   }
 
   private BigQueryDynamicDestinations(
-      BigQueryDynamicDestinationsOptions bigQueryDynamicDestinationsOptions,
-      Map<String, TrackedSpannerTable> spannerTableByName) {
-    this.spannerTableByName = spannerTableByName;
+      BigQueryDynamicDestinationsOptions bigQueryDynamicDestinationsOptions) {
     this.ignoreFields = bigQueryDynamicDestinationsOptions.getIgnoreFields();
     this.bigQueryProject = bigQueryDynamicDestinationsOptions.getBigQueryProject();
     this.bigQueryDataset = bigQueryDynamicDestinationsOptions.getBigQueryDataset();
@@ -105,10 +87,8 @@ public final class BigQueryDynamicDestinations
   @Override
   public TableSchema getSchema(KV<TableId, TableRow> destination) {
     TableRow tableRow = destination.getValue();
-    String spannerTableName =
-        (String) tableRow.get(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME);
-    TrackedSpannerTable spannerTable = spannerTableByName.get(spannerTableName);
-    List<TableFieldSchema> fields = getFields(spannerTable);
+    // Get List<TableFieldSchema> for both user columns and metadata columns.
+    List<TableFieldSchema> fields = getFields(tableRow);
     List<TableFieldSchema> filteredFields = new ArrayList<>();
     for (TableFieldSchema field : fields) {
       if (!ignoreFields.contains(field.getName())) {
@@ -119,9 +99,12 @@ public final class BigQueryDynamicDestinations
     return new TableSchema().setFields(filteredFields);
   }
 
-  private List<TableFieldSchema> getFields(TrackedSpannerTable spannerTable) {
+  // Returns List<TableFieldSchema> for user columns and metadata columns based on the parameter
+  // TableRow.
+  private List<TableFieldSchema> getFields(TableRow tableRow) {
+    // Add all user data fields (excluding metadata fields stored in metadataColumns).
     List<TableFieldSchema> fields =
-        SpannerToBigQueryUtils.spannerColumnsToBigQueryIOFields(spannerTable.getAllColumns());
+        SpannerToBigQueryUtils.tableRowColumnsToBigQueryIOFields(tableRow, this.useStorageWriteApi);
 
     // Add all metadata fields.
     String requiredMode = Field.Mode.REQUIRED.name();

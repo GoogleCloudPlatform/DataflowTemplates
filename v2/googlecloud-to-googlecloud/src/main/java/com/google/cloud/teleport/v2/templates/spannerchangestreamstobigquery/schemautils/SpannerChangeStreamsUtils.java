@@ -16,11 +16,13 @@
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
+import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
@@ -62,12 +64,19 @@ public class SpannerChangeStreamsUtils {
   private DatabaseClient databaseClient;
   private String changeStreamName;
   private Dialect dialect;
+  private Timestamp bound;
 
   public SpannerChangeStreamsUtils(
-      DatabaseClient databaseClient, String changeStreamName, Dialect dialect) {
+      DatabaseClient databaseClient, String changeStreamName, Dialect dialect, Timestamp bound) {
     this.databaseClient = databaseClient;
     this.changeStreamName = changeStreamName;
     this.dialect = dialect;
+    this.bound = bound;
+  }
+
+  public SpannerChangeStreamsUtils(
+      DatabaseClient databaseClient, String changeStreamName, Dialect dialect) {
+    this(databaseClient, changeStreamName, dialect, null);
   }
 
   /**
@@ -157,7 +166,11 @@ public class SpannerChangeStreamsUtils {
     }
 
     try (ResultSet columnsResultSet =
-        databaseClient.singleUse().executeQuery(statementBuilder.build())) {
+        bound != null
+            ? databaseClient
+                .singleUse(TimestampBound.ofReadTimestamp(bound))
+                .executeQuery(statementBuilder.build())
+            : databaseClient.singleUse().executeQuery(statementBuilder.build())) {
       while (columnsResultSet.next()) {
         String tableName = columnsResultSet.getString(informationSchemaTableName());
         String columnName = columnsResultSet.getString(informationSchemaColumnName());
@@ -248,7 +261,11 @@ public class SpannerChangeStreamsUtils {
     }
 
     try (ResultSet keyColumnsResultSet =
-        databaseClient.singleUse().executeQuery(statementBuilder.build())) {
+        bound != null
+            ? databaseClient
+                .singleUse(TimestampBound.ofReadTimestamp(bound))
+                .executeQuery(statementBuilder.build())
+            : databaseClient.singleUse().executeQuery(statementBuilder.build())) {
       while (keyColumnsResultSet.next()) {
         String tableName = keyColumnsResultSet.getString(informationSchemaTableName());
         String columnName = keyColumnsResultSet.getString(informationSchemaColumnName());
@@ -303,7 +320,12 @@ public class SpannerChangeStreamsUtils {
     }
 
     Set<String> result = new HashSet<>();
-    try (ResultSet resultSet = databaseClient.singleUse().executeQuery(statementBuilder.build())) {
+    try (ResultSet resultSet =
+        bound != null
+            ? databaseClient
+                .singleUse(TimestampBound.ofReadTimestamp(bound))
+                .executeQuery(statementBuilder.build())
+            : databaseClient.singleUse().executeQuery(statementBuilder.build())) {
 
       while (resultSet.next()) {
         result.add(resultSet.getString(informationSchemaTableName()));
@@ -332,7 +354,12 @@ public class SpannerChangeStreamsUtils {
 
       statementBuilder = Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName);
     }
-    try (ResultSet resultSet = databaseClient.singleUse().executeQuery(statementBuilder.build())) {
+    try (ResultSet resultSet =
+        bound != null
+            ? databaseClient
+                .singleUse(TimestampBound.ofReadTimestamp(bound))
+                .executeQuery(statementBuilder.build())
+            : databaseClient.singleUse().executeQuery(statementBuilder.build())) {
       while (resultSet.next()) {
         if (this.isPostgres()) {
           String resultString = resultSet.getString(informationSchemaAll());
@@ -377,7 +404,12 @@ public class SpannerChangeStreamsUtils {
       statementBuilder = Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName);
     }
 
-    try (ResultSet resultSet = databaseClient.singleUse().executeQuery(statementBuilder.build())) {
+    try (ResultSet resultSet =
+        bound != null
+            ? databaseClient
+                .singleUse(TimestampBound.ofReadTimestamp(bound))
+                .executeQuery(statementBuilder.build())
+            : databaseClient.singleUse().executeQuery(statementBuilder.build())) {
 
       while (resultSet.next()) {
         String tableName = resultSet.getString(informationSchemaTableName());
@@ -392,103 +424,9 @@ public class SpannerChangeStreamsUtils {
 
   private Type informationSchemaTypeToSpannerType(String type) {
     if (this.isPostgres()) {
-      return informationSchemaPostgreSQLTypeToSpannerType(type);
+      return TypesUtils.informationSchemaPostgreSQLTypeToSpannerType(type);
     }
-    return informationSchemaGoogleSQLTypeToSpannerType(type);
-  }
-
-  private Type informationSchemaGoogleSQLTypeToSpannerType(String type) {
-    type = cleanInformationSchemaType(type);
-    switch (type) {
-      case "BOOL":
-        return Type.bool();
-      case "BYTES":
-        return Type.bytes();
-      case "DATE":
-        return Type.date();
-      case "FLOAT64":
-        return Type.float64();
-      case "INT64":
-        return Type.int64();
-      case "JSON":
-        return Type.json();
-      case "NUMERIC":
-        return Type.numeric();
-      case "STRING":
-        return Type.string();
-      case "TIMESTAMP":
-        return Type.timestamp();
-      default:
-        if (type.startsWith("ARRAY")) {
-          // Get array type, e.g. "ARRAY<STRING>" -> "STRING".
-          String spannerArrayType = type.substring(6, type.length() - 1);
-          Type itemType = informationSchemaGoogleSQLTypeToSpannerType(spannerArrayType);
-          return Type.array(itemType);
-        }
-
-        throw new IllegalArgumentException(String.format("Unsupported Spanner type: %s", type));
-    }
-  }
-
-  private Type informationSchemaPostgreSQLTypeToSpannerType(String type) {
-    boolean isPostgresArray = isPostgresArray(type);
-    String cleanedType = "";
-    if (isPostgresArray) {
-      cleanedType = type.substring(0, type.length() - 2);
-      Type itemType = informationSchemaPostgreSQLTypeToSpannerType(cleanedType);
-      return Type.array(itemType);
-    } else {
-      cleanedType = cleanInformationSchemaType(type);
-    }
-
-    switch (cleanedType) {
-      case "BOOLEAN":
-        return Type.bool();
-      case "BYTEA":
-        return Type.bytes();
-      case "DOUBLE PRECISION":
-        return Type.float64();
-      case "BIGINT":
-        return Type.int64();
-      case "DATE":
-        return Type.date();
-      case "JSONB":
-        return Type.pgJsonb();
-      case "NUMERIC":
-        return Type.pgNumeric();
-      case "CHARACTER VARYING":
-        return Type.string();
-      case "TIMESTAMP WITH TIME ZONE":
-        return Type.timestamp();
-      case "SPANNER.COMMIT_TIMESTAMP":
-        return Type.timestamp();
-      default:
-        throw new IllegalArgumentException(
-            String.format("Unsupported Spanner PostgreSQL type: %s", type));
-    }
-  }
-
-  private boolean isPostgresArray(String type) {
-    return type.endsWith("[]");
-  }
-
-  /**
-   * Remove the Spanner type length limit, since Spanner doesn't document clearly on the
-   * parameterized types like BigQuery does, i.e. BigQuery's docmentation on <a
-   * href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#parameterized_data_types">Parameterized
-   * data types</a>, but Spanner doesn't have a similar one. We might have problem if we transfer
-   * the length limit into BigQuery. By removing the length limit, we essentially loose the
-   * constraint of data written to BigQuery, and it won't cause errors.
-   */
-  private String cleanInformationSchemaType(String type) {
-    // Remove type size, e.g. STRING(1024) -> STRING.
-    int leftParenthesisIdx = type.indexOf('(');
-    if (leftParenthesisIdx != -1) {
-      type = type.substring(0, leftParenthesisIdx) + type.substring(type.indexOf(')') + 1);
-    }
-
-    // Convert it to upper case.
-    return type.toUpperCase();
+    return TypesUtils.informationSchemaGoogleSQLTypeToSpannerType(type);
   }
 
   public static void appendToSpannerKey(
