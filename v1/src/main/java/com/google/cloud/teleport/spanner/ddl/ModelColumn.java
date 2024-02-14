@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.DdlUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.SizedType;
@@ -59,9 +61,8 @@ public abstract class ModelColumn implements Serializable {
     if (dialect() != Dialect.GOOGLE_STANDARD_SQL) {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
     appendable
-        .append(String.format("%1$-40s", identifierQuote + name() + identifierQuote))
+        .append(String.format("%1$-40s", quoteIdentifier(name(), dialect())))
         .append(typeString());
 
     if (columnOptions() != null && !columnOptions().isEmpty()) {

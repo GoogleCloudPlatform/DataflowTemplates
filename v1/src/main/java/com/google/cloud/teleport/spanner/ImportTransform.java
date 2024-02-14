@@ -21,6 +21,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
@@ -476,13 +477,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             LOG.debug(informationSchemaDdl.prettyPrint());
                           }
                           Schema.Parser parser = new Schema.Parser();
+                          List<KV<String, Schema>> missingNamedSchemas = new ArrayList<>();
                           List<KV<String, Schema>> missingTables = new ArrayList<>();
                           List<KV<String, Schema>> missingModels = new ArrayList<>();
                           List<KV<String, Schema>> missingViews = new ArrayList<>();
                           List<KV<String, Schema>> missingChangeStreams = new ArrayList<>();
                           List<KV<String, Schema>> missingSequences = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
-                            if (informationSchemaDdl.table(kv.getKey()) == null
+                            if (informationSchemaDdl.schema(kv.getKey()) == null
+                                && informationSchemaDdl.table(kv.getKey()) == null
                                 && informationSchemaDdl.model(kv.getKey()) == null
                                 && informationSchemaDdl.view(kv.getKey()) == null
                                 && informationSchemaDdl.changeStream(kv.getKey()) == null
@@ -498,7 +501,10 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                               } else if (schema.getProp("sequenceOption_0") != null
                                   || schema.getProp(AvroUtil.SPANNER_SEQUENCE_KIND) != null) {
                                 missingSequences.add(KV.of(kv.getKey(), schema));
-                              } else {
+                                // ?? why we use raw string in this function, can we use AvroUtil
+                              } else if ("spannerNamedSchema".equals(schema.getProp("spannerEntity"))) {
+                                missingNamedSchemas.add(KV.of(kv.getKey(), schema));
+                              }else {
                                 missingTables.add(KV.of(kv.getKey(), schema));
                               }
                             }
@@ -538,8 +544,14 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
                           if (!missingTables.isEmpty()
                               || !missingModels.isEmpty()
-                              || !missingViews.isEmpty()) {
+                              || !missingViews.isEmpty()
+                              || !missingNamedSchemas.isEmpty()) {
                             Ddl.Builder builder = Ddl.builder(dialect);
+                            for(KV<String, Schema> kv: missingNamedSchemas) {
+                              NamedSchema schema = converter.toSchema(kv.getKey(), kv.getValue());
+                              builder.addSchema(schema);
+                              mergedDdl.addSchema(schema);
+                            }
                             for (KV<String, Schema> kv : missingViews) {
                               com.google.cloud.teleport.spanner.ddl.View view =
                                   converter.toView(kv.getKey(), kv.getValue());
@@ -561,6 +573,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                               createForeignKeyStatements.addAll(table.foreignKeys());
                             }
                             Ddl newDdl = builder.build();
+                            ddlStatements.addAll(newDdl.createNamedSchemaStatements());
                             ddlStatements.addAll(newDdl.createTableStatements());
                             ddlStatements.addAll(newDdl.createModelStatements());
                             ddlStatements.addAll(newDdl.createViewStatements());

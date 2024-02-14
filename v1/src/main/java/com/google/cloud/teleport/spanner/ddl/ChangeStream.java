@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.DdlUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.base.Strings;
@@ -53,12 +55,9 @@ public abstract class ChangeStream implements Serializable {
     if (dialect() != Dialect.GOOGLE_STANDARD_SQL && dialect() != Dialect.POSTGRESQL) {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
     appendable
         .append("CREATE CHANGE STREAM ")
-        .append(identifierQuote)
-        .append(name())
-        .append(identifierQuote);
+        .append(quoteIdentifier(name(), dialect()));
     if (!Strings.isNullOrEmpty(forClause())) {
       appendable.append("\n\t").append(forClause());
     }

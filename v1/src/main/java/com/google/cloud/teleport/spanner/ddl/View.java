@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.DdlUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import java.io.IOException;
@@ -46,8 +48,8 @@ public abstract class View implements Serializable {
   public abstract Builder toBuilder();
 
   public void prettyPrint(Appendable appendable) throws IOException {
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
-    appendable.append("CREATE VIEW " + identifierQuote).append(name()).append(identifierQuote);
+    appendable.append("CREATE VIEW ").
+        append(quoteIdentifier(name(), dialect()));
     SqlSecurity rights = security();
     if (rights != null) {
       appendable.append(" SQL SECURITY ").append(rights.toString());

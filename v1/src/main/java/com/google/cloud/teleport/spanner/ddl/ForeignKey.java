@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.DdlUtils.quoteIdentifier;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 import com.google.auto.value.AutoValue;
@@ -100,25 +101,24 @@ public abstract class ForeignKey implements Serializable {
   }
 
   private void prettyPrint(Appendable appendable) throws IOException {
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
     String columnsString =
         columns().stream()
-            .map(c -> identifierQuote + c + identifierQuote)
+            .map(c -> quoteIdentifier(c, dialect()))
             .collect(Collectors.joining(", "));
     String referencedColumnsString =
         referencedColumns().stream()
-            .map(c -> identifierQuote + c + identifierQuote)
+            .map(c -> quoteIdentifier(c, dialect()))
             .collect(Collectors.joining(", "));
     appendable
-        .append("ALTER TABLE " + identifierQuote)
-        .append(table())
-        .append(identifierQuote + " ADD CONSTRAINT " + identifierQuote)
-        .append(name())
-        .append(identifierQuote + " FOREIGN KEY (")
+        .append("ALTER TABLE ")
+        .append(quoteIdentifier(table(), dialect()))
+        .append( " ADD CONSTRAINT ")
+        .append(quoteIdentifier(name(), dialect()))
+        .append( " FOREIGN KEY (")
         .append(columnsString)
-        .append(") REFERENCES " + identifierQuote)
-        .append(referencedTable())
-        .append((identifierQuote + " ("))
+        .append(") REFERENCES ")
+        .append(quoteIdentifier(referencedTable(), dialect()))
+        .append(" (")
         .append(referencedColumnsString)
         .append(")");
     Optional<ReferentialAction> action = referentialAction();

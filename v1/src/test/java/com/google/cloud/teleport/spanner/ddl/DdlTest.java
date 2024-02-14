@@ -98,7 +98,8 @@ public class DdlTest {
         .asc("id")
         .asc("gen_id")
         .end()
-        .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
+        .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)",
+            "CREATE INDEX `UsersByIdAndFirstName` ON `Users` (`id`,`gen_id`,`first_name`), INTERLEAVE IN `Users`"))
         .foreignKeys(
             ImmutableList.of(
                 "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
@@ -131,12 +132,13 @@ public class DdlTest {
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
+                + " CREATE INDEX `UsersByIdAndFirstName` ON `Users` (`id`,`gen_id`,`first_name`), INTERLEAVE IN `Users`"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                 + " REFERENCES `AllowedNames` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
                 + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"));
     List<String> statements = ddl.statements();
-    assertEquals(5, statements.size());
+    assertEquals(6, statements.size());
     assertThat(
         statements.get(0),
         equalToCompressingWhiteSpace(
@@ -153,16 +155,19 @@ public class DdlTest {
         equalToCompressingWhiteSpace(" CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"));
     assertThat(
         statements.get(2),
+        equalToCompressingWhiteSpace(" CREATE INDEX `UsersByIdAndFirstName` ON `Users` (`id`,`gen_id`,`first_name`), INTERLEAVE IN `Users`"));
+    assertThat(
+        statements.get(3),
         equalToCompressingWhiteSpace(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`) REFERENCES"
                 + " `AllowedNames` (`first_name`)"));
     assertThat(
-        statements.get(3),
+        statements.get(4),
         equalToCompressingWhiteSpace(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`) REFERENCES"
                 + " `AllowedNames` (`last_name`) ON DELETE CASCADE"));
     assertThat(
-        statements.get(4),
+        statements.get(5),
         equalToCompressingWhiteSpace(
             "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"));
     assertNotNull(ddl.hashCode());

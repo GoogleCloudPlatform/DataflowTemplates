@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.spanner.SpannerTableFilter.getFilteredTables;
+import static com.google.cloud.teleport.spanner.common.DdlUtils.quoteIdentifier;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
@@ -88,8 +90,10 @@ class BuildReadFromTableOperations
                           ReadOperation.create()
                               .withQuery(
                                   String.format(
-                                      "SELECT \"%s\" AS _spanner_table, %s FROM `%s` AS t",
-                                      table.name(), columnsListAsString, table.name()))
+                                      "SELECT \"%s\" AS _spanner_table, %s FROM %s AS t",
+                                      table.name(), columnsListAsString,
+                                      quoteIdentifier(table.name(),
+                                          Dialect.GOOGLE_STANDARD_SQL)))
                               .withPartitionOptions(partitionOptions);
                       break;
                     case POSTGRESQL:
@@ -97,8 +101,9 @@ class BuildReadFromTableOperations
                           ReadOperation.create()
                               .withQuery(
                                   String.format(
-                                      "SELECT '%s' AS _spanner_table, %s FROM \"%s\" AS t",
-                                      table.name(), columnsListAsString, table.name()))
+                                      "SELECT '%s' AS _spanner_table, %s FROM %s AS t",
+                                      table.name(), columnsListAsString,
+                                      quoteIdentifier(table.name(), Dialect.POSTGRESQL)))
                               .withPartitionOptions(partitionOptions);
                       break;
                     default:

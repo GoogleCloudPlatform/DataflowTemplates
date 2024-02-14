@@ -31,6 +31,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
@@ -49,6 +50,7 @@ import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Model;
+import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
@@ -91,10 +93,21 @@ public class AvroSchemaToDdlConverter {
         // `sequence_kind='bit_reversed_positive`, so `sequenceOption_0` must
         // always be valid.
         builder.addSequence(toSequence(null, schema));
+      } else if (SPANNER_NAMED_SCHEMA.equals(schema.getProp(SPANNER_ENTITY))) {
+        builder.addSchema(toSchema(null, schema));
       } else {
         builder.addTable(toTable(null, schema));
       }
     }
+    return builder.build();
+  }
+
+  public NamedSchema toSchema(String schemaName, Schema schema) {
+      if (schemaName == null) {
+        schemaName = schema.getName();
+      }
+    NamedSchema.Builder builder =
+        NamedSchema.builder().dialect(dialect).name(schemaName);
     return builder.build();
   }
 

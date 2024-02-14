@@ -13,33 +13,44 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.spanner.ddl;
+package com.google.cloud.teleport.spanner.common;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.common.escape.Escaper;
 import com.google.common.escape.Escapers;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
-/** Cloud Spanner Ddl utility components. */
-class DdlUtilityComponents {
+/**
+ * Cloud Spanner Ddl utility components.
+ */
+public class DdlUtils {
 
   // Private constructor to prevent initializing instance, because this class is only served within
   // ddl directory
-  private DdlUtilityComponents() {}
+  private DdlUtils() {
+  }
 
   // Shared at package-level
-  static final Escaper OPTION_STRING_ESCAPER =
+  public static final Escaper OPTION_STRING_ESCAPER =
       Escapers.builder()
           .addEscape('"', "\\\"")
           .addEscape('\\', "\\\\")
           .addEscape('\r', "\\r")
           .addEscape('\n', "\\n")
           .build();
-  static final String POSTGRESQL_IDENTIFIER_QUOTE = "\"";
-  static final String GSQL_IDENTIFIER_QUOTE = "`";
-  static final String POSTGRESQL_LITERAL_QUOTE = "'";
-  static final String GSQL_LITERAL_QUOTE = "\"";
+  private static final String POSTGRESQL_IDENTIFIER_QUOTE = "\"";
+  private static final String GSQL_IDENTIFIER_QUOTE = "`";
+  public static final String POSTGRESQL_LITERAL_QUOTE = "'";
+  public static final String GSQL_LITERAL_QUOTE = "\"";
 
-  static String identifierQuote(Dialect dialect) {
+  public static String quoteIdentifier(String name, Dialect dialect) {
+    String quote = identifierQuote(dialect);
+    return Arrays.stream(name.split("\\.")).map(s -> quote + s + quote)
+        .collect(Collectors.joining("."));
+  }
+
+  private static String identifierQuote(Dialect dialect) {
     switch (dialect) {
       case POSTGRESQL:
         return POSTGRESQL_IDENTIFIER_QUOTE;
@@ -50,7 +61,7 @@ class DdlUtilityComponents {
     }
   }
 
-  static String literalQuote(Dialect dialect) {
+  public static String literalQuote(Dialect dialect) {
     switch (dialect) {
       case POSTGRESQL:
         return POSTGRESQL_LITERAL_QUOTE;

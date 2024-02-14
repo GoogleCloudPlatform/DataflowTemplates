@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.DdlUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
@@ -75,7 +77,8 @@ public abstract class Index implements Serializable {
     if (unique()) {
       appendable.append(" UNIQUE");
     }
-    appendable.append(" INDEX \"").append(name()).append("\" ON \"").append(table()).append("\"");
+    appendable.append(" INDEX ").append(quoteIdentifier(name(), dialect())).append(" ON ")
+        .append(quoteIdentifier(table(), dialect()));
 
     String indexColumnsString =
         indexColumns().stream()
@@ -87,7 +90,7 @@ public abstract class Index implements Serializable {
     String storingString =
         indexColumns().stream()
             .filter(c -> c.order() == IndexColumn.Order.STORING)
-            .map(c -> "\"" + c.name() + "\"")
+            .map(c ->  quoteIdentifier(c.name(), dialect()))
             .collect(Collectors.joining(", "));
 
     if (!storingString.isEmpty()) {
@@ -95,7 +98,7 @@ public abstract class Index implements Serializable {
     }
 
     if (interleaveIn() != null) {
-      appendable.append(" INTERLEAVE IN \"").append(interleaveIn()).append("\"");
+      appendable.append(" INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
     }
 
     if (filter() != null && !filter().isEmpty()) {
@@ -111,7 +114,9 @@ public abstract class Index implements Serializable {
     if (nullFiltered()) {
       appendable.append(" NULL_FILTERED");
     }
-    appendable.append(" INDEX `").append(name()).append("` ON `").append(table()).append("`");
+
+    appendable.append(" INDEX ").append(quoteIdentifier(name(), dialect()))
+        .append(" ON ").append(quoteIdentifier(table(), dialect()));
 
     String indexColumnsString =
         indexColumns().stream()
@@ -123,7 +128,7 @@ public abstract class Index implements Serializable {
     String storingString =
         indexColumns().stream()
             .filter(c -> c.order() == IndexColumn.Order.STORING)
-            .map(c -> "`" + c.name() + "`")
+            .map(c -> quoteIdentifier(c.name(), dialect()))
             .collect(Collectors.joining(", "));
 
     if (!storingString.isEmpty()) {
@@ -131,7 +136,7 @@ public abstract class Index implements Serializable {
     }
 
     if (interleaveIn() != null) {
-      appendable.append(", INTERLEAVE IN ").append(interleaveIn());
+      appendable.append(", INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
     }
   }
 

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.DdlUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import java.io.IOException;
@@ -42,11 +44,10 @@ public abstract class CheckConstraint implements Serializable {
   }
 
   private void prettyPrint(Appendable appendable) throws IOException {
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
     appendable
-        .append("CONSTRAINT " + identifierQuote)
-        .append(name())
-        .append(identifierQuote + " CHECK (")
+        .append("CONSTRAINT ")
+        .append(quoteIdentifier(name(), dialect()))
+        .append( " CHECK (")
         .append(expression())
         .append(")");
   }

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.DdlUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
@@ -70,12 +72,9 @@ public abstract class Model implements Serializable {
       throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
     }
 
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
     appendable
         .append("CREATE MODEL ")
-        .append(identifierQuote)
-        .append(name())
-        .append(identifierQuote);
+        .append(quoteIdentifier(name(), dialect()));
     if (!inputColumns().isEmpty()) {
       appendable.append("\nINPUT (");
       for (ModelColumn column : inputColumns()) {

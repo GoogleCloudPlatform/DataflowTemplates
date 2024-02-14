@@ -33,6 +33,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
@@ -51,6 +52,7 @@ import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.ModelColumn;
+import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
@@ -82,6 +84,14 @@ public class DdlToAvroSchemaConverter {
   public Collection<Schema> convert(Ddl ddl) {
     Collection<Schema> schemas = new ArrayList<>();
 
+    for (NamedSchema schema : ddl.schemas()) {
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(schema.name()).namespace(this.namespace);
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      // Indicate that this is a "CREATE SCHEMA", not a table or a view.
+      recordBuilder.prop(SPANNER_ENTITY, SPANNER_NAMED_SCHEMA);
+    }
     for (Table table : ddl.allTables()) {
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
           SchemaBuilder.record(table.name()).namespace(this.namespace);

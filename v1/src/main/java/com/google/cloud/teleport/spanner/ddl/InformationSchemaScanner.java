@@ -15,12 +15,14 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.DdlUtils.quoteIdentifier;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
+import com.google.cloud.teleport.spanner.common.DdlUtils;
 import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.annotations.VisibleForTesting;
@@ -179,7 +181,8 @@ public class InformationSchemaScanner {
             Statement.newBuilder(
                 "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
                     + " information_schema.tables AS t"
-                    + " WHERE t.table_catalog = '' AND t.table_schema = ''");
+                    + " WHERE v.table_schema NOT IN"
+                    + " ('information_schema', 'spanner_sys')");
         preconditionStatement =
             Statement.of(
                 "SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS c WHERE c.TABLE_CATALOG = '' AND"
@@ -354,7 +357,8 @@ public class InformationSchemaScanner {
             "SELECT t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
                 + " t.is_null_filtered"
                 + " FROM information_schema.indexes AS t"
-                + " WHERE t.table_catalog = '' AND t.table_schema = '' AND"
+                + " WHERE v.table_schema NOT IN"
+                + " ('information_schema', 'spanner_sys') AND"
                 + " t.index_type='INDEX' AND t.spanner_is_managed = FALSE"
                 + " ORDER BY t.table_name, t.index_name");
       case POSTGRESQL:
@@ -430,7 +434,8 @@ public class InformationSchemaScanner {
         return Statement.of(
             "SELECT t.table_name, t.column_name, t.column_ordering, t.index_name "
                 + "FROM information_schema.index_columns AS t "
-                + "WHERE t.table_catalog = '' AND t.table_schema = '' "
+                + " WHERE v.table_schema NOT IN"
+                + " ('information_schema', 'spanner_sys')"
                 + "ORDER BY t.table_name, t.index_name, t.ordinal_position");
       case POSTGRESQL:
         return Statement.of(
@@ -465,13 +470,13 @@ public class InformationSchemaScanner {
         options.add(
             optionName
                 + "=\""
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtils.OPTION_STRING_ESCAPER.escape(optionValue)
                 + "\"");
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
                 + "='"
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtils.OPTION_STRING_ESCAPER.escape(optionValue)
                 + "'");
       } else {
         options.add(optionName + "=" + optionValue);
@@ -500,7 +505,8 @@ public class InformationSchemaScanner {
             "SELECT t.table_name, t.column_name, t.option_name, t.option_type,"
                 + " t.option_value"
                 + " FROM information_schema.column_options AS t"
-                + " WHERE t.table_catalog = '' AND t.table_schema = ''"
+                + " WHERE v.table_schema NOT IN"
+                + " ('information_schema', 'spanner_sys')"
                 + " ORDER BY t.table_name, t.column_name");
       case POSTGRESQL:
         // Ignore the 'allow_commit_timestamp' option since it's not user-settable in POSTGRESQL.
@@ -675,7 +681,8 @@ public class InformationSchemaScanner {
             Statement.of(
                 "SELECT v.table_name, v.view_definition, v.security_type"
                     + " FROM information_schema.views AS v"
-                    + " WHERE v.table_catalog = '' AND v.table_schema = ''");
+                    + " WHERE v.table_schema NOT IN"
+                    + " ('information_schema', 'spanner_sys')");
         preconditionStatement =
             Statement.of(
                 "SELECT COUNT(1)"
@@ -767,16 +774,16 @@ public class InformationSchemaScanner {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+                + DdlUtils.GSQL_LITERAL_QUOTE
+                + DdlUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtils.GSQL_LITERAL_QUOTE);
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
+                + DdlUtils.POSTGRESQL_LITERAL_QUOTE
+                + DdlUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtils.POSTGRESQL_LITERAL_QUOTE);
       } else {
         options.add(optionName + "=" + optionValue);
       }
@@ -857,16 +864,16 @@ public class InformationSchemaScanner {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+                + DdlUtils.GSQL_LITERAL_QUOTE
+                + DdlUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtils.GSQL_LITERAL_QUOTE);
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
+                + DdlUtils.POSTGRESQL_LITERAL_QUOTE
+                + DdlUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtils.POSTGRESQL_LITERAL_QUOTE);
       } else {
         options.add(optionName + "=" + optionValue);
       }
@@ -924,7 +931,6 @@ public class InformationSchemaScanner {
   }
 
   private void listChangeStreams(Ddl.Builder builder) {
-    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect);
     ResultSet resultSet =
         context.executeQuery(
             Statement.of(
@@ -975,7 +981,7 @@ public class InformationSchemaScanner {
       }
 
       forClause.append(forClause.length() == 0 ? "FOR " : ", ");
-      forClause.append(identifierQuote).append(tableName).append(identifierQuote);
+      forClause.append(quoteIdentifier(tableName, dialect));
       if (allColumns) {
         continue;
       } else if (columnNameList == null) {
@@ -985,7 +991,7 @@ public class InformationSchemaScanner {
             columnNameList.stream()
                 .filter(s -> s != null)
                 .sorted()
-                .map(s -> identifierQuote + s + identifierQuote)
+                .map(s -> quoteIdentifier(s, dialect))
                 .collect(Collectors.joining(", "));
         forClause.append("(").append(sortedColumns).append(")");
       }
@@ -1022,16 +1028,16 @@ public class InformationSchemaScanner {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+                + DdlUtils.GSQL_LITERAL_QUOTE
+                + DdlUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtils.GSQL_LITERAL_QUOTE);
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
+                + DdlUtils.POSTGRESQL_LITERAL_QUOTE
+                + DdlUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtils.POSTGRESQL_LITERAL_QUOTE);
       } else {
         options.add(optionName + "=" + optionValue);
       }
@@ -1153,9 +1159,9 @@ public class InformationSchemaScanner {
         options.add(
             optionName
                 + "="
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
-                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
+                + DdlUtils.GSQL_LITERAL_QUOTE
+                + DdlUtils.OPTION_STRING_ESCAPER.escape(optionValue)
+                + DdlUtils.GSQL_LITERAL_QUOTE);
       } else {
         options.add(optionName + "=" + optionValue);
       }

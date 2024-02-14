@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.DdlUtils.quoteIdentifier;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
@@ -95,11 +97,10 @@ public abstract class Table implements Serializable {
   private void prettyPrintPg(
       Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
       throws IOException {
-    String identifierQuote = DdlUtilityComponents.identifierQuote(Dialect.POSTGRESQL);
     appendable
-        .append("CREATE TABLE " + identifierQuote)
-        .append(name())
-        .append(identifierQuote + " (");
+        .append("CREATE TABLE ")
+        .append(quoteIdentifier(name(), Dialect.POSTGRESQL))
+        .append(" (");
     for (Column column : columns()) {
       appendable.append("\n\t");
       column.prettyPrint(appendable);
@@ -113,15 +114,14 @@ public abstract class Table implements Serializable {
     if (primaryKeys() != null) {
       appendable.append(
           primaryKeys().stream()
-              .map(c -> identifierQuote + c.name() + identifierQuote)
+              .map(c -> quoteIdentifier(c.name(), dialect()))
               .collect(Collectors.joining(", ", "\n\tPRIMARY KEY (", ")")));
     }
     appendable.append("\n)");
     if (interleaveInParent() != null) {
       appendable
-          .append(" \nINTERLEAVE IN PARENT " + identifierQuote)
-          .append(interleaveInParent())
-          .append(identifierQuote);
+          .append(" \nINTERLEAVE IN PARENT ")
+          .append(quoteIdentifier(interleaveInParent(), Dialect.POSTGRESQL));
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
       }
@@ -139,11 +139,10 @@ public abstract class Table implements Serializable {
   private void prettyPrintGsql(
       Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
       throws IOException {
-    String identifierQuote = DdlUtilityComponents.identifierQuote(Dialect.GOOGLE_STANDARD_SQL);
     appendable
-        .append("CREATE TABLE " + identifierQuote)
-        .append(name())
-        .append(identifierQuote + " (");
+        .append("CREATE TABLE ")
+        .append(quoteIdentifier(name(), Dialect.GOOGLE_STANDARD_SQL))
+        .append(" (");
     for (Column column : columns()) {
       appendable.append("\n\t");
       column.prettyPrint(appendable);
@@ -163,9 +162,9 @@ public abstract class Table implements Serializable {
     appendable.append(")");
     if (interleaveInParent() != null) {
       appendable
-          .append(",\nINTERLEAVE IN PARENT " + identifierQuote)
-          .append(interleaveInParent())
-          .append(identifierQuote);
+          .append(",\nINTERLEAVE IN PARENT ")
+          .append(quoteIdentifier(interleaveInParent(),
+              Dialect.GOOGLE_STANDARD_SQL));
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
       }

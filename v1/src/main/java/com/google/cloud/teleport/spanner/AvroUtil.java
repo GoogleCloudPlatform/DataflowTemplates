@@ -49,6 +49,7 @@ public class AvroUtil {
   public static final String SPANNER_SEQUENCE_COUNTER_START = "counterStartValue";
   public static final String SPANNER_VIEW_QUERY = "spannerViewQuery";
   public static final String SPANNER_VIEW_SECURITY = "spannerViewSecurity";
+  public static final String SPANNER_NAMED_SCHEMA = "spannerNamedSchema";
   public static final String STORED = "stored";
 
   public static Schema unpackNullable(Schema schema) {
