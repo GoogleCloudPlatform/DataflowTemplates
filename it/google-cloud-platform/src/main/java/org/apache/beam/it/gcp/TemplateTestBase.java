@@ -23,6 +23,7 @@ import com.google.api.services.dataflow.model.Job;
 import com.google.auth.Credentials;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
+import com.google.cloud.teleport.metadata.MultiTemplateIntegrationTest;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateCreationParameters;
@@ -111,6 +112,10 @@ public abstract class TemplateTestBase {
   protected Template template;
   private Class<?> templateClass;
 
+  protected List<Template> multiTemplates;
+
+  protected List<Class<?>> multiTemplateClasses;
+
   /** Client to interact with GCS. */
   protected GcsResourceManager gcsClient;
 
@@ -126,6 +131,8 @@ public abstract class TemplateTestBase {
     testId = PipelineUtils.createJobName("test", 10);
 
     TemplateIntegrationTest annotation = null;
+    MultiTemplateIntegrationTest multiAnnotation =
+        getClass().getAnnotation(MultiTemplateIntegrationTest.class);
     usingDirectRunner = System.getProperty("directRunnerTest") != null;
     try {
       Method testMethod = getClass().getMethod(testName);
@@ -141,20 +148,21 @@ public abstract class TemplateTestBase {
     if (annotation == null) {
       annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
     }
-    if (annotation == null) {
+    if (annotation == null && multiAnnotation == null) {
       LOG.warn(
-          "{} did not specify which template is tested using @TemplateIntegrationTest, skipping.",
+          "{} did not specify which template is tested using @TemplateIntegrationTest or"
+              + " @MultiTemplateIntegrationTest, skipping.",
           getClass());
       return;
     }
-    templateClass = annotation.value();
-    template = getTemplateAnnotation(annotation, templateClass);
-    if (template == null) {
+    if (annotation != null && multiAnnotation != null) {
+      LOG.warn(
+          "{} specifies both @TemplateIntegrationTest or @MultiTemplateIntegrationTest, please use"
+              + " only of either.",
+          getClass());
       return;
     }
-    if (template.placeholderClass() != void.class) {
-      templateClass = template.placeholderClass();
-    }
+
     if (TestProperties.hasAccessToken()) {
       credentials = TestProperties.googleCredentials();
     } else {
@@ -180,72 +188,115 @@ public abstract class TemplateTestBase {
           "Both -DartifactBucket and -DstageBucket were not given. Storage Client will not be"
               + " created automatically.");
     }
-
     credentialsProvider = FixedCredentialsProvider.create(credentials);
-    pipelineLauncher = buildLauncher();
 
-    if (usingDirectRunner) {
-      // Using direct runner, not needed to stage.
-      return;
+    if (annotation != null) {
+      templateClass = annotation.value();
+      template = getTemplateAnnotation(annotation, templateClass);
+      if (template == null) {
+        return;
+      }
+      if (template.placeholderClass() != void.class) {
+        templateClass = template.placeholderClass();
+      }
+      pipelineLauncher = buildLauncher(templateClass, template);
+
+      if (usingDirectRunner) {
+        // Using direct runner, not needed to stage.
+        return;
+      }
+      specPath = getSpecPath(templateClass, template, "pom.xml");
+    } else {
+      TemplateIntegrationTest[] templateIntegrationTests = multiAnnotation.value();
+      String[] pomPaths = multiAnnotation.pomPaths();
+      if (pomPaths.length != templateIntegrationTests.length) {
+        LOG.warn(
+            "@MultiTemplateIntegrationTest fields value and pomPaths specified in {} have unequal"
+                + " lengths. Every template class in value should have its corresponding pom file"
+                + " in pomPath at the same index.",
+            getClass());
+        return;
+      }
+      for (int i = 0; i < templateIntegrationTests.length; i++) {
+        TemplateIntegrationTest templateIntegrationTest = templateIntegrationTests[i];
+        String pomPath = pomPaths[i];
+        templateClass = templateIntegrationTest.value();
+        template = getTemplateAnnotation(templateIntegrationTest, templateClass);
+        if (template == null) {
+          return;
+        }
+        if (template.placeholderClass() != void.class) {
+          templateClass = template.placeholderClass();
+        }
+        multiTemplates.add(template);
+        multiTemplateClasses.add(templateClass);
+        pipelineLauncher = buildLauncher(templateClass, template);
+
+        if (usingDirectRunner) {
+          // Using direct runner, not needed to stage.
+          return;
+        }
+        specPath = getSpecPath(templateClass, template, pomPath);
+      }
     }
+  }
 
+  private String getSpecPath(Class<?> templateClass, Template template, String pomPath)
+      throws ExecutionException {
     if (TestProperties.specPath() != null && !TestProperties.specPath().isEmpty()) {
       LOG.info("A spec path was given, not staging template {}", template.name());
-      specPath = TestProperties.specPath();
+      return TestProperties.specPath();
     } else {
-      specPath =
-          stagedTemplates.get(
-              template.name(),
-              () -> {
-                LOG.info("Preparing test for {} ({})", template.name(), templateClass);
+      return stagedTemplates.get(
+          template.name(),
+          () -> {
+            LOG.info("Preparing test for {} ({})", template.name(), templateClass);
 
-                String prefix =
-                    new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_IT";
+            String prefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_IT";
 
-                File pom = new File("pom.xml").getAbsoluteFile();
-                if (!pom.exists()) {
-                  throw new IllegalArgumentException(
-                      "To use tests staging templates, please run in the Maven module directory containing"
-                          + " the template.");
-                }
+            File pom = new File(pomPath).getAbsoluteFile();
+            if (!pom.exists()) {
+              throw new IllegalArgumentException(
+                  "To use tests staging templates, please run in the Maven module directory"
+                      + " containing the template.");
+            }
 
-                // Use bucketName unless only artifactBucket is provided
-                String bucketName;
-                if (TestProperties.hasStageBucket()) {
-                  bucketName = TestProperties.stageBucket();
-                } else if (TestProperties.hasArtifactBucket()) {
-                  bucketName = TestProperties.artifactBucket();
-                  LOG.warn(
-                      "-DstageBucket was not specified, using -DartifactBucket ({}) for stage step",
-                      bucketName);
-                } else {
-                  throw new IllegalArgumentException(
-                      "-DstageBucket was not specified, so Template can not be staged. Either give a"
-                          + " -DspecPath or provide a proper -DstageBucket for automatic staging.");
-                }
+            // Use bucketName unless only artifactBucket is provided
+            String bucketName;
+            if (TestProperties.hasStageBucket()) {
+              bucketName = TestProperties.stageBucket();
+            } else if (TestProperties.hasArtifactBucket()) {
+              bucketName = TestProperties.artifactBucket();
+              LOG.warn(
+                  "-DstageBucket was not specified, using -DartifactBucket ({}) for stage step",
+                  bucketName);
+            } else {
+              throw new IllegalArgumentException(
+                  "-DstageBucket was not specified, so Template can not be staged. Either give a"
+                      + " -DspecPath or provide a proper -DstageBucket for automatic staging.");
+            }
 
-                String[] mavenCmd = buildMavenStageCommand(prefix, pom, bucketName);
-                LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
+            String[] mavenCmd = buildMavenStageCommand(prefix, pom, bucketName, template);
+            LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
 
-                try {
-                  Process exec = Runtime.getRuntime().exec(mavenCmd);
-                  IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
-                  IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+            try {
+              Process exec = Runtime.getRuntime().exec(mavenCmd);
+              IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+              IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
 
-                  if (exec.waitFor() != 0) {
-                    throw new RuntimeException("Error staging template, check Maven logs.");
-                  }
+              if (exec.waitFor() != 0) {
+                throw new RuntimeException("Error staging template, check Maven logs.");
+              }
 
-                  boolean flex =
-                      template.flexContainerName() != null
-                          && !template.flexContainerName().isEmpty();
-                  return String.format(
-                      "gs://%s/%s/%s%s", bucketName, prefix, flex ? "flex/" : "", template.name());
+              boolean flex =
+                  template.flexContainerName() != null && !template.flexContainerName().isEmpty();
+              return String.format(
+                  "gs://%s/%s/%s%s", bucketName, prefix, flex ? "flex/" : "", template.name());
 
-                } catch (Exception e) {
-                  throw new IllegalArgumentException("Error staging template", e);
-                }
-              });
+            } catch (Exception e) {
+              throw new IllegalArgumentException("Error staging template", e);
+            }
+          });
     }
   }
 
@@ -283,7 +334,8 @@ public abstract class TemplateTestBase {
    * It identifies whether the template is v1 (Classic) or v2 (Flex) to setup the Maven reactor
    * accordingly.
    */
-  private String[] buildMavenStageCommand(String prefix, File pom, String bucketName) {
+  private String[] buildMavenStageCommand(
+      String prefix, File pom, String bucketName, Template template) {
     String pomPath = pom.getAbsolutePath();
     String moduleBuild;
 
@@ -363,7 +415,7 @@ public abstract class TemplateTestBase {
     }
   }
 
-  protected PipelineLauncher buildLauncher() {
+  protected PipelineLauncher buildLauncher(Class<?> templateClass, Template template) {
     if (usingDirectRunner) {
       return DirectRunnerClient.builder(templateClass).setCredentials(credentials).build();
     } else if (template.flexContainerName() != null && !template.flexContainerName().isEmpty()) {
@@ -378,7 +430,7 @@ public abstract class TemplateTestBase {
    * jobs getting leaked.
    */
   protected LaunchInfo launchTemplate(LaunchConfig.Builder options) throws IOException {
-    return this.launchTemplate(options, true);
+    return this.launchTemplate(options, true, this.template);
   }
 
   /**
@@ -392,6 +444,12 @@ public abstract class TemplateTestBase {
    *     fails.
    */
   protected LaunchInfo launchTemplate(LaunchConfig.Builder options, boolean setupShutdownHook)
+      throws IOException {
+    return this.launchTemplate(options, setupShutdownHook, this.template);
+  }
+
+  protected LaunchInfo launchTemplate(
+      LaunchConfig.Builder options, boolean setupShutdownHook, Template template)
       throws IOException {
 
     boolean flex = template.flexContainerName() != null && !template.flexContainerName().isEmpty();
