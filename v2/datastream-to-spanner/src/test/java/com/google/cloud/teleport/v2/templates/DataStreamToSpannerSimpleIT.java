@@ -85,11 +85,13 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName(),
                 SESSION_FILE_RESOURCE,
-                SPANNER_DDL_RESOURCE,
+                null,
+                "SimpleIT",
                 spannerResourceManager,
                 pubsubResourceManager,
                 new HashMap<>() {

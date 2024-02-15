@@ -43,8 +43,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   // Format of avro file path in GCS - {table}/2023/12/20/06/57/{fileName}
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
 
-  public static final String SESSION_FILE_PATH_IN_GCS = "input/mysql_session.json";
-
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
@@ -85,9 +83,9 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
    * @return SubscriptionName object of the created PubSub subscription.
    */
   public SubscriptionName createPubsubResources(
-      PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
-    String topicNameSuffix = "it";
-    String subscriptionNameSuffix = "simple-it-sub";
+      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
+    String topicNameSuffix = "it" + identifierSuffix;
+    String subscriptionNameSuffix = "it-sub" + identifierSuffix;
     TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
@@ -145,39 +143,47 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   }
 
   /**
-   * Performs the following steps: Uploads session file to GCS. Created schema in Spanner by reading
-   * DDL from spanner-schema.sql file. Creates Pubsub resources. Launches DataStreamToSpanner
-   * dataflow job.
+   * Performs the following steps: Uploads session file to GCS. Creates Pubsub resources. Launches
+   * DataStreamToSpanner dataflow job.
    *
-   * @param testName will be used as postfix in generated resource ids
+   * @param identifierSuffix will be used as postfix in generated resource ids
    * @param sessionFileResourceName Session file name with path relative to resources directory
-   * @param spannerSchemaResourceName spanner schema file name with path relative to resources
-   *     directory
+   * @param transformationContextFileResourceName Transformation context file name with path
+   *     relative to resources directory
+   * @param gcsPathPrefix Prefix directory name for this DF job. Data and DLQ directories will be
+   *     created under this prefix.
    * @return dataflow jobInfo object
    * @throws IOException
    */
   protected LaunchInfo launchDataflowJob(
-      String testName,
+      String identifierSuffix,
       String sessionFileResourceName,
-      String spannerSchemaResourceName,
+      String transformationContextFileResourceName,
+      String gcsPathPrefix,
       SpannerResourceManager spannerResourceManager,
       PubsubResourceManager pubsubResourceManager,
       Map<String, String> jobParameters)
       throws IOException {
 
     gcsClient.uploadArtifact(
-        SESSION_FILE_PATH_IN_GCS, Resources.getResource(sessionFileResourceName).getPath());
+        gcsPathPrefix + "/session.json", Resources.getResource(sessionFileResourceName).getPath());
 
-    createSpannerDDL(spannerResourceManager, spannerSchemaResourceName);
+    if (transformationContextFileResourceName != null) {
+      gcsClient.uploadArtifact(
+          gcsPathPrefix + "/transformationContext.json",
+          Resources.getResource(transformationContextFileResourceName).getPath());
+    }
 
-    String gcsPrefix = getGcsPath("cdc/").replace("gs://" + artifactBucketName, "");
-    SubscriptionName subscription = createPubsubResources(pubsubResourceManager, gcsPrefix);
+    String gcsPrefix =
+        getGcsPath(gcsPathPrefix + "/cdc/").replace("gs://" + artifactBucketName, "");
+    SubscriptionName subscription =
+        createPubsubResources(identifierSuffix, pubsubResourceManager, gcsPrefix);
 
     // default parameters
     Map<String, String> params =
         new HashMap<>() {
           {
-            put("inputFilePattern", getGcsPath("cdc/"));
+            put("inputFilePattern", getGcsPath(gcsPathPrefix + "/cdc/"));
             put(
                 "streamName",
                 String.format(
@@ -185,13 +191,19 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("projectId", PROJECT);
-            put("deadLetterQueueDirectory", getGcsPath("dlq/"));
-            put("sessionFilePath", getGcsPath(SESSION_FILE_PATH_IN_GCS));
+            put("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix + "/dlq/"));
+            put("sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json"));
             put("gcsPubSubSubscription", subscription.toString());
             put("datastreamSourceType", "mysql");
             put("inputFileFormat", "avro");
           }
         };
+
+    if (transformationContextFileResourceName != null) {
+      params.put(
+          "transformationContextFilePath",
+          getGcsPath(gcsPathPrefix + "/transformationContext.json"));
+    }
 
     // overridden parameters
     if (jobParameters != null) {
@@ -201,7 +213,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     }
 
     // Construct template
-    String jobName = PipelineUtils.createJobName(testName);
+    String jobName = PipelineUtils.createJobName(identifierSuffix);
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
 
     options.setParameters(params);
