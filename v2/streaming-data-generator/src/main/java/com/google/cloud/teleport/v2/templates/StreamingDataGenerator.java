@@ -292,7 +292,7 @@ public class StreamingDataGenerator {
         order = 17,
         optional = true,
         regexes = {
-          "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
+          "(^jdbc:[a-zA-Z0-9 /:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
         },
         description = "JDBC connection URL string.",
         helpText = "Url connection string to connect to the JDBC source.",
@@ -323,7 +323,7 @@ public class StreamingDataGenerator {
     @TemplateParameter.Text(
         order = 20,
         optional = true,
-        regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
+        regexes = {"^[a-zA-Z0-9 /:@.?_+!*&=@#-:\\/]+$"},
         description = "JDBC connection property string.",
         helpText =
             "Properties string to use for the JDBC connection. Format of the string must be"
