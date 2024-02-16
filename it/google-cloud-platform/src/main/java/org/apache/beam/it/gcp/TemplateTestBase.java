@@ -100,7 +100,11 @@ public abstract class TemplateTestBase {
   protected static final String PROJECT = TestProperties.project();
   protected static final String REGION = TestProperties.region();
 
+  // Store the template spec path for staged template specified via @TemplateIntegrationTest.
   protected String specPath;
+  // Store the template spec paths for the staged templates specified via
+  // @MultiTemplateIntegrationTest.
+  protected List<String> multiTemplateSpecPaths;
   protected Credentials credentials;
   protected CredentialsProvider credentialsProvider;
   protected String artifactBucketName;
@@ -109,11 +113,16 @@ public abstract class TemplateTestBase {
   /** Cache to avoid staging the same template multiple times on the same execution. */
   private static final Cache<String, String> stagedTemplates = CacheBuilder.newBuilder().build();
 
+  // Template metadata used only for single template tests specified via @TemplateIntegrationTest.
   protected Template template;
+  // Template class used only for single template tests specified via @TemplateIntegrationTest.
   private Class<?> templateClass;
 
+  // Template metadata list used only for multi template tests specified via
+  // @MultiTemplateIntegrationTest.
   protected List<Template> multiTemplates;
-
+  // Template class list used only for multi template tests specified via
+  // @MultiTemplateIntegrationTest.
   protected List<Class<?>> multiTemplateClasses;
 
   /** Client to interact with GCS. */
@@ -190,6 +199,7 @@ public abstract class TemplateTestBase {
     }
     credentialsProvider = FixedCredentialsProvider.create(credentials);
 
+    // If annotation is not null, that means single template tests are being run.
     if (annotation != null) {
       templateClass = annotation.value();
       template = getTemplateAnnotation(annotation, templateClass);
@@ -207,6 +217,7 @@ public abstract class TemplateTestBase {
       }
       specPath = getSpecPath(templateClass, template, "pom.xml");
     } else {
+      // If multiAnnotation is not null, that means multi template tests are being run.
       TemplateIntegrationTest[] templateIntegrationTests = multiAnnotation.value();
       String[] pomPaths = multiAnnotation.pomPaths();
       if (pomPaths.length != templateIntegrationTests.length) {
@@ -214,6 +225,13 @@ public abstract class TemplateTestBase {
             "@MultiTemplateIntegrationTest fields value and pomPaths specified in {} have unequal"
                 + " lengths. Every template class in value should have its corresponding pom file"
                 + " in pomPath at the same index.",
+            getClass());
+        return;
+      }
+      if (pomPaths.length == 0) {
+        LOG.warn(
+            "{} specifies @MultiTemplateIntegrationTest with empty pomPaths field. Please provide"
+                + " pomPaths for the corresponding templates to launch.",
             getClass());
         return;
       }
@@ -230,27 +248,30 @@ public abstract class TemplateTestBase {
         }
         multiTemplates.add(template);
         multiTemplateClasses.add(templateClass);
-        pipelineLauncher = buildLauncher(templateClass, template);
+        if (pipelineLauncher == null) {
+          pipelineLauncher = buildLauncher(templateClass, template);
+        }
 
         if (usingDirectRunner) {
           // Using direct runner, not needed to stage.
           return;
         }
-        specPath = getSpecPath(templateClass, template, pomPath);
+        multiTemplateSpecPaths.add(getSpecPath(templateClass, template, pomPath));
       }
     }
   }
 
-  private String getSpecPath(Class<?> templateClass, Template template, String pomPath)
+  private String getSpecPath(
+      Class<?> dataflowTemplateClass, Template templateMetadata, String pomPath)
       throws ExecutionException {
     if (TestProperties.specPath() != null && !TestProperties.specPath().isEmpty()) {
-      LOG.info("A spec path was given, not staging template {}", template.name());
+      LOG.info("A spec path was given, not staging template {}", templateMetadata.name());
       return TestProperties.specPath();
     } else {
       return stagedTemplates.get(
-          template.name(),
+          templateMetadata.name(),
           () -> {
-            LOG.info("Preparing test for {} ({})", template.name(), templateClass);
+            LOG.info("Preparing test for {} ({})", templateMetadata.name(), dataflowTemplateClass);
 
             String prefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_IT";
 
@@ -289,9 +310,11 @@ public abstract class TemplateTestBase {
               }
 
               boolean flex =
-                  template.flexContainerName() != null && !template.flexContainerName().isEmpty();
+                  templateMetadata.flexContainerName() != null
+                      && !templateMetadata.flexContainerName().isEmpty();
               return String.format(
-                  "gs://%s/%s/%s%s", bucketName, prefix, flex ? "flex/" : "", template.name());
+                  "gs://%s/%s/%s%s",
+                  bucketName, prefix, flex ? "flex/" : "", templateMetadata.name());
 
             } catch (Exception e) {
               throw new IllegalArgumentException("Error staging template", e);
@@ -301,9 +324,9 @@ public abstract class TemplateTestBase {
   }
 
   private Template getTemplateAnnotation(
-      TemplateIntegrationTest annotation, Class<?> templateClass) {
+      TemplateIntegrationTest annotation, Class<?> dataflowTemplateClass) {
     String templateName = annotation.template();
-    Template[] templateAnnotations = templateClass.getAnnotationsByType(Template.class);
+    Template[] templateAnnotations = dataflowTemplateClass.getAnnotationsByType(Template.class);
     if (templateAnnotations.length == 0) {
       throw new RuntimeException(
           String.format(
@@ -335,7 +358,7 @@ public abstract class TemplateTestBase {
    * accordingly.
    */
   private String[] buildMavenStageCommand(
-      String prefix, File pom, String bucketName, Template template) {
+      String prefix, File pom, String bucketName, Template templateMetadata) {
     String pomPath = pom.getAbsolutePath();
     String moduleBuild;
 
@@ -379,7 +402,7 @@ public abstract class TemplateTestBase {
       "-DbucketName=" + bucketName,
       "-DgcpTempLocation=" + bucketName,
       "-DstagePrefix=" + prefix,
-      "-DtemplateName=" + template.name(),
+      "-DtemplateName=" + templateMetadata.name(),
       "-DunifiedWorker=" + System.getProperty("unifiedWorker"),
       // Print stacktrace when command fails
       "-e"
@@ -415,10 +438,12 @@ public abstract class TemplateTestBase {
     }
   }
 
-  protected PipelineLauncher buildLauncher(Class<?> templateClass, Template template) {
+  protected PipelineLauncher buildLauncher(
+      Class<?> dataflowTemplateClass, Template templateMetadata) {
     if (usingDirectRunner) {
-      return DirectRunnerClient.builder(templateClass).setCredentials(credentials).build();
-    } else if (template.flexContainerName() != null && !template.flexContainerName().isEmpty()) {
+      return DirectRunnerClient.builder(dataflowTemplateClass).setCredentials(credentials).build();
+    } else if (templateMetadata.flexContainerName() != null
+        && !templateMetadata.flexContainerName().isEmpty()) {
       return FlexTemplateClient.builder(credentials).build();
     } else {
       return ClassicTemplateClient.builder(credentials).build();
@@ -449,10 +474,12 @@ public abstract class TemplateTestBase {
   }
 
   protected LaunchInfo launchTemplate(
-      LaunchConfig.Builder options, boolean setupShutdownHook, Template template)
+      LaunchConfig.Builder options, boolean setupShutdownHook, Template templateMetadata)
       throws IOException {
 
-    boolean flex = template.flexContainerName() != null && !template.flexContainerName().isEmpty();
+    boolean flex =
+        templateMetadata.flexContainerName() != null
+            && !templateMetadata.flexContainerName().isEmpty();
 
     // Property allows testing with Runner v2 / Unified Worker
     if (System.getProperty("unifiedWorker") != null) {
@@ -494,7 +521,7 @@ public abstract class TemplateTestBase {
       }
 
       // If template has creation parameters, they need to be specified as a --parameter=value
-      for (Method method : template.optionsClass().getMethods()) {
+      for (Method method : templateMetadata.optionsClass().getMethods()) {
         TemplateCreationParameters creationParameters =
             method.getAnnotation(TemplateCreationParameters.class);
         if (creationParameters != null) {
