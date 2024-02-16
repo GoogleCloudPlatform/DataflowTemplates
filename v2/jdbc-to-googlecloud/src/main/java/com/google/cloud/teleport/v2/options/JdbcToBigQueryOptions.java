@@ -50,7 +50,7 @@ public interface JdbcToBigQueryOptions
       order = 3,
       optional = false,
       regexes = {
-        "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
+        "(^jdbc:[a-zA-Z0-9 /:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
       },
       groupName = "Source",
       description = "JDBC connection URL string.",
@@ -64,7 +64,7 @@ public interface JdbcToBigQueryOptions
   @TemplateParameter.Text(
       order = 4,
       optional = true,
-      regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
+      regexes = {"^[a-zA-Z0-9 /:@.?_+!*&=@#-:\\/]+$"},
       groupName = "Source",
       description = "JDBC connection property string.",
       helpText =

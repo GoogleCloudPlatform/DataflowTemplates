@@ -68,7 +68,7 @@ public class JdbcConverters {
     @TemplateParameter.Text(
         order = 3,
         regexes = {
-          "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
+          "(^jdbc:[a-zA-Z0-9 /:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
         },
         description =
             "JDBC connection URL string. Connection string can be passed in as plaintext or as "
@@ -82,7 +82,7 @@ public class JdbcConverters {
     @TemplateParameter.Text(
         order = 4,
         optional = true,
-        regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
+        regexes = {"^[a-zA-Z0-9 /:@.?_+!*&=@#-:\\/]+$"},
         description = "JDBC connection property string.",
         helpText =
             "Properties string to use for the JDBC connection. Format of the string must be"
