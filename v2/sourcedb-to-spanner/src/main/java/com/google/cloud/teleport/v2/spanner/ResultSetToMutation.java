@@ -54,7 +54,7 @@ public class ResultSetToMutation implements JdbcIO.RowMapper<Mutation> {
         continue;
       }
       String columnName = metaData.getColumnName(i);
-      if (columnsToIgnore.contains(columnName)) {
+      if (columnsToIgnore.contains(columnName)) { // Make this case insensitive
         continue;
       }
       int columnType = metaData.getColumnType(i);

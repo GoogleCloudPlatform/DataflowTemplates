@@ -1,7 +1,0 @@
-{
-  "mainClass": "com.google.cloud.teleport.v2.templates.JdbcToSpanner",
-  "classPath": "/template/jdbc-to-spanner/jdbc-to-spanner-conscrypt.jar:/template/jdbc-to-spanner/*:/template/jdbc-to-spanner/libs/*:/template/jdbc-to-spanner/classes",
-  "defaultParameterValues": {
-    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"jdbc-to-spanner\"}"
-  }
-}

@@ -1,7 +1,7 @@
 
-JDBC to Spanner template
+SourceDB to Spanner template
 ---
-The JDBC to Spanner template is a batch pipeline that copies data from a
+The SourceDB to Spanner template is a batch pipeline that copies data from a
 relational database into an existing Spanner database. This pipeline uses JDBC to
 connect to the relational database. You can use this template to copy data from
 any relational database with available JDBC drivers into Spanner.
@@ -15,8 +15,8 @@ username, password, and connection string parameters.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-spanner)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Jdbc_to_Spanner_Flex).
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/sourcedb-to-spanner)
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Sourcedb_to_Spanner_Flex).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -25,17 +25,16 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ## Parameters
 
 ### Required Parameters
-
-* **driverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **driverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
-* **connectionURL** (JDBC connection URL string.): The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Note the difference between an Oracle non-RAC database connection string (`jdbc:oracle:thin:@some-host:<port>:<sid>`) and an Oracle RAC database connection string (`jdbc:oracle:thin:@//some-host[:<port>]/<service_name>`). (Example: jdbc:mysql://some-host:3306/sampledb).
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
 
 ### Optional Parameters
 
-* **connectionProperties** (JDBC connection property string.): Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
+* **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
+* **jdbcDriverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
+* **sourceConnectionURL** (Source connection URL string.): The Source connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. (Example: jdbc:mysql://some-host:3306/sampledb).
+* **sourceConnectionProperties** (Source connection property string.): Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
 * **username** (JDBC connection username.): The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key.
 * **password** (JDBC connection password.): The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key.
 * **partitionColumn** (The name of a column of numeric type that will be used for partitioning.): If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported.
@@ -60,7 +59,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
   * `gcloud auth application-default login`
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/jdbc-to-spanner/src/main/java/com/google/cloud/teleport/v2/templates/JdbcToSpanner.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/sourcedb-to-spanner/src/main/java/com/google/cloud/teleport/v2/templates/JdbcToSpanner.java)
 
 ### Templates Plugin
 
@@ -95,8 +94,8 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
--DtemplateName="Jdbc_to_Spanner_Flex" \
--pl v2/jdbc-to-spanner \
+-DtemplateName="Sourcedb_to_Spanner_Flex" \
+-pl v2/sourcedb-to-spanner \
 -am
 ```
 
@@ -105,7 +104,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/Jdbc_to_Spanner_Flex
+Flex Template was staged! gs://<bucket-name>/templates/flex/Sourcedb_to_Spanner_Flex
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -125,17 +124,17 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Jdbc_to_Spanner_Flex"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
 
 ### Required
-export DRIVER_JARS=<driverJars>
-export DRIVER_CLASS_NAME=<driverClassName>
-export CONNECTION_URL=<connectionURL>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
 
 ### Optional
+export DRIVER_JARS=<driverJars>
+export DRIVER_CLASS_NAME=<driverClassName>
+export CONNECTION_URL=<connectionURL>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export USERNAME=<username>
 export PASSWORD=<password>
@@ -147,14 +146,14 @@ export IGNORE_COLUMNS=<ignoreColumns>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
-gcloud dataflow flex-template run "jdbc-to-spanner-flex-job" \
+gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "driverJars=$DRIVER_JARS" \
-  --parameters "driverClassName=$DRIVER_CLASS_NAME" \
-  --parameters "connectionURL=$CONNECTION_URL" \
-  --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
+  --parameters "jdbcDriverJars=$DRIVER_JARS" \
+  --parameters "jdbcDriverClassName=$DRIVER_CLASS_NAME" \
+  --parameters "sourceConnectionURL=$CONNECTION_URL" \
+  --parameters "sourceConnectionProperties=$CONNECTION_PROPERTIES" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
   --parameters "partitionColumn=$PARTITION_COLUMN" \
@@ -185,14 +184,14 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export DRIVER_JARS=<driverJars>
-export DRIVER_CLASS_NAME=<driverClassName>
-export CONNECTION_URL=<connectionURL>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
 export PROJECT_ID=<projectId>
 
 ### Optional
+export DRIVER_JARS=<driverJars>
+export DRIVER_CLASS_NAME=<driverClassName>
+export CONNECTION_URL=<connectionURL>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export USERNAME=<username>
 export PASSWORD=<password>
@@ -209,10 +208,10 @@ mvn clean package -PtemplatesRun \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="jdbc-to-spanner-flex-job" \
--DtemplateName="Jdbc_to_Spanner_Flex" \
--Dparameters="driverJars=$DRIVER_JARS,driverClassName=$DRIVER_CLASS_NAME,connectionURL=$CONNECTION_URL,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,partitionColumn=$PARTITION_COLUMN,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,ignoreColumns=$IGNORE_COLUMNS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
--pl v2/jdbc-to-spanner \
+-DjobName="sourcedb-to-spanner-flex-job" \
+-DtemplateName="Sourcedb_to_Spanner_Flex" \
+-Dparameters="jdbcDriverJars=$DRIVER_JARS,jdbcDriverClassName=$DRIVER_CLASS_NAME,sourceConnectionURL=$CONNECTION_URL,sourceConnectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,partitionColumn=$PARTITION_COLUMN,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,ignoreColumns=$IGNORE_COLUMNS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-pl v2/sourcedb-to-spanner \
 -am
 ```
 
@@ -235,19 +234,19 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "jdbc_to_spanner_flex" {
+resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Jdbc_to_Spanner_Flex"
-  name              = "jdbc-to-spanner-flex"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Sourcedb_to_Spanner_Flex"
+  name              = "sourcedb-to-spanner-flex"
   region            = var.region
   parameters        = {
-    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
-    driverClassName = "com.mysql.jdbc.Driver"
-    connectionURL = "jdbc:mysql://some-host:3306/sampledb"
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
     projectId = "<projectId>"
+    # jdbcDriverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
+    # jdbcDriverClassName = "com.mysql.jdbc.Driver"
+    # sourceConnectionURL = "jdbc:mysql://some-host:3306/sampledb"
     # connectionProperties = "unicode=true;characterEncoding=UTF-8"
     # username = "<username>"
     # password = "<password>"

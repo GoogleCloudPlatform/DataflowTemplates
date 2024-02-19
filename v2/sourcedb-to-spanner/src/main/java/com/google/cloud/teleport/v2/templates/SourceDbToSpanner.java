@@ -21,7 +21,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.options.JdbcToSpannerOptions;
+import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.spanner.ResultSetToMutation;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
@@ -44,18 +44,18 @@ import org.apache.beam.sdk.values.PCollection;
  * database.
  *
  * <p>Check out <a
- * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/jdbc-to-googlecloud/README_Jdbc_to_Spanner_Flex.md">README</a>
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/sourcedb-to-spanner/README_Sourcedb_to_Spanner_Flex.md">README</a>
  * for instructions on how to use or modify this template.
  */
 @Template(
-    name = "Jdbc_to_Spanner_Flex",
+    name = "Sourcedb_to_Spanner_Flex",
     category = TemplateCategory.BATCH,
-    displayName = "JDBC to Spanner",
+    displayName = "Sourcedb to Spanner",
     description = {
-      "The JDBC to Spanner template is a batch pipeline that copies data from a relational"
+      "The SourceDB to Spanner template is a batch pipeline that copies data from a relational"
           + " database into an existing Spanner database. This pipeline uses JDBC to connect to"
           + " the relational database. You can use this template to copy data from any relational"
-          + " database with available JDBC drivers into Spanner.",
+          + " database with available JDBC drivers into Spanner. This currently only supports a limited set of types of MySQL",
       "For an extra layer of protection, you can also pass in a Cloud KMS key along with a"
           + " Base64-encoded username, password, and connection string parameters encrypted with"
           + " the Cloud KMS key. See the <a"
@@ -63,10 +63,10 @@ import org.apache.beam.sdk.values.PCollection;
           + " KMS API encryption endpoint</a> for additional details on encrypting your username,"
           + " password, and connection string parameters."
     },
-    optionsClass = JdbcToSpannerOptions.class,
-    flexContainerName = "jdbc-to-spanner",
+    optionsClass = SourceDbToSpannerOptions.class,
+    flexContainerName = "source-db-to-spanner",
     documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-spanner",
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/sourcedb-to-spanner",
     contactInformation = "https://cloud.google.com/support",
     preview = true,
     requirements = {
@@ -75,12 +75,12 @@ import org.apache.beam.sdk.values.PCollection;
       "The Spanner tables must have a compatible schema.",
       "The relational database must be accessible from the subnet where Dataflow runs."
     })
-public class JdbcToSpanner {
+public class SourceDbToSpanner {
 
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
-   * blocking execution is required, use the {@link JdbcToSpanner#run} method to start the pipeline
-   * and invoke {@code result.waitUntilFinish()} on the {@link PipelineResult}.
+   * blocking execution is required, use the {@link SourceDbToSpanner#run} method to start the
+   * pipeline and invoke {@code result.waitUntilFinish()} on the {@link PipelineResult}.
    *
    * @param args The command-line arguments to the pipeline.
    */
@@ -88,8 +88,8 @@ public class JdbcToSpanner {
     UncaughtExceptionLogger.register();
 
     // Parse the user options passed from the command-line
-    JdbcToSpannerOptions options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(JdbcToSpannerOptions.class);
+    SourceDbToSpannerOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(SourceDbToSpannerOptions.class);
 
     run(options);
   }
@@ -101,7 +101,7 @@ public class JdbcToSpanner {
    * @return The result of the pipeline execution.
    */
   @VisibleForTesting
-  static PipelineResult run(JdbcToSpannerOptions options) {
+  static PipelineResult run(SourceDbToSpannerOptions options) {
     Pipeline pipeline = Pipeline.create(options);
     Map<String, Set<String>> columnsToIgnore = getColumnsToIgnore(options);
     Map<String, String> tableVsPartitionMap = getTablesVsPartitionColumn(options);
@@ -116,7 +116,7 @@ public class JdbcToSpanner {
     return pipeline.run();
   }
 
-  private static Map<String, String> getTablesVsPartitionColumn(JdbcToSpannerOptions options) {
+  private static Map<String, String> getTablesVsPartitionColumn(SourceDbToSpannerOptions options) {
     String[] tables = options.getTables().split(",");
     String[] partitionColumns = options.getPartitionColumns().split(",");
     if (tables.length != partitionColumns.length) {
@@ -130,7 +130,7 @@ public class JdbcToSpanner {
     return tableVsPartitionColumn;
   }
 
-  private static Map<String, Set<String>> getColumnsToIgnore(JdbcToSpannerOptions options) {
+  private static Map<String, Set<String>> getColumnsToIgnore(SourceDbToSpannerOptions options) {
     String ignoreStr = options.getIgnoreColumns();
     if (ignoreStr == null || ignoreStr.isEmpty()) {
       return Collections.emptyMap();
@@ -153,7 +153,7 @@ public class JdbcToSpanner {
       String table,
       String partitionColumn,
       Set<String> columnsToIgnore,
-      JdbcToSpannerOptions options) {
+      SourceDbToSpannerOptions options) {
     return JdbcIO.<Mutation>readWithPartitions()
         .withDataSourceConfiguration(getDataSourceConfiguration(options))
         .withTable(table)
@@ -162,7 +162,7 @@ public class JdbcToSpanner {
         .withNumPartitions(options.getNumPartitions());
   }
 
-  private static Write getSpannerWrite(JdbcToSpannerOptions options) {
+  private static Write getSpannerWrite(SourceDbToSpannerOptions options) {
     return SpannerIO.write()
         .withProjectId(options.getProjectId())
         .withInstanceId(options.getInstanceId())
@@ -170,18 +170,18 @@ public class JdbcToSpanner {
   }
 
   private static JdbcIO.DataSourceConfiguration getDataSourceConfiguration(
-      JdbcToSpannerOptions options) {
+      SourceDbToSpannerOptions options) {
     JdbcIO.DataSourceConfiguration dataSourceConfiguration =
         JdbcIO.DataSourceConfiguration.create(
-                StaticValueProvider.of(options.getDriverClassName()),
-                maybeDecrypt(options.getConnectionURL(), null))
+                StaticValueProvider.of(options.getJdbcDriverClassName()),
+                maybeDecrypt(options.getSourceConnectionURL(), null))
             .withUsername(maybeDecrypt(options.getUsername(), null))
             .withPassword(maybeDecrypt(options.getPassword(), null))
-            .withDriverJars(options.getDriverJars());
+            .withDriverJars(options.getJdbcDriverJars());
 
-    if (options.getConnectionProperties() != null) {
+    if (options.getSourceConnectionProperties() != null) {
       dataSourceConfiguration =
-          dataSourceConfiguration.withConnectionProperties(options.getConnectionProperties());
+          dataSourceConfiguration.withConnectionProperties(options.getSourceConnectionProperties());
     }
     return dataSourceConfiguration;
   }

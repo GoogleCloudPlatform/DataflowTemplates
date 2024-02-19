@@ -18,49 +18,49 @@ package com.google.cloud.teleport.v2.options;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
 
-/** Interface used by the JdbcToSpanner pipeline to accept user input. */
-public interface JdbcToSpannerOptions extends CommonTemplateOptions {
+/** Interface used by the SourcedbToSpanner pipeline to accept user input. */
+public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 1,
-      optional = false,
+      optional = true,
       regexes = {"^.+$"},
       groupName = "Source",
       description = "Comma-separated Cloud Storage path(s) of the JDBC driver(s)",
       helpText = "The comma-separated list of driver JAR files.",
       example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
-  String getDriverJars();
+  String getJdbcDriverJars();
 
-  void setDriverJars(String driverJar);
+  void setJdbcDriverJars(String driverJar);
 
   @TemplateParameter.Text(
       order = 2,
-      optional = false,
+      optional = true,
       regexes = {"^.+$"},
       groupName = "Source",
       description = "JDBC driver class name",
       helpText = "The JDBC driver class name.",
       example = "com.mysql.jdbc.Driver")
-  String getDriverClassName();
+  String getJdbcDriverClassName();
 
-  void setDriverClassName(String driverClassName);
+  void setJdbcDriverClassName(String driverClassName);
 
   @TemplateParameter.Text(
       order = 3,
-      optional = false,
+      optional = true,
       regexes = {
         "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
       },
       groupName = "Source",
-      description = "JDBC connection URL string.",
+      description = "Connection URL to connect to the source database.",
       helpText =
           "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can"
               + " be passed in as a string that's Base64-encoded and then encrypted with a Cloud"
               + " KMS key. Currently supported sources: MySQL",
       example = "jdbc:mysql://some-host:3306/sampledb")
-  String getConnectionURL();
+  String getSourceConnectionURL();
 
-  void setConnectionURL(String connectionURL);
+  void setSourceConnectionURL(String connectionURL);
 
   @TemplateParameter.Text(
       order = 4,
@@ -72,9 +72,9 @@ public interface JdbcToSpannerOptions extends CommonTemplateOptions {
           "Properties string to use for the JDBC connection. Format of the string must be"
               + " [propertyName=property;]*.",
       example = "unicode=true;characterEncoding=UTF-8")
-  String getConnectionProperties();
+  String getSourceConnectionProperties();
 
-  void setConnectionProperties(String connectionProperties);
+  void setSourceConnectionProperties(String connectionProperties);
 
   @TemplateParameter.Text(
       order = 5,

@@ -1,11 +1,11 @@
-# JDBC to Spanner Dataflow Template
+# SourceDB to Spanner Dataflow Template
 
-The [JdbcToSpanner](src/main/java/com/google/cloud/teleport/v2/templates/JdbcToSpanner.java) pipeline
+The [SourceDBToSpanner](src/main/java/com/google/cloud/teleport/v2/templates/SourceDbToSpanner.java) pipeline
 ingests data by reading from a database via JDBC, optionally applies a Javascript or Python UDF if supplied
 and writes the data to Cloud Spanner database.
 
-Currently, this template works for a basic set of use cases. (A not comprehensive
-list of) Scenarios which are not yet supported
+Currently, this template works for a basic set of use cases. A not comprehensive
+list of scenarios which are not yet supported.
 to be implemented going forward
 * Generic schema mapping
 * Tables with non integer keys
@@ -27,7 +27,7 @@ used to launch the Dataflow pipeline.
 
 ```sh
 export PROJECT=<my-project>
-export IMAGE_NAME=jdbc-to-spanner
+export IMAGE_NAME=sourcedb-to-spanner
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
@@ -65,9 +65,9 @@ mvn test
 ### Executing Template
 
 The template requires the following parameters:
-* **driverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **driverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
-* **connectionURL** (JDBC connection URL string.): The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Note the difference between an Oracle non-RAC database connection string (`jdbc:oracle:thin:@some-host:<port>:<sid>`) and an Oracle RAC database connection string (`jdbc:oracle:thin:@//some-host[:<port>]/<service_name>`). (Example: jdbc:mysql://some-host:3306/sampledb).
+* **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
+* **jdbcDriverClassName** (JDBC driver class name): The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
+* **jdbcConnectionURL** (JDBC connection URL string.): The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Note the difference between an Oracle non-RAC database connection string (`jdbc:oracle:thin:@some-host:<port>:<sid>`) and an Oracle RAC database connection string (`jdbc:oracle:thin:@//some-host[:<port>]/<service_name>`). (Example: jdbc:mysql://some-host:3306/sampledb).
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ~ Copyright (C) 2021 Google Inc.
+  ~ Copyright (C) 2024 Google Inc.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License"); you may not
   ~ use this file except in compliance with the License. You may obtain a copy of
@@ -26,7 +26,7 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>jdbc-to-spanner</artifactId>
+  <artifactId>sourcedb-to-spanner</artifactId>
 
   <dependencies>
     <dependency>
