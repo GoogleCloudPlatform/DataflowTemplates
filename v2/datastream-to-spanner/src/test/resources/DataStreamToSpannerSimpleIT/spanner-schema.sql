@@ -13,3 +13,8 @@ CREATE TABLE IF NOT EXISTS Users (
     plan STRING(1),
     startDate DATE
 ) PRIMARY KEY (id);
+
+CREATE TABLE IF NOT EXISTS Person (
+    id INT64 NOT NULL,
+    name STRING(200)
+    ) PRIMARY KEY (id);

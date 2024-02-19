@@ -58,6 +58,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
 
   private static final String TABLE1 = "Users";
   private static final String TABLE2 = "Movie";
+  private static final String TABLE3 = "Person";
 
   private static final String SESSION_FILE_RESOURCE =
       "DataStreamToSpannerSimpleIT/mysql-session.json";
@@ -187,6 +188,48 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
     assertMovieTableContents();
   }
 
+  @Test
+  public void migrationTestWithPKUpdate() {
+    // Construct a ChainedConditionCheck with 4 stages.
+    // 1. Send initial set of events inserting 2 rows.
+    // 2. Wait on Spanner to have events
+    // 3. Send second wave of events updating the pk of row with id 2 -> 3.
+    // 4. Wait on Spanner to merge second wave of events
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE3,
+                        "initial.jsonl",
+                        "DataStreamToSpannerSimpleIT/mysql-pkupdate1-Users.jsonl"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE3)
+                        .setMinRows(2)
+                        .setMaxRows(2)
+                        .build(),
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE3,
+                        "update.jsonl",
+                        "DataStreamToSpannerSimpleIT/mysql-pkupdate2-Users.jsonl"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE3)
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build()))
+            .build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    // Assert specific rows
+    assertPersonTableContents();
+  }
+
   private void assertUsersTableContents() {
     List<Map<String, Object>> events = new ArrayList<>();
 
@@ -247,5 +290,28 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
         spannerResourceManager.runQuery("select actor from Movie order by id");
     Assert.assertEquals(123.098, numericVals.get(0).getBigDecimal(0).doubleValue(), 0.001);
     Assert.assertEquals(931.512, numericVals.get(1).getBigDecimal(0).doubleValue(), 0.001);
+  }
+
+  private void assertPersonTableContents() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("id", 1);
+    row1.put("name", "Tester Yadav");
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("id", 3);
+    row2.put("name", "Tester Gupta");
+
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("id", 4);
+    row3.put("name", "Tester");
+    events.add(row1);
+    events.add(row2);
+    events.add(row3);
+
+    SpannerAsserts.assertThatStructs(
+            spannerResourceManager.runQuery("select * from Person where id in (1, 3, 4)"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 }
