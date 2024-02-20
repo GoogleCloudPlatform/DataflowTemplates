@@ -1,0 +1,387 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "S1L1",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t13": {
+      "Name": "Movie",
+      "ColIds": [
+        "c15",
+        "c16",
+        "c17",
+        "c18",
+        "c22"
+      ],
+      "ShardIdColumn": "c22",
+      "ColDefs": {
+        "c15": {
+          "Name": "id1",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id1 int(10)",
+          "Id": "c15"
+        },
+        "c16": {
+          "Name": "id2",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id2 int(10)",
+          "Id": "c16"
+        },
+        "c17": {
+          "Name": "name",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: name varchar(200)",
+          "Id": "c17"
+        },
+        "c18": {
+          "Name": "actor",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: actor int(10)",
+          "Id": "c18"
+        },
+        "c22": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c22"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c15",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c16",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c22",
+          "Desc": false,
+          "Order": 3
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table Movie",
+      "Id": "t13"
+    },
+    "t14": {
+      "Name": "Users",
+      "ColIds": [
+        "c19",
+        "c20",
+        "c21",
+        "c23"
+      ],
+      "ShardIdColumn": "c23",
+      "ColDefs": {
+        "c19": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c19"
+        },
+        "c20": {
+          "Name": "name",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: name varchar(200)",
+          "Id": "c20"
+        },
+        "c21": {
+          "Name": "age_spanner",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: age bigint(19)",
+          "Id": "c21"
+        },
+        "c23": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c23"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c19",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c23",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table Users",
+      "Id": "t14"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t13": {
+      "Name": "Movie",
+      "Schema": "S1L1",
+      "ColIds": [
+        "c15",
+        "c16",
+        "c17",
+        "c18"
+      ],
+      "ColDefs": {
+        "c15": {
+          "Name": "id1",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c15"
+        },
+        "c16": {
+          "Name": "id2",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c16"
+        },
+        "c17": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c17"
+        },
+        "c18": {
+          "Name": "actor",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c18"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c15",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c16",
+          "Desc": false,
+          "Order": 2
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t13"
+    },
+    "t14": {
+      "Name": "Users",
+      "Schema": "S1L1",
+      "ColIds": [
+        "c19",
+        "c20",
+        "c21"
+      ],
+      "ColDefs": {
+        "c19": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c19"
+        },
+        "c20": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c20"
+        },
+        "c21": {
+          "Name": "age",
+          "Type": {
+            "Name": "bigint",
+            "Mods": [
+              19
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c21"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c19",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t14"
+    }
+  },
+  "SchemaIssues": {},
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [
+    {
+      "Id": "r24",
+      "Name": "r24",
+      "Type": "add_shard_id_primary_key",
+      "ObjectType": "",
+      "AssociatedObjects": "All Tables",
+      "Enabled": true,
+      "Data": {
+        "AddedAtTheStart": true
+      },
+      "AddedOn": {
+        "TimeOffset": null
+      }
+    }
+  ],
+  "IsSharded": true
+}
