@@ -347,7 +347,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void migrationTestWithRenameAndDropColumnWithInsertsOnly() {
+  public void migrationTestWithRenameAndDropColumn() {
     // Construct a ChainedConditionCheck with 4 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
@@ -390,47 +390,6 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
             .build();
 
     result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
-
-    // Assert Conditions
-    assertThatResult(result).meetsConditions();
-
-    assertCategoryTableCdcContents();
-  }
-
-  @Test
-  public void migrationTestWithRenameAndDropColumnWithUpdatesAndDeletes() {
-    // Construct a ChainedConditionCheck with 4 stages.
-    // 1. Send initial wave of events
-    // 2. Wait on Spanner to have events
-    // 3. Send second wave of events
-    // 4. Wait on Spanner to merge second wave of events
-    ChainedConditionCheck conditionCheck =
-        ChainedConditionCheck.builder(
-                List.of(
-                    uploadDataStreamFile(
-                        jobInfo,
-                        TABLE3,
-                        "backfill.jsonl",
-                        "DataStreamToSpannerSimpleIT/mysql-backfill-Category.jsonl"),
-                    SpannerRowsCheck.builder(spannerResourceManager, TABLE3)
-                        .setMinRows(2)
-                        .setMaxRows(2)
-                        .build(),
-                    uploadDataStreamFile(
-                        jobInfo,
-                        TABLE3,
-                        "cdc1.jsonl",
-                        "DataStreamToSpannerSimpleIT/mysql-cdc-Category.jsonl"),
-                    SpannerRowsCheck.builder(spannerResourceManager, TABLE3)
-                        .setMinRows(3)
-                        .setMaxRows(3)
-                        .build()))
-            .build();
-
-    // Wait for conditions
-    PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
 
@@ -757,8 +716,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
     events.add(row1);
     events.add(row2);
 
-    SpannerAsserts.assertThatStructs(
-            spannerResourceManager.runQuery("select category_id, full_name from Category"))
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Category"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -781,8 +739,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
     events.add(row2);
     events.add(row3);
 
-    SpannerAsserts.assertThatStructs(
-            spannerResourceManager.runQuery("select category_id, full_name from Category"))
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Category"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
