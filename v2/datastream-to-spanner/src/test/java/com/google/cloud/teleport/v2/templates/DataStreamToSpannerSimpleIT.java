@@ -241,7 +241,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void migrationTestWithAllDatatypeConversionsWithInsertsOnly() {
+  public void migrationTestWithAllDatatypeConversions() {
     // Construct a ChainedConditionCheck with 4 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
@@ -268,27 +268,10 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
     assertThatResult(result).meetsConditions();
 
     assertAllDatatypeColumnsTableBackfillContents();
-  }
 
-  @Test
-  public void migrationTestWithAllDatatypeConversionsWithUpdatesAndDeletes() {
-    // Construct a ChainedConditionCheck with 4 stages.
-    // 1. Send initial wave of events
-    // 2. Wait on Spanner to have events
-    // 3. Send second wave of events
-    // 4. Wait on Spanner to merge second wave of events
-    ChainedConditionCheck conditionCheck =
+    conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    uploadDataStreamFile(
-                        jobInfo,
-                        TABLE4,
-                        "backfill.jsonl",
-                        "DataStreamToSpannerSimpleIT/mysql-backfill-AllDatatypeColumns.jsonl"),
-                    SpannerRowsCheck.builder(spannerResourceManager, TABLE4)
-                        .setMinRows(2)
-                        .setMaxRows(2)
-                        .build(),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE4,
@@ -300,8 +283,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
                         .build()))
             .build();
 
-    // Wait for conditions
-    PipelineOperator.Result result =
+    result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
 
@@ -312,7 +294,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void migrationTestWithAllDatatypeMappingsWithInsertsOnly() {
+  public void migrationTestWithAllDatatypeMappings() {
     // Construct a ChainedConditionCheck with 4 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
@@ -339,27 +321,10 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
     assertThatResult(result).meetsConditions();
 
     assertAllDatatypeColumns2TableBackfillContents();
-  }
 
-  @Test
-  public void migrationTestWithAllDatatypeMappingsWithUpdatesAndDeletes() {
-    // Construct a ChainedConditionCheck with 4 stages.
-    // 1. Send initial wave of events
-    // 2. Wait on Spanner to have events
-    // 3. Send second wave of events
-    // 4. Wait on Spanner to merge second wave of events
-    ChainedConditionCheck conditionCheck =
+    conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    uploadDataStreamFile(
-                        jobInfo,
-                        TABLE5,
-                        "backfill.jsonl",
-                        "DataStreamToSpannerSimpleIT/mysql-backfill-AllDatatypeColumns2.jsonl"),
-                    SpannerRowsCheck.builder(spannerResourceManager, TABLE5)
-                        .setMinRows(2)
-                        .setMaxRows(2)
-                        .build(),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE5,
@@ -371,8 +336,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
                         .build()))
             .build();
 
-    // Wait for conditions
-    PipelineOperator.Result result =
+    result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
 
@@ -410,6 +374,29 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
     assertThatResult(result).meetsConditions();
 
     assertCategoryTableBackfillContents();
+
+    conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE3,
+                        "cdc1.jsonl",
+                        "DataStreamToSpannerSimpleIT/mysql-cdc-Category.jsonl"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE3)
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build()))
+            .build();
+
+    result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    assertCategoryTableCdcContents();
   }
 
   @Test
