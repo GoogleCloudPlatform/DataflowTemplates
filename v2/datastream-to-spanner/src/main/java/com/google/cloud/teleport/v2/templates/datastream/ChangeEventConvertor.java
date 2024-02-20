@@ -100,12 +100,14 @@ public class ChangeEventConvertor {
     if (!(DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType)
         || DatastreamConstants.INSERT_EVENT.equalsIgnoreCase(changeType)
         || DatastreamConstants.UPDATE_EVENT.equalsIgnoreCase(changeType)
-        || DatastreamConstants.MYSQL_UPDATE_EVENT.equalsIgnoreCase(changeType)
+        || DatastreamConstants.UPDATE_INSERT_EVENT.equalsIgnoreCase(changeType)
+        || DatastreamConstants.UPDATE_DELETE_EVENT.equalsIgnoreCase(changeType)
         || DatastreamConstants.EMPTY_EVENT.equalsIgnoreCase(changeType))) {
       throw new InvalidChangeEventException("Unexpected event with change type " + changeType);
     }
 
-    if (DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType)) {
+    if (DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType)
+        || DatastreamConstants.UPDATE_DELETE_EVENT.equalsIgnoreCase(changeType)) {
       return ChangeEventConvertor.changeEventToDeleteMutation(ddl, changeEvent);
     }
     // Dump events, Insert events and  Update events  are treated the same way.

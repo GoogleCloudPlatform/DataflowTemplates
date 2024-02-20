@@ -32,7 +32,9 @@ public class DatastreamConstants {
 
   public static final String UPDATE_EVENT = "UPDATE";
 
-  public static final String MYSQL_UPDATE_EVENT = "UPDATE-INSERT";
+  public static final String UPDATE_INSERT_EVENT = "UPDATE-INSERT";
+
+  public static final String UPDATE_DELETE_EVENT = "UPDATE-DELETE";
 
   public static final String DELETE_EVENT = "DELETE";
 
