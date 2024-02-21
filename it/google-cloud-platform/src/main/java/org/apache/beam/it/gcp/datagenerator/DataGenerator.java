@@ -199,6 +199,16 @@ public class DataGenerator {
       return this;
     }
 
+    public Builder setKafkaTopic(String value) {
+      parameters.put("kafkaTopic", value);
+      return this;
+    }
+
+    public Builder setBootstrapServer(String value) {
+      parameters.put("bootstrapServer", value);
+      return this;
+    }
+
     public Builder setProjectId(String value) {
       parameters.put("projectId", value);
       return this;

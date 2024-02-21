@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.StreamingDa
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigQuery;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToGcs;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToJdbc;
+import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToKafka;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToPubSub;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToSpanner;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
@@ -177,7 +178,8 @@ public class StreamingDataGenerator {
           @TemplateEnumOption("GCS"),
           @TemplateEnumOption("PUBSUB"),
           @TemplateEnumOption("JDBC"),
-          @TemplateEnumOption("SPANNER")
+          @TemplateEnumOption("SPANNER"),
+          @TemplateEnumOption("KAFKA")
         },
         optional = true,
         description = "Output Sink Type",
@@ -429,6 +431,28 @@ public class StreamingDataGenerator {
     Long getCommitDeadlineSeconds();
 
     void setCommitDeadlineSeconds(Long value);
+
+    @TemplateParameter.Text(
+        order = 30,
+        optional = true,
+        regexes = {"[,:a-zA-Z0-9._-]+"},
+        description = "Output Kafka Bootstrap Server",
+        helpText = "Kafka Bootstrap Server ",
+        example = "localhost:9092")
+    String getBootstrapServer();
+
+    void setBootstrapServer(String bootstrapServer);
+
+    @TemplateParameter.Text(
+        order = 31,
+        optional = true,
+        regexes = {"[a-zA-Z0-9._-]+"},
+        description = "Kafka topic to write to",
+        helpText = "Kafka topic to write to.",
+        example = "topic")
+    String getKafkaTopic();
+
+    void setKafkaTopic(String outputTopic);
   }
 
   /** Allowed list of existing schema templates. */
@@ -518,7 +542,8 @@ public class StreamingDataGenerator {
     BIGQUERY,
     GCS,
     JDBC,
-    SPANNER
+    SPANNER,
+    KAFKA
   }
 
   /**
@@ -716,6 +741,18 @@ public class StreamingDataGenerator {
                 "Missing required value --spannerTableName for %s sink type",
                 options.getSinkType().name()));
         return StreamingDataGeneratorWriteToSpanner.builder(options).build();
+      case KAFKA:
+        checkArgument(
+            options.getBootstrapServer() != null,
+            String.format(
+                "Missing required value --bootstrapServer for %s sink type",
+                options.getSinkType().name()));
+        checkArgument(
+            options.getKafkaTopic() != null,
+            String.format(
+                "Missing required value --kafkaTopic for %s sink type",
+                options.getSinkType().name()));
+        return StreamingDataGeneratorWriteToKafka.Writer.builder(options).build();
       default:
         throw new IllegalArgumentException("Unsupported Sink.");
     }
