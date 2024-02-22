@@ -81,7 +81,8 @@ public class TemplateDefinitions {
   public boolean isClassic() {
 
     // Python implies Flex
-    if (templateAnnotation.type() == TemplateType.PYTHON) {
+    if (templateAnnotation.type() == TemplateType.PYTHON
+        || templateAnnotation.type() == TemplateType.YAML) {
       return false;
     }
 
@@ -130,7 +131,9 @@ public class TemplateDefinitions {
                         block.name(), Arrays.asList(block.content())))
             .collect(Collectors.toList()));
 
-    if (templateAnnotation.placeholderClass() != null
+    if (templateAnnotation.type().equals(TemplateType.YAML)) {
+      metadata.setMainClass("");
+    } else if (templateAnnotation.placeholderClass() != null
         && templateAnnotation.placeholderClass() != void.class) {
       metadata.setMainClass(templateAnnotation.placeholderClass().getName());
     } else {
@@ -308,6 +311,9 @@ public class TemplateDefinitions {
   }
 
   private String getClassModule() {
+    if (templateClass == null) {
+      return null;
+    }
     URL resource = templateClass.getResource(templateClass.getSimpleName() + ".class");
     if (resource == null) {
       return null;
