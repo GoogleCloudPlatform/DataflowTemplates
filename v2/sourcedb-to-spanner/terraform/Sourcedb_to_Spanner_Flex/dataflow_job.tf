@@ -34,266 +34,266 @@ variable "region" {
 }
 
 variable "jdbcDriverJars" {
-  type = string
+  type        = string
   description = "The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar)"
-  default = null
+  default     = null
 }
 
 variable "jdbcDriverClassName" {
-  type = string
+  type        = string
   description = "The JDBC driver class name. (Example: com.mysql.jdbc.Driver)"
-  default = null
+  default     = null
 }
 
 variable "sourceConnectionURL" {
-  type = string
+  type        = string
   description = "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. Currently supported sources: MySQL (Example: jdbc:mysql://some-host:3306/sampledb)"
-  default = null
+  default     = null
 }
 
 variable "sourceConnectionProperties" {
-  type = string
+  type        = string
   description = "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8)"
-  default = null
+  default     = null
 }
 
 variable "username" {
-  type = string
+  type        = string
   description = "The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key."
-  default = null
+  default     = null
 }
 
 variable "password" {
-  type = string
+  type        = string
   description = "The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key."
-  default = null
+  default     = null
 }
 
 variable "partitionColumns" {
-  type = string
+  type        = string
   description = "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported. The partition columns are expected to be the same in number as the tables"
-  default = null
+  default     = null
 }
 
 variable "tables" {
-  type = string
+  type        = string
   description = "Tables to read from using partitions."
-  default = null
+  default     = null
 }
 
 variable "numPartitions" {
-  type = number
+  type        = number
   description = "The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1."
-  default = null
+  default     = null
 }
 
 variable "instanceId" {
-  type = string
+  type        = string
   description = "The destination Cloud Spanner instance."
-  
+
 }
 
 variable "databaseId" {
-  type = string
+  type        = string
   description = "The destination Cloud Spanner database."
-  
+
 }
 
 variable "projectId" {
-  type = string
+  type        = string
   description = "This is the name of the Cloud Spanner project."
-  
+
 }
 
 variable "spannerHost" {
-  type = string
+  type        = string
   description = "The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com."
-  default = null
+  default     = null
 }
 
 variable "ignoreColumns" {
-  type = string
+  type        = string
   description = "A comma separated list of (table:column1;column2) to exclude from writing to Spanner (Example: table1:column1;column2,table2:column1)"
-  default = null
+  default     = null
 }
 
 variable "disabledAlgorithms" {
-  type = string
+  type        = string
   description = "Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4)"
-  default = null
+  default     = null
 }
 
 variable "extraFilesToStage" {
-  type = string
+  type        = string
   description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id)"
-  default = null
+  default     = null
 }
 
 
 provider "google" {
-    project = var.project
+  project = var.project
 }
 
 provider "google-beta" {
-    project = var.project
+  project = var.project
 }
 
 variable "additional_experiments" {
-	type = set(string)
-	description = "List of experiments that should be used by the job. An example value is  'enable_stackdriver_agent_metrics'."
-	default = null
+  type        = set(string)
+  description = "List of experiments that should be used by the job. An example value is  'enable_stackdriver_agent_metrics'."
+  default     = null
 }
 
 variable "autoscaling_algorithm" {
-	type = string
-	description = "The algorithm to use for autoscaling"
-	default = null
+  type        = string
+  description = "The algorithm to use for autoscaling"
+  default     = null
 }
 
 variable "enable_streaming_engine" {
-	type = bool
-	description = "Indicates if the job should use the streaming engine feature."
-	default = null
+  type        = bool
+  description = "Indicates if the job should use the streaming engine feature."
+  default     = null
 }
 
 variable "ip_configuration" {
-	type = string
-	description = "The configuration for VM IPs. Options are 'WORKER_IP_PUBLIC' or 'WORKER_IP_PRIVATE'."
-	default = null
+  type        = string
+  description = "The configuration for VM IPs. Options are 'WORKER_IP_PUBLIC' or 'WORKER_IP_PRIVATE'."
+  default     = null
 }
 
 variable "kms_key_name" {
-	type = string
-	description = "The name for the Cloud KMS key for the job. Key format is: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY"
-	default = null
+  type        = string
+  description = "The name for the Cloud KMS key for the job. Key format is: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY"
+  default     = null
 }
 
 variable "labels" {
-	type = map(string)
-	description = "User labels to be specified for the job. Keys and values should follow the restrictions specified in the labeling restrictions page. NOTE: This field is non-authoritative, and will only manage the labels present in your configuration.				Please refer to the field 'effective_labels' for all of the labels present on the resource."
-	default = null
+  type        = map(string)
+  description = "User labels to be specified for the job. Keys and values should follow the restrictions specified in the labeling restrictions page. NOTE: This field is non-authoritative, and will only manage the labels present in your configuration.				Please refer to the field 'effective_labels' for all of the labels present on the resource."
+  default     = null
 }
 
 variable "launcher_machine_type" {
-	type = string
-	description = "The machine type to use for launching the job. The default is n1-standard-1."
-	default = null
+  type        = string
+  description = "The machine type to use for launching the job. The default is n1-standard-1."
+  default     = null
 }
 
 variable "machine_type" {
-	type = string
-	description = "The machine type to use for the job."
-	default = null
+  type        = string
+  description = "The machine type to use for the job."
+  default     = null
 }
 
 variable "max_workers" {
-	type = number
-	description = "The maximum number of Google Compute Engine instances to be made available to your pipeline during execution, from 1 to 1000."
-	default = null
+  type        = number
+  description = "The maximum number of Google Compute Engine instances to be made available to your pipeline during execution, from 1 to 1000."
+  default     = null
 }
 
 variable "name" {
-	type = string
+  type = string
 }
 
 variable "network" {
-	type = string
-	description = "The network to which VMs will be assigned. If it is not provided, 'default' will be used."
-	default = null
+  type        = string
+  description = "The network to which VMs will be assigned. If it is not provided, 'default' will be used."
+  default     = null
 }
 
 variable "num_workers" {
-	type = number
-	description = "The initial number of Google Compute Engine instances for the job."
-	default = null
+  type        = number
+  description = "The initial number of Google Compute Engine instances for the job."
+  default     = null
 }
 
 variable "sdk_container_image" {
-	type = string
-	description = "Docker registry location of container image to use for the 'worker harness. Default is the container for the version of the SDK. Note this field is only valid for portable pipelines."
-	default = null
+  type        = string
+  description = "Docker registry location of container image to use for the 'worker harness. Default is the container for the version of the SDK. Note this field is only valid for portable pipelines."
+  default     = null
 }
 
 variable "service_account_email" {
-	type = string
-	description = "The Service Account email used to create the job."
-	default = null
+  type        = string
+  description = "The Service Account email used to create the job."
+  default     = null
 }
 
 variable "skip_wait_on_job_termination" {
-	type = bool
-	description = "If true, treat DRAINING and CANCELLING as terminal job states and do not wait for further changes before removing from terraform state and moving on. WARNING: this will lead to job name conflicts if you do not ensure that the job names are different, e.g. by embedding a release ID or by using a random_id."
-	default = null
+  type        = bool
+  description = "If true, treat DRAINING and CANCELLING as terminal job states and do not wait for further changes before removing from terraform state and moving on. WARNING: this will lead to job name conflicts if you do not ensure that the job names are different, e.g. by embedding a release ID or by using a random_id."
+  default     = null
 }
 
 variable "staging_location" {
-	type = string
-	description = "The Cloud Storage path to use for staging files. Must be a valid Cloud Storage URL, beginning with gs://."
-	default = null
+  type        = string
+  description = "The Cloud Storage path to use for staging files. Must be a valid Cloud Storage URL, beginning with gs://."
+  default     = null
 }
 
 variable "subnetwork" {
-	type = string
-	description = "The subnetwork to which VMs will be assigned. Should be of the form 'regions/REGION/subnetworks/SUBNETWORK'."
-	default = null
+  type        = string
+  description = "The subnetwork to which VMs will be assigned. Should be of the form 'regions/REGION/subnetworks/SUBNETWORK'."
+  default     = null
 }
 
 variable "temp_location" {
-	type = string
-	description = "The Cloud Storage path to use for temporary files. Must be a valid Cloud Storage URL, beginning with gs://."
-	default = null
+  type        = string
+  description = "The Cloud Storage path to use for temporary files. Must be a valid Cloud Storage URL, beginning with gs://."
+  default     = null
 }
 
 resource "google_project_service" "required" {
-    service = "dataflow.googleapis.com"
-    disable_on_destroy = false
+  service            = "dataflow.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_dataflow_flex_template_job" "generated" {
-    depends_on = [google_project_service.required]
-    provider = google-beta
-    container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Sourcedb_to_Spanner_Flex"
-    parameters = {
-        jdbcDriverJars = var.jdbcDriverJars
-        jdbcDriverClassName = var.jdbcDriverClassName
-        sourceConnectionURL = var.sourceConnectionURL
-        sourceConnectionProperties = var.sourceConnectionProperties
-        username = var.username
-        password = var.password
-        partitionColumns = var.partitionColumns
-        tables = var.tables
-        numPartitions = tostring(var.numPartitions)
-        instanceId = var.instanceId
-        databaseId = var.databaseId
-        projectId = var.projectId
-        spannerHost = var.spannerHost
-        ignoreColumns = var.ignoreColumns
-        disabledAlgorithms = var.disabledAlgorithms
-        extraFilesToStage = var.extraFilesToStage
-    }
-    
-	additional_experiments = var.additional_experiments
-	autoscaling_algorithm = var.autoscaling_algorithm
-	enable_streaming_engine = var.enable_streaming_engine
-	ip_configuration = var.ip_configuration
-	kms_key_name = var.kms_key_name
-	labels = var.labels
-	launcher_machine_type = var.launcher_machine_type
-	machine_type = var.machine_type
-	max_workers = var.max_workers
-	name = var.name
-	network = var.network
-	num_workers = var.num_workers
-	sdk_container_image = var.sdk_container_image
-	service_account_email = var.service_account_email
-	skip_wait_on_job_termination = var.skip_wait_on_job_termination
-	staging_location = var.staging_location
-	subnetwork = var.subnetwork
-	temp_location = var.temp_location
-    region = var.region
+  depends_on              = [google_project_service.required]
+  provider                = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Sourcedb_to_Spanner_Flex"
+  parameters = {
+    jdbcDriverJars             = var.jdbcDriverJars
+    jdbcDriverClassName        = var.jdbcDriverClassName
+    sourceConnectionURL        = var.sourceConnectionURL
+    sourceConnectionProperties = var.sourceConnectionProperties
+    username                   = var.username
+    password                   = var.password
+    partitionColumns           = var.partitionColumns
+    tables                     = var.tables
+    numPartitions              = tostring(var.numPartitions)
+    instanceId                 = var.instanceId
+    databaseId                 = var.databaseId
+    projectId                  = var.projectId
+    spannerHost                = var.spannerHost
+    ignoreColumns              = var.ignoreColumns
+    disabledAlgorithms         = var.disabledAlgorithms
+    extraFilesToStage          = var.extraFilesToStage
+  }
+
+  additional_experiments       = var.additional_experiments
+  autoscaling_algorithm        = var.autoscaling_algorithm
+  enable_streaming_engine      = var.enable_streaming_engine
+  ip_configuration             = var.ip_configuration
+  kms_key_name                 = var.kms_key_name
+  labels                       = var.labels
+  launcher_machine_type        = var.launcher_machine_type
+  machine_type                 = var.machine_type
+  max_workers                  = var.max_workers
+  name                         = var.name
+  network                      = var.network
+  num_workers                  = var.num_workers
+  sdk_container_image          = var.sdk_container_image
+  service_account_email        = var.service_account_email
+  skip_wait_on_job_termination = var.skip_wait_on_job_termination
+  staging_location             = var.staging_location
+  subnetwork                   = var.subnetwork
+  temp_location                = var.temp_location
+  region                       = var.region
 }
 
 output "dataflow_job_url" {
-    value = "https://console.cloud.google.com/dataflow/jobs/${var.region}/${google_dataflow_flex_template_job.generated.job_id}"
+  value = "https://console.cloud.google.com/dataflow/jobs/${var.region}/${google_dataflow_flex_template_job.generated.job_id}"
 }
 

@@ -34,215 +34,215 @@ variable "region" {
 }
 
 variable "driverJars" {
-  type = string
+  type        = string
   description = "Comma separate Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar)"
-  
+
 }
 
 variable "driverClassName" {
-  type = string
+  type        = string
   description = "JDBC driver class name to use. (Example: com.mysql.jdbc.Driver)"
-  
+
 }
 
 variable "connectionURL" {
-  type = string
+  type        = string
   description = "Url connection string to connect to the JDBC source. (Example: jdbc:mysql://some-host:3306/sampledb)"
-  
+
 }
 
 variable "connectionProperties" {
-  type = string
+  type        = string
   description = "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8)"
-  default = null
+  default     = null
 }
 
 variable "username" {
-  type = string
+  type        = string
   description = "User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS."
-  default = null
+  default     = null
 }
 
 variable "password" {
-  type = string
+  type        = string
   description = "Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS."
-  default = null
+  default     = null
 }
 
 variable "query" {
-  type = string
+  type        = string
   description = "Query to be executed on the source to extract the data. If a Cloud Storage path is given (gs://...), the query will be fetched from that file. (Example: select * from sampledb.sample_table)"
-  
+
 }
 
 variable "outputTable" {
-  type = string
+  type        = string
   description = "BigQuery table location to write the output to. The table's schema must match the input objects."
-  
+
 }
 
 variable "bigQueryLoadingTemporaryDirectory" {
-  type = string
+  type        = string
   description = "Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir)"
-  
+
 }
 
 variable "KMSEncryptionKey" {
-  type = string
+  type        = string
   description = "If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key)"
-  default = null
+  default     = null
 }
 
 variable "useColumnAlias" {
-  type = bool
+  type        = bool
   description = <<EOT
 If enabled (set to true) the pipeline will consider column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.
 EOT
-  default = null
+  default     = null
 }
 
 variable "disabledAlgorithms" {
-  type = string
+  type        = string
   description = "Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4)"
-  default = null
+  default     = null
 }
 
 variable "extraFilesToStage" {
-  type = string
+  type        = string
   description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker. (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id)"
-  default = null
+  default     = null
 }
 
 
 provider "google" {
-    project = var.project
+  project = var.project
 }
 
 variable "additional_experiments" {
-	type = set(string)
-	description = "List of experiments that should be used by the job. An example value is  'enable_stackdriver_agent_metrics'."
-	default = null
+  type        = set(string)
+  description = "List of experiments that should be used by the job. An example value is  'enable_stackdriver_agent_metrics'."
+  default     = null
 }
 
 variable "enable_streaming_engine" {
-	type = bool
-	description = "Indicates if the job should use the streaming engine feature."
-	default = null
+  type        = bool
+  description = "Indicates if the job should use the streaming engine feature."
+  default     = null
 }
 
 variable "ip_configuration" {
-	type = string
-	description = "The configuration for VM IPs. Options are 'WORKER_IP_PUBLIC' or 'WORKER_IP_PRIVATE'."
-	default = null
+  type        = string
+  description = "The configuration for VM IPs. Options are 'WORKER_IP_PUBLIC' or 'WORKER_IP_PRIVATE'."
+  default     = null
 }
 
 variable "kms_key_name" {
-	type = string
-	description = "The name for the Cloud KMS key for the job. Key format is: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY"
-	default = null
+  type        = string
+  description = "The name for the Cloud KMS key for the job. Key format is: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY"
+  default     = null
 }
 
 variable "labels" {
-	type = map(string)
-	description = "User labels to be specified for the job. Keys and values should follow the restrictions specified in the labeling restrictions page. NOTE: This field is non-authoritative, and will only manage the labels present in your configuration.				Please refer to the field 'effective_labels' for all of the labels present on the resource."
-	default = null
+  type        = map(string)
+  description = "User labels to be specified for the job. Keys and values should follow the restrictions specified in the labeling restrictions page. NOTE: This field is non-authoritative, and will only manage the labels present in your configuration.				Please refer to the field 'effective_labels' for all of the labels present on the resource."
+  default     = null
 }
 
 variable "machine_type" {
-	type = string
-	description = "The machine type to use for the job."
-	default = null
+  type        = string
+  description = "The machine type to use for the job."
+  default     = null
 }
 
 variable "max_workers" {
-	type = number
-	description = "The number of workers permitted to work on the job. More workers may improve processing speed at additional cost."
-	default = null
+  type        = number
+  description = "The number of workers permitted to work on the job. More workers may improve processing speed at additional cost."
+  default     = null
 }
 
 variable "name" {
-	type = string
-	description = "A unique name for the resource, required by Dataflow."
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
-	type = string
-	description = "The network to which VMs will be assigned. If it is not provided, 'default' will be used."
-	default = null
+  type        = string
+  description = "The network to which VMs will be assigned. If it is not provided, 'default' will be used."
+  default     = null
 }
 
 variable "service_account_email" {
-	type = string
-	description = "The Service Account email used to create the job."
-	default = null
+  type        = string
+  description = "The Service Account email used to create the job."
+  default     = null
 }
 
 variable "skip_wait_on_job_termination" {
-	type = bool
-	description = "If true, treat DRAINING and CANCELLING as terminal job states and do not wait for further changes before removing from terraform state and moving on. WARNING: this will lead to job name conflicts if you do not ensure that the job names are different, e.g. by embedding a release ID or by using a random_id."
-	default = null
+  type        = bool
+  description = "If true, treat DRAINING and CANCELLING as terminal job states and do not wait for further changes before removing from terraform state and moving on. WARNING: this will lead to job name conflicts if you do not ensure that the job names are different, e.g. by embedding a release ID or by using a random_id."
+  default     = null
 }
 
 variable "subnetwork" {
-	type = string
-	description = "The subnetwork to which VMs will be assigned. Should be of the form 'regions/REGION/subnetworks/SUBNETWORK'."
-	default = null
+  type        = string
+  description = "The subnetwork to which VMs will be assigned. Should be of the form 'regions/REGION/subnetworks/SUBNETWORK'."
+  default     = null
 }
 
 variable "temp_gcs_location" {
-	type = string
-	description = "A writeable location on Google Cloud Storage for the Dataflow job to dump its temporary data."
+  type        = string
+  description = "A writeable location on Google Cloud Storage for the Dataflow job to dump its temporary data."
 }
 
 variable "zone" {
-	type = string
-	description = "The zone in which the created job should run. If it is not provided, the provider zone is used."
-	default = null
+  type        = string
+  description = "The zone in which the created job should run. If it is not provided, the provider zone is used."
+  default     = null
 }
 
 resource "google_project_service" "required" {
-    service = "dataflow.googleapis.com"
-    disable_on_destroy = false
+  service            = "dataflow.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_dataflow_job" "generated" {
-    depends_on = [google_project_service.required]
-    provider = google
-    template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Jdbc_to_BigQuery"
-    parameters = {
-        driverJars = var.driverJars
-        driverClassName = var.driverClassName
-        connectionURL = var.connectionURL
-        connectionProperties = var.connectionProperties
-        username = var.username
-        password = var.password
-        query = var.query
-        outputTable = var.outputTable
-        bigQueryLoadingTemporaryDirectory = var.bigQueryLoadingTemporaryDirectory
-        KMSEncryptionKey = var.KMSEncryptionKey
-        useColumnAlias = tostring(var.useColumnAlias)
-        disabledAlgorithms = var.disabledAlgorithms
-        extraFilesToStage = var.extraFilesToStage
-    }
-    
-	additional_experiments = var.additional_experiments
-	enable_streaming_engine = var.enable_streaming_engine
-	ip_configuration = var.ip_configuration
-	kms_key_name = var.kms_key_name
-	labels = var.labels
-	machine_type = var.machine_type
-	max_workers = var.max_workers
-	name = var.name
-	network = var.network
-	service_account_email = var.service_account_email
-	skip_wait_on_job_termination = var.skip_wait_on_job_termination
-	subnetwork = var.subnetwork
-	temp_gcs_location = var.temp_gcs_location
-	zone = var.zone
-    region = var.region
+  depends_on        = [google_project_service.required]
+  provider          = google
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Jdbc_to_BigQuery"
+  parameters = {
+    driverJars                        = var.driverJars
+    driverClassName                   = var.driverClassName
+    connectionURL                     = var.connectionURL
+    connectionProperties              = var.connectionProperties
+    username                          = var.username
+    password                          = var.password
+    query                             = var.query
+    outputTable                       = var.outputTable
+    bigQueryLoadingTemporaryDirectory = var.bigQueryLoadingTemporaryDirectory
+    KMSEncryptionKey                  = var.KMSEncryptionKey
+    useColumnAlias                    = tostring(var.useColumnAlias)
+    disabledAlgorithms                = var.disabledAlgorithms
+    extraFilesToStage                 = var.extraFilesToStage
+  }
+
+  additional_experiments       = var.additional_experiments
+  enable_streaming_engine      = var.enable_streaming_engine
+  ip_configuration             = var.ip_configuration
+  kms_key_name                 = var.kms_key_name
+  labels                       = var.labels
+  machine_type                 = var.machine_type
+  max_workers                  = var.max_workers
+  name                         = var.name
+  network                      = var.network
+  service_account_email        = var.service_account_email
+  skip_wait_on_job_termination = var.skip_wait_on_job_termination
+  subnetwork                   = var.subnetwork
+  temp_gcs_location            = var.temp_gcs_location
+  zone                         = var.zone
+  region                       = var.region
 }
 
 output "dataflow_job_url" {
-    value = "https://console.cloud.google.com/dataflow/jobs/${var.region}/${google_dataflow_job.generated.job_id}"
+  value = "https://console.cloud.google.com/dataflow/jobs/${var.region}/${google_dataflow_job.generated.job_id}"
 }
 

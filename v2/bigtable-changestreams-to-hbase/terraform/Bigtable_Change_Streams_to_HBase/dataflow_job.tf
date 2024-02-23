@@ -34,322 +34,322 @@ variable "region" {
 }
 
 variable "bidirectionalReplicationEnabled" {
-  type = bool
+  type        = bool
   description = "Whether bidirectional replication between hbase and bigtable is enabled, adds additional logic to filter out hbase-replicated mutations. Defaults to: false."
-  default = null
+  default     = null
 }
 
 variable "cbtQualifier" {
-  type = string
+  type        = string
   description = "Bidirectional replication source CBT qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_CBT."
-  default = null
+  default     = null
 }
 
 variable "dryRunEnabled" {
-  type = bool
+  type        = bool
   description = "When dry run is enabled, pipeline will not write to Hbase. Defaults to: false."
-  default = null
+  default     = null
 }
 
 variable "filterGCMutations" {
-  type = bool
+  type        = bool
   description = "Filters out garbage collection Delete mutations from CBT. Defaults to: false."
-  default = null
+  default     = null
 }
 
 variable "hbaseQualifier" {
-  type = string
+  type        = string
   description = "Bidirectional replication source Hbase qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_HBASE."
-  default = null
+  default     = null
 }
 
 variable "hbaseRootDir" {
-  type = string
+  type        = string
   description = "Hbase root directory, corresponds to hbase.rootdir"
-  
+
 }
 
 variable "hbaseZookeeperQuorumHost" {
-  type = string
+  type        = string
   description = "Zookeeper quorum host, corresponds to hbase.zookeeper.quorum host"
-  
+
 }
 
 variable "hbaseZookeeperQuorumPort" {
-  type = string
+  type        = string
   description = "Zookeeper quorum port, corresponds to hbase.zookeeper.quorum port. Defaults to: 2181."
-  default = null
+  default     = null
 }
 
 variable "bigtableChangeStreamMetadataInstanceId" {
-  type = string
+  type        = string
   description = "The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty."
-  default = null
+  default     = null
 }
 
 variable "bigtableChangeStreamMetadataTableTableId" {
-  type = string
+  type        = string
   description = "The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty."
-  default = null
+  default     = null
 }
 
 variable "bigtableChangeStreamAppProfile" {
-  type = string
+  type        = string
   description = "The application profile is used to distinguish workload in Cloud Bigtable"
-  
+
 }
 
 variable "bigtableChangeStreamCharset" {
-  type = string
+  type        = string
   description = "Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8"
-  default = null
+  default     = null
 }
 
 variable "bigtableChangeStreamStartTimestamp" {
-  type = string
+  type        = string
   description = "The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts."
-  default = null
+  default     = null
 }
 
 variable "bigtableChangeStreamIgnoreColumnFamilies" {
-  type = string
+  type        = string
   description = "A comma-separated list of column family names changes to which won't be captured. Defaults to empty."
-  default = null
+  default     = null
 }
 
 variable "bigtableChangeStreamIgnoreColumns" {
-  type = string
+  type        = string
   description = "A comma-separated list of column names changes to which won't be captured. Defaults to empty."
-  default = null
+  default     = null
 }
 
 variable "bigtableChangeStreamName" {
-  type = string
+  type        = string
   description = "Allows to resume processing from the point where a previously running pipeline stopped"
-  default = null
+  default     = null
 }
 
 variable "bigtableChangeStreamResume" {
-  type = bool
+  type        = bool
   description = "When set to true< a new pipeline will resume processing from the point at which a previously running pipeline with the same bigtableChangeStreamName stopped. If pipeline with the given bigtableChangeStreamName never ran in the past, a new pipeline will fail to start. When set to false a new pipeline will be started. If pipeline with the same bigtableChangeStreamName already ran in the past for the given source, a new pipeline will fail to start. Defaults to false"
-  default = null
+  default     = null
 }
 
 variable "bigtableReadInstanceId" {
-  type = string
+  type        = string
   description = "The ID of the Cloud Bigtable instance that contains the table"
-  
+
 }
 
 variable "bigtableReadTableId" {
-  type = string
+  type        = string
   description = "The Cloud Bigtable table to read from."
-  
+
 }
 
 variable "bigtableReadProjectId" {
-  type = string
+  type        = string
   description = "Project to read Cloud Bigtable data from. The default for this parameter is the project where the Dataflow pipeline is running."
-  default = null
+  default     = null
 }
 
 variable "bigtableReadAppProfile" {
-  type = string
+  type        = string
   description = "Bigtable App Profile to use for reads. The default for this parameter is the Bigtable instance's default app profile"
-  default = null
+  default     = null
 }
 
 variable "bigtableRpcAttemptTimeoutMs" {
-  type = number
+  type        = number
   description = "This sets the timeout for an RPC attempt in milliseconds"
-  default = null
+  default     = null
 }
 
 variable "bigtableRpcTimeoutMs" {
-  type = number
+  type        = number
   description = "This sets the total timeout for an RPC operation in milliseconds"
-  default = null
+  default     = null
 }
 
 variable "bigtableAdditionalRetryCodes" {
-  type = string
+  type        = string
   description = "This sets the additional retry codes, separated by ',' (Example: RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED)"
-  default = null
+  default     = null
 }
 
 
 provider "google" {
-    project = var.project
+  project = var.project
 }
 
 provider "google-beta" {
-    project = var.project
+  project = var.project
 }
 
 variable "additional_experiments" {
-	type = set(string)
-	description = "List of experiments that should be used by the job. An example value is  'enable_stackdriver_agent_metrics'."
-	default = null
+  type        = set(string)
+  description = "List of experiments that should be used by the job. An example value is  'enable_stackdriver_agent_metrics'."
+  default     = null
 }
 
 variable "autoscaling_algorithm" {
-	type = string
-	description = "The algorithm to use for autoscaling"
-	default = null
+  type        = string
+  description = "The algorithm to use for autoscaling"
+  default     = null
 }
 
 variable "enable_streaming_engine" {
-	type = bool
-	description = "Indicates if the job should use the streaming engine feature."
-	default = null
+  type        = bool
+  description = "Indicates if the job should use the streaming engine feature."
+  default     = null
 }
 
 variable "ip_configuration" {
-	type = string
-	description = "The configuration for VM IPs. Options are 'WORKER_IP_PUBLIC' or 'WORKER_IP_PRIVATE'."
-	default = null
+  type        = string
+  description = "The configuration for VM IPs. Options are 'WORKER_IP_PUBLIC' or 'WORKER_IP_PRIVATE'."
+  default     = null
 }
 
 variable "kms_key_name" {
-	type = string
-	description = "The name for the Cloud KMS key for the job. Key format is: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY"
-	default = null
+  type        = string
+  description = "The name for the Cloud KMS key for the job. Key format is: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY"
+  default     = null
 }
 
 variable "labels" {
-	type = map(string)
-	description = "User labels to be specified for the job. Keys and values should follow the restrictions specified in the labeling restrictions page. NOTE: This field is non-authoritative, and will only manage the labels present in your configuration.				Please refer to the field 'effective_labels' for all of the labels present on the resource."
-	default = null
+  type        = map(string)
+  description = "User labels to be specified for the job. Keys and values should follow the restrictions specified in the labeling restrictions page. NOTE: This field is non-authoritative, and will only manage the labels present in your configuration.				Please refer to the field 'effective_labels' for all of the labels present on the resource."
+  default     = null
 }
 
 variable "launcher_machine_type" {
-	type = string
-	description = "The machine type to use for launching the job. The default is n1-standard-1."
-	default = null
+  type        = string
+  description = "The machine type to use for launching the job. The default is n1-standard-1."
+  default     = null
 }
 
 variable "machine_type" {
-	type = string
-	description = "The machine type to use for the job."
-	default = null
+  type        = string
+  description = "The machine type to use for the job."
+  default     = null
 }
 
 variable "max_workers" {
-	type = number
-	description = "The maximum number of Google Compute Engine instances to be made available to your pipeline during execution, from 1 to 1000."
-	default = null
+  type        = number
+  description = "The maximum number of Google Compute Engine instances to be made available to your pipeline during execution, from 1 to 1000."
+  default     = null
 }
 
 variable "name" {
-	type = string
+  type = string
 }
 
 variable "network" {
-	type = string
-	description = "The network to which VMs will be assigned. If it is not provided, 'default' will be used."
-	default = null
+  type        = string
+  description = "The network to which VMs will be assigned. If it is not provided, 'default' will be used."
+  default     = null
 }
 
 variable "num_workers" {
-	type = number
-	description = "The initial number of Google Compute Engine instances for the job."
-	default = null
+  type        = number
+  description = "The initial number of Google Compute Engine instances for the job."
+  default     = null
 }
 
 variable "sdk_container_image" {
-	type = string
-	description = "Docker registry location of container image to use for the 'worker harness. Default is the container for the version of the SDK. Note this field is only valid for portable pipelines."
-	default = null
+  type        = string
+  description = "Docker registry location of container image to use for the 'worker harness. Default is the container for the version of the SDK. Note this field is only valid for portable pipelines."
+  default     = null
 }
 
 variable "service_account_email" {
-	type = string
-	description = "The Service Account email used to create the job."
-	default = null
+  type        = string
+  description = "The Service Account email used to create the job."
+  default     = null
 }
 
 variable "skip_wait_on_job_termination" {
-	type = bool
-	description = "If true, treat DRAINING and CANCELLING as terminal job states and do not wait for further changes before removing from terraform state and moving on. WARNING: this will lead to job name conflicts if you do not ensure that the job names are different, e.g. by embedding a release ID or by using a random_id."
-	default = null
+  type        = bool
+  description = "If true, treat DRAINING and CANCELLING as terminal job states and do not wait for further changes before removing from terraform state and moving on. WARNING: this will lead to job name conflicts if you do not ensure that the job names are different, e.g. by embedding a release ID or by using a random_id."
+  default     = null
 }
 
 variable "staging_location" {
-	type = string
-	description = "The Cloud Storage path to use for staging files. Must be a valid Cloud Storage URL, beginning with gs://."
-	default = null
+  type        = string
+  description = "The Cloud Storage path to use for staging files. Must be a valid Cloud Storage URL, beginning with gs://."
+  default     = null
 }
 
 variable "subnetwork" {
-	type = string
-	description = "The subnetwork to which VMs will be assigned. Should be of the form 'regions/REGION/subnetworks/SUBNETWORK'."
-	default = null
+  type        = string
+  description = "The subnetwork to which VMs will be assigned. Should be of the form 'regions/REGION/subnetworks/SUBNETWORK'."
+  default     = null
 }
 
 variable "temp_location" {
-	type = string
-	description = "The Cloud Storage path to use for temporary files. Must be a valid Cloud Storage URL, beginning with gs://."
-	default = null
+  type        = string
+  description = "The Cloud Storage path to use for temporary files. Must be a valid Cloud Storage URL, beginning with gs://."
+  default     = null
 }
 
 resource "google_project_service" "required" {
-    service = "dataflow.googleapis.com"
-    disable_on_destroy = false
+  service            = "dataflow.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_dataflow_flex_template_job" "generated" {
-    depends_on = [google_project_service.required]
-    provider = google-beta
-    container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Bigtable_Change_Streams_to_HBase"
-    parameters = {
-        bidirectionalReplicationEnabled = tostring(var.bidirectionalReplicationEnabled)
-        cbtQualifier = var.cbtQualifier
-        dryRunEnabled = tostring(var.dryRunEnabled)
-        filterGCMutations = tostring(var.filterGCMutations)
-        hbaseQualifier = var.hbaseQualifier
-        hbaseRootDir = var.hbaseRootDir
-        hbaseZookeeperQuorumHost = var.hbaseZookeeperQuorumHost
-        hbaseZookeeperQuorumPort = var.hbaseZookeeperQuorumPort
-        bigtableChangeStreamMetadataInstanceId = var.bigtableChangeStreamMetadataInstanceId
-        bigtableChangeStreamMetadataTableTableId = var.bigtableChangeStreamMetadataTableTableId
-        bigtableChangeStreamAppProfile = var.bigtableChangeStreamAppProfile
-        bigtableChangeStreamCharset = var.bigtableChangeStreamCharset
-        bigtableChangeStreamStartTimestamp = var.bigtableChangeStreamStartTimestamp
-        bigtableChangeStreamIgnoreColumnFamilies = var.bigtableChangeStreamIgnoreColumnFamilies
-        bigtableChangeStreamIgnoreColumns = var.bigtableChangeStreamIgnoreColumns
-        bigtableChangeStreamName = var.bigtableChangeStreamName
-        bigtableChangeStreamResume = tostring(var.bigtableChangeStreamResume)
-        bigtableReadInstanceId = var.bigtableReadInstanceId
-        bigtableReadTableId = var.bigtableReadTableId
-        bigtableReadProjectId = var.bigtableReadProjectId
-        bigtableReadAppProfile = var.bigtableReadAppProfile
-        bigtableRpcAttemptTimeoutMs = tostring(var.bigtableRpcAttemptTimeoutMs)
-        bigtableRpcTimeoutMs = tostring(var.bigtableRpcTimeoutMs)
-        bigtableAdditionalRetryCodes = var.bigtableAdditionalRetryCodes
-    }
-    
-	additional_experiments = var.additional_experiments
-	autoscaling_algorithm = var.autoscaling_algorithm
-	enable_streaming_engine = var.enable_streaming_engine
-	ip_configuration = var.ip_configuration
-	kms_key_name = var.kms_key_name
-	labels = var.labels
-	launcher_machine_type = var.launcher_machine_type
-	machine_type = var.machine_type
-	max_workers = var.max_workers
-	name = var.name
-	network = var.network
-	num_workers = var.num_workers
-	sdk_container_image = var.sdk_container_image
-	service_account_email = var.service_account_email
-	skip_wait_on_job_termination = var.skip_wait_on_job_termination
-	staging_location = var.staging_location
-	subnetwork = var.subnetwork
-	temp_location = var.temp_location
-    region = var.region
+  depends_on              = [google_project_service.required]
+  provider                = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Bigtable_Change_Streams_to_HBase"
+  parameters = {
+    bidirectionalReplicationEnabled          = tostring(var.bidirectionalReplicationEnabled)
+    cbtQualifier                             = var.cbtQualifier
+    dryRunEnabled                            = tostring(var.dryRunEnabled)
+    filterGCMutations                        = tostring(var.filterGCMutations)
+    hbaseQualifier                           = var.hbaseQualifier
+    hbaseRootDir                             = var.hbaseRootDir
+    hbaseZookeeperQuorumHost                 = var.hbaseZookeeperQuorumHost
+    hbaseZookeeperQuorumPort                 = var.hbaseZookeeperQuorumPort
+    bigtableChangeStreamMetadataInstanceId   = var.bigtableChangeStreamMetadataInstanceId
+    bigtableChangeStreamMetadataTableTableId = var.bigtableChangeStreamMetadataTableTableId
+    bigtableChangeStreamAppProfile           = var.bigtableChangeStreamAppProfile
+    bigtableChangeStreamCharset              = var.bigtableChangeStreamCharset
+    bigtableChangeStreamStartTimestamp       = var.bigtableChangeStreamStartTimestamp
+    bigtableChangeStreamIgnoreColumnFamilies = var.bigtableChangeStreamIgnoreColumnFamilies
+    bigtableChangeStreamIgnoreColumns        = var.bigtableChangeStreamIgnoreColumns
+    bigtableChangeStreamName                 = var.bigtableChangeStreamName
+    bigtableChangeStreamResume               = tostring(var.bigtableChangeStreamResume)
+    bigtableReadInstanceId                   = var.bigtableReadInstanceId
+    bigtableReadTableId                      = var.bigtableReadTableId
+    bigtableReadProjectId                    = var.bigtableReadProjectId
+    bigtableReadAppProfile                   = var.bigtableReadAppProfile
+    bigtableRpcAttemptTimeoutMs              = tostring(var.bigtableRpcAttemptTimeoutMs)
+    bigtableRpcTimeoutMs                     = tostring(var.bigtableRpcTimeoutMs)
+    bigtableAdditionalRetryCodes             = var.bigtableAdditionalRetryCodes
+  }
+
+  additional_experiments       = var.additional_experiments
+  autoscaling_algorithm        = var.autoscaling_algorithm
+  enable_streaming_engine      = var.enable_streaming_engine
+  ip_configuration             = var.ip_configuration
+  kms_key_name                 = var.kms_key_name
+  labels                       = var.labels
+  launcher_machine_type        = var.launcher_machine_type
+  machine_type                 = var.machine_type
+  max_workers                  = var.max_workers
+  name                         = var.name
+  network                      = var.network
+  num_workers                  = var.num_workers
+  sdk_container_image          = var.sdk_container_image
+  service_account_email        = var.service_account_email
+  skip_wait_on_job_termination = var.skip_wait_on_job_termination
+  staging_location             = var.staging_location
+  subnetwork                   = var.subnetwork
+  temp_location                = var.temp_location
+  region                       = var.region
 }
 
 output "dataflow_job_url" {
-    value = "https://console.cloud.google.com/dataflow/jobs/${var.region}/${google_dataflow_flex_template_job.generated.job_id}"
+  value = "https://console.cloud.google.com/dataflow/jobs/${var.region}/${google_dataflow_flex_template_job.generated.job_id}"
 }
 

@@ -34,273 +34,273 @@ variable "region" {
 }
 
 variable "readIdColumn" {
-  type = string
+  type        = string
   description = "Name of the BigQuery column storing the unique identifier of the row"
-  
+
 }
 
 variable "inputTableSpec" {
-  type = string
+  type        = string
   description = "BigQuery source table spec. (Example: bigquery-project:dataset.input_table)"
-  default = null
+  default     = null
 }
 
 variable "outputDeadletterTable" {
-  type = string
+  type        = string
   description = "Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. (Example: your-project-id:your-dataset.your-table-name)"
-  default = null
+  default     = null
 }
 
 variable "query" {
-  type = string
+  type        = string
   description = "Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table)"
-  default = null
+  default     = null
 }
 
 variable "useLegacySql" {
-  type = bool
+  type        = bool
   description = "Set to true to use legacy SQL (only applicable if supplying query). Defaults to: false."
-  default = null
+  default     = null
 }
 
 variable "queryLocation" {
-  type = string
+  type        = string
   description = "Needed when reading from an authorized view without underlying table's permission. (Example: US)"
-  default = null
+  default     = null
 }
 
 variable "bigtableRpcAttemptTimeoutMs" {
-  type = number
+  type        = number
   description = "This sets the timeout for an RPC attempt in milliseconds"
-  default = null
+  default     = null
 }
 
 variable "bigtableRpcTimeoutMs" {
-  type = number
+  type        = number
   description = "This sets the total timeout for an RPC operation in milliseconds"
-  default = null
+  default     = null
 }
 
 variable "bigtableAdditionalRetryCodes" {
-  type = string
+  type        = string
   description = "This sets the additional retry codes, separated by ',' (Example: RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED)"
-  default = null
+  default     = null
 }
 
 variable "bigtableWriteInstanceId" {
-  type = string
+  type        = string
   description = "The ID of the Cloud Bigtable instance that contains the table"
-  
+
 }
 
 variable "bigtableWriteTableId" {
-  type = string
+  type        = string
   description = "The ID of the Cloud Bigtable table to write"
-  
+
 }
 
 variable "bigtableWriteColumnFamily" {
-  type = string
+  type        = string
   description = "This specifies the column family to write data into"
-  
+
 }
 
 variable "bigtableWriteAppProfile" {
-  type = string
+  type        = string
   description = "Bigtable App Profile to use for the export. The default for this parameter is the Bigtable instance's default app profile"
-  default = null
+  default     = null
 }
 
 variable "bigtableWriteProjectId" {
-  type = string
+  type        = string
   description = "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to."
-  default = null
+  default     = null
 }
 
 variable "bigtableBulkWriteLatencyTargetMs" {
-  type = number
+  type        = number
   description = "This enables latency-based throttling and specifies the target latency"
-  default = null
+  default     = null
 }
 
 variable "bigtableBulkWriteMaxRowKeyCount" {
-  type = number
+  type        = number
   description = "This sets the max number of row keys in a Bigtable batch write operation"
-  default = null
+  default     = null
 }
 
 variable "bigtableBulkWriteMaxRequestSizeBytes" {
-  type = number
+  type        = number
   description = "This sets the max amount of bytes in a Bigtable batch write operation"
-  default = null
+  default     = null
 }
 
 
 provider "google" {
-    project = var.project
+  project = var.project
 }
 
 provider "google-beta" {
-    project = var.project
+  project = var.project
 }
 
 variable "additional_experiments" {
-	type = set(string)
-	description = "List of experiments that should be used by the job. An example value is  'enable_stackdriver_agent_metrics'."
-	default = null
+  type        = set(string)
+  description = "List of experiments that should be used by the job. An example value is  'enable_stackdriver_agent_metrics'."
+  default     = null
 }
 
 variable "autoscaling_algorithm" {
-	type = string
-	description = "The algorithm to use for autoscaling"
-	default = null
+  type        = string
+  description = "The algorithm to use for autoscaling"
+  default     = null
 }
 
 variable "enable_streaming_engine" {
-	type = bool
-	description = "Indicates if the job should use the streaming engine feature."
-	default = null
+  type        = bool
+  description = "Indicates if the job should use the streaming engine feature."
+  default     = null
 }
 
 variable "ip_configuration" {
-	type = string
-	description = "The configuration for VM IPs. Options are 'WORKER_IP_PUBLIC' or 'WORKER_IP_PRIVATE'."
-	default = null
+  type        = string
+  description = "The configuration for VM IPs. Options are 'WORKER_IP_PUBLIC' or 'WORKER_IP_PRIVATE'."
+  default     = null
 }
 
 variable "kms_key_name" {
-	type = string
-	description = "The name for the Cloud KMS key for the job. Key format is: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY"
-	default = null
+  type        = string
+  description = "The name for the Cloud KMS key for the job. Key format is: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY"
+  default     = null
 }
 
 variable "labels" {
-	type = map(string)
-	description = "User labels to be specified for the job. Keys and values should follow the restrictions specified in the labeling restrictions page. NOTE: This field is non-authoritative, and will only manage the labels present in your configuration.				Please refer to the field 'effective_labels' for all of the labels present on the resource."
-	default = null
+  type        = map(string)
+  description = "User labels to be specified for the job. Keys and values should follow the restrictions specified in the labeling restrictions page. NOTE: This field is non-authoritative, and will only manage the labels present in your configuration.				Please refer to the field 'effective_labels' for all of the labels present on the resource."
+  default     = null
 }
 
 variable "launcher_machine_type" {
-	type = string
-	description = "The machine type to use for launching the job. The default is n1-standard-1."
-	default = null
+  type        = string
+  description = "The machine type to use for launching the job. The default is n1-standard-1."
+  default     = null
 }
 
 variable "machine_type" {
-	type = string
-	description = "The machine type to use for the job."
-	default = null
+  type        = string
+  description = "The machine type to use for the job."
+  default     = null
 }
 
 variable "max_workers" {
-	type = number
-	description = "The maximum number of Google Compute Engine instances to be made available to your pipeline during execution, from 1 to 1000."
-	default = null
+  type        = number
+  description = "The maximum number of Google Compute Engine instances to be made available to your pipeline during execution, from 1 to 1000."
+  default     = null
 }
 
 variable "name" {
-	type = string
+  type = string
 }
 
 variable "network" {
-	type = string
-	description = "The network to which VMs will be assigned. If it is not provided, 'default' will be used."
-	default = null
+  type        = string
+  description = "The network to which VMs will be assigned. If it is not provided, 'default' will be used."
+  default     = null
 }
 
 variable "num_workers" {
-	type = number
-	description = "The initial number of Google Compute Engine instances for the job."
-	default = null
+  type        = number
+  description = "The initial number of Google Compute Engine instances for the job."
+  default     = null
 }
 
 variable "sdk_container_image" {
-	type = string
-	description = "Docker registry location of container image to use for the 'worker harness. Default is the container for the version of the SDK. Note this field is only valid for portable pipelines."
-	default = null
+  type        = string
+  description = "Docker registry location of container image to use for the 'worker harness. Default is the container for the version of the SDK. Note this field is only valid for portable pipelines."
+  default     = null
 }
 
 variable "service_account_email" {
-	type = string
-	description = "The Service Account email used to create the job."
-	default = null
+  type        = string
+  description = "The Service Account email used to create the job."
+  default     = null
 }
 
 variable "skip_wait_on_job_termination" {
-	type = bool
-	description = "If true, treat DRAINING and CANCELLING as terminal job states and do not wait for further changes before removing from terraform state and moving on. WARNING: this will lead to job name conflicts if you do not ensure that the job names are different, e.g. by embedding a release ID or by using a random_id."
-	default = null
+  type        = bool
+  description = "If true, treat DRAINING and CANCELLING as terminal job states and do not wait for further changes before removing from terraform state and moving on. WARNING: this will lead to job name conflicts if you do not ensure that the job names are different, e.g. by embedding a release ID or by using a random_id."
+  default     = null
 }
 
 variable "staging_location" {
-	type = string
-	description = "The Cloud Storage path to use for staging files. Must be a valid Cloud Storage URL, beginning with gs://."
-	default = null
+  type        = string
+  description = "The Cloud Storage path to use for staging files. Must be a valid Cloud Storage URL, beginning with gs://."
+  default     = null
 }
 
 variable "subnetwork" {
-	type = string
-	description = "The subnetwork to which VMs will be assigned. Should be of the form 'regions/REGION/subnetworks/SUBNETWORK'."
-	default = null
+  type        = string
+  description = "The subnetwork to which VMs will be assigned. Should be of the form 'regions/REGION/subnetworks/SUBNETWORK'."
+  default     = null
 }
 
 variable "temp_location" {
-	type = string
-	description = "The Cloud Storage path to use for temporary files. Must be a valid Cloud Storage URL, beginning with gs://."
-	default = null
+  type        = string
+  description = "The Cloud Storage path to use for temporary files. Must be a valid Cloud Storage URL, beginning with gs://."
+  default     = null
 }
 
 resource "google_project_service" "required" {
-    service = "dataflow.googleapis.com"
-    disable_on_destroy = false
+  service            = "dataflow.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_dataflow_flex_template_job" "generated" {
-    depends_on = [google_project_service.required]
-    provider = google-beta
-    container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/BigQuery_to_Bigtable"
-    parameters = {
-        readIdColumn = var.readIdColumn
-        inputTableSpec = var.inputTableSpec
-        outputDeadletterTable = var.outputDeadletterTable
-        query = var.query
-        useLegacySql = tostring(var.useLegacySql)
-        queryLocation = var.queryLocation
-        bigtableRpcAttemptTimeoutMs = tostring(var.bigtableRpcAttemptTimeoutMs)
-        bigtableRpcTimeoutMs = tostring(var.bigtableRpcTimeoutMs)
-        bigtableAdditionalRetryCodes = var.bigtableAdditionalRetryCodes
-        bigtableWriteInstanceId = var.bigtableWriteInstanceId
-        bigtableWriteTableId = var.bigtableWriteTableId
-        bigtableWriteColumnFamily = var.bigtableWriteColumnFamily
-        bigtableWriteAppProfile = var.bigtableWriteAppProfile
-        bigtableWriteProjectId = var.bigtableWriteProjectId
-        bigtableBulkWriteLatencyTargetMs = tostring(var.bigtableBulkWriteLatencyTargetMs)
-        bigtableBulkWriteMaxRowKeyCount = tostring(var.bigtableBulkWriteMaxRowKeyCount)
-        bigtableBulkWriteMaxRequestSizeBytes = tostring(var.bigtableBulkWriteMaxRequestSizeBytes)
-    }
-    
-	additional_experiments = var.additional_experiments
-	autoscaling_algorithm = var.autoscaling_algorithm
-	enable_streaming_engine = var.enable_streaming_engine
-	ip_configuration = var.ip_configuration
-	kms_key_name = var.kms_key_name
-	labels = var.labels
-	launcher_machine_type = var.launcher_machine_type
-	machine_type = var.machine_type
-	max_workers = var.max_workers
-	name = var.name
-	network = var.network
-	num_workers = var.num_workers
-	sdk_container_image = var.sdk_container_image
-	service_account_email = var.service_account_email
-	skip_wait_on_job_termination = var.skip_wait_on_job_termination
-	staging_location = var.staging_location
-	subnetwork = var.subnetwork
-	temp_location = var.temp_location
-    region = var.region
+  depends_on              = [google_project_service.required]
+  provider                = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/BigQuery_to_Bigtable"
+  parameters = {
+    readIdColumn                         = var.readIdColumn
+    inputTableSpec                       = var.inputTableSpec
+    outputDeadletterTable                = var.outputDeadletterTable
+    query                                = var.query
+    useLegacySql                         = tostring(var.useLegacySql)
+    queryLocation                        = var.queryLocation
+    bigtableRpcAttemptTimeoutMs          = tostring(var.bigtableRpcAttemptTimeoutMs)
+    bigtableRpcTimeoutMs                 = tostring(var.bigtableRpcTimeoutMs)
+    bigtableAdditionalRetryCodes         = var.bigtableAdditionalRetryCodes
+    bigtableWriteInstanceId              = var.bigtableWriteInstanceId
+    bigtableWriteTableId                 = var.bigtableWriteTableId
+    bigtableWriteColumnFamily            = var.bigtableWriteColumnFamily
+    bigtableWriteAppProfile              = var.bigtableWriteAppProfile
+    bigtableWriteProjectId               = var.bigtableWriteProjectId
+    bigtableBulkWriteLatencyTargetMs     = tostring(var.bigtableBulkWriteLatencyTargetMs)
+    bigtableBulkWriteMaxRowKeyCount      = tostring(var.bigtableBulkWriteMaxRowKeyCount)
+    bigtableBulkWriteMaxRequestSizeBytes = tostring(var.bigtableBulkWriteMaxRequestSizeBytes)
+  }
+
+  additional_experiments       = var.additional_experiments
+  autoscaling_algorithm        = var.autoscaling_algorithm
+  enable_streaming_engine      = var.enable_streaming_engine
+  ip_configuration             = var.ip_configuration
+  kms_key_name                 = var.kms_key_name
+  labels                       = var.labels
+  launcher_machine_type        = var.launcher_machine_type
+  machine_type                 = var.machine_type
+  max_workers                  = var.max_workers
+  name                         = var.name
+  network                      = var.network
+  num_workers                  = var.num_workers
+  sdk_container_image          = var.sdk_container_image
+  service_account_email        = var.service_account_email
+  skip_wait_on_job_termination = var.skip_wait_on_job_termination
+  staging_location             = var.staging_location
+  subnetwork                   = var.subnetwork
+  temp_location                = var.temp_location
+  region                       = var.region
 }
 
 output "dataflow_job_url" {
-    value = "https://console.cloud.google.com/dataflow/jobs/${var.region}/${google_dataflow_flex_template_job.generated.job_id}"
+  value = "https://console.cloud.google.com/dataflow/jobs/${var.region}/${google_dataflow_flex_template_job.generated.job_id}"
 }
 

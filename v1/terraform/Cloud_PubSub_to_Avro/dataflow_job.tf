@@ -34,199 +34,199 @@ variable "region" {
 }
 
 variable "inputTopic" {
-  type = string
+  type        = string
   description = "Pub/Sub topic to read the input from, in the format of 'projects/your-project-id/topics/your-topic-name'"
-  
+
 }
 
 variable "outputDirectory" {
-  type = string
+  type        = string
   description = "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters."
-  
+
 }
 
 variable "outputFilenamePrefix" {
-  type = string
+  type        = string
   description = "The prefix to place on each windowed file. Defaults to: output."
-  default = null
+  default     = null
 }
 
 variable "outputFilenameSuffix" {
-  type = string
+  type        = string
   description = "The suffix to place on each windowed file. Typically a file extension such as .txt or .csv. Defaults to empty."
-  default = null
+  default     = null
 }
 
 variable "avroTempDirectory" {
-  type = string
+  type        = string
   description = "Directory for temporary Avro files."
-  
+
 }
 
 variable "outputShardTemplate" {
-  type = string
+  type        = string
   description = "Defines the unique/dynamic portion of each windowed file. Recommended: use the default (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is replaced with the pane info. Repeating sequences of the letters 'S' or 'N' are replaced with the shard number and number of shards respectively. The pipeline assumes a single file output and will produce the text of '00-of-01' by default."
-  default = null
+  default     = null
 }
 
 variable "yearPattern" {
-  type = string
+  type        = string
   description = "Pattern for formatting the year. Must be one or more of 'y' or 'Y'. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory ('/') character. Defaults to 'YYYY'"
-  default = null
+  default     = null
 }
 
 variable "monthPattern" {
-  type = string
+  type        = string
   description = "Pattern for formatting the month. Must be one or more of the 'M' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'MM'"
-  default = null
+  default     = null
 }
 
 variable "dayPattern" {
-  type = string
+  type        = string
   description = "Pattern for formatting the day. Must be one or more of 'd' for day of month or 'D' for day of year. Case makes no difference in the year. The pattern can be optionally wrapped by characters that aren't either alphanumeric or the directory ('/') character. Defaults to 'dd'"
-  default = null
+  default     = null
 }
 
 variable "hourPattern" {
-  type = string
+  type        = string
   description = "Pattern for formatting the hour. Must be one or more of the 'H' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'HH'"
-  default = null
+  default     = null
 }
 
 variable "minutePattern" {
-  type = string
+  type        = string
   description = "Pattern for formatting the minute. Must be one or more of the 'm' character. The pattern can be optionally wrapped by characters that aren't alphanumeric or the directory ('/') character. Defaults to 'mm'"
-  default = null
+  default     = null
 }
 
 
 provider "google" {
-    project = var.project
+  project = var.project
 }
 
 variable "additional_experiments" {
-	type = set(string)
-	description = "List of experiments that should be used by the job. An example value is  'enable_stackdriver_agent_metrics'."
-	default = null
+  type        = set(string)
+  description = "List of experiments that should be used by the job. An example value is  'enable_stackdriver_agent_metrics'."
+  default     = null
 }
 
 variable "enable_streaming_engine" {
-	type = bool
-	description = "Indicates if the job should use the streaming engine feature."
-	default = null
+  type        = bool
+  description = "Indicates if the job should use the streaming engine feature."
+  default     = null
 }
 
 variable "ip_configuration" {
-	type = string
-	description = "The configuration for VM IPs. Options are 'WORKER_IP_PUBLIC' or 'WORKER_IP_PRIVATE'."
-	default = null
+  type        = string
+  description = "The configuration for VM IPs. Options are 'WORKER_IP_PUBLIC' or 'WORKER_IP_PRIVATE'."
+  default     = null
 }
 
 variable "kms_key_name" {
-	type = string
-	description = "The name for the Cloud KMS key for the job. Key format is: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY"
-	default = null
+  type        = string
+  description = "The name for the Cloud KMS key for the job. Key format is: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY"
+  default     = null
 }
 
 variable "labels" {
-	type = map(string)
-	description = "User labels to be specified for the job. Keys and values should follow the restrictions specified in the labeling restrictions page. NOTE: This field is non-authoritative, and will only manage the labels present in your configuration.				Please refer to the field 'effective_labels' for all of the labels present on the resource."
-	default = null
+  type        = map(string)
+  description = "User labels to be specified for the job. Keys and values should follow the restrictions specified in the labeling restrictions page. NOTE: This field is non-authoritative, and will only manage the labels present in your configuration.				Please refer to the field 'effective_labels' for all of the labels present on the resource."
+  default     = null
 }
 
 variable "machine_type" {
-	type = string
-	description = "The machine type to use for the job."
-	default = null
+  type        = string
+  description = "The machine type to use for the job."
+  default     = null
 }
 
 variable "max_workers" {
-	type = number
-	description = "The number of workers permitted to work on the job. More workers may improve processing speed at additional cost."
-	default = null
+  type        = number
+  description = "The number of workers permitted to work on the job. More workers may improve processing speed at additional cost."
+  default     = null
 }
 
 variable "name" {
-	type = string
-	description = "A unique name for the resource, required by Dataflow."
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
-	type = string
-	description = "The network to which VMs will be assigned. If it is not provided, 'default' will be used."
-	default = null
+  type        = string
+  description = "The network to which VMs will be assigned. If it is not provided, 'default' will be used."
+  default     = null
 }
 
 variable "service_account_email" {
-	type = string
-	description = "The Service Account email used to create the job."
-	default = null
+  type        = string
+  description = "The Service Account email used to create the job."
+  default     = null
 }
 
 variable "skip_wait_on_job_termination" {
-	type = bool
-	description = "If true, treat DRAINING and CANCELLING as terminal job states and do not wait for further changes before removing from terraform state and moving on. WARNING: this will lead to job name conflicts if you do not ensure that the job names are different, e.g. by embedding a release ID or by using a random_id."
-	default = null
+  type        = bool
+  description = "If true, treat DRAINING and CANCELLING as terminal job states and do not wait for further changes before removing from terraform state and moving on. WARNING: this will lead to job name conflicts if you do not ensure that the job names are different, e.g. by embedding a release ID or by using a random_id."
+  default     = null
 }
 
 variable "subnetwork" {
-	type = string
-	description = "The subnetwork to which VMs will be assigned. Should be of the form 'regions/REGION/subnetworks/SUBNETWORK'."
-	default = null
+  type        = string
+  description = "The subnetwork to which VMs will be assigned. Should be of the form 'regions/REGION/subnetworks/SUBNETWORK'."
+  default     = null
 }
 
 variable "temp_gcs_location" {
-	type = string
-	description = "A writeable location on Google Cloud Storage for the Dataflow job to dump its temporary data."
+  type        = string
+  description = "A writeable location on Google Cloud Storage for the Dataflow job to dump its temporary data."
 }
 
 variable "zone" {
-	type = string
-	description = "The zone in which the created job should run. If it is not provided, the provider zone is used."
-	default = null
+  type        = string
+  description = "The zone in which the created job should run. If it is not provided, the provider zone is used."
+  default     = null
 }
 
 resource "google_project_service" "required" {
-    service = "dataflow.googleapis.com"
-    disable_on_destroy = false
+  service            = "dataflow.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_dataflow_job" "generated" {
-    depends_on = [google_project_service.required]
-    provider = google
-    template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_PubSub_to_Avro"
-    parameters = {
-        inputTopic = var.inputTopic
-        outputDirectory = var.outputDirectory
-        outputFilenamePrefix = var.outputFilenamePrefix
-        outputFilenameSuffix = var.outputFilenameSuffix
-        avroTempDirectory = var.avroTempDirectory
-        outputShardTemplate = var.outputShardTemplate
-        yearPattern = var.yearPattern
-        monthPattern = var.monthPattern
-        dayPattern = var.dayPattern
-        hourPattern = var.hourPattern
-        minutePattern = var.minutePattern
-    }
-    
-	additional_experiments = var.additional_experiments
-	enable_streaming_engine = var.enable_streaming_engine
-	ip_configuration = var.ip_configuration
-	kms_key_name = var.kms_key_name
-	labels = var.labels
-	machine_type = var.machine_type
-	max_workers = var.max_workers
-	name = var.name
-	network = var.network
-	service_account_email = var.service_account_email
-	skip_wait_on_job_termination = var.skip_wait_on_job_termination
-	subnetwork = var.subnetwork
-	temp_gcs_location = var.temp_gcs_location
-	zone = var.zone
-    region = var.region
+  depends_on        = [google_project_service.required]
+  provider          = google
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_PubSub_to_Avro"
+  parameters = {
+    inputTopic           = var.inputTopic
+    outputDirectory      = var.outputDirectory
+    outputFilenamePrefix = var.outputFilenamePrefix
+    outputFilenameSuffix = var.outputFilenameSuffix
+    avroTempDirectory    = var.avroTempDirectory
+    outputShardTemplate  = var.outputShardTemplate
+    yearPattern          = var.yearPattern
+    monthPattern         = var.monthPattern
+    dayPattern           = var.dayPattern
+    hourPattern          = var.hourPattern
+    minutePattern        = var.minutePattern
+  }
+
+  additional_experiments       = var.additional_experiments
+  enable_streaming_engine      = var.enable_streaming_engine
+  ip_configuration             = var.ip_configuration
+  kms_key_name                 = var.kms_key_name
+  labels                       = var.labels
+  machine_type                 = var.machine_type
+  max_workers                  = var.max_workers
+  name                         = var.name
+  network                      = var.network
+  service_account_email        = var.service_account_email
+  skip_wait_on_job_termination = var.skip_wait_on_job_termination
+  subnetwork                   = var.subnetwork
+  temp_gcs_location            = var.temp_gcs_location
+  zone                         = var.zone
+  region                       = var.region
 }
 
 output "dataflow_job_url" {
-    value = "https://console.cloud.google.com/dataflow/jobs/${var.region}/${google_dataflow_job.generated.job_id}"
+  value = "https://console.cloud.google.com/dataflow/jobs/${var.region}/${google_dataflow_job.generated.job_id}"
 }
 
