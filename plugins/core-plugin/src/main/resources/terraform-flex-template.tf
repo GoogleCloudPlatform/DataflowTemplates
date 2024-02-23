@@ -42,6 +42,10 @@ variable "${variable.name}" {
 
 </#list>
 
+provider "google" {
+    project = var.project
+}
+
 provider "google-beta" {
     project = var.project
 }
@@ -159,6 +163,7 @@ resource "google_project_service" "required" {
 
 resource "google_dataflow_flex_template_job" "generated" {
     depends_on = [google_project_service.required]
+    provider = google-beta
     container_spec_gcs_path = "gs://dataflow-templates-${r"${var.region}"}/latest/flex/${templateName}"
     parameters = {
     <#list parameters as variable>

@@ -135,6 +135,7 @@ resource "google_project_service" "required" {
 
 resource "google_dataflow_job" "generated" {
     depends_on = [google_project_service.required]
+    provider = google
     template_gcs_path = "gs://dataflow-templates-${r"${var.region}"}/latest/${templateName}"
     parameters = {
     <#list parameters as variable>

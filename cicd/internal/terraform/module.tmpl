@@ -33,6 +33,7 @@ resource "google_project_service" "required" {
 
 resource "{{$resourceName}}" "generated" {
     depends_on = [google_project_service.required]
+    {{"provider_attribute" | extra }}
     {{"template_path" | extra}}
     {{"freemarker_resource" | extra}}
     {{range $attrName, $attr := $resourceSchema.Block.Attributes}}{{print "\n\t"}}{{$attrName}} = var.{{$attrName}}{{end}}

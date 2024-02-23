@@ -73,6 +73,11 @@ var (
 		consts_vars.GoogleBeta: terraform.GoogleProviderBetaExtra,
 	}
 
+	providerAttributeExtras = map[string]terraform.Extra{
+		consts_vars.Google:     terraform.ProviderAttributeExtra,
+		consts_vars.GoogleBeta: terraform.ProviderBetaAttributeExtra,
+	}
+
 	templatePathExtras = map[string]terraform.Extra{
 		consts_vars.ResourceDataflowJob:             terraform.TemplatePathClassic,
 		consts_vars.ResourceDataflowFlexTemplateJob: terraform.TemplatePathFlex,
@@ -143,12 +148,17 @@ func freemarkerRunE(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("could not acquire template extra from provider: %s", provider)
 	}
 
+	providerAttrExtra, ok := providerAttributeExtras[provider]
+	if !ok {
+		return fmt.Errorf("could not acquire template attribute extra from provider: %s", provider)
+	}
+
 	templatePathExtra, ok := templatePathExtras[resource]
 	if !ok {
 		return fmt.Errorf("could not acquire template extra from resource: %s", resource)
 	}
 
-	extra = append(extra, providerExtra, templatePathExtra)
+	extra = append(extra, providerExtra, templatePathExtra, providerAttrExtra)
 
 	if includeExtra {
 		extra = append(extra, terraform.FreemarkerPreResourceExtra, terraform.FreemarkerResourceExtra)

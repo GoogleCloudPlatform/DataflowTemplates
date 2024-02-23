@@ -263,6 +263,12 @@ mvn clean prepare-package \
   -pl v2/googlecloud-togooglecloud -am
 ```
 
+Next, [terraform fmt](https://developer.hashicorp.com/terraform/cli/commands/fmt) the modules after
+generating:
+```shell
+terraform fmt -recursive v2
+```
+
 The resulting terraform modules are generated in `v2/<source>-to-<sink>/terraform`,
 for example [v2/bigquery-to-bigtable/terraform](v2/bigquery-to-bigtable/terraform).
 
