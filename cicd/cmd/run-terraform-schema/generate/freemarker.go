@@ -78,6 +78,7 @@ var (
 		consts_vars.ResourceDataflowFlexTemplateJob: terraform.TemplatePathFlex,
 	}
 
+	// Ignores schema attributes with these names.
 	attrMatcher = &terraform.And[*tfjson.SchemaAttribute]{
 		terraform.Not[*tfjson.SchemaAttribute](&terraform.Or[*tfjson.SchemaAttribute]{
 			terraform.MatchName[*tfjson.SchemaAttribute]("container_spec_gcs_path"),

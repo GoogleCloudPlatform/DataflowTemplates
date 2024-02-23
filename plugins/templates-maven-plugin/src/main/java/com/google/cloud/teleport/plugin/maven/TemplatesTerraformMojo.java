@@ -97,7 +97,9 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
 
   private File modulePath(TemplateDefinitions definition) {
     if (definition.isFlex()) {
-      return Path.of(baseDirectory.toURI()).resolve(Paths.get(TERRAFORM, definition.getTemplateAnnotation().name(), TF_FILE_NAME)).toFile();
+      return Path.of(baseDirectory.toURI())
+          .resolve(Paths.get(TERRAFORM, definition.getTemplateAnnotation().name(), TF_FILE_NAME))
+          .toFile();
     }
 
     // definition.isClassic()

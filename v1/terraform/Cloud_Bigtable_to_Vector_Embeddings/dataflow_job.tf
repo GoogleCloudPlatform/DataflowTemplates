@@ -33,16 +33,90 @@ variable "region" {
   description = "The region in which the created job should run."
 }
 
-variable "inputFilePattern" {
+variable "bigtableProjectId" {
   type        = string
-  description = "Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.txt)"
+  description = "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from"
 
 }
 
-variable "outputTopic" {
+variable "bigtableInstanceId" {
   type        = string
-  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = "The ID of the Cloud Bigtable instance that contains the table"
 
+}
+
+variable "bigtableTableId" {
+  type        = string
+  description = "The ID of the Cloud Bigtable table to read"
+
+}
+
+variable "outputDirectory" {
+  type        = string
+  description = "The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/)"
+  default     = null
+}
+
+variable "filenamePrefix" {
+  type        = string
+  description = <<EOT
+The prefix of the JSON file name. For example, "table1-". Defaults to: part.
+EOT
+  default     = "part"
+}
+
+variable "idColumn" {
+  type        = string
+  description = "The fully qualified column name where the ID is stored. In the format cf:col or _key."
+
+}
+
+variable "embeddingColumn" {
+  type        = string
+  description = "The fully qualified column name where the embeddings are stored. In the format cf:col or _key."
+
+}
+
+variable "crowdingTagColumn" {
+  type        = string
+  description = "The fully qualified column name where the crowding tag is stored. In the format cf:col or _key."
+  default     = null
+}
+
+variable "embeddingByteSize" {
+  type        = number
+  description = "The byte size of each entry in the embeddings array. Use 4 for Float, and 8 for Double. Defaults to: 4."
+  default     = null
+}
+
+variable "allowRestrictsMappings" {
+  type        = string
+  description = "The comma separated fully qualified column names of the columns that should be used as the `allow` restricts, with their alias. In the format cf:col->alias."
+  default     = null
+}
+
+variable "denyRestrictsMappings" {
+  type        = string
+  description = "The comma separated fully qualified column names of the columns that should be used as the `deny` restricts, with their alias. In the format cf:col->alias."
+  default     = null
+}
+
+variable "intNumericRestrictsMappings" {
+  type        = string
+  description = "The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col->alias."
+  default     = null
+}
+
+variable "floatNumericRestrictsMappings" {
+  type        = string
+  description = "The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias."
+  default     = null
+}
+
+variable "doubleNumericRestrictsMappings" {
+  type        = string
+  description = "The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias."
+  default     = null
 }
 
 
@@ -139,10 +213,22 @@ resource "google_project_service" "required" {
 
 resource "google_dataflow_job" "generated" {
   depends_on        = [google_project_service.required]
-  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Stream_GCS_Text_to_Cloud_PubSub"
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_Bigtable_to_Vector_Embeddings"
   parameters = {
-    inputFilePattern = var.inputFilePattern
-    outputTopic      = var.outputTopic
+    bigtableProjectId              = var.bigtableProjectId
+    bigtableInstanceId             = var.bigtableInstanceId
+    bigtableTableId                = var.bigtableTableId
+    outputDirectory                = var.outputDirectory
+    filenamePrefix                 = var.filenamePrefix
+    idColumn                       = var.idColumn
+    embeddingColumn                = var.embeddingColumn
+    crowdingTagColumn              = var.crowdingTagColumn
+    embeddingByteSize              = tostring(var.embeddingByteSize)
+    allowRestrictsMappings         = var.allowRestrictsMappings
+    denyRestrictsMappings          = var.denyRestrictsMappings
+    intNumericRestrictsMappings    = var.intNumericRestrictsMappings
+    floatNumericRestrictsMappings  = var.floatNumericRestrictsMappings
+    doubleNumericRestrictsMappings = var.doubleNumericRestrictsMappings
   }
 
   additional_experiments       = var.additional_experiments

@@ -35,14 +35,81 @@ variable "region" {
 
 variable "inputFilePattern" {
   type        = string
-  description = "Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.txt)"
+  description = "Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.csv)"
 
 }
 
-variable "outputTopic" {
+variable "schemaJSONPath" {
   type        = string
-  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = <<EOT
+JSON file with BigQuery Schema description. JSON Example: {
+	"BigQuery Schema": [
+		{
+			"name": "location",
+			"type": "STRING"
+		},
+		{
+			"name": "name",
+			"type": "STRING"
+		},
+		{
+			"name": "age",
+			"type": "STRING"
+		},
+		{
+			"name": "color",
+			"type": "STRING"
+		},
+		{
+			"name": "coffee",
+			"type": "STRING"
+		}
+	]
+}
+EOT
 
+}
+
+variable "outputTable" {
+  type        = string
+  description = "BigQuery table location to write the output to. The table's schema must match the input objects."
+
+}
+
+variable "bigQueryLoadingTemporaryDirectory" {
+  type        = string
+  description = "Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir)"
+
+}
+
+variable "badRecordsOutputTable" {
+  type        = string
+  description = "BigQuery table location to write the bad record. The table's schema must match the {RawContent: STRING, ErrorMsg:STRING}"
+
+}
+
+variable "containsHeaders" {
+  type        = bool
+  description = "Input CSV files contain a header record (true/false). Defaults to: false."
+  default     = null
+}
+
+variable "delimiter" {
+  type        = string
+  description = "The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,)"
+
+}
+
+variable "csvFormat" {
+  type        = string
+  description = "CSV format specification to use for parsing records. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html"
+
+}
+
+variable "csvFileEncoding" {
+  type        = string
+  description = "CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8."
+  default     = null
 }
 
 
@@ -139,10 +206,17 @@ resource "google_project_service" "required" {
 
 resource "google_dataflow_job" "generated" {
   depends_on        = [google_project_service.required]
-  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Stream_GCS_Text_to_Cloud_PubSub"
+  template_gcs_path = "gs://dataflow-templates-${var.region}/latest/GCS_CSV_to_BigQuery"
   parameters = {
-    inputFilePattern = var.inputFilePattern
-    outputTopic      = var.outputTopic
+    inputFilePattern                  = var.inputFilePattern
+    schemaJSONPath                    = var.schemaJSONPath
+    outputTable                       = var.outputTable
+    bigQueryLoadingTemporaryDirectory = var.bigQueryLoadingTemporaryDirectory
+    badRecordsOutputTable             = var.badRecordsOutputTable
+    containsHeaders                   = tostring(var.containsHeaders)
+    delimiter                         = var.delimiter
+    csvFormat                         = var.csvFormat
+    csvFileEncoding                   = var.csvFileEncoding
   }
 
   additional_experiments       = var.additional_experiments

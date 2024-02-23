@@ -246,6 +246,12 @@ mvn clean prepare-package \
   -pl v1 -am
 ```
 
+Next, [terraform fmt](https://developer.hashicorp.com/terraform/cli/commands/fmt) the modules after
+generating:
+```shell
+terraform fmt -recursive v1
+```
+
 The resulting terraform modules are generated in [v1/terraform](v1/terraform).
 
 #### For Flex templates:

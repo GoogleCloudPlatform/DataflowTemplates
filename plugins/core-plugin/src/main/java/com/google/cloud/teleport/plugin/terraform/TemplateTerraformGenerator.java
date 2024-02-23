@@ -30,6 +30,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,17 +86,40 @@ public class TemplateTerraformGenerator {
   }
 
   private static TerraformVariable variableOf(ImageSpecParameter parameter) {
-    String defaultValue = parameter.getDefaultValue();
-    if (parameter.isOptional() != null && parameter.isOptional() && defaultValue == null) {
-      defaultValue = "";
-    }
+    TerraformVariable.Type type = variableTypeOf(parameter.getParamType());
+    String defaultValue = getDefaultValue(parameter);
+    String description = quote(parameter.getHelpText());
     return TerraformVariable.builder()
         .setName(parameter.getName())
-        .setType(variableTypeOf(parameter.getParamType()))
-        .setDescription(parameter.getHelpText())
+        .setType(type)
+        .setDescription(description)
         .setDefaultValue(defaultValue)
         .setRegexes(parameter.getRegexes())
         .build();
+  }
+
+  private static @Nullable String getDefaultValue(ImageSpecParameter parameter) {
+    TerraformVariable.Type type = variableTypeOf(parameter.getParamType());
+
+    // Populates variable block as 'default = null' signaling to terraform the variable is optional.
+    if (parameter.isOptional() != null && parameter.isOptional()) {
+      return "null";
+    }
+
+    // Does not populate 'default' attribute of variable block, signaling to terraform the variable
+    // is required.
+    if (parameter.getDefaultValue() == null) {
+      return null;
+    }
+
+    // Populates variable block as 'default = "<some default value>"' or using HEREDOC if multiline.
+    if (type.equals(TerraformVariable.Type.STRING)) {
+      return quote(parameter.getDefaultValue());
+    }
+
+    // Populates variable block as 'default = <some default value>' that terraform forwards to API
+    // call by default
+    return parameter.getDefaultValue();
   }
 
   private static TerraformVariable.Type variableTypeOf(ImageSpecParameterType parameterType) {
@@ -107,5 +131,13 @@ public class TemplateTerraformGenerator {
       default:
         return TerraformVariable.Type.STRING;
     }
+  }
+
+  private static String quote(String value) {
+    if (!value.contains("\n") && !value.contains("\"")) {
+      return "\"" + value + "\"";
+    }
+
+    return "<<EOT\n" + value + "\nEOT";
   }
 }

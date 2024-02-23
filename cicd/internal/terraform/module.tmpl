@@ -25,10 +25,22 @@
 {{"provider" | extra}}
 {{range $resourceName, $resourceSchema := . }}
 {{- template "variables" $resourceSchema.Block.Attributes -}}
+
+resource "google_project_service" "required" {
+    service = "dataflow.googleapis.com"
+    disable_on_destroy = false
+}
+
 resource "{{$resourceName}}" "generated" {
+    depends_on = [google_project_service.required]
     {{"template_path" | extra}}
     {{"freemarker_resource" | extra}}
     {{range $attrName, $attr := $resourceSchema.Block.Attributes}}{{print "\n\t"}}{{$attrName}} = var.{{$attrName}}{{end}}
+    region = var.region
+}
+
+output "dataflow_job_url" {
+    value = "https://console.cloud.google.com/dataflow/jobs/${r"${var.region}"}/${r"${"}{{$resourceName}}.generated.job_id${r"}"}"
 }
 {{end}}
 {{end}}
