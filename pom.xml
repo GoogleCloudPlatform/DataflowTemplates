@@ -32,7 +32,6 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>11</java.version>
-
     <!-- Plugins -->
     <templates-maven-plugin.version>1.0-SNAPSHOT</templates-maven-plugin.version>
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
@@ -46,7 +45,7 @@
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.53.0</beam.version>
+    <beam.version>2.54.0</beam.version>
     <jackson.version>2.14.1</jackson.version>
 
     <!-- Common dependency versions -->

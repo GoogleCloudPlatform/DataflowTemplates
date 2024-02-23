@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.io;
 
 import com.google.auto.value.AutoValue;
+import com.google.common.base.Preconditions;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -26,7 +27,6 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
-import org.apache.beam.vendor.grpc.v1p54p0.com.google.common.base.Preconditions;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import redis.clients.jedis.Jedis;

@@ -26,7 +26,7 @@
     <artifactId>it-google-cloud-platform</artifactId>
 
     <properties>
-        <parquet-avro.version>1.12.0</parquet-avro.version>
+        <parquet-avro.version>1.13.1</parquet-avro.version>
     </properties>
     <dependencies>
         <dependency>
@@ -105,6 +105,10 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-datastream</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.api.grpc</groupId>
+            <artifactId>proto-google-cloud-datastream-v1</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
