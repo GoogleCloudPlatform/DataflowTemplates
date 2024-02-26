@@ -133,7 +133,7 @@ public class MqttToPubsub {
     @TemplateParameter.Text(
         order = 2,
         optional = false,
-        regexes = {"[a-zA-Z0-9._-]+"},
+        regexes = {"[\\/a-zA-Z0-9._-]+"},
         description = "MQTT topic(s) to read the input from",
         helpText = "MQTT topic(s) to read the input from.",
         example = "topic")
