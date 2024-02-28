@@ -27,9 +27,9 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.FinishBundleContext;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
@@ -46,7 +46,6 @@ public class Neo4jBlockingUnwindFnTest {
             ReportedSourceType.BIGQUERY,
             TargetType.edge,
             "RETURN 42",
-            10,
             false,
             "map",
             (row) -> DataCastingUtils.rowToNeo4jDataMap(row, mock(Target.class)),
@@ -54,7 +53,6 @@ public class Neo4jBlockingUnwindFnTest {
 
     batchImporter.setup();
     batchImporter.processElement(aProcessContext());
-    batchImporter.finishBundle(mock(FinishBundleContext.class));
 
     Map<String, String> expectedTxMetadata =
         Map.of("sink", "neo4j", "source", "BigQuery", "target-type", "edge", "step", "import");
@@ -68,7 +66,7 @@ public class Neo4jBlockingUnwindFnTest {
   private static DoFn.ProcessContext aProcessContext() {
     ProcessContext context = mock(ProcessContext.class);
     Row row = mock(Row.class, RETURNS_DEEP_STUBS);
-    when(context.element()).thenReturn(KV.of(42, row));
+    when(context.element()).thenReturn(KV.of(42, List.of(row)));
     return context;
   }
 }
