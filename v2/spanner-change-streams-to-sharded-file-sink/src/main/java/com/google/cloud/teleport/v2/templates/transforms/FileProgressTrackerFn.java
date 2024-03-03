@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.templates.utils.FileCreationTracker;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -31,32 +33,43 @@ import org.slf4j.LoggerFactory;
 public class FileProgressTrackerFn extends DoFn<KV<String, String>, Void> {
   private static final Logger LOG = LoggerFactory.getLogger(FileProgressTrackerFn.class);
 
-  private String spannerProjectId;
-  private String spannerInstance;
-  private String spannerDatabase;
+  private final SpannerConfig spannerConfig;
+
   private String tableSuffix;
   private String runId;
-  private FileCreationTracker fileCreationTracker;
+  private transient FileCreationTracker fileCreationTracker;
+  private boolean isMetadataDbPostgres;
 
   public FileProgressTrackerFn(
-      String spannerProjectId,
-      String spannerInstance,
-      String spannerDatabase,
-      String tableSuffix,
-      String runId) {
-    this.spannerProjectId = spannerProjectId;
-    this.spannerInstance = spannerInstance;
-    this.spannerDatabase = spannerDatabase;
+      SpannerConfig spannerConfig, String tableSuffix, String runId, boolean isMetadataDbPostgres) {
+    this.spannerConfig = spannerConfig;
     this.tableSuffix = tableSuffix;
     this.runId = runId;
+    this.isMetadataDbPostgres = isMetadataDbPostgres;
   }
 
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() {
-    fileCreationTracker =
-        new FileCreationTracker(
-            spannerProjectId, spannerInstance, spannerDatabase, tableSuffix, runId);
+    boolean retry = true;
+    while (retry) {
+      try {
+        fileCreationTracker =
+            new FileCreationTracker(spannerConfig, tableSuffix, runId, isMetadataDbPostgres);
+        retry = false;
+      } catch (SpannerException e) {
+        LOG.info("Exception in setup of ChangeDataProgressTrackerFn {}", e.getMessage());
+        if (e.getMessage().contains("RESOURCE_EXHAUSTED")) {
+          try {
+            Thread.sleep(10000);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      } catch (Exception e) {
+        throw e;
+      }
+    }
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */

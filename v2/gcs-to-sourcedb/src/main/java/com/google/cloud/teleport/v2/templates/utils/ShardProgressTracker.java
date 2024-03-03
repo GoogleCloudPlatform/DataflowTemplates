@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 /** Utility class to handle shard progress related logic. */
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import java.util.Map;
@@ -34,10 +35,16 @@ public class ShardProgressTracker {
       String metadataInstance,
       String metadataDatabase,
       String tableSuffix,
-      String runId) {
+      String runId,
+      boolean isMetadataDbPostgres) {
 
     this.spannerDao =
-        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+        new SpannerDao(
+            spannerProjectId,
+            metadataInstance,
+            metadataDatabase,
+            tableSuffix,
+            isMetadataDbPostgres);
     this.runId = runId;
   }
 
@@ -51,15 +58,72 @@ public class ShardProgressTracker {
   }
 
   public Map<String, ShardProgress> getShardProgressByStatus(String status) {
-    return spannerDao.getShardProgressByRunIdAndStatus(runId, status);
+    boolean retry = true;
+    Map<String, ShardProgress> response = null;
+    while (retry) {
+      try {
+        response = spannerDao.getShardProgressByRunIdAndStatus(runId, status);
+        retry = false;
+      } catch (SpannerException e) {
+        if (e.getMessage().contains("DEADLINE_EXCEEDED")) {
+          try {
+            Thread.sleep(500);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+          continue;
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    return response;
   }
 
   public Map<String, ShardProgress> getAllShardProgress() {
-    return spannerDao.getAllShardProgressByRunId(runId);
+    boolean retry = true;
+    Map<String, ShardProgress> response = null;
+    while (retry) {
+      try {
+        response = spannerDao.getAllShardProgressByRunId(runId);
+        retry = false;
+      } catch (SpannerException e) {
+        if (e.getMessage().contains("DEADLINE_EXCEEDED")) {
+          try {
+            Thread.sleep(500);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+          continue;
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    return response;
   }
 
   public void writeShardProgress(ShardProgress shardProgress) {
-    spannerDao.writeShardProgress(shardProgress, runId);
+    boolean retry = true;
+    while (retry) {
+      try {
+        spannerDao.writeShardProgress(shardProgress, runId);
+        retry = false;
+      } catch (SpannerException e) {
+        if (e.getMessage().contains("DEADLINE_EXCEEDED")) {
+          try {
+            Thread.sleep(500);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+          continue;
+        } else {
+          throw e;
+        }
+      }
+    }
   }
 
   public void close() {
