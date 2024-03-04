@@ -15,13 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
-
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.source.DataSourceProvider;
 import com.google.cloud.teleport.v2.spanner.ResultSetToMutation;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
@@ -36,7 +35,6 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.values.PCollection;
 
 /**
@@ -52,16 +50,16 @@ import org.apache.beam.sdk.values.PCollection;
     category = TemplateCategory.BATCH,
     displayName = "Sourcedb to Spanner",
     description = {
-      "The SourceDB to Spanner template is a batch pipeline that copies data from a relational"
-          + " database into an existing Spanner database. This pipeline uses JDBC to connect to"
-          + " the relational database. You can use this template to copy data from any relational"
-          + " database with available JDBC drivers into Spanner. This currently only supports a limited set of types of MySQL",
-      "For an extra layer of protection, you can also pass in a Cloud KMS key along with a"
-          + " Base64-encoded username, password, and connection string parameters encrypted with"
-          + " the Cloud KMS key. See the <a"
-          + " href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud"
-          + " KMS API encryption endpoint</a> for additional details on encrypting your username,"
-          + " password, and connection string parameters."
+        "The SourceDB to Spanner template is a batch pipeline that copies data from a relational"
+            + " database into an existing Spanner database. This pipeline uses JDBC to connect to"
+            + " the relational database. You can use this template to copy data from any relational"
+            + " database with available JDBC drivers into Spanner. This currently only supports a limited set of types of MySQL",
+        "For an extra layer of protection, you can also pass in a Cloud KMS key along with a"
+            + " Base64-encoded username, password, and connection string parameters encrypted with"
+            + " the Cloud KMS key. See the <a"
+            + " href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud"
+            + " KMS API encryption endpoint</a> for additional details on encrypting your username,"
+            + " password, and connection string parameters."
     },
     optionsClass = SourceDbToSpannerOptions.class,
     flexContainerName = "source-db-to-spanner",
@@ -70,10 +68,10 @@ import org.apache.beam.sdk.values.PCollection;
     contactInformation = "https://cloud.google.com/support",
     preview = true,
     requirements = {
-      "The JDBC drivers for the relational database must be available.",
-      "The Spanner tables must exist before pipeline execution.",
-      "The Spanner tables must have a compatible schema.",
-      "The relational database must be accessible from the subnet where Dataflow runs."
+        "The JDBC drivers for the relational database must be available.",
+        "The Spanner tables must exist before pipeline execution.",
+        "The Spanner tables must have a compatible schema.",
+        "The relational database must be accessible from the subnet where Dataflow runs."
     })
 public class SourceDbToSpanner {
 
@@ -155,7 +153,7 @@ public class SourceDbToSpanner {
       Set<String> columnsToIgnore,
       SourceDbToSpannerOptions options) {
     return JdbcIO.<Mutation>readWithPartitions()
-        .withDataSourceConfiguration(getDataSourceConfiguration(options))
+        .withDataSourceProviderFn(new DataSourceProvider(options))
         .withTable(table)
         .withPartitionColumn(partitionColumn)
         .withRowMapper(ResultSetToMutation.create(table, columnsToIgnore))
@@ -167,22 +165,5 @@ public class SourceDbToSpanner {
         .withProjectId(options.getProjectId())
         .withInstanceId(options.getInstanceId())
         .withDatabaseId(options.getDatabaseId());
-  }
-
-  private static JdbcIO.DataSourceConfiguration getDataSourceConfiguration(
-      SourceDbToSpannerOptions options) {
-    JdbcIO.DataSourceConfiguration dataSourceConfiguration =
-        JdbcIO.DataSourceConfiguration.create(
-                StaticValueProvider.of(options.getJdbcDriverClassName()),
-                maybeDecrypt(options.getSourceConnectionURL(), null))
-            .withUsername(maybeDecrypt(options.getUsername(), null))
-            .withPassword(maybeDecrypt(options.getPassword(), null))
-            .withDriverJars(options.getJdbcDriverJars());
-
-    if (options.getSourceConnectionProperties() != null) {
-      dataSourceConfiguration =
-          dataSourceConfiguration.withConnectionProperties(options.getSourceConnectionProperties());
-    }
-    return dataSourceConfiguration;
   }
 }
