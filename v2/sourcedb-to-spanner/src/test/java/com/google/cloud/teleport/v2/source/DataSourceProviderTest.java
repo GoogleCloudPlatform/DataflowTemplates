@@ -22,10 +22,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
-
-/**
- * Test class for {@link DataSourceProvider}.
- */
+/** Test class for {@link DataSourceProvider}. */
 @RunWith(MockitoJUnitRunner.class)
 public class DataSourceProviderTest {
 
@@ -39,8 +36,8 @@ public class DataSourceProviderTest {
 
   @Test
   public void testDataSourceProvider() {
-    SourceDbToSpannerOptions sourceDbToSpannerOptions = PipelineOptionsFactory.as(
-        SourceDbToSpannerOptions.class);
+    SourceDbToSpannerOptions sourceDbToSpannerOptions =
+        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     sourceDbToSpannerOptions.setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver");
     sourceDbToSpannerOptions.setSourceConnectionURL("jdbc:derby:memory:testDB;create=true");
     sourceDbToSpannerOptions.setSourceConnectionProperties("");
@@ -49,5 +46,4 @@ public class DataSourceProviderTest {
     // To verify singleton behavior, check that the references are equal.
     assert (firstSource == secondSource);
   }
-
 }

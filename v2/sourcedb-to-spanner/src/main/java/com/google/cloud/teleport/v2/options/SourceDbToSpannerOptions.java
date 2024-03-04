@@ -18,9 +18,7 @@ package com.google.cloud.teleport.v2.options;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
 
-/**
- * Interface used by the SourcedbToSpanner pipeline to accept user input.
- */
+/** Interface used by the SourcedbToSpanner pipeline to accept user input. */
 public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
@@ -51,7 +49,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       order = 3,
       optional = true,
       regexes = {
-          "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
+        "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
       },
       groupName = "Source",
       description = "Connection URL to connect to the source database.",
@@ -190,7 +188,8 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       order = 15,
       optional = true,
       description = "Maximum number of connections to Source database per worker",
-      helpText = "Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. Default value is 100.",
+      helpText =
+          "Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. Default value is 100.",
       example = "-1")
   @Default.Integer(100)
   Integer getMaxConnections();

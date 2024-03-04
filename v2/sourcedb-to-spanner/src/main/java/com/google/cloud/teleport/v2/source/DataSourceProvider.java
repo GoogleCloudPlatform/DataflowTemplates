@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2023 Google LLC
  *
@@ -43,12 +42,13 @@ public class DataSourceProvider
 
   private static JdbcIO.DataSourceConfiguration getDataSourceConfiguration(
       SourceDbToSpannerOptions options) {
-    var config = JdbcIO.DataSourceConfiguration.create(
-            StaticValueProvider.of(options.getJdbcDriverClassName()),
-            maybeDecrypt(options.getSourceConnectionURL(), null))
-        .withUsername(maybeDecrypt(options.getUsername(), null))
-        .withPassword(maybeDecrypt(options.getPassword(), null))
-        .withMaxConnections(options.getMaxConnections());
+    var config =
+        JdbcIO.DataSourceConfiguration.create(
+                StaticValueProvider.of(options.getJdbcDriverClassName()),
+                maybeDecrypt(options.getSourceConnectionURL(), null))
+            .withUsername(maybeDecrypt(options.getUsername(), null))
+            .withPassword(maybeDecrypt(options.getPassword(), null))
+            .withMaxConnections(options.getMaxConnections());
 
     if (options.getSourceConnectionProperties() != null) {
       config = config.withConnectionProperties(options.getSourceConnectionProperties());

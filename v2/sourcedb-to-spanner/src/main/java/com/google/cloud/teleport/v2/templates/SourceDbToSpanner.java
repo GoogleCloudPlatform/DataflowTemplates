@@ -50,16 +50,16 @@ import org.apache.beam.sdk.values.PCollection;
     category = TemplateCategory.BATCH,
     displayName = "Sourcedb to Spanner",
     description = {
-        "The SourceDB to Spanner template is a batch pipeline that copies data from a relational"
-            + " database into an existing Spanner database. This pipeline uses JDBC to connect to"
-            + " the relational database. You can use this template to copy data from any relational"
-            + " database with available JDBC drivers into Spanner. This currently only supports a limited set of types of MySQL",
-        "For an extra layer of protection, you can also pass in a Cloud KMS key along with a"
-            + " Base64-encoded username, password, and connection string parameters encrypted with"
-            + " the Cloud KMS key. See the <a"
-            + " href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud"
-            + " KMS API encryption endpoint</a> for additional details on encrypting your username,"
-            + " password, and connection string parameters."
+      "The SourceDB to Spanner template is a batch pipeline that copies data from a relational"
+          + " database into an existing Spanner database. This pipeline uses JDBC to connect to"
+          + " the relational database. You can use this template to copy data from any relational"
+          + " database with available JDBC drivers into Spanner. This currently only supports a limited set of types of MySQL",
+      "For an extra layer of protection, you can also pass in a Cloud KMS key along with a"
+          + " Base64-encoded username, password, and connection string parameters encrypted with"
+          + " the Cloud KMS key. See the <a"
+          + " href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud"
+          + " KMS API encryption endpoint</a> for additional details on encrypting your username,"
+          + " password, and connection string parameters."
     },
     optionsClass = SourceDbToSpannerOptions.class,
     flexContainerName = "source-db-to-spanner",
@@ -68,10 +68,10 @@ import org.apache.beam.sdk.values.PCollection;
     contactInformation = "https://cloud.google.com/support",
     preview = true,
     requirements = {
-        "The JDBC drivers for the relational database must be available.",
-        "The Spanner tables must exist before pipeline execution.",
-        "The Spanner tables must have a compatible schema.",
-        "The relational database must be accessible from the subnet where Dataflow runs."
+      "The JDBC drivers for the relational database must be available.",
+      "The Spanner tables must exist before pipeline execution.",
+      "The Spanner tables must have a compatible schema.",
+      "The relational database must be accessible from the subnet where Dataflow runs."
     })
 public class SourceDbToSpanner {
 
