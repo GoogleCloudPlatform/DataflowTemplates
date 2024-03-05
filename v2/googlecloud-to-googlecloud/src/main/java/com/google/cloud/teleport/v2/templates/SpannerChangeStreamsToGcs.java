@@ -73,7 +73,8 @@ import org.slf4j.LoggerFactory;
       "The Cloud Spanner change stream must exist prior to running the pipeline.",
       "The Cloud Storage output bucket must exist prior to running the pipeline."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class SpannerChangeStreamsToGcs {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToGcs.class);
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";

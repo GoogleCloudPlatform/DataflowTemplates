@@ -45,6 +45,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.Flatten;
@@ -141,7 +142,8 @@ import org.slf4j.LoggerFactory;
           + "}\n"
           + "</pre>"
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class TextToBigQueryStreaming {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextToBigQueryStreaming.class);
@@ -356,5 +358,22 @@ public class TextToBigQueryStreaming {
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String value);
+
+    // Hide the UseStorageWriteApiAtLeastOnce in the UI, because it will automatically be turned
+    // on when pipeline is running on ALO mode and using the Storage Write API
+    @TemplateParameter.Boolean(
+        order = 2,
+        optional = true,
+        description = "Use at at-least-once semantics in BigQuery Storage Write API",
+        helpText =
+            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
+                + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
+                + " exactly-once semantics will be used.",
+        hiddenUi = true)
+    @Default.Boolean(false)
+    @Override
+    Boolean getUseStorageWriteApiAtLeastOnce();
+
+    void setUseStorageWriteApiAtLeastOnce(Boolean value);
   }
 }

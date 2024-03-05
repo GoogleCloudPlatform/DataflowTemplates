@@ -148,7 +148,8 @@ import org.slf4j.LoggerFactory;
           + "}\n"
           + "</pre>"
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class TextToBigQueryStreaming {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextToBigQueryStreaming.class);

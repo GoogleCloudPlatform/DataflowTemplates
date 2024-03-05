@@ -124,7 +124,8 @@ import org.slf4j.LoggerFactory;
       "The output table must exist prior to running the pipeline. The table schema must match the input JSON objects."
     },
     hidden = true,
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class PubSubToBigQuery {
 
   /** The log to output status messages to. */

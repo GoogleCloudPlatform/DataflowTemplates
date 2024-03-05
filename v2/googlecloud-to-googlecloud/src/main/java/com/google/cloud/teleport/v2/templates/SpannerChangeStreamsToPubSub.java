@@ -66,7 +66,8 @@ import org.slf4j.LoggerFactory;
       "The Cloud Spanner change stream must exist prior to running the pipeline.",
       "The Pub/Sub topic must exist prior to running the pipeline."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class SpannerChangeStreamsToPubSub {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToPubSub.class);
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
