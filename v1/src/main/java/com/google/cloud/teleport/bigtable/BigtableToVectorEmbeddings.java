@@ -78,7 +78,7 @@ public class BigtableToVectorEmbeddings {
 
   /** Options for the export pipeline. */
   public interface Options extends PipelineOptions {
-    @TemplateParameter.ProjectId(
+    @TemplateParameter.PrjkectId(
         order = 1,
         description = "Project ID",
         helpText =
@@ -244,6 +244,7 @@ public class BigtableToVectorEmbeddings {
     if (options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
       result.waitUntilFinish();
     }
+
     LOG.info("Completed pipeline setup");
   }
 
