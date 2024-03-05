@@ -85,7 +85,9 @@ import org.joda.time.Instant;
     flexContainerName = "streaming-data-generator",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/streaming-data-generator",
-    contactInformation = "https://cloud.google.com/support")
+    contactInformation = "https://cloud.google.com/support",
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class StreamingDataGenerator {
 
   /**

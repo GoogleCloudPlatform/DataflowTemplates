@@ -58,7 +58,8 @@ import org.slf4j.LoggerFactory;
       "The JMS host IP must exist and have the proper network configuration for Dataflow worker VMs to reach the JMS host.",
       "The JMS topic/queue that data is extracted from must have a name."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class JmsToPubsub {
 
   /**

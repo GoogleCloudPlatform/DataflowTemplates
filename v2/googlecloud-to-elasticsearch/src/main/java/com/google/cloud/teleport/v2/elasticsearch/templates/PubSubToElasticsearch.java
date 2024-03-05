@@ -77,7 +77,8 @@ import org.slf4j.LoggerFactory;
       "A publicly reachable Elasticsearch host on a Google Cloud instance or on Elastic Cloud with Elasticsearch version 7.0 or above. See <a href=\"https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-to-elasticsearch/docs/PubSubToElasticsearch/README.md#google-cloud-integration-for-elastic\">Google Cloud Integration for Elastic</a> for more details.",
       "A Pub/Sub topic for error output.",
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class PubSubToElasticsearch {
 
   /** The tag for the main output of the json transformation. */
