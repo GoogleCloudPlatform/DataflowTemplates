@@ -19,7 +19,6 @@ import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
@@ -36,6 +35,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Handles Spanner interaction. */
 public class SpannerDao {
@@ -52,14 +53,33 @@ public class SpannerDao {
   private boolean isPostgres;
   // Timeout for Cloud Spanner schema update.
   private static final int SCHEMA_UPDATE_WAIT_MIN = 5;
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerDao.class);
 
-  public SpannerDao(String projectId, String instanceId, String databaseId, String tableSuffix) {
+  public SpannerDao(SpannerConfig spannerConfig, String tableSuffix, boolean isPostgres) {
+    this.spannerConfig = spannerConfig;
+    this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    this.isPostgres = isPostgres;
+    createInternal(tableSuffix);
+  }
+
+  public SpannerDao(
+      String projectId,
+      String instanceId,
+      String databaseId,
+      String tableSuffix,
+      boolean isPostgres) {
     this.spannerConfig =
         SpannerConfig.create()
             .withProjectId(projectId)
             .withInstanceId(instanceId)
             .withDatabaseId(databaseId);
     this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    this.isPostgres = isPostgres;
+
+    createInternal(tableSuffix);
+  }
+
+  private void createInternal(String tableSuffix) {
     spannerToGcsMetadataTableName = "spanner_to_gcs_metadata";
     shardFileCreateProgressTableName = "shard_file_create_progress";
     shardFileProcessProgressTableName = "shard_file_process_progress";
@@ -70,13 +90,6 @@ public class SpannerDao {
       dataSeenTableName += "_" + tableSuffix;
       shardFileProcessProgressTableName += "_" + tableSuffix;
     }
-    isPostgres =
-        Dialect.POSTGRESQL
-            == spannerAccessor
-                .getDatabaseAdminClient()
-                .getDatabase(
-                    spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
-                .getDialect();
   }
 
   /*
@@ -194,19 +207,20 @@ public class SpannerDao {
           createTable =
               "CREATE TABLE "
                   + dataSeenTableName
-                  + "( id character varying NOT NULL,run_id character varying NOT NULL,shard"
-                  + " character varying NOT NULL,window_seen timestamp with time zone NOT"
-                  + " NULL,update_ts timestamp with time zone DEFAULT CURRENT_TIMESTAMP,PRIMARY"
-                  + " KEY(id)) TTL INTERVAL '2 days' ON update_ts";
+                  + "( id character varying NOT NULL, "
+                  + " run_id character varying NOT NULL,shard character"
+                  + " varying NOT NULL,window_seen timestamp with time zone NOT NULL,update_ts"
+                  + " timestamp with time zone DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id))"
+                  + " TTL INTERVAL '2 days' ON update_ts";
 
         } else {
           createTable =
               "CREATE TABLE "
                   + dataSeenTableName
-                  + " (id STRING(MAX) NOT NULL,run_id STRING(MAX) NOT NULL,shard STRING(MAX) NOT"
-                  + " NULL, window_seen TIMESTAMP NOT NULL , update_ts TIMESTAMP DEFAULT"
-                  + " (CURRENT_TIMESTAMP)) PRIMARY KEY(id) , ROW DELETION POLICY"
-                  + " (OLDER_THAN(update_ts, INTERVAL 2 DAY))";
+                  + " (id STRING(MAX) NOT NULL, run_id"
+                  + " STRING(MAX) NOT NULL,shard STRING(MAX) NOT NULL, window_seen TIMESTAMP NOT"
+                  + " NULL , update_ts TIMESTAMP DEFAULT (CURRENT_TIMESTAMP)) PRIMARY"
+                  + " KEY(id) , ROW DELETION POLICY (OLDER_THAN(update_ts, INTERVAL 2 DAY))";
         }
         OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
             databaseAdminClient.updateDatabaseDdl(
@@ -253,7 +267,6 @@ public class SpannerDao {
                   transaction.buffer(mutations);
                   return null;
                 });
-    close();
   }
 
   /**
@@ -275,14 +288,13 @@ public class SpannerDao {
             .to(duration)
             .build());
     spannerAccessor.getDatabaseClient().write(mutations);
-    close();
   }
 
   public void updateDataSeen(String id, String shard, Timestamp endTimestamp, String runId) {
 
     List<Mutation> mutations = new ArrayList<>();
     mutations.add(
-        Mutation.newInsertOrUpdateBuilder(dataSeenTableName)
+        Mutation.newInsertBuilder(dataSeenTableName)
             .set("id")
             .to(id)
             .set("run_id")
@@ -417,6 +429,35 @@ public class SpannerDao {
     }
 
     return null;
+  }
+
+  public boolean doesIdExist(String id) {
+
+    DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
+    Statement statement;
+    if (isPostgres) {
+      String statementStr = "SELECT window_seen from " + dataSeenTableName + " where id=$1";
+      statement = Statement.newBuilder(statementStr).bind("p1").to(id).build();
+
+    } else {
+      String statementStr = "SELECT window_seen from " + dataSeenTableName + " where id=@id";
+      statement = Statement.newBuilder(statementStr).bind("id").to(id).build();
+    }
+
+    try (ReadOnlyTransaction tx = databaseClient.readOnlyTransaction()) {
+      ResultSet resultSet = tx.executeQuery(statement);
+
+      if (resultSet.next()) {
+        return true;
+      }
+    } catch (Exception e) {
+      LOG.info("The " + dataSeenTableName + " table could not be read. ");
+      // We need to throw the original exception such that the caller can
+      // look at SpannerException class to take decision
+      throw e;
+    }
+
+    return false;
   }
 
   public void close() {
