@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
@@ -254,6 +255,50 @@ public class AssignShardIdFn
       LOG.error("Error fetching shard Id column: " + e.getMessage() + ": " + errors.toString());
       throw e;
     }
+  }
+
+  public IShardIdFetcher getShardIdFetcherImpl(
+      String customJarPath, String shardingCustomClassName) {
+    if (!customJarPath.isEmpty() && !shardingCustomClassName.isEmpty()) {
+      LOG.info(
+          "Getting custom sharding fetcher : "
+              + customJarPath
+              + " with class: "
+              + shardingCustomClassName);
+      try {
+        // Get the start time of loading the custom class
+        Instant startTime = Instant.now();
+
+        // Getting the jar URL which contains target class
+        URL[] classLoaderUrls = JarFileReader.saveFilesLocally(customJarPath);
+
+        // Create a new URLClassLoader
+        URLClassLoader urlClassLoader = new URLClassLoader(classLoaderUrls);
+
+        // Load the target class
+        Class<?> shardFetcherClass = urlClassLoader.loadClass(shardingCustomClassName);
+
+        // Create a new instance from the loaded class
+        Constructor<?> constructor = shardFetcherClass.getConstructor();
+        IShardIdFetcher shardFetcher = (IShardIdFetcher) constructor.newInstance();
+        // Get the end time of loading the custom class
+        Instant endTime = Instant.now();
+        LOG.info(
+            "Custom jar "
+                + customJarPath
+                + ": Took "
+                + (new Duration(startTime, endTime)).toString()
+                + " to load");
+        LOG.info("Invoking init of the custom class with input as {}", shardingCustomParameters);
+        shardFetcher.init(shardingCustomParameters);
+        return shardFetcher;
+      } catch (Exception e) {
+        throw new RuntimeException("Error loading custom class : " + e.getMessage());
+      }
+    }
+    // else return the core implementation
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schema, skipDirName);
+    return shardIdFetcher;
   }
 
   private Map<String, Object> fetchSpannerRecord(

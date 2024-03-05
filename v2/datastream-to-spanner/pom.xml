@@ -44,6 +44,11 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.google.cloud.teleport.v2</groupId>
+            <artifactId>spanner-migrations-sdk</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>${json.version}</version>
@@ -79,6 +84,12 @@
             <artifactId>it-jdbc</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport.v2</groupId>
+            <artifactId>spanner-migrations-sdk</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 

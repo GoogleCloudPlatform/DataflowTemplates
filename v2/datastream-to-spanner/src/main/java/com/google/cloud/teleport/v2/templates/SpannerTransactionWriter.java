@@ -87,6 +87,12 @@ public class SpannerTransactionWriter
   /* The run mode, whether it is regular or retry. */
   private final Boolean isRegularRunMode;
 
+  private final String transformationJarPath;
+
+  private final String transformationClassName;
+
+  private final String customParameters;
+
   public SpannerTransactionWriter(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
@@ -95,7 +101,10 @@ public class SpannerTransactionWriter
       String shadowTablePrefix,
       String sourceType,
       Boolean roundJsonDecimals,
-      Boolean isRegularRunMode) {
+      Boolean isRegularRunMode,
+      String customParameters,
+      String transformationJarPath,
+      String transformationClassName) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
@@ -105,6 +114,9 @@ public class SpannerTransactionWriter
     this.sourceType = sourceType;
     this.roundJsonDecimals = roundJsonDecimals;
     this.isRegularRunMode = isRegularRunMode;
+    this.customParameters = customParameters;
+    this.transformationJarPath = transformationJarPath;
+    this.transformationClassName = transformationClassName;
   }
 
   @Override
@@ -122,7 +134,10 @@ public class SpannerTransactionWriter
                         shadowTablePrefix,
                         sourceType,
                         roundJsonDecimals,
-                        isRegularRunMode))
+                        isRegularRunMode,
+                        customParameters,
+                        transformationJarPath,
+                        transformationClassName))
                 .withSideInputs(ddlView)
                 .withOutputTags(
                     SUCCESSFUL_EVENT_TAG,
