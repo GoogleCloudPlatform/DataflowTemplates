@@ -210,7 +210,7 @@ public final class FailsafeModJsonToTableRowTransformer {
         }
       }
 
-      TableRow modJsonStringToTableRow(String modJsonString) {
+      private TableRow modJsonStringToTableRow(String modJsonString) {
         String deadLetterMessage =
             "check dead letter queue for unprocessed records that failed to be processed";
         ObjectNode modObjectNode = null;
