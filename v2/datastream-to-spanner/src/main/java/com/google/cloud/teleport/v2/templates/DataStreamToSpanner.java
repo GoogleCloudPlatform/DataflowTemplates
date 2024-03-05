@@ -407,6 +407,41 @@ public class DataStreamToSpanner {
     String getDlqGcsPubSubSubscription();
 
     void setDlqGcsPubSubSubscription(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 25,
+        optional = true,
+        description = "Custom jar location in Cloud Storage",
+        helpText =
+            "Custom jar location in Cloud Storage that contains the advanced transformation logic for processing records"
+                + " in forward migration.")
+    @Default.String("")
+    String getTransformationJarPath();
+
+    void setTransformationJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 26,
+        optional = true,
+        description = "Custom class name",
+        helpText =
+            "Fully qualified class name having the advanced transformation implementation.  It is a"
+                + " mandatory field in case transformationJarPath is specified")
+    @Default.String("")
+    String getTransformationClassName();
+
+    void setTransformationClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 27,
+        optional = true,
+        description = "Custom parameters for transformation",
+        helpText =
+            "String containing any custom parameters to be passed to the advanced transformation class.")
+    @Default.String("")
+    String getTransformationCustomParameters();
+
+    void setTransformationCustomParameters(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -586,7 +621,10 @@ public class DataStreamToSpanner {
                 options.getShadowTablePrefix(),
                 options.getDatastreamSourceType(),
                 options.getRoundJsonDecimals(),
-                isRegularMode));
+                isRegularMode,
+                options.getTransformationCustomParameters(),
+                options.getTransformationJarPath(),
+                options.getTransformationClassName()));
     /*
      * Stage 3: Write failures to GCS Dead Letter Queue
      * a) Retryable errors are written to retry GCS Dead letter queue

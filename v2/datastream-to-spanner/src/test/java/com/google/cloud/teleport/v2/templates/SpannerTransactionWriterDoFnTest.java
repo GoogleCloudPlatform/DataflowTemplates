@@ -87,7 +87,17 @@ public class SpannerTransactionWriterDoFnTest {
     Schema schema = getSchemaObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, schema, new TransformationContext(), "", "", false, true);
+            SpannerConfig.create(),
+            null,
+            schema,
+            new TransformationContext(),
+            "",
+            "",
+            false,
+            true,
+            "",
+            "",
+            "");
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("product_id", "A");
     changeEvent.put("quantity", 1);
@@ -111,7 +121,17 @@ public class SpannerTransactionWriterDoFnTest {
     Schema schema = getSchemaObject();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, schema, new TransformationContext(), "", "", false, true);
+            SpannerConfig.create(),
+            null,
+            schema,
+            new TransformationContext(),
+            "",
+            "",
+            false,
+            true,
+            "",
+            "",
+            "");
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "people");
@@ -133,7 +153,17 @@ public class SpannerTransactionWriterDoFnTest {
   public void transformChangeEventDataTest() throws Exception {
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, null, new TransformationContext(), "", "", true, true);
+            SpannerConfig.create(),
+            null,
+            null,
+            new TransformationContext(),
+            "",
+            "",
+            true,
+            true,
+            "",
+            "",
+            "");
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
@@ -302,7 +332,17 @@ public class SpannerTransactionWriterDoFnTest {
     TransformationContext transformationContext = getTransformationContext();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, null, transformationContext, "", "", true, true);
+            SpannerConfig.create(),
+            null,
+            null,
+            transformationContext,
+            "",
+            "",
+            true,
+            true,
+            "",
+            "",
+            "");
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
@@ -327,7 +367,17 @@ public class SpannerTransactionWriterDoFnTest {
     TransformationContext transformationContext = getTransformationContext();
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
-            SpannerConfig.create(), null, schema, transformationContext, "", "mysql", false, true);
+            SpannerConfig.create(),
+            null,
+            schema,
+            transformationContext,
+            "",
+            "mysql",
+            false,
+            true,
+            "",
+            "",
+            "");
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("name", "A");
     changeEvent.put(DatastreamConstants.EVENT_SCHEMA_KEY, "db_01");
