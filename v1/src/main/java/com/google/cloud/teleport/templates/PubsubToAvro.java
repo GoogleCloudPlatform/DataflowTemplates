@@ -82,7 +82,8 @@ import org.apache.beam.sdk.values.PCollection;
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-avro",
     contactInformation = "https://cloud.google.com/support",
     requirements = {"The input Pub/Sub topic must exist prior to pipeline execution."},
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class PubsubToAvro {
 
   /**

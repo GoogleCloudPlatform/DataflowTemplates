@@ -95,7 +95,8 @@ import org.apache.commons.lang3.ArrayUtils;
       "The output BigQuery dataset must exist.",
       "If the BigQuery table exists, it must have a schema matching the proto data regardless of the <code>createDisposition</code> value."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public final class PubsubProtoToBigQuery {
   private static final TupleTag<FailsafeElement<String, String>> UDF_SUCCESS_TAG = new TupleTag<>();
   private static final TupleTag<FailsafeElement<String, String>> UDF_FAILURE_TAG = new TupleTag<>();
@@ -183,6 +184,23 @@ public final class PubsubProtoToBigQuery {
     String getUdfOutputTopic();
 
     void setUdfOutputTopic(String udfOutputTopic);
+
+    // Hide the UseStorageWriteApiAtLeastOnce in the UI, because it will automatically be turned
+    // on when pipeline is running on ALO mode and using the Storage Write API
+    @TemplateParameter.Boolean(
+        order = 6,
+        optional = true,
+        description = "Use at at-least-once semantics in BigQuery Storage Write API",
+        helpText =
+            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
+                + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
+                + " exactly-once semantics will be used.",
+        hiddenUi = true)
+    @Default.Boolean(false)
+    @Override
+    Boolean getUseStorageWriteApiAtLeastOnce();
+
+    void setUseStorageWriteApiAtLeastOnce(Boolean value);
   }
 
   /** Runs the pipeline and returns the results. */

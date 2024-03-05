@@ -110,7 +110,8 @@ import org.slf4j.LoggerFactory;
       "The Redis database endpoint must be accessible from the Dataflow workers' subnetwork.",
     },
     preview = true,
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class PubSubToRedis {
   /*
    * Options supported by {@link PubSubToRedis}
