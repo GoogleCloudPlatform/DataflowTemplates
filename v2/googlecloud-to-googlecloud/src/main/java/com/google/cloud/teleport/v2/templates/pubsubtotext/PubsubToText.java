@@ -63,7 +63,8 @@ import org.apache.beam.sdk.values.PCollection;
       "The messages published to the topic must be in text format.",
       "The messages published to the topic must not contain any newlines. Note that each Pub/Sub message is saved as a single line in the output file."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class PubsubToText {
 
   /**

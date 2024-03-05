@@ -21,6 +21,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.JavascriptDocumentTransformerOptions;
@@ -35,6 +36,7 @@ import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -69,7 +71,8 @@ import org.slf4j.LoggerFactory;
       "The source MongoDB instance must be accessible from the Dataflow worker machines.",
       "The change stream pushing changes from MongoDB to Pub/Sub should be running."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class MongoDbToBigQueryCdc {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
@@ -81,7 +84,25 @@ public class MongoDbToBigQueryCdc {
           PubSubOptions,
           BigQueryWriteOptions,
           JavascriptDocumentTransformerOptions,
-          BigQueryStorageApiStreamingOptions {}
+          BigQueryStorageApiStreamingOptions {
+
+    // Hide the UseStorageWriteApiAtLeastOnce in the UI, because it will automatically be turned
+    // on when pipeline is running on ALO mode and using the Storage Write API
+    @TemplateParameter.Boolean(
+        order = 1,
+        optional = true,
+        description = "Use at at-least-once semantics in BigQuery Storage Write API",
+        helpText =
+            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
+                + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
+                + " exactly-once semantics will be used.",
+        hiddenUi = true)
+    @Default.Boolean(false)
+    @Override
+    Boolean getUseStorageWriteApiAtLeastOnce();
+
+    void setUseStorageWriteApiAtLeastOnce(Boolean value);
+  }
 
   /** class ParseAsDocumentsFn. */
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {
