@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,26 @@ public class ShardFileCreationTracker {
   }
 
   public Timestamp getShardFileCreationProgressTimestamp() {
-    Timestamp response = spannerDao.getShardFileCreationProgressTimestamp(shardId, runId);
+    boolean retry = true;
+    Timestamp response = null;
+    while (retry) {
+      try {
+        response = spannerDao.getShardFileCreationProgressTimestamp(shardId, runId);
+        retry = false;
+      } catch (SpannerException e) {
+        if (e.getMessage().contains("DEADLINE_EXCEEDED")) {
+          try {
+            Thread.sleep(500);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+          continue;
+        } else {
+          throw e;
+        }
+      }
+    }
+
     return response;
   }
 
@@ -45,6 +65,26 @@ public class ShardFileCreationTracker {
     String orig = String.valueOf(nanos) + String.valueOf(seconds);
     StringBuilder reversedString = new StringBuilder(orig);
     String id = reversedString.reverse() + "_" + runId + "_" + shardId;
-    return spannerDao.doesIdExist(id);
+    boolean response = false;
+    boolean retry = true;
+    while (retry) {
+      try {
+        response = spannerDao.doesIdExist(id);
+        retry = false;
+      } catch (SpannerException e) {
+        if (e.getMessage().contains("DEADLINE_EXCEEDED")) {
+          try {
+            Thread.sleep(500);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+          continue;
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    return response;
   }
 }

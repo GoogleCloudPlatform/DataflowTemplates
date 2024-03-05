@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.transforms;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Value;
@@ -26,6 +27,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdRequest;
@@ -139,12 +141,29 @@ public class AssignShardIdFn
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() {
-    if (spannerConfig != null) {
-      spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    boolean retry = true;
+    while (retry) {
+      try {
+        if (spannerConfig != null) {
+          spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+        }
+        mapper = new ObjectMapper();
+        mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+        shardIdFetcher = getShardIdFetcherImpl(customJarPath, shardingCustomClassName);
+        retry = false;
+      } catch (SpannerException e) {
+        LOG.info("Exception in setup of AssignShardIdFn {}", e.getMessage());
+        if (e.getMessage().contains("RESOURCE_EXHAUSTED")) {
+          try {
+            Thread.sleep(10000);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      } catch (Exception e) {
+        throw e;
+      }
     }
-    mapper = new ObjectMapper();
-    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-    shardIdFetcher = getShardIdFetcherImpl(customJarPath, shardingCustomClassName);
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -169,6 +188,19 @@ public class AssignShardIdFn
         record.setShard(this.shardName);
         c.output(record);
       } else {
+        // Skip from processing if table not in session File
+        String tableName = record.getTableName();
+        String shardIdColumn = getShardIdColumnForTableName(tableName);
+        if (shardIdColumn.isEmpty()) {
+          LOG.warn(
+              "Writing record for table {} to skipped directory name {} since table not present in"
+                  + " the session file.",
+              tableName,
+              skipDirName);
+          record.setShard(skipDirName);
+          c.output(record);
+          return;
+        }
         String keysJsonStr = record.getMods().get(0).getKeysJson();
         JsonNode keysJson = mapper.readTree(keysJsonStr);
 
@@ -497,6 +529,7 @@ public class AssignShardIdFn
         case PG_JSONB:
           return value.getString();
         case BYTES:
+          return value.getBytes();
         case PG_BYTEA:
           return value.getBytesArray();
         case TIMESTAMP:
@@ -512,5 +545,28 @@ public class AssignShardIdFn
     } catch (Exception e) {
       throw new Exception("Error getting column value from row: " + e.getMessage());
     }
+  }
+
+  private String getShardIdColumnForTableName(String tableName) throws IllegalArgumentException {
+    if (!schema.getSpannerToID().containsKey(tableName)) {
+      LOG.warn(
+          "Table {} found in change record but not found in session file. Skipping record",
+          tableName);
+      return "";
+    }
+    String tableId = schema.getSpannerToID().get(tableName).getName();
+    if (!schema.getSpSchema().containsKey(tableId)) {
+      LOG.warn("Table {} not found in session file. Skipping record.", tableId);
+      return "";
+    }
+    SpannerTable spTable = schema.getSpSchema().get(tableId);
+    String shardColId = spTable.getShardIdColumn();
+    if (!spTable.getColDefs().containsKey(shardColId)) {
+      throw new IllegalArgumentException(
+          "ColumnId "
+              + shardColId
+              + " not found in session file. Please provide a valid session file.");
+    }
+    return spTable.getColDefs().get(shardColId).getName();
   }
 }

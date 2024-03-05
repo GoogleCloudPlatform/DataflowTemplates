@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -32,10 +33,13 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.slf4j.Logger;
@@ -279,6 +283,21 @@ public class GCSToSourceDb {
       }
     }
 
+    SpannerConfig spannerMetadataConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getMetadataInstance()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()));
+
+    boolean isMetadataDbPostgres =
+        Dialect.POSTGRESQL
+            == SpannerAccessor.getOrCreate(spannerMetadataConfig)
+                .getDatabaseAdminClient()
+                .getDatabase(
+                    spannerMetadataConfig.getInstanceId().get(),
+                    spannerMetadataConfig.getDatabaseId().get())
+                .getDialect();
+
     Map<String, ProcessingContext> processingContextMap = null;
     processingContextMap =
         ProcessingContextGenerator.getProcessingContextForGCS(
@@ -294,7 +313,8 @@ public class GCSToSourceDb {
             options.getMetadataDatabase(),
             options.getRunMode(),
             tableSuffix,
-            options.getRunIdentifier());
+            options.getRunIdentifier(),
+            isMetadataDbPostgres);
 
     LOG.info("The size of  processing context is : " + processingContextMap.size());
 
@@ -310,10 +330,9 @@ public class GCSToSourceDb {
             ParDo.of(
                 new GcsToSourceStreamer(
                     options.getTimerInterval(),
-                    options.getSpannerProjectId(),
-                    options.getMetadataInstance(),
-                    options.getMetadataDatabase(),
-                    tableSuffix)));
+                    spannerMetadataConfig,
+                    tableSuffix,
+                    isMetadataDbPostgres)));
 
     return pipeline.run();
   }

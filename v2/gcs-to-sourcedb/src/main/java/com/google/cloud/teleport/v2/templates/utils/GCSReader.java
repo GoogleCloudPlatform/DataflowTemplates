@@ -42,11 +42,11 @@ public class GCSReader {
 
   private String fileName;
   private ShardFileCreationTracker shardFileCreationTracker;
-  private SkippedFileTracker skippedFileTracker;
   private Instant currentIntervalEnd;
   private String shardId;
   private boolean shouldRetryWhenFileNotFound;
   private boolean shouldFailWhenFileNotFound;
+  private boolean queriedDataSeenTable;
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSReader.class);
 
@@ -71,11 +71,9 @@ public class GCSReader {
         new ShardFileCreationTracker(
             spannerDao, taskContext.getShard().getLogicalShardId(), taskContext.getRunId());
     this.shardId = taskContext.getShard().getLogicalShardId();
-    this.skippedFileTracker =
-        new SkippedFileTracker(
-            spannerDao, taskContext.getShard().getLogicalShardId(), taskContext.getRunId());
     shouldRetryWhenFileNotFound = true;
     shouldFailWhenFileNotFound = false;
+    queriedDataSeenTable = false;
   }
 
   public List<TrimmedShardedDataChangeRecord> getRecords() {
@@ -116,13 +114,27 @@ public class GCSReader {
 
       LOG.warn("File not found : " + fileName);
       if (shouldRetryWhenFileNotFound) {
-        return checkAndReturnIfFileExists();
+        if (!queriedDataSeenTable) {
+          return checkAndReturnIfFileExists();
+        } else {
+          /* We do not need to call checkAndReturnIfFileExists again as it was called already
+          as this will lead to stack overflow when the time taken to write file to GCS is large.
+          GCS writing can take arbitrarty time in unforeseen scenario like Dataflow worker restart.
+          So we just try to read the file in the same function call until found.*/
+          return waitTillFileCreatedAndReturn();
+        }
       } else {
         if (shouldFailWhenFileNotFound) {
           Metrics.counter(GCSReader.class, "file_not_found_errors_" + shardId).inc();
           throw new RuntimeException("File  " + fileName + " expected but not found  : " + e);
         }
-        skippedFileTracker.writeSkippedFileName(fileName);
+        /* The logic for writing to skipped file table can generate load on the metadata database
+        when the first file from the reader template comes very late.
+        In this case, a lot of file intervals will be skipped since no file exists.
+        This causes DEADLINE_EXCEEDED and hence can negatively harm the progress of
+        both the pipelines as the metadata database is shared.
+        Hence the code to store the file intervals skipped is removed
+        and only warnings are logged. Since it was only for audit purpose anyway.*/
         LOG.warn("File not found : " + fileName + " skipping the file");
       }
 
@@ -186,8 +198,10 @@ public class GCSReader {
         // search for file again, if it exists process, else skip the file not found
         if (shardFileCreationTracker.doesDataExistForTimestamp(currentEndTimestamp)) {
           LOG.info("Data exists for shard {} and time end {} ", shardId, currentEndTimestamp);
-          shouldRetryWhenFileNotFound = true; // can happen due to out of order writes
+          shouldRetryWhenFileNotFound =
+              true; // can happen due to out of order writes or the write to GCS was very slow
           shouldFailWhenFileNotFound = true;
+          queriedDataSeenTable = true;
         } else {
           shouldRetryWhenFileNotFound = false;
           shouldFailWhenFileNotFound = false;
@@ -203,5 +217,50 @@ public class GCSReader {
       throw new RuntimeException(
           " Cannot determine file creation progress for shard : " + shardId, e);
     }
+  }
+
+  private List<TrimmedShardedDataChangeRecord> waitTillFileCreatedAndReturn() {
+    boolean found = false;
+    List<TrimmedShardedDataChangeRecord> changeStreamList = new ArrayList<>();
+    while (!found) {
+      try (InputStream stream =
+          Channels.newInputStream(
+              FileSystems.open(FileSystems.matchNewResource(fileName, false)))) {
+
+        BufferedReader reader =
+            new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+        while (reader.ready()) {
+          String line = reader.readLine();
+          TrimmedShardedDataChangeRecord chrec =
+              new GsonBuilder()
+                  .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+                  .create()
+                  .fromJson(line, TrimmedShardedDataChangeRecord.class);
+
+          changeStreamList.add(chrec);
+        }
+
+        Collections.sort(
+            changeStreamList,
+            Comparator.comparing(TrimmedShardedDataChangeRecord::getCommitTimestamp)
+                .thenComparing(TrimmedShardedDataChangeRecord::getServerTransactionId)
+                .thenComparing(TrimmedShardedDataChangeRecord::getRecordSequence));
+
+        Metrics.counter(shardId, "file_read_" + shardId).inc();
+        found = true;
+      } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+        throw new RuntimeException("Failed in processing the record ", ex);
+      } catch (IOException e) {
+        LOG.warn("Waiting for file : " + fileName);
+        try {
+          Thread.sleep(2000);
+        } catch (InterruptedException ex) {
+          continue;
+        }
+      } catch (Exception e) {
+        throw new RuntimeException("Failed in GcsReader ", e);
+      }
+    }
+    return changeStreamList;
   }
 }
