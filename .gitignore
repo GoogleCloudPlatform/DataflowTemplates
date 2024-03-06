@@ -16,3 +16,9 @@
 
 # vscode setting files
 .vscode/
+
+# Terraform files
+**/*.tfvars
+**/*.tfstate
+**/*.tfstate.backup
+**/.terraform*
