@@ -36,13 +36,15 @@ variable "region" {
 <#list parameters as variable>
 variable "${variable.name}" {
   type = ${variable.type?lower_case}
-  description = "${variable.description}"
-  <#if variable.defaultValue??>
-  <#if variable.type == "STRING">default = "${variable.defaultValue}"<#else>default = ${variable.defaultValue}</#if>
-  </#if>
+  description = ${variable.description}
+  <#if variable.defaultValue??>default = ${variable.defaultValue}</#if>
 }
 
 </#list>
+
+provider "google" {
+    project = var.project
+}
 
 provider "google-beta" {
     project = var.project
@@ -154,7 +156,14 @@ variable "temp_location" {
 	default = null
 }
 
+resource "google_project_service" "required" {
+    service = "dataflow.googleapis.com"
+    disable_on_destroy = false
+}
+
 resource "google_dataflow_flex_template_job" "generated" {
+    depends_on = [google_project_service.required]
+    provider = google-beta
     container_spec_gcs_path = "gs://dataflow-templates-${r"${var.region}"}/latest/flex/${templateName}"
     parameters = {
     <#list parameters as variable>
@@ -180,5 +189,10 @@ resource "google_dataflow_flex_template_job" "generated" {
 	staging_location = var.staging_location
 	subnetwork = var.subnetwork
 	temp_location = var.temp_location
+    region = var.region
+}
+
+output "dataflow_job_url" {
+    value = "https://console.cloud.google.com/dataflow/jobs/${r"${var.region}"}/${r"${"}google_dataflow_flex_template_job.generated.job_id${r"}"}"
 }
 
