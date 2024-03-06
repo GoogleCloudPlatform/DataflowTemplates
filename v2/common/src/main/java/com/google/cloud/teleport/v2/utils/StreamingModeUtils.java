@@ -34,9 +34,22 @@ public class StreamingModeUtils {
     }
   }
 
+  public static void enableAtLeastOnce(DataflowPipelineOptions options) {
+    // Enable "At-Least Once" mode if "Exactly Once" mode is not specified.
+    if (!isExactlyOnceEnabled(options)) {
+      ExperimentalOptions.addExperiment(options, "streaming_mode_at_least_once");
+    }
+  }
+
   private static boolean isAtLeastOnceEnabled(DataflowPipelineOptions options) {
     return (ExperimentalOptions.hasExperiment(options, "streaming_mode_at_least_once")
         || ((options.getDataflowServiceOptions() != null)
             && options.getDataflowServiceOptions().contains("streaming_mode_at_least_once")));
+  }
+
+  private static boolean isExactlyOnceEnabled(DataflowPipelineOptions options) {
+    return (ExperimentalOptions.hasExperiment(options, "streaming_mode_exactly_once")
+        || ((options.getDataflowServiceOptions() != null)
+            && options.getDataflowServiceOptions().contains("streaming_mode_exactly_once")));
   }
 }
