@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,10 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.neo4j.model.enums;
+package com.google.cloud.teleport.v2.neo4j.utils;
 
-/** Currently supported sources. */
-public enum SourceType {
-  text,
-  bigquery,
-}
+import java.io.Serializable;
+import java.util.function.Supplier;
+
+@FunctionalInterface
+public interface SerializableSupplier<OutputT> extends Serializable, Supplier<OutputT> {}

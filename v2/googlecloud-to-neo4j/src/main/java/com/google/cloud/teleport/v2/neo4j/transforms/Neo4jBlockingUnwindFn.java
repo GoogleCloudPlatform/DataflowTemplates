@@ -16,7 +16,10 @@
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
-import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
+import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
+import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
+import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,6 +31,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
+import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
 import org.neo4j.driver.summary.ResultSummary;
 import org.slf4j.Logger;
@@ -38,41 +42,45 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jBlockingUnwindFn.class);
   private final Counter numRecords = Metrics.counter(Neo4jBlockingUnwindFn.class, "norecords");
-  private String cypher;
-  private SerializableFunction<Row, Map<String, Object>> parametersFunction = null;
-  private boolean logCypher;
-  private long batchSize;
-  private String unwindMapName;
+  private final String cypher;
+  private final SerializableFunction<Row, Map<String, Object>> parametersFunction;
+  private final boolean logCypher;
+  private final long batchSize;
+  private final String unwindMapName;
+  private final SerializableSupplier<Neo4jConnection> connectionSupplier;
+  private final List<Map<String, Object>> unwindList;
+  private final ReportedSourceType reportedSourceType;
+  private final TargetType targetType;
   private long elementsInput;
   private boolean loggingDone;
-  private List<Map<String, Object>> unwindList;
-  private ConnectionParams connectionParams;
   private Neo4jConnection neo4jConnection;
 
-  private Neo4jBlockingUnwindFn() {}
-
   public Neo4jBlockingUnwindFn(
-      ConnectionParams connectionParams,
+      ReportedSourceType reportedSourceType,
+      TargetType targetType,
       String cypher,
       long batchSize,
       boolean logCypher,
       String unwindMapName,
-      SerializableFunction<Row, Map<String, Object>> parametersFunction) {
-    this.connectionParams = connectionParams;
+      SerializableFunction<Row, Map<String, Object>> parametersFunction,
+      SerializableSupplier<Neo4jConnection> connectionSupplier) {
+
+    this.reportedSourceType = reportedSourceType;
+    this.targetType = targetType;
     this.cypher = cypher;
     this.parametersFunction = parametersFunction;
     this.logCypher = logCypher;
     this.batchSize = batchSize;
     this.unwindMapName = unwindMapName;
-
-    unwindList = new ArrayList<>();
-    elementsInput = 0;
-    loggingDone = false;
+    this.connectionSupplier = connectionSupplier;
+    this.unwindList = new ArrayList<>();
+    this.elementsInput = 0;
+    this.loggingDone = false;
   }
 
   @Setup
   public void setup() {
-    this.neo4jConnection = new Neo4jConnection(this.connectionParams);
+    this.neo4jConnection = connectionSupplier.get();
   }
 
   @ProcessElement
@@ -127,9 +135,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     // The changes to the database are automatically committed.
     //
     TransactionWork<ResultSummary> transactionWork =
-        transaction -> {
-          return transaction.run(cypher, parametersMap).consume();
-        };
+        transaction -> transaction.run(cypher, parametersMap).consume();
 
     if (logCypher && !loggingDone) {
       String parametersString = getParametersString(parametersMap);
@@ -142,7 +148,22 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
     }
 
     try {
-      ResultSummary summary = neo4jConnection.writeTransaction(transactionWork);
+      ResultSummary summary =
+          neo4jConnection.writeTransaction(
+              transactionWork,
+              TransactionConfig.builder()
+                  .withMetadata(
+                      Neo4jTelemetry.transactionMetadata(
+                          Map.of(
+                              "sink",
+                              "neo4j",
+                              "source",
+                              reportedSourceType.format(),
+                              "target-type",
+                              targetType.name(),
+                              "step",
+                              "import")))
+                  .build());
       LOG.debug("Batch transaction of {} rows completed: {}", unwindList.size(), summary);
     } catch (Exception e) {
       throw new RuntimeException(
