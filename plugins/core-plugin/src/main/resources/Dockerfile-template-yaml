@@ -1,0 +1,16 @@
+FROM ${baseContainerImage}
+
+# Copy template files to /template
+ARG WORKDIR=/template
+COPY main.py /template
+COPY requirements.txt /template
+COPY ${yamlTemplateName} /template/template.yaml
+WORKDIR $WORKDIR
+
+ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt
+ENV FLEX_TEMPLATE_PYTHON_PY_FILE=main.py
+ENV PIP_NO_DEPS=True
+
+WORKDIR /template
+
+ENTRYPOINT ["/opt/google/dataflow/python_template_launcher"]

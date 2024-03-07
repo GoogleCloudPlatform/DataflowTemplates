@@ -30,6 +30,7 @@ import com.google.cloud.teleport.plugin.PythonDockerfileGenerator;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.TemplatePluginUtils;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
+import com.google.cloud.teleport.plugin.YamlDockerfileGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import freemarker.template.TemplateException;
@@ -332,6 +333,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
 
     String containerName = definition.getTemplateAnnotation().flexContainerName();
+    String yamlTemplateName =
+        definition.getTemplateAnnotation().yamlTemplateName().replace(".yaml", "");
     String imagePath = imageSpec.getImage();
     LOG.info("Stage image to GCR: {}", imagePath);
 
@@ -373,6 +376,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     } else if (definition.getTemplateAnnotation().type() == TemplateType.PYTHON) {
       stageFlexPythonTemplate(
           definition, currentTemplateName, imagePath, metadataFile, containerName, templatePath);
+    } else if (definition.getTemplateAnnotation().type() == TemplateType.YAML) {
+      stageFlexYamlTemplate(
+          definition, currentTemplateName, imagePath, metadataFile, yamlTemplateName, templatePath);
     } else {
       throw new IllegalArgumentException(
           "Type not known: " + definition.getTemplateAnnotation().type());
@@ -499,6 +505,56 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
+  private void stageFlexYamlTemplate(
+      TemplateDefinitions definition,
+      String currentTemplateName,
+      String imagePath,
+      File metadataFile,
+      String yamlTemplateName,
+      String templatePath)
+      throws IOException, InterruptedException, TemplateException {
+
+    // TODO(polber) Use basePythonContainerImage once plugin can parse metadata from YAML Templates
+    String containerImage = "gcr.io/" + projectId + "/beam-yaml/yaml-template-base:latest";
+    YamlDockerfileGenerator.generateDockerfile(
+        containerImage, yamlTemplateName, outputClassesDirectory);
+    stageYamlUsingDockerfile(imagePath, yamlTemplateName + "/Dockerfile");
+
+    String[] flexTemplateBuildCmd =
+        new String[] {
+          "gcloud",
+          "dataflow",
+          "flex-template",
+          "build",
+          templatePath,
+          "--image",
+          imagePath,
+          "--project",
+          projectId,
+          "--sdk-language",
+          "PYTHON",
+          "--metadata-file",
+          outputClassesDirectory.getAbsolutePath() + "/" + metadataFile.getName(),
+          "--additional-user-labels",
+          "goog-dataflow-provided-template-name="
+              + currentTemplateName.toLowerCase()
+              + ",goog-dataflow-provided-template-version="
+              + TemplateDefinitionsParser.parseVersion(stagePrefix)
+              + ",goog-dataflow-provided-template-type=flex"
+        };
+    LOG.info("Running: {}", String.join(" ", flexTemplateBuildCmd));
+
+    Process process = Runtime.getRuntime().exec(flexTemplateBuildCmd);
+
+    if (process.waitFor() != 0) {
+      throw new RuntimeException(
+          "Error building template using gcloud. Please make sure it is up to date. "
+              + new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8)
+              + "\n"
+              + new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8));
+    }
+  }
+
   private void stageFlexPythonTemplate(
       TemplateDefinitions definition,
       String currentTemplateName,
@@ -548,6 +604,55 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8)
               + "\n"
               + new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8));
+    }
+  }
+
+  private void stageYamlUsingDockerfile(String imagePath, String dockerfile)
+      throws IOException, InterruptedException {
+    File directory = new File(outputClassesDirectory.getAbsolutePath());
+
+    File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
+    try (FileWriter writer = new FileWriter(cloudbuildFile)) {
+      String cacheFolder = imagePath.substring(0, imagePath.lastIndexOf('/')) + "/cache";
+      writer.write(
+          "steps:\n"
+              + "- name: gcr.io/kaniko-project/executor\n"
+              + "  args:\n"
+              + "  - --destination="
+              + imagePath
+              + "\n"
+              + "  - --dockerfile="
+              + dockerfile
+              + "\n"
+              + "  - --cache=true\n"
+              + "  - --cache-ttl=6h\n"
+              + "  - --compressed-caching=false\n"
+              + "  - --cache-copy-layers=true\n"
+              + "  - --cache-repo="
+              + cacheFolder);
+    }
+
+    Process stageProcess =
+        runCommand(
+            new String[] {
+              "gcloud",
+              "builds",
+              "submit",
+              "--config",
+              cloudbuildFile.getAbsolutePath(),
+              "--machine-type",
+              "e2-highcpu-8",
+              "--disk-size",
+              "200",
+              "--project",
+              projectId
+            },
+            directory);
+
+    // Ideally this should raise an exception, but in GitHub Actions this returns NZE even for
+    // successful runs.
+    if (stageProcess.waitFor() != 0) {
+      LOG.warn("Possible error building container image using gcloud. Check logs for details.");
     }
   }
 
