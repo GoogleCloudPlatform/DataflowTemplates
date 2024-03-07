@@ -15,9 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery;
 
-import static org.apache.beam.sdk.util.Preconditions.checkStateNotNull;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.gax.grpc.GrpcCallContext;
@@ -50,7 +47,6 @@ import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
@@ -197,9 +193,8 @@ public final class FailsafeModJsonToTableRowTransformer {
         } catch (Exception e) {
           if (!seenException) {
             LOG.error(
-                String.format(
-                    "Caught exception when processing element and storing into dead letter queue, message: %s, cause: %s",
-                    Optional.ofNullable(e.getMessage()), e.getCause()));
+                "Caught exception when processing element , storing into dead letter queue. "
+                    + e.getMessage());
             seenException = true;
           }
           context.output(
@@ -210,37 +205,17 @@ public final class FailsafeModJsonToTableRowTransformer {
         }
       }
 
-      private TableRow modJsonStringToTableRow(String modJsonString) {
-        String deadLetterMessage =
-            "check dead letter queue for unprocessed records that failed to be processed";
-        ObjectNode modObjectNode = null;
-        try {
-          modObjectNode = (ObjectNode) new ObjectMapper().readTree(modJsonString);
-        } catch (JsonProcessingException e) {
-          String errorMessage =
-              String.format(
-                  "error parsing modJsonString input into %s; %s",
-                  ObjectNode.class, deadLetterMessage);
-          throw new RuntimeException(errorMessage, e);
-        }
+      private TableRow modJsonStringToTableRow(String modJsonString) throws Exception {
+        ObjectNode modObjectNode = (ObjectNode) new ObjectMapper().readTree(modJsonString);
         for (String excludeFieldName : BigQueryUtils.getBigQueryIntermediateMetadataFieldNames()) {
           if (modObjectNode.has(excludeFieldName)) {
             modObjectNode.remove(excludeFieldName);
           }
         }
 
-        Mod mod = null;
-        try {
-          mod = Mod.fromJson(modObjectNode.toString());
-        } catch (IOException e) {
-          String errorMessage =
-              String.format(
-                  "error converting %s to %s; %s", ObjectNode.class, Mod.class, deadLetterMessage);
-          throw new RuntimeException(errorMessage, e);
-        }
+        Mod mod = Mod.fromJson(modObjectNode.toString());
         String spannerTableName = mod.getTableName();
-        TrackedSpannerTable spannerTable =
-            checkStateNotNull(spannerTableByName.get(spannerTableName));
+        TrackedSpannerTable spannerTable = spannerTableByName.get(spannerTableName);
         com.google.cloud.Timestamp spannerCommitTimestamp =
             com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
                 mod.getCommitTimestampSeconds(), mod.getCommitTimestampNanos());
@@ -336,12 +311,7 @@ public final class FailsafeModJsonToTableRowTransformer {
                   e.getStackTrace(),
                   retryCount);
               // Wait for 1 seconds before next retry.
-              try {
-                TimeUnit.SECONDS.sleep(1);
-              } catch (InterruptedException ex) {
-                LOG.warn(
-                    String.format("Caught %s during retry: %s", InterruptedException.class, ex));
-              }
+              TimeUnit.SECONDS.sleep(1);
               retryCount++;
             }
           }
