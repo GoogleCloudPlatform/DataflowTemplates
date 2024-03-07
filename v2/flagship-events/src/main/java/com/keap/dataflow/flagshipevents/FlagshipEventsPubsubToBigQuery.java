@@ -24,7 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.Coder;
@@ -104,7 +103,7 @@ public class FlagshipEventsPubsubToBigQuery {
                     new Partition.PartitionFn<TableRow>() {
                       public int partitionFor(TableRow tableRow, int numPartitions) {
                         TableName tableFromRow = getTableFromRow(tableRow);
-                        if(tableFromRow == TableName.UNDEFINED) {
+                        if (tableFromRow == TableName.UNDEFINED) {
                           LOG.error(String.format("Table UNDEFINED: %s", tableRow.get("event")));
                         }
                         return tableFromRow.index;
@@ -216,8 +215,10 @@ public class FlagshipEventsPubsubToBigQuery {
 
     public static TableName getByTable(String table) {
       return Arrays.stream(TableName.values())
-          .filter(it -> it.getFormattedTable().equals(StringUtils.defaultString(table).toLowerCase()))
-          .findFirst().orElse(UNDEFINED);
+          .filter(
+              it -> it.getFormattedTable().equals(StringUtils.defaultString(table).toLowerCase()))
+          .findFirst()
+          .orElse(UNDEFINED);
     }
   }
 
