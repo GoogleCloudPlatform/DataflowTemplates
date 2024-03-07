@@ -53,6 +53,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **applyMerge** (A switch to disable MERGE queries for the job.): A switch to disable MERGE queries for the job. Defaults to: true.
 * **mergeConcurrency** (Concurrent queries for merge.): The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true. Default is 30.
 * **partitionRetentionDays** (Partition retention days.): The number of days to use for partition retention when running BigQuery merges. Default is 1.
+* **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
 * **javascriptTextTransformGcsPath** (Cloud Storage path to Javascript UDF source): The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js).
 * **javascriptTextTransformFunctionName** (UDF Javascript Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
 * **javascriptTextTransformReloadIntervalMinutes** (JavaScript UDF auto-reload interval (minutes)): Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
@@ -60,8 +61,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **pythonRuntimeVersion** (Python UDF Runtime Version): The runtime version to use for this Python UDF.
 * **pythonTextTransformFunctionName** (UDF Python Function Name): The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1).
 * **runtimeRetries** (Python runtime retry attempts): The number of times a runtime will be retried before failing. Defaults to: 5.
-* **useStorageWriteApi** (Use BigQuery Storage Write API): If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). If this is enabled and at-least-once semantics (useStorageWriteApiAtLeastOnce) option is off then "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API" must be provided. Defaults to: false.
-* **useStorageWriteApiAtLeastOnce** (Use at at-least-once semantics in BigQuery Storage Write API): This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+* **useStorageWriteApi** (Use BigQuery Storage Write API): If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
 * **numStorageWriteApiStreams** (Number of streams for BigQuery Storage Write API): Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0.
 * **storageWriteApiTriggeringFrequencySec** (Triggering frequency in seconds for BigQuery Storage Write API): Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values.
 
@@ -173,6 +173,7 @@ export DATA_STREAM_ROOT_URL=https://datastream.googleapis.com/
 export APPLY_MERGE=true
 export MERGE_CONCURRENCY=30
 export PARTITION_RETENTION_DAYS=1
+export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
@@ -181,7 +182,6 @@ export PYTHON_RUNTIME_VERSION=<pythonRuntimeVersion>
 export PYTHON_TEXT_TRANSFORM_FUNCTION_NAME=<pythonTextTransformFunctionName>
 export RUNTIME_RETRIES=5
 export USE_STORAGE_WRITE_API=false
-export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
 
@@ -208,6 +208,7 @@ gcloud dataflow flex-template run "cloud-datastream-to-bigquery-job" \
   --parameters "applyMerge=$APPLY_MERGE" \
   --parameters "mergeConcurrency=$MERGE_CONCURRENCY" \
   --parameters "partitionRetentionDays=$PARTITION_RETENTION_DAYS" \
+  --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
   --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
@@ -216,7 +217,6 @@ gcloud dataflow flex-template run "cloud-datastream-to-bigquery-job" \
   --parameters "pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME" \
   --parameters "runtimeRetries=$RUNTIME_RETRIES" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
-  --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
   --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
   --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC"
 ```
@@ -258,6 +258,7 @@ export DATA_STREAM_ROOT_URL=https://datastream.googleapis.com/
 export APPLY_MERGE=true
 export MERGE_CONCURRENCY=30
 export PARTITION_RETENTION_DAYS=1
+export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
@@ -266,7 +267,6 @@ export PYTHON_RUNTIME_VERSION=<pythonRuntimeVersion>
 export PYTHON_TEXT_TRANSFORM_FUNCTION_NAME=<pythonTextTransformFunctionName>
 export RUNTIME_RETRIES=5
 export USE_STORAGE_WRITE_API=false
-export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
 
@@ -277,7 +277,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-bigquery-job" \
 -DtemplateName="Cloud_Datastream_to_BigQuery" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,outputProjectId=$OUTPUT_PROJECT_ID,outputStagingDatasetTemplate=$OUTPUT_STAGING_DATASET_TEMPLATE,outputStagingTableNameTemplate=$OUTPUT_STAGING_TABLE_NAME_TEMPLATE,outputDatasetTemplate=$OUTPUT_DATASET_TEMPLATE,outputTableNameTemplate=$OUTPUT_TABLE_NAME_TEMPLATE,ignoreFields=$IGNORE_FIELDS,mergeFrequencyMinutes=$MERGE_FREQUENCY_MINUTES,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,applyMerge=$APPLY_MERGE,mergeConcurrency=$MERGE_CONCURRENCY,partitionRetentionDays=$PARTITION_RETENTION_DAYS,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,pythonTextTransformGcsPath=$PYTHON_TEXT_TRANSFORM_GCS_PATH,pythonRuntimeVersion=$PYTHON_RUNTIME_VERSION,pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME,runtimeRetries=$RUNTIME_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,outputProjectId=$OUTPUT_PROJECT_ID,outputStagingDatasetTemplate=$OUTPUT_STAGING_DATASET_TEMPLATE,outputStagingTableNameTemplate=$OUTPUT_STAGING_TABLE_NAME_TEMPLATE,outputDatasetTemplate=$OUTPUT_DATASET_TEMPLATE,outputTableNameTemplate=$OUTPUT_TABLE_NAME_TEMPLATE,ignoreFields=$IGNORE_FIELDS,mergeFrequencyMinutes=$MERGE_FREQUENCY_MINUTES,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,applyMerge=$APPLY_MERGE,mergeConcurrency=$MERGE_CONCURRENCY,partitionRetentionDays=$PARTITION_RETENTION_DAYS,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,pythonTextTransformGcsPath=$PYTHON_TEXT_TRANSFORM_GCS_PATH,pythonRuntimeVersion=$PYTHON_RUNTIME_VERSION,pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME,runtimeRetries=$RUNTIME_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -f v2/datastream-to-bigquery
 ```
 
@@ -286,8 +286,23 @@ mvn clean package -PtemplatesRun \
 Dataflow supports the utilization of Terraform to manage template jobs,
 see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
 
-Here is an example of Terraform configuration:
+Terraform modules have been generated for most templates in this repository. This includes the relevant parameters
+specific to the template. If available, they may be used instead of
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly.
 
+To use the autogenerated module, execute the standard
+[terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
+
+```shell
+cd v2/datastream-to-bigquery/terraform/Cloud_Datastream_to_BigQuery
+terraform init
+terraform apply
+```
+
+To use
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly:
 
 ```terraform
 provider "google-beta" {
@@ -326,6 +341,7 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_bigquery" {
     # applyMerge = "true"
     # mergeConcurrency = "30"
     # partitionRetentionDays = "1"
+    # useStorageWriteApiAtLeastOnce = "false"
     # javascriptTextTransformGcsPath = "gs://your-bucket/your-function.js"
     # javascriptTextTransformFunctionName = "'transform' or 'transform_udf1'"
     # javascriptTextTransformReloadIntervalMinutes = "0"
@@ -334,7 +350,6 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_bigquery" {
     # pythonTextTransformFunctionName = "transform_udf1"
     # runtimeRetries = "5"
     # useStorageWriteApi = "false"
-    # useStorageWriteApiAtLeastOnce = "false"
     # numStorageWriteApiStreams = "0"
     # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
   }

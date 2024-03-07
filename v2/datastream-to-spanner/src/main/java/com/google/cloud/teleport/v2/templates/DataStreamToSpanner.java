@@ -118,7 +118,8 @@ import org.slf4j.LoggerFactory;
       "A Cloud Storage bucket where Datastream events are replicated.",
       "A Cloud Spanner database with existing tables. These tables can be empty or contain data.",
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class DataStreamToSpanner {
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpanner.class);
   private static final String AVRO_SUFFIX = "avro";

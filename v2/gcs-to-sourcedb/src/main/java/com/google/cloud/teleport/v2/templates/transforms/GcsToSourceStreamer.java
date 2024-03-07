@@ -15,12 +15,14 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.dao.SpannerDao;
 import com.google.cloud.teleport.v2.templates.processing.handler.GCSToSourceStreamingHandler;
 import org.apache.beam.sdk.coders.BooleanCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.state.StateSpec;
@@ -46,32 +48,46 @@ import org.slf4j.LoggerFactory;
 public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Void> {
   private static final Logger LOG = LoggerFactory.getLogger(GcsToSourceStreamer.class);
   private int incrementIntervalInSeconds = 1;
-  private SpannerDao spannerDao;
-  private String spannerProjectId;
-  private String spannerInstance;
-  private String spannerDatabase;
+  private transient SpannerDao spannerDao;
   private String tableSuffix;
+  private final SpannerConfig spannerConfig;
+  private boolean isMetadataDbPostgres;
 
   private static final Counter num_shards =
       Metrics.counter(GcsToSourceStreamer.class, "num_shards");
 
   public GcsToSourceStreamer(
       int incrementIntervalInSeconds,
-      String spannerProjectId,
-      String spannerInstance,
-      String spannerDatabase,
-      String tableSuffix) {
+      SpannerConfig spannerConfig,
+      String tableSuffix,
+      boolean isMetadataDbPostgres) {
     this.incrementIntervalInSeconds = incrementIntervalInSeconds;
-    this.spannerProjectId = spannerProjectId;
-    this.spannerInstance = spannerInstance;
-    this.spannerDatabase = spannerDatabase;
+    this.spannerConfig = spannerConfig;
     this.tableSuffix = tableSuffix;
+    this.isMetadataDbPostgres = isMetadataDbPostgres;
   }
 
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() {
-    spannerDao = new SpannerDao(spannerProjectId, spannerInstance, spannerDatabase, tableSuffix);
+    boolean retry = true;
+    while (retry) {
+      try {
+        spannerDao = new SpannerDao(spannerConfig, tableSuffix, isMetadataDbPostgres);
+        retry = false;
+      } catch (SpannerException e) {
+        LOG.info("Exception in setup of AssignShardIdFn {}", e.getMessage());
+        if (e.getMessage().contains("RESOURCE_EXHAUSTED")) {
+          try {
+            Thread.sleep(10000);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      } catch (Exception e) {
+        throw e;
+      }
+    }
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -144,6 +160,10 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
     LOG.info(
         "Shard " + shardId + ": started timer processing for expiry time: " + context.timestamp());
     ProcessingContext taskContext = processingContext.read();
+    Boolean failedShard = stopProcessing.read();
+    if (failedShard != null && failedShard) {
+      return;
+    }
     if (taskContext != null) {
 
       try {
@@ -152,12 +172,12 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
         GCSToSourceStreamingHandler.process(taskContext, spannerDao);
         Instant nextTimer =
             Instant.now().plus(Duration.standardSeconds(incrementIntervalInSeconds));
-        timer.set(nextTimer);
         com.google.cloud.Timestamp startTs =
             com.google.cloud.Timestamp.parseTimestamp(startString.read());
         Instant startInst = new Instant(startTs.toSqlTimestamp());
         Instant endInst = startInst.plus(taskContext.getWindowDuration());
         startString.write(endInst.toString());
+        timer.set(nextTimer);
 
       } catch (Exception e) {
         LOG.error(

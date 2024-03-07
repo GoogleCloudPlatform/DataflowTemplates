@@ -63,7 +63,8 @@ import org.slf4j.LoggerFactory;
       "The JDBC source must exist prior to running the pipeline.",
       "The Cloud Pub/Sub output deadletter topic must exist prior to running the pipeline.",
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class PubsubToJdbc {
 
   /* Logger for class.*/
