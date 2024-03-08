@@ -501,7 +501,7 @@ public class DataCastingUtilsTest {
         ImmutableList.of(
             mapping("int64", PropertyType.Long),
             mapping("string", PropertyType.String),
-            mapping("double", PropertyType.BigDecimal),
+            mapping("double", PropertyType.Double),
             mapping("boolean", PropertyType.Boolean),
             mapping("localdate", PropertyType.Date),
             mapping("localtime", PropertyType.LocalTime),
