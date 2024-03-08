@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.logicaltypes.*;
 import org.apache.commons.lang3.StringUtils;
 
 /** Utilities for organizing Bean rows and schema. */
@@ -61,17 +62,20 @@ public class BeamUtils {
       } else if (mapping.getType() == PropertyType.Point) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.STRING);
       } else if (mapping.getType() == PropertyType.Duration) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DECIMAL);
+        schemaField =
+            Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new NanosDuration()));
       } else if (mapping.getType() == PropertyType.Date) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
+        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new Date()));
       } else if (mapping.getType() == PropertyType.LocalDateTime) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
+        schemaField =
+            Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new DateTime()));
       } else if (mapping.getType() == PropertyType.DateTime) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
+        schemaField =
+            Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new NanosInstant()));
       } else if (mapping.getType() == PropertyType.LocalTime) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
+        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new Time()));
       } else if (mapping.getType() == PropertyType.Time) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.STRING);
+        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new Time()));
       } else {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.STRING);
       }
