@@ -62,7 +62,7 @@ main() {
   mvn clean package -pl v2/flagship-events -am
 
   gcloud dataflow flex-template build "gs://is-events-dataflow-${ENVIRONMENT}/templates/flagship-events.json" \
-    --image-gcr-path "us-west1-docker.pkg.dev/is-events-dataflow-${ENVIRONMENT}/default/dataflow/flagship-events:latest" \
+    --image-gcr-path "us-west1-docker.pkg.dev/is-events-dataflow-${ENVIRONMENT}/dataflow/flagship-events:latest" \
     --sdk-language "JAVA" \
     --flex-template-base-image JAVA11 \
     --metadata-file "v2/flagship-events/metadata.json" \

@@ -81,8 +81,7 @@ public class FlagshipEventsPubsubToBigQuery {
                         TableRow tableRow = new TableRow();
                         try {
                           InputStream inputStream =
-                              new ByteArrayInputStream(
-                                  json.getBytes(StandardCharsets.UTF_8.name()));
+                              new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
                           tableRow =
                               TableRowJsonCoder.of().decode(inputStream, Coder.Context.OUTER);
                         } catch (UnsupportedEncodingException e) {
@@ -104,7 +103,11 @@ public class FlagshipEventsPubsubToBigQuery {
                       public int partitionFor(TableRow tableRow, int numPartitions) {
                         TableName tableFromRow = getTableFromRow(tableRow);
                         if (tableFromRow == TableName.UNDEFINED) {
-                          LOG.error(String.format("Table UNDEFINED: %s", tableRow.get("event")));
+                          LOG.error(
+                              String.format(
+                                  "Unable to write to BigQuery, table UNDEFINED: %s",
+                                  tableRow.get("event")));
+                          throw new RuntimeException();
                         }
                         return tableFromRow.index;
                       }
@@ -171,7 +174,8 @@ public class FlagshipEventsPubsubToBigQuery {
               new SimpleFunction<>() {
                 @Override
                 public Iterable<String> apply(String input) {
-                  String[] splitInput = input.split("&");
+                  String[] splitInput =
+                      input.split("(?<=})&"); // only ampersands following a closing brace
                   Set<String> inputSet = new HashSet<>();
 
                   for (String string : splitInput) {
@@ -216,7 +220,10 @@ public class FlagshipEventsPubsubToBigQuery {
     public static TableName getByTable(String table) {
       return Arrays.stream(TableName.values())
           .filter(
-              it -> it.getFormattedTable().equals(StringUtils.defaultString(table).toLowerCase()))
+              it ->
+                  it != UNDEFINED
+                      && it.getFormattedTable()
+                          .equals(StringUtils.defaultString(table).toLowerCase()))
           .findFirst()
           .orElse(UNDEFINED);
     }
