@@ -27,23 +27,22 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.*;
+import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.neo4j.Neo4jResourceManager;
 import org.apache.beam.it.neo4j.conditions.Neo4jQueryCheck;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,6 +75,7 @@ public class DataConversionIT extends TemplateTestBase {
 
   // NOTE: BIGNUMERIC, GEOGRAPHY, JSON and INTERVAL BigQuery column types are not supported by Beam
   // FIXME: fix date conversion
+  @SuppressWarnings("unchecked")
   @Test
   public void supportBigQueryDataTypes() throws Exception {
     TableId table =
@@ -88,9 +88,10 @@ public class DataConversionIT extends TemplateTestBase {
                 Field.newBuilder("numeric", StandardSQLTypeName.NUMERIC).build(),
                 Field.newBuilder("string", StandardSQLTypeName.STRING).build(),
                 Field.newBuilder("bytes", StandardSQLTypeName.BYTES).build(),
-                Field.newBuilder("timestamp", StandardSQLTypeName.TIMESTAMP).build(),
+                Field.newBuilder("date", StandardSQLTypeName.DATE).build(),
                 Field.newBuilder("time", StandardSQLTypeName.TIME).build(),
-                Field.newBuilder("datetime", StandardSQLTypeName.DATETIME).build()));
+                Field.newBuilder("datetime", StandardSQLTypeName.DATETIME).build(),
+                Field.newBuilder("timestamp", StandardSQLTypeName.TIMESTAMP).build()));
     Map<String, Object> sourceRow = new HashMap<>();
     sourceRow.put("bool", true);
     sourceRow.put("int64", 10L);
@@ -100,9 +101,10 @@ public class DataConversionIT extends TemplateTestBase {
     sourceRow.put(
         "bytes",
         Base64.getEncoder().encodeToString(new byte[] {(byte) 0x89, (byte) 0x65, (byte) 0x89}));
-    sourceRow.put("timestamp", "2023-12-15T12:13:14.156Z");
-    sourceRow.put("time", "12:13:14");
-    sourceRow.put("datetime", "2019-02-17 11:24:00.000");
+    sourceRow.put("date", "1999-12-01");
+    sourceRow.put("time", "12:13:14.123456");
+    sourceRow.put("datetime", "2019-02-17 11:24:02.234567");
+    sourceRow.put("timestamp", "2019-02-17 11:24:01.123456Z");
     bigQueryClient.write(testName, List.of(RowToInsert.of(sourceRow)));
     gcsClient.createArtifact("spec.json", contentOf("/testing-specs/data-conversion/bq-spec.json"));
     gcsClient.createArtifact(
@@ -132,21 +134,46 @@ public class DataConversionIT extends TemplateTestBase {
     expectedRow.put("numeric", 50D);
     expectedRow.put("string", "string");
     expectedRow.put("bytes", new byte[] {(byte) 0x89, (byte) 0x65, (byte) 0x89});
+    expectedRow.put("date", LocalDate.of(1999, 12, 1));
+    expectedRow.put("time", LocalTime.of(12, 13, 14, 123456000));
+    expectedRow.put("datetime", LocalDateTime.of(2019, 2, 17, 11, 24, 2, 234567000));
     expectedRow.put(
-        "timestamp", ZonedDateTime.of(2023, 12, 15, 12, 13, 14, 156_000_000, ZoneId.of("UTC")));
-    expectedRow.put("time", LocalTime.of(12, 13, 14));
-    expectedRow.put("datetime", LocalDateTime.of(2019, 2, 17, 11, 24, 0, 0));
+        "timestamp", ZonedDateTime.of(2019, 2, 17, 11, 24, 1, 123000000, ZoneOffset.UTC));
     assertThatPipeline(info).isRunning();
     assertThatResult(
             pipelineOperator()
                 .waitForConditionAndCancel(
                     createConfig(info),
-                    Neo4jQueryCheck.builder(neo4jClient)
-                        .setQuery(
-                            "MATCH (n) RETURN labels(n) AS labels, properties(n) AS props ORDER BY n.id ASC")
-                        .setExpectedResult(
-                            List.of(Map.of("labels", List.of("Node"), "props", expectedRow)))
-                        .build()))
+                    expectedRow.entrySet().stream()
+                        .map(
+                            e ->
+                                new ConditionCheck() {
+                                  @Override
+                                  protected @UnknownKeyFor @NonNull @Initialized String
+                                      getDescription() {
+                                    return "check " + e.getKey();
+                                  }
+
+                                  @Override
+                                  protected CheckResult check() {
+                                    var result =
+                                        neo4jClient.run(
+                                            String.format(
+                                                "MATCH (n) RETURN n.`%s` AS prop", e.getKey()));
+                                    if (result.isEmpty()) {
+                                      return new CheckResult(false, "not persisted yet");
+                                    }
+
+                                    var actual = result.get(0).get("prop");
+                                    var expected = e.getValue();
+
+                                    return new CheckResult(
+                                        Objects.deepEquals(actual, expected),
+                                        String.format(
+                                            "Expected '%s' to deep equal '%s'", actual, expected));
+                                  }
+                                })
+                        .toArray(Supplier[]::new)))
         .meetsConditions();
   }
 
