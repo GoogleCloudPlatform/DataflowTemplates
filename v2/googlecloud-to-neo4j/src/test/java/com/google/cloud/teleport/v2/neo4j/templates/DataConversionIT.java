@@ -27,6 +27,7 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.*;
 import java.util.function.Supplier;
@@ -39,10 +40,10 @@ import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.neo4j.Neo4jResourceManager;
-import org.apache.beam.it.neo4j.conditions.Neo4jQueryCheck;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -74,7 +75,6 @@ public class DataConversionIT extends TemplateTestBase {
   }
 
   // NOTE: BIGNUMERIC, GEOGRAPHY, JSON and INTERVAL BigQuery column types are not supported by Beam
-  // FIXME: fix date conversion
   @SuppressWarnings("unchecked")
   @Test
   public void supportBigQueryDataTypes() throws Exception {
@@ -142,41 +142,11 @@ public class DataConversionIT extends TemplateTestBase {
     assertThatPipeline(info).isRunning();
     assertThatResult(
             pipelineOperator()
-                .waitForConditionAndCancel(
-                    createConfig(info),
-                    expectedRow.entrySet().stream()
-                        .map(
-                            e ->
-                                new ConditionCheck() {
-                                  @Override
-                                  protected @UnknownKeyFor @NonNull @Initialized String
-                                      getDescription() {
-                                    return "check " + e.getKey();
-                                  }
-
-                                  @Override
-                                  protected CheckResult check() {
-                                    var result =
-                                        neo4jClient.run(
-                                            String.format(
-                                                "MATCH (n) RETURN n.`%s` AS prop", e.getKey()));
-                                    if (result.isEmpty()) {
-                                      return new CheckResult(false, "not persisted yet");
-                                    }
-
-                                    var actual = result.get(0).get("prop");
-                                    var expected = e.getValue();
-
-                                    return new CheckResult(
-                                        Objects.deepEquals(actual, expected),
-                                        String.format(
-                                            "Expected '%s' to deep equal '%s'", actual, expected));
-                                  }
-                                })
-                        .toArray(Supplier[]::new)))
+                .waitForConditionAndCancel(createConfig(info), generateChecks(expectedRow)))
         .meetsConditions();
   }
 
+  @SuppressWarnings("unchecked")
   @Test
   // FIXME: fix temporal value conversions, duration, byte arrays and potentially doubles
   public void supportsMappedTypesForInlineCSV() throws Exception {
@@ -201,22 +171,59 @@ public class DataConversionIT extends TemplateTestBase {
     LaunchInfo info = launchTemplate(options);
 
     Map<String, Object> expectedRow = new HashMap<>();
-    expectedRow.put("boolean", true);
-    expectedRow.put("double", 40.0D);
-    expectedRow.put("long", 50L);
+    expectedRow.put("int64", 50L);
+    expectedRow.put("float64", 40.0D);
     expectedRow.put("string", "a string");
+    expectedRow.put(
+        "datetime_zone",
+        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneId.of("Europe/Istanbul"))
+            .toOffsetDateTime()
+            .atZoneSameInstant(ZoneOffset.UTC));
+    expectedRow.put(
+        "datetime_offset",
+        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneOffset.ofHours(3))
+            .toOffsetDateTime()
+            .atZoneSameInstant(ZoneOffset.UTC));
+    expectedRow.put("boolean", true);
+    expectedRow.put("bytes", "Hello World".getBytes(StandardCharsets.UTF_8));
     assertThatPipeline(info).isRunning();
+
     assertThatResult(
             pipelineOperator()
-                .waitForConditionAndCancel(
-                    createConfig(info),
-                    Neo4jQueryCheck.builder(neo4jClient)
-                        .setQuery(
-                            "MATCH (n) RETURN labels(n) AS labels, properties(n) AS props ORDER BY n.id ASC")
-                        .setExpectedResult(
-                            List.of(Map.of("labels", List.of("Node"), "props", expectedRow)))
-                        .build()))
+                .waitForConditionAndCancel(createConfig(info), generateChecks(expectedRow)))
         .meetsConditions();
+  }
+
+  @SuppressWarnings("rawtypes")
+  @NotNull
+  private Supplier[] generateChecks(Map<String, Object> expectedRow) {
+    return expectedRow.entrySet().stream()
+        .map(
+            e ->
+                new ConditionCheck() {
+                  @Override
+                  protected @UnknownKeyFor @NonNull @Initialized String getDescription() {
+                    return "check " + e.getKey();
+                  }
+
+                  @Override
+                  protected CheckResult check() {
+                    var result =
+                        neo4jClient.run(
+                            String.format("MATCH (n) RETURN n.`%s` AS prop", e.getKey()));
+                    if (result.isEmpty()) {
+                      return new CheckResult(false, "not persisted yet");
+                    }
+
+                    var actual = result.get(0).get("prop");
+                    var expected = e.getValue();
+
+                    return new CheckResult(
+                        Objects.deepEquals(actual, expected),
+                        String.format("Expected '%s' to deep equal '%s'", actual, expected));
+                  }
+                })
+        .toArray(Supplier[]::new);
   }
 
   private String contentOf(String resourcePath) throws IOException {

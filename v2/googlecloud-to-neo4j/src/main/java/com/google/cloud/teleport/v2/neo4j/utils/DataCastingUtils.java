@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -149,7 +150,14 @@ public class DataCastingUtils {
                   castVals.add(asDateTime(objVal, LocalDateTime::from));
                   break;
                 case org.apache.beam.sdk.schemas.logicaltypes.NanosInstant.IDENTIFIER:
-                  castVals.add(asDateTime(objVal, ZonedDateTime::from, OffsetDateTime::from));
+                  try {
+                    castVals.add(
+                        Instant.from(
+                            asDateTime(objVal, ZonedDateTime::from, OffsetDateTime::from)));
+                  } catch (DateTimeException e) {
+                    var local = (LocalDateTime) asDateTime(objVal, LocalDateTime::from);
+                    castVals.add(local.toInstant(ZoneOffset.UTC));
+                  }
                   break;
                 case Time.IDENTIFIER:
                   castVals.add(asTime(objVal));

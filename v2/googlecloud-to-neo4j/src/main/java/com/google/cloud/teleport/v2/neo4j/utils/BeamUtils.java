@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.utils;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.util.ArrayList;
@@ -34,6 +35,10 @@ public class BeamUtils {
     // Map these fields to a schema in a row
     for (int i = 0; i < target.getMappings().size(); i++) {
       Mapping mapping = target.getMappings().get(i);
+      if (mapping.getRole() == RoleType.type || mapping.getRole() == RoleType.label) {
+        continue;
+      }
+
       String fieldName = "";
       if (StringUtils.isNotBlank(mapping.getField())) {
         fieldName = mapping.getField();
@@ -51,8 +56,8 @@ public class BeamUtils {
       if (mapping.getType() == PropertyType.Integer || mapping.getType() == PropertyType.Long) {
         // avoid truncation by making it long
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.INT64);
-      } else if (mapping.getType() == PropertyType.BigDecimal) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DECIMAL);
+      } else if (mapping.getType() == PropertyType.Double) {
+        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DOUBLE);
       } else if (mapping.getType() == PropertyType.Float) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.FLOAT);
       } else if (mapping.getType() == PropertyType.Boolean) {

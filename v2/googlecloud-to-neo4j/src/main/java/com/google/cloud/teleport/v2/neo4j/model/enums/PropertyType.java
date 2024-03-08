@@ -21,7 +21,7 @@ public enum PropertyType {
   Integer,
   Long,
   Float,
-  BigDecimal,
+  Double,
   Boolean,
   Date,
   LocalDateTime,
