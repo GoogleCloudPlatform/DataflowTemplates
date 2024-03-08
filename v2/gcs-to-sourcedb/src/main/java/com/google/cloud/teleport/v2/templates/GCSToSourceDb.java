@@ -123,14 +123,16 @@ public class GCSToSourceDb {
     @TemplateParameter.Integer(
         order = 5,
         optional = true,
-        description = "Duration in seconds between calls to stateful timer processing. ",
+        description =
+            "Duration in mili seconds between calls to stateful timer processing.Defaults to 1"
+                + " millisecond. ",
         helpText =
             "Controls the time between successive polls to buffer and processing of the resultant"
                 + " records.")
     @Default.Integer(1)
-    Integer getTimerInterval();
+    Integer getTimerIntervalInMilliSec();
 
-    void setTimerInterval(Integer value);
+    void setTimerIntervalInMilliSec(Integer value);
 
     @TemplateParameter.Text(
         order = 6,
@@ -329,7 +331,7 @@ public class GCSToSourceDb {
             "Write to source",
             ParDo.of(
                 new GcsToSourceStreamer(
-                    options.getTimerInterval(),
+                    options.getTimerIntervalInMilliSec(),
                     spannerMetadataConfig,
                     tableSuffix,
                     isMetadataDbPostgres)));

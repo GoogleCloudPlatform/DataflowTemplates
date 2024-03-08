@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
 /** Handles the per-shard processing from GCS to source DB. */
 public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Void> {
   private static final Logger LOG = LoggerFactory.getLogger(GcsToSourceStreamer.class);
-  private int incrementIntervalInSeconds = 1;
+  private int incrementIntervalInMilliSeconds = 1;
   private transient SpannerDao spannerDao;
   private String tableSuffix;
   private final SpannerConfig spannerConfig;
@@ -57,11 +57,11 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
       Metrics.counter(GcsToSourceStreamer.class, "num_shards");
 
   public GcsToSourceStreamer(
-      int incrementIntervalInSeconds,
+      int incrementIntervalInMilliSeconds,
       SpannerConfig spannerConfig,
       String tableSuffix,
       boolean isMetadataDbPostgres) {
-    this.incrementIntervalInSeconds = incrementIntervalInSeconds;
+    this.incrementIntervalInMilliSeconds = incrementIntervalInMilliSeconds;
     this.spannerConfig = spannerConfig;
     this.tableSuffix = tableSuffix;
     this.isMetadataDbPostgres = isMetadataDbPostgres;
@@ -136,7 +136,7 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
     if (shardId == null) {
 
       Instant outputTimestamp =
-          Instant.now().plus(Duration.standardSeconds(incrementIntervalInSeconds));
+          Instant.now().plus(Duration.millis(incrementIntervalInMilliSeconds));
       timer.set(outputTimestamp);
       keyString.write(element.getKey());
     }
@@ -170,8 +170,7 @@ public class GcsToSourceStreamer extends DoFn<KV<String, ProcessingContext>, Voi
         taskContext.setStartTimestamp(startString.read());
 
         GCSToSourceStreamingHandler.process(taskContext, spannerDao);
-        Instant nextTimer =
-            Instant.now().plus(Duration.standardSeconds(incrementIntervalInSeconds));
+        Instant nextTimer = Instant.now().plus(Duration.millis(incrementIntervalInMilliSeconds));
         com.google.cloud.Timestamp startTs =
             com.google.cloud.Timestamp.parseTimestamp(startString.read());
         Instant startInst = new Instant(startTs.toSqlTimestamp());
