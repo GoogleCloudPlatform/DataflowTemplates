@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.SpannerException;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 
 /** Tracks the shard file creation progress. */
 public class DataSeenTracker {
@@ -24,13 +26,8 @@ public class DataSeenTracker {
   private String runId;
 
   public DataSeenTracker(
-      String spannerProjectId,
-      String metadataInstance,
-      String metadataDatabase,
-      String tableSuffix,
-      String runId) {
-    this.spannerDao =
-        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+      SpannerConfig spannerConfig, String tableSuffix, String runId, boolean isPostgres) {
+    this.spannerDao = new SpannerDao(spannerConfig, tableSuffix, isPostgres);
     this.runId = runId;
   }
 
@@ -47,7 +44,29 @@ public class DataSeenTracker {
     String orig = String.valueOf(nanos) + String.valueOf(seconds);
     StringBuilder reversedString = new StringBuilder(orig);
     String id = reversedString.reverse() + "_" + runId + "_" + shard;
-    this.spannerDao.updateDataSeen(id, shard, endTimestamp, runId);
+    boolean retry = true;
+    while (retry) {
+      try {
+        if (!this.spannerDao.doesIdExist(id)) {
+          this.spannerDao.updateDataSeen(id, shard, endTimestamp, runId);
+        }
+        retry = false;
+      } catch (SpannerException e) {
+        if (e.getMessage().contains("Already exists")
+            || e.getMessage().contains("ALREADY_EXISTS")) {
+          return;
+        } else if (e.getMessage().contains("DEADLINE_EXCEEDED")) {
+          try {
+            Thread.sleep(500);
+          } catch (java.lang.InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+          continue;
+        } else {
+          throw e;
+        }
+      }
+    }
   }
 
   public void close() {

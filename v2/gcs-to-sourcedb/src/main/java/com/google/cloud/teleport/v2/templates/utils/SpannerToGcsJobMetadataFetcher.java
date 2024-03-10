@@ -30,10 +30,16 @@ public class SpannerToGcsJobMetadataFetcher {
       String metadataInstance,
       String metadataDatabase,
       String tableSuffix,
-      String runId)
+      String runId,
+      boolean isMetadataDbPostgres)
       throws InterruptedException {
     SpannerDao spannerDao =
-        new SpannerDao(spannerProjectId, metadataInstance, metadataDatabase, tableSuffix);
+        new SpannerDao(
+            spannerProjectId,
+            metadataInstance,
+            metadataDatabase,
+            tableSuffix,
+            isMetadataDbPostgres);
 
     SpannerToGcsJobMetadata response = spannerDao.getSpannerToGcsJobMetadata(runId);
     while (response == null) {

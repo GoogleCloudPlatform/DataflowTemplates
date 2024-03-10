@@ -83,7 +83,8 @@ import org.slf4j.LoggerFactory;
       "A PostgreSQL database was seeded with the required schema.",
       "Network access between Dataflow workers and PostgreSQL is set up."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public class DataStreamToSQL {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSQL.class);

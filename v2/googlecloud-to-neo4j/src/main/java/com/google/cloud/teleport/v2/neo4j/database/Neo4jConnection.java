@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.database;
 
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import java.io.Serializable;
@@ -23,10 +24,12 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
+import org.neo4j.driver.Config;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
+import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.TransactionWork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,10 +44,14 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   private Session session;
 
   /** Constructor. */
-  public Neo4jConnection(ConnectionParams settings) {
+  public Neo4jConnection(ConnectionParams settings, String templateVersion) {
     this(
         settings.getDatabase(),
-        () -> GraphDatabase.driver(settings.getServerUrl(), settings.asAuthToken()));
+        () ->
+            GraphDatabase.driver(
+                settings.getServerUrl(),
+                settings.asAuthToken(),
+                Config.builder().withUserAgent(Neo4jTelemetry.userAgent(templateVersion)).build()));
   }
 
   @VisibleForTesting
@@ -69,9 +76,9 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   }
 
   /** Write transaction. */
-  public <T> T writeTransaction(TransactionWork<T> transactionWork) {
+  public <T> T writeTransaction(TransactionWork<T> transactionWork, TransactionConfig txConfig) {
     try (Session session = getSession()) {
-      return session.writeTransaction(transactionWork);
+      return session.writeTransaction(transactionWork, txConfig);
     }
   }
 
@@ -86,7 +93,8 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
           "Executing CREATE OR REPLACE DATABASE Cypher query: {} against database {}",
           cypher,
           database);
-      executeCypher(cypher, Map.of("db", database));
+      executeCypher(
+          cypher, Map.of("db", database), databaseResetMetadata("create-replace-database"));
     } catch (Exception ex) {
       fallbackResetDatabase(ex);
     }
@@ -97,8 +105,8 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
    *
    * @param cypher statement
    */
-  public void executeCypher(String cypher) {
-    executeCypher(cypher, Collections.emptyMap());
+  public void executeCypher(String cypher, TransactionConfig transactionConfig) {
+    executeCypher(cypher, Collections.emptyMap(), transactionConfig);
   }
 
   /**
@@ -106,9 +114,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
    *
    * @param cypher statement
    */
-  public void executeCypher(String cypher, Map<String, Object> parameters) {
+  public void executeCypher(
+      String cypher, Map<String, Object> parameters, TransactionConfig transactionConfig) {
     try (Session session = getSession()) {
-      session.run(cypher, parameters).consume();
+      session.run(cypher, parameters, transactionConfig).consume();
     }
   }
 
@@ -140,10 +149,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     try {
       String ddeCypher = "MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS";
       LOG.info("Executing alternative delete Cypher query: {}", ddeCypher);
-      executeCypher(ddeCypher);
+      executeCypher(ddeCypher, databaseResetMetadata("cit-detach-delete"));
       String constraintsDeleteCypher = "CALL apoc.schema.assert({}, {}, true)";
       LOG.info("Dropping indices & constraints with APOC: {}", constraintsDeleteCypher);
-      executeCypher(constraintsDeleteCypher);
+      executeCypher(constraintsDeleteCypher, databaseResetMetadata("apoc-schema-assert"));
     } catch (Exception exception) {
       exception.addSuppressed(initialException);
       LOG.error(
@@ -155,5 +164,12 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       Throwables.throwIfUnchecked(exception);
       throw new RuntimeException(exception);
     }
+  }
+
+  private static TransactionConfig databaseResetMetadata(String resetMethod) {
+    return TransactionConfig.builder()
+        .withMetadata(
+            Neo4jTelemetry.transactionMetadata(Map.of("sink", "neo4j", "step", resetMethod)))
+        .build();
   }
 }

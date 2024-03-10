@@ -580,5 +580,6 @@
     <module>structured-logging</module>
     <module>plaintext-logging</module>
     <module>python</module>
+    <module>yaml</module>
   </modules>
 </project>

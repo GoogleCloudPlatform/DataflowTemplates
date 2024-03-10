@@ -36,10 +36,8 @@ variable "region" {
 <#list parameters as variable>
 variable "${variable.name}" {
   type = ${variable.type?lower_case}
-  description = "${variable.description}"
-  <#if variable.defaultValue??>
-  <#if variable.type == "STRING">default = "${variable.defaultValue}"<#else>default = ${variable.defaultValue}</#if>
-  </#if>
+  description = ${variable.description}
+  <#if variable.defaultValue??>default = ${variable.defaultValue}</#if>
 }
 
 </#list>
@@ -130,7 +128,14 @@ variable "zone" {
 	default = null
 }
 
+resource "google_project_service" "required" {
+    service = "dataflow.googleapis.com"
+    disable_on_destroy = false
+}
+
 resource "google_dataflow_job" "generated" {
+    depends_on = [google_project_service.required]
+    provider = google
     template_gcs_path = "gs://dataflow-templates-${r"${var.region}"}/latest/${templateName}"
     parameters = {
     <#list parameters as variable>
@@ -152,5 +157,10 @@ resource "google_dataflow_job" "generated" {
 	subnetwork = var.subnetwork
 	temp_gcs_location = var.temp_gcs_location
 	zone = var.zone
+    region = var.region
+}
+
+output "dataflow_job_url" {
+    value = "https://console.cloud.google.com/dataflow/jobs/${r"${var.region}"}/${r"${"}google_dataflow_job.generated.job_id${r"}"}"
 }
 

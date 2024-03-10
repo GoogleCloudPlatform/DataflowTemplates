@@ -35,7 +35,6 @@ public class SourceMapper {
   public static Source fromJson(JSONObject sourceObj) {
     Source source = new Source();
     source.setName(sourceObj.getString("name"));
-    // TODO: avro, parquet, etc.
     source.setSourceType(
         sourceObj.has("type") ? SourceType.valueOf(sourceObj.getString("type")) : SourceType.text);
 

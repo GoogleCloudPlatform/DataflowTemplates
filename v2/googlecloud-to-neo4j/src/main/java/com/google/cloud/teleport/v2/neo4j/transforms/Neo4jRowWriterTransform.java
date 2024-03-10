@@ -21,8 +21,13 @@ import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
+import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
+import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
+import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Map;
 import java.util.Set;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -31,6 +36,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.neo4j.driver.TransactionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,21 +45,29 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jRowWriterTransform.class);
   private final JobSpec jobSpec;
-  private final ConnectionParams neoConnection;
   private final Target target;
+  private final SerializableSupplier<Neo4jConnection> connectionSupplier;
 
-  public Neo4jRowWriterTransform(JobSpec jobSpec, ConnectionParams neoConnection, Target target) {
+  public Neo4jRowWriterTransform(
+      JobSpec jobSpec, ConnectionParams neoConnection, String templateVersion, Target target) {
+    this(jobSpec, target, () -> new Neo4jConnection(neoConnection, templateVersion));
+  }
+
+  @VisibleForTesting
+  Neo4jRowWriterTransform(
+      JobSpec jobSpec, Target target, SerializableSupplier<Neo4jConnection> connectionSupplier) {
     this.jobSpec = jobSpec;
-    this.neoConnection = neoConnection;
     this.target = target;
+    this.connectionSupplier = connectionSupplier;
   }
 
   @NonNull
   @Override
   public PCollection<Row> expand(@NonNull PCollection<Row> input) {
     TargetType targetType = target.getType();
+    ReportedSourceType reportedSourceType = determineReportedSourceType();
     if (targetType != TargetType.custom_query) {
-      createIndicesAndConstraints();
+      createIndicesAndConstraints(reportedSourceType);
     }
 
     Config config = jobSpec.getConfig();
@@ -78,7 +92,14 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
 
     Neo4jBlockingUnwindFn neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
-            neoConnection, getCypherQuery(), batchSize, false, "rows", getRowCastingFunction());
+            reportedSourceType,
+            targetType,
+            getCypherQuery(),
+            batchSize,
+            false,
+            "rows",
+            getRowCastingFunction(),
+            connectionSupplier);
 
     return input
         .apply("Create KV pairs", CreateKvTransform.of(parallelism))
@@ -86,17 +107,37 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
         .setRowSchema(input.getSchema());
   }
 
-  private void createIndicesAndConstraints() {
+  private ReportedSourceType determineReportedSourceType() {
+    String sourceName = target.getSource();
+    Source source = jobSpec.getSources().get(sourceName);
+    return ReportedSourceType.reportedSourceTypeOf(source);
+  }
+
+  private void createIndicesAndConstraints(ReportedSourceType reportedSourceType) {
     Set<String> cyphers = generateIndexAndConstraints();
     if (cyphers.isEmpty()) {
       return;
     }
-    try (Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection)) {
+    try (Neo4jConnection neo4jDirectConnect = connectionSupplier.get()) {
       LOG.info("Adding {} indices and constraints", cyphers.size());
       for (String cypher : cyphers) {
         LOG.info("Executing cypher: {}", cypher);
         try {
-          neo4jDirectConnect.executeCypher(cypher);
+          TransactionConfig txConfig =
+              TransactionConfig.builder()
+                  .withMetadata(
+                      Neo4jTelemetry.transactionMetadata(
+                          Map.of(
+                              "sink",
+                              "neo4j",
+                              "source",
+                              reportedSourceType.format(),
+                              "target-type",
+                              target.getType().name(),
+                              "step",
+                              "init-schema")))
+                  .build();
+          neo4jDirectConnect.executeCypher(cypher, txConfig);
         } catch (Exception e) {
           LOG.error("Error executing cypher: {}, {}", cypher, e.getMessage());
         }

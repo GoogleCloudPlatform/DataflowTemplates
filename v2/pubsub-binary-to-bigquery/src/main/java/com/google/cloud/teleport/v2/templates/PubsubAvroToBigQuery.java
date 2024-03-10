@@ -35,6 +35,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.schemas.transforms.Convert;
@@ -69,7 +70,8 @@ import org.apache.beam.sdk.values.Row;
       "The unprocessed Pub/Sub topic must exist.",
       "The output BigQuery dataset must exist."
     },
-    streaming = true)
+    streaming = true,
+    supportsAtLeastOnce = true)
 public final class PubsubAvroToBigQuery {
   /**
    * Validates input flags and executes the Dataflow pipeline.
@@ -105,6 +107,23 @@ public final class PubsubAvroToBigQuery {
     String getSchemaPath();
 
     void setSchemaPath(String schemaPath);
+
+    // Hide the UseStorageWriteApiAtLeastOnce in the UI, because it will automatically be turned
+    // on when pipeline is running on ALO mode and using the Storage Write API
+    @TemplateParameter.Boolean(
+        order = 2,
+        optional = true,
+        description = "Use at at-least-once semantics in BigQuery Storage Write API",
+        helpText =
+            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
+                + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
+                + " exactly-once semantics will be used.",
+        hiddenUi = true)
+    @Default.Boolean(false)
+    @Override
+    Boolean getUseStorageWriteApiAtLeastOnce();
+
+    void setUseStorageWriteApiAtLeastOnce(Boolean value);
   }
 
   /**
