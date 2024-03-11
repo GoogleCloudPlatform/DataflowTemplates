@@ -658,7 +658,6 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
 
   private void assertAllDatatypeColumns2TableCdcContents() {
     List<Map<String, Object>> events = new ArrayList<>();
-
     Map<String, Object> row = new HashMap<>();
     row.put("varchar_column", "value1");
     row.put("tinyint_column", 15);
