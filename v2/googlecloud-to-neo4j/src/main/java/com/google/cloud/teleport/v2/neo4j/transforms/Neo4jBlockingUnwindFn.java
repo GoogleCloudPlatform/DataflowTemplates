@@ -77,7 +77,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
   @ProcessElement
   public void processElement(ProcessContext context) {
     KV<Integer, Iterable<Row>> rowBatch = context.element();
-    LOG.info("Processing row batch from key: {}", rowBatch.getKey());
+    LOG.debug("Processing row batch from key: {}", rowBatch.getKey());
 
     Iterable<Row> rows = rowBatch.getValue();
     rows.forEach(row -> parameters.add(parametersFunction.apply(row)));
@@ -99,7 +99,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
 
     if (logCypher && !loggingDone) {
       String parametersString = getParametersString(parametersMap);
-      LOG.info(
+      LOG.debug(
           "Starting a write transaction for unwind statement cypher: "
               + cypher
               + ", parameters: "
