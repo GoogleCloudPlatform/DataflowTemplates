@@ -22,7 +22,11 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.schemas.logicaltypes.*;
+import org.apache.beam.sdk.schemas.logicaltypes.Date;
+import org.apache.beam.sdk.schemas.logicaltypes.DateTime;
+import org.apache.beam.sdk.schemas.logicaltypes.NanosDuration;
+import org.apache.beam.sdk.schemas.logicaltypes.NanosInstant;
+import org.apache.beam.sdk.schemas.logicaltypes.Time;
 import org.apache.commons.lang3.StringUtils;
 
 /** Utilities for organizing Bean rows and schema. */
