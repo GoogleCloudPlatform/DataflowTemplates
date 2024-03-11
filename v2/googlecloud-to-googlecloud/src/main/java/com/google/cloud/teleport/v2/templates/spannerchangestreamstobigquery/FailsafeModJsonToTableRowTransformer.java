@@ -167,14 +167,20 @@ public final class FailsafeModJsonToTableRowTransformer {
 
       @Setup
       public void setUp() {
-        Dialect dialect = getDialect(spannerConfig);
-        spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-        spannerTableByName =
-            new SpannerChangeStreamsUtils(
-                    spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
-                .getSpannerTableByName();
-        setUpCallContextConfigurator();
-        seenException = false;
+        try {
+          Dialect dialect = getDialect(spannerConfig);
+          spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+          spannerTableByName =
+              new SpannerChangeStreamsUtils(
+                      spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
+                  .getSpannerTableByName();
+          setUpCallContextConfigurator();
+          seenException = false;
+        } catch (Exception e) {
+          String errorMessage = "Caught exception when querying Spanner information schema";
+          LOG.error(String.format("%s, exception: {}", errorMessage, e));
+          throw e;
+        }
       }
 
       @Teardown
@@ -219,8 +225,9 @@ public final class FailsafeModJsonToTableRowTransformer {
         } catch (JsonProcessingException e) {
           String errorMessage =
               String.format(
-                  "error parsing modJsonString input into %s; %s",
-                  ObjectNode.class, deadLetterMessage);
+                  "error parsing modJsonString input into %s; %s, input: %s",
+                  ObjectNode.class, deadLetterMessage, modJsonString);
+          LOG.error(String.format("exception: {}, error message: {}", e, errorMessage));
           throw new RuntimeException(errorMessage, e);
         }
         for (String excludeFieldName : BigQueryUtils.getBigQueryIntermediateMetadataFieldNames()) {
@@ -235,12 +242,24 @@ public final class FailsafeModJsonToTableRowTransformer {
         } catch (IOException e) {
           String errorMessage =
               String.format(
-                  "error converting %s to %s; %s", ObjectNode.class, Mod.class, deadLetterMessage);
+                  "error converting %s to %s; %s, input: %s",
+                  ObjectNode.class, Mod.class, deadLetterMessage, modObjectNode.toString());
+          LOG.error(String.format("exception: {}, error message: {}", e, errorMessage));
           throw new RuntimeException(errorMessage, e);
         }
+
         String spannerTableName = mod.getTableName();
-        TrackedSpannerTable spannerTable =
-            checkStateNotNull(spannerTableByName.get(spannerTableName));
+        TrackedSpannerTable spannerTable = null;
+        try {
+          spannerTable = checkStateNotNull(spannerTableByName.get(spannerTableName));
+        } catch (IllegalStateException e) {
+          String errorMessage =
+              String.format(
+                  "Failed to retrieve spanner table %s; %s, input: %s",
+                  spannerTableName, deadLetterMessage, mod.toString());
+          LOG.error(String.format("exception: {}, error message: {}", e, errorMessage));
+          throw new RuntimeException(errorMessage, e);
+        }
         com.google.cloud.Timestamp spannerCommitTimestamp =
             com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
                 mod.getCommitTimestampSeconds(), mod.getCommitTimestampNanos());
@@ -261,8 +280,15 @@ public final class FailsafeModJsonToTableRowTransformer {
           if (keysJsonObject.has(spannerColumnName)) {
             tableRow.set(spannerColumnName, keysJsonObject.get(spannerColumnName));
           } else {
-            throw new IllegalArgumentException(
-                "Cannot find value for key column " + spannerColumnName);
+            String errorMessage =
+                String.format(
+                    "Cannot find value for key column %s in table %s; %s, input: %s",
+                    spannerColumnName,
+                    spannerTable.getTableName(),
+                    deadLetterMessage,
+                    keysJsonObject.toString());
+            LOG.error(errorMessage);
+            throw new IllegalArgumentException(errorMessage);
           }
         }
 
@@ -301,8 +327,15 @@ public final class FailsafeModJsonToTableRowTransformer {
           if (keysJsonObject.has(spannerColumnName)) {
             SpannerChangeStreamsUtils.appendToSpannerKey(spannerColumn, keysJsonObject, keyBuilder);
           } else {
-            throw new IllegalArgumentException(
-                "Cannot find value for key column " + spannerColumnName);
+            String errorMessage =
+                String.format(
+                    "Cannot find value for key column %s in table %s; %s, input: %s",
+                    spannerColumnName,
+                    spannerTable.getTableName(),
+                    deadLetterMessage,
+                    keysJsonObject.toString());
+            LOG.error(errorMessage);
+            throw new IllegalArgumentException(errorMessage);
           }
         }
 
