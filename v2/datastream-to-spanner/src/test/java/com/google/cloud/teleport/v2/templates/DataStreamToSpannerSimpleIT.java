@@ -241,7 +241,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void migrationTestWithAllDatatypeConversions() {
+  public void migrationTestWithAllDatatypeDefaultMapping() {
     // Construct a ChainedConditionCheck with 4 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
@@ -294,7 +294,7 @@ public class DataStreamToSpannerSimpleIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void migrationTestWithAllDatatypeMappings() {
+  public void migrationTestWithAllDatatypeConversionMapping() {
     // Construct a ChainedConditionCheck with 4 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
