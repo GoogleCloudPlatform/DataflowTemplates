@@ -148,7 +148,6 @@ public class DataConversionIT extends TemplateTestBase {
 
   @SuppressWarnings("unchecked")
   @Test
-  // FIXME: fix temporal value conversions, duration, byte arrays and potentially doubles
   public void supportsMappedTypesForInlineCSV() throws Exception {
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/data-conversion/inlinecsv-spec.json"));
