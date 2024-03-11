@@ -91,7 +91,12 @@ public class DataConversionIT extends TemplateTestBase {
                 Field.newBuilder("date", StandardSQLTypeName.DATE).build(),
                 Field.newBuilder("time", StandardSQLTypeName.TIME).build(),
                 Field.newBuilder("datetime", StandardSQLTypeName.DATETIME).build(),
-                Field.newBuilder("timestamp", StandardSQLTypeName.TIMESTAMP).build()));
+                Field.newBuilder("timestamp", StandardSQLTypeName.TIMESTAMP).build(),
+                // This is currently mapped in the spec file as a STRING just for ensuring the field
+                // is mapped. Property mappings for BQ sources do not enforce type conversion.
+                Field.newBuilder("array_of_int64", StandardSQLTypeName.INT64)
+                    .setMode(Field.Mode.REPEATED)
+                    .build()));
     Map<String, Object> sourceRow = new HashMap<>();
     sourceRow.put("bool", true);
     sourceRow.put("int64", 10L);
@@ -105,6 +110,7 @@ public class DataConversionIT extends TemplateTestBase {
     sourceRow.put("time", "12:13:14.123456");
     sourceRow.put("datetime", "2019-02-17 11:24:02.234567");
     sourceRow.put("timestamp", "2019-02-17 11:24:01.123456Z");
+    sourceRow.put("array_of_int64", new long[] {1, 2, 3, 4, 5, 6, 7});
     bigQueryClient.write(testName, List.of(RowToInsert.of(sourceRow)));
     gcsClient.createArtifact("spec.json", contentOf("/testing-specs/data-conversion/bq-spec.json"));
     gcsClient.createArtifact(
@@ -139,6 +145,55 @@ public class DataConversionIT extends TemplateTestBase {
     expectedRow.put("datetime", LocalDateTime.of(2019, 2, 17, 11, 24, 2, 234567000));
     expectedRow.put(
         "timestamp", ZonedDateTime.of(2019, 2, 17, 11, 24, 1, 123000000, ZoneOffset.UTC));
+    expectedRow.put("array_of_int64", List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L));
+    assertThatPipeline(info).isRunning();
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(createConfig(info), generateChecks(expectedRow)))
+        .meetsConditions();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  public void supportBigQueryMapsForCypherTarget() throws Exception {
+    TableId table =
+        bigQueryClient.createTable(
+            testName,
+            Schema.of(
+                Field.newBuilder(
+                        "map_column",
+                        StandardSQLTypeName.STRUCT,
+                        Field.newBuilder("name", StandardSQLTypeName.STRING).build(),
+                        Field.newBuilder("age", StandardSQLTypeName.INT64).build())
+                    .build()));
+    Map<String, Object> sourceRow = new HashMap<>();
+    sourceRow.put("map_column", Map.of("name", "john", "age", 24));
+    bigQueryClient.write(testName, List.of(RowToInsert.of(sourceRow)));
+    gcsClient.createArtifact(
+        "spec.json", contentOf("/testing-specs/data-conversion/bq-spec-map.json"));
+    gcsClient.createArtifact(
+        "neo4j.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"))
+            .addParameter(
+                "optionsJson", String.format("{\"bqtable\": \"%s\"}", toTableSpecStandard(table)));
+    LaunchInfo info = launchTemplate(options);
+
+    Map<String, Object> expectedRow = new HashMap<>();
+    expectedRow.put("name", "john");
+    expectedRow.put("age", 24L);
     assertThatPipeline(info).isRunning();
     assertThatResult(
             pipelineOperator()
@@ -167,6 +222,59 @@ public class DataConversionIT extends TemplateTestBase {
         LaunchConfig.builder(testName, specPath)
             .addParameter("jobSpecUri", getGcsPath("spec.json"))
             .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"));
+    LaunchInfo info = launchTemplate(options);
+
+    Map<String, Object> expectedRow = new HashMap<>();
+    expectedRow.put("int64", 50L);
+    expectedRow.put("float64", 40.0D);
+    expectedRow.put("string", "a string");
+    expectedRow.put(
+        "datetime_zone",
+        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneId.of("Europe/Istanbul"))
+            .toOffsetDateTime()
+            .atZoneSameInstant(ZoneOffset.UTC));
+    expectedRow.put(
+        "datetime_offset",
+        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneOffset.ofHours(3))
+            .toOffsetDateTime()
+            .atZoneSameInstant(ZoneOffset.UTC));
+    expectedRow.put("boolean", true);
+    expectedRow.put("bytes", "Hello World".getBytes(StandardCharsets.UTF_8));
+    assertThatPipeline(info).isRunning();
+
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(createConfig(info), generateChecks(expectedRow)))
+        .meetsConditions();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  public void supportsMappedTypesForExternalCSV() throws Exception {
+    gcsClient.createArtifact(
+        "external.csv", contentOf("/testing-specs/data-conversion/external.csv"));
+    gcsClient.createArtifact(
+        "spec.json", contentOf("/testing-specs/data-conversion/externalcsv-spec.json"));
+    gcsClient.createArtifact(
+        "neo4j.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"))
+            .addParameter(
+                "optionsJson",
+                String.format("{\"externalcsvuri\": \"%s\"}", getGcsPath("external.csv")));
+
     LaunchInfo info = launchTemplate(options);
 
     Map<String, Object> expectedRow = new HashMap<>();

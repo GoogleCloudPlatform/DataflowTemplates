@@ -1,0 +1,16 @@
+{
+  "source": {
+    "type": "bigquery",
+    "name": "data",
+    "query": "SELECT `map_column` FROM $bqtable"
+  },
+  "targets": [
+    {
+      "custom_query": {
+        "name": "Query",
+        "source": "data",
+        "query": "UNWIND $rows AS row CREATE (n:Node) SET n = row.map_column"
+      }
+    }
+  ]
+}

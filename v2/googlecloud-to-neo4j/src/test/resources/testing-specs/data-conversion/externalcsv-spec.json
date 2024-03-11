@@ -1,8 +1,9 @@
 {
   "source": {
-    "type": "bigquery",
+    "type": "text",
     "name": "data",
-    "query": "SELECT `bool`, `int64`, `float64`, `numeric`, `string`, `bytes`, `timestamp`, `time`, `datetime`, `date`, `array_of_int64` FROM $bqtable"
+    "ordered_field_names": "int64,float64,string,datetime_zone,datetime_offset,boolean,bytes",
+    "uri": "$externalcsvuri"
   },
   "targets": [
     {
@@ -17,27 +18,23 @@
               "int64"
             ],
             "booleans": [
-              "bool"
-            ],
-            "bytearrays": [
-              "bytes"
-            ],
-            "dates": [
-              "time",
-              "datetime",
-              "timestamp",
-              "date"
+              "boolean"
             ],
             "doubles": [
-              "float64",
-              "numeric"
+              "float64"
             ],
             "longs": [
               "int64"
             ],
             "strings": [
-              "string",
-              "array_of_int64"
+              "string"
+            ],
+            "bytearrays": [
+              "bytes"
+            ],
+            "dates": [
+              "datetime_zone",
+              "datetime_offset"
             ]
           }
         }
