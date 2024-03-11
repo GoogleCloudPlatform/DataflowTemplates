@@ -26,11 +26,23 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.Timestamp;
-import com.google.cloud.spanner.*;
+import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.*;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
 import com.google.cloud.teleport.v2.spanner.type.Type;
@@ -50,7 +62,13 @@ import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
@@ -212,7 +230,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         verifyTableInSession(tableName);
         changeEvent = transformChangeEventViaSessionFile(changeEvent);
       }
+      LOG.info("Reaching here 1");
       changeEvent = transformChangeEventData(changeEvent, spannerAccessor.getDatabaseClient(), ddl);
+      LOG.info("Reaching here 2");
       if (datastreamToSpannerTransformation != null) {
         Map<String, Object> sourceRecord = getSourceRecord(changeEvent, tableName);
         LOG.info("Source record parsed: " + sourceRecord);
@@ -308,6 +328,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         retryableErrors.inc();
       }
     } catch (Exception e) {
+      LOG.info("Exception " + e);
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
       failedEvents.inc();
@@ -369,6 +390,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       String columnName = schema.getSrcSchema().get(tableName).getColDefs().get(columnId).getName();
       Object columnValue;
       switch (columnType.getName().toLowerCase()) {
+        case "int":
+          columnValue =
+              Value.int64(ChangeEventTypeConvertor.toLong(changeEvent, columnName, false));
+          break;
         case "string":
         case "varchar":
           columnValue =
