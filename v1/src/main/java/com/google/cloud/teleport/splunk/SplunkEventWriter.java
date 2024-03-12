@@ -334,8 +334,8 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
         FAILED_WRITES.inc(countState.read());
         INVALID_REQUESTS.inc();
 
-        logWriteFailures(countState, 0, ioe.getMessage(), null);
-        flushWriteFailures(events, ioe.getMessage(), null, receiver);
+        logWriteFailures(countState, 0, ioe.toString(), null);
+        flushWriteFailures(events, ioe.toString(), null, receiver);
 
       } finally {
         // States are cleared regardless of write success or failure since we
