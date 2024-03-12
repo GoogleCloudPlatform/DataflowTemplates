@@ -88,13 +88,13 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Test -->
+        <!-- hamcrest is a transitive dependency for beam-io-gcp and also needed in test -->
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest</artifactId>
             <version>${hamcrest.version}</version>
-            <scope>test</scope>
         </dependency>
+        <!-- Test -->
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest-core</artifactId>

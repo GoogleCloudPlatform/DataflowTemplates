@@ -26,7 +26,7 @@ WORKDIR $WORKDIR
 ENV DATAFLOW_JAVA_COMMAND_SPEC=${commandSpec}
 ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt
 
-ENV SITE_PACKAGES=/root/.apache_beam/cache/venvs/py-3.11-beam-2.54.0-da39a3ee5e6b4b0d3255bfef95601890afd80709
+ENV SITE_PACKAGES=/root/.apache_beam/cache/venvs/py-3.11-beam
 RUN python -m venv $SITE_PACKAGES
 
 # pip install dependencies and cache wheels
