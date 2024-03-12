@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
+import com.google.cloud.teleport.v2.neo4j.logicaltypes.IsoDateTime;
 import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
@@ -25,7 +26,6 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.logicaltypes.Date;
 import org.apache.beam.sdk.schemas.logicaltypes.DateTime;
 import org.apache.beam.sdk.schemas.logicaltypes.NanosDuration;
-import org.apache.beam.sdk.schemas.logicaltypes.NanosInstant;
 import org.apache.beam.sdk.schemas.logicaltypes.Time;
 import org.apache.commons.lang3.StringUtils;
 
@@ -63,7 +63,7 @@ public class BeamUtils {
       } else if (mapping.getType() == PropertyType.Double) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DOUBLE);
       } else if (mapping.getType() == PropertyType.Float) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.FLOAT);
+        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DOUBLE);
       } else if (mapping.getType() == PropertyType.Boolean) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.BOOLEAN);
       } else if (mapping.getType() == PropertyType.ByteArray) {
@@ -80,7 +80,7 @@ public class BeamUtils {
             Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new DateTime()));
       } else if (mapping.getType() == PropertyType.DateTime) {
         schemaField =
-            Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new NanosInstant()));
+            Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new IsoDateTime()));
       } else if (mapping.getType() == PropertyType.LocalTime) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new Time()));
       } else if (mapping.getType() == PropertyType.Time) {

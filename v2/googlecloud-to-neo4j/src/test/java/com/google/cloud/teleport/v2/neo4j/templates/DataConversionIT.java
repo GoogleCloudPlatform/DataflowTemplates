@@ -239,14 +239,10 @@ public class DataConversionIT extends TemplateTestBase {
     expectedRow.put("string", "a string");
     expectedRow.put(
         "datetime_zone",
-        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneId.of("Europe/Istanbul"))
-            .toOffsetDateTime()
-            .atZoneSameInstant(ZoneOffset.UTC));
+        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneId.of("Europe/Istanbul")));
     expectedRow.put(
         "datetime_offset",
-        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneOffset.ofHours(3))
-            .toOffsetDateTime()
-            .atZoneSameInstant(ZoneOffset.UTC));
+        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneOffset.ofHours(3)));
     expectedRow.put("boolean", true);
     expectedRow.put("bytes", "Hello World".getBytes(StandardCharsets.UTF_8));
     assertThatPipeline(info).isRunning();
@@ -292,14 +288,10 @@ public class DataConversionIT extends TemplateTestBase {
     expectedRow.put("string", "a string");
     expectedRow.put(
         "datetime_zone",
-        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneId.of("Europe/Istanbul"))
-            .toOffsetDateTime()
-            .atZoneSameInstant(ZoneOffset.UTC));
+        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneId.of("Europe/Istanbul")));
     expectedRow.put(
         "datetime_offset",
-        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneOffset.ofHours(3))
-            .toOffsetDateTime()
-            .atZoneSameInstant(ZoneOffset.UTC));
+        ZonedDateTime.of(2020, 5, 1, 23, 59, 59, 999999999, ZoneOffset.ofHours(3)));
     expectedRow.put("boolean", true);
     expectedRow.put("bytes", "Hello World".getBytes(StandardCharsets.UTF_8));
     assertThatPipeline(info).isRunning();
