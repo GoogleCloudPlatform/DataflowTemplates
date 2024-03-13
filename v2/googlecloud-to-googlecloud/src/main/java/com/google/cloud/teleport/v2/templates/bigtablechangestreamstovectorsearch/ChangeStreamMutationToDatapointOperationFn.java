@@ -17,13 +17,12 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstovectorsear
 
 import com.google.cloud.aiplatform.v1.IndexDatapoint;
 import com.google.cloud.bigtable.data.v2.models.*;
+import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
 
 /**
  * The {@link ChangeStreamMutationToDatapointOperationFn} class is a {@link DoFn} that takes in a
@@ -38,7 +37,7 @@ public class ChangeStreamMutationToDatapointOperationFn
   public static final TupleTag<String> RemoveDatapointTag = new TupleTag<String>() {};
 
   private static final Logger LOG =
-          LoggerFactory.getLogger(ChangeStreamMutationToDatapointOperationFn.class);
+      LoggerFactory.getLogger(ChangeStreamMutationToDatapointOperationFn.class);
 
   private String embeddingsColumn; // "family_name:qualifier"
   private String embeddingsColumnFamilyName; // "family_name" extracted from embeddingsColumn
@@ -49,7 +48,6 @@ public class ChangeStreamMutationToDatapointOperationFn
   private Map<String, String> intNumericRestrictsMappings;
   private Map<String, String> floatNumericRestrictsMappings;
   private Map<String, String> doubleNumericRestrictsMappings;
-
 
   public ChangeStreamMutationToDatapointOperationFn(
       String embeddingsColumn,
@@ -64,7 +62,8 @@ public class ChangeStreamMutationToDatapointOperationFn
     {
       String[] parts = embeddingsColumn.split(":", 2);
       if (parts.length != 2) {
-        throw new IllegalArgumentException("Invalid embeddingsColumn - should be in the form \"family:qualifier\"");
+        throw new IllegalArgumentException(
+            "Invalid embeddingsColumn - should be in the form \"family:qualifier\"");
       }
 
       this.embeddingsColumn = embeddingsColumn;
@@ -104,16 +103,22 @@ public class ChangeStreamMutationToDatapointOperationFn
 
   private void processInsert(ChangeStreamMutation mutation, MultiOutputReceiver output) {
     IndexDatapoint.Builder datapointBuilder = IndexDatapoint.newBuilder();
-    datapointBuilder.setDatapointId(mutation.getRowKey().toStringUtf8());
+    var datapointId = mutation.getRowKey().toStringUtf8();
+    if (datapointId.isEmpty()) {
+      LOG.info("Have a mutation with no rowkey");
+      return;
+    }
+
+    datapointBuilder.setDatapointId(datapointId);
 
     for (Entry entry : mutation.getEntries()) {
-      LOG.debug("Processing {}", entry);
+      LOG.info("Processing {}", entry);
 
       // We're only interested in SetCell mutations; everything else should be ignored
       if (!(entry instanceof SetCell)) continue;
 
       SetCell m = (SetCell) entry;
-      LOG.debug("Have value {}", m.getValue());
+      LOG.info("Have value {}", m.getValue());
 
       var family = m.getFamilyName();
       var qualifier = m.getQualifier().toStringUtf8();
@@ -126,10 +131,8 @@ public class ChangeStreamMutationToDatapointOperationFn
 
         datapointBuilder.addAllFeatureVector(floats);
       } else if (col.equals(crowdingTagColumn)) {
-        datapointBuilder
-            .getCrowdingTagBuilder()
-            .setCrowdingAttribute(m.getValue().toStringUtf8())
-            .build();
+        LOG.info("Setting crowding tag {}", m.getValue().toStringUtf8());
+        datapointBuilder.getCrowdingTagBuilder().setCrowdingAttribute("abc").build();
       } else if ((mappedColumn = allowRestrictsMappings.get(col)) != null) {
         // TODO(meagar): - is addAllowList_Bytes_ the right thing here?
         datapointBuilder
@@ -167,28 +170,47 @@ public class ChangeStreamMutationToDatapointOperationFn
       }
     }
 
-    LOG.debug("Emitting an upsert datapoint");
+    LOG.info("Emitting an upsert datapoint");
     output.get(UpsertDatapointTag).output(datapointBuilder.build());
   }
 
   private void processDelete(ChangeStreamMutation mutation, MultiOutputReceiver output) {
-    LOG.debug("Handling mutation as a deletion");
+    LOG.info("Handling mutation as a deletion");
 
-    Boolean isDelete = mutation.getEntries().stream().anyMatch((entry) -> {
-      // Each deletion may come in as one or more DeleteCells mutations, or one more or DeleteFamily mutations
-      // As soon as we find a DeleteCells that covers the fully qualified embeddings column, _or_ a DeleteFamily that
-      // covers the embeddings column's family, we treat the mutation as a deletion of the Datapoint.
-      if (entry instanceof DeleteCells) {
-        DeleteCells m = (DeleteCells)entry;
-        return (m.getFamilyName() + ":" + m.getQualifier() == this.embeddingsColumn);
-      } else if (entry instanceof DeleteFamily) {
-        DeleteFamily m = (DeleteFamily)entry;
-        return (m.getFamilyName() == this.embeddingsColumnFamilyName);
-      }
+    Boolean isDelete =
+        mutation.getEntries().stream()
+            .anyMatch(
+                (entry) -> {
+                  // Each deletion may come in as one or more DeleteCells mutations, or one more or
+                  // DeleteFamily mutations
+                  // As soon as we find a DeleteCells that covers the fully qualified embeddings
+                  // column, _or_ a DeleteFamily that
+                  // covers the embeddings column's family, we treat the mutation as a deletion of
+                  // the Datapoint.
+                  if (entry instanceof DeleteCells) {
+                    LOG.info("Have a DeleteCells");
+                    DeleteCells m = (DeleteCells) entry;
+                    LOG.info("Have embeddings col {}", this.embeddingsColumn);
+                    LOG.info("Have computed {}", m.getFamilyName() + ":" + m.getQualifier());
 
-      return false;
-    });
+                    Boolean match =
+                        (m.getFamilyName() + ":" + m.getQualifier()).matches(this.embeddingsColumn);
+                    LOG.info("Match: {}", match);
+                    return match;
+                  } else if (entry instanceof DeleteFamily) {
+                    LOG.info("Have a DeleteFamily");
+                    DeleteFamily m = (DeleteFamily) entry;
+                    LOG.info("Have family name {}", m.getFamilyName());
+                    LOG.info("have stored family name {}", this.embeddingsColumnFamilyName);
+                    Boolean match = m.getFamilyName().matches(this.embeddingsColumnFamilyName);
+                    LOG.info("Have match {}", match);
+                    return match;
+                  }
 
+                  return false;
+                });
+
+    LOG.info("Have isDeleted {}", isDelete);
     if (isDelete) {
       String rowkey = mutation.getRowKey().toStringUtf8();
       LOG.info("Emitting a remove datapoint: {}", rowkey);
