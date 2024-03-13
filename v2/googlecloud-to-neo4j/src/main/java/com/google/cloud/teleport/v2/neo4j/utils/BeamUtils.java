@@ -15,12 +15,18 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
+import com.google.cloud.teleport.v2.neo4j.logicaltypes.IsoDateTime;
 import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
+import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.logicaltypes.Date;
+import org.apache.beam.sdk.schemas.logicaltypes.DateTime;
+import org.apache.beam.sdk.schemas.logicaltypes.NanosDuration;
+import org.apache.beam.sdk.schemas.logicaltypes.Time;
 import org.apache.commons.lang3.StringUtils;
 
 /** Utilities for organizing Bean rows and schema. */
@@ -33,6 +39,10 @@ public class BeamUtils {
     // Map these fields to a schema in a row
     for (int i = 0; i < target.getMappings().size(); i++) {
       Mapping mapping = target.getMappings().get(i);
+      if (mapping.getRole() == RoleType.type || mapping.getRole() == RoleType.label) {
+        continue;
+      }
+
       String fieldName = "";
       if (StringUtils.isNotBlank(mapping.getField())) {
         fieldName = mapping.getField();
@@ -50,10 +60,10 @@ public class BeamUtils {
       if (mapping.getType() == PropertyType.Integer || mapping.getType() == PropertyType.Long) {
         // avoid truncation by making it long
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.INT64);
-      } else if (mapping.getType() == PropertyType.BigDecimal) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DECIMAL);
+      } else if (mapping.getType() == PropertyType.Double) {
+        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DOUBLE);
       } else if (mapping.getType() == PropertyType.Float) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.FLOAT);
+        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DOUBLE);
       } else if (mapping.getType() == PropertyType.Boolean) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.BOOLEAN);
       } else if (mapping.getType() == PropertyType.ByteArray) {
@@ -61,17 +71,20 @@ public class BeamUtils {
       } else if (mapping.getType() == PropertyType.Point) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.STRING);
       } else if (mapping.getType() == PropertyType.Duration) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DECIMAL);
+        schemaField =
+            Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new NanosDuration()));
       } else if (mapping.getType() == PropertyType.Date) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
+        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new Date()));
       } else if (mapping.getType() == PropertyType.LocalDateTime) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
+        schemaField =
+            Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new DateTime()));
       } else if (mapping.getType() == PropertyType.DateTime) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
+        schemaField =
+            Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new IsoDateTime()));
       } else if (mapping.getType() == PropertyType.LocalTime) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
+        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new Time()));
       } else if (mapping.getType() == PropertyType.Time) {
-        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.STRING);
+        schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.logicalType(new Time()));
       } else {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.STRING);
       }
