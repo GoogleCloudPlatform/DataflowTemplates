@@ -183,4 +183,16 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getIgnoreColumns();
 
   void setIgnoreColumns(String value);
+
+  @TemplateParameter.Text(
+      order = 15,
+      optional = true,
+      description = "Maximum number of connections to Source database per worker",
+      helpText =
+          "Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. Default value is 100.",
+      example = "-1")
+  @Default.Integer(100)
+  Integer getMaxConnections();
+
+  void setMaxConnections(Integer value);
 }
