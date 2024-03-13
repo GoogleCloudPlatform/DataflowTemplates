@@ -179,6 +179,11 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     SubscriptionName subscription =
         createPubsubResources(identifierSuffix, pubsubResourceManager, gcsPrefix);
 
+    String dlqGcsPrefix =
+        getGcsPath(gcsPathPrefix + "/dlq/").replace("gs://" + artifactBucketName, "");
+    SubscriptionName dlqSubscription =
+        createPubsubResources(identifierSuffix + "dlq", pubsubResourceManager, dlqGcsPrefix);
+
     // default parameters
     Map<String, String> params =
         new HashMap<>() {
@@ -194,6 +199,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
             put("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix + "/dlq/"));
             put("sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json"));
             put("gcsPubSubSubscription", subscription.toString());
+            put("dlqGcsPubSubSubscription", dlqSubscription.toString());
             put("datastreamSourceType", "mysql");
             put("inputFileFormat", "avro");
           }
