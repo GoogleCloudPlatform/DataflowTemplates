@@ -47,7 +47,6 @@ public class IsoDateTime implements Schema.LogicalType<TemporalAccessor, String>
     return "";
   }
 
-  //
   @Override
   public Schema.FieldType getBaseType() {
     return Schema.FieldType.STRING;
