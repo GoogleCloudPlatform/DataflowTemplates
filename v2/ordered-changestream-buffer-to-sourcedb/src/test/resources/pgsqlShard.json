@@ -1,0 +1,18 @@
+[
+  {
+  "logicalShardId":"shardC",
+  "host":"hostShardC",
+  "user":"test",
+  "password":"test",
+  "port":"5432",
+  "dbName":"test"
+  },
+ {
+  "logicalShardId":"shardD",
+  "host":"hostShardD",
+  "user":"test",
+  "password":"test",
+  "port":"5432",
+  "dbName":"test"
+   }
+]

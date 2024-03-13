@@ -18,7 +18,9 @@ package com.google.cloud.teleport.v2.templates.processing.handler;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
+import com.google.cloud.teleport.v2.templates.dao.PostgreSqlDao;
 import com.google.cloud.teleport.v2.templates.processing.dml.DMLGenerator;
+import com.google.cloud.teleport.v2.templates.processing.dml.PostgreSQLDMLGenerator;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -34,6 +36,71 @@ import org.slf4j.LoggerFactory;
 public class InputRecordProcessor {
 
   private static final Logger LOG = LoggerFactory.getLogger(InputRecordProcessor.class);
+
+  public static void processRecords(
+      List<String> recordList,
+      Schema schema,
+      PostgreSqlDao dao,
+      String shardId,
+      String sourceDbTimezoneOffset) {
+
+    try {
+      boolean capturedlagMetric = false;
+      long replicationLag = 0L;
+      Counter numRecProcessedMetric =
+          Metrics.counter(shardId, "numberOfRecordsProcessed_" + shardId);
+      Distribution lagMetric = Metrics.distribution(shardId, "replicationLagInSeconds_" + shardId);
+
+      List<String> dmlBatch = new ArrayList<>();
+      for (String s : recordList) {
+        List<String> parsedValues = parseRecord(s);
+        String tableName = parsedValues.get(0);
+        String keysJsonStr = parsedValues.get(1);
+        String newValuesJsonStr = parsedValues.get(2);
+        String modType = parsedValues.get(3);
+        String commitTs = parsedValues.get(4);
+
+        JSONObject newValuesJson = new JSONObject(newValuesJsonStr);
+        JSONObject keysJson = new JSONObject(keysJsonStr);
+
+        String dmlStatement =
+            DMLGenerator.getDMLStatement(
+                modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
+        if (!dmlStatement.isEmpty()) {
+          dmlBatch.add(dmlStatement);
+        }
+        if (!capturedlagMetric) {
+          /*
+          The commit timestamp of the first record is chosen for lag calculation
+          Since the last record may have commit timestamp which might repeat for the
+          next iteration of messages */
+          capturedlagMetric = true;
+          Instant instTime = Instant.now();
+          Instant commitTsInst = Timestamp.parseTimestamp(commitTs).toSqlTimestamp().toInstant();
+          replicationLag = ChronoUnit.SECONDS.between(commitTsInst, instTime);
+        }
+      }
+
+      Instant daoStartTime = Instant.now();
+      dao.batchWrite(dmlBatch);
+      Instant daoEndTime = Instant.now();
+      LOG.info(
+          "Shard "
+              + shardId
+              + ": Write to PostgreSQL for "
+              + recordList.size()
+              + " took : "
+              + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)
+              + " milliseconds ");
+
+      numRecProcessedMetric.inc(recordList.size()); // update the number of records processed metric
+
+      lagMetric.update(replicationLag); // update the lag metric
+
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to process records: " + e.getMessage());
+    }
+  }
 
   public static void processRecords(
       List<String> recordList,
@@ -62,7 +129,7 @@ public class InputRecordProcessor {
         JSONObject keysJson = new JSONObject(keysJsonStr);
 
         String dmlStatement =
-            DMLGenerator.getDMLStatement(
+            PostgreSQLDMLGenerator.getDMLStatement(
                 modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
         if (!dmlStatement.isEmpty()) {
           dmlBatch.add(dmlStatement);
