@@ -121,7 +121,7 @@ public class PostgreSQLDMLGenerator {
       allValues = allValues.substring(0, allValues.length() - 1);
 
       String returnVal =
-          "INSERT INTO " + tableName + "(" + allColumns + ")" + " VALUES (" + allValues + ") ";
+          "INSERT INTO " + tableName + "(" + allColumns + ")" + " VALUES (" + allValues + ")";
       return returnVal;
     }
     int index = 0;
@@ -132,7 +132,7 @@ public class PostgreSQLDMLGenerator {
       allColumns += colName;
       allValues += colValue;
       if (!primaryKeys.contains(colName)) {
-        updateValues += " " + colName + " = " + colValue;
+        updateValues += " " + colName + " = " + "EXCLUDED." + colName;
       }
 
       if (index + 1 < columnNameValues.size()) {
@@ -142,6 +142,9 @@ public class PostgreSQLDMLGenerator {
       }
       index++;
     }
+
+    String uniqueKeys = String.join(", ", pkcolumnNameValues.keySet());
+
     String returnVal =
         "INSERT INTO "
             + tableName
@@ -151,7 +154,9 @@ public class PostgreSQLDMLGenerator {
             + " VALUES ("
             + allValues
             + ") "
-            + "ON DUPLICATE KEY UPDATE "
+            + "ON CONFLICT("
+            + uniqueKeys
+            + ") DO UPDATE SET"
             + updateValues;
 
     return returnVal;
@@ -166,9 +171,9 @@ public class PostgreSQLDMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      deleteValues += " " + colName + " = " + colValue;
+      deleteValues += colName + " = " + colValue;
       if (index + 1 < pkcolumnNameValues.size()) {
-        deleteValues += ",";
+        deleteValues += " AND ";
       }
       index++;
     }
