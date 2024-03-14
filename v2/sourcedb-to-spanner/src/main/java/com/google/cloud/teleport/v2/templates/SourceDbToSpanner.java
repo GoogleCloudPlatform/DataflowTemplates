@@ -15,13 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
-
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.source.DataSourceProvider;
 import com.google.cloud.teleport.v2.spanner.ResultSetToMutation;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
@@ -36,7 +35,6 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.values.PCollection;
 
 /**
@@ -155,7 +153,7 @@ public class SourceDbToSpanner {
       Set<String> columnsToIgnore,
       SourceDbToSpannerOptions options) {
     return JdbcIO.<Mutation>readWithPartitions()
-        .withDataSourceConfiguration(getDataSourceConfiguration(options))
+        .withDataSourceProviderFn(new DataSourceProvider(options))
         .withTable(table)
         .withPartitionColumn(partitionColumn)
         .withRowMapper(ResultSetToMutation.create(table, columnsToIgnore))
@@ -167,22 +165,5 @@ public class SourceDbToSpanner {
         .withProjectId(options.getProjectId())
         .withInstanceId(options.getInstanceId())
         .withDatabaseId(options.getDatabaseId());
-  }
-
-  private static JdbcIO.DataSourceConfiguration getDataSourceConfiguration(
-      SourceDbToSpannerOptions options) {
-    JdbcIO.DataSourceConfiguration dataSourceConfiguration =
-        JdbcIO.DataSourceConfiguration.create(
-                StaticValueProvider.of(options.getJdbcDriverClassName()),
-                maybeDecrypt(options.getSourceConnectionURL(), null))
-            .withUsername(maybeDecrypt(options.getUsername(), null))
-            .withPassword(maybeDecrypt(options.getPassword(), null))
-            .withDriverJars(options.getJdbcDriverJars());
-
-    if (options.getSourceConnectionProperties() != null) {
-      dataSourceConfiguration =
-          dataSourceConfiguration.withConnectionProperties(options.getSourceConnectionProperties());
-    }
-    return dataSourceConfiguration;
   }
 }

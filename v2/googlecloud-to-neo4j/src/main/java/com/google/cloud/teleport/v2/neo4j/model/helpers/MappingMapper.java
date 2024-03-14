@@ -188,13 +188,13 @@ public class MappingMapper {
     if (propertyMappings.has("dates")) {
       List<FieldNameTuple> dates = getFieldAndNameTuples(propertyMappings.get("dates"));
       for (FieldNameTuple f : dates) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.Date));
+        mappings.add(newMapping(fragmentType, f, PropertyType.DateTime));
       }
     }
     if (propertyMappings.has("doubles")) {
       List<FieldNameTuple> doubles = getFieldAndNameTuples(propertyMappings.get("doubles"));
       for (FieldNameTuple f : doubles) {
-        mappings.add(newMapping(fragmentType, f, PropertyType.BigDecimal));
+        mappings.add(newMapping(fragmentType, f, PropertyType.Double));
       }
     }
     if (propertyMappings.has("longs")) {
@@ -231,6 +231,12 @@ public class MappingMapper {
       List<FieldNameTuple> booleans = getFieldAndNameTuples(propertyMappings.get("booleans"));
       for (FieldNameTuple f : booleans) {
         mappings.add(newMapping(fragmentType, f, PropertyType.Boolean));
+      }
+    }
+    if (propertyMappings.has("bytearrays")) {
+      List<FieldNameTuple> booleans = getFieldAndNameTuples(propertyMappings.get("bytearrays"));
+      for (FieldNameTuple f : booleans) {
+        mappings.add(newMapping(fragmentType, f, PropertyType.ByteArray));
       }
     }
   }
