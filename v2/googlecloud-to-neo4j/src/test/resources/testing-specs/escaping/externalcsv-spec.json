@@ -1,0 +1,37 @@
+{
+  "source": {
+    "type": "text",
+    "name": "data",
+    "ordered_field_names": "select,age",
+    "uri": "$externalcsvuri"
+  },
+  "targets": [
+    {
+      "node": {
+        "name": "Node",
+        "source": "data",
+        "mode": "append",
+        "mappings": {
+          "label": "\"Node\"",
+          "properties": {
+            "keys": [
+              "select"
+            ],
+            "integers": [
+              "where"
+            ]
+          }
+        },
+        "transform": {
+          "group": true,
+          "aggregations": [
+            {
+              "expr": "COUNT(age)",
+              "field": "where"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

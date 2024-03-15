@@ -153,7 +153,7 @@ public class ModelUtilsTest {
                 true,
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
         .isEqualTo(
-            "SELECT * FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE) ORDER BY COMPANY_ID ASC");
+            "SELECT * FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE) ORDER BY `COMPANY_ID`");
   }
 
   @Test
@@ -180,7 +180,7 @@ public class ModelUtilsTest {
                 false,
                 null))
         .isEqualTo(
-            "SELECT ID, NAME, SURNAME, DATE_OF_BIRTH FROM PCOLLECTION GROUP BY ID, NAME, SURNAME, DATE_OF_BIRTH");
+            "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` FROM PCOLLECTION GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`");
 
     // Grouped and Limited
     assertThat(
@@ -205,7 +205,7 @@ public class ModelUtilsTest {
                 false,
                 null))
         .isEqualTo(
-            "SELECT ID, NAME, SURNAME, DATE_OF_BIRTH FROM PCOLLECTION GROUP BY ID, NAME, SURNAME, DATE_OF_BIRTH LIMIT 100");
+            "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` FROM PCOLLECTION GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` LIMIT 100");
 
     // Grouped and Where
     assertThat(
@@ -230,7 +230,7 @@ public class ModelUtilsTest {
                 false,
                 null))
         .isEqualTo(
-            "SELECT ID, NAME, SURNAME, DATE_OF_BIRTH FROM PCOLLECTION WHERE NAME LIKE 'A%' GROUP BY ID, NAME, SURNAME, DATE_OF_BIRTH");
+            "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` FROM PCOLLECTION WHERE NAME LIKE 'A%' GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`");
 
     // Aggregation
     assertThat(
@@ -254,7 +254,7 @@ public class ModelUtilsTest {
                 false,
                 null))
         .isEqualTo(
-            "SELECT ID, NAME, SURNAME, DATE_OF_BIRTH, COUNT(*) COUNT FROM PCOLLECTION GROUP BY ID, NAME, SURNAME, DATE_OF_BIRTH");
+            "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`, COUNT(*) AS `COUNT` FROM PCOLLECTION GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`");
 
     // Aggregations
     assertThat(
@@ -280,7 +280,7 @@ public class ModelUtilsTest {
                 false,
                 null))
         .isEqualTo(
-            "SELECT ID, NAME, SURNAME, DATE_OF_BIRTH, COUNT(*) NUMBER_OF_PEOPLE, MAX(DATE_OF_BIRTH) YOUNGEST FROM PCOLLECTION GROUP BY ID, NAME, SURNAME, DATE_OF_BIRTH");
+            "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`, COUNT(*) AS `NUMBER_OF_PEOPLE`, MAX(DATE_OF_BIRTH) AS `YOUNGEST` FROM PCOLLECTION GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`");
 
     // Aggregations, Where and Limit
     assertThat(
@@ -308,7 +308,7 @@ public class ModelUtilsTest {
                 false,
                 null))
         .isEqualTo(
-            "SELECT ID, NAME, SURNAME, DATE_OF_BIRTH, COUNT(*) NUMBER_OF_PEOPLE, MAX(DATE_OF_BIRTH) YOUNGEST FROM PCOLLECTION WHERE NAME LIKE 'A%' GROUP BY ID, NAME, SURNAME, DATE_OF_BIRTH LIMIT 1000");
+            "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`, COUNT(*) AS `NUMBER_OF_PEOPLE`, MAX(DATE_OF_BIRTH) AS `YOUNGEST` FROM PCOLLECTION WHERE NAME LIKE 'A%' GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` LIMIT 1000");
 
     // With Base SQL, Enforced ORDER BY and Grouping
     assertThat(
@@ -328,7 +328,7 @@ public class ModelUtilsTest {
                 true,
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
         .isEqualTo(
-            "SELECT ID, CONTRACT_DATE, PERSON_ID, COMPANY_ID FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE) GROUP BY ID, CONTRACT_DATE, PERSON_ID, COMPANY_ID ORDER BY COMPANY_ID ASC");
+            "SELECT `ID`, `CONTRACT_DATE`, `PERSON_ID`, `COMPANY_ID` FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE) GROUP BY `ID`, `CONTRACT_DATE`, `PERSON_ID`, `COMPANY_ID` ORDER BY `COMPANY_ID`");
 
     // With Base SQL, Enforced ORDER BY, Aggregations and Limit
     assertThat(
@@ -349,7 +349,7 @@ public class ModelUtilsTest {
                 true,
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
         .isEqualTo(
-            "SELECT ID, CONTRACT_DATE, PERSON_ID, COMPANY_ID, COUNT(*) ENTRIES FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE) GROUP BY ID, CONTRACT_DATE, PERSON_ID, COMPANY_ID ORDER BY COMPANY_ID ASC LIMIT 1000");
+            "SELECT `ID`, `CONTRACT_DATE`, `PERSON_ID`, `COMPANY_ID`, COUNT(*) AS `ENTRIES` FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE) GROUP BY `ID`, `CONTRACT_DATE`, `PERSON_ID`, `COMPANY_ID` ORDER BY `COMPANY_ID` LIMIT 1000");
 
     // With Base SQL, Enforced ORDER BY, Aggregations, Limit and Where
     assertThat(
@@ -371,7 +371,7 @@ public class ModelUtilsTest {
                 true,
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
         .isEqualTo(
-            "SELECT ID, CONTRACT_DATE, PERSON_ID, COMPANY_ID, COUNT(*) ENTRIES FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE) WHERE PERSON_ID BETWEEN 0 AND 10000 GROUP BY ID, CONTRACT_DATE, PERSON_ID, COMPANY_ID ORDER BY COMPANY_ID ASC LIMIT 1000");
+            "SELECT `ID`, `CONTRACT_DATE`, `PERSON_ID`, `COMPANY_ID`, COUNT(*) AS `ENTRIES` FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE) WHERE PERSON_ID BETWEEN 0 AND 10000 GROUP BY `ID`, `CONTRACT_DATE`, `PERSON_ID`, `COMPANY_ID` ORDER BY `COMPANY_ID` LIMIT 1000");
   }
 
   @SuppressWarnings("SameParameterValue")
