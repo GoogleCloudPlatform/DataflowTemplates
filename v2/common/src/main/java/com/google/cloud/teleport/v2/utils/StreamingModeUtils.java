@@ -42,9 +42,10 @@ public class StreamingModeUtils {
   }
 
   private static boolean isAtLeastOnceEnabled(DataflowPipelineOptions options) {
-    return (ExperimentalOptions.hasExperiment(options, "streaming_mode_at_least_once")
-        || ((options.getDataflowServiceOptions() != null)
-            && options.getDataflowServiceOptions().contains("streaming_mode_at_least_once")));
+    return (!isExactlyOnceEnabled(options)
+        && (ExperimentalOptions.hasExperiment(options, "streaming_mode_at_least_once")
+            || ((options.getDataflowServiceOptions() != null)
+                && options.getDataflowServiceOptions().contains("streaming_mode_at_least_once"))));
   }
 
   private static boolean isExactlyOnceEnabled(DataflowPipelineOptions options) {
