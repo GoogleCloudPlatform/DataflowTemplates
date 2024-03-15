@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -20,9 +20,9 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Creates PostgreSQL DML statements. */
-public class PostgreSQLDMLGenerator extends DMLGenerator {
-  private static final Logger LOG = LoggerFactory.getLogger(PostgreSQLDMLGenerator.class);
+/** Creates DML statements. */
+public class MySqlDMLGenerator extends DMLGenerator {
+  private static final Logger LOG = LoggerFactory.getLogger(MySqlDMLGenerator.class);
 
   @Override
   String getUpsertStatement(
@@ -49,7 +49,7 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
       allValues = allValues.substring(0, allValues.length() - 1);
 
       String returnVal =
-          "INSERT INTO " + tableName + "(" + allColumns + ")" + " VALUES (" + allValues + ")";
+          "INSERT INTO " + tableName + "(" + allColumns + ")" + " VALUES (" + allValues + ") ";
       return returnVal;
     }
     int index = 0;
@@ -60,7 +60,7 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
       allColumns += colName;
       allValues += colValue;
       if (!primaryKeys.contains(colName)) {
-        updateValues += " " + colName + " = " + "EXCLUDED." + colName;
+        updateValues += " " + colName + " = " + colValue;
       }
 
       if (index + 1 < columnNameValues.size()) {
@@ -70,9 +70,6 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
       }
       index++;
     }
-
-    String uniqueKeys = String.join(", ", pkcolumnNameValues.keySet());
-
     String returnVal =
         "INSERT INTO "
             + tableName
@@ -82,9 +79,7 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
             + " VALUES ("
             + allValues
             + ") "
-            + "ON CONFLICT("
-            + uniqueKeys
-            + ") DO UPDATE SET"
+            + "ON DUPLICATE KEY UPDATE "
             + updateValues;
 
     return returnVal;
@@ -99,9 +94,9 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      deleteValues += colName + " = " + colValue;
+      deleteValues += " " + colName + " = " + colValue;
       if (index + 1 < pkcolumnNameValues.size()) {
-        deleteValues += " AND ";
+        deleteValues += ",";
       }
       index++;
     }
@@ -146,12 +141,12 @@ public class PostgreSQLDMLGenerator extends DMLGenerator {
       case "datetime":
         colValue = colValue.substring(0, colValue.length() - 1); // trim the Z for mysql
         response =
-            " TO_CHAR((TIMESTAMP "
+            " CONVERT_TZ("
                 + getQuotedEscapedString(colValue)
-                + " AT TIME ZONE '+00:00' AT TIME ZONE '"
+                + ",'+00:00','"
                 + sourceDbTimezoneOffset
-                + "'), "
-                + "'YYYY-MM-DD HH24:MI:SS')";
+                + "')";
+
         break;
       case "binary":
       case "varbinary":

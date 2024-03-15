@@ -34,6 +34,10 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class PostgreSQLDMLGeneratorTest {
 
+  private final String sourceDbType = "postgresql";
+
+  private final DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator(sourceDbType);
+
   @Test
   public void deleteById() {
     Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
@@ -47,13 +51,13 @@ public final class PostgreSQLDMLGeneratorTest {
     String expectedSql = "DELETE FROM Singers WHERE SingerId = 999";
 
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -70,13 +74,13 @@ public final class PostgreSQLDMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON CONFLICT(SingerId) DO UPDATE SET"
             + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -93,13 +97,13 @@ public final class PostgreSQLDMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON CONFLICT(SingerId) DO UPDATE SET"
             + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -116,13 +120,13 @@ public final class PostgreSQLDMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON CONFLICT(SingerId) DO UPDATE SET"
             + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -140,13 +144,13 @@ public final class PostgreSQLDMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON CONFLICT(SingerId) DO UPDATE SET"
             + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -166,13 +170,13 @@ public final class PostgreSQLDMLGeneratorTest {
             + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
 
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -187,13 +191,13 @@ public final class PostgreSQLDMLGeneratorTest {
 
     String expectedSql = "";
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -208,13 +212,13 @@ public final class PostgreSQLDMLGeneratorTest {
 
     String expectedSql = "";
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -232,13 +236,13 @@ public final class PostgreSQLDMLGeneratorTest {
             + " TO_CHAR((TIMESTAMP '2023-05-18T12:01:13.088397258' AT TIME ZONE '+00:00' AT TIME ZONE '+10:00'), 'YYYY-MM-DD HH24:MI:SS')) ON CONFLICT(SingerId) DO UPDATE SET"
             + " Bday = EXCLUDED.Bday";
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+10:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -256,13 +260,13 @@ public final class PostgreSQLDMLGeneratorTest {
             + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
 
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -320,14 +324,14 @@ public final class PostgreSQLDMLGeneratorTest {
             + " smallint_column = EXCLUDED.smallint_column,"
             + " varchar_column = EXCLUDED.varchar_column";
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
     // But this test case will run locally
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -344,12 +348,12 @@ public final class PostgreSQLDMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON CONFLICT(SingerId) DO UPDATE SET"
             + " FirstName = EXCLUDED.FirstName, LastName = EXCLUDED.LastName";
     String sql =
-        PostgreSQLDMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 }

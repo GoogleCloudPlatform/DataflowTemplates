@@ -15,75 +15,51 @@
  */
 package com.google.cloud.teleport.v2.templates.dao;
 
+import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /** DaoFactory, currently only supports MySql. */
 public class DaoFactory {
-  private String dbHost = "";
-  private String dbPort = "";
-  private String dbName = "";
-  private String sqlUrl = "";
-  private String sqlUser = "";
-  private String sqlPasswd = "";
 
-  private MySqlDao mySqlDao;
+  private static final Logger LOG = LoggerFactory.getLogger(DaoFactory.class);
 
-  private PostgreSqlDao postgreSqlDao;
-
-  public DaoFactory(String sqlUrl, String sqlUser, String sqlPasswd) {
-    this.sqlUrl = sqlUrl;
-    this.sqlUser = sqlUser;
-    this.sqlPasswd = sqlPasswd;
-  }
-
-  public DaoFactory(
-      String dbType,
-      String dbHost,
-      String dbPort,
-      String dbName,
-      String sqlUser,
-      String sqlPasswd) {
-    if ("mysql".equals(dbType)) {
-      this.sqlUrl = "jdbc:mysql://" + dbHost + ":" + dbPort + "/" + dbName;
-    } else if ("postgresql".equals(dbType)) {
-      this.sqlUrl = "jdbc:postgresql://" + dbHost + ":" + dbPort + "/" + dbName;
+  public static Dao getDao(ProcessingContext taskContext) throws IllegalArgumentException {
+    LOG.info(String.format("Getting the %s DAO", taskContext.getSourceDbType()));
+    if ("mysql".equals(taskContext.getSourceDbType())) {
+      String sqlUrl =
+          "jdbc:mysql://"
+              + taskContext.getShard().getHost()
+              + ":"
+              + taskContext.getShard().getPort()
+              + "/"
+              + taskContext.getShard().getDbName();
+      return new MySqlDao(
+          sqlUrl,
+          taskContext.getShard().getUserName(),
+          taskContext.getShard().getPassword(),
+          taskContext.getShard().getLogicalShardId(),
+          taskContext.getEnableSourceDbSsl(),
+          taskContext.getEnableSourceDbSslValidation(),
+          "");
+    } else if ("postgresql".equals(taskContext.getSourceDbType())) {
+      String sqlUrl =
+          "jdbc:postgresql://"
+              + taskContext.getShard().getHost()
+              + ":"
+              + taskContext.getShard().getPort()
+              + "/"
+              + taskContext.getShard().getDbName();
+      return new PostgreSqlDao(
+          sqlUrl,
+          taskContext.getShard().getUserName(),
+          taskContext.getShard().getPassword(),
+          taskContext.getShard().getLogicalShardId(),
+          taskContext.getEnableSourceDbSsl(),
+          taskContext.getEnableSourceDbSslValidation(),
+          "");
     }
-    this.sqlUser = sqlUser;
-    this.sqlPasswd = sqlPasswd;
-  }
-
-  public MySqlDao getMySqlDao(String dbHost, String dbPort, String dbName, String shardId) {
-    if (this.mySqlDao != null) {
-      return this.mySqlDao;
-    }
-    String sqlUrl = "jdbc:mysql://" + dbHost + ":" + dbPort + "/" + dbName;
-    this.mySqlDao = new MySqlDao(sqlUrl, this.sqlUser, this.sqlPasswd, shardId);
-    return this.mySqlDao;
-  }
-
-  public MySqlDao getMySqlDao(String shardId) {
-    if (this.mySqlDao != null) {
-      return this.mySqlDao;
-    }
-    this.mySqlDao = new MySqlDao(this.sqlUrl, this.sqlUser, this.sqlPasswd, shardId);
-    return this.mySqlDao;
-  }
-
-  public PostgreSqlDao getPostgreSqlDao(
-      String shardId, Boolean enableSsl, Boolean enableSslValidation) {
-    if (this.postgreSqlDao != null) {
-      return this.postgreSqlDao;
-    }
-    this.postgreSqlDao =
-        new PostgreSqlDao(
-            this.sqlUrl, this.sqlUser, this.sqlPasswd, shardId, enableSsl, enableSslValidation);
-    return this.postgreSqlDao;
-  }
-
-  public PostgreSqlDao getPostgreSqlDao(String shardId) {
-    if (this.postgreSqlDao != null) {
-      return this.postgreSqlDao;
-    }
-    this.postgreSqlDao =
-        new PostgreSqlDao(this.sqlUrl, this.sqlUser, this.sqlPasswd, shardId, true, true);
-    return this.postgreSqlDao;
+    throw new IllegalArgumentException(
+        String.format("No DAO found for %s", taskContext.getSourceDbType()));
   }
 }

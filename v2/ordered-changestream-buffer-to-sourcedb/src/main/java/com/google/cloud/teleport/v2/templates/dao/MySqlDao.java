@@ -15,93 +15,74 @@
  */
 package com.google.cloud.teleport.v2.templates.dao;
 
-import java.io.Serializable;
-import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
-import org.apache.commons.dbcp2.ConnectionFactory;
-import org.apache.commons.dbcp2.DriverManagerConnectionFactory;
-import org.apache.commons.dbcp2.PoolableConnectionFactory;
 import org.apache.commons.dbcp2.PoolingDriver;
 import org.apache.commons.pool2.ObjectPool;
-import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Writes data to MySQL. */
-public class MySqlDao implements Serializable {
+public class MySqlDao extends Dao {
   private static final Logger LOG = LoggerFactory.getLogger(MySqlDao.class);
 
   static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
-  private PoolingDriver driver = null;
-  private String poolName = "";
-  private String fullPoolName = "";
 
-  public MySqlDao(String sqlUrl, String sqlUser, String sqlPasswd, String shardId) {
-    sqlUrl = sqlUrl + "?rewriteBatchedStatements=true";
+  private static final String COMMONS_DBCP_DRIVER_URL = "jdbc:apache:commons:dbcp:";
+
+  private static final String COMMONS_DBCP_2_POOLING_DRIVER =
+      "org.apache.commons.dbcp2.PoolingDriver";
+  private PoolingDriver driver;
+  private final String poolName;
+
+  public MySqlDao(
+      String sqlUrl,
+      String sqlUser,
+      String sqlPasswd,
+      String shardId,
+      Boolean enableSsl,
+      Boolean enableSslValidation,
+      String fullPoolName) {
+    super(sqlUrl, sqlUser, sqlPasswd, shardId, enableSsl, enableSslValidation, fullPoolName);
+    this.poolName = "buffer-to-source-" + shardId;
+    this.fullPoolName = COMMONS_DBCP_DRIVER_URL + this.poolName;
+    sqlUrl = getRewriteBatchedStatementsSqlUrl(sqlUrl);
+    sqlUrl = getSslEnabledSqlUrl(sqlUrl, enableSsl, enableSslValidation);
     try {
-      Class dirverClass = Class.forName(JDBC_DRIVER);
+      validateClassDependencies(List.of(JDBC_DRIVER, COMMONS_DBCP_2_POOLING_DRIVER));
     } catch (ClassNotFoundException e) {
-      LOG.error("There was not able to find the driver class");
-    }
-
-    ConnectionFactory driverManagerConnectionFactory =
-        new DriverManagerConnectionFactory(sqlUrl, sqlUser, sqlPasswd);
-
-    PoolableConnectionFactory poolFactory =
-        new PoolableConnectionFactory(driverManagerConnectionFactory, null);
-    ObjectPool connectionPool = new GenericObjectPool(poolFactory);
-
-    poolFactory.setPool(connectionPool);
-    try {
-      Class.forName("org.apache.commons.dbcp2.PoolingDriver");
-    } catch (ClassNotFoundException e) {
-      LOG.error("There was not able to find the driver class");
+      LOG.error("Not able to validate the class dependencies");
     }
     try {
-      driver = (PoolingDriver) DriverManager.getDriver("jdbc:apache:commons:dbcp:");
+      this.driver = (PoolingDriver) DriverManager.getDriver(COMMONS_DBCP_DRIVER_URL);
     } catch (SQLException e) {
       LOG.error("There was an error: " + e.getMessage());
     }
-    this.poolName = "buffer-to-source-" + shardId;
-    this.fullPoolName = "jdbc:apache:commons:dbcp:" + this.poolName;
-    driver.registerPool(this.poolName, connectionPool);
+    ObjectPool connectionPool = getObjectPool(sqlUrl, sqlUser, sqlPasswd);
+    this.driver.registerPool(this.poolName, connectionPool);
   }
 
-  // writes to database in a batch
-  public void batchWrite(List<String> batchStatements) throws SQLException {
-    Connection connObj = null;
-    Statement statement = null;
-    boolean status = false;
-    while (!status) {
-      try {
-        connObj = DriverManager.getConnection(this.fullPoolName);
+  String getRewriteBatchedStatementsSqlUrl(String sqlUrl) {
+    sqlUrl = sqlUrl + "?rewriteBatchedStatements=true";
+    return sqlUrl;
+  }
 
-        statement = connObj.createStatement();
-        for (String stmt : batchStatements) {
-          statement.addBatch(stmt);
-        }
-        statement.executeBatch();
-        status = true;
-      } catch (com.mysql.cj.jdbc.exceptions.CommunicationsException e) {
-        // TODO: retry handling is configurable with retry count
-        LOG.warn("Connection exception while executing SQL, will retry : " + e.getMessage());
-      } finally {
-
-        if (statement != null) {
-          statement.close();
-        }
-        if (connObj != null) {
-          connObj.close();
-        }
+  @Override
+  String getSslEnabledSqlUrl(String sqlUrl, Boolean enableSsl, Boolean enableSslValidation) {
+    if (enableSsl) {
+      if (enableSslValidation) {
+        sqlUrl = sqlUrl + "&useSSL=true&verifyServerCertificate=true";
+      } else {
+        sqlUrl = sqlUrl + "&useSSL=true&verifyServerCertificate=false";
       }
     }
+    return sqlUrl;
   }
 
   // frees up the pooling resources
-  public void cleanup() throws Exception {
-    driver.closePool(this.poolName);
+  @Override
+  public void cleanup() throws SQLException {
+    this.driver.closePool(this.poolName);
   }
 }

@@ -17,9 +17,8 @@ package com.google.cloud.teleport.v2.templates.processing.handler;
 
 import com.google.cloud.teleport.v2.templates.common.InputBufferReader;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
+import com.google.cloud.teleport.v2.templates.dao.Dao;
 import com.google.cloud.teleport.v2.templates.dao.DaoFactory;
-import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
-import com.google.cloud.teleport.v2.templates.dao.PostgreSqlDao;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -56,57 +55,19 @@ public abstract class StreamingHandler {
         inputBufferReader.acknowledge();
         return;
       }
+      Dao dao = DaoFactory.getDao(taskContext);
 
-      String connectString =
-          "jdbc:mysql://"
-              + taskContext.getShard().getHost()
-              + ":"
-              + taskContext.getShard().getPort()
-              + "/"
-              + taskContext.getShard().getDbName();
-      if ("mysql".equals(sourceDbType)) {
-        MySqlDao dao =
-            new DaoFactory(
-                    connectString,
-                    taskContext.getShard().getUserName(),
-                    taskContext.getShard().getPassword())
-                .getMySqlDao(shardId);
-
-        InputRecordProcessor.processRecords(
-            records,
-            taskContext.getSchema(),
-            dao,
-            shardId,
-            taskContext.getSourceDbTimezoneOffset());
-        inputBufferReader.acknowledge();
-        dao.cleanup();
-        LOG.info(
-            "Shard "
-                + shardId
-                + ": Successfully processed batch of "
-                + records.size()
-                + " records.");
-      } else if ("postgresql".equals(sourceDbType)) {
-        PostgreSqlDao dao =
-            new DaoFactory(
-                    sourceDbType,
-                    taskContext.getShard().getHost(),
-                    taskContext.getShard().getPort(),
-                    taskContext.getShard().getDbName(),
-                    taskContext.getShard().getUserName(),
-                    taskContext.getShard().getPassword())
-                .getPostgreSqlDao(
-                    shardId,
-                    taskContext.getEnableSourceDbSsl(),
-                    taskContext.getEnableSourceDbSslValidation());
-
-        InputRecordProcessor.processRecords(
-            records,
-            taskContext.getSchema(),
-            dao,
-            shardId,
-            taskContext.getSourceDbTimezoneOffset());
-      }
+      InputRecordProcessor.processRecords(
+          sourceDbType,
+          records,
+          taskContext.getSchema(),
+          dao,
+          shardId,
+          taskContext.getSourceDbTimezoneOffset());
+      inputBufferReader.acknowledge();
+      dao.cleanup();
+      LOG.info(
+          "Shard " + shardId + ": Successfully processed batch of " + records.size() + " records.");
     } catch (Exception e) {
       // TODO: Error handling and retry
       /*

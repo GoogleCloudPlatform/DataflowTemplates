@@ -32,7 +32,12 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public final class DMLGeneratorTest {
+public final class MySqlDMLGeneratorTest {
+
+  private final String sourceDbType = "mysql";
+
+  private final DMLGenerator dmlGenerator =
+      DMLGeneratorFactory.getDMLGenerator(sourceDbType);
 
   @Test
   public void tableAndAllColumnNameTypesMatch() {
@@ -48,13 +53,13 @@ public final class DMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -71,13 +76,13 @@ public final class DMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -94,13 +99,13 @@ public final class DMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON DUPLICATE"
             + " KEY UPDATE  FirstName = 222, LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -118,13 +123,13 @@ public final class DMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -143,13 +148,13 @@ public final class DMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -164,13 +169,13 @@ public final class DMLGeneratorTest {
 
     String expectedSql = "";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -186,13 +191,13 @@ public final class DMLGeneratorTest {
     String expectedSql = "";
     String sql =
         sql =
-            DMLGenerator.getDMLStatement(
+            dmlGenerator.getDMLStatement(
                 modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -210,13 +215,13 @@ public final class DMLGeneratorTest {
             + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')) ON DUPLICATE KEY"
             + " UPDATE  Bday =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+10:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -233,13 +238,13 @@ public final class DMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = 'll'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -281,14 +286,14 @@ public final class DMLGeneratorTest {
             + " date_column = '2023-05-18', double_column = 42.42, smallint_column = 22,"
             + " varchar_column = 'abc'";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // Note that this fails in critique since the column order is not predictable
     // But this test case will run locally
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 
   @Test
@@ -305,12 +310,12 @@ public final class DMLGeneratorTest {
         "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON DUPLICATE KEY"
             + " UPDATE  FirstName = 'kk', LastName = NULL";
     String sql =
-        DMLGenerator.getDMLStatement(
+        dmlGenerator.getDMLStatement(
             modType, tableName, schema, newValuesJson, keyValuesJson, "+00:00");
 
     // workaround comparison to bypass TAP flaky behavior
     // TODO: Parse the returned SQL to create map of column names and values and compare with
     // expected map of column names and values
-    assertEquals(sql, sql);
+    assertEquals(expectedSql, sql);
   }
 }

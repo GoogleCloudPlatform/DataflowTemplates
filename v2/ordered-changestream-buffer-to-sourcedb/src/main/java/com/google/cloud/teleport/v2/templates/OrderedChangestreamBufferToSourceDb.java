@@ -178,8 +178,8 @@ public class OrderedChangestreamBufferToSourceDb {
         optional = true,
         description = "Enable SSL connection for SourceDB",
         helpText =
-            "Currently this parameter is applicable only to PostgreSQL. This parameter is used to enable SSL connection for SourceDB. This is set to a sane default value of true. Please explicitly disable to use non-ssl by setting this parameter to false")
-    @Default.Boolean(true)
+            "This parameter is used to enable SSL connection for SourceDB. Please explicitly enable to use ssl by setting this parameter to true")
+    @Default.Boolean(false)
     Boolean getEnableSourceDbSsl();
 
     void setEnableSourceDbSsl(Boolean value);
@@ -189,8 +189,8 @@ public class OrderedChangestreamBufferToSourceDb {
         optional = true,
         description = "Enable SSL validation for SourceDB",
         helpText =
-            "Currently this parameter is applicable only to PostgreSQL. This parameter is used to enable SSL validation for SourceDB. This is set to a sane default value of true for ca-cert validation. Please explicitly disable to use non-ssl by setting this parameter to false")
-    @Default.Boolean(true)
+            "This parameter is used to enable SSL validation for SourceDB. Please explicitly enable to use ssl by setting this parameter to true. Enabling this parameter requires that enableSourceDbSsl is also set to true")
+    @Default.Boolean(false)
     Boolean getEnableSourceDbSslValidation();
 
     void setEnableSourceDbSslValidation(Boolean value);
