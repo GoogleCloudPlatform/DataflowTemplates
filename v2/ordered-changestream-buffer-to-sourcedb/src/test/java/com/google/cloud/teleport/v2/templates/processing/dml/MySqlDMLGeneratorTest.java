@@ -36,8 +36,7 @@ public final class MySqlDMLGeneratorTest {
 
   private final String sourceDbType = "mysql";
 
-  private final DMLGenerator dmlGenerator =
-      DMLGeneratorFactory.getDMLGenerator(sourceDbType);
+  private final DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator(sourceDbType);
 
   @Test
   public void tableAndAllColumnNameTypesMatch() {
