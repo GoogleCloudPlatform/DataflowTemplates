@@ -28,22 +28,28 @@ public class UpsertDatapointsFn extends DatapointOperationFn<Iterable<IndexDatap
     return LOG;
   }
 
-  public UpsertDatapointsFn(String endpoint, String indexPath) {
-    super(endpoint, indexPath);
+  public UpsertDatapointsFn(String endpoint, String indexName) {
+    super(endpoint, indexName);
   }
 
   @ProcessElement
-  public void processElement(@Element Iterable<IndexDatapoint> datapoints) {
-    LOG.debug("Upserting datapoints: {}", datapoints);
+  public void processElement(ProcessContext c) {
+    var datapoints = c.element();
+    LOG.info("Upserting datapoints: {}", datapoints);
+    LOG.info("Using index name {}", indexName);
     UpsertDatapointsRequest request =
         UpsertDatapointsRequest.newBuilder()
             .addAllDatapoints(datapoints)
-            .setIndex(indexPath)
+            .setIndex(indexName)
             .build();
 
-    // TODO(meagar): This may raise exceptions, which I believe kills the pipeline
-    //  What is idiomatic: Allow them to kill the pipeline, or catch them an LOG an error?
-    client.upsertDatapoints(request);
-    LOG.debug("Done");
+    try {
+      client.upsertDatapoints(request);
+    } catch (Exception e) {
+      LOG.info("Failed to upsert datapoints: {}", e.getLocalizedMessage());
+      c.output("Error writing to vector search:" + e.getLocalizedMessage());
+    }
+
+    LOG.info("Done");
   }
 }

@@ -21,9 +21,14 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadChangeStreamOptions;
 import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions.ReadOptions;
+import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToVectorSearchOptions;
+import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
@@ -58,7 +63,7 @@ import org.slf4j.LoggerFactory;
       "bigtableRpcAttemptTimeoutMs",
       "bigtableRpcTimeoutMs"
     },
-    // TODO(meagar): Documentation link
+    // TODO(meagar): Documentation link - how do I generate this from the doc-comments?
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-bigtable-change-streams-to-vector-search",
     flexContainerName = "bigtable-changestreams-to-vector-search",
@@ -68,32 +73,22 @@ public final class BigtableChangeStreamsToVectorSearch {
   private static final Logger LOG =
       LoggerFactory.getLogger(BigtableChangeStreamsToVectorSearch.class);
 
+  private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
+
   /**
    * Main entry point for executing the pipeline.
    *
    * @param args The command-line arguments to the pipeline.
    */
-  public static void main(String[] args) {
-    LOG.info(
-        "Starting to replicate change records from Cloud Bigtable change streams to Vector Search");
+  public static void main(String[] args) throws Exception {
+    LOG.info("Starting replication from Cloud Bigtable Change Streams to Vector Search");
 
     BigtableChangeStreamsToVectorSearchOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(BigtableChangeStreamsToVectorSearchOptions.class);
 
-    // TODO(meagar): Copied from Ron's template, when is this required?
-    // Wait for pipeline to finish only if it is not constructing a template.
-    // if (options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
-    //   result.waitUntilFinish();
-    // }
-    try {
-      run(options);
-    } catch (IOException e) {
-      LOG.error("{}", e);
-    }
-
-    LOG.info("Completed pipeline setup");
+    run(options);
   }
 
   public static PipelineResult run(BigtableChangeStreamsToVectorSearchOptions options)
@@ -101,11 +96,21 @@ public final class BigtableChangeStreamsToVectorSearch {
     options.setStreaming(true);
     options.setEnableStreamingEngine(true);
 
-    // TODO(meagar): Copied from Ron's template, is this important?
-    // Do not validate input fields if it is running as a template.
-    // if (options.as(DataflowPipelineOptions.class).getTemplateLocation() != null) {
-    //   read = read.withoutValidation();
-    // }
+    List<String> experiments = options.getExperiments();
+    if (experiments == null) {
+      experiments = new ArrayList<>();
+    }
+    boolean hasUseRunnerV2 = false;
+    for (String experiment : experiments) {
+      if (experiment.equalsIgnoreCase(USE_RUNNER_V2_EXPERIMENT)) {
+        hasUseRunnerV2 = true;
+        break;
+      }
+    }
+    if (!hasUseRunnerV2) {
+      experiments.add(USE_RUNNER_V2_EXPERIMENT);
+    }
+    options.setExperiments(experiments);
 
     Instant startTimestamp =
         options.getBigtableChangeStreamStartTimestamp().isEmpty()
@@ -114,20 +119,23 @@ public final class BigtableChangeStreamsToVectorSearch {
 
     String bigtableProjectId = getBigtableProjectId(options);
 
-    LOG.debug("  - startTimestamp {}", startTimestamp);
-    LOG.debug("  - bigtableReadInstanceId {}", options.getBigtableReadInstanceId());
-    LOG.debug("  - bigtableReadTableId {}", options.getBigtableReadTableId());
-    LOG.debug("  - bigtableChangeStreamAppProfile {}", options.getBigtableChangeStreamAppProfile());
-    LOG.debug("  - embeddingColumn {}", options.getEmbeddingColumn());
-    LOG.debug("  - crowdingTagColumn {}", options.getCrowdingTagColumn());
-    LOG.debug("  - project {}", options.getProject());
+    LOG.info("  - startTimestamp {}", startTimestamp);
+    LOG.info("  - bigtableReadInstanceId {}", options.getBigtableReadInstanceId());
+    LOG.info("  - bigtableReadTableId {}", options.getBigtableReadTableId());
+    LOG.info("  - bigtableChangeStreamAppProfile {}", options.getBigtableChangeStreamAppProfile());
+    LOG.info("  - embeddingColumn {}", options.getEmbeddingColumn());
+    LOG.info("  - crowdingTagColumn {}", options.getCrowdingTagColumn());
+    LOG.info("  - project {}", options.getProject());
+    LOG.info("  - indexName {}", options.getVectorSearchIndex());
 
     String indexName = options.getVectorSearchIndex();
-    // TODO(meagar): Raises, do we handle this, or allow exceptions to escape?
+
     String vertexRegion = Utils.extractRegionFromIndexName(indexName);
     String vertexEndpoint = vertexRegion + "-aiplatform.googleapis.com:443";
 
     final Pipeline pipeline = Pipeline.create(options);
+
+    DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
     BigtableIO.ReadChangeStream readChangeStream =
         BigtableIO.readChangeStream()
@@ -147,8 +155,6 @@ public final class BigtableChangeStreamsToVectorSearch {
     PCollectionTuple results =
         pipeline
             .apply("Read from Cloud Bigtable Change Streams", readChangeStream)
-            // TODO(meagar): Remove this
-            .apply("Log Changes", ParDo.of(new LogChangeStreamFn()))
             .apply("Create Values", Values.create())
             .apply(
                 "Converting to Vector Search Datapoints",
@@ -168,36 +174,51 @@ public final class BigtableChangeStreamsToVectorSearch {
                             ChangeStreamMutationToDatapointOperationFn.RemoveDatapointTag)));
     results
         .get(ChangeStreamMutationToDatapointOperationFn.UpsertDatapointTag)
-        .apply(WithKeys.of("foo")) // TOOD(meagar): Better name for place-holders?
+        .apply(
+            "Add placeholer keys",
+            WithKeys.of("placeholder"))
         .apply(
             "Batch Contents",
             GroupIntoBatches.<String, IndexDatapoint>ofSize(
                     bufferSizeOption(options.getUpsertMaxBatchSize()))
                 .withMaxBufferingDuration(
                     bufferDurationOption(options.getUpsertMaxBufferDuration()))
-            // .withShardedKey() // TODO(meagar): What does this do?
             )
-        .apply("Values", Values.create())
+        .apply("Map to Values", Values.create())
         .apply(
             "Upsert Datapoints to VectorSearch",
-            ParDo.of(new UpsertDatapointsFn(vertexEndpoint, indexName)));
+            ParDo.of(new UpsertDatapointsFn(vertexEndpoint, indexName)))
+        .apply(
+            "Write errors to DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getSevereDlqDirectory() + "YYYY/MM/dd/HH/mm/")
+                .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp/")
+                .setIncludePaneInfo(true)
+                .build());
 
     results
         .get(ChangeStreamMutationToDatapointOperationFn.RemoveDatapointTag)
-        .apply(WithKeys.of("foo")) // TOOD(meagar): Better name for place-holders?
+        .apply(
+            "Add placeholder keys",
+            WithKeys.of("placeholer"))
         .apply(
             "Batch Contents",
             GroupIntoBatches.<String, String>ofSize(
                     bufferSizeOption(options.getDeleteMaxBatchSize()))
                 .withMaxBufferingDuration(
                     bufferDurationOption(options.getDeleteMaxBufferDuration()))
-            // .withByteSize() // TODO(meagar): We may also want to buffer by size
-            // .withShardedKey() // TODO(meagar): What does this do?
             )
-        .apply("Values", Values.create())
+        .apply("Map to Values", Values.create())
         .apply(
             "Remove Datapoints From VectorSearch",
-            ParDo.of(new RemoveDatapointsFn(vertexEndpoint, indexName)));
+            ParDo.of(new RemoveDatapointsFn(vertexEndpoint, indexName)))
+        .apply(
+            "Write errors to DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getSevereDlqDirectory() + "YYYY/MM/dd/HH/mm/")
+                .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp/")
+                .setIncludePaneInfo(true)
+                .build());
 
     return pipeline.run();
   }
@@ -218,7 +239,6 @@ public final class BigtableChangeStreamsToVectorSearch {
 
   private static int bufferSizeOption(int size) {
     if (size < 1) {
-      // TODO(meagar): Maybe throw instead?
       size = 1;
     }
 
@@ -226,10 +246,33 @@ public final class BigtableChangeStreamsToVectorSearch {
   }
 
   private static Duration bufferDurationOption(String duration) {
-    if (duration == "" || duration == null) {
+    if (duration.isEmpty()) {
       return Duration.standardSeconds(1);
     }
 
     return DurationUtils.parseDuration(duration);
+  }
+
+  private static DeadLetterQueueManager buildDlqManager(
+      BigtableChangeStreamsToVectorSearchOptions options) {
+    String dlqDirectory = options.getDlqDirectory();
+    if (dlqDirectory.isEmpty()) {
+      LOG.info("Falling back to temp dir for DLQ");
+
+      String tempLocation = options.as(DataflowPipelineOptions.class).getTempLocation();
+
+      LOG.info("Have temp location {}", tempLocation);
+      if (tempLocation == null || tempLocation.isEmpty()) {
+        tempLocation = "/";
+      } else if (!tempLocation.endsWith("/")) {
+        tempLocation += "/";
+      }
+
+      dlqDirectory = tempLocation + "dlq";
+    }
+
+    LOG.info("Writing dead letter queue to: {}", dlqDirectory);
+
+    return DeadLetterQueueManager.create(dlqDirectory, 1);
   }
 }

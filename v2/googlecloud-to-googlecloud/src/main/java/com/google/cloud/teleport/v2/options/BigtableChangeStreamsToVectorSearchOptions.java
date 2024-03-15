@@ -148,7 +148,7 @@ public interface BigtableChangeStreamsToVectorSearchOptions
               + "waiting upsertBatchDelay time has passed. "
               + "Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h).",
       example = "10s")
-  @Default.String("1s")
+  @Default.String("10s")
   String getUpsertMaxBufferDuration();
 
   @SuppressWarnings("unused")
@@ -179,7 +179,7 @@ public interface BigtableChangeStreamsToVectorSearchOptions
               + "waiting deleteBatchDelay time has passed. "
               + "Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h).",
       example = "10s")
-  @Default.String("1s")
+  @Default.String("10s")
   String getDeleteMaxBufferDuration();
 
   @SuppressWarnings("unused")
@@ -196,4 +196,19 @@ public interface BigtableChangeStreamsToVectorSearchOptions
 
   @SuppressWarnings("unused")
   void setVectorSearchIndex(String value);
+
+  @TemplateParameter.GcsWriteFolder(
+      order = 15,
+      optional = true,
+      description = "Dead letter queue directory to store any unpublished change record.",
+      helpText =
+          "The file path to store any unprocessed records with"
+              + " the reason they failed to be processed. "
+              + "Default is a directory under the Dataflow job's temp location. "
+              + "The default value is enough under most conditions.")
+  @Default.String("")
+  String getDlqDirectory();
+
+  @SuppressWarnings("unused")
+  void setDlqDirectory(String value);
 }

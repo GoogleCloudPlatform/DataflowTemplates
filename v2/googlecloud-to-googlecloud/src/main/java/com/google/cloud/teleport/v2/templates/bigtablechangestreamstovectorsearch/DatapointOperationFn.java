@@ -21,24 +21,33 @@ import java.io.IOException;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.slf4j.Logger;
 
-public abstract class DatapointOperationFn<InputT> extends DoFn<InputT, Void> {
+public abstract class DatapointOperationFn<InputT> extends DoFn<InputT, String> {
   private String endpoint;
-  protected String indexPath;
+  protected String indexName;
 
   protected transient IndexServiceClient client;
 
   protected abstract Logger logger();
 
-  public DatapointOperationFn(String endpoint, String indexPath) {
-    this.indexPath = indexPath;
+  // public class Error {
+  //   public Iterable<String> datapointIds;
+  //   public String errorMessage;
+  //
+  //   public Error(String errorMessage, Iterable<String> datapointIds) {
+  //     this.errorMessage = errorMessage;
+  //     this.datapointIds = datapointIds;
+  //   }
+  // }
+
+  public DatapointOperationFn(String endpoint, String indexName) {
+    this.indexName = indexName;
     this.endpoint = endpoint;
   }
 
   @Setup
   public void setup() {
-    // TODO(meagar): Should this be hardcoded?
     logger().info("Connecting to vector search endpoint {}", endpoint);
-    logger().info("Using index {}", indexPath);
+    logger().info("Using index {}", indexName);
 
     try {
       client =

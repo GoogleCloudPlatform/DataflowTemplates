@@ -260,7 +260,6 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-aiplatform</artifactId>
-      <version>3.41.0</version>
     </dependency>
   </dependencies>
 </project>

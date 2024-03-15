@@ -27,22 +27,29 @@ public class RemoveDatapointsFn extends DatapointOperationFn<Iterable<String>> {
     return LOG;
   }
 
-  public RemoveDatapointsFn(String endpoint, String indexPath) {
-    super(endpoint, indexPath);
+  public RemoveDatapointsFn(String endpoint, String indexName) {
+    super(endpoint, indexName);
   }
 
   @ProcessElement
-  public void processElement(@Element Iterable<String> datapoints) {
-    LOG.debug("Deleting datapoints: {}", datapoints);
+  public void processElement(ProcessContext c) {
+    var datapointIds = c.element();
+    LOG.info("Deleting datapoints: {}", datapointIds);
 
-    // Appears to work, even when the datapoints don't exist
+    // Appears to work, even when some of the datapoints don't exist
     RemoveDatapointsRequest request =
         RemoveDatapointsRequest.newBuilder()
-            .addAllDatapointIds(datapoints)
-            .setIndex(indexPath)
+            .addAllDatapointIds(datapointIds)
+            .setIndex(indexName)
             .build();
 
-    client.removeDatapoints(request);
+    try {
+      client.removeDatapoints(request);
+    } catch (io.grpc.StatusRuntimeException e) {
+      LOG.info("Failed to remove datapoints: {}", e.getLocalizedMessage());
+      c.output("Error deleting datapoint: " + e.getLocalizedMessage());
+    }
+
     LOG.info("Done");
   }
 }

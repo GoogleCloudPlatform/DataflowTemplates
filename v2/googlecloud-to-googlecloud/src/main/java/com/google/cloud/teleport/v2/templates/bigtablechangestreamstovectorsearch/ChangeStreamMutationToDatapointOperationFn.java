@@ -134,7 +134,6 @@ public class ChangeStreamMutationToDatapointOperationFn
         LOG.info("Setting crowding tag {}", m.getValue().toStringUtf8());
         datapointBuilder.getCrowdingTagBuilder().setCrowdingAttribute("abc").build();
       } else if ((mappedColumn = allowRestrictsMappings.get(col)) != null) {
-        // TODO(meagar): - is addAllowList_Bytes_ the right thing here?
         datapointBuilder
             .addRestrictsBuilder()
             .setNamespace(mappedColumn)

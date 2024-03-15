@@ -50,8 +50,6 @@ public class Utils {
       if (columnWithAlias.length == 2) {
         columnsWithAliases.put(columnWithAlias[0], columnWithAlias[1]);
       } else {
-        // TODO(meagar): Is it safe to include the input string in the exception message?
-        //  Do we have to sanitize it in some way?
         throw new IllegalArgumentException(String.format("Malformed column mapping %s", mapstr));
       }
     }
@@ -73,8 +71,6 @@ public class Utils {
               bytes.length, bytes_per_float));
     }
 
-    // TODO(meagar): Protobuf has consistent endianness; I think Java does to, regardless of
-    // platform?
     var embeddings = new ArrayList<Float>();
     for (int i = 0; i < bytes.length; i += bytes_per_float) {
       if (parseDoubles) {
