@@ -25,6 +25,9 @@ import org.slf4j.LoggerFactory;
 
 /** Writes data to MySQL. */
 public class MySqlDao extends Dao {
+
+  private static final long serialVersionUID = 3L;
+
   private static final Logger LOG = LoggerFactory.getLogger(MySqlDao.class);
 
   static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
