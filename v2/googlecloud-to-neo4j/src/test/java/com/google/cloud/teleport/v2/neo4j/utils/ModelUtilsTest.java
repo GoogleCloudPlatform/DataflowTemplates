@@ -38,8 +38,7 @@ import org.junit.Test;
 public class ModelUtilsTest {
 
   @Test
-  public void shouldGenerateCorrectSqlStatementForNodes() {
-    // No Keys
+  public void shouldGenerateCorrectSqlStatementForNodes_NoKeys() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
@@ -51,7 +50,10 @@ public class ModelUtilsTest {
                 false,
                 null))
         .isEqualTo("SELECT * FROM PCOLLECTION");
-    // With Keys
+  }
+
+  @Test
+  public void shouldGenerateCorrectSqlStatementForNodes_WithKeys() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
@@ -63,7 +65,10 @@ public class ModelUtilsTest {
                 false,
                 null))
         .isEqualTo("SELECT * FROM PCOLLECTION");
-    // With Base SQL
+  }
+
+  @Test
+  public void shouldGenerateCorrectSqlStatementForNodes_WithBaseSQL() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
@@ -76,7 +81,10 @@ public class ModelUtilsTest {
                 "SELECT ID, NAME, SURNAME, DATE_OF_BIRTH, BIRTH_PLACE FROM TABLE"))
         .isEqualTo(
             "SELECT * FROM (SELECT ID, NAME, SURNAME, DATE_OF_BIRTH, BIRTH_PLACE FROM TABLE)");
-    // With Base SQL and Enforced Sort
+  }
+
+  @Test
+  public void shouldGenerateCorrectSqlStatementForNodes_WithBaseSQL_Sort() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
@@ -92,8 +100,7 @@ public class ModelUtilsTest {
   }
 
   @Test
-  public void shouldGenerateCorrectSqlStatementForRelationships() {
-    // No Keys
+  public void shouldGenerateCorrectSqlStatementForRelationships_NoKeys() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
@@ -108,7 +115,10 @@ public class ModelUtilsTest {
                 false,
                 null))
         .isEqualTo("SELECT * FROM PCOLLECTION");
-    // With Keys
+  }
+
+  @Test
+  public void shouldGenerateCorrectSqlStatementForRelationships_WithKeys() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
@@ -123,7 +133,10 @@ public class ModelUtilsTest {
                 false,
                 null))
         .isEqualTo("SELECT * FROM PCOLLECTION");
-    // With Base SQL
+  }
+
+  @Test
+  public void shouldGenerateCorrectSqlStatementForRelationships_WithBaseSQL() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
@@ -138,7 +151,10 @@ public class ModelUtilsTest {
                 false,
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
         .isEqualTo("SELECT * FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE)");
-    // With Base SQL and Enforced ORDER BY
+  }
+
+  @Test
+  public void shouldGenerateCorrectSqlStatementForRelationships_WithBaseSQL_Sort() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
@@ -157,8 +173,7 @@ public class ModelUtilsTest {
   }
 
   @Test
-  public void shouldGenerateCorrectSqlStatementForTransforms() {
-    // Grouped
+  public void shouldGenerateCorrectSqlStatementForTransforms_WithGrouping() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
@@ -181,8 +196,10 @@ public class ModelUtilsTest {
                 null))
         .isEqualTo(
             "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` FROM PCOLLECTION GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`");
+  }
 
-    // Grouped and Limited
+  @Test
+  public void shouldGenerateCorrectSqlStatementForTransforms_WithGrouping_Limited() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
@@ -206,8 +223,10 @@ public class ModelUtilsTest {
                 null))
         .isEqualTo(
             "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` FROM PCOLLECTION GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` LIMIT 100");
+  }
 
-    // Grouped and Where
+  @Test
+  public void shouldGenerateCorrectSqlStatementForTransforms_WithGrouping_Where() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
@@ -231,8 +250,10 @@ public class ModelUtilsTest {
                 null))
         .isEqualTo(
             "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` FROM PCOLLECTION WHERE NAME LIKE 'A%' GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`");
+  }
 
-    // Aggregation
+  @Test
+  public void shouldGenerateCorrectSqlStatementForTransforms_WithAggregation() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
@@ -255,8 +276,10 @@ public class ModelUtilsTest {
                 null))
         .isEqualTo(
             "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`, COUNT(*) AS `COUNT` FROM PCOLLECTION GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`");
+  }
 
-    // Aggregations
+  @Test
+  public void shouldGenerateCorrectSqlStatementForTransforms_WithAggregations() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
@@ -281,8 +304,10 @@ public class ModelUtilsTest {
                 null))
         .isEqualTo(
             "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`, COUNT(*) AS `NUMBER_OF_PEOPLE`, MAX(DATE_OF_BIRTH) AS `YOUNGEST` FROM PCOLLECTION GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`");
+  }
 
-    // Aggregations, Where and Limit
+  @Test
+  public void shouldGenerateCorrectSqlStatementForTransforms_WithAggregations_Where_Limit() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "NAME", "SURNAME", "DATE_OF_BIRTH"),
@@ -309,8 +334,10 @@ public class ModelUtilsTest {
                 null))
         .isEqualTo(
             "SELECT `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH`, COUNT(*) AS `NUMBER_OF_PEOPLE`, MAX(DATE_OF_BIRTH) AS `YOUNGEST` FROM PCOLLECTION WHERE NAME LIKE 'A%' GROUP BY `ID`, `NAME`, `SURNAME`, `DATE_OF_BIRTH` LIMIT 1000");
+  }
 
-    // With Base SQL, Enforced ORDER BY and Grouping
+  @Test
+  public void shouldGenerateCorrectSqlStatementForTransforms_WithBaseSQL_Sort_Group() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
@@ -329,8 +356,10 @@ public class ModelUtilsTest {
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
         .isEqualTo(
             "SELECT `ID`, `CONTRACT_DATE`, `PERSON_ID`, `COMPANY_ID` FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE) GROUP BY `ID`, `CONTRACT_DATE`, `PERSON_ID`, `COMPANY_ID` ORDER BY `COMPANY_ID`");
+  }
 
-    // With Base SQL, Enforced ORDER BY, Aggregations and Limit
+  @Test
+  public void shouldGenerateCorrectSqlStatementForTransforms_WithBaseSQL_Sort_Aggregations_Limit() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
@@ -350,8 +379,11 @@ public class ModelUtilsTest {
                 "SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE"))
         .isEqualTo(
             "SELECT `ID`, `CONTRACT_DATE`, `PERSON_ID`, `COMPANY_ID`, COUNT(*) AS `ENTRIES` FROM (SELECT ID, PERSON_ID, COMPANY_ID, CONTRACT_DATE FROM TABLE) GROUP BY `ID`, `CONTRACT_DATE`, `PERSON_ID`, `COMPANY_ID` ORDER BY `COMPANY_ID` LIMIT 1000");
+  }
 
-    // With Base SQL, Enforced ORDER BY, Aggregations, Limit and Where
+  @Test
+  public void
+      shouldGenerateCorrectSqlStatementForTransforms_WithBaseSQL_Sort_Aggregations_Limit_Where() {
     assertThat(
             ModelUtils.getTargetSql(
                 Set.of("ID", "PERSON_ID", "COMPANY_ID", "CONTRACT_DATE"),
