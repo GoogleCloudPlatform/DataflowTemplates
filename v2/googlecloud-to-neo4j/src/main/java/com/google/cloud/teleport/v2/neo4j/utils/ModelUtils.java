@@ -130,7 +130,7 @@ public class ModelUtils {
     }
 
     if (target.getTransform() != null) {
-      List<String> fieldList = new ArrayList<>();
+      Set<String> fieldList = new LinkedHashSet<>();
       /////////////////////////////////
       // Grouping transform
       Transform query = target.getTransform();
@@ -149,17 +149,17 @@ public class ModelUtils {
                   + target.getName()
                   + ". Please verify that target fields exist in source query.");
         }
-        sb.append("SELECT ").append(StringUtils.join(fieldList, ","));
+        sb.append("SELECT ").append(StringUtils.join(fieldList, ", "));
         if (query.getAggregations().size() > 0) {
           for (Aggregation agg : query.getAggregations()) {
-            sb.append(",").append(agg.getExpression()).append(" ").append(agg.getField());
+            sb.append(", ").append(agg.getExpression()).append(" ").append(agg.getField());
           }
         }
         sb.append(" FROM PCOLLECTION");
         if (StringUtils.isNotBlank(query.getWhere())) {
           sb.append(" WHERE ").append(query.getWhere());
         }
-        sb.append(" GROUP BY ").append(StringUtils.join(fieldList, ","));
+        sb.append(" GROUP BY ").append(StringUtils.join(fieldList, ", "));
 
         if (StringUtils.isNotEmpty(orderByClause) && generateSqlSort) {
           LOG.info("Order by clause: " + orderByClause);
