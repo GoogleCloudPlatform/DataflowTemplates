@@ -15,13 +15,20 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.DataSourceProvider;
-import com.google.cloud.teleport.v2.spanner.ResultSetToMutation;
+import com.google.cloud.teleport.v2.spanner.ProcessInformationSchema;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.transformer.JsonNodeCoder;
+import com.google.cloud.teleport.v2.transformer.JsonNodeToMutationDoFn;
+import com.google.cloud.teleport.v2.transformer.ResultSetToJsonNode;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,11 +38,16 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.Write;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionView;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -51,9 +63,10 @@ import org.apache.beam.sdk.values.PCollection;
     displayName = "Sourcedb to Spanner",
     description = {
       "The SourceDB to Spanner template is a batch pipeline that copies data from a relational"
-          + " database into an existing Spanner database. This pipeline uses JDBC to connect to"
-          + " the relational database. You can use this template to copy data from any relational"
-          + " database with available JDBC drivers into Spanner. This currently only supports a limited set of types of MySQL",
+          + " database into an existing Spanner database. This pipeline uses JDBC to connect to the"
+          + " relational database. You can use this template to copy data from any relational"
+          + " database with available JDBC drivers into Spanner. This currently only supports a"
+          + " limited set of types of MySQL",
       "For an extra layer of protection, you can also pass in a Cloud KMS key along with a"
           + " Base64-encoded username, password, and connection string parameters encrypted with"
           + " the Cloud KMS key. See the <a"
@@ -103,12 +116,33 @@ public class SourceDbToSpanner {
     Pipeline pipeline = Pipeline.create(options);
     Map<String, Set<String>> columnsToIgnore = getColumnsToIgnore(options);
     Map<String, String> tableVsPartitionMap = getTablesVsPartitionColumn(options);
+    // Ingest session file into schema object.
+    Schema schema = SessionFileReader.read(options.getSessionFilePath());
+
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+
+    PCollection<Ddl> ddl =
+        pipeline.apply("Process Information Schema", new ProcessInformationSchema(spannerConfig));
+    PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
+
     for (String table : getTablesVsPartitionColumn(options).keySet()) {
       PCollection<Mutation> rows =
-          pipeline.apply(
-              "ReadPartitions_" + table,
-              getJdbcReader(
-                  table, tableVsPartitionMap.get(table), columnsToIgnore.get(table), options));
+          pipeline
+              .apply(
+                  "ReadPartitions_" + table,
+                  getJdbcReader(table, tableVsPartitionMap.get(table), options))
+              .setCoder(JsonNodeCoder.of())
+              .apply(
+                  "Map JsonNode to Mutations",
+                  ParDo.of(
+                          new JsonNodeToMutationDoFn(
+                              schema, table, columnsToIgnore.get(table), ddlView))
+                      .withSideInputs(ddlView));
       rows.apply("Write_" + table, getSpannerWrite(options));
     }
     return pipeline.run();
@@ -147,16 +181,14 @@ public class SourceDbToSpanner {
     return ignore;
   }
 
-  private static JdbcIO.ReadWithPartitions<Mutation, Long> getJdbcReader(
-      String table,
-      String partitionColumn,
-      Set<String> columnsToIgnore,
-      SourceDbToSpannerOptions options) {
-    return JdbcIO.<Mutation>readWithPartitions()
+  private static JdbcIO.ReadWithPartitions<JsonNode, Long> getJdbcReader(
+      String table, String partitionColumn, SourceDbToSpannerOptions options) {
+    return JdbcIO.<JsonNode>readWithPartitions()
         .withDataSourceProviderFn(new DataSourceProvider(options))
         .withTable(table)
         .withPartitionColumn(partitionColumn)
-        .withRowMapper(ResultSetToMutation.create(table, columnsToIgnore))
+        .withRowMapper(ResultSetToJsonNode.create(table))
+        .withCoder(JsonNodeCoder.of())
         .withNumPartitions(options.getNumPartitions());
   }
 

@@ -195,4 +195,30 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   Integer getMaxConnections();
 
   void setMaxConnections(Integer value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 16,
+      optional = false,
+      description = "SMT Session File Path in Cloud Storage",
+      helpText =
+          "Session file path in Cloud Storage that contains mapping information from"
+              + " HarbourBridge",
+      example = "gs://bucket-name/path/to/session-file.json")
+  String getSessionFilePath();
+
+  void setSessionFilePath(String value);
+
+  @TemplateParameter.Boolean(
+      order = 17,
+      optional = true,
+      description =
+          "If true, rounds the decimal values in json columns to a number that can be stored"
+              + " without loss of precision.",
+      helpText =
+          "This flag if set, rounds the decimal values in json columns to a number that can be"
+              + " stored without loss of precision.")
+  @Default.Boolean(false)
+  Boolean getRoundJsonDecimals();
+
+  void setRoundJsonDecimals(Boolean value);
 }

@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Spanner side processing classes. */
-package com.google.cloud.teleport.v2.spanner;
+/** Constants used in the template. */
+package com.google.cloud.teleport.v2.constants;

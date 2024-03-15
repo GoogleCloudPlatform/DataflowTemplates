@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2024 Google Inc.
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,6 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+package com.google.cloud.teleport.v2.constants;
 
-/** Spanner side processing classes. */
-package com.google.cloud.teleport.v2.spanner;
+/** A single class to store all constants. */
+public class Constants {
+
+  /* The key for the event change type in the event json */
+  public static final String EVENT_TABLE_NAME_KEY = "_metadata_table_name";
+}

@@ -40,6 +40,15 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.google.cloud.teleport.v2</groupId>
+      <artifactId>spanner-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>

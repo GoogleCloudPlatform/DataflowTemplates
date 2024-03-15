@@ -21,7 +21,7 @@ import java.util.Objects;
 /** SpannerColumnType object to store Source column type. */
 public class SpannerColumnType implements Serializable {
 
-  /** Represents the name of the Spanner column. */
+  /** Represents the Spanner column type. */
   private final String name;
 
   /** Represents if the column is an array. */

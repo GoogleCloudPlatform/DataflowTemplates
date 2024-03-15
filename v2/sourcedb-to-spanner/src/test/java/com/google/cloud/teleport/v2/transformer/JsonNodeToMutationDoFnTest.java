@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,11 +13,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.spanner.migrations.utils;
+package com.google.cloud.teleport.v2.transformer;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.cloud.teleport.v2.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
@@ -28,73 +33,59 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefin
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
-import com.google.common.io.Resources;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.beam.sdk.testing.TestPipeline;
-import org.junit.Rule;
+import org.json.JSONObject;
 import org.junit.Test;
 
-/** Tests for SessionFileReaderTest class. */
-public class SessionFileReaderTest {
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+public class JsonNodeToMutationDoFnTest {
 
   @Test
-  public void readSessionFile() throws Exception {
-    Path sessionFile = Paths.get(Resources.getResource("session-file.json").getPath());
-    Schema schema = SessionFileReader.read(sessionFile.toString());
-    Schema expectedSchema = getSchemaObject();
-    // Validates that the session object created is correct.
-    assertThat(schema.getSpSchema(), is(expectedSchema.getSpSchema()));
+  public void transformChangeEventViaSessionFileNamesTest() {
+    Schema schema = getSchemaObject();
+    JsonNodeToMutationDoFn jsonNodeToMutationDoFn =
+        new JsonNodeToMutationDoFn(schema, "cart", null, null);
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("product_id", "A");
+    changeEvent.put("quantity", 1);
+    changeEvent.put("user_id", "B");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "cart");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actualEvent = jsonNodeToMutationDoFn.transformChangeEventViaSessionFile(ce);
+
+    JSONObject changeEventNew = new JSONObject();
+    changeEventNew.put("new_product_id", "A");
+    changeEventNew.put("new_quantity", 1);
+    changeEventNew.put("new_user_id", "B");
+    changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_cart");
+    JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
+    assertEquals(expectedEvent, actualEvent);
   }
 
   @Test
-  public void readEmptySessionFilePath() throws Exception {
-    String sessionFile = null;
-    Schema schema = SessionFileReader.read(sessionFile);
-    Schema expectedSchema = new Schema();
-    // Validates that the schema object created is correct.
-    assertThat(schema, is(expectedSchema));
+  public void transformChangeEventViaSessionFileSynthPKTest() {
+    Schema schema = getSchemaObject();
+    JsonNodeToMutationDoFn jsonNodeToMutationDoFn =
+        new JsonNodeToMutationDoFn(schema, "people", null, null);
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actualEvent = jsonNodeToMutationDoFn.transformChangeEventViaSessionFile(ce);
+
+    JSONObject changeEventNew = new JSONObject();
+    changeEventNew.put("new_name", "A");
+    changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_people");
+    JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
+    assertTrue(actualEvent.has("synth_id"));
+    ((ObjectNode) actualEvent).remove("synth_id");
+    assertEquals(expectedEvent, actualEvent);
   }
 
-  @Test(expected = RuntimeException.class)
-  public void readSessionFileWithMissingSpannerSchema() throws Exception {
-    Path sessionFile = Files.createTempFile("session-file-without-SpSchema", ".json");
-    Charset charset = Charset.forName("UTF-8");
-    try (BufferedWriter writer = Files.newBufferedWriter(sessionFile, charset)) {
-      String jsonString = getSessionStringWithoutSpSchema();
-      writer.write(jsonString, 0, jsonString.length());
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    Schema schema = SessionFileReader.read(sessionFile.toString());
-  }
-
-  @Test(expected = RuntimeException.class)
-  public void readSessionFileWithMissingSyntheicPK() throws Exception {
-    Path sessionFile = Files.createTempFile("session-file-without-SyntheticPKey", ".json");
-    Charset charset = Charset.forName("UTF-8");
-    try (BufferedWriter writer = Files.newBufferedWriter(sessionFile, charset)) {
-      String jsonString = getSessionStringWithoutSyntheticPK();
-      writer.write(jsonString, 0, jsonString.length());
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    Schema schema = SessionFileReader.read(sessionFile.toString());
-  }
-
-  @Test(expected = RuntimeException.class)
-  public void nonExistentFileRead() {
-    SessionFileReader.read("src/test/resources/nonExistentFile.json");
-  }
-
-  public static Schema getSchemaObject() {
+  private static Schema getSchemaObject() {
     // Add Synthetic PKs.
     Map<String, SyntheticPKey> syntheticPKeys = getSyntheticPks();
     // Add SrcSchema.
@@ -214,91 +205,14 @@ public class SessionFileReaderTest {
     return srcToId;
   }
 
-  private static String getSessionStringWithoutSpSchema() {
-    return "{\n"
-        + "    \"SyntheticPKeys\": {\n"
-        + "      \"products\": {\n"
-        + "        \"Col\": \"synth_id\",\n"
-        + "        \"Sequence\": 0\n"
-        + "      }\n"
-        + "    }\n"
-        + "}";
-  }
-
-  private static String getSessionStringWithoutSyntheticPK() {
-    return "{\n"
-        + "    \"ToSpanner\": {\n"
-        + "      \"products\": {\n"
-        + "        \"Name\": \"products\",\n"
-        + "        \"Cols\": {\n"
-        + "          \"price\": \"price\",\n"
-        + "          \"product_id\": \"product_id\"\n"
-        + "        }\n"
-        + "      }\n"
-        + "    }\n"
-        + "}";
-  }
-
-  @Test
-  public void readShardedSessionFile() throws Exception {
-    Path sessionFile = Paths.get(Resources.getResource("session-file-sharded.json").getPath());
-    Schema schema = SessionFileReader.read(sessionFile.toString());
-    Schema expectedSchema = getShardedSchemaObject();
-    // Validates that the session object created is correct.
-    assertThat(schema.getSpSchema(), is(expectedSchema.getSpSchema()));
-  }
-
-  public static Schema getShardedSchemaObject() {
-    // Add SrcSchema.
-    Map<String, SourceTable> srcSchema = getSampleSrcSchema();
-    // Add SpSchema.
-    Map<String, SpannerTable> spSchema = getSampleShardedSpSchema();
-    // Add ToSpanner.
-    Map<String, NameAndCols> toSpanner = getToSpanner();
-    // Add SrcToID.
-    Map<String, NameAndCols> srcToId = getSrcToId();
-    Schema expectedSchema = new Schema(spSchema, new HashMap<>(), srcSchema);
-    expectedSchema.setToSpanner(toSpanner);
-    expectedSchema.setToSource(new HashMap<String, NameAndCols>());
-    expectedSchema.setSrcToID(srcToId);
-    expectedSchema.setSpannerToID(new HashMap<String, NameAndCols>());
-    return expectedSchema;
-  }
-
-  public static Map<String, SpannerTable> getSampleShardedSpSchema() {
-    Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
-    Map<String, SpannerColumnDefinition> t1SpColDefs =
-        new HashMap<String, SpannerColumnDefinition>();
-    t1SpColDefs.put(
-        "c1",
-        new SpannerColumnDefinition("new_product_id", new SpannerColumnType("STRING", false)));
-    t1SpColDefs.put(
-        "c2", new SpannerColumnDefinition("new_quantity", new SpannerColumnType("INT64", false)));
-    t1SpColDefs.put(
-        "c3", new SpannerColumnDefinition("new_user_id", new SpannerColumnType("STRING", false)));
-    spSchema.put(
-        "t1",
-        new SpannerTable(
-            "new_cart",
-            new String[] {"c1", "c2", "c3"},
-            t1SpColDefs,
-            new ColumnPK[] {new ColumnPK("c3", 1), new ColumnPK("c1", 2)},
-            ""));
-    Map<String, SpannerColumnDefinition> t2SpColDefs =
-        new HashMap<String, SpannerColumnDefinition>();
-    t2SpColDefs.put(
-        "c5", new SpannerColumnDefinition("new_name", new SpannerColumnType("STRING", false)));
-    t2SpColDefs.put(
-        "c6",
-        new SpannerColumnDefinition("migration_shard_id", new SpannerColumnType("STRING", false)));
-    spSchema.put(
-        "t2",
-        new SpannerTable(
-            "new_people",
-            new String[] {"c5", "c6"},
-            t2SpColDefs,
-            new ColumnPK[] {new ColumnPK("c6", 1), new ColumnPK("c5", 2)},
-            "c6"));
-    return spSchema;
+  public static JsonNode parseChangeEvent(String json) {
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+      return mapper.readTree(json);
+    } catch (IOException e) {
+      // No action. Return null.
+    }
+    return null;
   }
 }
