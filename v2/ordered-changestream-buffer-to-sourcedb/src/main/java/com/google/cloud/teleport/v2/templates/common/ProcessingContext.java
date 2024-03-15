@@ -77,34 +77,6 @@ public class ProcessingContext implements Serializable {
     this.enableSourceDbSslValidation = enableSourceDbSslValidation;
   }
 
-  public ProcessingContext(
-      KafkaConnectionProfile kafkaConnectionProfile,
-      Shard shard,
-      Schema schema,
-      String sourceDbTimezoneOffset) {
-    this.shard = shard;
-    this.kafkaConnectionProfile = kafkaConnectionProfile;
-    this.schema = schema;
-    this.bufferType = "kafka";
-    this.sourceDbType = "mysql";
-    this.pubSubConsumerProfile = null;
-    this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
-  }
-
-  public ProcessingContext(
-      Shard shard,
-      Schema schema,
-      PubSubConsumerProfile pubSubConsumerProfile,
-      String sourceDbTimezoneOffset) {
-    this.shard = shard;
-    this.kafkaConnectionProfile = null;
-    this.schema = schema;
-    this.bufferType = "pubsub";
-    this.sourceDbType = "mysql";
-    this.pubSubConsumerProfile = pubSubConsumerProfile;
-    this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
-  }
-
   public KafkaConnectionProfile getKafkaConnectionProfile() {
     return kafkaConnectionProfile;
   }
