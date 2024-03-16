@@ -65,4 +65,26 @@ public class LineToRowFnTest {
 
     pipeline.run();
   }
+
+  @Test
+  public void testNumberOfFieldsTruncated() {
+    // Arrange
+    Source source = new Source();
+    Schema sourceSchema = Schema.of(Field.of("id", FieldType.STRING));
+    CSVFormat csvFormat = CSVFormat.DEFAULT;
+
+    // Act
+    PCollection<Row> convertedRow =
+        pipeline
+            .apply(Create.of("1,Neo4j", "2,MySQL"))
+            .apply(ParDo.of(new LineToRowFn(source, sourceSchema, csvFormat)))
+            .setCoder(RowCoder.of(sourceSchema));
+
+    // Assert
+    Row neo4jRow = Row.withSchema(sourceSchema).withFieldValue("id", "1").build();
+    Row oracleRow = Row.withSchema(sourceSchema).withFieldValue("id", "2").build();
+    PAssert.that(convertedRow).containsInAnyOrder(neo4jRow, oracleRow);
+
+    pipeline.run();
+  }
 }
