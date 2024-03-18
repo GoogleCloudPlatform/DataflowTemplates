@@ -1,0 +1,20 @@
+# review when someone opens a pull request
+
+# Spanner Import Export templates
+v1/src/main/java/com/google/cloud/teleport/spanner/ @GoogleCloudPlatform/spanner-migrations-team
+v1/src/test/java/com/google/cloud/teleport/spanner/ @GoogleCloudPlatform/spanner-migrations-team
+v1/src/main/java/com/google/cloud/teleport/templates/SpannerToText.java @GoogleCloudPlatform/spanner-migrations-team
+v1/src/main/java/com/google/cloud/teleport/templates/common/SpannerConverters.java @GoogleCloudPlatform/spanner-migrations-team
+v1/src/test/java/com/google/cloud/teleport/templates/SpannerToTextIT.java @GoogleCloudPlatform/spanner-migrations-team
+v1/src/test/java/com/google/cloud/teleport/templates/SpannerToTextLT.java @GoogleCloudPlatform/spanner-migrations-team
+v1/src/test/java/com/google/cloud/teleport/templates/SpannerToTextTest.java @GoogleCloudPlatform/spanner-migrations-team
+v1/src/test/java/com/google/cloud/teleport/templates/common/SpannerConverterTest.java @GoogleCloudPlatform/spanner-migrations-team
+
+# Datastream To spanner template
+v2/datastream-to-spanner/ @GoogleCloudPlatform/spanner-migrations-team
+v2/spanner-common/ @GoogleCloudPlatform/spanner-migrations-team
+v2/spanner-migrations-sdk/ @GoogleCloudPlatform/spanner-migrations-team
+
+# Spanner To other database reverse replication templates
+v2/spanner-change-streams-to-sharded-file-sink/ @GoogleCloudPlatform/spanner-migrations-team
+v2/gcs-to-sourcedb/ @GoogleCloudPlatform/spanner-migrations-team
