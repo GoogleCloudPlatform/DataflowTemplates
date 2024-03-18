@@ -19,9 +19,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import java.util.Arrays;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventTypeConvertorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
 
 /**
  * ChangeEventContext class converts change events to Cloud Spanner mutations and stores all
@@ -29,64 +31,64 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class ChangeEventContext {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ChangeEventContext.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ChangeEventContext.class);
 
-  // The JsonNode representation of the change event.
-  protected JsonNode changeEvent;
+    // The JsonNode representation of the change event.
+    protected JsonNode changeEvent;
 
-  // Cloud Spanner mutation for the change event.
-  protected Mutation dataMutation;
+    // Cloud Spanner mutation for the change event.
+    protected Mutation dataMutation;
 
-  // Cloud Spanner primary key for the change event.
-  protected Key primaryKey;
+    // Cloud Spanner primary key for the change event.
+    protected Key primaryKey;
 
-  // Shadow table for the change event.
-  protected String shadowTable;
+    // Shadow table for the change event.
+    protected String shadowTable;
 
-  // Cloud Spanner mutation for the shadow table corresponding to this change event.
-  protected Mutation shadowTableMutation;
+    // Cloud Spanner mutation for the shadow table corresponding to this change event.
+    protected Mutation shadowTableMutation;
 
-  // The prefix to be applied for shadow table.
-  protected String shadowTablePrefix;
+    // The prefix to be applied for shadow table.
+    protected String shadowTablePrefix;
 
-  // Data table for the change event.
-  protected String dataTable;
+    // Data table for the change event.
+    protected String dataTable;
 
-  // Abstract method to generate shadow table mutation.
-  abstract Mutation generateShadowTableMutation(Ddl ddl)
-      throws ChangeEventConvertorException, InvalidChangeEventException;
+    // Abstract method to generate shadow table mutation.
+    abstract Mutation generateShadowTableMutation(Ddl ddl)
+            throws ChangeEventConvertorException, ChangeEventTypeConvertorException;
 
-  // Helper method to convert change event to mutation.
-  protected void convertChangeEventToMutation(Ddl ddl)
-      throws ChangeEventConvertorException, InvalidChangeEventException {
-    ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
-    ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
-    this.primaryKey = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
-    this.dataMutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
-    this.shadowTableMutation = generateShadowTableMutation(ddl);
-  }
+    // Helper method to convert change event to mutation.
+    protected void convertChangeEventToMutation(Ddl ddl)
+            throws ChangeEventConvertorException, ChangeEventTypeConvertorException, InvalidChangeEventException {
+        ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
+        ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
+        this.primaryKey = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
+        this.dataMutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+        this.shadowTableMutation = generateShadowTableMutation(ddl);
+    }
 
-  public JsonNode getChangeEvent() {
-    return changeEvent;
-  }
+    public JsonNode getChangeEvent() {
+        return changeEvent;
+    }
 
-  // Returns an array of data and shadow table mutations.
-  public Iterable<Mutation> getMutations() {
-    return Arrays.asList(dataMutation, shadowTableMutation);
-  }
+    // Returns an array of data and shadow table mutations.
+    public Iterable<Mutation> getMutations() {
+        return Arrays.asList(dataMutation, shadowTableMutation);
+    }
 
-  // Getter method for the primary key of the change event.
-  public Key getPrimaryKey() {
-    return primaryKey;
-  }
+    // Getter method for the primary key of the change event.
+    public Key getPrimaryKey() {
+        return primaryKey;
+    }
 
-  // Getter method for shadow mutation (used for tests).
-  public Mutation getShadowTableMutation() {
-    return shadowTableMutation;
-  }
+    // Getter method for shadow mutation (used for tests).
+    public Mutation getShadowTableMutation() {
+        return shadowTableMutation;
+    }
 
-  // Getter method for the shadow table.
-  public String getShadowTable() {
-    return shadowTable;
-  }
+    // Getter method for the shadow table.
+    public String getShadowTable() {
+        return shadowTable;
+    }
 }
