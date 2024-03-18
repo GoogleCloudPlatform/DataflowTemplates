@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -23,23 +23,24 @@ import org.apache.commons.pool2.ObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Writes data to MySQL. */
-public class MySqlDao extends Dao {
+/** Writes data to PostgreSQL. */
+public class PostgreSqlDao extends Dao {
 
-  private static final long serialVersionUID = 3L;
+  private static final long serialVersionUID = 2L;
 
-  private static final Logger LOG = LoggerFactory.getLogger(MySqlDao.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PostgreSqlDao.class);
 
-  static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
+  private static final String JDBC_DRIVER = "org.postgresql.Driver";
 
   private static final String COMMONS_DBCP_DRIVER_URL = "jdbc:apache:commons:dbcp:";
 
   private static final String COMMONS_DBCP_2_POOLING_DRIVER =
       "org.apache.commons.dbcp2.PoolingDriver";
+
   private PoolingDriver driver;
   private final String poolName;
 
-  public MySqlDao(
+  public PostgreSqlDao(
       String sqlUrl,
       String sqlUser,
       String sqlPasswd,
@@ -50,7 +51,6 @@ public class MySqlDao extends Dao {
     super(sqlUrl, sqlUser, sqlPasswd, shardId, enableSsl, enableSslValidation, fullPoolName);
     this.poolName = "buffer-to-source-" + shardId;
     this.fullPoolName = COMMONS_DBCP_DRIVER_URL + this.poolName;
-    sqlUrl = getRewriteBatchedStatementsSqlUrl(sqlUrl);
     sqlUrl = getSslEnabledSqlUrl(sqlUrl, enableSsl, enableSslValidation);
     try {
       validateClassDependencies(List.of(JDBC_DRIVER, COMMONS_DBCP_2_POOLING_DRIVER));
@@ -66,18 +66,12 @@ public class MySqlDao extends Dao {
     this.driver.registerPool(this.poolName, connectionPool);
   }
 
-  String getRewriteBatchedStatementsSqlUrl(String sqlUrl) {
-    sqlUrl = sqlUrl + "?rewriteBatchedStatements=true";
-    return sqlUrl;
-  }
-
   @Override
   String getSslEnabledSqlUrl(String sqlUrl, Boolean enableSsl, Boolean enableSslValidation) {
     if (enableSsl) {
-      if (enableSslValidation) {
-        sqlUrl = sqlUrl + "&useSSL=true&verifyServerCertificate=true";
-      } else {
-        sqlUrl = sqlUrl + "&useSSL=true&verifyServerCertificate=false";
+      sqlUrl = sqlUrl + "?ssl=verify-ca";
+      if (!enableSslValidation) {
+        sqlUrl = sqlUrl + "&sslfactory=org.postgresql.ssl.NonValidatingFactory";
       }
     }
     return sqlUrl;

@@ -47,7 +47,7 @@ variable "sessionFilePath" {
 
 variable "sourceType" {
   type        = string
-  description = "This is the type of source database. Currently only mysql is supported. Defaults to: mysql."
+  description = "This is the type of source database. Currently only mysql/postgresql are supported. Defaults to: mysql."
   default     = null
 }
 
@@ -84,6 +84,18 @@ variable "sourceDbTimezoneOffset" {
 variable "timerInterval" {
   type        = number
   description = "Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1."
+  default     = null
+}
+
+variable "enableSourceDbSsl" {
+  type        = bool
+  description = "This parameter is used to enable SSL connection for SourceDB. Please explicitly enable to use ssl by setting this parameter to true. Defaults to: false."
+  default     = null
+}
+
+variable "enableSourceDbSslValidation" {
+  type        = bool
+  description = "This parameter is used to enable SSL validation for SourceDB. Please explicitly enable to use ssl by setting this parameter to true. Enabling this parameter requires that enableSourceDbSsl is also set to true. Defaults to: false."
   default     = null
 }
 
@@ -212,15 +224,17 @@ resource "google_dataflow_flex_template_job" "generated" {
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Ordered_Changestream_Buffer_to_Sourcedb"
   parameters = {
-    sourceShardsFilePath   = var.sourceShardsFilePath
-    sessionFilePath        = var.sessionFilePath
-    sourceType             = var.sourceType
-    bufferType             = var.bufferType
-    pubSubProjectId        = var.pubSubProjectId
-    pubSubMaxReadCount     = tostring(var.pubSubMaxReadCount)
-    kafkaClusterFilePath   = var.kafkaClusterFilePath
-    sourceDbTimezoneOffset = var.sourceDbTimezoneOffset
-    timerInterval          = tostring(var.timerInterval)
+    sourceShardsFilePath        = var.sourceShardsFilePath
+    sessionFilePath             = var.sessionFilePath
+    sourceType                  = var.sourceType
+    bufferType                  = var.bufferType
+    pubSubProjectId             = var.pubSubProjectId
+    pubSubMaxReadCount          = tostring(var.pubSubMaxReadCount)
+    kafkaClusterFilePath        = var.kafkaClusterFilePath
+    sourceDbTimezoneOffset      = var.sourceDbTimezoneOffset
+    timerInterval               = tostring(var.timerInterval)
+    enableSourceDbSsl           = tostring(var.enableSourceDbSsl)
+    enableSourceDbSslValidation = tostring(var.enableSourceDbSslValidation)
   }
 
   additional_experiments       = var.additional_experiments
