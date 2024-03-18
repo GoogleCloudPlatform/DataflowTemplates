@@ -13,19 +13,21 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.spanner.migrations.convertors;
+package com.google.cloud.teleport.v2.spanner.migrations.exceptions;
 
-/** Exceptions thrown during Change Event type conversions. */
+/**
+ * Exceptions thrown during Change Event type conversions.
+ */
 public class ChangeEventTypeConvertorException extends Exception {
-  public ChangeEventTypeConvertorException(Exception e) {
-    super(e);
-  }
+    public ChangeEventTypeConvertorException(Exception e) {
+        super(e);
+    }
 
-  public ChangeEventTypeConvertorException(String message) {
-    super(message);
-  }
+    public ChangeEventTypeConvertorException(String message) {
+        super(message);
+    }
 
-  public ChangeEventTypeConvertorException(String message, Exception e) {
-    super(message, e);
-  }
+    public ChangeEventTypeConvertorException(String message, Exception e) {
+        super(message, e);
+    }
 }

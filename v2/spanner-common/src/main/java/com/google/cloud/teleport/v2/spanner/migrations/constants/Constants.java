@@ -15,31 +15,29 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.constants;
 
-import com.google.cloud.spanner.Dialect;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import java.util.List;
-import java.util.Map;
-import org.apache.commons.lang3.tuple.Pair;
-
-/** A single class to store all constants common to migrations. */
+/**
+ * A single class to store all constants common to migrations.
+ */
 public class Constants {
 
-  /* The source type value for MySql databases */
-  public static final String MYSQL_SOURCE_TYPE = "mysql";
+    /* The source type value for MySql databases */
+    public static final String MYSQL_SOURCE_TYPE = "mysql";
 
-  /* The value for Oracle databases in the source type key */
-  public static final String ORACLE_SOURCE_TYPE = "oracle";
+    /* The value for Oracle databases in the source type key */
+    public static final String ORACLE_SOURCE_TYPE = "oracle";
 
-  /* The value for Postgres databases in the source type key */
-  public static final String POSTGRES_SOURCE_TYPE = "postgresql";
+    /* The value for Postgres databases in the source type key */
+    public static final String POSTGRES_SOURCE_TYPE = "postgresql";
 
-  /* The key for the schema name in the event json */
-  public static final String EVENT_SCHEMA_KEY = "_metadata_schema";
+    /* The key for the schema name in the event json */
+    public static final String EVENT_SCHEMA_KEY = "_metadata_schema";
 
-  /* The key for the table name in the event json */
-  public static final String EVENT_TABLE_NAME_KEY = "_metadata_table";
+    /* The key for the table name in the event json */
+    public static final String EVENT_TABLE_NAME_KEY = "_metadata_table";
 
-  /* The key for the uuid field of the change event */
-  public static final String EVENT_UUID_KEY = "_metadata_uuid";
+    /* The key for the uuid field of the change event */
+    public static final String EVENT_UUID_KEY = "_metadata_uuid";
+
+    /* The prefix for all metadata keys in the event json */
+    public static final String EVENT_METADATA_KEY_PREFIX = "_metadata";
 }
