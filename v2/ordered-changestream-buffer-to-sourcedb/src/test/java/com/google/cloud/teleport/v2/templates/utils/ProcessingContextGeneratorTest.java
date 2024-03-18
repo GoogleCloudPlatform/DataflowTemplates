@@ -27,6 +27,23 @@ import org.junit.runners.JUnit4;
 public final class ProcessingContextGeneratorTest {
 
   @Test
+  public void processingContextForKafkaPostgreSQL() {
+
+    Map<String, ProcessingContext> response =
+        ProcessingContextGenerator.getProcessingContextForKafka(
+            "src/test/resources/pgsqlShard.json",
+            "postgresql",
+            "src/test/resources/kafkaConnectionProfile.json",
+            "src/test/resources/allMatchSession.json",
+            "+00:00",
+            true,
+            true);
+
+    assertEquals(response.size(), 2);
+    assertEquals(response.get("shardC").getBufferType(), "kafka");
+  }
+
+  @Test
   public void processingContextForKafka() {
 
     Map<String, ProcessingContext> response =
@@ -35,10 +52,29 @@ public final class ProcessingContextGeneratorTest {
             "mysql",
             "src/test/resources/kafkaConnectionProfile.json",
             "src/test/resources/allMatchSession.json",
-            "+00:00");
+            "+00:00",
+            true,
+            true);
 
     assertEquals(response.size(), 2);
     assertEquals(response.get("shardA").getBufferType(), "kafka");
+  }
+
+  @Test
+  public void processingContextForPubSubPostgreSQL() {
+    Map<String, ProcessingContext> response =
+        ProcessingContextGenerator.getProcessingContextForPubSub(
+            "src/test/resources/pgsqlShard.json",
+            "postgresql",
+            "tada",
+            "src/test/resources/allMatchSession.json",
+            42,
+            "+00:00",
+            true,
+            true);
+
+    assertEquals(response.size(), 2);
+    assertEquals(response.get("shardC").getBufferType(), "pubsub");
   }
 
   @Test
@@ -50,7 +86,9 @@ public final class ProcessingContextGeneratorTest {
             "tada",
             "src/test/resources/allMatchSession.json",
             42,
-            "+00:00");
+            "+00:00",
+            true,
+            true);
 
     assertEquals(response.size(), 2);
     assertEquals(response.get("shardA").getBufferType(), "pubsub");

@@ -41,12 +41,12 @@ public class InputFileReader {
 
   public static List<Shard> getOrderedShardDetails(String sourceShardsFilePath, String sourceType) {
 
-    if (!"mysql".equals(sourceType)) {
-      LOG.error("Only mysql source type is supported.");
+    if (!"mysql".equals(sourceType) && !"postgresql".equals(sourceType)) {
+      LOG.error("Only mysql or postgresql source type is supported.");
       throw new RuntimeException(
           "Input sourceType value : "
               + sourceType
-              + " is unsupported. Supported values are : mysql");
+              + " is unsupported. Supported values are : mysql or postgresql");
     }
 
     try (InputStream stream =
