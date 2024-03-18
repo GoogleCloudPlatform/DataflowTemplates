@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -126,7 +126,7 @@ public final class ChangeEventTypeConvertorTest {
     assertNull(ChangeEventTypeConvertor.toBoolean(ce, "non_existent", /* requiredField= */ false));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertNonExistentRequiredFieldToBoolean() throws Exception {
     JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());
@@ -187,7 +187,7 @@ public final class ChangeEventTypeConvertorTest {
     ChangeEventTypeConvertor.toLong(ce, "field1", /* requiredField= */ true);
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertRandomStringToLong() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
@@ -196,7 +196,7 @@ public final class ChangeEventTypeConvertorTest {
         ChangeEventTypeConvertor.toLong(ce, "field1", /* requiredField= */ true), new Long(123457));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertNonExistentRequiredFieldToLong() throws Exception {
     JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());
@@ -260,7 +260,7 @@ public final class ChangeEventTypeConvertorTest {
     assertNull(ChangeEventTypeConvertor.toDouble(ce, "field12", /* requiredField= */ false));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertRandomStringToDouble() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
@@ -270,7 +270,7 @@ public final class ChangeEventTypeConvertorTest {
         new Long(123457));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertNonExistentRequiredFieldToDouble() throws Exception {
     JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());
@@ -321,7 +321,7 @@ public final class ChangeEventTypeConvertorTest {
         new String("true"));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertNonExistentRequiredFieldToString() throws Exception {
     JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());
@@ -402,7 +402,7 @@ public final class ChangeEventTypeConvertorTest {
         ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field13", /* requiredField= */ false));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertRandomStringToNumeric() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
@@ -413,7 +413,7 @@ public final class ChangeEventTypeConvertorTest {
         new Long(123457));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertBooleanToNumeric() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", true);
@@ -424,7 +424,7 @@ public final class ChangeEventTypeConvertorTest {
         new Long(123457));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertNonExistentRequiredFieldToNumeric() throws Exception {
     JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());
@@ -464,7 +464,7 @@ public final class ChangeEventTypeConvertorTest {
     assertNull(ChangeEventTypeConvertor.toByteArray(ce, "field5", /* requiredField= */ false));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertNonExistentRequiredFieldToByteArray() throws Exception {
     JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());
@@ -514,7 +514,7 @@ public final class ChangeEventTypeConvertorTest {
     assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "field8", /* requiredField= */ false));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertNonExistentRequiredFieldToTimestamp() throws Exception {
     JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());
@@ -523,7 +523,7 @@ public final class ChangeEventTypeConvertorTest {
         Timestamp.parseTimestamp("2020-12-30T12:12:12.123Z"));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertDateToTimestamp() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "2020-12-30");
@@ -533,7 +533,7 @@ public final class ChangeEventTypeConvertorTest {
         Timestamp.parseTimestamp("2020-12-30T00:00:00Z"));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertRandomStringToTimestamp() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
@@ -543,7 +543,7 @@ public final class ChangeEventTypeConvertorTest {
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertLongToTimestamp() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", 1234523342);
@@ -553,7 +553,7 @@ public final class ChangeEventTypeConvertorTest {
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertBooleanToTimestamp() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", true);
@@ -595,7 +595,7 @@ public final class ChangeEventTypeConvertorTest {
     assertNull(ChangeEventTypeConvertor.toDate(ce, "field6", /* requiredField= */ false));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertRandomStringToDate() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
@@ -605,7 +605,7 @@ public final class ChangeEventTypeConvertorTest {
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertLongToDate() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", 123456789);
@@ -615,7 +615,7 @@ public final class ChangeEventTypeConvertorTest {
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertBooleanToDate() throws Exception {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", true);
@@ -625,7 +625,7 @@ public final class ChangeEventTypeConvertorTest {
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test(expected = ChangeEventTypeConvertorException.class)
   public void cannotConvertNonExistentRequiredFieldToDate() throws Exception {
     JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());

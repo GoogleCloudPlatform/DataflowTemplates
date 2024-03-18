@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.templates.datastream;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertorException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -43,7 +45,7 @@ class OracleChangeEventSequence extends ChangeEventSequence {
    * Creates OracleChangeEventSequence from change event
    */
   public static OracleChangeEventSequence createFromChangeEvent(ChangeEventContext ctx)
-      throws ChangeEventConvertorException, InvalidChangeEventException {
+      throws ChangeEventTypeConvertorException, InvalidChangeEventException {
 
     /* Backfill events from Oracle "can" have only timestamp metadata filled in.
      * Set SCN to a smaller value than any real value

@@ -33,6 +33,9 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSessionConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
@@ -47,8 +50,8 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFacto
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
@@ -197,8 +200,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         isRetryRecord = true;
       }
       if (!schema.isEmpty()) {
-        verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
-        changeEvent = transformChangeEventViaSessionFile(changeEvent);
+        SchemaUtils.verifyTableInSession(schema, changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
+        ChangeEventSessionConvertor csc = new ChangeEventSessionConvertor(schema,transformationContext, sourceType);
+        changeEvent = csc.transformChangeEventViaSessionFile(changeEvent);
       }
       changeEvent = transformChangeEventData(changeEvent, spannerAccessor.getDatabaseClient(), ddl);
       ChangeEventContext changeEventContext =
@@ -280,25 +284,6 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
       failedEvents.inc();
-    }
-  }
-
-  void verifyTableInSession(String tableName)
-      throws IllegalArgumentException, DroppedTableException {
-    if (!schema.getSrcToID().containsKey(tableName)) {
-      throw new IllegalArgumentException(
-          "Missing entry for " + tableName + " in srcToId map, provide a valid session file.");
-    }
-    if (!schema.getToSpanner().containsKey(tableName)) {
-      throw new DroppedTableException(
-          "Cannot find entry for "
-              + tableName
-              + " in toSpanner map, it is likely this table was dropped");
-    }
-    String tableId = schema.getSrcToID().get(tableName).getName();
-    if (!schema.getSpSchema().containsKey(tableId)) {
-      throw new IllegalArgumentException(
-          "Missing entry for " + tableId + " in spSchema, provide a valid session file.");
     }
   }
 

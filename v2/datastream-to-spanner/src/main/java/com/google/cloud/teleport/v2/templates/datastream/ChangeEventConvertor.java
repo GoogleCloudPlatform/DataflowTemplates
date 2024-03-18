@@ -23,6 +23,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertorException;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.collect.ImmutableList;
 import java.util.HashSet;
@@ -258,7 +260,7 @@ public class ChangeEventConvertor {
       JsonNode changeEvent,
       List<String> columnNames,
       Set<String> keyColumnNames)
-      throws ChangeEventConvertorException, InvalidChangeEventException {
+      throws ChangeEventConvertorException, ChangeEventTypeConvertorException {
     Set<String> columnNamesAsSet = new HashSet<>(columnNames);
     if (!columnNamesAsSet.containsAll(keyColumnNames)) {
       throw new ChangeEventConvertorException(

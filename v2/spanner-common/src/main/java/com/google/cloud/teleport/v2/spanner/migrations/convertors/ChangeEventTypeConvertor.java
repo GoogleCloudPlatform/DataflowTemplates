@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.ByteArray;
@@ -48,7 +48,7 @@ public class ChangeEventTypeConvertor {
   private static final Pattern NUMERIC_PATTERN = Pattern.compile("-?\\d+(\\.\\d+)?");
 
   public static Boolean toBoolean(JsonNode changeEvent, String key, boolean requiredField)
-      throws ChangeEventConvertorException {
+      throws ChangeEventTypeConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
@@ -64,12 +64,13 @@ public class ChangeEventTypeConvertor {
       }
       return Boolean.valueOf(node.asBoolean());
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to boolean ", e);
+      throw new ChangeEventTypeConvertorException(
+          "Unable to convert field " + key + " to boolean ", e);
     }
   }
 
   public static Long toLong(JsonNode changeEvent, String key, boolean requiredField)
-      throws ChangeEventConvertorException {
+      throws ChangeEventTypeConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
@@ -83,12 +84,13 @@ public class ChangeEventTypeConvertor {
       return node.asLong();
 
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to long ", e);
+      throw new ChangeEventTypeConvertorException(
+          "Unable to convert field " + key + " to long ", e);
     }
   }
 
   public static Double toDouble(JsonNode changeEvent, String key, boolean requiredField)
-      throws ChangeEventConvertorException {
+      throws ChangeEventTypeConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
@@ -100,12 +102,13 @@ public class ChangeEventTypeConvertor {
       }
       return Double.valueOf(node.asDouble());
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to double ", e);
+      throw new ChangeEventTypeConvertorException(
+          "Unable to convert field " + key + " to double ", e);
     }
   }
 
   public static String toString(JsonNode changeEvent, String key, boolean requiredField)
-      throws ChangeEventConvertorException {
+      throws ChangeEventTypeConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
@@ -114,12 +117,13 @@ public class ChangeEventTypeConvertor {
       return changeEvent.get(key).asText();
     } catch (Exception e) {
       // Throw an exception as all conversion options are exhausted.
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to string ", e);
+      throw new ChangeEventTypeConvertorException(
+          "Unable to convert field " + key + " to string ", e);
     }
   }
 
   public static ByteArray toByteArray(JsonNode changeEvent, String key, boolean requiredField)
-      throws ChangeEventConvertorException {
+      throws ChangeEventTypeConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
@@ -134,7 +138,7 @@ public class ChangeEventTypeConvertor {
       }
       return ByteArray.copyFrom(hexStringToByteArray(s));
     } catch (Exception e) {
-      throw new ChangeEventConvertorException(
+      throw new ChangeEventTypeConvertorException(
           "Unable to convert field " + key + " to ByteArray", e);
     }
   }
@@ -145,7 +149,7 @@ public class ChangeEventTypeConvertor {
    * 2) From long value as microseconds
    */
   public static Timestamp toTimestamp(JsonNode changeEvent, String key, boolean requiredField)
-      throws ChangeEventConvertorException {
+      throws ChangeEventTypeConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
@@ -155,13 +159,13 @@ public class ChangeEventTypeConvertor {
       Instant instant = parseTimestamp(timeString);
       return Timestamp.ofTimeSecondsAndNanos(instant.getEpochSecond(), instant.getNano());
     } catch (Exception e) {
-      throw new ChangeEventConvertorException(
+      throw new ChangeEventTypeConvertorException(
           "Unable to convert field " + key + " to Timestamp", e);
     }
   }
 
   public static Date toDate(JsonNode changeEvent, String key, boolean requiredField)
-      throws ChangeEventConvertorException {
+      throws ChangeEventTypeConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
@@ -170,7 +174,7 @@ public class ChangeEventTypeConvertor {
       String dateString = changeEvent.get(key).asText();
       return Date.fromJavaUtilDate(parseLenientDate(dateString));
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to Date", e);
+      throw new ChangeEventTypeConvertorException("Unable to convert field " + key + " to Date", e);
     }
   }
 
@@ -194,7 +198,7 @@ public class ChangeEventTypeConvertor {
    */
   public static BigDecimal toNumericBigDecimal(
       JsonNode changeEvent, String key, boolean requiredField)
-      throws ChangeEventConvertorException {
+      throws ChangeEventTypeConvertorException {
 
     String value = toString(changeEvent, key, requiredField);
     if (value == null) {
@@ -203,7 +207,7 @@ public class ChangeEventTypeConvertor {
     if (NumberUtils.isCreatable(value) || NumberUtils.isParsable(value) || isNumeric(value)) {
       return new BigDecimal(value).setScale(9, RoundingMode.HALF_UP);
     }
-    throw new ChangeEventConvertorException(
+    throw new ChangeEventTypeConvertorException(
         "Unable to convert field "
             + key
             + " to Numeric. Creatable("
@@ -217,10 +221,11 @@ public class ChangeEventTypeConvertor {
    * function also throws an exception if it's a required field.
    */
   private static boolean containsValue(JsonNode changeEvent, String key, boolean requiredField)
-      throws ChangeEventConvertorException {
+      throws ChangeEventTypeConvertorException {
     boolean containsValue = changeEvent.hasNonNull(key);
     if (requiredField && !containsValue) {
-      throw new ChangeEventConvertorException("Required key " + key + " not found in change event");
+      throw new ChangeEventTypeConvertorException(
+          "Required key " + key + " not found in change event");
     }
     return containsValue;
   }
