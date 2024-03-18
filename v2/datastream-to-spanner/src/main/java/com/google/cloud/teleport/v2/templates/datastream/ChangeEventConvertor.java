@@ -28,7 +28,12 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.collect.ImmutableList;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 

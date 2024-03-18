@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.datastream;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventTypeConvertorException;
 
 /**
  * Factory classes for ChangeEventSequence classes which provides methods for 1) creating
@@ -25,62 +26,63 @@ import com.google.cloud.spanner.TransactionContext;
  */
 public class ChangeEventSequenceFactory {
 
-  private ChangeEventSequenceFactory() {}
-
-  private static String getSourceType(JsonNode changeEvent) throws InvalidChangeEventException {
-    try {
-      return changeEvent.get(DatastreamConstants.EVENT_SOURCE_TYPE_KEY).asText();
-    } catch (Exception e) {
-      throw new InvalidChangeEventException(e);
+    private ChangeEventSequenceFactory() {
     }
-  }
 
-  /*
-   * Creates a ChangeEventSequence from the current ChangeEvent from ChangeEventContext.
-   */
-  public static ChangeEventSequence createChangeEventSequenceFromChangeEventContext(
-      ChangeEventContext changeEventContext)
-      throws ChangeEventConvertorException, InvalidChangeEventException {
-
-    String sourceType = getSourceType(changeEventContext.getChangeEvent());
-
-    // Create ChangeEventSequence from change event JSON.
-    if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
-      return MySqlChangeEventSequence.createFromChangeEvent(changeEventContext);
-    } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
-      return OracleChangeEventSequence.createFromChangeEvent(changeEventContext);
-    } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
-      return PostgresChangeEventSequence.createFromChangeEvent(changeEventContext);
+    private static String getSourceType(JsonNode changeEvent) throws InvalidChangeEventException {
+        try {
+            return changeEvent.get(DatastreamConstants.EVENT_SOURCE_TYPE_KEY).asText();
+        } catch (Exception e) {
+            throw new InvalidChangeEventException(e);
+        }
     }
-    throw new InvalidChangeEventException("Unsupported source database: " + sourceType);
-  }
 
-  /*
-   * Create a ChangeEventSequence object for an earlier event by reading
-   * from shadow tables.
-   */
-  public static ChangeEventSequence createChangeEventSequenceFromShadowTable(
-      final TransactionContext transactionContext, final ChangeEventContext changeEventContext)
-      throws ChangeEventSequenceCreationException, InvalidChangeEventException {
+    /*
+     * Creates a ChangeEventSequence from the current ChangeEvent from ChangeEventContext.
+     */
+    public static ChangeEventSequence createChangeEventSequenceFromChangeEventContext(
+            ChangeEventContext changeEventContext)
+            throws ChangeEventTypeConvertorException, InvalidChangeEventException {
 
-    String sourceType = getSourceType(changeEventContext.getChangeEvent());
+        String sourceType = getSourceType(changeEventContext.getChangeEvent());
 
-    if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
-      return MySqlChangeEventSequence.createFromShadowTable(
-          transactionContext,
-          changeEventContext.getShadowTable(),
-          changeEventContext.getPrimaryKey());
-    } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
-      return OracleChangeEventSequence.createFromShadowTable(
-          transactionContext,
-          changeEventContext.getShadowTable(),
-          changeEventContext.getPrimaryKey());
-    } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
-      return PostgresChangeEventSequence.createFromShadowTable(
-          transactionContext,
-          changeEventContext.getShadowTable(),
-          changeEventContext.getPrimaryKey());
+        // Create ChangeEventSequence from change event JSON.
+        if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
+            return MySqlChangeEventSequence.createFromChangeEvent(changeEventContext);
+        } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
+            return OracleChangeEventSequence.createFromChangeEvent(changeEventContext);
+        } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
+            return PostgresChangeEventSequence.createFromChangeEvent(changeEventContext);
+        }
+        throw new InvalidChangeEventException("Unsupported source database: " + sourceType);
     }
-    throw new InvalidChangeEventException("Unsupported source database: " + sourceType);
-  }
+
+    /*
+     * Create a ChangeEventSequence object for an earlier event by reading
+     * from shadow tables.
+     */
+    public static ChangeEventSequence createChangeEventSequenceFromShadowTable(
+            final TransactionContext transactionContext, final ChangeEventContext changeEventContext)
+            throws ChangeEventSequenceCreationException, InvalidChangeEventException {
+
+        String sourceType = getSourceType(changeEventContext.getChangeEvent());
+
+        if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
+            return MySqlChangeEventSequence.createFromShadowTable(
+                    transactionContext,
+                    changeEventContext.getShadowTable(),
+                    changeEventContext.getPrimaryKey());
+        } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
+            return OracleChangeEventSequence.createFromShadowTable(
+                    transactionContext,
+                    changeEventContext.getShadowTable(),
+                    changeEventContext.getPrimaryKey());
+        } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
+            return PostgresChangeEventSequence.createFromShadowTable(
+                    transactionContext,
+                    changeEventContext.getShadowTable(),
+                    changeEventContext.getPrimaryKey());
+        }
+        throw new InvalidChangeEventException("Unsupported source database: " + sourceType);
+    }
 }

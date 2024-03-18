@@ -24,11 +24,17 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSessionConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventTypeConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SchemaUtils;
-import com.google.cloud.teleport.v2.templates.datastream.*;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
+import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
@@ -237,6 +243,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
             // Errors that result from invalid change events.
             outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
             skippedEvents.inc();
+        } catch (ChangeEventTypeConvertorException e) {
+            // Errors that result during type conversions are not retryable.
+            outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
+            conversionErrors.inc();
         } catch (ChangeEventConvertorException e) {
             // Errors that result during Event conversions are not retryable.
             outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
