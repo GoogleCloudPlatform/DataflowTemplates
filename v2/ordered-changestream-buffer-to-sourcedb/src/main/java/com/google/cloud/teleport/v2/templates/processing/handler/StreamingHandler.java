@@ -17,8 +17,8 @@ package com.google.cloud.teleport.v2.templates.processing.handler;
 
 import com.google.cloud.teleport.v2.templates.common.InputBufferReader;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
+import com.google.cloud.teleport.v2.templates.dao.Dao;
 import com.google.cloud.teleport.v2.templates.dao.DaoFactory;
-import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -36,6 +36,7 @@ public abstract class StreamingHandler {
 
   public void process() {
     String shardId = taskContext.getShard().getLogicalShardId();
+    String sourceDbType = taskContext.getSourceDbType();
     InputBufferReader inputBufferReader = this.getBufferReader();
 
     try {
@@ -54,24 +55,15 @@ public abstract class StreamingHandler {
         inputBufferReader.acknowledge();
         return;
       }
-
-      String connectString =
-          "jdbc:mysql://"
-              + taskContext.getShard().getHost()
-              + ":"
-              + taskContext.getShard().getPort()
-              + "/"
-              + taskContext.getShard().getDbName();
-
-      MySqlDao dao =
-          new DaoFactory(
-                  connectString,
-                  taskContext.getShard().getUserName(),
-                  taskContext.getShard().getPassword())
-              .getMySqlDao(shardId);
+      Dao dao = DaoFactory.getDao(taskContext);
 
       InputRecordProcessor.processRecords(
-          records, taskContext.getSchema(), dao, shardId, taskContext.getSourceDbTimezoneOffset());
+          sourceDbType,
+          records,
+          taskContext.getSchema(),
+          dao,
+          shardId,
+          taskContext.getSourceDbTimezoneOffset());
       inputBufferReader.acknowledge();
       dao.cleanup();
       LOG.info(

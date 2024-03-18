@@ -17,8 +17,10 @@ package com.google.cloud.teleport.v2.templates.processing.handler;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.templates.dao.MySqlDao;
+import com.google.cloud.teleport.v2.templates.dao.Dao;
 import com.google.cloud.teleport.v2.templates.processing.dml.DMLGenerator;
+import com.google.cloud.teleport.v2.templates.processing.dml.DMLGeneratorFactory;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -36,12 +38,12 @@ public class InputRecordProcessor {
   private static final Logger LOG = LoggerFactory.getLogger(InputRecordProcessor.class);
 
   public static void processRecords(
+      String sourceDbType,
       List<String> recordList,
       Schema schema,
-      MySqlDao dao,
+      Dao dao,
       String shardId,
       String sourceDbTimezoneOffset) {
-
     try {
       boolean capturedlagMetric = false;
       long replicationLag = 0L;
@@ -50,6 +52,7 @@ public class InputRecordProcessor {
       Distribution lagMetric = Metrics.distribution(shardId, "replicationLagInSeconds_" + shardId);
 
       List<String> dmlBatch = new ArrayList<>();
+      DMLGenerator dmlGenerator = DMLGeneratorFactory.getDMLGenerator(sourceDbType);
       for (String s : recordList) {
         List<String> parsedValues = parseRecord(s);
         String tableName = parsedValues.get(0);
@@ -62,7 +65,7 @@ public class InputRecordProcessor {
         JSONObject keysJson = new JSONObject(keysJsonStr);
 
         String dmlStatement =
-            DMLGenerator.getDMLStatement(
+            dmlGenerator.getDMLStatement(
                 modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
         if (!dmlStatement.isEmpty()) {
           dmlBatch.add(dmlStatement);
@@ -77,25 +80,25 @@ public class InputRecordProcessor {
           Instant commitTsInst = Timestamp.parseTimestamp(commitTs).toSqlTimestamp().toInstant();
           replicationLag = ChronoUnit.SECONDS.between(commitTsInst, instTime);
         }
+
+        Instant daoStartTime = Instant.now();
+        dao.batchWrite(dmlBatch);
+        Instant daoEndTime = Instant.now();
+        LOG.info(
+            "Shard "
+                + shardId
+                + String.format(": Write to %s for ", sourceDbType)
+                + recordList.size()
+                + " took : "
+                + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)
+                + " milliseconds ");
+
+        numRecProcessedMetric.inc(
+            recordList.size()); // update the number of records processed metric
+
+        lagMetric.update(replicationLag); // update the lag metric
       }
-
-      Instant daoStartTime = Instant.now();
-      dao.batchWrite(dmlBatch);
-      Instant daoEndTime = Instant.now();
-      LOG.info(
-          "Shard "
-              + shardId
-              + ": Write to mysql for "
-              + recordList.size()
-              + " took : "
-              + ChronoUnit.MILLIS.between(daoStartTime, daoEndTime)
-              + " milliseconds ");
-
-      numRecProcessedMetric.inc(recordList.size()); // update the number of records processed metric
-
-      lagMetric.update(replicationLag); // update the lag metric
-
-    } catch (Exception e) {
+    } catch (IllegalArgumentException | SQLException e) {
       throw new RuntimeException("Failed to process records: " + e.getMessage());
     }
   }
