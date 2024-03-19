@@ -19,7 +19,7 @@ import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventTypeConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -46,7 +46,7 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
      * Creates PostgresChangeEventSequence from change event
      */
     public static PostgresChangeEventSequence createFromChangeEvent(ChangeEventContext ctx)
-            throws ChangeEventTypeConvertorException, InvalidChangeEventException {
+            throws ChangeEventConvertorException, InvalidChangeEventException {
 
         /* Backfill events from Postgres "can" have only timestamp metadata filled in.
          * Set LSN to a smaller value than any real value

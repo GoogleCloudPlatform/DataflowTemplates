@@ -24,14 +24,13 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSessionConvertor;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventTypeConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
@@ -122,6 +121,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     /* The run mode, whether it is regular or retry. */
     private final Boolean isRegularRunMode;
 
+    // ChangeEventSessionConvertor utility object.
+    private ChangeEventSessionConvertor csc;
+
     SpannerTransactionWriterDoFn(
             SpannerConfig spannerConfig,
             PCollectionView<Ddl> ddlView,
@@ -151,6 +153,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
         mapper = new ObjectMapper();
         mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+        csc = new ChangeEventSessionConvertor(schema, transformationContext, sourceType, roundJsonDecimals);
     }
 
     /**
@@ -183,7 +186,6 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                 isRetryRecord = true;
             }
 
-            ChangeEventSessionConvertor csc = new ChangeEventSessionConvertor(schema, transformationContext, sourceType, roundJsonDecimals);
             if (!schema.isEmpty()) {
                 SchemaUtils.verifyTableInSession(schema, changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
                 changeEvent = csc.transformChangeEventViaSessionFile(changeEvent);
@@ -243,10 +245,6 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
             // Errors that result from invalid change events.
             outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
             skippedEvents.inc();
-        } catch (ChangeEventTypeConvertorException e) {
-            // Errors that result during type conversions are not retryable.
-            outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
-            conversionErrors.inc();
         } catch (ChangeEventConvertorException e) {
             // Errors that result during Event conversions are not retryable.
             outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);

@@ -20,7 +20,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventTypeConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 
 /**
  * MySql implementation of ChangeEventContext that provides implementation of the
@@ -29,7 +29,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventTyp
 class MySqlChangeEventContext extends ChangeEventContext {
 
     public MySqlChangeEventContext(JsonNode changeEvent, Ddl ddl, String shadowTablePrefix)
-            throws ChangeEventConvertorException, ChangeEventTypeConvertorException, InvalidChangeEventException {
+            throws ChangeEventConvertorException, InvalidChangeEventException {
         this.changeEvent = changeEvent;
         this.shadowTablePrefix = shadowTablePrefix;
         this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
@@ -42,7 +42,7 @@ class MySqlChangeEventContext extends ChangeEventContext {
      */
     @Override
     Mutation generateShadowTableMutation(Ddl ddl)
-            throws ChangeEventConvertorException, ChangeEventTypeConvertorException {
+            throws ChangeEventConvertorException {
         // Get shadow information from change event mutation context
         Mutation.WriteBuilder builder =
                 ChangeEventConvertor.changeEventToShadowTableMutationBuilder(

@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventTypeConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,11 +56,11 @@ public abstract class ChangeEventContext {
 
     // Abstract method to generate shadow table mutation.
     abstract Mutation generateShadowTableMutation(Ddl ddl)
-            throws ChangeEventConvertorException, ChangeEventTypeConvertorException;
+            throws ChangeEventConvertorException;
 
     // Helper method to convert change event to mutation.
     protected void convertChangeEventToMutation(Ddl ddl)
-            throws ChangeEventConvertorException, ChangeEventTypeConvertorException, InvalidChangeEventException {
+            throws ChangeEventConvertorException, InvalidChangeEventException {
         ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
         ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
         this.primaryKey = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);

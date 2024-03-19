@@ -19,7 +19,7 @@ import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventTypeConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -50,7 +50,7 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
      * Creates MySqlChangeEventSequence from change event
      */
     public static MySqlChangeEventSequence createFromChangeEvent(ChangeEventContext ctx)
-            throws ChangeEventTypeConvertorException, InvalidChangeEventException {
+            throws ChangeEventConvertorException, InvalidChangeEventException {
 
         /* Dump events from MySql only has timestamp metadata filled in. They don't have
          * logfile and logposition metadata.
