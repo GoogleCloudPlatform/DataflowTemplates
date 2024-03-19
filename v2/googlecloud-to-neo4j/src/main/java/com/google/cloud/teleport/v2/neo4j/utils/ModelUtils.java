@@ -36,6 +36,16 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.Alias;
+import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
+import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.Limit;
+import net.sf.jsqlparser.statement.select.OrderByElement;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -112,84 +122,92 @@ public class ModelUtils {
       TargetQuerySpec targetQuerySpec,
       boolean generateSqlSort,
       String baseSql) {
-
-    StringBuilder sb = new StringBuilder();
     Target target = targetQuerySpec.getTarget();
-    String orderByClause = "";
-    if (target.getType() == TargetType.edge) {
-      String sortField = getRelationshipKeyField(target, FragmentType.target);
-      if (StringUtils.isNotBlank(sortField)) {
-        orderByClause = " ORDER BY " + sortField + " ASC";
-      } else if (StringUtils.isNotBlank(target.getTransform().getOrderBy())) {
-        orderByClause = " ORDER BY " + target.getTransform().getOrderBy();
-      }
-    } else {
-      if (StringUtils.isNotBlank(target.getTransform().getOrderBy())) {
-        orderByClause = " ORDER BY " + target.getTransform().getOrderBy();
-      }
-    }
 
-    if (target.getTransform() != null) {
-      List<String> fieldList = new ArrayList<>();
-      /////////////////////////////////
-      // Grouping transform
-      Transform query = target.getTransform();
-      if (query.isGroup() || query.getAggregations().size() > 0) {
-        for (int i = 0; i < target.getMappings().size(); i++) {
-          Mapping mapping = target.getMappings().get(i);
-          if (StringUtils.isNotBlank(mapping.getField())) {
-            if (fieldNameMap.contains(mapping.getField())) {
-              fieldList.add(mapping.getField());
+    try {
+      PlainSelect statement = new PlainSelect();
+
+      statement.withFromItem(new Table("PCOLLECTION"));
+
+      if (generateSqlSort) {
+        String sortField = null;
+        if (target.getType() == TargetType.edge) {
+          String keyField = getRelationshipKeyField(target, FragmentType.target);
+          sortField = StringUtils.isNotBlank(keyField) ? escapeField(keyField) : null;
+        }
+
+        if (StringUtils.isBlank(sortField)
+            && StringUtils.isNotBlank(target.getTransform().getOrderBy())) {
+          sortField = target.getTransform().getOrderBy();
+        }
+
+        if (StringUtils.isNotBlank(sortField)) {
+          statement.withOrderByElements(
+              List.of(
+                  new OrderByElement()
+                      .withExpression(CCJSqlParserUtil.parseExpression(sortField))));
+        }
+      }
+
+      if (target.getTransform() != null) {
+        /////////////////////////////////
+        // Grouping transform
+        Transform query = target.getTransform();
+        if (query.isGroup() || !query.getAggregations().isEmpty()) {
+          Set<String> groupByFields = new LinkedHashSet<>();
+          for (int i = 0; i < target.getMappings().size(); i++) {
+            Mapping mapping = target.getMappings().get(i);
+            if (StringUtils.isNotBlank(mapping.getField())) {
+              if (fieldNameMap.contains(mapping.getField())) {
+                groupByFields.add(mapping.getField());
+              }
             }
           }
-        }
-        if (fieldList.size() == 0) {
-          throw new RuntimeException(
-              "Could not find mapped fields for target: "
-                  + target.getName()
-                  + ". Please verify that target fields exist in source query.");
-        }
-        sb.append("SELECT ").append(StringUtils.join(fieldList, ","));
-        if (query.getAggregations().size() > 0) {
-          for (Aggregation agg : query.getAggregations()) {
-            sb.append(",").append(agg.getExpression()).append(" ").append(agg.getField());
+          if (groupByFields.isEmpty()) {
+            throw new RuntimeException(
+                "Could not find mapped fields for target: "
+                    + target.getName()
+                    + ". Please verify that target fields exist in source query.");
           }
-        }
-        sb.append(" FROM PCOLLECTION");
-        if (StringUtils.isNotBlank(query.getWhere())) {
-          sb.append(" WHERE ").append(query.getWhere());
-        }
-        sb.append(" GROUP BY ").append(StringUtils.join(fieldList, ","));
+          statement.addSelectItems(
+              groupByFields.stream().map(s -> new Column(escapeField(s))).toArray(Column[]::new));
+          if (!query.getAggregations().isEmpty()) {
+            for (Aggregation agg : query.getAggregations()) {
+              statement.addSelectItem(
+                  CCJSqlParserUtil.parseExpression(agg.getExpression()),
+                  new Alias(escapeField(agg.getField())));
+            }
+          }
 
-        if (StringUtils.isNotEmpty(orderByClause) && generateSqlSort) {
-          LOG.info("Order by clause: " + orderByClause);
-          sb.append(orderByClause);
-          //  ORDER BY without a LIMIT is not supported!
-          if (query.getLimit() > -1) {
-            sb.append(" LIMIT ").append(query.getLimit());
+          if (StringUtils.isNotBlank(query.getWhere())) {
+            statement.withWhere(CCJSqlParserUtil.parseExpression(query.getWhere()));
           }
-        } else {
+
+          groupByFields.forEach(
+              s -> statement.addGroupByColumnReference(new Column(escapeField(s))));
+
           if (query.getLimit() > -1) {
-            sb.append(" LIMIT ").append(query.getLimit());
+            statement.setLimit(new Limit().withRowCount(new LongValue(query.getLimit())));
           }
         }
       }
-    }
 
-    // If edge/relationship, sort by destination nodeId to reduce locking
-    String innerSql;
-    if (sb.length() == 0 && generateSqlSort) {
-      innerSql = DEFAULT_STAR_QUERY + orderByClause;
-    } else if (sb.length() == 0) {
-      innerSql = DEFAULT_STAR_QUERY;
-    } else {
-      innerSql = sb.toString();
+      if (statement.getSelectItems() == null || statement.getSelectItems().isEmpty()) {
+        statement.addSelectItems(new AllColumns());
+      }
+
+      String statementText = statement.toString();
+      if (StringUtils.isNotBlank(baseSql)) {
+        statementText = statementText.replace("PCOLLECTION", String.format("(%s)", baseSql));
+      }
+      return statementText;
+    } catch (JSQLParserException e) {
+      throw new RuntimeException(e);
     }
-    if (StringUtils.isNotEmpty(baseSql)) {
-      return innerSql.replace(" PCOLLECTION", " (" + baseSql + ")");
-    } else {
-      return innerSql;
-    }
+  }
+
+  private static String escapeField(String keyField) {
+    return String.format("`%s`", keyField);
   }
 
   public static String makeValidNeo4jIdentifier(String proposedIdString) {

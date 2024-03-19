@@ -277,7 +277,6 @@ public class InputRefactoringTest {
   }
 
   private static void addMapping(Target target, Mapping mapping) {
-    target.getFieldNames().add(mapping.getField());
     target.getMappings().add(mapping);
   }
 }
